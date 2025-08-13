@@ -63,12 +63,15 @@ const FashionHeader = () => {
           <View style={styles.rightIcons}>
             {/* Coins */}
             <View style={styles.coinContainer}>
-              <Ionicons name="star" size={16} color="#FFD700" />
+              <Ionicons name="diamond" size={16} color="#FFD700" />
               <Text style={styles.coinNumber}>382</Text>
             </View>
 
             {/* Cart */}
-            <TouchableOpacity style={styles.iconButton}>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => router.push('/CartPage')}
+            >
               <Ionicons name="bag-outline" size={20} color="white" />
             </TouchableOpacity>
 

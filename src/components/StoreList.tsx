@@ -7,7 +7,7 @@ interface Store {
   name: string;
   cashback: number;
   logoText: string;
-  gradient: string[];
+  gradient: [string, string, ...string[]];
 }
 
 const stores: Store[] = [

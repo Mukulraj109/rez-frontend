@@ -12,6 +12,10 @@ export default function HomeScreen() {
     router.push('/FashionPage');
   };
 
+  const handleMainStorePress = () => {
+    router.push('/MainStorePage');
+  };
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header Section */}
@@ -30,7 +34,7 @@ export default function HomeScreen() {
               <Ionicons name="star" size={16} color="#FFD700" />
               <ThemedText style={styles.coinsText}>382</ThemedText>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/CartPage')}>
               <Ionicons name="cart-outline" size={24} color="white" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.profileAvatar}>
@@ -108,7 +112,7 @@ export default function HomeScreen() {
             <ThemedText style={styles.actionValue}>2 New</ThemedText>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionItem}>
+          <TouchableOpacity style={styles.actionItem} onPress={handleMainStorePress}>
             <View style={styles.actionIcon}>
               <Ionicons name="storefront-outline" size={24} color="#333" />
             </View>
