@@ -9,13 +9,29 @@ export interface CartItem {
   category: 'products' | 'service';
 }
 
+export interface LockedProduct {
+  id: string;
+  productId: string; // Original product ID from StorePage
+  name: string;
+  price: number;
+  image: string | number;
+  cashback: string;
+  category: 'products' | 'service';
+  lockedAt: Date; // When the item was locked
+  expiresAt: Date; // When the lock expires
+  remainingTime: number; // Remaining time in milliseconds
+  lockDuration: number; // Original lock duration in milliseconds (default 15min)
+  status: 'active' | 'expiring' | 'expired'; // Lock status for UI styling
+}
+
 export interface CartState {
   products: CartItem[];
   services: CartItem[];
-  activeTab: 'products' | 'service';
+  lockedProducts: LockedProduct[]; // NEW: Locked products array
+  activeTab: 'products' | 'service' | 'lockedproduct';
 }
 
-export type TabType = 'products' | 'service';
+export type TabType = 'products' | 'service' | 'lockedproduct';
 
 // Component Props Interfaces
 export interface CartPageProps {
@@ -46,6 +62,13 @@ export interface CartItemProps {
   showAnimation?: boolean;
 }
 
+export interface LockedProductItemProps {
+  item: LockedProduct;
+  onUnlock: (id: string) => void;
+  onExpire: (id: string) => void;
+  showAnimation?: boolean;
+}
+
 export interface PriceSectionProps {
   totalPrice: number;
   onBuyNow: () => void;
@@ -64,9 +87,27 @@ export interface AnimationConfig {
 export type RemoveItemHandler = (id: string) => void;
 export type TabChangeHandler = (tab: TabType) => void;
 export type BuyNowHandler = () => void;
+export type UnlockItemHandler = (id: string) => void;
+export type ExpireItemHandler = (id: string) => void;
+export type LockItemHandler = (productId: string, productData: any) => void;
 
 // State Updater Types
 export type CartUpdater = (updater: (prev: CartState) => CartState) => void;
+
+// Lock Configuration Constants
+export const LOCK_CONFIG = {
+  DEFAULT_DURATION: 15 * 60 * 1000, // 15 minutes in milliseconds
+  WARNING_THRESHOLD: 2 * 60 * 1000, // Show warning when 2 minutes remaining
+  CRITICAL_THRESHOLD: 30 * 1000, // Critical warning at 30 seconds
+  UPDATE_INTERVAL: 1000, // Update timer every second
+} as const;
+
+// Lock Status Thresholds
+export const getLockStatus = (remainingTime: number): 'active' | 'expiring' | 'expired' => {
+  if (remainingTime <= 0) return 'expired';
+  if (remainingTime <= LOCK_CONFIG.WARNING_THRESHOLD) return 'expiring';
+  return 'active';
+};
 
 // Style Types
 export interface ResponsiveValues {

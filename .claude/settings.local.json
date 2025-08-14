@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(npx tsc:*)",
+      "Bash(rm:*)",
+      "Bash(npm start)",
+      "Bash(npx expo start:*)",
+      "Bash(npm install:*)"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}

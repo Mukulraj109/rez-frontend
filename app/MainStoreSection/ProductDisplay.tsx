@@ -1,6 +1,16 @@
-import React, { useState, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Image, FlatList, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useCallback, useRef, useState } from "react";
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  FlatList,
+  Dimensions,
+  ListRenderItemInfo,
+  ViewToken,
+  Platform,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface ProductImage {
   id: string;
@@ -14,129 +24,107 @@ interface ProductDisplayProps {
   isFavorited?: boolean;
 }
 
-const defaultImages: ProductImage[] = [
-  {
-    id: '1',
-    uri: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=500&fit=crop&crop=center'
-  },
-  {
-    id: '2', 
-    uri: 'https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?w=400&h=500&fit=crop&crop=center'
-  },
-  {
-    id: '3',
-    uri: 'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&h=500&fit=crop&crop=center'
-  }
+const DEFAULT_IMAGES: ProductImage[] = [
+  { id: "1", uri: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=900&h=1100&fit=crop" },
+  { id: "2", uri: "https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?w=900&h=1100&fit=crop" },
+  { id: "3", uri: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=900&h=1100&fit=crop" },
 ];
 
-export default function ProductDisplay({ 
-  images = defaultImages,
+export default function ProductDisplay({
+  images = DEFAULT_IMAGES,
   onSharePress,
   onFavoritePress,
-  isFavorited = false 
+  isFavorited = false,
 }: ProductDisplayProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
-  const { width } = Dimensions.get('window');
+  const { width } = Dimensions.get("window");
   const isTablet = width >= 768;
-  const imageHeight = isTablet ? width * 0.8 : width * 1.25; // Responsive aspect ratio
+  const imageCardWidth = Math.round(width * (isTablet ? 0.7 : 0.92));
+  const imageHeight = Math.round(imageCardWidth * (isTablet ? 0.95 : 1.25));
 
-  const handleScroll = (event: any) => {
-    const slideSize = event.nativeEvent.layoutMeasurement.width;
-    const index = event.nativeEvent.contentOffset.x / slideSize;
-    const roundIndex = Math.round(index);
-    setCurrentIndex(roundIndex);
-  };
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const flatRef = useRef<FlatList<any> | null>(null);
 
-  const renderImage = ({ item }: { item: ProductImage }) => (
-    <View style={[styles.imageContainer, { width }]}>
-      <Image
-        source={{ uri: item.uri }}
-        style={[styles.productImage, { height: imageHeight }]}
-        resizeMode="cover"
-        defaultSource={require('@/assets/images/icon.png')}
-        loadingIndicatorSource={require('@/assets/images/icon.png')}
-        onLoadStart={() => console.log('Image loading started:', item.id)}
-        onLoadEnd={() => console.log('Image loading completed:', item.id)}
-        onError={(error) => console.log('Image loading error:', item.id, error)}
-      />
-    </View>
-  );
+  // viewability config + callback to track current index reliably
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+  }).current;
 
-  const renderDot = (index: number) => (
-    <View
-      key={index}
-      style={[
-        styles.dot,
-        index === currentIndex ? styles.activeDot : styles.inactiveDot
-      ]}
-    />
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems && viewableItems.length > 0) {
+      const idx = viewableItems[0].index ?? 0;
+      setCurrentIndex(idx);
+    }
+  }).current;
+
+  const renderImage = useCallback(
+    ({ item }: ListRenderItemInfo<ProductImage>) => (
+      <View style={[styles.imageWrapper, { width }]}>
+        <View style={[styles.imageCard, { width: imageCardWidth, height: imageHeight }]}>
+          <Image
+            source={{ uri: item.uri }}
+            style={[styles.image, { width: imageCardWidth, height: imageHeight }]}
+            resizeMode="cover"
+          />
+        </View>
+      </View>
+    ),
+    [imageCardWidth, imageHeight, width]
   );
 
   return (
     <View style={styles.container}>
-      {/* Product Image Carousel */}
-      <View style={styles.imageCarousel}>
-        <FlatList
-          ref={flatListRef}
-          data={images}
-          renderItem={renderImage}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          decelerationRate="fast"
-          snapToInterval={width}
-          snapToAlignment="start"
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={3}
-          windowSize={5}
-          initialNumToRender={2}
-          getItemLayout={(data, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
-        />
+      <FlatList
+        ref={flatRef}
+        data={images}
+        keyExtractor={(i) => i.id}
+        renderItem={renderImage}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={width}
+        decelerationRate={Platform.OS === "ios" ? "fast" : 0.98}
+        scrollEventThrottle={16}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
+      />
 
-        {/* Action Buttons Overlay */}
-        <View style={styles.actionButtonsContainer}>
-          {/* Share Button */}
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={onSharePress}
-            activeOpacity={0.8}
-            accessibilityLabel="Share this product"
-            accessibilityRole="button"
-            accessibilityHint="Share product details with others"
-          >
-            <Ionicons name="share-outline" size={18} color="#6B7280" />
-          </TouchableOpacity>
+      {/* Floating action buttons (right column) */}
+      <View style={[styles.actionCol, { top: 20 }]}>
+        <TouchableOpacity
+          onPress={onSharePress}
+          style={styles.actionBtn}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Share product"
+        >
+          <Ionicons name="share-social-outline" size={18} color="#374151" />
+        </TouchableOpacity>
 
-          {/* Favorite Button */}
-          <TouchableOpacity
-            style={[styles.actionButton, styles.favoriteButton]}
-            onPress={onFavoritePress}
-            activeOpacity={0.8}
-            accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
-            accessibilityRole="button"
-            accessibilityHint={isFavorited ? "Remove this product from your favorites list" : "Add this product to your favorites list"}
-          >
-            <Ionicons 
-              name={isFavorited ? "heart" : "heart-outline"} 
-              size={18} 
-              color={isFavorited ? "#EF4444" : "#6B7280"} 
-            />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={onFavoritePress}
+          style={[styles.actionBtn, styles.favoriteBtn]}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
+        >
+          <Ionicons name={isFavorited ? "heart" : "heart-outline"} size={18} color={isFavorited ? "#EF4444" : "#374151"} />
+        </TouchableOpacity>
       </View>
 
-      {/* Page Indicators (Dots) */}
+      {/* Pagination dots (centered below carousel) */}
       {images.length > 1 && (
         <View style={styles.pagination}>
-          {images.map((_, index) => renderDot(index))}
+          {images.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.dotBase,
+                i === currentIndex ? styles.dotActive : styles.dotInactive,
+                i === currentIndex ? styles.dotActiveWide : undefined,
+              ]}
+            />
+          ))}
         </View>
       )}
     </View>
@@ -145,67 +133,81 @@ export default function ProductDisplay({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "transparent",
   },
-  imageCarousel: {
-    position: 'relative',
+  imageWrapper: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F6F3FB",
   },
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+  imageCard: {
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    // elevated card shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  productImage: {
-    width: '100%',
-    backgroundColor: '#F8FAFC',
+  image: {
+    width: "100%",
+    height: "100%",
   },
-  actionButtonsContainer: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    gap: 10,
-    zIndex: 10,
+
+  actionCol: {
+    position: "absolute",
+    right: 18,
+    zIndex: 20,
+    justifyContent: "flex-start",
+    alignItems: "center",
+    // keep buttons stacked
   },
-  actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  actionBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+    // subtle border + shadow
     borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
+    borderColor: "rgba(15,23,42,0.06)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  favoriteButton: {
-    // Additional styling for favorite button if needed
+  favoriteBtn: {
+    // slightly stronger elevation for favorite
   },
+
   pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    position: "absolute",
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: 8,
   },
-  dot: {
-    borderRadius: 4,
-  },
-  activeDot: {
-    width: 24,
+  dotBase: {
     height: 8,
-    backgroundColor: '#8B5CF6',
+    borderRadius: 6,
+    marginHorizontal: 4,
   },
-  inactiveDot: {
+  dotActive: {
+    backgroundColor: "#7C3AED",
+  },
+  dotActiveWide: {
+    width: 28,
+  },
+  dotInactive: {
+    backgroundColor: "#E5E7EB",
     width: 8,
-    height: 8,
-    backgroundColor: '#D1D5DB',
   },
 });

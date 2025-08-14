@@ -6,9 +6,20 @@ import { SlidingTabsProps, TabData } from '@/types/cart';
 
 const defaultTabs: TabData[] = [
   { key: 'products', title: 'Products', icon: 'cube-outline' },
-  { key: 'service', title: 'Service', icon: 'construct-outline' }
+  { key: 'service', title: 'Service', icon: 'construct-outline' },
+  { key: 'lockedproduct', title: 'Locked', icon: 'lock-closed-outline' }
 ];
 
+/**
+ * SlidingTabs Component - Enhanced for Three-Tab Support
+ * 
+ * Features:
+ * - Dynamic tab width calculation
+ * - Responsive font and icon sizing
+ * - Smooth animated underline for any number of tabs
+ * - Optimized for three-tab layout (Products, Service, Locked)
+ * - Accessibility compliance
+ */
 export default function SlidingTabs({ 
   activeTab, 
   onTabChange, 
@@ -17,6 +28,27 @@ export default function SlidingTabs({
   const { width } = Dimensions.get('window');
   const tabWidth = width / tabs.length;
   const underlinePosition = useRef(new Animated.Value(0)).current;
+  
+  // Responsive design considerations for three tabs
+  const isSmallScreen = width < 375;
+  const isVerySmallScreen = width < 320;
+  
+  // Dynamic sizing based on screen width and tab count
+  const getResponsiveTabSizes = () => {
+    if (tabs.length >= 3) {
+      if (isVerySmallScreen) {
+        return { fontSize: 13, iconSize: 15, spacing: 2 };
+      } else if (isSmallScreen) {
+        return { fontSize: 14, iconSize: 16, spacing: 3 };
+      } else {
+        return { fontSize: 15, iconSize: 17, spacing: 4 };
+      }
+    } else {
+      return { fontSize: 16, iconSize: 18, spacing: 6 };
+    }
+  };
+  
+  const { fontSize: tabFontSize, iconSize: tabIconSize, spacing: iconSpacing } = getResponsiveTabSizes();
 
   useEffect(() => {
     const activeIndex = tabs.findIndex(tab => tab.key === activeTab);
@@ -34,7 +66,7 @@ export default function SlidingTabs({
 
   const handleTabPress = (tabKey: string) => {
     if (tabKey !== activeTab) {
-      onTabChange(tabKey as 'products' | 'service');
+      onTabChange(tabKey as 'products' | 'service' | 'lockedproduct');
     }
   };
 
@@ -56,12 +88,13 @@ export default function SlidingTabs({
               <View style={styles.tabContent}>
                 <Ionicons 
                   name={tab.icon as any} 
-                  size={18} 
+                  size={tabIconSize} 
                   color={isActive ? '#8B5CF6' : '#9CA3AF'} 
-                  style={styles.tabIcon}
+                  style={[styles.tabIcon, { marginRight: iconSpacing }]}
                 />
                 <ThemedText style={[
                   styles.tabText,
+                  { fontSize: tabFontSize },
                   isActive ? styles.activeTabText : styles.inactiveTabText
                 ]}>
                   {tab.title}
@@ -81,8 +114,8 @@ export default function SlidingTabs({
             transform: [
               {
                 translateX: underlinePosition.interpolate({
-                  inputRange: [0, tabWidth],
-                  outputRange: [tabWidth * 0.2, tabWidth * 1.2], // Center the underline
+                  inputRange: tabs.map((_, index) => index * tabWidth),
+                  outputRange: tabs.map((_, index) => (index * tabWidth) + (tabWidth * 0.2)),
                   extrapolate: 'clamp',
                 })
               }
@@ -108,20 +141,23 @@ const styles = StyleSheet.create({
   tab: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 8, // Reduced padding for three tabs
+    minWidth: 0, // Allow tabs to shrink if needed
   },
   tabContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 1, // Allow content to shrink if needed
   },
   tabIcon: {
-    marginRight: 6,
+    marginRight: 4, // Reduced margin for three tabs
   },
   tabText: {
-    fontSize: 16,
+    fontSize: 16, // Will be overridden by inline style for responsiveness
     fontWeight: '500',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1, // Reduced letter spacing for better fit
+    flexShrink: 1, // Allow text to shrink if needed
   },
   activeTabText: {
     color: '#8B5CF6',

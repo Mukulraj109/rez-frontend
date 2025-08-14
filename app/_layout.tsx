@@ -25,6 +25,10 @@ export default function RootLayout() {
          <Stack.Screen name="StorePage" options={{ headerShown: false }} />
         <Stack.Screen name="CartPage" options={{ headerShown: false }} />
         <Stack.Screen name="MainStorePage" options={{ headerShown: false }} />
+         <Stack.Screen name="UGCDetailScreen" options={{ headerShown: false }} />
+         <Stack.Screen name="CoinPage" options={{ headerShown: false }} />
+          <Stack.Screen name="WalletScreen" options={{ headerShown: false }} />
+          <Stack.Screen name="StoreListPage" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

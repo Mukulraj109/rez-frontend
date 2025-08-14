@@ -1,5 +1,5 @@
 // MainStorePage.tsx
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import {
   Alert,
   Dimensions,
@@ -26,20 +26,39 @@ import {
   VisitStoreButton,
 } from "./MainStoreSection";
 import { MainStoreProduct, MainStorePageProps, CartItemFromProduct } from "@/types/mainstore";
-
-const { width } = Dimensions.get("window");
-const HORIZONTAL_PADDING = 16;
-const IMAGE_SECTION_BG = "#F6F3FF";
+import AboutModal from "@/components/AboutModal";
+import WalkInDealsModal from "@/components/WalkInDealsModal";
+import ReviewModal from "@/components/ReviewModal";
+import { mockReviews, mockRatingBreakdown, mockReviewStats } from "@/utils/mock-reviews-data";
 
 export default function MainStorePage({ productId, initialProduct }: MainStorePageProps = {}) {
   const router = useRouter();
+  const [screenData, setScreenData] = useState(Dimensions.get("window"));
+  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // UI state
+  const HORIZONTAL_PADDING = screenData.width < 375 ? 12 : screenData.width > 768 ? 24 : 16;
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener("change", ({ window }) => {
+      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
+      resizeTimeoutRef.current = setTimeout(() => {
+        setScreenData(window);
+      }, 100);
+    });
+
+    return () => {
+      subscription?.remove();
+      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
+    };
+  }, []);
+
   const [activeTab, setActiveTab] = useState<TabKey>("deals");
   const [isFavorited, setIsFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showDealsModal, setShowDealsModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   const productData: MainStoreProduct = useMemo(
     () =>
@@ -65,7 +84,6 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
     [initialProduct, productId]
   );
 
-  // ---------- Handlers (unchanged logic) ----------
   const handleSharePress = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -85,14 +103,30 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
   const handleFavoritePress = useCallback(() => {
     setIsFavorited((prev) => {
       const next = !prev;
-      Alert.alert(next ? "Added to Favorites" : "Removed from Favorites", `${productData.title} ${next ? "added to" : "removed from"} favorites.`);
+      Alert.alert(
+        next ? "Added to Favorites" : "Removed from Favorites",
+        `${productData.title} ${next ? "added to" : "removed from"} favorites.`
+      );
       return next;
     });
   }, [productData.title]);
 
+  // FIX: Allow reopening modals even if tab is already active
   const handleTabChange = useCallback((tab: TabKey) => {
     setActiveTab(tab);
+
+    if (tab === "about") {
+      setShowAboutModal(true);
+    } else if (tab === "deals") {
+      setShowDealsModal(true);
+    } else if (tab === "reviews") {
+      setShowReviewModal(true);
+    }
   }, []);
+
+  const handleCloseAboutModal = useCallback(() => setShowAboutModal(false), []);
+  const handleCloseDealsModal = useCallback(() => setShowDealsModal(false), []);
+  const handleCloseReviewModal = useCallback(() => setShowReviewModal(false), []);
 
   const handleViewAllPress = useCallback(() => {
     Alert.alert("UGC", "View all UGC");
@@ -121,24 +155,23 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
 
   const handleBackPress = useCallback(() => router.back(), [router]);
 
-  // Clear errors after a few seconds
-  React.useEffect(() => {
+  useEffect(() => {
     if (!error) return;
     const id = setTimeout(() => setError(null), 4500);
     return () => clearTimeout(id);
   }, [error]);
 
+  const styles = useMemo(() => createStyles(HORIZONTAL_PADDING, screenData), [HORIZONTAL_PADDING, screenData]);
+
   return (
     <ThemedView style={styles.page}>
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
 
-      {/* Gradient header area — header component (user provided) will sit on top */}
       <LinearGradient colors={["#7C3AED", "#8B5CF6"]} style={styles.headerGradient}>
         <MainStoreHeader storeName={productData.storeName} onBack={handleBackPress} />
       </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* IMAGE SECTION - subtle background and card feel */}
         <View style={styles.imageSection}>
           <View style={styles.imageCard}>
             <ProductDisplay
@@ -150,12 +183,10 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
           </View>
         </View>
 
-        {/* TABS - centered with soft divider */}
         <View style={styles.tabsContainer}>
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
         </View>
 
-        {/* DETAILS CARD - elevated card with padding */}
         <View style={styles.sectionCard}>
           <ProductDetails
             title={productData.title}
@@ -166,170 +197,167 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
           />
         </View>
 
-        {/* CASHBACK PILL in its own row */}
-        <View style={styles.sectionRow}>
-          <View style={styles.cashbackCard}>
-            <CashbackOffer percentage={productData.cashbackPercentage} />
-          </View>
+        <View style={styles.cashbackFullWidth}>
+          <CashbackOffer percentage={productData.cashbackPercentage} />
         </View>
 
-        {/* UGC - horizontal scroll inside a subtle card */}
         <View style={styles.sectionCard}>
           <UGCSection onViewAllPress={handleViewAllPress} onImagePress={handleImagePress} />
         </View>
-
-        {/* Small bottom spacer to prevent content being hidden behind fixed button */}
-        <View style={{ height: 96 }} />
       </ScrollView>
 
-      {/* Visit Store - you provide component; we position it on top of the page */}
       <View style={styles.fixedBottom}>
         <VisitStoreButton onPress={handleVisitStorePress} loading={isLoading} disabled={!!error} />
       </View>
 
-      {/* Inline error toast */}
-      {error ? (
+      {error && (
         <View style={styles.errorToast}>
           <TouchableOpacity onPress={() => setError(null)} activeOpacity={0.8}>
             <View style={styles.errorInner}>
               <View style={styles.errorDot} />
               <View style={{ marginLeft: 10 }}>
-                <ThemedView>
-                  {/* keep the same ThemedView/Text system you use */}
-                  <View>
-                    <Text style={styles.errorText as any}>{error}</Text>
-                  </View>
-                </ThemedView>
+                <Text style={styles.errorText as any}>{error}</Text>
               </View>
             </View>
           </TouchableOpacity>
         </View>
-      ) : null}
+      )}
+
+      {/* Modals */}
+      <AboutModal
+        visible={showAboutModal}
+        onClose={handleCloseAboutModal}
+        storeData={{
+          name: productData.storeName,
+          establishedYear: 2020,
+          address: {
+            doorNo: "40A",
+            floor: "1st floor",
+            street: "5th A Main Rd",
+            area: "H Block, HBR Layout",
+            city: "Bengaluru",
+            state: "Karnataka",
+            pinCode: "560043",
+          },
+          isOpen: productData.isOpen,
+          categories: ["Boys", "Girls", "Personal items", "Gift cards", "Loyalty program"],
+          hours: [
+            { day: "Monday", time: "10:00 AM - 6:00 PM" },
+            { day: "Tuesday", time: "10:00 AM - 6:00 PM" },
+            { day: "Wednesday", time: "10:00 AM - 6:00 PM" },
+            { day: "Thursday", time: "10:00 AM - 6:00 PM" },
+            { day: "Friday", time: "10:00 AM - 6:00 PM" },
+            { day: "Saturday", time: "10:00 AM - 6:00 PM" },
+            { day: "Sunday", time: "Closed" },
+          ],
+        }}
+      />
+
+      <WalkInDealsModal visible={showDealsModal} onClose={handleCloseDealsModal} storeId={productData.storeId} />
+
+      <ReviewModal
+        visible={showReviewModal}
+        onClose={handleCloseReviewModal}
+        storeName={productData.storeName}
+        storeId={productData.storeId}
+        averageRating={mockReviewStats.averageRating}
+        totalReviews={mockReviewStats.totalReviews}
+        ratingBreakdown={mockRatingBreakdown}
+        reviews={mockReviews}
+      />
     </ThemedView>
   );
 }
 
-/* ============================
-   Styles for a modern look
-   (no child components were changed)
-   ============================ */
-const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    backgroundColor: "#F7F7FB",
-  },
-
-  headerGradient: {
-    paddingBottom: 6,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    overflow: "hidden",
-  },
-
-  scrollContent: {
-    paddingBottom: 120, // reserve space for bottom button
-    paddingTop: 12,
-  },
-
-  // Image area
-  imageSection: {
-    paddingHorizontal: HORIZONTAL_PADDING,
-    paddingTop: 12,
-    backgroundColor: IMAGE_SECTION_BG,
-    paddingBottom: 14,
-  },
-  imageCard: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    overflow: "hidden",
-    // soft elevation
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 6,
-    padding: 10,
-  },
-
-  // Tabs container keeps tabs separated visually
-  tabsContainer: {
-    marginTop: 8,
-    marginHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 6,
-    backgroundColor: "transparent",
-  },
-
-  // Generic section card used for details and UGC
-  sectionCard: {
-    marginHorizontal: HORIZONTAL_PADDING,
-    marginTop: 12,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    // softer shadow
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-
-  sectionRow: {
-    marginHorizontal: HORIZONTAL_PADDING,
-    marginTop: 12,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  cashbackCard: {
-    backgroundColor: "#F3EFFA",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    alignSelf: "flex-start",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-
-  // Fixed bottom
-  fixedBottom: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: Platform.OS === "android" ? 18 : 26,
-    zIndex: 999,
-  },
-
-  // Error toast (small)
-  errorToast: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    top: Platform.OS === "ios" ? 52 : 36,
-    zIndex: 1200,
-  },
-  errorInner: {
-    backgroundColor: "#FEF3F2",
-    borderLeftWidth: 4,
-    borderLeftColor: "#FECACA",
-    padding: 12,
-    borderRadius: 10,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  errorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 6,
-    backgroundColor: "#F87171",
-  },
-  errorText: {
-    color: "#991B1B",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-});
+const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; height: number }) =>
+  StyleSheet.create({
+    page: {
+      flex: 1,
+      backgroundColor: "#F8FAFC",
+    },
+    headerGradient: {
+      paddingBottom: 8,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+      overflow: "hidden",
+      shadowColor: "#7C3AED",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.15,
+      shadowRadius: 20,
+      elevation: 8,
+    },
+    scrollContent: {
+      paddingBottom: 100,
+      paddingTop: 16,
+    },
+    imageSection: {
+      paddingHorizontal: HORIZONTAL_PADDING,
+      paddingTop: 16,
+      paddingBottom: 16,
+    },
+    imageCard: {
+      backgroundColor: "#fff",
+      borderRadius: 20,
+      overflow: "hidden",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.08,
+      shadowRadius: 24,
+      elevation: 10,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: "rgba(255, 255, 255, 0.8)",
+    },
+    tabsContainer: {
+      marginTop: 16,
+      marginHorizontal: HORIZONTAL_PADDING,
+      marginBottom: 8,
+    },
+    sectionCard: {
+      marginHorizontal: HORIZONTAL_PADDING,
+      marginTop: 16,
+      backgroundColor: "#fff",
+      borderRadius: 18,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+    },
+    cashbackFullWidth: {
+      marginHorizontal: HORIZONTAL_PADDING,
+      marginTop: 16,
+      paddingVertical: 18,
+      paddingHorizontal: 20,
+      borderRadius: 18,
+    },
+    fixedBottom: {
+      position: "absolute",
+      left: HORIZONTAL_PADDING,
+      right: HORIZONTAL_PADDING,
+      bottom: Platform.OS === "ios" ? 34 : 16,
+    },
+    errorToast: {
+      position: "absolute",
+      left: HORIZONTAL_PADDING + 4,
+      right: HORIZONTAL_PADDING + 4,
+      top: Platform.OS === "ios" ? 60 : 44,
+    },
+    errorInner: {
+      backgroundColor: "#FEF2F2",
+      borderLeftWidth: 6,
+      borderLeftColor: "#EF4444",
+      padding: 16,
+      borderRadius: 16,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    errorDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 8,
+      backgroundColor: "#EF4444",
+    },
+    errorText: {
+      color: "#991B1B",
+      fontSize: 14,
+      fontWeight: "600",
+    },
+  });

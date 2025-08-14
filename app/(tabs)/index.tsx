@@ -16,6 +16,10 @@ export default function HomeScreen() {
     router.push('/MainStorePage');
   };
 
+  const handleWalletPress = () => {
+    router.push('/WalletScreen');
+  };
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header Section */}
@@ -30,10 +34,10 @@ export default function HomeScreen() {
             <Ionicons name="chevron-down" size={16} color="white" />
           </View>
           <View style={styles.headerRight}>
-            <View style={styles.coinsContainer}>
+            <TouchableOpacity style={styles.coinsContainer} onPress={() => router.push('/CoinPage')}>
               <Ionicons name="star" size={16} color="#FFD700" />
               <ThemedText style={styles.coinsText}>382</ThemedText>
-            </View>
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/CartPage')}>
               <Ionicons name="cart-outline" size={24} color="white" />
             </TouchableOpacity>
@@ -96,7 +100,7 @@ export default function HomeScreen() {
             <ThemedText style={styles.actionValue}>0</ThemedText>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionItem}>
+          <TouchableOpacity style={styles.actionItem} onPress={handleWalletPress}>
             <View style={styles.actionIcon}>
               <Ionicons name="wallet-outline" size={24} color="#333" />
             </View>

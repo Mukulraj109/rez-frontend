@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   StyleSheet,
   ImageBackground,
   Dimensions,
+  Animated,
+  Platform,
+  Pressable
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -61,47 +64,74 @@ const ProductCarousel = () => {
     setActiveIndex(index);
   };
 
-  const renderProduct = (product: Product) => (
-    <TouchableOpacity
-      key={product.id}
-      style={[styles.productCard, { width: CARD_WIDTH }]}
-      activeOpacity={0.95}
-    >
-      <ImageBackground
-        source={{ uri: product.image }}
-        style={styles.productImage}
-        imageStyle={styles.imageStyle}
+  const renderProduct = (product: Product) => {
+    // Create a local animated value for each product item
+    const scaleAnim = new Animated.Value(1);
+
+    const popIn = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 1.07, // scale up
+        friction: 6,
+        tension: 100,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const popOut = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 1, // back to normal
+        friction: 6,
+        tension: 100,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const CardWrapper = Platform.OS === 'web' ? Pressable : TouchableOpacity;
+
+    return (
+      <CardWrapper
+        key={product.id}
+        style={{ width: CARD_WIDTH }}
+        android_ripple={{ color: 'transparent' }} // No ripple
+        onHoverIn={Platform.OS === 'web' ? popIn : undefined}
+        onHoverOut={Platform.OS === 'web' ? popOut : undefined}
+        activeOpacity={0.95}
+        onPressIn={Platform.OS !== 'web' ? popIn : undefined}
+        onPressOut={Platform.OS !== 'web' ? popOut : undefined}
       >
-        {/* Dark gradient overlay */}
-        <LinearGradient
-          colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
-          style={styles.overlay}
-        >
-          {/* Brand Name */}
-          <Text style={styles.brandText}>{product.brand}</Text>
+        <Animated.View style={[styles.productCard, { transform: [{ scale: scaleAnim }] }]}>
+          <ImageBackground
+            source={{ uri: product.image }}
+            style={styles.productImage}
+            imageStyle={styles.imageStyle}
+          >
+            <LinearGradient
+              colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
+              style={styles.overlay}
+            >
+              <Text style={styles.brandText}>{product.brand}</Text>
 
-          {/* Cashback Ribbon */}
-          <View style={styles.ribbon}>
-            <Text style={styles.ribbonText}>CASHBACK {product.cashback}%</Text>
-          </View>
+              <View style={styles.ribbon}>
+                <Text style={styles.ribbonText}>CASHBACK {product.cashback}%</Text>
+              </View>
 
-          {/* Title + Subtitle */}
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>{product.title}</Text>
-            <Text style={styles.subtitle}>{product.subtitle}</Text>
-          </View>
+              <View style={styles.textContainer}>
+                <Text style={styles.title}>{product.title}</Text>
+                <Text style={styles.subtitle}>{product.subtitle}</Text>
+              </View>
 
-          {/* Cashback + Arrow */}
-          <TouchableOpacity style={styles.bottomButton}>
-            <Text style={styles.cashbackInfo}>
-              Cashback upto {product.cashback} %
-            </Text>
-            <Text style={styles.arrow}>›</Text>
-          </TouchableOpacity>
-        </LinearGradient>
-      </ImageBackground>
-    </TouchableOpacity>
-  );
+              <TouchableOpacity style={styles.bottomButton} activeOpacity={0.7}>
+                <Text style={styles.cashbackInfo}>
+                  Cashback upto {product.cashback} %
+                </Text>
+                <Text style={styles.arrow}>›</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </ImageBackground>
+        </Animated.View>
+      </CardWrapper>
+    );
+  };
 
   const renderDots = () => (
     <View style={styles.dotsContainer}>

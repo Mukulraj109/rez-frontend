@@ -32,10 +32,13 @@ export default function StoreHeader() {
         </TouchableOpacity>
         
         <View style={styles.centerInfo}>
-          <View style={[styles.ratingBadge, { backgroundColor: primaryColor }]}>
-            <MaterialCommunityIcons name="cash" size={16} color="white" />
+          <TouchableOpacity 
+            style={[styles.ratingBadge, { backgroundColor: primaryColor }]}
+            onPress={() => router.push('/CoinPage')}
+          >
+            <Ionicons name="star" size={16} color="#FFD700" />
             <ThemedText style={styles.ratingText}>382</ThemedText>
-          </View>
+          </TouchableOpacity>
         </View>
         
         <View style={styles.rightIcons}>

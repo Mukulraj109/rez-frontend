@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
+    flex: 1,
     backgroundColor: "#F3EFFA", // soft lilac background
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -135,6 +135,7 @@ const styles = StyleSheet.create({
   },
 
   textWrap: {
+    flex: 1,
     minWidth: 0,
   },
 

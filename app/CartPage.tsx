@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -13,40 +13,97 @@ import SlidingTabs from '@/components/cart/SlidingTabs';
 import CartItem from '@/components/cart/CartItem';
 import PriceSection from '@/components/cart/PriceSection';
 import { ThemedText } from '@/components/ThemedText';
-import { CartItem as CartItemType } from '@/types/cart';
+import { CartItem as CartItemType, LockedProduct, LOCK_CONFIG } from '@/types/cart';
 import {
   mockProductsData,
   mockServicesData,
+  mockLockedProductsData,
   calculateTotal,
   getItemCount,
+  calculateLockedTotal,
+  getLockedItemCount,
+  updateLockedProductTimers,
 } from '@/utils/mockCartData';
 
 export default function CartPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'products' | 'service'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'service' | 'lockedproduct'>('products');
   const [productItems, setProductItems] = useState<CartItemType[]>(mockProductsData);
   const [serviceItems, setServiceItems] = useState<CartItemType[]>(mockServicesData);
+  const [lockedProducts, setLockedProducts] = useState<LockedProduct[]>(mockLockedProductsData);
 
-  const currentItems = useMemo(
-    () => (activeTab === 'products' ? productItems : serviceItems),
-    [activeTab, productItems, serviceItems]
-  );
+  const currentItems = useMemo(() => {
+    if (activeTab === 'products') return productItems;
+    if (activeTab === 'service') return serviceItems;
+    return []; // lockedproduct tab will use different rendering logic
+  }, [activeTab, productItems, serviceItems]);
 
   const allItems = useMemo(() => [...productItems, ...serviceItems], [productItems, serviceItems]);
-  const overallTotal = useMemo(() => calculateTotal(allItems), [allItems]);
-  const overallItemCount = useMemo(() => getItemCount(allItems), [allItems]);
+  const overallTotal = useMemo(() => {
+    const cartTotal = calculateTotal(allItems);
+    const lockedTotal = calculateLockedTotal(lockedProducts);
+    return cartTotal + lockedTotal;
+  }, [allItems, lockedProducts]);
+  const overallItemCount = useMemo(() => {
+    const cartCount = getItemCount(allItems);
+    const lockedCount = getLockedItemCount(lockedProducts);
+    return cartCount + lockedCount;
+  }, [allItems, lockedProducts]);
 
-  const handleTabChange = (tabKey: 'products' | 'service') => {
+  const handleTabChange = (tabKey: 'products' | 'service' | 'lockedproduct') => {
     setActiveTab(tabKey);
   };
 
   const handleRemoveItem = (itemId: string) => {
     if (activeTab === 'products') {
       setProductItems(prev => prev.filter(item => item.id !== itemId));
-    } else {
+    } else if (activeTab === 'service') {
       setServiceItems(prev => prev.filter(item => item.id !== itemId));
     }
   };
+
+  const handleUnlockItem = (itemId: string) => {
+    console.log('🔓 [UNLOCK] Removing locked item:', itemId);
+    setLockedProducts(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const handleExpireItem = (itemId: string) => {
+    console.log('⏰ [EXPIRE] Auto-removing expired item:', itemId);
+    setLockedProducts(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  // Timer management for locked products
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (lockedProducts.length > 0) {
+      timerRef.current = setInterval(() => {
+        setLockedProducts(prev => {
+          const updated = updateLockedProductTimers(prev);
+          // Check if any items were removed (expired)
+          if (updated.length < prev.length) {
+            console.log('⏰ [AUTO-EXPIRE] Removed expired locked products');
+          }
+          return updated;
+        });
+      }, LOCK_CONFIG.UPDATE_INTERVAL);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [lockedProducts.length]);
+
+  // Clean up timer on component unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
 
   const handleBuyNow = () => {
     console.log('Buy now pressed with total:', overallTotal);
@@ -66,14 +123,26 @@ export default function CartPage() {
     </View>
   );
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <ThemedText style={styles.emptyTitle}>Your cart is empty 🛒</ThemedText>
-      <ThemedText style={styles.emptySubtitle}>
-        Add some {activeTab === 'products' ? 'products' : 'services'} to get started
-      </ThemedText>
-    </View>
-  );
+  const renderEmptyState = () => {
+    let title = "Your cart is empty 🛒";
+    let subtitle = "Add some items to get started";
+    
+    if (activeTab === 'lockedproduct') {
+      title = "No locked products 🔒";
+      subtitle = "Lock products from the store to reserve them for 15 minutes";
+    } else if (activeTab === 'products') {
+      subtitle = "Add some products to get started";
+    } else if (activeTab === 'service') {
+      subtitle = "Add some services to get started";
+    }
+
+    return (
+      <View style={styles.emptyContainer}>
+        <ThemedText style={styles.emptyTitle}>{title}</ThemedText>
+        <ThemedText style={styles.emptySubtitle}>{subtitle}</ThemedText>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
