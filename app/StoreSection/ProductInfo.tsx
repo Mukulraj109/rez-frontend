@@ -15,8 +15,10 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 
 export default function ProductScreen() {
+  const router = useRouter();
   const [active, setActive] = useState("visit"); // 'visit' | 'book'
   const translateX = useRef(new Animated.Value(0)).current;
   const containerWidthRef = useRef(0);
@@ -80,17 +82,37 @@ export default function ProductScreen() {
             </View>
           </View>
 
-          {/* rating/review and people bought (kept brief) */}
+          {/* rating/review section */}
           <View style={styles.ratingRow}>
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={14} color="#FBBF24" />
               <Text style={styles.ratingText}>3.2</Text>
             </View>
-            <Text style={styles.reviewCount}>300</Text>
-            <TouchableOpacity>
-              <Text style={styles.reviewLink}>Write a review and earn cashback</Text>
-            </TouchableOpacity>
+            <Text style={styles.reviewCount}>300 reviews</Text>
           </View>
+
+          {/* Enhanced review CTA card */}
+          <TouchableOpacity 
+            style={styles.reviewCTACard} 
+            onPress={() => router.push('/ReviewPage')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.reviewCardContent}>
+              <View style={styles.reviewTextSection}>
+                <View style={styles.reviewIconWrapper}>
+                  <Ionicons name="create-outline" size={18} color="#8B5CF6" />
+                </View>
+                <View style={styles.reviewTextContent}>
+                  <Text style={styles.reviewMainText}>Write a review</Text>
+                  <Text style={styles.reviewSubText}>Earn 10% cashback instantly</Text>
+                </View>
+              </View>
+              <View style={styles.cashbackBadge}>
+                <Ionicons name="wallet-outline" size={16} color="#10B981" />
+                <Text style={styles.cashbackText}>₹220</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
 
           <View style={styles.peopleBought}>
             <Text style={styles.peopleNumber}>1200</Text>
@@ -195,8 +217,74 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   ratingText: { marginLeft: 6, fontWeight: "700" },
-  reviewCount: { marginLeft: 12, fontWeight: "700" },
-  reviewLink: { marginLeft: 8, color: "#7C3AED", fontWeight: "600", fontSize: 13 },
+  reviewCount: { marginLeft: 12, fontWeight: "600", color: "#6B7280", fontSize: 14 },
+  
+  // Enhanced review CTA card styles
+  reviewCTACard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginVertical: 16,
+    shadowColor: "#8B5CF6",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  reviewCardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+  },
+  reviewTextSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  reviewIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F3F0FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  reviewTextContent: {
+    flex: 1,
+  },
+  reviewMainText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 2,
+  },
+  reviewSubText: {
+    fontSize: 13,
+    color: "#8B5CF6",
+    fontWeight: "500",
+  },
+  cashbackBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ECFDF5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#D1FAE5",
+  },
+  cashbackText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#10B981",
+    marginLeft: 4,
+  },
   peopleBought: {
     flexDirection: "row",
     alignItems: "center",

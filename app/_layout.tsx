@@ -29,6 +29,7 @@ export default function RootLayout() {
          <Stack.Screen name="CoinPage" options={{ headerShown: false }} />
           <Stack.Screen name="WalletScreen" options={{ headerShown: false }} />
           <Stack.Screen name="StoreListPage" options={{ headerShown: false }} />
+          <Stack.Screen name="ReviewPage" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />
