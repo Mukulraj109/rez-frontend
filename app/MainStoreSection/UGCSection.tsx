@@ -177,7 +177,7 @@ const UGCCard = memo(function UGCCard({
 
   // Debug: indicate whether Video component exists
   useEffect(() => {
-    // eslint-disable-next-line no-console
+     
     console.log(`[UGC] Card ${item.id} isVisible=${isVisible}`);
   }, [isVisible, item.id]);
 
@@ -207,23 +207,23 @@ const UGCCard = memo(function UGCCard({
                 onLoadStart={() => {
                   setMediaLoading(true);
                   setMediaError(null);
-                  // eslint-disable-next-line no-console
+                   
                   console.log(`[VIDEO ${item.id}] onLoadStart`);
                 }}
                 onLoad={() => {
                   setMediaLoading(false);
-                  // eslint-disable-next-line no-console
+                   
                   console.log(`[VIDEO ${item.id}] onLoad`);
                 }}
                 onError={(e) => {
                   setMediaLoading(false);
                   setMediaError(String(e));
-                  // eslint-disable-next-line no-console
+                   
                   console.warn(`[VIDEO ${item.id}] onError`, e);
                 }}
                 onPlaybackStatusUpdate={(status) => {
                   if (!status) return;
-                  // eslint-disable-next-line no-console
+                   
                   console.log(`[VIDEO ${item.id}] status`, {
                     isLoaded: !!(status as any).isLoaded,
                     isPlaying: !!(status as any).isPlaying,
@@ -436,7 +436,7 @@ export default function UGCSection({
 
   // debug: confirm expo-av Video import exists
   useEffect(() => {
-    // eslint-disable-next-line no-console
+     
     console.log('expo-av Video available:', !!Video);
   }, []);
 

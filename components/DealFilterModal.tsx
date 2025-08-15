@@ -111,7 +111,7 @@ export default function DealFilterModal({
     setSearchTerm('');
   };
 
-  const sortOptions: Array<{ key: SortOption; label: string; icon: string; description: string }> = [
+  const sortOptions: { key: SortOption; label: string; icon: string; description: string }[] = [
     { 
       key: 'priority', 
       label: 'Priority', 

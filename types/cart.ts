@@ -4,9 +4,13 @@ export interface CartItem {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number; // Original price before discount
+  discountedPrice?: number; // Discounted price if applicable
   image: string | number; // string for URL, number for require()
   cashback: string;
   category: 'products' | 'service';
+  quantity?: number; // Quantity in cart
+  selected?: boolean; // Selection state for bulk operations
 }
 
 export interface LockedProduct {

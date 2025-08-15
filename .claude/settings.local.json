@@ -8,7 +8,9 @@
       "Bash(rm:*)",
       "Bash(npm start)",
       "Bash(npx expo start:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run lint:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "defaultMode": "acceptEdits"
   }

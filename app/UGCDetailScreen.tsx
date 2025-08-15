@@ -1,7 +1,8 @@
 // UGCDetailScreen.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Image, Dimensions, ScrollView, Platform } from 'react-native';
-import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
@@ -27,14 +28,34 @@ type UGCItem = {
 };
 
 export default function UGCDetailScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<any>();
-  const isFocused = useIsFocused();
+  const router = useRouter();
+  const params = useLocalSearchParams();
   const videoRef = useRef<Video | null>(null);
   const [ready, setReady] = useState(false);
+  const [isFocused, setIsFocused] = useState(true);
+
+  // Handle focus state for video playback
+  useFocusEffect(
+    React.useCallback(() => {
+      setIsFocused(true);
+      return () => setIsFocused(false);
+    }, [])
+  );
 
   const item: UGCItem = useMemo(() => {
-    return route.params?.item ?? {
+    // Try to parse item from params if it's a JSON string
+    let itemData = null;
+    try {
+      if (typeof params.item === 'string') {
+        itemData = JSON.parse(params.item);
+      } else if (params.item && typeof params.item === 'object') {
+        itemData = params.item;
+      }
+    } catch (error) {
+      console.warn('Failed to parse item from params:', error);
+    }
+
+    return itemData ?? {
       id: 'fallback',
       // Sample Google Cloud video URL
       videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
@@ -60,7 +81,7 @@ export default function UGCDetailScreen() {
         },
       ],
     };
-  }, [route.params]);
+  }, [params]);
 
   useEffect(() => {
     const playVideo = async () => {
@@ -122,7 +143,7 @@ export default function UGCDetailScreen() {
 
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => router.back()}
           style={styles.iconPill}
           accessibilityLabel="Go back"
           accessibilityRole="button"
