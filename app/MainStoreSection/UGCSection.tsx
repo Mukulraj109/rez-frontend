@@ -225,10 +225,10 @@ const UGCCard = memo(function UGCCard({
                   if (!status) return;
                   // eslint-disable-next-line no-console
                   console.log(`[VIDEO ${item.id}] status`, {
-                    isLoaded: !!status.isLoaded,
-                    isPlaying: !!status.isPlaying,
-                    isBuffering: !!status.isBuffering,
-                    error: status?.error ?? null,
+                    isLoaded: !!(status as any).isLoaded,
+                    isPlaying: !!(status as any).isPlaying,
+                    isBuffering: !!(status as any).isBuffering,
+                    error: (status as any)?.error ?? null,
                   });
                 }}
                 progressUpdateIntervalMillis={400}

@@ -95,7 +95,6 @@ export default function UGCDetailScreen() {
           shouldPlay={isFocused}
           isMuted // required for web autoplay
           useNativeControls={false}
-          playsInSilentModeIOS
           onLoad={() => {
             setReady(true);
             if (Platform.OS === 'web' && videoRef.current) {

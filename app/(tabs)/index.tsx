@@ -20,6 +20,10 @@ export default function HomeScreen() {
     router.push('/WalletScreen');
   };
 
+  const handleOffersPress = () => {
+    router.push('/offers');
+  };
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header Section */}
@@ -108,7 +112,7 @@ export default function HomeScreen() {
             <ThemedText style={styles.actionValue}>₹ 0</ThemedText>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionItem}>
+          <TouchableOpacity style={styles.actionItem} onPress={handleOffersPress}>
             <View style={styles.actionIcon}>
               <Ionicons name="pricetag-outline" size={24} color="#333" />
             </View>
