@@ -1,16 +1,10 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BackendService } from '@/services/dummyBackend';
+import type { User, AuthResponse } from '@/services/dummyBackend';
 
-// Types
-interface User {
-  id: string;
-  phoneNumber: string;
-  email: string;
-  name?: string;
-  avatar?: string;
-  isVerified: boolean;
-  createdAt: string;
-}
+// Use types from backend service
+// interface User is imported from dummyBackend
 
 interface AuthState {
   user: User | null;
@@ -31,6 +25,7 @@ type AuthAction =
 // Storage keys
 const STORAGE_KEYS = {
   TOKEN: 'auth_token',
+  REFRESH_TOKEN: 'refresh_token',
   USER: 'auth_user',
 };
 
@@ -50,6 +45,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       return { ...state, isLoading: action.payload, error: null };
     
     case 'AUTH_SUCCESS':
+      console.log('[AuthReducer] AUTH_SUCCESS:', { user: action.payload.user.id, isAuthenticated: true });
       return {
         ...state,
         user: action.payload.user,
@@ -93,6 +89,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 interface AuthContextType {
   state: AuthState;
   actions: {
+    sendOTP: (phoneNumber: string) => Promise<void>;
     login: (phoneNumber: string, otp: string) => Promise<void>;
     register: (phoneNumber: string, email: string, referralCode?: string) => Promise<void>;
     verifyOTP: (phoneNumber: string, otp: string) => Promise<void>;
@@ -118,66 +115,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkAuthStatus();
   }, []);
 
-  // Mock API functions (replace with real API calls)
-  const mockAPI = {
-    login: async (phoneNumber: string, otp: string) => {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock validation
-      if (otp !== '123456') {
-        throw new Error('Invalid OTP');
-      }
-
-      return {
-        user: {
-          id: '1',
-          phoneNumber,
-          email: `user@example.com`,
-          name: 'John Doe',
-          isVerified: true,
-          createdAt: new Date().toISOString(),
-        },
-        token: 'mock_jwt_token_' + Date.now(),
-      };
-    },
-
-    register: async (phoneNumber: string, email: string, referralCode?: string) => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      return {
-        user: {
-          id: '1',
-          phoneNumber,
-          email,
-          isVerified: false,
-          createdAt: new Date().toISOString(),
-        },
-        token: 'mock_jwt_token_' + Date.now(),
-      };
-    },
-
-    updateProfile: async (data: Partial<User>) => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return data;
-    },
-  };
+  // Backend service integration (dummy + real API ready)
 
   // Actions
-  const login = async (phoneNumber: string, otp: string) => {
+  const sendOTP = async (phoneNumber: string) => {
     try {
       dispatch({ type: 'AUTH_LOADING', payload: true });
       
-      const response = await mockAPI.login(phoneNumber, otp);
+      await BackendService.sendOTP(phoneNumber);
+      
+      dispatch({ type: 'AUTH_LOADING', payload: false });
+    } catch (error) {
+      dispatch({ 
+        type: 'AUTH_FAILURE', 
+        payload: error instanceof Error ? error.message : 'Failed to send OTP' 
+      });
+    }
+  };
+  const login = async (phoneNumber: string, otp: string) => {
+    try {
+      console.log('[AuthContext] Starting login for:', phoneNumber);
+      dispatch({ type: 'AUTH_LOADING', payload: true });
+      
+      const response = await BackendService.verifyOTP(phoneNumber, otp);
+      console.log('[AuthContext] Backend response:', { user: response.user.id, token: response.token ? 'exists' : 'missing' });
       
       // Store in AsyncStorage
       await AsyncStorage.multiSet([
         [STORAGE_KEYS.TOKEN, response.token],
+        [STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken],
         [STORAGE_KEYS.USER, JSON.stringify(response.user)],
       ]);
 
-      dispatch({ type: 'AUTH_SUCCESS', payload: response });
+      console.log('[AuthContext] Stored in AsyncStorage, dispatching AUTH_SUCCESS');
+      dispatch({ type: 'AUTH_SUCCESS', payload: { user: response.user, token: response.token } });
     } catch (error) {
+      console.error('[AuthContext] Login failed:', error);
       dispatch({ 
         type: 'AUTH_FAILURE', 
         payload: error instanceof Error ? error.message : 'Login failed' 
@@ -189,15 +162,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       dispatch({ type: 'AUTH_LOADING', payload: true });
       
-      const response = await mockAPI.register(phoneNumber, email, referralCode);
+      const response = await BackendService.register(phoneNumber, email, referralCode);
       
       // Store in AsyncStorage
       await AsyncStorage.multiSet([
         [STORAGE_KEYS.TOKEN, response.token],
+        [STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken],
         [STORAGE_KEYS.USER, JSON.stringify(response.user)],
       ]);
 
-      dispatch({ type: 'AUTH_SUCCESS', payload: response });
+      dispatch({ type: 'AUTH_SUCCESS', payload: { user: response.user, token: response.token } });
     } catch (error) {
       dispatch({ 
         type: 'AUTH_FAILURE', 
@@ -213,8 +187,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = async () => {
     try {
+      const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+      
+      // Call backend logout (invalidate token)
+      if (token) {
+        try {
+          await BackendService.logout(token);
+        } catch (error) {
+          console.warn('Backend logout failed:', error);
+          // Continue with local logout even if backend fails
+        }
+      }
+      
       // Remove from AsyncStorage
-      await AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.USER]);
+      await AsyncStorage.multiRemove([
+        STORAGE_KEYS.TOKEN, 
+        STORAGE_KEYS.REFRESH_TOKEN, 
+        STORAGE_KEYS.USER
+      ]);
       
       dispatch({ type: 'AUTH_LOGOUT' });
     } catch (error) {
@@ -224,15 +214,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const updateProfile = async (data: Partial<User>) => {
     try {
-      const updatedData = await mockAPI.updateProfile(data);
-      
-      // Update AsyncStorage
-      if (state.user) {
-        const updatedUser = { ...state.user, ...updatedData };
-        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+      if (!state.user?.id) {
+        throw new Error('User not authenticated');
       }
 
-      dispatch({ type: 'UPDATE_USER', payload: updatedData });
+      const updatedUser = await BackendService.updateProfile(state.user.id, data.profile || {});
+      
+      // Update AsyncStorage
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+
+      dispatch({ type: 'UPDATE_USER', payload: updatedUser });
     } catch (error) {
       dispatch({ 
         type: 'AUTH_FAILURE', 
@@ -258,11 +249,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const storedUser = userJson[1] ? JSON.parse(userJson[1]) : null;
 
       if (storedToken && storedUser) {
-        // Validate token (in real app, verify with backend)
-        dispatch({ 
-          type: 'AUTH_SUCCESS', 
-          payload: { user: storedUser, token: storedToken } 
-        });
+        // Validate token with backend
+        try {
+          const isValidToken = await BackendService.validateToken(storedToken);
+          
+          if (isValidToken) {
+            dispatch({ 
+              type: 'AUTH_SUCCESS', 
+              payload: { user: storedUser, token: storedToken } 
+            });
+          } else {
+            // Token invalid, try to refresh
+            await tryRefreshToken();
+          }
+        } catch (error) {
+          console.warn('Token validation failed:', error);
+          await tryRefreshToken();
+        }
       } else {
         dispatch({ type: 'AUTH_LOGOUT' });
       }
@@ -272,9 +275,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const tryRefreshToken = async () => {
+    try {
+      const refreshToken = await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+      
+      if (refreshToken) {
+        const response = await BackendService.refreshToken(refreshToken);
+        
+        // Update stored tokens
+        await AsyncStorage.multiSet([
+          [STORAGE_KEYS.TOKEN, response.token],
+          [STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken],
+        ]);
+
+        // Get user data
+        const userJson = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        const storedUser = userJson ? JSON.parse(userJson) : null;
+
+        if (storedUser) {
+          dispatch({ 
+            type: 'AUTH_SUCCESS', 
+            payload: { user: storedUser, token: response.token } 
+          });
+        } else {
+          dispatch({ type: 'AUTH_LOGOUT' });
+        }
+      } else {
+        dispatch({ type: 'AUTH_LOGOUT' });
+      }
+    } catch (error) {
+      console.warn('Token refresh failed:', error);
+      dispatch({ type: 'AUTH_LOGOUT' });
+    }
+  };
+
   const contextValue: AuthContextType = {
     state,
     actions: {
+      sendOTP,
       login,
       register,
       verifyOTP,

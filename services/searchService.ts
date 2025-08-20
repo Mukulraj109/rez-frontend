@@ -172,7 +172,7 @@ class SearchService {
       } catch (error) {
         console.error('Debounced search error:', error);
       }
-    }, delay);
+    }, delay) as any;
   }
 
   // Get search suggestions

@@ -18,7 +18,7 @@ export interface CameraOptions {
   allowsEditing?: boolean;
   aspect?: [number, number];
   quality?: number;
-  videoQuality?: ImagePicker.VideoQuality;
+  videoQuality?: number;
   videoMaxDuration?: number;
 }
 
@@ -26,7 +26,7 @@ export interface ImageAsset {
   uri: string;
   width: number;
   height: number;
-  type?: 'image' | 'video';
+  type?: 'image' | 'video' | 'livePhoto' | 'pairedVideo';
   fileName?: string;
   fileSize?: number;
   exif?: Record<string, any>;
@@ -72,7 +72,7 @@ const DEFAULT_CAMERA_OPTIONS: Required<CameraOptions> = {
   allowsEditing: true,
   aspect: [1, 1],
   quality: 0.8,
-  videoQuality: ImagePicker.VideoQuality.High,
+  videoQuality: 1,
   videoMaxDuration: 60,
 };
 
@@ -220,7 +220,7 @@ class CameraService {
       });
 
       if (!result.canceled && result.assets) {
-        return result.assets.map(asset => ({
+        return result.assets.map((asset: ImagePicker.ImagePickerAsset) => ({
           uri: asset.uri,
           width: asset.width,
           height: asset.height,

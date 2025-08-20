@@ -417,7 +417,7 @@ class RealTimeService {
     this.reconnectTimer = setTimeout(() => {
       this.updateStatus({ reconnectAttempts: this.status.reconnectAttempts + 1 });
       this.connect();
-    }, this.config.reconnectInterval);
+    }, this.config.reconnectInterval) as any;
   }
 
   private startHeartbeat(): void {
@@ -431,7 +431,7 @@ class RealTimeService {
           timestamp: Date.now(),
         });
       }
-    }, this.config.heartbeatInterval);
+    }, this.config.heartbeatInterval) as any;
   }
 
   private clearTimers(): void {

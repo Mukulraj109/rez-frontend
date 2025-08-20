@@ -6,6 +6,7 @@ import ScratchCardOffer from "@/components/ScratchCardOffer";
 import scratchImage from "@/assets/images/scratch-offer.png"; 
 import ProfileOptionsList from "../components/ProfileOptionsList";
 import ReferAndEarnCard from "@/components/ReferAndEarnCard";
+import TransactionHistory from "@/components/wallet/TransactionHistory";
 import {
   View,
   Text,
@@ -23,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { WalletBalanceCard } from '../components/WalletBalanceCard';
 import { CoinBalance, WalletScreenProps } from '@/types/wallet';
+import { Transaction } from '@/types/wallet.types';
 import { mockWalletData } from '@/utils/mock-wallet-data';
 import { useWallet } from '@/hooks/useWallet';
 import { mockProfileData, mockReferData, mockRechargeOptions } from '@/utils/mock-profile-data';
@@ -76,6 +78,17 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   const handleRetry = useCallback(() => {
     retryLastOperation();
   }, [retryLastOperation]);
+
+  const handleTransactionPress = useCallback((transaction: Transaction) => {
+    Alert.alert(
+      transaction.title,
+      `Amount: ${transaction.amount} ${transaction.currency}\nStatus: ${transaction.status}\nDate: ${new Date(transaction.date).toLocaleDateString()}`,
+      [
+        { text: 'OK' },
+        { text: 'View Details', onPress: () => console.log('Navigate to transaction details:', transaction.id) }
+      ]
+    );
+  }, []);
 
   const styles = useMemo(() => createStyles(screenData), [screenData]);
 
@@ -159,6 +172,15 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
         {walletData.coins.map((coin) => (
           <WalletBalanceCard key={coin.id} coin={coin} onPress={handleCoinPress} showChevron />
         ))}
+
+        {/* Transaction History Section */}
+        <TransactionHistory 
+          onTransactionPress={handleTransactionPress}
+          refreshing={walletState.isRefreshing}
+          onRefresh={handleRefresh}
+          maxHeight={400}
+        />
+
          <RechargeWalletCard
   cashbackText="Upto 10% cashback on wallet recharge"
   amountOptions={mockRechargeOptions}

@@ -168,10 +168,20 @@ const UGCCard = memo(function UGCCard({
 
   // Press animations
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true, tension: 300, friction: 10 }).start();
+    // Disable animation on iOS to prevent conflicts
+    if (Platform.OS === 'ios') {
+      scaleAnim.setValue(0.98);
+    } else {
+      Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true, tension: 300, friction: 10 }).start();
+    }
   };
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 300, friction: 10 }).start();
+    // Disable animation on iOS to prevent conflicts
+    if (Platform.OS === 'ios') {
+      scaleAnim.setValue(1);
+    } else {
+      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 300, friction: 10 }).start();
+    }
   };
   const handleImagePress = () => onImagePress?.(item.id);
 

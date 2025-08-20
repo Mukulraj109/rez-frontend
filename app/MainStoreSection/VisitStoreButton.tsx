@@ -24,19 +24,25 @@ export default function VisitStoreButton({
   const handlePress = () => {
     if (disabled || loading) return;
 
-    // Add press animation
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.96,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Add press animation (disabled on iOS to prevent conflicts)
+    if (Platform.OS === 'ios') {
+      // Quick scale without animation
+      scaleAnim.setValue(0.96);
+      setTimeout(() => scaleAnim.setValue(1), 50);
+    } else {
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 0.96,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
 
     onPress?.();
   };

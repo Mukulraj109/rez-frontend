@@ -53,9 +53,9 @@ export function useNavigation(): UseNavigationReturn {
   const navigate = useCallback((path: string, params?: NavigationParams) => {
     try {
       if (params) {
-        router.navigate({ pathname: path, params });
+        router.navigate({ pathname: path as any, params });
       } else {
-        router.navigate(path);
+        router.navigate(path as any);
       }
     } catch (error) {
       console.error('Navigation error:', error);
@@ -65,9 +65,9 @@ export function useNavigation(): UseNavigationReturn {
   const push = useCallback((path: string, params?: NavigationParams) => {
     try {
       if (params) {
-        router.push({ pathname: path, params });
+        router.push({ pathname: path as any, params });
       } else {
-        router.push(path);
+        router.push(path as any);
       }
     } catch (error) {
       console.error('Navigation push error:', error);
@@ -77,9 +77,9 @@ export function useNavigation(): UseNavigationReturn {
   const replace = useCallback((path: string, params?: NavigationParams) => {
     try {
       if (params) {
-        router.replace({ pathname: path, params });
+        router.replace({ pathname: path as any, params });
       } else {
-        router.replace(path);
+        router.replace(path as any);
       }
     } catch (error) {
       console.error('Navigation replace error:', error);
@@ -92,7 +92,7 @@ export function useNavigation(): UseNavigationReturn {
         router.back();
       } else {
         // Fallback to home if can't go back
-        router.replace('/(tabs)/');
+        router.replace('/(tabs)/' as any);
       }
     } catch (error) {
       console.error('Go back error:', error);
@@ -163,7 +163,7 @@ export function useNavigation(): UseNavigationReturn {
   const currentSegments = segments;
 
   const isOnTab = useCallback((tabName: string) => {
-    return segments.includes('(tabs)') && segments.includes(tabName);
+    return (segments as string[]).includes('(tabs)') && (segments as string[]).includes(tabName);
   }, [segments]);
 
   const isOnPath = useCallback((path: string) => {

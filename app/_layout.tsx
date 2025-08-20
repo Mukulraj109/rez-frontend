@@ -10,6 +10,8 @@ import { AppProvider } from '@/contexts/AppContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { OffersProvider } from '@/contexts/OffersContext';
+import { CategoryProvider } from '@/contexts/CategoryContext';
+import { ProfileProvider } from '@/contexts/ProfileContext';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -28,10 +30,15 @@ export default function RootLayout() {
         <AuthProvider>
           <CartProvider>
             <OffersProvider>
-              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <CategoryProvider>
+                <ProfileProvider>
+                  <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
                   {/* App Entry Point */}
                   <Stack.Screen name="index" options={{ headerShown: false }} />
+                  
+                  {/* Authentication Screens */}
+                  <Stack.Screen name="sign-in" options={{ headerShown: false }} />
                   
                   {/* Onboarding Screens */}
                   <Stack.Screen name="onboarding/splash" options={{ headerShown: false }} />
@@ -49,16 +56,26 @@ export default function RootLayout() {
                    <Stack.Screen name="StorePage" options={{ headerShown: false }} />
                   <Stack.Screen name="CartPage" options={{ headerShown: false }} />
                   <Stack.Screen name="MainStorePage" options={{ headerShown: false }} />
+                   <Stack.Screen name="Store" options={{ headerShown: false }} />
                    <Stack.Screen name="UGCDetailScreen" options={{ headerShown: false }} />
                    <Stack.Screen name="CoinPage" options={{ headerShown: false }} />
                     <Stack.Screen name="WalletScreen" options={{ headerShown: false }} />
                     <Stack.Screen name="StoreListPage" options={{ headerShown: false }} />
                     <Stack.Screen name="ReviewPage" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/index" options={{ headerShown: false }} />
+                    
+                    {/* Profile System Screens */}
+                    <Stack.Screen name="wallet/index" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/index" options={{ headerShown: false }} />
+                    <Stack.Screen name="profile/index" options={{ headerShown: false }} />
+                  {/* Dynamic Category Pages */}
+                  <Stack.Screen name="category/[slug]" options={{ headerShown: false }} />
                   <Stack.Screen name="+not-found" />
                 </Stack>
                 <StatusBar style="auto" />
-              </ThemeProvider>
+                  </ThemeProvider>
+                </ProfileProvider>
+              </CategoryProvider>
             </OffersProvider>
           </CartProvider>
         </AuthProvider>

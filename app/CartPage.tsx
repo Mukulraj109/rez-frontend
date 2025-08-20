@@ -3,10 +3,11 @@ import {
   View,
   StyleSheet,
   FlatList,
-  SafeAreaView,
   StatusBar,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ supports 'edges'
+
 import { useRouter } from 'expo-router';
 import CartHeader from '@/components/cart/CartHeader';
 import SlidingTabs from '@/components/cart/SlidingTabs';
@@ -145,7 +146,8 @@ export default function CartPage() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+   <SafeAreaView style={styles.container} edges={['left', 'right']}>
+
       <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
 
       <CartHeader onBack={handleBackPress} />
@@ -186,10 +188,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+    
   },
   listContainer: {
     flex: 1,
-    paddingBottom: 100,
   },
   listContent: {
     paddingHorizontal: 16,

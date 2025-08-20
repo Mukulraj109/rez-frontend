@@ -214,7 +214,7 @@ class StorageService {
         return allKeys.filter(key => key.startsWith(prefix));
       }
       
-      return allKeys;
+      return [...allKeys];
     } catch (error) {
       console.error('Error getting all keys:', error);
       return [];
@@ -427,7 +427,7 @@ class StorageService {
   private startCleanupTimer(): void {
     this.cleanupTimer = setInterval(() => {
       this.cleanupExpiredItems();
-    }, this.cacheConfig.cleanupInterval);
+    }, this.cacheConfig.cleanupInterval) as any;
   }
 
   // Cleanup

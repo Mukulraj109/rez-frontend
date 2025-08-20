@@ -47,6 +47,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -97,7 +99,6 @@ class NotificationService {
             allowAlert: true,
             allowBadge: true,
             allowSound: true,
-            allowAnnouncements: true,
           },
         });
         finalStatus = status;

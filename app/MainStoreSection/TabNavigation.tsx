@@ -8,6 +8,7 @@ import {
   Easing,
   LayoutChangeEvent,
   Platform,
+  InteractionManager,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
@@ -105,15 +106,23 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
       useNativeDriver: true,
     });
 
-    // width animation (cannot use native driver)
-    const animW = Animated.timing(underlineWidth, {
-      toValue: targetW,
-      duration: 260,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    });
-
-    Animated.parallel([animX, animW]).start();
+    // Use InteractionManager on iOS to prevent animation conflicts
+    if (Platform.OS === 'ios') {
+      InteractionManager.runAfterInteractions(() => {
+        // On iOS, just set the width directly without animation to prevent conflicts
+        underlineWidth.setValue(targetW);
+        animX.start();
+      });
+    } else {
+      // On other platforms, animate both
+      const animW = Animated.timing(underlineWidth, {
+        toValue: targetW,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      });
+      Animated.parallel([animX, animW]).start();
+    }
   };
 
   const handlePress = (tabKey: TabKey) => {

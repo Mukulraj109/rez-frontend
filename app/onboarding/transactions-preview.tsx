@@ -69,7 +69,8 @@ export default function TransactionsPreviewScreen() {
 
   const handleFinish = async () => {
     await completeOnboarding();
-    router.replace('/(tabs)/' as any);
+    // After onboarding, user should sign in to access the app
+    router.replace('/sign-in');
   };
 
   const renderBrandItem = (brand: BrandItem) => (
