@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet, Dimensions, RefreshControl, Platform } from 'react-native';
+import { View, ScrollView, StyleSheet, Dimensions, RefreshControl, Platform, FlatList } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { HorizontalScrollSectionProps } from '@/types/homepage.types';
@@ -43,26 +43,54 @@ export default function HorizontalScrollSection({
       </ThemedView>
 
       {/* Horizontal Scroll Content */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={showIndicator}
-        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing }]}
-        removeClippedSubviews={false}
-        scrollEventThrottle={16}
-        decelerationRate="normal"
-      >
-        {section.items.map((item, index) => (
-          <View
-            key={item.id}
-            style={[
-              styles.cardContainer,
-              { width: cardWidth, marginRight: index === section.items.length - 1 ? 0 : spacing },
-            ]}
-          >
-            {renderCard(item)}
-          </View>
-        ))}
-      </ScrollView>
+      {Platform.OS === 'web' ? (
+        <FlatList
+          data={section.items}
+          horizontal
+          showsHorizontalScrollIndicator={showIndicator}
+          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing }]}
+          style={styles.webFlatListContainer}
+          removeClippedSubviews={false}
+          scrollEventThrottle={16}
+          decelerationRate="normal"
+          renderItem={({ item, index }) => (
+            <View
+              style={[
+                styles.cardContainer,
+                { width: cardWidth, marginRight: index === section.items.length - 1 ? 0 : spacing },
+              ]}
+            >
+              {renderCard(item)}
+            </View>
+          )}
+          keyExtractor={(item) => item.id}
+          getItemLayout={(data, index) => (
+            { length: cardWidth + spacing, offset: (cardWidth + spacing) * index, index }
+          )}
+        />
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={showIndicator}
+          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing }]}
+          removeClippedSubviews={false}
+          scrollEventThrottle={16}
+          decelerationRate="normal"
+          nestedScrollEnabled={false}
+        >
+          {section.items.map((item, index) => (
+            <View
+              key={item.id}
+              style={[
+                styles.cardContainer,
+                { width: cardWidth, marginRight: index === section.items.length - 1 ? 0 : spacing },
+              ]}
+            >
+              {renderCard(item)}
+            </View>
+          ))}
+        </ScrollView>
+      )}
 
       {/* Optional iOS Always-visible Scroll Indicator */}
       {Platform.OS === 'ios' && showIndicator && (
@@ -97,6 +125,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingVertical: 8,
+  },
+  webFlatListContainer: {
+    overflow: 'scroll',
   },
   cardContainer: {
     flex: 0,

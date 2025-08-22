@@ -41,10 +41,21 @@ export default function StoreActionButtons({
   containerStyle,
   buttonStyle,
   textStyle,
+  dynamicData,
 }: StoreActionButtonsProps) {
   
   const { width } = Dimensions.get('window');
   const backgroundColor = useThemeColor({}, 'background');
+  
+  // Dynamic button text based on product data
+  const dynamicBuyText = customBuyText || 
+    (dynamicData?.price ? `Buy for ₹${dynamicData.price}` : 'Buy Now');
+  
+  const dynamicLockText = customLockText || 
+    (dynamicData?.availabilityStatus === 'in_stock' ? 'Reserve Item' : 'Lock Price');
+    
+  const dynamicBookingText = customBookingText || 
+    (storeType === 'SERVICE' ? 'Book Service' : 'Schedule Pickup');
   
   // Component state management
   const [buttonState, setButtonState] = useState(createInitialButtonState());
@@ -67,15 +78,15 @@ export default function StoreActionButtons({
       isLockDisabled,
       isBookingDisabled,
       showBookingButton,
-      customBuyText,
-      customLockText,
-      customBookingText,
+      customBuyText: dynamicBuyText,
+      customLockText: dynamicLockText,
+      customBookingText: dynamicBookingText,
     }), 
     [
       storeType, onBuyPress, onLockPress, onBookingPress,
       isBuyLoading, isLockLoading, isBookingLoading,
       isBuyDisabled, isLockDisabled, isBookingDisabled,
-      showBookingButton, customBuyText, customLockText, customBookingText
+      showBookingButton, dynamicBuyText, dynamicLockText, dynamicBookingText
     ]
   );
 

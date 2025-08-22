@@ -7,13 +7,14 @@ import {
   StyleSheet, 
   Alert 
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import OnboardingContainer from '@/components/onboarding/OnboardingContainer';
-import { useOnboarding } from '@/hooks/useOnboarding';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function OTPVerificationScreen() {
   const router = useRouter();
-  const { state, updateUserData, validateOTP, setLoading } = useOnboarding();
+  const { phoneNumber } = useLocalSearchParams<{ phoneNumber: string }>();
+  const { state, actions } = useAuth();
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(30);
@@ -62,40 +63,59 @@ export default function OTPVerificationScreen() {
   const handleSubmit = async (otpValue?: string) => {
     const otpString = otpValue || otp.join('');
     
-    if (!validateOTP(otpString)) {
+    if (otpString.length !== 6 || !/^\d{6}$/.test(otpString)) {
       Alert.alert('Invalid OTP', 'Please enter a valid 6-digit OTP');
       return;
     }
 
-    setLoading(true);
+    if (!phoneNumber) {
+      Alert.alert('Error', 'Phone number not found. Please go back and try again.');
+      return;
+    }
     
     try {
-      // Simulate API call for OTP verification
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('[OTP Verification] Attempting to verify OTP:', { phoneNumber, otp: otpString });
+      await actions.verifyOTP(phoneNumber, otpString);
       
-      // Update user data with OTP
-      updateUserData({ otp: otpString });
+      console.log('[OTP Verification] OTP verified successfully, checking user state...', {
+        isAuthenticated: state.isAuthenticated,
+        hasUser: !!state.user,
+        isOnboarded: state.user?.isOnboarded,
+        isVerified: state.user?.isVerified,
+        userId: state.user?.id
+      });
       
-      // Navigate to location permission
-      router.push('/onboarding/location-permission');
-    } catch (error) {
-      Alert.alert('Error', 'OTP verification failed. Please try again.');
+      // Check if user is verified and onboarded
+      if (state.user?.isOnboarded) {
+        console.log('[OTP Verification] User is onboarded, going to main app');
+        router.replace('/(tabs)');
+      } else {
+        console.log('[OTP Verification] User is not onboarded, continuing onboarding');
+        router.push('/onboarding/location-permission');
+      }
+    } catch (error: any) {
+      console.error('[OTP Verification] OTP verification failed:', error);
+      
+      // Get error message from multiple possible sources
+      const errorMessage = error?.response?.data?.message || 
+                          error?.message || 
+                          state.error || 
+                          'Invalid OTP. Please check and try again.';
+      
+      Alert.alert('Invalid OTP', errorMessage);
+      
       // Clear OTP on error
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
-    } finally {
-      setLoading(false);
+      actions.clearError();
     }
   };
 
   const handleResendOTP = async () => {
-    if (!canResend) return;
-    
-    setLoading(true);
+    if (!canResend || !phoneNumber) return;
     
     try {
-      // Simulate API call to resend OTP
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await actions.sendOTP(phoneNumber);
       
       // Reset timer
       setTimer(30);
@@ -103,9 +123,8 @@ export default function OTPVerificationScreen() {
       
       Alert.alert('Success', 'OTP has been resent to your phone number');
     } catch (error) {
-      Alert.alert('Error', 'Failed to resend OTP. Please try again.');
-    } finally {
-      setLoading(false);
+      Alert.alert('Error', state.error || 'Failed to resend OTP. Please try again.');
+      actions.clearError();
     }
   };
 

@@ -43,13 +43,16 @@ export default function ProfilePage() {
     // Handle icon grid navigation
     switch (item.id) {
       case 'product':
-        console.log('Navigate to products - Screen to be created');
+        // Navigate to Store for products
+        router.push('/Store');
         break;
       case 'service':
-        console.log('Navigate to services - Screen to be created');
+        // Navigate to Play tab for services
+        router.push('/(tabs)/play');
         break;
       case 'voucher':
-        console.log('Navigate to vouchers - Screen to be created');
+        // Navigate to account settings for voucher management
+        router.push('/account/');
         break;
       case 'earns':
         router.push('/(tabs)/earn');
@@ -67,11 +70,11 @@ export default function ProfilePage() {
     switch (item.id) {
       case 'order_transaction_history':
         // Connect to wallet transaction history
-        router.push('/WalletScreen');
+        router.push('/transactions');
         break;
       case 'incomplete_transaction':
         // Navigate to incomplete transactions (could be a filtered view of wallet)
-        router.push('/WalletScreen');
+        router.push('/transactions');
         break;
       case 'home_delivery':
         // Connect to delivery settings
@@ -82,16 +85,20 @@ export default function ProfilePage() {
         router.push('/WalletScreen');
         break;
       case 'group_buy':
-        console.log('Navigate to Group Buy - Screen to be created');
+        // Navigate to Play tab for group activities
+        router.push('/(tabs)/play');
         break;
       case 'order_tracking':
-        console.log('Navigate to Order Tracking - Screen to be created');
+        // Navigate to tracking screen
+        router.push('/tracking');
         break;
       case 'review':
-        console.log('Navigate to Reviews - Screen to be created');
+        // Navigate to account settings (Reviews section)
+        router.push('/account');
         break;
       case 'social_media':
-        console.log('Navigate to Social Media - Screen to be created');
+        // Navigate to Play tab for social activities
+        router.push('/(tabs)/play');
         break;
       default:
         if (item.route) {
@@ -202,7 +209,10 @@ export default function ProfilePage() {
           </View>
           
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => router.push('/profile/edit')}
+            >
               <Ionicons name="create-outline" size={22} color="white" />
             </TouchableOpacity>
             

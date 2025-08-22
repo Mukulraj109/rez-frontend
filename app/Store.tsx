@@ -72,8 +72,14 @@ function Illustration({ color = '#8B5CF6' }: { color?: string }) {
 
 
 function StoreCard({ item }: { item: Store }) {
+  const { handleItemPress } = useHomepageNavigation();
+  
   return (
-    <TouchableOpacity activeOpacity={0.8} style={styles.card}>
+    <TouchableOpacity 
+      activeOpacity={0.8} 
+      style={styles.card}
+      onPress={() => handleItemPress('stores', { id: item.id, type: 'store' })}
+    >
       <View style={styles.cardIllustration}>
         <Illustration color={item.accent} />
       </View>

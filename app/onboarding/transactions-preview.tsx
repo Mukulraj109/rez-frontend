@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import OnboardingContainer from '@/components/onboarding/OnboardingContainer';
-import { useOnboarding } from '@/hooks/useOnboarding';
+import { useAuth } from '@/contexts/AuthContext';
+import { navigationDebugger } from '@/utils/navigationDebug';
 
 interface BrandItem {
   id: string;
@@ -65,12 +66,38 @@ const brands: BrandItem[] = [
 
 export default function TransactionsPreviewScreen() {
   const router = useRouter();
-  const { completeOnboarding } = useOnboarding();
+  const { state, actions } = useAuth();
 
   const handleFinish = async () => {
-    await completeOnboarding();
-    // After onboarding, user should sign in to access the app
-    router.replace('/sign-in');
+    try {
+      console.log('🎯 [FINISH ONBOARDING] Starting finish process...');
+      
+      // Complete onboarding via the auth context
+      await actions.completeOnboarding({
+        preferences: {
+          notifications: true,
+          theme: 'light'
+        }
+      });
+      
+      console.log('🎯 [FINISH ONBOARDING] Onboarding completed, current user state:', {
+        isAuthenticated: state.isAuthenticated,
+        isOnboarded: state.user?.isOnboarded,
+        userId: state.user?.id
+      });
+      
+      // Navigate immediately without delay to prevent race conditions
+      console.log('🎯 [FINISH ONBOARDING] Navigating to main app...');
+      navigationDebugger.logNavigation('transactions-preview', '(tabs)', 'onboarding-completed');
+      router.replace('/(tabs)');
+      
+    } catch (error) {
+      console.error('❌ [FINISH ONBOARDING] Error completing onboarding:', error);
+      
+      // TEMPORARY DEBUG: Skip onboarding completion and just navigate
+      console.log('🎯 [FINISH ONBOARDING] Onboarding failed, navigating anyway...');
+      router.replace('/(tabs)');
+    }
   };
 
   const renderBrandItem = (brand: BrandItem) => (

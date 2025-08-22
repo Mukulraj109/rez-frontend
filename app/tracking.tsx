@@ -1,6 +1,3 @@
-// Order Tracking Screen
-// Track active orders and deliveries
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -11,12 +8,15 @@ import {
   Platform,
   SafeAreaView,
   RefreshControl,
+  Dimensions,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
-import { PROFILE_COLORS } from '@/types/profile.types';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface OrderStatus {
   step: number;
@@ -39,19 +39,22 @@ interface TrackingOrder {
   trackingSteps: OrderStatus[];
   items: string[];
   deliveryAddress: string;
+  deliveryPersonName?: string;
+  deliveryPersonPhone?: string;
+  progress: number; // 0-100
 }
 
 export default function OrderTrackingScreen() {
   const router = useRouter();
   const [activeOrders, setActiveOrders] = useState<TrackingOrder[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<'active' | 'delivered'>('active');
 
   useEffect(() => {
     loadActiveOrders();
   }, []);
 
   const loadActiveOrders = async () => {
-    // Mock data - in real app, this would fetch from API
     const mockOrders: TrackingOrder[] = [
       {
         id: '1',
@@ -59,8 +62,11 @@ export default function OrderTrackingScreen() {
         merchantName: 'Tasty Bites Restaurant',
         totalAmount: 1250,
         status: 'ON_THE_WAY',
-        statusColor: PROFILE_COLORS.warning,
-        estimatedDelivery: '25 minutes',
+        statusColor: '#F59E0B',
+        estimatedDelivery: '25 mins',
+        progress: 65,
+        deliveryPersonName: 'Raj Kumar',
+        deliveryPersonPhone: '+91 98765 43210',
         trackingSteps: [
           {
             step: 1,
@@ -100,11 +106,12 @@ export default function OrderTrackingScreen() {
       {
         id: '2',
         orderNumber: 'WAS789012',
-        merchantName: 'Fashion Store',
+        merchantName: 'Fashion Central',
         totalAmount: 2100,
         status: 'PREPARING',
-        statusColor: PROFILE_COLORS.info,
-        estimatedDelivery: '2-3 business days',
+        statusColor: '#3B82F6',
+        estimatedDelivery: '2-3 days',
+        progress: 25,
         trackingSteps: [
           {
             step: 1,
@@ -157,159 +164,235 @@ export default function OrderTrackingScreen() {
     setIsRefreshing(false);
   };
 
-  const handleBackPress = () => {
-    router.back();
-  };
-
-  const handleOrderPress = (order: TrackingOrder) => {
-    console.log('Order pressed:', order.orderNumber);
-    // Could navigate to detailed tracking view
-  };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'PREPARING': return 'restaurant';
-      case 'ON_THE_WAY': return 'car';
+      case 'ON_THE_WAY': return 'car-sport';
       case 'DELIVERED': return 'checkmark-circle';
       case 'CANCELLED': return 'close-circle';
       default: return 'time';
     }
   };
 
-  const renderTrackingStep = (step: OrderStatus, isLast: boolean) => (
-    <View key={step.step} style={styles.trackingStep}>
-      <View style={styles.stepIndicator}>
+  const renderModernTrackingStep = (step: OrderStatus, isLast: boolean, progress: number) => (
+    <View key={step.step} style={styles.modernStep}>
+      <View style={styles.stepLeftColumn}>
         <View style={[
-          styles.stepCircle,
+          styles.modernStepCircle,
           step.isCompleted && styles.stepCompleted,
           step.isActive && styles.stepActive,
         ]}>
           {step.isCompleted ? (
-            <Ionicons name="checkmark" size={12} color="white" />
+            <Ionicons name="checkmark" size={14} color="white" />
+          ) : step.isActive ? (
+            <View style={styles.pulsingDot}>
+              <Animated.View style={[styles.pulse, styles.pulse1]} />
+              <Animated.View style={[styles.pulse, styles.pulse2]} />
+              <View style={styles.centerDot} />
+            </View>
           ) : (
-            <View style={[
-              styles.stepDot,
-              step.isActive && styles.stepActiveDot,
-            ]} />
+            <View style={styles.inactiveStepDot} />
           )}
         </View>
         {!isLast && (
           <View style={[
-            styles.stepLine,
+            styles.modernStepLine,
             step.isCompleted && styles.stepLineCompleted,
           ]} />
         )}
       </View>
       
-      <View style={styles.stepContent}>
-        <ThemedText style={[
-          styles.stepTitle,
-          step.isActive && styles.stepActiveTitle,
-          step.isCompleted && styles.stepCompletedTitle,
-        ]}>
-          {step.title}
-        </ThemedText>
-        <ThemedText style={styles.stepDescription}>
-          {step.description}
-        </ThemedText>
-        {step.timestamp && (
-          <ThemedText style={styles.stepTimestamp}>
-            {step.timestamp}
+      <View style={styles.stepRightColumn}>
+        <View style={styles.stepTextContainer}>
+          <ThemedText style={[
+            styles.modernStepTitle,
+            step.isActive && styles.stepActiveTitle,
+            step.isCompleted && styles.stepCompletedTitle,
+          ]}>
+            {step.title}
           </ThemedText>
-        )}
+          <ThemedText style={styles.modernStepDescription}>
+            {step.description}
+          </ThemedText>
+          {step.timestamp && (
+            <ThemedText style={styles.modernStepTimestamp}>
+              {step.timestamp}
+            </ThemedText>
+          )}
+        </View>
       </View>
     </View>
   );
 
-  const renderOrderCard = (order: TrackingOrder) => (
-    <TouchableOpacity
-      key={order.id}
-      style={styles.orderCard}
-      onPress={() => handleOrderPress(order)}
-      activeOpacity={0.8}
-    >
-      {/* Order Header */}
-      <View style={styles.orderHeader}>
-        <View style={styles.orderHeaderLeft}>
-          <View style={styles.merchantInfo}>
-            <ThemedText style={styles.orderNumber}>#{order.orderNumber}</ThemedText>
-            <ThemedText style={styles.merchantName}>{order.merchantName}</ThemedText>
+  const renderModernOrderCard = (order: TrackingOrder) => (
+    <View key={order.id} style={styles.modernOrderCard}>
+      {/* Status Header with Progress */}
+      <LinearGradient
+        colors={[order.statusColor + '15', order.statusColor + '05']}
+        style={styles.orderStatusHeader}
+      >
+        <View style={styles.statusHeaderContent}>
+          <View style={styles.statusLeft}>
+            <View style={[styles.modernStatusIcon, { backgroundColor: order.statusColor + '20' }]}>
+              <Ionicons 
+                name={getStatusIcon(order.status) as any} 
+                size={20} 
+                color={order.statusColor} 
+              />
+            </View>
+            <View>
+              <ThemedText style={styles.orderNumberLarge}>#{order.orderNumber}</ThemedText>
+              <ThemedText style={[styles.statusTextLarge, { color: order.statusColor }]}>
+                {order.status.replace('_', ' ')}
+              </ThemedText>
+            </View>
+          </View>
+          
+          <View style={styles.statusRight}>
+            <ThemedText style={styles.estimatedTime}>{order.estimatedDelivery}</ThemedText>
+            <ThemedText style={styles.estimatedLabel}>Estimated</ThemedText>
           </View>
         </View>
         
-        <View style={styles.orderHeaderRight}>
-          <View style={[styles.statusBadge, { backgroundColor: order.statusColor + '20' }]}>
-            <Ionicons 
-              name={getStatusIcon(order.status) as any} 
-              size={16} 
-              color={order.statusColor} 
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBackground}>
+            <LinearGradient
+              colors={[order.statusColor, order.statusColor + '80']}
+              style={[styles.progressBar, { width: `${order.progress}%` }]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
             />
-            <ThemedText style={[styles.statusText, { color: order.statusColor }]}>
-              {order.status.replace('_', ' ')}
-            </ThemedText>
           </View>
+          <ThemedText style={styles.progressText}>{order.progress}% Complete</ThemedText>
         </View>
+      </LinearGradient>
+
+      {/* Merchant Info */}
+      <View style={styles.merchantSection}>
+        <View style={styles.merchantAvatar}>
+          <ThemedText style={styles.merchantInitial}>
+            {order.merchantName.charAt(0)}
+          </ThemedText>
+        </View>
+        <View style={styles.merchantInfo}>
+          <ThemedText style={styles.merchantName}>{order.merchantName}</ThemedText>
+          <ThemedText style={styles.orderItems}>
+            {order.items.join(' • ')}
+          </ThemedText>
+        </View>
+        <ThemedText style={styles.orderAmount}>₹{order.totalAmount}</ThemedText>
       </View>
 
-      {/* Order Items */}
-      <View style={styles.orderItems}>
-        <ThemedText style={styles.itemsTitle}>Items:</ThemedText>
-        <ThemedText style={styles.itemsList}>
-          {order.items.join(', ')}
-        </ThemedText>
-      </View>
+      {/* Delivery Person Info (if on the way) */}
+      {order.status === 'ON_THE_WAY' && order.deliveryPersonName && (
+        <View style={styles.deliveryPersonCard}>
+          <View style={styles.deliveryPersonLeft}>
+            <View style={styles.deliveryPersonAvatar}>
+              <Ionicons name="person" size={18} color="#8B5CF6" />
+            </View>
+            <View>
+              <ThemedText style={styles.deliveryPersonName}>
+                {order.deliveryPersonName}
+              </ThemedText>
+              <ThemedText style={styles.deliveryPersonRole}>Delivery Partner</ThemedText>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.callButton}>
+            <Ionicons name="call" size={18} color="white" />
+          </TouchableOpacity>
+        </View>
+      )}
 
-      {/* Estimated Delivery */}
-      <View style={styles.deliveryInfo}>
-        <Ionicons name="time-outline" size={16} color={PROFILE_COLORS.textSecondary} />
-        <ThemedText style={styles.deliveryText}>
-          Estimated delivery: {order.estimatedDelivery}
-        </ThemedText>
-      </View>
-
-      {/* Tracking Steps */}
-      <View style={styles.trackingContainer}>
-        <ThemedText style={styles.trackingTitle}>Tracking Status</ThemedText>
-        <View style={styles.trackingSteps}>
+      {/* Modern Tracking Steps */}
+      <View style={styles.modernTrackingContainer}>
+        <ThemedText style={styles.trackingHeader}>Order Journey</ThemedText>
+        <View style={styles.modernTrackingSteps}>
           {order.trackingSteps.map((step, index) => 
-            renderTrackingStep(step, index === order.trackingSteps.length - 1)
+            renderModernTrackingStep(step, index === order.trackingSteps.length - 1, order.progress)
           )}
         </View>
       </View>
 
-      {/* Order Total */}
-      <View style={styles.orderFooter}>
-        <ThemedText style={styles.totalLabel}>Total Amount:</ThemedText>
-        <ThemedText style={styles.totalAmount}>₹{order.totalAmount}</ThemedText>
+      {/* Action Buttons */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity style={styles.secondaryButton}>
+          <Ionicons name="receipt-outline" size={16} color="#8B5CF6" />
+          <ThemedText style={styles.secondaryButtonText}>View Details</ThemedText>
+        </TouchableOpacity>
+        
+        {order.status === 'ON_THE_WAY' && (
+          <TouchableOpacity style={styles.primaryButton}>
+            <Ionicons name="location" size={16} color="white" />
+            <ThemedText style={styles.primaryButtonText}>Track Live</ThemedText>
+          </TouchableOpacity>
+        )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor={PROFILE_COLORS.primary}
-        translucent={false}
+        backgroundColor="transparent"
+        translucent
       />
       
-      {/* Header */}
-      <LinearGradient
-        colors={[PROFILE_COLORS.primary, PROFILE_COLORS.primaryLight]}
-        style={styles.header}
+      {/* Modern Header */}
+      <View
+        style={styles.modernHeader}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
-          
-          <ThemedText style={styles.headerTitle}>Order Tracking</ThemedText>
-          
-          <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
-            <Ionicons name="refresh" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+            <TouchableOpacity 
+              style={styles.modernBackButton} 
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={22} color="white" />
+            </TouchableOpacity>
+            
+            <View style={styles.headerCenter}>
+              <ThemedText style={styles.headerTitle}>Order Tracking</ThemedText>
+              <ThemedText style={styles.headerSubtitle}>
+                {activeOrders.length} active order{activeOrders.length !== 1 ? 's' : ''}
+              </ThemedText>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.modernRefreshButton} 
+              onPress={handleRefresh}
+            >
+              <Ionicons name="refresh" size={22} color="white" />
+            </TouchableOpacity>
+          </View>
+      </View>
+
+      {/* Tab Selector */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tab, selectedTab === 'active' && styles.activeTab]}
+          onPress={() => setSelectedTab('active')}
+        >
+          <ThemedText style={[
+            styles.tabText, 
+            selectedTab === 'active' && styles.activeTabText
+          ]}>
+            Active Orders
+          </ThemedText>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.tab, selectedTab === 'delivered' && styles.activeTab]}
+          onPress={() => setSelectedTab('delivered')}
+        >
+          <ThemedText style={[
+            styles.tabText, 
+            selectedTab === 'delivered' && styles.activeTabText
+          ]}>
+            Past Orders
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView 
         style={styles.content}
@@ -319,36 +402,32 @@ export default function OrderTrackingScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={PROFILE_COLORS.primary}
-            colors={[PROFILE_COLORS.primary]}
+            tintColor="#8B5CF6"
+            colors={['#8B5CF6']}
           />
         }
       >
         {activeOrders.length > 0 ? (
-          <>
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>
-                Active Orders ({activeOrders.length})
-              </ThemedText>
-              <ThemedText style={styles.sectionSubtitle}>
-                Track your ongoing orders and deliveries
-              </ThemedText>
-            </View>
-
-            {activeOrders.map(renderOrderCard)}
-          </>
+          activeOrders.map(renderModernOrderCard)
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="receipt-outline" size={64} color={PROFILE_COLORS.textSecondary} />
+          <View style={styles.modernEmptyState}>
+            <LinearGradient
+              colors={['#F3F4F6', '#F9FAFB']}
+              style={styles.emptyIconContainer}
+            >
+              <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
+            </LinearGradient>
             <ThemedText style={styles.emptyTitle}>No Active Orders</ThemedText>
             <ThemedText style={styles.emptyDescription}>
               You don't have any orders to track right now.{'\n'}
               Start shopping to see your orders here!
             </ThemedText>
+            <TouchableOpacity style={styles.emptyActionButton}>
+              <ThemedText style={styles.emptyActionText}>Browse Stores</ThemedText>
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* Footer Space */}
         <View style={styles.footer} />
       </ScrollView>
     </SafeAreaView>
@@ -358,272 +437,454 @@ export default function OrderTrackingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: PROFILE_COLORS.background,
+    backgroundColor: '#F8F9FA',
   },
-  header: {
-    paddingTop: Platform.OS === 'android' ? 20 : 0,
+  
+  // Modern Header
+  modernHeader: {
+    paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight || 25,
     paddingBottom: 20,
     paddingHorizontal: 20,
+    backgroundColor: '#8B5CF6',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  modernBackButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    backdropFilter: 'blur(20px)',
   },
-  headerTitle: {
+  headerCenter: {
     flex: 1,
-    fontSize: 20,
-    fontWeight: '700',
-    color: 'white',
-    textAlign: 'center',
+    alignItems: 'center',
     marginHorizontal: 16,
   },
-  refreshButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
+  },
+  modernRefreshButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  section: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: PROFILE_COLORS.text,
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: PROFILE_COLORS.textSecondary,
-  },
-  
-  // Order Cards
-  orderCard: {
+
+  // Tab Container
+  tabContainer: {
+    flexDirection: 'row',
     backgroundColor: 'white',
-    borderRadius: 16,
     marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    shadowColor: PROFILE_COLORS.primary,
+    marginTop: -10,
+    borderRadius: 16,
+    padding: 4,
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 6,
   },
-  orderHeader: {
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  activeTab: {
+    backgroundColor: '#8B5CF6',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  activeTabText: {
+    color: 'white',
+  },
+
+  // Content
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+
+  // Modern Order Card
+  modernOrderCard: {
+    backgroundColor: 'white',
+    borderRadius: 24,
+    marginHorizontal: 20,
+    marginBottom: 24,
+    overflow: 'hidden',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+
+  // Status Header
+  orderStatusHeader: {
+    padding: 20,
+    paddingBottom: 16,
+  },
+  statusHeaderContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  orderHeaderLeft: {
-    flex: 1,
+  statusLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modernStatusIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  orderNumberLarge: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  statusTextLarge: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  statusRight: {
+    alignItems: 'flex-end',
+  },
+  estimatedTime: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  estimatedLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+
+  // Progress Bar
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressBackground: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    textAlign: 'right',
+  },
+
+  // Merchant Section
+  merchantSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  merchantAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#8B5CF6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  merchantInitial: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'white',
   },
   merchantInfo: {
     flex: 1,
   },
-  orderNumber: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: PROFILE_COLORS.text,
-    marginBottom: 4,
-  },
   merchantName: {
-    fontSize: 14,
-    color: PROFILE_COLORS.textSecondary,
-  },
-  orderHeaderRight: {
-    alignItems: 'flex-end',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  statusText: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
-    marginLeft: 6,
-    textTransform: 'capitalize',
+    color: '#1F2937',
+    marginBottom: 2,
   },
-  
-  // Order Items
   orderItems: {
-    marginBottom: 12,
-  },
-  itemsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: PROFILE_COLORS.text,
-    marginBottom: 4,
-  },
-  itemsList: {
     fontSize: 13,
-    color: PROFILE_COLORS.textSecondary,
+    color: '#6B7280',
     lineHeight: 18,
   },
-  
-  // Delivery Info
-  deliveryInfo: {
+  orderAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#8B5CF6',
+  },
+
+  // Delivery Person Card
+  deliveryPersonCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: PROFILE_COLORS.surface,
-    borderRadius: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#F8F9FF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  deliveryText: {
-    fontSize: 13,
-    color: PROFILE_COLORS.textSecondary,
-    marginLeft: 8,
+  deliveryPersonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  deliveryPersonAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  deliveryPersonName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  deliveryPersonRole: {
+    fontSize: 12,
+    color: '#8B5CF6',
     fontWeight: '500',
   },
-  
-  // Tracking Steps
-  trackingContainer: {
+  callButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Modern Tracking
+  modernTrackingContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  trackingHeader: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
     marginBottom: 16,
   },
-  trackingTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: PROFILE_COLORS.text,
-    marginBottom: 12,
-  },
-  trackingSteps: {
+  modernTrackingSteps: {
     paddingLeft: 8,
   },
-  trackingStep: {
+  modernStep: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    marginBottom: 20,
   },
-  stepIndicator: {
+  stepLeftColumn: {
     alignItems: 'center',
     marginRight: 16,
   },
-  stepCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: PROFILE_COLORS.border,
+  modernStepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   stepCompleted: {
-    backgroundColor: PROFILE_COLORS.success,
+    backgroundColor: '#10B981',
   },
   stepActive: {
-    backgroundColor: PROFILE_COLORS.primary,
+    backgroundColor: '#8B5CF6',
   },
-  stepDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: PROFILE_COLORS.textSecondary,
+  pulsingDot: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  stepActiveDot: {
+  pulse: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(139, 92, 246, 0.3)',
+  },
+  pulse1: {
+    transform: [{ scale: 1 }],
+  },
+  pulse2: {
+    transform: [{ scale: 1.4 }],
+  },
+  centerDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: 'white',
   },
-  stepLine: {
+  inactiveStepDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#D1D5DB',
+  },
+  modernStepLine: {
     width: 2,
-    height: 30,
-    backgroundColor: PROFILE_COLORS.border,
+    height: 40,
+    backgroundColor: '#E5E7EB',
   },
   stepLineCompleted: {
-    backgroundColor: PROFILE_COLORS.success,
+    backgroundColor: '#10B981',
   },
-  stepContent: {
+  stepRightColumn: {
     flex: 1,
-    paddingBottom: 20,
   },
-  stepTitle: {
-    fontSize: 14,
+  stepTextContainer: {
+    paddingTop: 2,
+  },
+  modernStepTitle: {
+    fontSize: 15,
     fontWeight: '600',
-    color: PROFILE_COLORS.text,
-    marginBottom: 2,
-  },
-  stepActiveTitle: {
-    color: PROFILE_COLORS.primary,
-  },
-  stepCompletedTitle: {
-    color: PROFILE_COLORS.success,
-  },
-  stepDescription: {
-    fontSize: 12,
-    color: PROFILE_COLORS.textSecondary,
-    lineHeight: 16,
+    color: '#1F2937',
     marginBottom: 4,
   },
-  stepTimestamp: {
-    fontSize: 11,
-    color: PROFILE_COLORS.textSecondary,
+  stepActiveTitle: {
+    color: '#8B5CF6',
+  },
+  stepCompletedTitle: {
+    color: '#10B981',
+  },
+  modernStepDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  modernStepTimestamp: {
+    fontSize: 12,
+    color: '#9CA3AF',
     fontWeight: '500',
   },
-  
-  // Order Footer
-  orderFooter: {
+
+  // Action Buttons
+  actionButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: PROFILE_COLORS.border,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 12,
   },
-  totalLabel: {
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.2)',
+  },
+  secondaryButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: PROFILE_COLORS.text,
+    color: '#8B5CF6',
+    marginLeft: 6,
   },
-  totalAmount: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: PROFILE_COLORS.primary,
+  primaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: '#8B5CF6',
   },
-  
-  // Empty State
-  emptyState: {
+  primaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+    marginLeft: 6,
+  },
+
+  // Modern Empty State
+  modernEmptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
     paddingHorizontal: 40,
   },
+  emptyIconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    color: PROFILE_COLORS.text,
-    marginTop: 16,
+    color: '#1F2937',
     marginBottom: 8,
   },
   emptyDescription: {
-    fontSize: 14,
-    color: PROFILE_COLORS.textSecondary,
+    fontSize: 15,
+    color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
+    marginBottom: 32,
   },
-  
+  emptyActionButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  emptyActionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
+  },
+
   footer: {
     height: 40,
   },

@@ -8,6 +8,14 @@ export interface StoreActionButtonsProps {
   // Core configuration
   storeType: StoreType;
   
+  // Dynamic data support
+  dynamicData?: {
+    title?: string;
+    price?: number;
+    merchant?: string;
+    [key: string]: any;
+  } | null;
+  
   // Button handlers
   onBuyPress?: () => void | Promise<void>;
   onLockPress?: () => void | Promise<void>;

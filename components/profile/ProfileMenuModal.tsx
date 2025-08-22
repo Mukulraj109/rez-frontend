@@ -59,7 +59,78 @@ export default function ProfileMenuModal({
     }
   }, [visible]);
 
+  const performLogout = async () => {
+    console.log('🔓 [LOGOUT] Starting logout process...');
+    
+    try {
+      // Step 1: Close modal immediately
+      onClose();
+      console.log('🔓 [LOGOUT] Modal closed');
+      
+      // Step 2: Clear auth state properly
+      console.log('🔓 [LOGOUT] Clearing auth state...');
+      await actions.logout(); // Use proper async logout
+      console.log('✅ [LOGOUT] Auth state cleared');
+      
+      // Step 3: Navigate directly to sign-in page
+      console.log('🔓 [LOGOUT] Attempting navigation to sign-in...');
+      
+      // Navigate directly to sign-in page
+      try {
+        router.replace('/sign-in');
+        console.log('✅ [LOGOUT] Router navigation to sign-in initiated');
+      } catch (routerError) {
+        console.warn('⚠️ [LOGOUT] Router failed, trying fallback:', routerError);
+        
+        // Fallback for web
+        if (typeof window !== 'undefined') {
+          console.log('🌐 [LOGOUT] Using window.location fallback');
+          window.location.href = '/sign-in';
+        } else {
+          // Try router.push as fallback for mobile
+          try {
+            router.push('/sign-in');
+            console.log('✅ [LOGOUT] Router.push fallback worked');
+          } catch (pushError) {
+            console.error('❌ [LOGOUT] All navigation methods failed:', pushError);
+            throw new Error('Navigation failed');
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ [LOGOUT] Complete logout process failed:', error);
+      Alert.alert(
+        'Logout Error', 
+        'There was an issue logging you out. The app will restart.',
+        [
+          {
+            text: 'Restart App',
+            onPress: () => {
+              if (typeof window !== 'undefined') {
+                window.location.reload();
+              } else {
+                // For mobile, navigate to sign-in page directly
+                router.replace('/sign-in');
+              }
+            }
+          }
+        ]
+      );
+    }
+  };
+
   const handleLogout = () => {
+    console.log('🔴 [LOGOUT BUTTON] Logout button clicked!');
+    
+    // For web, skip Alert.alert and go directly to logout
+    if (typeof window !== 'undefined') {
+      console.log('🌐 [WEB] Skipping alert, performing logout directly...');
+      performLogout();
+      return;
+    }
+    
+    // For mobile, use Alert.alert
     Alert.alert(
       'Logout',
       'Are you sure you want to logout from your account?',
@@ -67,19 +138,16 @@ export default function ProfileMenuModal({
         {
           text: 'Cancel',
           style: 'cancel',
+          onPress: () => {
+            console.log('🔴 [LOGOUT BUTTON] Logout cancelled');
+          }
         },
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              onClose(); // Close modal first
-              await actions.logout(); // Logout from AuthContext
-              router.replace('/sign-in'); // Navigate to sign-in page
-            } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Error', 'Failed to logout. Please try again.');
-            }
+          onPress: () => {
+            console.log('🔓 [LOGOUT] Logout confirmed via alert');
+            performLogout();
           },
         },
       ]

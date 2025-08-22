@@ -108,6 +108,8 @@ export default function CartPage() {
 
   const handleBuyNow = () => {
     console.log('Buy now pressed with total:', overallTotal);
+    // Navigate to checkout with cart data
+    router.push('/checkout');
   };
 
   const handleBackPress = () => {

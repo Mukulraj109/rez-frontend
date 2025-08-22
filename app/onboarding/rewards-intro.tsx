@@ -2,11 +2,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import OnboardingContainer from '@/components/onboarding/OnboardingContainer';
+import { navigationDebugger } from '@/utils/navigationDebug';
 
 export default function RewardsIntroScreen() {
   const router = useRouter();
 
   const handleNext = () => {
+    navigationDebugger.logNavigation('rewards-intro', 'transactions-preview', 'rewards-understood');
     router.push('/onboarding/transactions-preview');
   };
 

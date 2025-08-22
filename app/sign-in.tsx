@@ -54,11 +54,17 @@ export default function SignInScreen() {
   // Navigate to homepage on successful login
   useEffect(() => {
     console.log('[SignIn] Auth state changed:', { isAuthenticated: state.isAuthenticated, user: state.user?.id });
-    if (state.isAuthenticated) {
-      console.log('[SignIn] Navigating to homepage...');
-      router.replace('/(tabs)/');
+    if (state.isAuthenticated && state.user) {
+      console.log('[SignIn] User authenticated, checking onboarding status...');
+      if (state.user.isOnboarded) {
+        console.log('[SignIn] User is onboarded, navigating to homepage...');
+        router.replace('/(tabs)/');
+      } else {
+        console.log('[SignIn] User is not onboarded, continuing onboarding...');
+        router.replace('/onboarding/location-permission');
+      }
     }
-  }, [state.isAuthenticated]);
+  }, [state.isAuthenticated, state.user]);
 
   const validatePhoneNumber = (phone: string): boolean => {
     const phoneRegex = /^[+]?[1-9][\d]{0,15}$/;

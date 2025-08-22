@@ -3,10 +3,35 @@ import { View, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-nat
 import { ThemedText } from '@/components/ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
-export default function Section1() {
+interface Section1Props {
+  dynamicData?: {
+    title?: string;
+    image?: string;
+    category?: string;
+    merchant?: string;
+    [key: string]: any;
+  } | null;
+  cardType?: string;
+}
+
+export default function Section1({ dynamicData, cardType }: Section1Props) {
   const backgroundColor = useThemeColor({}, 'background');
   
-  const storeImages = [
+  // Generate dynamic images based on product data
+  const storeImages = dynamicData ? [
+    { 
+      uri: dynamicData.image || 'https://picsum.photos/id/1011/300/200', 
+      title: `${dynamicData.title || 'Product'} images` 
+    },
+    { 
+      uri: 'https://picsum.photos/id/1012/300/200', 
+      title: `${dynamicData.title || 'Product'} Videos` 
+    },
+    { 
+      uri: 'https://picsum.photos/id/1013/300/200', 
+      title: `${dynamicData.category || 'Product'} Collection` 
+    },
+  ] : [
     { uri: 'https://picsum.photos/id/1011/300/200', title: 'Product images' },
     { uri: 'https://picsum.photos/id/1012/300/200', title: 'Product Videos' },
     { uri: 'https://picsum.photos/id/1013/300/200', title: 'Collection' },
@@ -14,7 +39,9 @@ export default function Section1() {
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
-      <ThemedText style={styles.title}>Product Gallery</ThemedText>
+      <ThemedText style={styles.title}>
+        {dynamicData ? `${dynamicData.title || 'Product'} Gallery` : 'Product Gallery'}
+      </ThemedText>
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}

@@ -6,7 +6,6 @@ import ScratchCardOffer from "@/components/ScratchCardOffer";
 import scratchImage from "@/assets/images/scratch-offer.png"; 
 import ProfileOptionsList from "../components/ProfileOptionsList";
 import ReferAndEarnCard from "@/components/ReferAndEarnCard";
-import TransactionHistory from "@/components/wallet/TransactionHistory";
 import {
   View,
   Text,
@@ -24,7 +23,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { WalletBalanceCard } from '../components/WalletBalanceCard';
 import { CoinBalance, WalletScreenProps } from '@/types/wallet';
-import { Transaction } from '@/types/wallet.types';
 import { mockWalletData } from '@/utils/mock-wallet-data';
 import { useWallet } from '@/hooks/useWallet';
 import { mockProfileData, mockReferData, mockRechargeOptions } from '@/utils/mock-profile-data';
@@ -79,16 +77,6 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
     retryLastOperation();
   }, [retryLastOperation]);
 
-  const handleTransactionPress = useCallback((transaction: Transaction) => {
-    Alert.alert(
-      transaction.title,
-      `Amount: ${transaction.amount} ${transaction.currency}\nStatus: ${transaction.status}\nDate: ${new Date(transaction.date).toLocaleDateString()}`,
-      [
-        { text: 'OK' },
-        { text: 'View Details', onPress: () => console.log('Navigate to transaction details:', transaction.id) }
-      ]
-    );
-  }, []);
 
   const styles = useMemo(() => createStyles(screenData), [screenData]);
 
@@ -173,13 +161,34 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
           <WalletBalanceCard key={coin.id} coin={coin} onPress={handleCoinPress} showChevron />
         ))}
 
-        {/* Transaction History Section */}
-        <TransactionHistory 
-          onTransactionPress={handleTransactionPress}
-          refreshing={walletState.isRefreshing}
-          onRefresh={handleRefresh}
-          maxHeight={400}
-        />
+        {/* View Transactions Button */}
+        <View style={styles.transactionButtonContainer}>
+          <TouchableOpacity 
+            style={styles.viewTransactionsButton}
+            onPress={() => router.push('/transactions')}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={['#8B5CF6', '#7C3AED']}
+              style={styles.transactionButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <View style={styles.transactionButtonContent}>
+                <View style={styles.transactionIconContainer}>
+                  <Ionicons name="receipt-outline" size={24} color="white" />
+                </View>
+                <View style={styles.transactionTextContainer}>
+                  <Text style={styles.transactionButtonTitle}>View Transactions</Text>
+                  <Text style={styles.transactionButtonSubtitle}>
+                    Check your complete transaction history
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="rgba(255, 255, 255, 0.8)" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
 
          <RechargeWalletCard
   cashbackText="Upto 10% cashback on wallet recharge"
@@ -310,10 +319,64 @@ const createStyles = (screenData: { width: number; height: number }) => {
       marginTop: 12,
     },
     retryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-     container: {
-    flex: 1,
-    backgroundColor: "#f8f8f8",
-  },
+    
+    // Transaction Button Styles
+    transactionButtonContainer: {
+      marginHorizontal: 16,
+      marginVertical: 12,
+    },
+    viewTransactionsButton: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      shadowColor: '#8B5CF6',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.2,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    transactionButtonGradient: {
+      paddingHorizontal: 20,
+      paddingVertical: 20,
+    },
+    transactionButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    transactionIconContainer: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: 'rgba(255, 255, 255, 0.25)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    transactionTextContainer: {
+      flex: 1,
+    },
+    transactionButtonTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: 'white',
+      marginBottom: 4,
+      letterSpacing: 0.3,
+    },
+    transactionButtonSubtitle: {
+      fontSize: 14,
+      color: 'rgba(255, 255, 255, 0.85)',
+      fontWeight: '500',
+      lineHeight: 18,
+    },
+    
+    container: {
+      flex: 1,
+      backgroundColor: "#f8f8f8",
+    },
   });
 };
 

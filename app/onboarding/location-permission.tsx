@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import OnboardingContainer from '@/components/onboarding/OnboardingContainer';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { navigationDebugger } from '@/utils/navigationDebug';
 
 export default function LocationPermissionScreen() {
   const router = useRouter();
@@ -48,6 +49,7 @@ export default function LocationPermissionScreen() {
       });
 
       // Navigate to loading screen
+      navigationDebugger.logNavigation('location-permission', 'loading', 'location-granted');
       router.push('/onboarding/loading');
       
     } catch (error) {

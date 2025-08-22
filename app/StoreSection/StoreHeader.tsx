@@ -6,12 +6,39 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 
-export default function StoreHeader() {
+interface StoreHeaderProps {
+  dynamicData?: {
+    title?: string;
+    description?: string;
+    image?: string;
+    merchant?: string;
+    category?: string;
+    rating?: number;
+    section?: string;
+    [key: string]: any;
+  } | null;
+  cardType?: string;
+}
+
+export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps) {
   const router = useRouter();
   const backgroundColor = useThemeColor({}, 'background');
   const surfaceColor = useThemeColor({}, 'surface');
   const primaryColor = useThemeColor({}, 'primary');
   const textColor = useThemeColor({}, 'text');
+
+  // Use dynamic data if available, otherwise use defaults
+  const storeTitle = dynamicData?.title || "Featured Store";
+  const storeImageUrl = dynamicData?.image || 'https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?w=800&h=800&fit=crop';
+  const merchantName = dynamicData?.merchant || "Premium Merchant";
+  const category = dynamicData?.category || "General";
+  
+  // Safely handle rating with proper type checking
+  const rawRating = dynamicData?.rating;
+  const rating = typeof rawRating === 'number' && !isNaN(rawRating) ? rawRating : 4.5;
+  
+  const sectionLabel = cardType === 'just_for_you' ? 'Recommended for You' : 
+                      cardType === 'new_arrivals' ? 'New Arrival' : 'Featured';
   
   return (
     <View style={[styles.container, { backgroundColor }]}>
@@ -38,6 +65,18 @@ export default function StoreHeader() {
             <Ionicons name="star" size={16} color="#FFD700" />
             <ThemedText style={styles.ratingText}>382</ThemedText>
           </TouchableOpacity>
+          {/* Dynamic section label */}
+          {dynamicData && (
+            <ThemedText style={[styles.sectionLabel, { color: primaryColor }]}>
+              {sectionLabel}
+            </ThemedText>
+          )}
+          {/* Dynamic category badge */}
+          {dynamicData?.category && (
+            <ThemedText style={[styles.categoryBadge, { backgroundColor: primaryColor + '20' }]}>
+              {category}
+            </ThemedText>
+          )}
         </View>
         
         <View style={styles.rightIcons}>
@@ -56,7 +95,7 @@ export default function StoreHeader() {
       {/* Product / Store image */}
       <View style={[styles.productImageContainer, { backgroundColor: surfaceColor }]}>
         <Image 
-          source={{ uri: 'https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?w=800&h=800&fit=crop' }} 
+          source={{ uri: storeImageUrl }}
           style={styles.productImage} 
           resizeMode="cover"
         />
@@ -93,6 +132,13 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, gap: 4,
   },
   ratingText: { fontSize: 14, fontWeight: '700', color: '#ffffff' },
+  sectionLabel: {
+    fontSize: 12, fontWeight: '600', marginTop: 4, textAlign: 'center',
+  },
+  categoryBadge: {
+    fontSize: 10, fontWeight: '500', marginTop: 2, textAlign: 'center',
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8,
+  },
   rightIcons: { flexDirection: 'row', gap: 12 },
   productImageContainer: {
     position: 'relative', height: 340, marginHorizontal: 20, borderRadius: 24, overflow: 'hidden',

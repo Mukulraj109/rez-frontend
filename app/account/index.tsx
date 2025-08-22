@@ -62,13 +62,17 @@ export default function AccountPage() {
         router.push('/account/wasilpay'); // Note: keeping route name for compatibility
         break;
       case 'voucher':
-        console.log('Navigate to voucher settings - Screen to be created');
+        // Navigate to wallet for voucher/coin management
+        router.push('/WalletScreen');
         break;
       case 'coupon':
-        console.log('Navigate to coupon settings - Screen to be created');
+        // Navigate to wallet for coupon management
+        router.push('/WalletScreen');
         break;
       default:
-        console.log(`Navigate to ${category.route}`);
+        if (category.route) {
+          router.push(category.route as any);
+        }
         break;
     }
   };

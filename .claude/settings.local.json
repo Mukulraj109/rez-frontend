@@ -14,7 +14,18 @@
       "Bash(grep:*)",
       "Bash(cd:*)",
       "Bash(npx eslint:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(npm init:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run web:*)",
+      "Bash(tasklist:*)",
+      "Bash(del index.ts)",
+      "Bash(npm run seed:*)",
+      "Bash(find:*)",
+      "Bash(node:*)"
     ],
     "defaultMode": "acceptEdits"
   }

@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
 import {
   MainStoreHeader,
@@ -31,10 +31,64 @@ import WalkInDealsModal from "@/components/WalkInDealsModal";
 import ReviewModal from "@/components/ReviewModal";
 import { mockReviews, mockRatingBreakdown, mockReviewStats } from "@/utils/mock-reviews-data";
 
+interface DynamicStoreData {
+  id: string;
+  name: string;
+  title: string;
+  description?: string;
+  image?: string;
+  logo?: string;
+  rating: number;
+  ratingCount: number;
+  category?: string;
+  location?: any;
+  deliveryTime?: string;
+  minimumOrder?: number;
+  cashback?: any;
+  discount?: any;
+  section?: string;
+  [key: string]: any;
+}
+
 export default function MainStorePage({ productId, initialProduct }: MainStorePageProps = {}) {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [screenData, setScreenData] = useState(Dimensions.get("window"));
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Dynamic store data state
+  const [storeData, setStoreData] = useState<DynamicStoreData | null>(null);
+  const [isDynamic, setIsDynamic] = useState(false);
+
+  // Parse dynamic store data from navigation params
+  useEffect(() => {
+    if (params.storeData && params.storeId && params.storeType) {
+      try {
+        const parsedData = JSON.parse(params.storeData as string);
+        setStoreData(parsedData);
+        setIsDynamic(true);
+        console.log('🏪 [DYNAMIC MAINSTORE] Loaded store data:', {
+          storeId: params.storeId,
+          storeType: params.storeType,
+          storeName: parsedData.name,
+          category: parsedData.category,
+          rating: parsedData.rating,
+          fullData: parsedData
+        });
+        console.log('🎯 [DYNAMIC MAINSTORE] MainStorePage now using dynamic store data:', {
+          header: 'Dynamic store name, logo, category',
+          content: 'Dynamic store info, ratings, delivery, cashback',
+          branding: 'Store-specific theme and layout'
+        });
+      } catch (error) {
+        console.error('❌ [DYNAMIC MAINSTORE] Failed to parse store data:', error);
+        setIsDynamic(false);
+      }
+    } else {
+      console.log('🏪 [STATIC MAINSTORE] Loading default store page');
+      setIsDynamic(false);
+    }
+  }, [params]);
 
   const HORIZONTAL_PADDING = screenData.width < 375 ? 12 : screenData.width > 768 ? 24 : 16;
 
@@ -61,8 +115,38 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
   const [showReviewModal, setShowReviewModal] = useState(false);
 
   const productData: MainStoreProduct = useMemo(
-    () =>
-      initialProduct || {
+    () => {
+      // Use dynamic store data if available, otherwise fallback to static data
+      if (isDynamic && storeData) {
+        console.log('🏪 [DYNAMIC MAINSTORE] Using dynamic store data for product:', storeData);
+        return {
+          id: storeData.id,
+          title: storeData.title || storeData.name || "Store Product",
+          description: storeData.description || `Discover amazing products at ${storeData.name}. Quality items with great deals and cashback offers.`,
+          price: "₹2,199", // Default product price - stores will have their own products
+          location: typeof storeData.location === 'object' 
+            ? storeData.location.address || storeData.location.city || "BTM"
+            : storeData.location || "BTM",
+          distance: typeof storeData.location === 'object' && storeData.location.distance 
+            ? storeData.location.distance 
+            : "0.7 Km",
+          isOpen: true, // Default to open
+          images: [
+            { id: "1", uri: storeData.image || storeData.logo || "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=900&h=1100&fit=crop&crop=center" },
+            { id: "2", uri: "https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?w=900&h=1100&fit=crop&crop=center" },
+            { id: "3", uri: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=900&h=1100&fit=crop&crop=center" },
+          ],
+          cashbackPercentage: typeof storeData.cashback === 'object' 
+            ? storeData.cashback.percentage?.toString() || "10"
+            : storeData.cashback?.toString() || "10",
+          storeName: storeData.name || storeData.title || "Store",
+          storeId: storeData.id,
+          category: storeData.category || "General",
+        };
+      }
+      
+      // Fallback to existing logic for static mode
+      return initialProduct || {
         id: productId || "product-001",
         title: "Little Big Comfort Tee",
         description:
@@ -80,8 +164,9 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         storeName: "Reliance Trends",
         storeId: "store-001",
         category: "Fashion",
-      },
-    [initialProduct, productId]
+      };
+    },
+    [initialProduct, productId, isDynamic, storeData]
   );
 
   const handleSharePress = useCallback(async () => {
@@ -168,7 +253,10 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
 
       <LinearGradient colors={["#7C3AED", "#8B5CF6"]} style={styles.headerGradient}>
-        <MainStoreHeader storeName={productData.storeName} onBack={handleBackPress} />
+        <MainStoreHeader 
+          storeName={isDynamic && storeData ? storeData.name || storeData.title : productData.storeName} 
+          onBack={handleBackPress} 
+        />
       </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -228,7 +316,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         visible={showAboutModal}
         onClose={handleCloseAboutModal}
         storeData={{
-          name: productData.storeName,
+          name: isDynamic && storeData ? storeData.name || storeData.title : productData.storeName,
           establishedYear: 2020,
           address: {
             doorNo: "40A",
@@ -240,7 +328,9 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
             pinCode: "560043",
           },
           isOpen: productData.isOpen,
-          categories: ["Boys", "Girls", "Personal items", "Gift cards", "Loyalty program"],
+          categories: isDynamic && storeData?.category 
+            ? [storeData.category, "Gift cards", "Loyalty program"]
+            : ["Boys", "Girls", "Personal items", "Gift cards", "Loyalty program"],
           hours: [
             { day: "Monday", time: "10:00 AM - 6:00 PM" },
             { day: "Tuesday", time: "10:00 AM - 6:00 PM" },
@@ -258,10 +348,10 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       <ReviewModal
         visible={showReviewModal}
         onClose={handleCloseReviewModal}
-        storeName={productData.storeName}
+        storeName={isDynamic && storeData ? storeData.name || storeData.title : productData.storeName}
         storeId={productData.storeId}
-        averageRating={mockReviewStats.averageRating}
-        totalReviews={mockReviewStats.totalReviews}
+        averageRating={isDynamic && storeData?.rating ? storeData.rating : mockReviewStats.averageRating}
+        totalReviews={isDynamic && storeData?.ratingCount ? storeData.ratingCount : mockReviewStats.totalReviews}
         ratingBreakdown={mockRatingBreakdown}
         reviews={mockReviews}
       />

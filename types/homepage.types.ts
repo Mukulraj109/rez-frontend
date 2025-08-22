@@ -22,6 +22,14 @@ export interface EventItem extends HomepageSectionItem {
   organizer: string;
   isOnline: boolean;
   registrationRequired: boolean;
+  bookingUrl?: string; // For online events
+  availableSlots?: Array<{
+    id: string;
+    time: string;
+    available: boolean;
+    maxCapacity: number;
+    bookedCount: number;
+  }>; // For offline events
 }
 
 // Store Section (for Trending Stores, New Stores, Top Stores)

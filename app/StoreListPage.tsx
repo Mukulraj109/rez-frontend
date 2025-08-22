@@ -100,9 +100,9 @@ const StoreListPage: React.FC = () => {
   // Handle product selection
   const handleProductSelect = useCallback((product: ProductItem, store: StoreResult) => {
     console.log('Product selected:', product.name, 'from store:', store.storeName);
-    // TODO: Navigate to product details page
-    // router.push(`/product/${product.productId}?storeId=${store.storeId}`);
-  }, []);
+    // Navigate to product details page
+    router.push(`/product/${product.productId}?storeId=${store.storeId}`);
+  }, [router]);
 
   // Handle store selection
   const handleStoreSelect = useCallback((store: StoreResult) => {

@@ -12,6 +12,8 @@ import { CartProvider } from '@/contexts/CartContext';
 import { OffersProvider } from '@/contexts/OffersContext';
 import { CategoryProvider } from '@/contexts/CategoryContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
+import { WishlistProvider } from '@/contexts/WishlistContext';
+import AuthDebugger from '@/components/common/AuthDebugger';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -32,6 +34,7 @@ export default function RootLayout() {
             <OffersProvider>
               <CategoryProvider>
                 <ProfileProvider>
+                  <WishlistProvider>
                   <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
                   {/* App Entry Point */}
@@ -41,7 +44,7 @@ export default function RootLayout() {
                   <Stack.Screen name="sign-in" options={{ headerShown: false }} />
                   
                   {/* Onboarding Screens */}
-                  <Stack.Screen name="onboarding/splash" options={{ headerShown: false }} />
+                  <Stack.Screen name="onboarding/splash"  options={{ headerShown: false }}/>
                   <Stack.Screen name="onboarding/registration" options={{ headerShown: false }} />
                   <Stack.Screen name="onboarding/otp-verification" options={{ headerShown: false }} />
                   <Stack.Screen name="onboarding/location-permission" options={{ headerShown: false }} />
@@ -57,6 +60,7 @@ export default function RootLayout() {
                   <Stack.Screen name="CartPage" options={{ headerShown: false }} />
                   <Stack.Screen name="MainStorePage" options={{ headerShown: false }} />
                    <Stack.Screen name="Store" options={{ headerShown: false }} />
+                   <Stack.Screen name="EventPage" options={{ headerShown: false }} />
                    <Stack.Screen name="UGCDetailScreen" options={{ headerShown: false }} />
                    <Stack.Screen name="CoinPage" options={{ headerShown: false }} />
                     <Stack.Screen name="WalletScreen" options={{ headerShown: false }} />
@@ -68,12 +72,21 @@ export default function RootLayout() {
                     <Stack.Screen name="wallet/index" options={{ headerShown: false }} />
                     <Stack.Screen name="account/index" options={{ headerShown: false }} />
                     <Stack.Screen name="profile/index" options={{ headerShown: false }} />
+                    <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
+                    <Stack.Screen name="transactions" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/delivery" options={{ headerShown: false }} />
+                    <Stack.Screen name="tracking" options={{ headerShown: false }} />
                   {/* Dynamic Category Pages */}
                   <Stack.Screen name="category/[slug]" options={{ headerShown: false }} />
                   <Stack.Screen name="+not-found" />
                 </Stack>
                 <StatusBar style="auto" />
+                
+                {/* Debug component for development */}
+                {process.env.NODE_ENV === 'development' && <AuthDebugger />}
+                
                   </ThemeProvider>
+                  </WishlistProvider>
                 </ProfileProvider>
               </CategoryProvider>
             </OffersProvider>

@@ -279,10 +279,9 @@ export default function HomeScreen() {
             style={styles.actionItem}
             onPress={() => {
               try {
-                console.log('Voucher pressed - not implemented yet');
-                // TODO: Add voucher navigation
+                router.push('/tracking');
               } catch (error) {
-                console.error('Voucher action press error:', error);
+                console.error('Tracking action press error:', error);
               }
             }}
             activeOpacity={0.7}
@@ -290,10 +289,10 @@ export default function HomeScreen() {
             delayPressOut={0}
           >
             <View style={styles.actionIcon}>
-              <Ionicons name="receipt-outline" size={24} color="#333" />
+              <Ionicons name="location-outline" size={24} color="#333" />
             </View>
-            <ThemedText style={styles.actionLabel}>Voucher</ThemedText>
-            <ThemedText style={styles.actionValue}>0</ThemedText>
+            <ThemedText style={styles.actionLabel}>Track Orders</ThemedText>
+            <ThemedText style={styles.actionValue}>2 Active</ThemedText>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -371,12 +370,53 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Going Out</ThemedText>
           </View>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScrollContent}
-            decelerationRate="fast"
-          >
+          {Platform.OS === 'web' ? (
+            <View style={styles.webScrollContainer}>
+              <View style={styles.webScrollContent}>
+                <TouchableOpacity style={styles.horizontalCategoryItem} onPress={handleFashionPress}>
+                  <View style={styles.categoryIcon}>
+                    <Ionicons name="shirt-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <ThemedText style={styles.categoryLabel}>Fashion</ThemedText>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('fleet')}>
+                  <View style={styles.categoryIcon}>
+                    <Ionicons name="car-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <ThemedText style={styles.categoryLabel}>Fleet Market</ThemedText>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('gift')}>
+                  <View style={styles.categoryIcon}>
+                    <Ionicons name="gift-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <ThemedText style={styles.categoryLabel}>Gift</ThemedText>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('restaurant')}>
+                  <View style={styles.categoryIcon}>
+                    <Ionicons name="restaurant-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <ThemedText style={styles.categoryLabel}>Restaurant</ThemedText>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('electronics')}>
+                  <View style={styles.categoryIcon}>
+                    <Ionicons name="phone-portrait-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <ThemedText style={styles.categoryLabel}>Electronic</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScrollContent}
+              decelerationRate="fast"
+              nestedScrollEnabled={false}
+            >
             <TouchableOpacity style={styles.horizontalCategoryItem} onPress={handleFashionPress}>
               <View style={styles.categoryIcon}>
                 <Ionicons name="shirt-outline" size={24} color="#8B5CF6" />
@@ -405,13 +445,14 @@ export default function HomeScreen() {
               <ThemedText style={styles.categoryLabel}>Restaurant</ThemedText>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('electronics')}>
-              <View style={styles.categoryIcon}>
-                <Ionicons name="phone-portrait-outline" size={24} color="#8B5CF6" />
-              </View>
-              <ThemedText style={styles.categoryLabel}>Electronic</ThemedText>
-            </TouchableOpacity>
-          </ScrollView>
+              <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('electronics')}>
+                <View style={styles.categoryIcon}>
+                  <Ionicons name="phone-portrait-outline" size={24} color="#8B5CF6" />
+                </View>
+                <ThemedText style={styles.categoryLabel}>Electronic</ThemedText>
+              </TouchableOpacity>
+            </ScrollView>
+          )}
         </View>
 
         {/* Home Delivery Section */}
@@ -419,12 +460,53 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Home Delivery</ThemedText>
           </View>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScrollContent}
-            decelerationRate="fast"
-          >
+          {Platform.OS === 'web' ? (
+            <View style={styles.webScrollContainer}>
+              <View style={styles.webScrollContent}>
+                <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('organic')}>
+                  <View style={styles.categoryIcon}>
+                    <Ionicons name="leaf-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <ThemedText style={styles.categoryLabel}>Organic</ThemedText>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('grocery')}>
+                  <View style={styles.categoryIcon}>
+                    <Ionicons name="basket-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <ThemedText style={styles.categoryLabel}>Grocery</ThemedText>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('medicine')}>
+                  <View style={styles.categoryIcon}>
+                    <Ionicons name="medical-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <ThemedText style={styles.categoryLabel}>Medicine</ThemedText>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('fruit')}>
+                  <View style={styles.categoryIcon}>
+                    <Ionicons name="nutrition-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <ThemedText style={styles.categoryLabel}>Fruit</ThemedText>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('meat')}>
+                  <View style={styles.categoryIcon}>
+                    <Ionicons name="restaurant" size={24} color="#8B5CF6" />
+                  </View>
+                  <ThemedText style={styles.categoryLabel}>Meat</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScrollContent}
+              decelerationRate="fast"
+              nestedScrollEnabled={false}
+            >
             <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('organic')}>
               <View style={styles.categoryIcon}>
                 <Ionicons name="leaf-outline" size={24} color="#8B5CF6" />
@@ -453,13 +535,14 @@ export default function HomeScreen() {
               <ThemedText style={styles.categoryLabel}>Fruit</ThemedText>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('meat')}>
-              <View style={styles.categoryIcon}>
-                <Ionicons name="restaurant" size={24} color="#8B5CF6" />
-              </View>
-              <ThemedText style={styles.categoryLabel}>Meat</ThemedText>
-            </TouchableOpacity>
-          </ScrollView>
+              <TouchableOpacity style={styles.horizontalCategoryItem} onPress={() => handleCategoryPress('meat')}>
+                <View style={styles.categoryIcon}>
+                  <Ionicons name="restaurant" size={24} color="#8B5CF6" />
+                </View>
+                <ThemedText style={styles.categoryLabel}>Meat</ThemedText>
+              </TouchableOpacity>
+            </ScrollView>
+          )}
         </View>
 
         {/* New Homepage Sections */}
@@ -701,6 +784,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 4,
     gap: 20,
+  },
+  webScrollContainer: {
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    paddingHorizontal: 20,
+    paddingVertical: 4,
+    scrollbarWidth: 'none', // Firefox
+    msOverflowStyle: 'none', // IE/Edge
+    // Hide scrollbar for Webkit browsers
+    '&::-webkit-scrollbar': {
+      display: 'none',
+    },
+  },
+  webScrollContent: {
+    display: 'flex',
+    flexDirection: 'row',
+    gap: 20,
+    minWidth: 'fit-content',
   },
   categoryItem: {
     width: '18%',

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import OnboardingContainer from '@/components/onboarding/OnboardingContainer';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { navigationDebugger } from '@/utils/navigationDebug';
 
 interface CategoryItem {
   id: string;
@@ -37,6 +38,7 @@ export default function CategorySelectionScreen() {
 
   const handleNext = () => {
     updateUserData({ selectedCategories });
+    navigationDebugger.logNavigation('category-selection', 'rewards-intro', 'categories-selected');
     router.push('/onboarding/rewards-intro');
   };
 

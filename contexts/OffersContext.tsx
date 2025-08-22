@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { OfferState, OffersPageData, OfferFilters } from '@/types/offers.types';
-import { offersPageData } from '@/data/offersData';
+import { offersApi } from '@/services/offersApi';
+// Note: Using offersApi which contains mock data since offers backend is not implemented yet
 
 // Action Types
 type OffersAction =
@@ -87,10 +88,32 @@ export function OffersProvider({ children }: OffersProviderProps) {
   const loadOffers = async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Using mock API since offers backend is not implemented yet
+      const offersResponse = await offersApi.getOffers({ page: 1, pageSize: 50 });
+      const categoriesResponse = await offersApi.getCategories();
       
-      // In a real app, this would be an API call
+      if (!categoriesResponse.data || !offersResponse.data) {
+        throw new Error('Failed to fetch offers data');
+      }
+      
+      // Transform API response to match OffersPageData structure
+      const offersPageData: OffersPageData = {
+        title: 'Special Offers',
+        subtitle: 'Exclusive deals and cashback offers',
+        categories: categoriesResponse.data,
+        sections: [
+          {
+            id: 'featured-offers',
+            title: 'Featured Offers', 
+            subtitle: 'Best deals available now',
+            offers: offersResponse.data.items
+          }
+        ],
+        trending: offersResponse.data.items.filter(offer => offer.isTrending).slice(0, 5),
+        featured: offersResponse.data.items.slice(0, 3), // Remove isFeatured filter since property doesn't exist
+        banners: []
+      };
+      
       dispatch({ type: 'SET_OFFERS', payload: offersPageData });
     } catch (error) {
       dispatch({ 

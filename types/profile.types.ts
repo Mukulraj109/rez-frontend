@@ -6,11 +6,20 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
+  bio?: string;
   initials: string;
   phone?: string;
   joinDate: string;
   isVerified: boolean;
+  wallet?: WalletData;
   preferences: UserPreferences;
+}
+
+export interface WalletData {
+  balance: number;
+  totalEarned: number;
+  totalSpent: number;
+  pendingAmount: number;
 }
 
 export interface UserPreferences {

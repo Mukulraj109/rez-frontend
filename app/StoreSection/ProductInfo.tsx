@@ -17,12 +17,49 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 
-export default function ProductScreen() {
+interface ProductInfoProps {
+  dynamicData?: {
+    title?: string;
+    description?: string;
+    price?: number;
+    merchant?: string;
+    category?: string;
+    section?: string;
+    [key: string]: any;
+  } | null;
+  cardType?: string;
+}
+
+export default function ProductScreen({ dynamicData, cardType }: ProductInfoProps) {
   const router = useRouter();
   const [active, setActive] = useState("visit"); // 'visit' | 'book'
   const translateX = useRef(new Animated.Value(0)).current;
   const containerWidthRef = useRef(0);
   const { width: screenW } = useWindowDimensions();
+
+  // Use dynamic data if available, otherwise use defaults
+  const productTitle = dynamicData?.title || "Premium Product";
+  const productDescription = dynamicData?.description || "High-quality product with exceptional features and benefits";
+  
+  // Safely handle price with proper type checking
+  const rawPrice = dynamicData?.price;
+  const productPrice = typeof rawPrice === 'number' && !isNaN(rawPrice) ? rawPrice : 999;
+  
+  // Safely handle rating with proper type checking
+  const rawRating = dynamicData?.rating;
+  const rating = typeof rawRating === 'number' && !isNaN(rawRating) ? rawRating : 4.5;
+  
+  const merchantName = dynamicData?.merchant || "Premium Store";
+  const category = dynamicData?.category || "Featured";
+
+  // Debug logging
+  console.log('🛍️ [PRODUCT INFO] Component received:', {
+    dynamicData,
+    productPrice,
+    rating,
+    productTitle,
+    merchantName
+  });
 
   const onContainerLayout = (e:any) => {
     const w = e.nativeEvent.layout.width;
@@ -66,19 +103,35 @@ export default function ProductScreen() {
       
 
         <View style={styles.infoContainer}>
-          <Text style={styles.title}>Classic Cotton T-shirt</Text>
+          <Text style={styles.title}>{productTitle}</Text>
           <Text style={styles.description}>
-           A cozy, soft-touch  tshirt perfect for daily wear. Features breathable fabric and a relaxed fit for effortless style.
+            {productDescription}
           </Text>
 
           <View style={styles.priceRow}>
-            <Text style={styles.price}>₹2,199</Text>
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={14} color="#7C3AED" />
-              <Text style={styles.locationText}>0.7 Km, BTM</Text>
-              <View style={styles.openBadge}>
-                <Text style={styles.openText}>• open</Text>
+            <Text style={styles.price}>₹{productPrice}</Text>
+            {/* Show original price if there's a discount */}
+            {dynamicData?.originalPrice?.original && dynamicData.originalPrice.original > productPrice && (
+              <Text style={styles.originalPrice}>₹{dynamicData.originalPrice.original}</Text>
+            )}
+            {/* Show discount percentage */}
+            {dynamicData?.originalPrice?.discount && (
+              <View style={styles.discountBadge}>
+                <Text style={styles.discountText}>{dynamicData.originalPrice.discount}% OFF</Text>
               </View>
+            )}
+          </View>
+          
+          {/* Dynamic availability and location */}
+          <View style={styles.locationRow}>
+            <Ionicons name="location" size={14} color="#7C3AED" />
+            <Text style={styles.locationText}>
+              {dynamicData?.location || "0.7 Km, BTM"}
+            </Text>
+            <View style={styles.openBadge}>
+              <Text style={styles.openText}>
+                • {dynamicData?.availabilityStatus === 'in_stock' ? 'in stock' : 'open'}
+              </Text>
             </View>
           </View>
 
@@ -86,9 +139,11 @@ export default function ProductScreen() {
           <View style={styles.ratingRow}>
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={14} color="#FBBF24" />
-              <Text style={styles.ratingText}>3.2</Text>
+              <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
             </View>
-            <Text style={styles.reviewCount}>300 reviews</Text>
+            <Text style={styles.reviewCount}>
+              {dynamicData?.originalRating?.count || 300} reviews
+            </Text>
           </View>
 
           {/* Enhanced review CTA card */}
@@ -104,12 +159,16 @@ export default function ProductScreen() {
                 </View>
                 <View style={styles.reviewTextContent}>
                   <Text style={styles.reviewMainText}>Write a review</Text>
-                  <Text style={styles.reviewSubText}>Earn 10% cashback instantly</Text>
+                  <Text style={styles.reviewSubText}>
+                    Earn {dynamicData?.cashback?.percentage || 10}% cashback instantly
+                  </Text>
                 </View>
               </View>
               <View style={styles.cashbackBadge}>
                 <Ionicons name="wallet-outline" size={16} color="#10B981" />
-                <Text style={styles.cashbackText}>₹220</Text>
+                <Text style={styles.cashbackText}>
+                  ₹{dynamicData?.cashback?.maxAmount || 220}
+                </Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -197,6 +256,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   price: { fontSize: 24, fontWeight: "800", color: "#7C3AED" },
+  originalPrice: { 
+    fontSize: 18, fontWeight: "500", color: "#999", 
+    textDecorationLine: "line-through", marginLeft: 8 
+  },
+  discountBadge: {
+    backgroundColor: "#EF4444", paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 6, marginLeft: 8
+  },
+  discountText: { fontSize: 12, fontWeight: "700", color: "#fff" },
   locationRow: { flexDirection: "row", alignItems: "center",padding: 10 },
   locationText: { fontSize: 13, marginLeft: 6, color: "#555" },
   openBadge: {

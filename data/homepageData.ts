@@ -16,7 +16,7 @@ export const eventsData: EventItem[] = [
     title: 'Art of Living - Happiness Program',
     subtitle: 'Free • Online',
     image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=400&h=200&fit=crop',
-    description: 'Transform your life with ancient wisdom and modern techniques',
+    description: 'Transform your life with ancient wisdom and modern techniques. Learn breathing exercises, meditation, and stress management in this comprehensive wellness program.',
     price: { amount: 0, currency: '₹', isFree: true },
     location: 'Online',
     date: '2025-08-25',
@@ -24,7 +24,8 @@ export const eventsData: EventItem[] = [
     category: 'Wellness',
     organizer: 'Art of Living Foundation',
     isOnline: true,
-    registrationRequired: true
+    registrationRequired: true,
+    bookingUrl: 'https://www.artofliving.org/register'
   },
   {
     id: 'event_002',
@@ -32,7 +33,7 @@ export const eventsData: EventItem[] = [
     title: 'Music Concert - Classical Night',
     subtitle: '₹299 • Venue',
     image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=200&fit=crop',
-    description: 'An evening of classical music by renowned artists',
+    description: 'An evening of classical music by renowned artists. Experience the beauty of Indian classical music in the historic Bangalore Palace.',
     price: { amount: 299, currency: '₹', isFree: false },
     location: 'Bangalore Palace',
     date: '2025-08-28',
@@ -40,7 +41,12 @@ export const eventsData: EventItem[] = [
     category: 'Music',
     organizer: 'Cultural Events Bangalore',
     isOnline: false,
-    registrationRequired: true
+    registrationRequired: true,
+    availableSlots: [
+      { id: 'slot1', time: '6:30 PM', available: true, maxCapacity: 200, bookedCount: 45 },
+      { id: 'slot2', time: '8:00 PM', available: true, maxCapacity: 200, bookedCount: 120 },
+      { id: 'slot3', time: '9:30 PM', available: false, maxCapacity: 200, bookedCount: 200 },
+    ]
   },
   {
     id: 'event_003',
@@ -48,7 +54,7 @@ export const eventsData: EventItem[] = [
     title: 'Tech Meetup - AI Revolution',
     subtitle: 'Free • Venue',
     image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=200&fit=crop',
-    description: 'Latest trends in AI and machine learning',
+    description: 'Latest trends in AI and machine learning. Join industry experts and tech enthusiasts for discussions on AI innovations and networking.',
     price: { amount: 0, currency: '₹', isFree: true },
     location: 'Tech Park, Whitefield',
     date: '2025-08-30',
@@ -56,7 +62,12 @@ export const eventsData: EventItem[] = [
     category: 'Technology',
     organizer: 'Bangalore Tech Community',
     isOnline: false,
-    registrationRequired: true
+    registrationRequired: true,
+    availableSlots: [
+      { id: 'slot1', time: '10:00 AM', available: true, maxCapacity: 150, bookedCount: 85 },
+      { id: 'slot2', time: '2:00 PM', available: true, maxCapacity: 150, bookedCount: 52 },
+      { id: 'slot3', time: '4:00 PM', available: true, maxCapacity: 150, bookedCount: 12 },
+    ]
   }
 ];
 

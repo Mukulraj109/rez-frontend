@@ -1,24 +1,27 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import OnboardingContainer from '@/components/onboarding/OnboardingContainer';
 import FormInput from '@/components/onboarding/FormInput';
-import { useOnboarding } from '@/hooks/useOnboarding';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function RegistrationScreen() {
   const router = useRouter();
-  const { state, updateUserData, validatePhoneNumber, validateEmail, setLoading, setError } = useOnboarding();
+  const { state, actions } = useAuth();
   
   const [formData, setFormData] = useState({
-    phoneNumber: state.userData.phoneNumber || '',
-    email: state.userData.email || '',
-    referralCode: state.userData.referralCode || '',
+    phoneNumber: '',
+    email: '',
+    referralCode: '',
   });
   
   const [errors, setErrors] = useState({
     phoneNumber: '',
     email: '',
   });
+
+  const [showExistingUserMessage, setShowExistingUserMessage] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -37,13 +40,13 @@ export default function RegistrationScreen() {
 
     if (!formData.phoneNumber.trim()) {
       newErrors.phoneNumber = 'Phone number is required';
-    } else if (!validatePhoneNumber(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Please enter a valid phone number';
+    } else if (!/^(\+91|91)?[6-9]\d{9}$/.test(formData.phoneNumber.replace(/\s/g, ''))) {
+      newErrors.phoneNumber = 'Please enter a valid Indian phone number';
     }
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!validateEmail(formData.email)) {
+    } else if (!/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
 
@@ -55,74 +58,132 @@ export default function RegistrationScreen() {
     if (!validateForm()) {
       return;
     }
-
-    setLoading(true);
     
     try {
-      // Simulate API call for registration
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Format phone number for backend
+      let phoneNumber = formData.phoneNumber.replace(/\s/g, '');
+      if (!phoneNumber.startsWith('+')) {
+        phoneNumber = phoneNumber.startsWith('91') ? `+${phoneNumber}` : `+91${phoneNumber}`;
+      }
       
-      // Update user data
-      updateUserData(formData);
+      // Send OTP to phone number with email and referral code
+      await actions.sendOTP(phoneNumber, formData.email, formData.referralCode || undefined);
       
-      // Navigate to OTP verification
-      router.push('/onboarding/otp-verification');
+      // Only navigate if OTP was sent successfully (no error thrown)
+      router.push({
+        pathname: '/onboarding/otp-verification',
+        params: { phoneNumber }
+      });
     } catch (error) {
-      Alert.alert('Error', 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
+      // Check if it's an existing user error
+      const errorMessage = state.error || 'Failed to send OTP. Please try again.';
+      if (errorMessage.includes('already registered') && errorMessage.includes('Sign In')) {
+        setShowExistingUserMessage(true);
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
+      actions.clearError();
     }
+  };
+
+  const handleGoToSignIn = () => {
+    router.push('/sign-in');
+  };
+
+  const handleTryAgain = () => {
+    setShowExistingUserMessage(false);
+    setFormData({
+      phoneNumber: '',
+      email: '',
+      referralCode: '',
+    });
+    setErrors({
+      phoneNumber: '',
+      email: '',
+    });
   };
 
   return (
     <OnboardingContainer useGradient={false} style={styles.container}>
       <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Please enter your{'\n'}mobile number</Text>
-          <View style={styles.underline} />
-        </View>
+        {showExistingUserMessage ? (
+          // Existing User Message
+          <View style={styles.existingUserContainer}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="person-circle" size={80} color="#8B5CF6" />
+            </View>
+            <Text style={styles.existingUserTitle}>Account Already Exists</Text>
+            <Text style={styles.existingUserMessage}>
+              This phone number is already registered.{'\n'}
+              Please use Sign In to access your account.
+            </Text>
+            
+            <TouchableOpacity style={styles.signInButton} onPress={handleGoToSignIn}>
+              <Ionicons name="log-in-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.signInButtonText}>Go to Sign In</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.tryAgainButton} onPress={handleTryAgain}>
+              <Text style={styles.tryAgainText}>Try Different Number</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // Normal Registration Form
+          <>
+            <View style={styles.header}>
+              <Text style={styles.title}>Please enter your{'\n'}mobile number</Text>
+              <View style={styles.underline} />
+            </View>
 
-        <View style={styles.form}>
-          <FormInput
-            placeholder="Enter your mobile number"
-            value={formData.phoneNumber}
-            onChangeText={(value) => handleInputChange('phoneNumber', value)}
-            keyboardType="phone-pad"
-            error={errors.phoneNumber}
-            containerStyle={styles.inputContainer}
-          />
+            <View style={styles.form}>
+              <FormInput
+                placeholder="Enter your mobile number"
+                value={formData.phoneNumber}
+                onChangeText={(value) => handleInputChange('phoneNumber', value)}
+                keyboardType="phone-pad"
+                error={errors.phoneNumber}
+                containerStyle={styles.inputContainer}
+              />
 
-          <FormInput
-            placeholder="Email Id"
-            value={formData.email}
-            onChangeText={(value) => handleInputChange('email', value)}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            error={errors.email}
-            containerStyle={styles.inputContainer}
-          />
+              <FormInput
+                placeholder="Email Id"
+                value={formData.email}
+                onChangeText={(value) => handleInputChange('email', value)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                error={errors.email}
+                containerStyle={styles.inputContainer}
+              />
 
-          <FormInput
-            placeholder="Referral code (Optional)"
-            value={formData.referralCode}
-            onChangeText={(value) => handleInputChange('referralCode', value)}
-            autoCapitalize="characters"
-            containerStyle={styles.inputContainer}
-          />
-        </View>
+              <FormInput
+                placeholder="Referral code (Optional)"
+                value={formData.referralCode}
+                onChangeText={(value) => handleInputChange('referralCode', value)}
+                autoCapitalize="characters"
+                containerStyle={styles.inputContainer}
+              />
+            </View>
 
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            state.isLoading && styles.submitButtonDisabled
-          ]}
-          onPress={handleSubmit}
-          disabled={state.isLoading}
-        >
-          <Text style={styles.submitButtonText}>
-            {state.isLoading ? 'Submitting...' : 'Submit'}
-          </Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                state.isLoading && styles.submitButtonDisabled
+              ]}
+              onPress={handleSubmit}
+              disabled={state.isLoading}
+            >
+              <Text style={styles.submitButtonText}>
+                {state.isLoading ? 'Submitting...' : 'Submit'}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.alreadyHaveAccountButton} onPress={handleGoToSignIn}>
+              <Text style={styles.alreadyHaveAccountText}>
+                Already have an account? Sign In
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </OnboardingContainer>
   );
@@ -183,6 +244,74 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  alreadyHaveAccountButton: {
+    marginTop: 20,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  alreadyHaveAccountText: {
+    fontSize: 14,
+    color: '#8B5CF6',
+    fontWeight: '600',
+  },
+  // Existing User Message Styles
+  existingUserContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  iconContainer: {
+    marginBottom: 24,
+  },
+  existingUserTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#374151',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  existingUserMessage: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  signInButton: {
+    backgroundColor: '#8B5CF6',
+    borderRadius: 25,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    minWidth: 200,
+    shadowColor: '#8B5CF6',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  signInButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  tryAgainButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  tryAgainText: {
+    fontSize: 14,
+    color: '#6B7280',
     fontWeight: '600',
   },
 });
