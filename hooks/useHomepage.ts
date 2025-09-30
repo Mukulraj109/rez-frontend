@@ -1,16 +1,19 @@
 import { useReducer, useCallback, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { 
-  HomepageState, 
-  HomepageAction, 
+import { Alert } from 'react-native';
+import {
+  HomepageState,
+  HomepageAction,
   UseHomepageDataResult,
-  HomepageSection 
+  HomepageSection
 } from '@/types/homepage.types';
-import { 
-  initialHomepageState, 
-  fetchHomepageData, 
-  fetchSectionData 
+import {
+  initialHomepageState,
+  fetchHomepageData,
+  fetchSectionData
 } from '@/data/homepageData';
+import homepageDataService from '@/services/homepageDataService';
+import { useCart } from '@/contexts/CartContext';
 
 // Homepage Reducer
 function homepageReducer(state: HomepageState, action: HomepageAction): HomepageState {
@@ -79,15 +82,70 @@ function homepageReducer(state: HomepageState, action: HomepageAction): Homepage
 // Main Homepage Hook
 export function useHomepage(): UseHomepageDataResult {
   const [state, dispatch] = useReducer(homepageReducer, initialHomepageState);
+  
+  console.log('🏠 [HOMEPAGE HOOK] Hook initialized, current state:', {
+    sectionsCount: state.sections.length,
+    loading: state.loading,
+    error: state.error,
+    sectionsIds: state.sections.map(s => `${s.id}:${s.items.length}`)
+  });
 
   // Load all homepage sections
   const refreshAllSections = useCallback(async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       
+      // Get base homepage data (for sections that don't need API integration)
       const data = await fetchHomepageData();
       
-      dispatch({ type: 'SET_SECTIONS', payload: data.sections });
+      console.log('🏠 Initial homepage sections:', data.sections.length, data.sections.map(s => s.id));
+      
+      // Update specific sections with backend data
+      const updatedSections = await Promise.all(
+        data.sections.map(async (section) => {
+          console.log(`🔍 Processing section: ${section.id} (${section.items.length} items)`);
+          
+          if (section.id === 'just_for_you') {
+            console.log('🔄 Loading "Just for You" section with backend data...');
+            try {
+              const backendSection = await homepageDataService.getJustForYouSection();
+              console.log('✅ Backend "Just for You":', backendSection.items.length, 'items');
+              return backendSection;
+            } catch (error) {
+              console.warn('⚠️ Failed to load "Just for You" from backend, using fallback:', error);
+              return section; // fallback to original section
+            }
+          } else if (section.id === 'new_arrivals') {
+            console.log('🔄 Loading "New Arrivals" section with backend data...');
+            try {
+              const backendSection = await homepageDataService.getNewArrivalsSection();
+              console.log('✅ Backend "New Arrivals":', backendSection.items.length, 'items');
+              return backendSection;
+            } catch (error) {
+              console.warn('⚠️ Failed to load "New Arrivals" from backend, using fallback:', error);
+              return section; // fallback to original section
+            }
+          } else if (section.id === 'trending_stores') {
+            console.log('🔄 Loading "Trending Stores" section with backend data...');
+            try {
+              const backendSection = await homepageDataService.getTrendingStoresSection();
+              console.log('✅ Backend "Trending Stores":', backendSection.items.length, 'items');
+              return backendSection;
+            } catch (error) {
+              console.warn('⚠️ Failed to load "Trending Stores" from backend, using fallback:', error);
+              return section; // fallback to original section
+            }
+          } else {
+            // Keep other sections unchanged
+            console.log(`✅ Keeping section "${section.id}" unchanged (${section.items.length} items)`);
+            return section;
+          }
+        })
+      );
+      
+      console.log('🎯 Final updated sections:', updatedSections.length, updatedSections.map(s => `${s.id}:${s.items.length}`));
+      
+      dispatch({ type: 'SET_SECTIONS', payload: updatedSections });
       dispatch({ type: 'SET_LAST_REFRESH', payload: new Date().toISOString() });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load homepage data';
@@ -100,7 +158,22 @@ export function useHomepage(): UseHomepageDataResult {
     try {
       dispatch({ type: 'REFRESH_SECTION', payload: sectionId });
       
-      const sectionData = await fetchSectionData(sectionId);
+      let sectionData: HomepageSection;
+      
+      // Use new backend service for specific sections
+      if (sectionId === 'just_for_you') {
+        console.log('🔄 Refreshing "Just for You" section with backend data...');
+        sectionData = await homepageDataService.getJustForYouSection();
+      } else if (sectionId === 'new_arrivals') {
+        console.log('🔄 Refreshing "New Arrivals" section with backend data...');
+        sectionData = await homepageDataService.getNewArrivalsSection();
+      } else if (sectionId === 'trending_stores') {
+        console.log('🔄 Refreshing "Trending Stores" section with backend data...');
+        sectionData = await homepageDataService.getTrendingStoresSection();
+      } else {
+        // Use fallback for other sections
+        sectionData = await fetchSectionData(sectionId);
+      }
       
       dispatch({ 
         type: 'UPDATE_SECTION', 
@@ -146,10 +219,29 @@ export function useHomepage(): UseHomepageDataResult {
 
   // Auto-refresh on mount
   useEffect(() => {
-    if (state.sections.length === 0 && !state.loading) {
-      refreshAllSections();
+    console.log('🏠 [HOMEPAGE HOOK] useEffect triggered - sections length:', state.sections.length, 'loading:', state.loading);
+    // Since we now have fallback data, sections.length will not be 0, so let's trigger refresh anyway
+    console.log('🏠 [HOMEPAGE HOOK] Calling refreshAllSections to get real backend data');
+    refreshAllSections();
+  }, [refreshAllSections]);
+
+  // Debug effect to test service directly
+  useEffect(() => {
+    const testService = async () => {
+      console.log('🧪 [HOMEPAGE HOOK] Testing homepage service...');
+      try {
+        const justForYouSection = await homepageDataService.getJustForYouSection();
+        console.log('🧪 [HOMEPAGE HOOK] Direct service test - Just for you:', justForYouSection.items.length, 'items');
+      } catch (error) {
+        console.error('🧪 [HOMEPAGE HOOK] Direct service test failed:', error);
+      }
+    };
+    
+    // Run test only once
+    if (state.sections.length > 0) {
+      testService();
     }
-  }, [refreshAllSections, state.sections.length, state.loading]);
+  }, [state.sections.length]);
 
   return {
     state,
@@ -215,6 +307,7 @@ export function useNewArrivals() {
 export function useHomepageNavigation() {
   const { actions } = useHomepage();
   const router = useRouter();
+  const { actions: cartActions } = useCart();
 
   const handleItemPress = useCallback((sectionId: string, item: any) => {
     console.log('🔥 [HANDLE ITEM PRESS] Called with:', { sectionId, itemId: item.id, itemType: item.type });
@@ -449,11 +542,68 @@ export function useHomepageNavigation() {
     }
   }, [actions, router]);
 
-  const handleAddToCart = useCallback((item: any) => {
-    // Add to cart logic
-    console.log('Add to cart:', item);
-    // TODO: Integrate with cart context/state
-  }, []);
+  const handleAddToCart = useCallback(async (item: any) => {
+    try {
+      console.log('🛒 [Add to Cart] Adding item - Full object:', JSON.stringify(item, null, 2));
+      console.log('🛒 [Add to Cart] Image fields:', {
+        image: item.image,
+        imageUrl: item.imageUrl,
+        images: item.images,
+        allKeys: Object.keys(item)
+      });
+
+      // Extract product ID - handle both product._id and product.id formats
+      const productId = item._id || item.id;
+
+      if (!productId) {
+        console.error('❌ [Add to Cart] No product ID found');
+        Alert.alert('Error', 'Cannot add item to cart - invalid product');
+        return;
+      }
+
+      // Extract image - handle multiple possible formats
+      let imageUrl = '';
+      if (item.image) {
+        imageUrl = item.image;
+      } else if (item.imageUrl) {
+        imageUrl = item.imageUrl;
+      } else if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+        imageUrl = item.images[0].url || item.images[0];
+      } else if (item.images && typeof item.images === 'string') {
+        imageUrl = item.images;
+      }
+
+      console.log('🛒 [Add to Cart] Using image URL:', imageUrl);
+
+      // Check if item already exists in cart
+      const existingItem = cartActions.isItemInCart(productId);
+
+      if (existingItem) {
+        console.log('🛒 [Add to Cart] Item already in cart, will increase quantity automatically');
+      }
+
+      // Add to cart via CartContext (CartContext will handle increasing quantity if it exists)
+      await cartActions.addItem({
+        id: productId,
+        productId: productId,
+        name: item.name || item.title || 'Product',
+        image: imageUrl,
+        originalPrice: item.originalPrice || item.price || 0,
+        discountedPrice: item.price || item.originalPrice || 0,
+        discount: item.discount || 0,
+        quantity: 1,
+        store: item.store,
+        variant: item.variant,
+      });
+
+      console.log('✅ [Add to Cart] Item added successfully');
+      Alert.alert('Success', `${item.name || 'Item'} added to cart!`);
+
+    } catch (error) {
+      console.error('❌ [Add to Cart] Failed:', error);
+      Alert.alert('Error', 'Failed to add item to cart. Please try again.');
+    }
+  }, [cartActions]);
 
   return {
     handleItemPress,

@@ -157,6 +157,7 @@ export default function ReviewPage() {
               uri: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
             }}
             style={styles.productImage}
+            resizeMode="cover"
           />
         </View>
 
@@ -272,7 +273,6 @@ const styles = StyleSheet.create({
     width: 180,
     height: 220,
     borderRadius: 20,
-    resizeMode: 'cover',
     shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowRadius: 10,

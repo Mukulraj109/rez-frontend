@@ -1,22 +1,60 @@
-import React from 'react';
-import { 
-  TouchableOpacity, 
-  StyleSheet, 
-  Image, 
-  View 
+import React, { useMemo, useEffect, useState } from 'react';
+import {
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  View
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { RecommendationCardProps } from '@/types/homepage.types';
+import { useCart } from '@/contexts/CartContext';
+import { useWishlist } from '@/contexts/WishlistContext';
+import StockBadge from '@/components/common/StockBadge';
+import { useStockStatus } from '@/hooks/useStockStatus';
+import { useStockNotifications } from '@/hooks/useStockNotifications';
 
-export default function RecommendationCard({ 
-  recommendation, 
-  onPress, 
+export default function RecommendationCard({
+  recommendation,
+  onPress,
   onAddToCart,
-  width = 240,
+  width = 230,
   showReason = true
 }: RecommendationCardProps) {
+  const { state: cartState, actions: cartActions } = useCart();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const { subscribe, subscribing } = useStockNotifications();
+  const [, forceUpdate] = useState({});
+  const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
+
+  // Stock status
+  const stock = recommendation.inventory?.stock ?? (recommendation.availabilityStatus === 'out_of_stock' ? 0 : 100);
+  const lowStockThreshold = recommendation.inventory?.lowStockThreshold ?? 5;
+  const { isOutOfStock, isLowStock, canAddToCart: canAddToCartStock } = useStockStatus({
+    stock,
+    lowStockThreshold,
+  });
+
+  // Force re-render when cart changes
+  useEffect(() => {
+    forceUpdate({});
+  }, [cartState.items.length, cartState.items]);
+
+  // Check if product is in cart and get quantity
+  const { productId, cartItem, quantityInCart, isInCart } = useMemo(() => {
+    const id = recommendation._id || recommendation.id;
+    const item = cartState.items.find(i => i.productId === id);
+    const qty = item?.quantity || 0;
+    const inCart = qty > 0;
+
+    return {
+      productId: id,
+      cartItem: item,
+      quantityInCart: qty,
+      isInCart: inCart
+    };
+  }, [recommendation._id, recommendation.id, cartState.items, cartState.items.length]);
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -33,6 +71,39 @@ export default function RecommendationCard({
       return Math.round(((recommendation.price.original - recommendation.price.current) / recommendation.price.original) * 100);
     }
     return 0;
+  };
+
+  const handleToggleWishlist = async (e: any) => {
+    e.stopPropagation();
+
+    if (isTogglingWishlist) return;
+
+    setIsTogglingWishlist(true);
+    try {
+      const inWishlist = isInWishlist(productId);
+
+      if (inWishlist) {
+        await removeFromWishlist(productId);
+      } else {
+        await addToWishlist({
+          productId,
+          productName: recommendation.name,
+          productImage: recommendation.image,
+          price: recommendation.price.current,
+          originalPrice: recommendation.price.original,
+          discount: getDiscountPercentage(),
+          rating: recommendation.rating?.value || 0,
+          reviewCount: recommendation.rating?.count || 0,
+          brand: recommendation.brand,
+          category: recommendation.category || 'General',
+          availability: isOutOfStock ? 'OUT_OF_STOCK' : isLowStock ? 'LIMITED' : 'IN_STOCK',
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling wishlist:', error);
+    } finally {
+      setIsTogglingWishlist(false);
+    }
   };
 
   return (
@@ -52,8 +123,8 @@ export default function RecommendationCard({
 
         {/* Product Image */}
         <View style={styles.imageContainer}>
-          <Image 
-            source={{ uri: recommendation.image }} 
+          <Image
+            source={{ uri: recommendation.image }}
             style={styles.image}
             resizeMode="cover"
             fadeDuration={0}
@@ -65,6 +136,29 @@ export default function RecommendationCard({
               </ThemedText>
             </View>
           )}
+          {(recommendation.inventory || isOutOfStock || isLowStock) && (
+            <View style={styles.stockBadgeContainer}>
+              <StockBadge
+                stock={stock}
+                lowStockThreshold={lowStockThreshold}
+                variant="compact"
+              />
+            </View>
+          )}
+
+          {/* Wishlist Heart Button */}
+          <TouchableOpacity
+            style={styles.wishlistButton}
+            onPress={handleToggleWishlist}
+            disabled={isTogglingWishlist}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isInWishlist(productId) ? "heart" : "heart-outline"}
+              size={20}
+              color={isInWishlist(productId) ? "#EF4444" : "#FFFFFF"}
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Product Details */}
@@ -136,19 +230,90 @@ export default function RecommendationCard({
             </ThemedText>
           </View>
 
-          {/* Add to Cart Button */}
-          {onAddToCart && recommendation.availabilityStatus === 'in_stock' && (
-            <TouchableOpacity
-              style={styles.addToCartButton}
-              onPress={(e) => {
-                e.stopPropagation();
-                onAddToCart(recommendation);
-              }}
-              activeOpacity={0.95}
-            >
-              <Ionicons name="add-circle" size={18} color="#FFFFFF" />
-              <ThemedText style={styles.addToCartText}>Add to Cart</ThemedText>
-            </TouchableOpacity>
+          {/* Add to Cart Button / Quantity Controls */}
+          {onAddToCart && (
+            <>
+              {isOutOfStock ? (
+                // Notify Me Button when out of stock
+                <TouchableOpacity
+                  style={[
+                    styles.notifyMeButton,
+                    subscribing[productId] && styles.notifyMeButtonDisabled
+                  ]}
+                  key="notify-me-button"
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    subscribe(productId, 'push');
+                  }}
+                  activeOpacity={0.95}
+                  disabled={subscribing[productId]}
+                >
+                  <Ionicons name="notifications-outline" size={18} color="#8B5CF6" />
+                  <ThemedText style={styles.notifyMeText}>
+                    {subscribing[productId] ? 'Subscribing...' : 'Notify Me'}
+                  </ThemedText>
+                </TouchableOpacity>
+              ) : isInCart ? (
+                // Quantity Controls (Flipkart style)
+                <View style={styles.quantityControls} key="quantity-controls">
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={async (e) => {
+                      e.stopPropagation();
+                      if (quantityInCart > 1) {
+                        await cartActions.updateQuantity(cartItem!.id, quantityInCart - 1);
+                      } else {
+                        await cartActions.removeItem(cartItem!.id);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="remove" size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+
+                  <View style={styles.quantityDisplay}>
+                    <ThemedText style={styles.quantityText}>{quantityInCart}</ThemedText>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.quantityButton,
+                      quantityInCart >= stock && styles.quantityButtonDisabled
+                    ]}
+                    onPress={async (e) => {
+                      e.stopPropagation();
+                      if (quantityInCart < stock) {
+                        await cartActions.updateQuantity(cartItem!.id, quantityInCart + 1);
+                      }
+                    }}
+                    activeOpacity={quantityInCart >= stock ? 1 : 0.7}
+                    disabled={quantityInCart >= stock}
+                  >
+                    <Ionicons name="add" size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                // Add to Cart Button
+                <TouchableOpacity
+                  style={[
+                    styles.addToCartButton,
+                    !canAddToCartStock && styles.addToCartButtonDisabled
+                  ]}
+                  key="add-to-cart-button"
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (canAddToCartStock) {
+                      onAddToCart(recommendation);
+                    }
+                  }}
+                  activeOpacity={0.95}
+                  disabled={!canAddToCartStock}
+                >
+                  <Ionicons name="add-circle" size={18} color="#FFFFFF" />
+                  <ThemedText style={styles.addToCartText}>Add to Cart</ThemedText>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
       </ThemedView>
@@ -164,17 +329,18 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
     position: 'relative',
+    height: 400,
   },
   recommendationBadge: {
     position: 'absolute',
@@ -213,6 +379,30 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 4,
   },
+  stockBadgeContainer: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+  },
+  wishlistButton: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
   discountText: {
     color: '#FFFFFF',
     fontSize: 10,
@@ -220,6 +410,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 12,
+    paddingBottom: 8,
   },
   brand: {
     fontSize: 12,
@@ -327,5 +518,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#8B5CF6',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  quantityButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityDisplay: {
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantityText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  quantityButtonDisabled: {
+    opacity: 0.5,
+  },
+  addToCartButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: '#A78BFA',
+  },
+  notifyMeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#8B5CF6',
+  },
+  notifyMeText: {
+    fontSize: 12,
+    color: '#8B5CF6',
+    fontWeight: '600',
+  },
+  notifyMeButtonDisabled: {
+    opacity: 0.5,
   },
 });

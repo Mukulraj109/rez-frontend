@@ -1,9 +1,9 @@
 import { 
   EventItem, 
   StoreItem, 
-  ProductItem, 
+
   BrandedStoreItem, 
-  RecommendationItem,
+
   HomepageSection,
   HomepageState 
 } from '@/types/homepage.types';
@@ -95,7 +95,7 @@ export const trendingStoresData: StoreItem[] = [
     title: 'Columbia',
     name: 'Columbia Sportswear',
     image: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5b?w=400&h=200&fit=crop',
-    description: 'Outdoor gear and sportswear',
+    description: 'Premium men\'s essentials gear and sportswear',
     logo: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=100&h=100&fit=crop',
     rating: { value: 4.4, count: 892, maxValue: 5 },
     cashback: { percentage: 10, maxAmount: 1000 },
@@ -208,89 +208,7 @@ export const topStoresData: BrandedStoreItem[] = [
   }
 ];
 
-// New Arrivals Data
-export const newArrivalsData: ProductItem[] = [
-  {
-    id: 'product_arrival_001',
-    type: 'product',
-    title: 'Scented Candles',
-    name: 'Premium Scented Candle Collection',
-    brand: 'Aroma Delights',
-    image: 'https://images.unsplash.com/photo-1602522049634-6271b3a0b1a3?w=400&h=200&fit=crop',
-    description: 'Scented candles for relaxation and ambiance',
-    price: { current: 599, original: 799, currency: '₹', discount: 25 },
-    category: 'Home Decor',
-    subcategory: 'Candles',
-    rating: { value: 4.5, count: 324 },
-    cashback: { percentage: 8, maxAmount: 50 },
-    isNewArrival: true,
-    availabilityStatus: 'in_stock',
-    tags: ['aromatherapy', 'relaxation', 'home', 'gift'],
-    arrivalDate: '2025-08-18'
-  },
-  {
-    id: 'product_arrival_002',
-    type: 'product',
-    title: 'Luxury Perfume',
-    name: 'Essence Luxury Fragrance',
-    brand: 'Essence',
-    image: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=200&fit=crop',
-    description: 'Best of the best perfumes for every occasion',
-    price: { current: 2499, original: 3299, currency: '₹', discount: 24 },
-    category: 'Beauty',
-    subcategory: 'Fragrance',
-    rating: { value: 4.7, count: 189 },
-    cashback: { percentage: 5, maxAmount: 100 },
-    isNewArrival: true,
-    availabilityStatus: 'low_stock',
-    tags: ['luxury', 'fragrance', 'premium', 'unisex'],
-    arrivalDate: '2025-08-17'
-  }
-];
 
-// Just for You (Recommendations) Data
-export const recommendationsData: RecommendationItem[] = [
-  {
-    id: 'rec_001',
-    type: 'product',
-    title: 'Pottery Barn Chair',
-    name: 'Premium Ergonomic Chair',
-    brand: 'Pottery Barn',
-    image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=200&fit=crop',
-    description: 'Comfortable ergonomic chair for home office',
-    price: { current: 8999, original: 12999, currency: '₹', discount: 31 },
-    category: 'Furniture',
-    subcategory: 'Chairs',
-    rating: { value: 4.6, count: 567 },
-    cashback: { percentage: 12, maxAmount: 1000 },
-    isRecommended: true,
-    availabilityStatus: 'in_stock',
-    tags: ['ergonomic', 'office', 'comfort', 'premium'],
-    recommendationReason: 'Based on your recent home office purchases',
-    recommendationScore: 0.89,
-    personalizedFor: 'home_office'
-  },
-  {
-    id: 'rec_002',
-    type: 'product',
-    title: 'Nike Running Shoes',
-    name: 'Nike Air Zoom Pegasus 40',
-    brand: 'Nike',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=200&fit=crop',
-    description: 'Premium running shoes for daily training',
-    price: { current: 9695, original: 10995, currency: '₹', discount: 12 },
-    category: 'Sports',
-    subcategory: 'Shoes',
-    rating: { value: 4.8, count: 1234 },
-    cashback: { percentage: 10, maxAmount: 500 },
-    isRecommended: true,
-    availabilityStatus: 'in_stock',
-    tags: ['running', 'sports', 'premium', 'comfort'],
-    recommendationReason: 'Perfect for your fitness goals',
-    recommendationScore: 0.92,
-    personalizedFor: 'fitness'
-  }
-];
 
 // Homepage Sections Configuration
 export const homepageSections: HomepageSection[] = [
@@ -313,8 +231,27 @@ export const homepageSections: HomepageSection[] = [
     type: 'recommendations',
     showViewAll: false,
     isHorizontalScroll: true,
-    items: recommendationsData,
-    loading: false,
+    items: [
+      {
+        id: 'fallback_001',
+        type: 'product',
+        title: 'Fallback Product 1',
+        name: 'Fallback Product 1',
+        brand: 'Test Brand',
+        image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=200&fit=crop',
+        description: 'Test fallback product to see if section shows',
+        price: { current: 999, original: 1299, currency: '₹', discount: 23 },
+        category: 'Test',
+        rating: { value: 4.5, count: 100 },
+        availabilityStatus: 'in_stock' as const,
+        tags: ['test'],
+        isRecommended: true,
+        recommendationReason: 'Test recommendation',
+        recommendationScore: 0.8,
+        personalizedFor: 'general'
+      }
+    ], // Temporary fallback to test rendering
+    loading: false, // Don't show loading state initially
     error: null,
     lastUpdated: new Date().toISOString(),
     refreshable: true,
@@ -365,8 +302,25 @@ export const homepageSections: HomepageSection[] = [
     type: 'products',
     showViewAll: false,
     isHorizontalScroll: true,
-    items: newArrivalsData,
-    loading: false,
+    items: [
+      {
+        id: 'fallback_002',
+        type: 'product',
+        title: 'Fallback New Arrival',
+        name: 'Fallback New Arrival',
+        brand: 'Test Brand',
+        image: 'https://images.unsplash.com/photo-1602522049634-6271b3a0b1a3?w=400&h=200&fit=crop',
+        description: 'Test fallback new arrival product',
+        price: { current: 799, original: 999, currency: '₹', discount: 20 },
+        category: 'Test',
+        rating: { value: 4.3, count: 87 },
+        availabilityStatus: 'in_stock' as const,
+        tags: ['test', 'new'],
+        isNewArrival: true,
+        arrivalDate: new Date().toISOString().split('T')[0]
+      }
+    ], // Temporary fallback to test rendering
+    loading: false, // Don't show loading state initially
     error: null,
     lastUpdated: new Date().toISOString(),
     refreshable: true,
@@ -454,8 +408,6 @@ export default {
   trendingStoresData,
   newStoresData,
   topStoresData,
-  newArrivalsData,
-  recommendationsData,
   homepageSections,
   initialHomepageState,
   getSectionById,

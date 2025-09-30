@@ -127,7 +127,7 @@ export default function StoreCard({
           <View style={styles.footer}>
             <View style={styles.cashbackContainer}>
               <ThemedText style={styles.cashbackText}>
-                Up to {store.cashback.percentage}% cash back
+                Up to {store.cashback?.percentage || 10}% cash back
               </ThemedText>
             </View>
             

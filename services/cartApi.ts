@@ -4,65 +4,80 @@
 import apiClient, { ApiResponse } from './apiClient';
 
 export interface CartItem {
-  id: string;
-  productId: string;
-  variantId?: string;
+  _id: string;
   product: {
-    id: string;
+    _id: string;
     name: string;
-    description: string;
-    images: Array<{
+    images?: Array<{
       id: string;
       url: string;
       alt: string;
       isMain: boolean;
     }>;
-    store: {
-      id: string;
-      name: string;
+    pricing: {
+      currency: string;
+    };
+    inventory: {
+      stock: number;
+      isAvailable: boolean;
+    };
+    isActive: boolean;
+  };
+  store: {
+    _id: string;
+    name: string;
+    location?: {
+      address: string;
+      city: string;
+      state: string;
     };
   };
   variant?: {
-    id: string;
-    name: string;
-    sku: string;
-    price: number;
-    comparePrice?: number;
-    attributes: Record<string, any>;
+    type?: string;
+    value?: string;
   };
   quantity: number;
-  unitPrice: number;
-  totalPrice: number;
+  price: number;
+  originalPrice?: number;
+  discount?: number;
   addedAt: string;
-  updatedAt: string;
 }
 
 export interface Cart {
-  id: string;
-  userId: string;
+  _id: string;
+  user: string;
   items: CartItem[];
-  summary: {
-    itemsCount: number;
+  totals: {
     subtotal: number;
-    shipping: number;
     tax: number;
+    delivery: number;
     discount: number;
+    cashback: number;
     total: number;
+    savings: number;
   };
   coupon?: {
     code: string;
     discountType: 'percentage' | 'fixed';
     discountValue: number;
     appliedAmount: number;
+    appliedAt: string;
   };
+  itemCount: number;
+  storeCount: number;
+  isActive: boolean;
+  expiresAt: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface AddToCartRequest {
   productId: string;
-  variantId?: string;
   quantity: number;
+  variant?: {
+    type: string;
+    value: string;
+  };
 }
 
 export interface UpdateCartItemRequest {
@@ -84,66 +99,60 @@ export interface ShippingEstimate {
 class CartService {
   // Get current user's cart
   async getCart(): Promise<ApiResponse<Cart>> {
+    console.log('🛒 [CART API] Getting user cart...');
     return apiClient.get('/cart');
   }
 
   // Add item to cart
   async addToCart(data: AddToCartRequest): Promise<ApiResponse<Cart>> {
-    return apiClient.post('/cart/items', data);
+    console.log('🛒 [CART API] Adding item to cart:', data);
+    return apiClient.post('/cart/add', data);
   }
 
   // Update cart item quantity
   async updateCartItem(
-    itemId: string, 
-    data: UpdateCartItemRequest
+    productId: string,
+    data: UpdateCartItemRequest,
+    variant?: { type: string; value: string }
   ): Promise<ApiResponse<Cart>> {
-    return apiClient.patch(`/cart/items/${itemId}`, data);
+    console.log('🛒 [CART API] Updating cart item:', productId, data);
+    const url = variant
+      ? `/cart/item/${productId}/${encodeURIComponent(JSON.stringify(variant))}`
+      : `/cart/item/${productId}`;
+    return apiClient.put(url, data);
   }
 
   // Remove item from cart
-  async removeCartItem(itemId: string): Promise<ApiResponse<Cart>> {
-    return apiClient.delete(`/cart/items/${itemId}`);
+  async removeCartItem(productId: string, variant?: { type: string; value: string }): Promise<ApiResponse<Cart>> {
+    console.log('🛒 [CART API] Removing cart item:', productId, variant);
+    const url = variant
+      ? `/cart/item/${productId}/${encodeURIComponent(JSON.stringify(variant))}`
+      : `/cart/item/${productId}`;
+    return apiClient.delete(url);
   }
 
   // Clear entire cart
   async clearCart(): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.delete('/cart');
+    console.log('🛒 [CART API] Clearing entire cart...');
+    return apiClient.delete('/cart/clear');
   }
 
   // Apply coupon to cart
   async applyCoupon(data: ApplyCouponRequest): Promise<ApiResponse<Cart>> {
+    console.log('🛒 [CART API] Applying coupon:', data);
     return apiClient.post('/cart/coupon', data);
   }
 
   // Remove coupon from cart
   async removeCoupon(): Promise<ApiResponse<Cart>> {
+    console.log('🛒 [CART API] Removing coupon...');
     return apiClient.delete('/cart/coupon');
   }
 
-  // Get shipping estimates
-  async getShippingEstimates(
-    zipCode?: string,
-    country?: string
-  ): Promise<ApiResponse<ShippingEstimate[]>> {
-    return apiClient.get('/cart/shipping-estimates', {
-      zipCode,
-      country
-    });
-  }
-
-  // Move item to wishlist
-  async moveToWishlist(itemId: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post(`/cart/items/${itemId}/move-to-wishlist`);
-  }
-
-  // Save cart for later (guest to user conversion)
-  async saveCartForLater(): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post('/cart/save-for-later');
-  }
-
-  // Merge guest cart with user cart
-  async mergeCart(guestCartId: string): Promise<ApiResponse<Cart>> {
-    return apiClient.post('/cart/merge', { guestCartId });
+  // Get cart summary
+  async getCartSummary(): Promise<ApiResponse<Cart>> {
+    console.log('🛒 [CART API] Getting cart summary...');
+    return apiClient.get('/cart/summary');
   }
 
   // Validate cart items (check availability, prices)
@@ -157,17 +166,50 @@ class CartService {
       availableQuantity?: number;
     }>;
   }>> {
-    return apiClient.post('/cart/validate');
+    console.log('🛒 [CART API] Validating cart...');
+    return apiClient.get('/cart/validate');
   }
 
-  // Get cart summary for checkout
+  // Get shipping estimates (placeholder - not yet implemented in backend)
+  async getShippingEstimates(
+    zipCode?: string,
+    country?: string
+  ): Promise<ApiResponse<ShippingEstimate[]>> {
+    console.log('🛒 [CART API] Getting shipping estimates...');
+    // This endpoint is not yet implemented in backend
+    return Promise.reject(new Error('Shipping estimates not yet implemented'));
+  }
+
+  // Move item to wishlist (placeholder - not yet implemented in backend)
+  async moveToWishlist(productId: string): Promise<ApiResponse<{ message: string }>> {
+    console.log('🛒 [CART API] Moving to wishlist...');
+    // This endpoint is not yet implemented in backend
+    return Promise.reject(new Error('Move to wishlist not yet implemented'));
+  }
+
+  // Save cart for later (placeholder - not yet implemented in backend)
+  async saveCartForLater(): Promise<ApiResponse<{ message: string }>> {
+    console.log('🛒 [CART API] Saving cart for later...');
+    // This endpoint is not yet implemented in backend
+    return Promise.reject(new Error('Save cart for later not yet implemented'));
+  }
+
+  // Merge guest cart with user cart (placeholder - not yet implemented in backend)
+  async mergeCart(guestCartId: string): Promise<ApiResponse<Cart>> {
+    console.log('🛒 [CART API] Merging cart...');
+    // This endpoint is not yet implemented in backend
+    return Promise.reject(new Error('Cart merge not yet implemented'));
+  }
+
+  // Get cart summary for checkout (use existing summary endpoint)
   async getCheckoutSummary(): Promise<ApiResponse<{
     items: CartItem[];
     summary: Cart['summary'];
     shippingRequired: boolean;
     taxCalculated: boolean;
   }>> {
-    return apiClient.get('/cart/checkout-summary');
+    console.log('🛒 [CART API] Getting checkout summary...');
+    return this.getCartSummary() as any; // Use cart summary for now
   }
 }
 

@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import wishlistApi from '@/services/wishlistApi';
+import { useSocket } from '@/contexts/SocketContext';
 
 export interface WishlistItem {
   id: string;
@@ -49,54 +50,117 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { subscribeToProduct, onStockUpdate, onProductAvailability } = useSocket();
 
   useEffect(() => {
     loadWishlist();
   }, []);
 
+  // Subscribe to stock updates for all wishlist items
+  useEffect(() => {
+    if (wishlistItems.length === 0) return;
+
+    // Subscribe to stock updates for each product in wishlist
+    wishlistItems.forEach(item => {
+      subscribeToProduct(item.productId);
+    });
+
+    // Listen for stock updates
+    const unsubscribeStock = onStockUpdate((payload) => {
+      setWishlistItems(prev =>
+        prev.map(item =>
+          item.productId === payload.productId
+            ? {
+                ...item,
+                availability:
+                  payload.status === 'OUT_OF_STOCK'
+                    ? 'OUT_OF_STOCK'
+                    : payload.status === 'LOW_STOCK'
+                    ? 'LIMITED'
+                    : 'IN_STOCK',
+              }
+            : item
+        )
+      );
+    });
+
+    // Listen for availability changes
+    const unsubscribeAvailability = onProductAvailability((payload) => {
+      setWishlistItems(prev =>
+        prev.map(item =>
+          item.productId === payload.productId
+            ? {
+                ...item,
+                availability: payload.isAvailable ? 'IN_STOCK' : 'OUT_OF_STOCK',
+              }
+            : item
+        )
+      );
+    });
+
+    // Cleanup
+    return () => {
+      unsubscribeStock();
+      unsubscribeAvailability();
+    };
+  }, [wishlistItems.length]);
+
   const loadWishlist = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // Get default wishlist from backend
-      const response = await wishlistApi.getDefaultWishlist();
-      
-      if (!response.data) {
-        // If no default wishlist exists, create one
+
+      // Get user's wishlists from backend
+      const response = await wishlistApi.getWishlists(1, 50);
+
+      if (!response.data || !response.data.wishlists || response.data.wishlists.length === 0) {
+        // If no wishlists exist, create a default one
         const newWishlistResponse = await wishlistApi.createWishlist({
           name: 'My Wishlist',
           description: 'Default wishlist',
           isPublic: false
         });
-        
+
         if (!newWishlistResponse.data) {
           throw new Error('Failed to create default wishlist');
         }
-        
+
         // Start with empty wishlist
         setWishlistItems([]);
         return;
       }
-      
+
+      // Get the first (default or most recent) wishlist
+      const defaultWishlist = response.data.wishlists[0];
+
+      if (!defaultWishlist.items || defaultWishlist.items.length === 0) {
+        setWishlistItems([]);
+        return;
+      }
+
       // Convert backend wishlist items to frontend format
-      const wishlistItems: WishlistItem[] = response.data.items.map(backendItem => ({
-        id: backendItem.id,
-        productId: backendItem.itemId,
-        productName: backendItem.item.name,
-        productImage: backendItem.item.image || 'https://via.placeholder.com/300',
-        price: backendItem.item.price || 0,
-        originalPrice: backendItem.item.price ? backendItem.item.price * 1.2 : 0, // Assume 20% discount
-        discount: 20,
-        rating: backendItem.item.rating || 4.0,
-        reviewCount: Math.floor(Math.random() * 1000) + 100, // Random review count
-        brand: 'Brand', // Default brand
-        category: backendItem.category || 'General',
-        availability: backendItem.item.availability === 'available' ? 'IN_STOCK' : 
-                     backendItem.item.availability === 'out_of_stock' ? 'OUT_OF_STOCK' : 'LIMITED',
-        addedAt: backendItem.addedAt
-      }));
-      
+      const wishlistItems: WishlistItem[] = defaultWishlist.items.map((backendItem: any) => {
+        const item = backendItem.itemId || {};
+        return {
+          id: backendItem._id || backendItem.id || String(Math.random()),
+          productId: typeof backendItem.itemId === 'string' ? backendItem.itemId : (item._id || item.id || ''),
+          productName: item.name || 'Unknown Product',
+          productImage: (item.images && item.images[0]) || item.image || 'https://via.placeholder.com/300',
+          price: item.salePrice || item.basePrice || item.price || 0,
+          originalPrice: item.basePrice || (item.salePrice ? item.salePrice * 1.2 : 0),
+          discount: item.basePrice && item.salePrice
+            ? Math.round(((item.basePrice - item.salePrice) / item.basePrice) * 100)
+            : 0,
+          rating: item.rating?.average || item.rating || 4.0,
+          reviewCount: item.rating?.count || Math.floor(Math.random() * 1000) + 100,
+          brand: item.brand || 'Brand',
+          category: item.category?.name || backendItem.tags?.[0] || 'General',
+          availability: item.inventory?.stock > 0 ? 'IN_STOCK' :
+                       item.inventory?.stock === 0 ? 'OUT_OF_STOCK' : 'LIMITED',
+          addedAt: backendItem.addedAt || new Date().toISOString()
+        };
+      });
+
       setWishlistItems(wishlistItems);
     } catch (err) {
       setError('Failed to load wishlist');
@@ -113,33 +177,48 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
   const addToWishlist = async (item: Omit<WishlistItem, 'id' | 'addedAt'>): Promise<void> => {
     try {
       setError(null);
-      
+
       // Check if already in wishlist
       if (isInWishlist(item.productId)) {
         throw new Error('Item already in wishlist');
       }
 
-      // Add item to backend wishlist
+      // First, get the user's wishlists to find the default/first one
+      const wishlistsResponse = await wishlistApi.getWishlists(1, 1);
+      let wishlistId: string | undefined;
+
+      if (wishlistsResponse.data && wishlistsResponse.data.wishlists && wishlistsResponse.data.wishlists.length > 0) {
+        wishlistId = wishlistsResponse.data.wishlists[0].id || wishlistsResponse.data.wishlists[0]._id;
+      } else {
+        // Create a default wishlist if none exists
+        const newWishlistResponse = await wishlistApi.createWishlist({
+          name: 'My Wishlist',
+          description: 'Default wishlist',
+          isPublic: false
+        });
+        wishlistId = newWishlistResponse.data?.id || newWishlistResponse.data?._id;
+      }
+
+      if (!wishlistId) {
+        throw new Error('Failed to get or create wishlist');
+      }
+
+      // Add item to backend wishlist using the correct endpoint
       const response = await wishlistApi.addToWishlist({
-        itemType: 'product',
+        itemType: 'Product',
         itemId: item.productId,
+        wishlistId,
         notes: `Added ${item.productName}`,
         priority: 'medium',
         tags: [item.category]
       });
-      
+
       if (!response.data) {
         throw new Error('Failed to add item to wishlist');
       }
-      
-      // Create frontend item from backend response
-      const newItem: WishlistItem = {
-        ...item,
-        id: response.data.id,
-        addedAt: response.data.addedAt,
-      };
-      
-      setWishlistItems(prev => [newItem, ...prev]);
+
+      // Reload wishlist to get the updated data with proper population
+      await loadWishlist();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add to wishlist';
       setError(errorMessage);
@@ -150,20 +229,31 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
   const removeFromWishlist = async (productId: string): Promise<void> => {
     try {
       setError(null);
-      
+
       // Find the wishlist item to remove
       const itemToRemove = wishlistItems.find(item => item.productId === productId);
       if (!itemToRemove) {
         throw new Error('Item not found in wishlist');
       }
-      
-      // Remove from backend
+
+      // Get the wishlist ID
+      const wishlistsResponse = await wishlistApi.getWishlists(1, 1);
+      if (!wishlistsResponse.data || !wishlistsResponse.data.wishlists || wishlistsResponse.data.wishlists.length === 0) {
+        throw new Error('Wishlist not found');
+      }
+
+      const wishlistId = wishlistsResponse.data.wishlists[0].id || wishlistsResponse.data.wishlists[0]._id;
+
+      // Remove from backend using the correct endpoint: DELETE /wishlist/:wishlistId/items/:itemId
       await wishlistApi.removeFromWishlist(itemToRemove.id);
-      
+
+      // Optimistically update UI
       setWishlistItems(prev => prev.filter(item => item.productId !== productId));
     } catch (err) {
       const errorMessage = 'Failed to remove from wishlist';
       setError(errorMessage);
+      // Reload wishlist to sync state
+      await loadWishlist();
       throw new Error(errorMessage);
     }
   };

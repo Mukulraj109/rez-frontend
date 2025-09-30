@@ -1,241 +1,237 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { 
-  SearchState, 
-  SearchFilters, 
-  SearchResults, 
-  SearchError 
-} from '@/types/store-search';
-import { 
-  mockSearchStores, 
-  defaultSearchFilters 
-} from '@/utils/mock-store-search-data';
-import { SEARCH_CONFIG } from '@/constants/search-constants';
+import { useState, useEffect, useCallback } from 'react';
+import { Alert } from 'react-native';
+import { storeSearchService, Store, StoreSearchParams, StoreCategory } from '@/services/storeSearchService';
+import { useLocation } from '@/hooks/useLocation';
 
-interface UseStoreSearchOptions {
-  initialQuery?: string;
-  initialFilters?: Partial<SearchFilters>;
-  autoSearch?: boolean;
-  debounceDelay?: number;
+export interface UseStoreSearchOptions {
+  category: string;
+  autoFetch?: boolean;
+  initialPage?: number;
+  pageSize?: number;
+  sortBy?: 'rating' | 'distance' | 'name' | 'newest';
 }
 
-interface UseStoreSearchReturn {
-  searchState: SearchState;
-  search: (query: string, filters?: SearchFilters) => Promise<void>;
-  updateQuery: (query: string) => void;
-  updateFilters: (filters: SearchFilters) => void;
-  clearSearch: () => void;
-  retry: () => Promise<void>;
-  refreshResults: () => Promise<void>;
+export interface UseStoreSearchReturn {
+  stores: Store[];
+  loading: boolean;
+  refreshing: boolean;
+  error: string | null;
+  hasMore: boolean;
+  currentPage: number;
+  totalStores: number;
+  totalPages: number;
+  fetchStores: (page?: number, refresh?: boolean) => Promise<void>;
+  refreshStores: () => Promise<void>;
+  loadMoreStores: () => Promise<void>;
+  setSortBy: (sortBy: 'rating' | 'distance' | 'name' | 'newest') => void;
+  clearError: () => void;
 }
 
-export const useStoreSearch = ({
-  initialQuery = '',
-  initialFilters = {},
-  autoSearch = true,
-  debounceDelay = SEARCH_CONFIG.DEBOUNCE_DELAY,
-}: UseStoreSearchOptions = {}): UseStoreSearchReturn => {
+export const useStoreSearch = (options: UseStoreSearchOptions): UseStoreSearchReturn => {
+  const {
+    category,
+    autoFetch = true,
+    initialPage = 1,
+    pageSize = 20,
+    sortBy: initialSortBy = 'rating'
+  } = options;
+
+  const { currentLocation } = useLocation();
   
-  // Initialize state
-  const [searchState, setSearchState] = useState<SearchState>({
-    query: initialQuery,
-    filters: { ...defaultSearchFilters, ...initialFilters },
-    results: null,
-    isLoading: false,
-    isLoadingMore: false,
-    error: null,
-    lastSearchTime: null,
-  });
+  const [stores, setStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [totalStores, setTotalStores] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [sortBy, setSortByState] = useState(initialSortBy);
 
-  // Refs for managing async operations
-  const debounceTimeoutRef = useRef<NodeJS.Timeout>(null);
-  const lastSearchParamsRef = useRef<{ query: string; filters: SearchFilters } | null>(null);
-  const abortControllerRef = useRef<AbortController>(null);
-
-  // Helper function to create search error
-  const createSearchError = (
-    code: SearchError['code'],
-    message: string,
-    details?: string
-  ): SearchError => ({
-    code,
-    message,
-    details,
-    timestamp: new Date(),
-    recoverable: code !== 'INVALID_QUERY',
-  });
-
-  // Main search function
-  const search = useCallback(async (
-    query: string,
-    filters: SearchFilters = searchState.filters
-  ): Promise<void> => {
+  const fetchStores = useCallback(async (page: number = 1, refresh: boolean = false) => {
     try {
-      // Cancel any ongoing search
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
-
-      // Validate query
-      if (query.trim().length > 0 && query.trim().length < SEARCH_CONFIG.MIN_SEARCH_LENGTH) {
-        const error = createSearchError(
-          'INVALID_QUERY',
-          `Search query must be at least ${SEARCH_CONFIG.MIN_SEARCH_LENGTH} characters`,
-          'Please enter a longer search term'
-        );
-        setSearchState(prev => ({ ...prev, error, isLoading: false }));
-        return;
+      if (refresh) {
+        setRefreshing(true);
+      } else if (page === 1) {
+        setLoading(true);
       }
 
-      // Update state to loading
-      setSearchState(prev => ({
-        ...prev,
-        query,
-        filters,
-        isLoading: true,
-        error: null,
-      }));
+      setError(null);
 
-      // Store search parameters for retry
-      lastSearchParamsRef.current = { query, filters };
+      const locationParam = currentLocation?.coordinates 
+        ? storeSearchService.formatLocationForAPI(currentLocation)
+        : undefined;
 
-      // Perform search (simulate network delay)
-      const results = await mockSearchStores(query, filters);
+      const searchParams: StoreSearchParams = {
+        category,
+        page,
+        limit: pageSize,
+        sortBy,
+        ...(locationParam && { 
+          location: locationParam, 
+          radius: 10 
+        }),
+      };
 
-      // Check if request was aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
+      const response = await storeSearchService.searchStoresByCategory(searchParams);
+
+      if (response.success) {
+        const newStores = response.data.stores;
+        
+        if (page === 1 || refresh) {
+          setStores(newStores);
+        } else {
+          setStores(prev => [...prev, ...newStores]);
+        }
+        
+        setHasMore(response.data.pagination.hasNext);
+        setCurrentPage(page);
+        setTotalStores(response.data.pagination.total);
+        setTotalPages(response.data.pagination.totalPages);
+      } else {
+        throw new Error(response.message || 'Failed to fetch stores');
       }
-
-      // Update state with results
-      setSearchState(prev => ({
-        ...prev,
-        results,
-        isLoading: false,
-        lastSearchTime: new Date(),
-      }));
-
-    } catch (error) {
-      // Check if request was aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
+      console.error('Error fetching stores:', err);
+      
+      // Only show alert for initial load, not for pagination
+      if (page === 1) {
+        Alert.alert('Error', 'Failed to load stores. Please try again.');
       }
-
-      const searchError = createSearchError(
-        'NETWORK_ERROR',
-        'Failed to search stores',
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      );
-
-      setSearchState(prev => ({
-        ...prev,
-        error: searchError,
-        isLoading: false,
-      }));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [searchState.filters]);
+  }, [category, currentLocation, pageSize, sortBy]);
 
-  // Debounced search function
-  const debouncedSearch = useCallback((query: string, filters: SearchFilters) => {
-    // Clear existing timeout
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
+  const refreshStores = useCallback(async () => {
+    await fetchStores(1, true);
+  }, [fetchStores]);
+
+  const loadMoreStores = useCallback(async () => {
+    if (!loading && hasMore) {
+      await fetchStores(currentPage + 1);
     }
+  }, [fetchStores, loading, hasMore, currentPage]);
 
-    // Set new timeout
-    debounceTimeoutRef.current = setTimeout(() => {
-      search(query, filters);
-    }, debounceDelay) as any;
-  }, [search, debounceDelay]);
-
-  // Update query function
-  const updateQuery = useCallback((query: string) => {
-    setSearchState(prev => ({ ...prev, query }));
-    
-    if (autoSearch) {
-      // Always search, even with empty query to show dummy data by default
-      debouncedSearch(query, searchState.filters);
-    }
-  }, [autoSearch, debouncedSearch, searchState.filters]);
-
-  // Update filters function
-  const updateFilters = useCallback((filters: SearchFilters) => {
-    setSearchState(prev => ({ ...prev, filters }));
-    
-    if (autoSearch) {
-      // Immediate search when filters change (no debounce), even with empty query
-      search(searchState.query, filters);
-    }
-  }, [autoSearch, search, searchState.query]);
-
-  // Clear search function
-  const clearSearch = useCallback(() => {
-    // Cancel any ongoing operations
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    setSearchState({
-      query: '',
-      filters: defaultSearchFilters,
-      results: null,
-      isLoading: false,
-      isLoadingMore: false,
-      error: null,
-      lastSearchTime: null,
-    });
-
-    lastSearchParamsRef.current = null;
+  const setSortBy = useCallback((newSortBy: 'rating' | 'distance' | 'name' | 'newest') => {
+    setSortByState(newSortBy);
   }, []);
 
-  // Retry last search function
-  const retry = useCallback(async (): Promise<void> => {
-    if (lastSearchParamsRef.current) {
-      const { query, filters } = lastSearchParamsRef.current;
-      await search(query, filters);
-    } else if (searchState.query.trim()) {
-      await search(searchState.query, searchState.filters);
-    }
-  }, [search, searchState.query, searchState.filters]);
-
-  // Refresh current results
-  const refreshResults = useCallback(async (): Promise<void> => {
-    if (searchState.results) {
-      await search(searchState.query, searchState.filters);
-    }
-  }, [search, searchState.query, searchState.filters, searchState.results]);
-
-  // Initial search on mount if autoSearch is enabled
-  useEffect(() => {
-    if (autoSearch) {
-      // Always search on mount to show default dummy data, even with empty query
-      search(initialQuery, { ...defaultSearchFilters, ...initialFilters });
-    }
-  }, []); // Only run on mount
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
+  const clearError = useCallback(() => {
+    setError(null);
   }, []);
+
+  // Auto-fetch on mount and when dependencies change
+  useEffect(() => {
+    if (autoFetch && category) {
+      fetchStores(1);
+    }
+  }, [autoFetch, category, fetchStores]);
+
+  // Refetch when sortBy changes
+  useEffect(() => {
+    if (autoFetch && category && sortBy !== initialSortBy) {
+      fetchStores(1);
+    }
+  }, [sortBy, autoFetch, category, fetchStores, initialSortBy]);
 
   return {
-    searchState,
-    search,
-    updateQuery,
-    updateFilters,
-    clearSearch,
-    retry,
-    refreshResults,
+    stores,
+    loading,
+    refreshing,
+    error,
+    hasMore,
+    currentPage,
+    totalStores,
+    totalPages,
+    fetchStores,
+    refreshStores,
+    loadMoreStores,
+    setSortBy,
+    clearError,
+  };
+};
+
+// Hook for getting store categories
+export const useStoreCategories = () => {
+  const [categories, setCategories] = useState<StoreCategory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await storeSearchService.getStoreCategories();
+
+      if (response.success) {
+        setCategories(response.data.categories);
+      } else {
+        throw new Error(response.message || 'Failed to fetch categories');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
+      console.error('Error fetching store categories:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  return {
+    categories,
+    loading,
+    error,
+    refetch: fetchCategories,
+  };
+};
+
+// Hook for getting a single store
+export const useStore = (storeId: string | null) => {
+  const [store, setStore] = useState<Store | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchStore = useCallback(async () => {
+    if (!storeId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await storeSearchService.getStoreById(storeId);
+
+      if (response.success) {
+        setStore(response.data);
+      } else {
+        throw new Error(response.message || 'Failed to fetch store');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
+      console.error('Error fetching store:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [storeId]);
+
+  useEffect(() => {
+    fetchStore();
+  }, [fetchStore]);
+
+  return {
+    store,
+    loading,
+    error,
+    refetch: fetchStore,
   };
 };
 

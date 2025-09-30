@@ -92,19 +92,22 @@ export interface Order {
 }
 
 export interface CreateOrderRequest {
-  items: Array<{
-    productId: string;
-    variantId?: string;
-    quantity: number;
-  }>;
-  shippingAddress: Order['shippingAddress'];
-  billingAddress: Order['billingAddress'];
-  paymentMethod: {
-    type: 'card' | 'wallet' | 'cod' | 'bank_transfer';
-    details: Record<string, any>;
+  deliveryAddress: {
+    name: string;
+    phone: string;
+    email?: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country?: string;
+    landmark?: string;
+    addressType?: 'home' | 'work' | 'other';
   };
+  paymentMethod: 'wallet' | 'card' | 'upi' | 'cod' | 'netbanking';
+  specialInstructions?: string;
   couponCode?: string;
-  notes?: string;
 }
 
 export interface OrdersQuery {
@@ -152,166 +155,70 @@ export interface RefundRequest {
 }
 
 class OrdersService {
-  // Create new order
+  // Create new order from cart
   async createOrder(data: CreateOrderRequest): Promise<ApiResponse<Order>> {
+    console.log('📦 [ORDER API] Creating order:', data);
     return apiClient.post('/orders', data);
   }
 
   // Get user orders with filtering
   async getOrders(query: OrdersQuery = {}): Promise<ApiResponse<OrdersResponse>> {
+    console.log('📦 [ORDER API] Getting orders:', query);
     return apiClient.get('/orders', query);
   }
 
   // Get single order by ID
   async getOrderById(orderId: string): Promise<ApiResponse<Order>> {
+    console.log('📦 [ORDER API] Getting order by ID:', orderId);
     return apiClient.get(`/orders/${orderId}`);
   }
 
-  // Get order by order number
-  async getOrderByNumber(orderNumber: string): Promise<ApiResponse<Order>> {
-    return apiClient.get(`/orders/number/${orderNumber}`);
+  // Get order tracking
+  async getOrderTracking(orderId: string): Promise<ApiResponse<any>> {
+    console.log('📦 [ORDER API] Getting order tracking:', orderId);
+    return apiClient.get(`/orders/${orderId}/tracking`);
   }
 
   // Cancel order
   async cancelOrder(
-    orderId: string, 
+    orderId: string,
     reason?: string
   ): Promise<ApiResponse<Order>> {
+    console.log('📦 [ORDER API] Cancelling order:', orderId, reason);
     return apiClient.patch(`/orders/${orderId}/cancel`, { reason });
+  }
+
+  // Rate order
+  async rateOrder(
+    orderId: string,
+    rating: number,
+    review?: string
+  ): Promise<ApiResponse<Order>> {
+    console.log('📦 [ORDER API] Rating order:', orderId, rating);
+    return apiClient.post(`/orders/${orderId}/rate`, { rating, review });
+  }
+
+  // Get order statistics
+  async getOrderStats(): Promise<ApiResponse<any>> {
+    console.log('📦 [ORDER API] Getting order stats');
+    return apiClient.get('/orders/stats');
   }
 
   // Update order status (admin/store owner)
   async updateOrderStatus(
-    orderId: string, 
+    orderId: string,
     status: Order['status'],
-    notes?: string
+    estimatedDeliveryTime?: string,
+    trackingInfo?: any
   ): Promise<ApiResponse<Order>> {
-    return apiClient.patch(`/orders/${orderId}/status`, { status, notes });
-  }
-
-  // Add tracking information
-  async addTracking(
-    orderId: string, 
-    tracking: {
-      number: string;
-      carrier: string;
-      url?: string;
-    }
-  ): Promise<ApiResponse<Order>> {
-    return apiClient.post(`/orders/${orderId}/tracking`, tracking);
-  }
-
-  // Update tracking information
-  async updateTracking(
-    orderId: string, 
-    tracking: {
-      status?: string;
-      estimatedDelivery?: string;
-      location?: string;
-    }
-  ): Promise<ApiResponse<Order>> {
-    return apiClient.patch(`/orders/${orderId}/tracking`, tracking);
-  }
-
-  // Create payment intent
-  async createPaymentIntent(
-    orderId: string,
-    paymentMethod: string
-  ): Promise<ApiResponse<PaymentIntent>> {
-    return apiClient.post(`/orders/${orderId}/payment-intent`, {
-      paymentMethod
+    console.log('📦 [ORDER API] Updating order status:', orderId, status);
+    return apiClient.patch(`/orders/${orderId}/status`, {
+      status,
+      estimatedDeliveryTime,
+      trackingInfo
     });
   }
 
-  // Confirm payment
-  async confirmPayment(
-    orderId: string,
-    paymentIntentId: string,
-    paymentDetails?: Record<string, any>
-  ): Promise<ApiResponse<Order>> {
-    return apiClient.post(`/orders/${orderId}/confirm-payment`, {
-      paymentIntentId,
-      paymentDetails
-    });
-  }
-
-  // Request refund
-  async requestRefund(data: RefundRequest): Promise<ApiResponse<{
-    refundId: string;
-    amount: number;
-    status: string;
-    estimatedDate: string;
-  }>> {
-    return apiClient.post('/orders/refund', data);
-  }
-
-  // Get order invoice
-  async getOrderInvoice(orderId: string): Promise<ApiResponse<{
-    invoiceUrl: string;
-    invoiceNumber: string;
-  }>> {
-    return apiClient.get(`/orders/${orderId}/invoice`);
-  }
-
-  // Download order invoice
-  async downloadInvoice(orderId: string): Promise<ApiResponse<Blob>> {
-    return apiClient.get(`/orders/${orderId}/invoice/download`);
-  }
-
-  // Reorder (create new order from existing order)
-  async reorder(orderId: string): Promise<ApiResponse<Order>> {
-    return apiClient.post(`/orders/${orderId}/reorder`);
-  }
-
-  // Get order statistics
-  async getOrderStatistics(
-    dateFrom?: string,
-    dateTo?: string
-  ): Promise<ApiResponse<{
-    totalOrders: number;
-    totalRevenue: number;
-    averageOrderValue: number;
-    topProducts: Array<{
-      productId: string;
-      productName: string;
-      quantity: number;
-      revenue: number;
-    }>;
-    statusBreakdown: Record<Order['status'], number>;
-  }>> {
-    return apiClient.get('/orders/statistics', {
-      dateFrom,
-      dateTo
-    });
-  }
-
-  // Track order by order number (public endpoint)
-  async trackOrder(orderNumber: string): Promise<ApiResponse<{
-    orderNumber: string;
-    status: Order['status'];
-    tracking?: Order['tracking'];
-    timeline: Order['timeline'];
-    estimatedDelivery?: string;
-  }>> {
-    return apiClient.get(`/orders/track/${orderNumber}`);
-  }
-
-  // Get delivery estimates
-  async getDeliveryEstimates(
-    items: Array<{ productId: string; quantity: number }>,
-    shippingAddress: Partial<Order['shippingAddress']>
-  ): Promise<ApiResponse<Array<{
-    method: string;
-    name: string;
-    cost: number;
-    estimatedDays: number;
-    description?: string;
-  }>>> {
-    return apiClient.post('/orders/delivery-estimates', {
-      items,
-      shippingAddress
-    });
-  }
 }
 
 // Create singleton instance

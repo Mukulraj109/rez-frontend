@@ -1,13 +1,16 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
 
 # Expo
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+*.jsbundle
 
 # Native
 .kotlin/
@@ -17,23 +20,78 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+ios/
+android/
 
 # Metro
 .metro-health-check*
 
-# debug
+# Testing
+coverage/
+
+# Debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+.pnpm-debug.log*
 
 # macOS
 .DS_Store
 *.pem
 
-# local env files
+# Local env files
+.env
 .env*.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# typescript
+# TypeScript
 *.tsbuildinfo
 
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# OS generated files
+Thumbs.db
+.Thumbs.db
+._*
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Temporary files
+*.log
+.cache
+.parcel-cache
+.turbo
+tmp/
+temp/
+
+# Claude settings (local only)
+.claude/settings.local.json
+
+# App example
 app-example

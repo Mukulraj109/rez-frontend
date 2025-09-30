@@ -399,6 +399,113 @@ class StoresService {
   }>> {
     return apiClient.get(`/stores/${storeId}/metrics`, { period });
   }
+
+  // ===== FRONTEND HOMEPAGE INTEGRATION METHODS =====
+
+  /**
+   * Get featured stores for homepage sections - Returns formatted StoreItems
+   */
+  async getFeaturedForHomepage(limit: number = 10): Promise<any[]> {
+    try {
+      console.log('🚀 [STORES API] Fetching featured stores from backend...');
+      const response = await apiClient.get('/stores/featured', { limit });
+
+      console.log('📡 [STORES API] Backend response:', {
+        success: response.success,
+        dataLength: response.data?.length,
+        message: response.message
+      });
+
+      if (response.success && response.data && Array.isArray(response.data)) {
+        console.log('✅ [STORES API] Processing featured stores:', response.data.length, 'items');
+
+        // Transform backend store data to frontend StoreItem format
+        const stores = response.data.map((store: any) => ({
+          id: store._id,
+          type: 'store',
+          title: store.name,
+          name: store.name,
+          image: store.image || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=200&fit=crop',
+          description: store.description,
+          logo: store.logo || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=100&h=100&fit=crop',
+          rating: {
+            value: store.ratings?.average || 4.5,
+            count: store.ratings?.count || 0,
+            maxValue: 5
+          },
+          cashback: {
+            percentage: store.offers?.cashback || 10,
+            maxAmount: store.offers?.maxCashback || 500
+          },
+          category: this.determineCategory(store.deliveryCategories),
+          location: {
+            address: store.location?.address || 'Location',
+            city: store.location?.city || 'City',
+            distance: this.calculateDisplayDistance(store.location?.coordinates)
+          },
+          isTrending: true, // Featured stores are considered trending
+          deliveryTime: store.operationalInfo?.deliveryTime || '30-45 mins',
+          minimumOrder: store.operationalInfo?.minimumOrder || 299
+        }));
+
+        console.log('🎯 [STORES API] Returning', stores.length, 'formatted stores');
+        return stores;
+      }
+
+      console.warn('⚠️ [STORES API] Invalid response structure:', response);
+      throw new Error(response.message || 'Failed to fetch featured stores');
+    } catch (error) {
+      console.error('❌ [STORES API] Error fetching homepage featured stores:', error);
+      // Return empty array on error to prevent homepage crash
+      return [];
+    }
+  }
+
+  /**
+   * Check if backend API is available
+   */
+  async isBackendAvailable(): Promise<boolean> {
+    try {
+      console.log('🔍 [STORES API] Checking backend availability...');
+
+      // Try to make a simple API call to check connectivity
+      const response = await apiClient.get('/stores/featured', { limit: 1 });
+
+      if (response.success) {
+        console.log('✅ [STORES API] Backend is available and responding');
+        return true;
+      } else {
+        console.warn('⚠️ [STORES API] Backend responded but with error:', response.message);
+        return false;
+      }
+    } catch (error) {
+      console.warn('⚠️ [STORES API] Backend not available, falling back to dummy data:', error);
+      return false;
+    }
+  }
+
+  // ===== HELPER METHODS =====
+
+  /**
+   * Determine category based on delivery categories
+   */
+  private determineCategory(deliveryCategories: any): string {
+    if (deliveryCategories?.premium) return 'Premium';
+    if (deliveryCategories?.organic) return 'Organic';
+    if (deliveryCategories?.fastDelivery) return 'Fast Food';
+    if (deliveryCategories?.budgetFriendly) return 'Budget';
+    if (deliveryCategories?.alliance) return 'Alliance';
+    return 'General';
+  }
+
+  /**
+   * Calculate display distance (placeholder - would use actual user location)
+   */
+  private calculateDisplayDistance(coordinates?: [number, number]): string {
+    // Placeholder distance calculation
+    const distances = ['1.2 km', '2.3 km', '3.5 km', '4.1 km', '5.7 km'];
+    return distances[Math.floor(Math.random() * distances.length)];
+  }
 }
 
 // Create singleton instance

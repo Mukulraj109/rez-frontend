@@ -14,6 +14,7 @@ export default function HorizontalScrollSection({
   cardWidth = 280,
   spacing = 16,
   showIndicator = true,
+  extraData,
 }: HorizontalScrollSectionProps) {
   const [refreshing, setRefreshing] = React.useState(false);
   
@@ -53,6 +54,7 @@ export default function HorizontalScrollSection({
           removeClippedSubviews={false}
           scrollEventThrottle={16}
           decelerationRate="normal"
+          extraData={extraData}
           renderItem={({ item, index }) => (
             <View
               style={[

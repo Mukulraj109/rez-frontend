@@ -13,7 +13,10 @@ import { OffersProvider } from '@/contexts/OffersContext';
 import { CategoryProvider } from '@/contexts/CategoryContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { WishlistProvider } from '@/contexts/WishlistContext';
-import AuthDebugger from '@/components/common/AuthDebugger';
+import { LocationProvider } from '@/contexts/LocationContext';
+import { GreetingProvider } from '@/contexts/GreetingContext';
+import { SocketProvider } from '@/contexts/SocketContext';
+// import AuthDebugger from '@/components/common/AuthDebugger';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -30,12 +33,15 @@ export default function RootLayout() {
     <ErrorBoundary>
       <AppProvider>
         <AuthProvider>
-          <CartProvider>
-            <OffersProvider>
-              <CategoryProvider>
-                <ProfileProvider>
-                  <WishlistProvider>
-                  <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <SocketProvider>
+            <LocationProvider>
+              <GreetingProvider>
+                <CartProvider>
+                  <OffersProvider>
+                    <CategoryProvider>
+                      <ProfileProvider>
+                        <WishlistProvider>
+                          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
                   {/* App Entry Point */}
                   <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -65,6 +71,7 @@ export default function RootLayout() {
                    <Stack.Screen name="CoinPage" options={{ headerShown: false }} />
                     <Stack.Screen name="WalletScreen" options={{ headerShown: false }} />
                     <Stack.Screen name="StoreListPage" options={{ headerShown: false }} />
+                    <Stack.Screen name="StoreSearch" options={{ headerShown: false }} />
                     <Stack.Screen name="ReviewPage" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/index" options={{ headerShown: false }} />
                     
@@ -72,10 +79,31 @@ export default function RootLayout() {
                     <Stack.Screen name="wallet/index" options={{ headerShown: false }} />
                     <Stack.Screen name="account/index" options={{ headerShown: false }} />
                     <Stack.Screen name="profile/index" options={{ headerShown: false }} />
+                    <Stack.Screen name="profile/partner" options={{ headerShown: false }} />
                     <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
+                    <Stack.Screen name="search" options={{ headerShown: false }} />
+                    <Stack.Screen name="going-out" options={{ headerShown: false }} />
+                    <Stack.Screen name="home-delivery" options={{ headerShown: false }} />
                     <Stack.Screen name="transactions" options={{ headerShown: false }} />
                     <Stack.Screen name="account/delivery" options={{ headerShown: false }} />
                     <Stack.Screen name="tracking" options={{ headerShown: false }} />
+                    
+                    {/* Checkout System Screens */}
+                    <Stack.Screen name="checkout" options={{ headerShown: false }} />
+                    <Stack.Screen name="payment-methods" options={{ headerShown: false }} />
+                    <Stack.Screen name="payment-success" options={{ headerShown: false }} />
+                    
+                    {/* Social Media Earning Screen */}
+                    <Stack.Screen name="earn-from-social-media" options={{ headerShown: false }} />
+                    
+                    {/* Online Voucher System */}
+                    <Stack.Screen name="online-voucher" options={{ headerShown: false }} />
+                    <Stack.Screen name="voucher/[brandId]" options={{ headerShown: false }} />
+                    
+                    {/* Location System Screens */}
+                    <Stack.Screen name="location/history" options={{ headerShown: false }} />
+                    <Stack.Screen name="location/settings" options={{ headerShown: false }} />
+                    
                   {/* Dynamic Category Pages */}
                   <Stack.Screen name="category/[slug]" options={{ headerShown: false }} />
                   <Stack.Screen name="+not-found" />
@@ -83,14 +111,17 @@ export default function RootLayout() {
                 <StatusBar style="auto" />
                 
                 {/* Debug component for development */}
-                {process.env.NODE_ENV === 'development' && <AuthDebugger />}
+                {/* {process.env.NODE_ENV === 'development' && <AuthDebugger />} */}
                 
-                  </ThemeProvider>
-                  </WishlistProvider>
-                </ProfileProvider>
-              </CategoryProvider>
-            </OffersProvider>
-          </CartProvider>
+                        </ThemeProvider>
+                      </WishlistProvider>
+                    </ProfileProvider>
+                  </CategoryProvider>
+                </OffersProvider>
+              </CartProvider>
+            </GreetingProvider>
+          </LocationProvider>
+          </SocketProvider>
         </AuthProvider>
       </AppProvider>
     </ErrorBoundary>

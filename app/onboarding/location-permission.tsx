@@ -1,33 +1,45 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as Location from 'expo-location';
 import OnboardingContainer from '@/components/onboarding/OnboardingContainer';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useLocationPermission } from '@/hooks/useLocation';
+import { useAuth } from '@/contexts/AuthContext';
 import { navigationDebugger } from '@/utils/navigationDebug';
 
 export default function LocationPermissionScreen() {
   const router = useRouter();
   const { updateUserData, setLoading, state } = useOnboarding();
+  const { state: authState } = useAuth();
+  const { permissionStatus, isRequesting, requestPermission } = useLocationPermission();
   const [permissionRequested, setPermissionRequested] = useState(false);
 
   const requestLocationPermission = async () => {
-    if (permissionRequested) return;
-    
+    console.log('[Location Permission] Starting location permission request...', {
+      permissionRequested,
+      isRequesting,
+      userIsOnboarded: authState.user?.isOnboarded,
+      userId: authState.user?.id
+    });
+
+    if (permissionRequested || isRequesting) return;
+
     setPermissionRequested(true);
     setLoading(true);
 
     try {
-      // Check if location services are enabled
-      const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+      // Request location permission using our context
+      console.log('[Location Permission] Requesting permission...');
+      const granted = await requestPermission();
+      console.log('[Location Permission] Permission result:', granted);
       
-      if (foregroundStatus !== 'granted') {
+      if (!granted) {
         Alert.alert(
           'Location Permission Required',
           'Please enable location access to find the best deals near you.',
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Settings', onPress: () => Location.requestForegroundPermissionsAsync() }
+            { text: 'Skip', onPress: () => router.push('/onboarding/loading') },
+            { text: 'Try Again', onPress: () => setPermissionRequested(false) }
           ]
         );
         setLoading(false);
@@ -35,22 +47,31 @@ export default function LocationPermissionScreen() {
         return;
       }
 
-      // Get current location
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      // Update user data with location
+      // Update user data with location (this will be handled by the location context)
       updateUserData({
         location: {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
+          latitude: 0, // Will be updated by location context
+          longitude: 0,
         }
       });
 
-      // Navigate to loading screen
-      navigationDebugger.logNavigation('location-permission', 'loading', 'location-granted');
-      router.push('/onboarding/loading');
+      // Check if user is already onboarded (coming from login)
+      console.log('[Location Permission] Navigation decision - checking user status:', {
+        isOnboarded: authState.user?.isOnboarded,
+        userId: authState.user?.id,
+        hasUser: !!authState.user
+      });
+
+      if (authState.user?.isOnboarded) {
+        console.log('[Location Permission] ✅ User is already onboarded, going to main app');
+        navigationDebugger.logNavigation('location-permission', '(tabs)', 'location-granted-onboarded-user');
+        router.replace('/(tabs)');
+      } else {
+        // Navigate to loading screen for new users
+        console.log('[Location Permission] ✅ New user, continuing onboarding flow');
+        navigationDebugger.logNavigation('location-permission', 'loading', 'location-granted');
+        router.push('/onboarding/loading');
+      }
       
     } catch (error) {
       console.error('Location error:', error);
@@ -103,13 +124,13 @@ export default function LocationPermissionScreen() {
         <TouchableOpacity
           style={[
             styles.submitButton,
-            state.isLoading && styles.submitButtonDisabled
+            (state.isLoading || isRequesting) && styles.submitButtonDisabled
           ]}
           onPress={requestLocationPermission}
-          disabled={state.isLoading}
+          disabled={state.isLoading || isRequesting}
         >
           <Text style={styles.submitButtonText}>
-            {state.isLoading ? 'Getting Location...' : 'Submit'}
+            {(state.isLoading || isRequesting) ? 'Getting Location...' : 'Submit'}
           </Text>
         </TouchableOpacity>
       </View>

@@ -433,7 +433,14 @@ class VideosService {
   }
 }
 
+// Import real API
+import realVideosApi from './realVideosApi';
+
+// Feature toggle: use real API or mock API
+const USE_REAL_API = process.env.EXPO_PUBLIC_MOCK_API !== 'true';
+
 // Create singleton instance
 const videosService = new VideosService();
 
-export default videosService;
+// Export real API if enabled, otherwise mock
+export default USE_REAL_API ? realVideosApi : videosService;

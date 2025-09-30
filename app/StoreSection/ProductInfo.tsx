@@ -245,7 +245,6 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  productImage: { width: "100%", height: 320, resizeMode: "cover" },
   infoContainer: { padding: 16, paddingTop: 18 },
   title: { fontSize: 22, fontWeight: "700", marginBottom: 6 },
   description: { fontSize: 14, color: "#555", marginBottom: 12 },

@@ -1,6 +1,3 @@
-// Checkout Page
-// Complete checkout flow with payment options and order summary
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -9,504 +6,531 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
-  Alert,
-  SafeAreaView,
-  TextInput,
   Switch,
+  Dimensions,
+  Animated,
+  TextInput,
+  Modal,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
+import { useCheckout } from '@/hooks/useCheckout';
+import { useCartValidation } from '@/hooks/useCartValidation';
+import StockWarningBanner from '@/components/cart/StockWarningBanner';
+import CartValidation from '@/components/cart/CartValidation';
 
-interface CheckoutItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image?: string;
-  variant?: string;
-}
-
-interface DeliveryAddress {
-  id: string;
-  name: string;
-  phone: string;
-  address: string;
-  city: string;
-  pincode: string;
-  isDefault: boolean;
-}
-
-interface PaymentMethod {
-  id: string;
-  type: 'CARD' | 'UPI' | 'WALLET' | 'COD' | 'NETBANKING';
-  title: string;
-  subtitle?: string;
-  icon: string;
-  enabled: boolean;
-}
+const { width } = Dimensions.get('window');
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  
-  const [items, setItems] = useState<CheckoutItem[]>([]);
-  const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress | null>(null);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentMethod | null>(null);
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [useWalletBalance, setUseWalletBalance] = useState(false);
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [orderStep, setOrderStep] = useState<'REVIEW' | 'PAYMENT' | 'CONFIRMATION'>('REVIEW');
+  const { state, handlers } = useCheckout();
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
 
-  // Mock data
-  const [addresses] = useState<DeliveryAddress[]>([
-    {
-      id: '1',
-      name: 'Home',
-      phone: '+91 9876543210',
-      address: '123 Main Street, Apartment 4B',
-      city: 'Bangalore',
-      pincode: '560001',
-      isDefault: true,
-    },
-    {
-      id: '2',
-      name: 'Office',
-      phone: '+91 9876543210',
-      address: '456 Business Park, Floor 3',
-      city: 'Bangalore',
-      pincode: '560038',
-      isDefault: false,
-    },
-  ]);
+  // Cart validation state
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [showWarningBanner, setShowWarningBanner] = useState(true);
 
-  const [paymentMethods] = useState<PaymentMethod[]>([
-    { id: 'wallet', type: 'WALLET', title: 'REZ Wallet', subtitle: 'Balance: ₹1,250', icon: 'wallet', enabled: true },
-    { id: 'upi', type: 'UPI', title: 'UPI Payment', subtitle: 'Pay via any UPI app', icon: 'phone-portrait', enabled: true },
-    { id: 'card', type: 'CARD', title: 'Credit/Debit Card', subtitle: 'Visa, Mastercard, RuPay', icon: 'card', enabled: true },
-    { id: 'netbanking', type: 'NETBANKING', title: 'Net Banking', subtitle: 'All major banks supported', icon: 'business', enabled: true },
-    { id: 'cod', type: 'COD', title: 'Cash on Delivery', subtitle: 'Pay when you receive', icon: 'cash', enabled: true },
-  ]);
-
-  const [orderSummary, setOrderSummary] = useState({
-    subtotal: 0,
-    delivery: 50,
-    taxes: 0,
-    discount: 0,
-    walletUsed: 0,
-    total: 0,
+  // Use cart validation hook with real-time validation
+  const {
+    validationState,
+    hasInvalidItems,
+    canCheckout,
+    invalidItemCount,
+    warningCount,
+    errorCount,
+    validateCart,
+    clearValidation,
+    removeInvalidItems,
+  } = useCartValidation({
+    autoValidate: true, // Enable auto-validation on checkout page
+    validationInterval: 30000, // Re-validate every 30 seconds
+    showToastNotifications: true, // Show toast for stock changes
   });
 
+  // Calculate total wallet balance from coin system
+  const totalWalletBalance = state.coinSystem.wasilCoin.available + state.coinSystem.promoCoin.available;
+
+  // Validate cart on page load
   useEffect(() => {
-    loadCheckoutData();
-    setSelectedAddress(addresses.find(addr => addr.isDefault) || addresses[0]);
-    setSelectedPayment(paymentMethods[0]);
+    console.log('✅ [CHECKOUT] Page loaded, validating cart...');
+    validateCart();
   }, []);
 
-  const loadCheckoutData = () => {
-    // Mock checkout items - in real app, this would come from cart or product selection
-    const mockItems: CheckoutItem[] = [
-      { id: '1', name: 'Premium Wireless Headphones', price: 2999, quantity: 1, variant: 'Black' },
-      { id: '2', name: 'Bluetooth Speaker', price: 1499, quantity: 2 },
-    ];
-    
-    setItems(mockItems);
-    
-    const subtotal = mockItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const taxes = Math.round(subtotal * 0.18); // 18% GST
-    const total = subtotal + orderSummary.delivery + taxes;
-    
-    setOrderSummary(prev => ({
-      ...prev,
-      subtotal,
-      taxes,
-      total: total - prev.discount - prev.walletUsed,
-    }));
-  };
-
-  const handleBackPress = () => {
-    if (orderStep === 'PAYMENT') {
-      setOrderStep('REVIEW');
-    } else if (orderStep === 'CONFIRMATION') {
-      // Navigate to orders/tracking page
-      router.replace('/tracking');
-    } else {
-      router.back();
+  // Show validation modal if critical issues found
+  useEffect(() => {
+    if (validationState.validationResult && errorCount > 0) {
+      console.log('⚠️ [CHECKOUT] Critical validation issues found, showing modal');
+      setShowValidationModal(true);
     }
+  }, [errorCount, validationState.validationResult]);
+
+  const handleContinueToCheckout = () => {
+    console.log('✅ [CHECKOUT] Continue after validation');
+    setShowValidationModal(false);
   };
 
-  const handleAddressSelect = (address: DeliveryAddress) => {
-    setSelectedAddress(address);
+  const handleRemoveInvalidItems = async () => {
+    console.log('🗑️ [CHECKOUT] Removing invalid items');
+    await removeInvalidItems();
+    setShowValidationModal(false);
   };
 
-  const handlePaymentSelect = (payment: PaymentMethod) => {
-    setSelectedPayment(payment);
+  const handleRefreshValidation = async () => {
+    console.log('🔄 [CHECKOUT] Refreshing validation');
+    await validateCart();
   };
 
-  const handleApplyCoupon = () => {
-    if (!couponCode.trim()) {
-      Alert.alert('Error', 'Please enter a coupon code');
+  const handleApplyPromoCode = () => {
+    if (!promoCode.trim()) {
+      Alert.alert('Error', 'Please enter a promo code');
       return;
     }
-
-    // Mock coupon validation
-    const validCoupons = {
-      'SAVE10': { discount: 100, message: 'SAVE10 applied! ₹100 off' },
-      'FIRST50': { discount: 200, message: 'FIRST50 applied! ₹200 off' },
-      'WELCOME': { discount: 150, message: 'WELCOME applied! ₹150 off' },
-    };
-
-    const coupon = validCoupons[couponCode.toUpperCase() as keyof typeof validCoupons];
-    if (coupon) {
-      setAppliedCoupon(couponCode.toUpperCase());
-      setOrderSummary(prev => ({
-        ...prev,
-        discount: coupon.discount,
-        total: prev.subtotal + prev.delivery + prev.taxes - coupon.discount - prev.walletUsed,
-      }));
-      Alert.alert('Success', coupon.message);
-      setCouponCode('');
-    } else {
-      Alert.alert('Invalid Coupon', 'This coupon code is not valid');
-    }
-  };
-
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    setOrderSummary(prev => ({
-      ...prev,
-      discount: 0,
-      total: prev.subtotal + prev.delivery + prev.taxes - prev.walletUsed,
-    }));
-  };
-
-  const handleWalletToggle = (value: boolean) => {
-    setUseWalletBalance(value);
-    const walletAmount = value ? Math.min(1250, orderSummary.total) : 0;
-    setOrderSummary(prev => ({
-      ...prev,
-      walletUsed: walletAmount,
-      total: prev.subtotal + prev.delivery + prev.taxes - prev.discount - walletAmount,
-    }));
-  };
-
-  const handleProceedToPayment = () => {
-    if (!selectedAddress) {
-      Alert.alert('Error', 'Please select a delivery address');
-      return;
-    }
-    setOrderStep('PAYMENT');
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!selectedPayment) {
-      Alert.alert('Error', 'Please select a payment method');
-      return;
-    }
-
-    setIsPlacingOrder(true);
     
-    try {
-      // Mock order placement
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setOrderStep('CONFIRMATION');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to place order. Please try again.');
-    } finally {
-      setIsPlacingOrder(false);
-    }
+    const previousPromo = state.appliedPromoCode;
+    handlers.handlePromoCodeApply(promoCode.trim().toUpperCase());
+    setPromoCode('');
+    setShowPromoModal(false);
+    
+    // Show success or error after API call
+    setTimeout(() => {
+      if (state.error) {
+        Alert.alert('Error', state.error);
+      } else if (state.appliedPromoCode) {
+        const message = previousPromo 
+          ? `${previousPromo.code} replaced with ${state.appliedPromoCode.code}!`
+          : `${state.appliedPromoCode.code} applied successfully!`;
+        Alert.alert('Success!', message);
+      }
+    }, 500);
   };
 
-  const renderOrderItem = (item: CheckoutItem) => (
-    <View key={item.id} style={styles.orderItem}>
-      <View style={styles.itemImage}>
-        <Ionicons name="cube" size={24} color="#8B5CF6" />
-      </View>
-      <View style={styles.itemDetails}>
-        <ThemedText style={styles.itemName}>{item.name}</ThemedText>
-        {item.variant && (
-          <ThemedText style={styles.itemVariant}>Variant: {item.variant}</ThemedText>
-        )}
-        <ThemedText style={styles.itemPrice}>₹{item.price.toLocaleString()} × {item.quantity}</ThemedText>
-      </View>
-      <ThemedText style={styles.itemTotal}>₹{(item.price * item.quantity).toLocaleString()}</ThemedText>
-    </View>
-  );
+  const handleQuickPromoSelect = (selectedPromoCode: string) => {
+    const previousPromo = state.appliedPromoCode;
+    handlers.handlePromoCodeApply(selectedPromoCode);
+    setShowPromoModal(false);
+    
+    setTimeout(() => {
+      if (state.error) {
+        Alert.alert('Error', state.error);
+      } else if (state.appliedPromoCode) {
+        const message = previousPromo 
+          ? `${previousPromo.code} replaced with ${selectedPromoCode}!`
+          : `${selectedPromoCode} applied successfully!`;
+        Alert.alert('Success!', message);
+      }
+    }, 500);
+  };
 
-  const renderAddress = (address: DeliveryAddress) => (
-    <TouchableOpacity
-      key={address.id}
-      style={[
-        styles.addressCard,
-        selectedAddress?.id === address.id && styles.selectedCard
-      ]}
-      onPress={() => handleAddressSelect(address)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.addressHeader}>
-        <ThemedText style={styles.addressName}>{address.name}</ThemedText>
-        {address.isDefault && (
-          <View style={styles.defaultBadge}>
-            <ThemedText style={styles.defaultText}>Default</ThemedText>
-          </View>
-        )}
-        {selectedAddress?.id === address.id && (
-          <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
-        )}
-      </View>
-      <ThemedText style={styles.addressText}>
-        {address.address}, {address.city} - {address.pincode}
-      </ThemedText>
-      <ThemedText style={styles.addressPhone}>{address.phone}</ThemedText>
-    </TouchableOpacity>
-  );
 
-  const renderPaymentMethod = (method: PaymentMethod) => (
-    <TouchableOpacity
-      key={method.id}
-      style={[
-        styles.paymentCard,
-        selectedPayment?.id === method.id && styles.selectedCard
-      ]}
-      onPress={() => handlePaymentSelect(method)}
-      activeOpacity={0.7}
-      disabled={!method.enabled}
-    >
-      <View style={styles.paymentHeader}>
-        <Ionicons name={method.icon as any} size={24} color="#8B5CF6" />
-        <View style={styles.paymentDetails}>
-          <ThemedText style={styles.paymentTitle}>{method.title}</ThemedText>
-          {method.subtitle && (
-            <ThemedText style={styles.paymentSubtitle}>{method.subtitle}</ThemedText>
-          )}
-        </View>
-        {selectedPayment?.id === method.id && (
-          <Ionicons name="radio-button-on" size={20} color="#8B5CF6" />
-        )}
-        {selectedPayment?.id !== method.id && (
-          <Ionicons name="radio-button-off" size={20} color="#D1D5DB" />
-        )}
-      </View>
-    </TouchableOpacity>
-  );
 
-  if (orderStep === 'CONFIRMATION') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#22C55E" />
-        
-        <LinearGradient
-          colors={['#22C55E', '#16A34A']}
-          style={styles.confirmationContainer}
-        >
-          <View style={styles.confirmationContent}>
-            <View style={styles.successIcon}>
-              <Ionicons name="checkmark-circle" size={80} color="white" />
-            </View>
-            
-            <ThemedText style={styles.successTitle}>Order Placed Successfully!</ThemedText>
-            <ThemedText style={styles.successMessage}>
-              Your order has been confirmed and will be delivered to your selected address.
-            </ThemedText>
-            
-            <View style={styles.orderInfo}>
-              <ThemedText style={styles.orderNumber}>Order #WAS123456</ThemedText>
-              <ThemedText style={styles.estimatedDelivery}>
-                Estimated Delivery: 2-3 business days
-              </ThemedText>
-            </View>
-            
-            <View style={styles.confirmationActions}>
-              <TouchableOpacity
-                style={styles.trackOrderButton}
-                onPress={() => router.replace('/tracking')}
-              >
-                <ThemedText style={styles.trackOrderText}>Track Order</ThemedText>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.continueShoppingButton}
-                onPress={() => router.replace('/(tabs)/')}
-              >
-                <ThemedText style={styles.continueShoppingText}>Continue Shopping</ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </LinearGradient>
-      </SafeAreaView>
-    );
-  }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
       
-      {/* Header */}
-      <LinearGradient colors={['#8B5CF6', '#A855F7']} style={styles.header}>
+      {/* Header with Amount Display */}
+      <LinearGradient 
+        colors={['#8B5CF6', '#7C3AED']} 
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => {
+              console.log('🔵 Checkout back arrow clicked!');
+              handlers.handleBackNavigation();
+            }}
+            activeOpacity={0.8}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           
-          <ThemedText style={styles.headerTitle}>
-            {orderStep === 'REVIEW' ? 'Checkout' : 'Payment'}
-          </ThemedText>
+          <ThemedText style={styles.headerTitle}>Checkout</ThemedText>
           
-          <View style={styles.headerSpacer} />
+          <View style={styles.coinsDisplay}>
+            <Ionicons name="diamond" size={16} color="#FFD700" />
+            <ThemedText style={styles.coinsText}>{totalWalletBalance}</ThemedText>
+          </View>
+        </View>
+        
+        {/* Amount Display */}
+        <View style={styles.amountContainer}>
+          <ThemedText style={styles.amountText}>₹100</ThemedText>
+          <View style={styles.cashbackBadge}>
+            <ThemedText style={styles.cashbackText}>Cash back 10 %</ThemedText>
+          </View>
         </View>
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {orderStep === 'REVIEW' ? (
-          <>
-            {/* Order Items */}
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Order Items ({items.length})</ThemedText>
-              {items.map(renderOrderItem)}
-            </View>
-
-            {/* Delivery Address */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <ThemedText style={styles.sectionTitle}>Delivery Address</ThemedText>
-                <TouchableOpacity>
-                  <ThemedText style={styles.addNew}>+ Add New</ThemedText>
-                </TouchableOpacity>
-              </View>
-              {addresses.map(renderAddress)}
-            </View>
-
-            {/* Coupon Section */}
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Coupons & Offers</ThemedText>
-              {appliedCoupon ? (
-                <View style={styles.appliedCoupon}>
-                  <Ionicons name="pricetag" size={20} color="#22C55E" />
-                  <ThemedText style={styles.couponCode}>{appliedCoupon}</ThemedText>
-                  <ThemedText style={styles.couponDiscount}>-₹{orderSummary.discount}</ThemedText>
-                  <TouchableOpacity onPress={handleRemoveCoupon}>
-                    <Ionicons name="close" size={20} color="#EF4444" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.couponInput}>
-                  <TextInput
-                    style={styles.couponField}
-                    placeholder="Enter coupon code"
-                    value={couponCode}
-                    onChangeText={setCouponCode}
-                    autoCapitalize="characters"
-                  />
-                  <TouchableOpacity style={styles.applyButton} onPress={handleApplyCoupon}>
-                    <ThemedText style={styles.applyText}>Apply</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-
-            {/* Wallet Balance */}
-            <View style={styles.section}>
-              <View style={styles.walletRow}>
-                <View style={styles.walletInfo}>
-                  <Ionicons name="wallet" size={20} color="#8B5CF6" />
-                  <ThemedText style={styles.walletTitle}>Use Wallet Balance (₹1,250)</ThemedText>
-                </View>
-                <Switch
-                  value={useWalletBalance}
-                  onValueChange={handleWalletToggle}
-                  trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
-                  thumbColor={useWalletBalance ? '#FFFFFF' : '#F3F4F6'}
-                />
-              </View>
-            </View>
-          </>
-        ) : (
-          <>
-            {/* Payment Methods */}
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionTitle}>Select Payment Method</ThemedText>
-              {paymentMethods.map(renderPaymentMethod)}
-            </View>
-          </>
+        {/* Stock Warning Banner */}
+        {showWarningBanner && validationState.validationResult && validationState.validationResult.issues.length > 0 && (
+          <StockWarningBanner
+            issues={validationState.validationResult.issues}
+            onDismiss={() => setShowWarningBanner(false)}
+            onViewDetails={() => setShowValidationModal(true)}
+            autoHide={false}
+          />
         )}
 
-        {/* Order Summary */}
+        {/* Store Confirmation */}
+        <View style={styles.storeConfirmation}>
+          <ThemedText style={styles.storeWarning}>
+            The selected store is 3 km away from your current location. Please confirm.
+          </ThemedText>
+        </View>
+
+        {/* Apply Promocode Section */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Order Summary</ThemedText>
-          <View style={styles.summaryRow}>
-            <ThemedText style={styles.summaryLabel}>Subtotal</ThemedText>
-            <ThemedText style={styles.summaryValue}>₹{orderSummary.subtotal.toLocaleString()}</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Apply Promocode</ThemedText>
+          
+          {state.appliedPromoCode ? (
+            <View style={styles.appliedPromoCard}>
+              <View style={styles.appliedPromoContent}>
+                <Ionicons name="pricetag" size={20} color="#22C55E" />
+                <View style={styles.appliedPromoText}>
+                  <ThemedText style={styles.appliedPromoTitle}>
+                    {state.appliedPromoCode.code} Applied
+                  </ThemedText>
+                  <ThemedText style={styles.appliedPromoSubtitle}>
+                    You saved ₹{state.billSummary.promoDiscount}
+                  </ThemedText>
+                </View>
+              </View>
+              <View style={styles.appliedPromoActions}>
+                <TouchableOpacity
+                  onPress={() => setShowPromoModal(true)}
+                  style={styles.changePromoButton}
+                >
+                  <ThemedText style={styles.changePromoText}>Change</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    const removedCode = state.appliedPromoCode?.code;
+                    handlers.removePromoCode?.();
+                    setTimeout(() => {
+                      Alert.alert('Removed!', `${removedCode} promo code removed`);
+                    }, 100);
+                  }}
+                  style={styles.removePromoButton}
+                >
+                  <Ionicons name="close" size={20} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={styles.promoCodeCard}
+              onPress={() => setShowPromoModal(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.promoCodeContent}>
+                <ThemedText style={styles.promoCodeTitle}>Apply Promocode</ThemedText>
+                <ThemedText style={styles.promoCodeSubtitle}>View all</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+
+          {/* Coin Toggles */}
+          <View style={styles.coinToggles}>
+            {/* REZ Coin */}
+            <View style={styles.coinToggleCard}>
+              <View style={styles.coinToggleContent}>
+                <View>
+                  <ThemedText style={styles.coinToggleTitle}>REZ coins</ThemedText>
+                  <ThemedText style={styles.coinToggleSubtitle}>
+                    1 Rupee is equal to 1 REZ Coin
+                  </ThemedText>
+                </View>
+                <View style={styles.coinToggleRight}>
+                  <Switch
+                    value={state.coinSystem.wasilCoin.used > 0}
+                    onValueChange={(value) => handlers.handleCoinToggle('wasil', value)}
+                    trackColor={{ false: '#E5E7EB', true: '#8B5CF6' }}
+                    thumbColor={'white'}
+                  />
+                  <View style={styles.coinValue}>
+                    <Ionicons name="diamond" size={12} color="#FFD700" />
+                    <ThemedText style={styles.coinValueText}>
+                      {state.coinSystem.wasilCoin.available}
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Promo Coin */}
+            <View style={styles.coinToggleCard}>
+              <View style={styles.coinToggleContent}>
+                <View>
+                  <ThemedText style={styles.coinToggleTitle}>Promo coin</ThemedText>
+                  <ThemedText style={styles.coinToggleSubtitle}>
+                    The promo code can be applied for up to 20% off
+                  </ThemedText>
+                </View>
+                <View style={styles.coinToggleRight}>
+                  <Switch
+                    value={state.coinSystem.promoCoin.used > 0}
+                    onValueChange={(value) => handlers.handleCoinToggle('promo', value)}
+                    trackColor={{ false: '#E5E7EB', true: '#8B5CF6' }}
+                    thumbColor={'white'}
+                  />
+                  <ThemedText style={styles.promoCoinValue}>
+                    {state.coinSystem.promoCoin.available}
+                  </ThemedText>
+                </View>
+              </View>
+            </View>
           </View>
-          <View style={styles.summaryRow}>
-            <ThemedText style={styles.summaryLabel}>Delivery Charges</ThemedText>
-            <ThemedText style={styles.summaryValue}>₹{orderSummary.delivery}</ThemedText>
-          </View>
-          <View style={styles.summaryRow}>
-            <ThemedText style={styles.summaryLabel}>Taxes & Fees</ThemedText>
-            <ThemedText style={styles.summaryValue}>₹{orderSummary.taxes}</ThemedText>
-          </View>
-          {orderSummary.discount > 0 && (
+        </View>
+
+        {/* Bill Summary */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Bill Summary</ThemedText>
+          
+          <View style={styles.billSummaryCard}>
             <View style={styles.summaryRow}>
-              <ThemedText style={[styles.summaryLabel, { color: '#22C55E' }]}>Discount</ThemedText>
-              <ThemedText style={[styles.summaryValue, { color: '#22C55E' }]}>-₹{orderSummary.discount}</ThemedText>
+              <ThemedText style={styles.summaryLabel}>Item Total</ThemedText>
+              <ThemedText style={styles.summaryValue}>
+                ₹{state.billSummary.itemTotal.toFixed(0)}
+              </ThemedText>
+            </View>
+            
+            <View style={styles.summaryRow}>
+              <ThemedText style={styles.summaryLabel}>Get & item Total</ThemedText>
+              <ThemedText style={styles.summaryValue}>
+                ₹{state.billSummary.getAndItemTotal.toFixed(0)}
+              </ThemedText>
+            </View>
+
+            {state.billSummary.platformFee > 0 && (
+              <View style={styles.summaryRow}>
+                <ThemedText style={styles.summaryLabel}>Platform Fee</ThemedText>
+                <ThemedText style={styles.summaryValue}>
+                  ₹{state.billSummary.platformFee.toFixed(0)}
+                </ThemedText>
+              </View>
+            )}
+
+            {state.billSummary.taxes > 0 && (
+              <View style={styles.summaryRow}>
+                <ThemedText style={styles.summaryLabel}>Taxes</ThemedText>
+                <ThemedText style={styles.summaryValue}>
+                  ₹{state.billSummary.taxes.toFixed(0)}
+                </ThemedText>
+              </View>
+            )}
+
+            {state.billSummary.promoDiscount > 0 && (
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: '#22C55E' }]}>
+                  Promo Discount
+                </ThemedText>
+                <ThemedText style={[styles.summaryValue, { color: '#22C55E' }]}>
+                  -₹{state.billSummary.promoDiscount.toFixed(0)}
+                </ThemedText>
+              </View>
+            )}
+
+            {state.billSummary.coinDiscount > 0 && (
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: '#8B5CF6' }]}>
+                  REZ Coin Discount
+                </ThemedText>
+                <ThemedText style={[styles.summaryValue, { color: '#8B5CF6' }]}>
+                  -₹{state.billSummary.coinDiscount.toFixed(0)}
+                </ThemedText>
+              </View>
+            )}
+            
+            <View style={styles.summaryRow}>
+              <ThemedText style={styles.summaryLabel}>Round off</ThemedText>
+              <ThemedText style={styles.summaryValue}>
+                ₹{Math.abs(state.billSummary.roundOff).toFixed(2)}
+              </ThemedText>
+            </View>
+          </View>
+          
+          <View style={styles.totalPayableCard}>
+            <ThemedText style={styles.totalPayableLabel}>Total payable</ThemedText>
+            <ThemedText style={styles.totalPayableValue}>
+              ₹{state.billSummary.totalPayable.toFixed(0)}
+            </ThemedText>
+          </View>
+
+          {state.billSummary.savings > 0 && (
+            <View style={styles.savingsCard}>
+              <ThemedText style={styles.savingsText}>
+                🎉 You saved ₹{state.billSummary.savings} on this order!
+              </ThemedText>
             </View>
           )}
-          {orderSummary.walletUsed > 0 && (
-            <View style={styles.summaryRow}>
-              <ThemedText style={[styles.summaryLabel, { color: '#8B5CF6' }]}>Wallet Used</ThemedText>
-              <ThemedText style={[styles.summaryValue, { color: '#8B5CF6' }]}>-₹{orderSummary.walletUsed}</ThemedText>
-            </View>
-          )}
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <ThemedText style={styles.totalLabel}>Total Amount</ThemedText>
-            <ThemedText style={styles.totalValue}>₹{orderSummary.total.toLocaleString()}</ThemedText>
-          </View>
         </View>
 
         <View style={styles.bottomSpace} />
       </ScrollView>
 
-      {/* Bottom Action Button */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={[styles.actionButton, isPlacingOrder && styles.actionButtonDisabled]}
-          onPress={orderStep === 'REVIEW' ? handleProceedToPayment : handlePlaceOrder}
-          disabled={isPlacingOrder}
-          activeOpacity={0.8}
+      {/* Bottom Payment Buttons */}
+      <View style={styles.bottomButtonsContainer}>
+        <TouchableOpacity 
+          style={styles.otherPaymentButton}
+          onPress={handlers.navigateToOtherPaymentMethods}
+          activeOpacity={0.7}
         >
-          {isPlacingOrder ? (
-            <ThemedText style={styles.actionButtonText}>Placing Order...</ThemedText>
-          ) : (
-            <>
-              <ThemedText style={styles.actionButtonText}>
-                {orderStep === 'REVIEW' ? 'Proceed to Payment' : 'Place Order'}
-              </ThemedText>
-              <ThemedText style={styles.actionButtonPrice}>₹{orderSummary.total.toLocaleString()}</ThemedText>
-            </>
-          )}
+          <ThemedText style={styles.otherPaymentText}>Other payment mode</ThemedText>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[
+            styles.loadWalletButton,
+            (state.loading || totalWalletBalance < state.billSummary.totalPayable || !canCheckout) && styles.disabledButton
+          ]}
+          onPress={handlers.handleWalletPayment}
+          activeOpacity={0.7}
+          disabled={state.loading || totalWalletBalance < state.billSummary.totalPayable || !canCheckout}
+        >
+          <ThemedText style={styles.loadWalletText}>
+            {state.loading ? 'Processing...' : !canCheckout ? 'Cart has issues' : 'Load wallet & pay'}
+          </ThemedText>
+          <View style={styles.walletBalanceChip}>
+            <Ionicons name="diamond" size={12} color="#FFD700" />
+            <ThemedText style={styles.walletBalanceText}>Bal RC {totalWalletBalance}</ThemedText>
+          </View>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+
+      {/* Validation Modal */}
+      <CartValidation
+        visible={showValidationModal}
+        validationResult={validationState.validationResult}
+        loading={validationState.isValidating}
+        onClose={() => setShowValidationModal(false)}
+        onContinueToCheckout={handleContinueToCheckout}
+        onRemoveInvalidItems={handleRemoveInvalidItems}
+        onRefresh={handleRefreshValidation}
+      />
+
+      {/* Promo Code Modal */}
+      <Modal
+        visible={showPromoModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPromoModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Apply Promo Code</ThemedText>
+              <TouchableOpacity onPress={() => setShowPromoModal(false)}>
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <TextInput
+                style={styles.promoInput}
+                placeholder="Enter promo code"
+                value={promoCode}
+                onChangeText={setPromoCode}
+                autoCapitalize="characters"
+                autoFocus={true}
+              />
+              
+              <View style={styles.availablePromos}>
+                <ThemedText style={styles.availablePromosTitle}>Available Promo Codes:</ThemedText>
+                {state.availablePromoCodes.slice(0, 3).map((promo) => {
+                  const isCurrentlyApplied = state.appliedPromoCode?.code === promo.code;
+                  const itemTotal = state.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+                  const isEligible = itemTotal >= promo.minOrderValue;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={promo.id}
+                      style={[
+                        styles.promoOption, 
+                        isCurrentlyApplied && styles.currentPromoOption,
+                        !isEligible && styles.ineligiblePromoOption
+                      ]}
+                      onPress={() => isEligible ? handleQuickPromoSelect(promo.code) : null}
+                      disabled={!isEligible}
+                      activeOpacity={isEligible ? 0.7 : 1}
+                    >
+                      <View style={styles.promoOptionContent}>
+                        <View style={styles.promoOptionText}>
+                          <ThemedText style={[
+                            styles.promoOptionCode, 
+                            isCurrentlyApplied && styles.currentPromoCode,
+                            !isEligible && styles.ineligibleText
+                          ]}>
+                            {promo.code}
+                          </ThemedText>
+                          <ThemedText style={[
+                            styles.promoOptionDesc,
+                            !isEligible && styles.ineligibleText
+                          ]}>
+                            {promo.description}
+                          </ThemedText>
+                          {!isEligible && (
+                            <ThemedText style={styles.minOrderText}>
+                              Min order: ₹{promo.minOrderValue}
+                            </ThemedText>
+                          )}
+                        </View>
+                        {isCurrentlyApplied && (
+                          <View style={styles.appliedBadge}>
+                            <Ionicons name="checkmark" size={14} color="white" />
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+            
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.applyPromoButton}
+                onPress={handleApplyPromoCode}
+                activeOpacity={0.8}
+              >
+                <ThemedText style={styles.applyPromoText}>Apply Code</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FFFFFF',
   },
+  
+  // Header Styles
   header: {
-    paddingTop: Platform.OS === 'android' ? 20 : 0,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 40 : 50,
+    paddingBottom: 32,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 24,
   },
   backButton: {
     width: 40,
@@ -515,358 +539,454 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    minWidth: 40,
+    minHeight: 40,
+    padding: 0,
+    position: 'relative',
+    zIndex: 10,
   },
   headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'white',
     flex: 1,
-    fontSize: 20,
+    textAlign: 'center',
+    marginLeft: -40,
+  },
+  coinsDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  coinsText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  
+  // Amount Display
+  amountContainer: {
+    alignItems: 'center',
+  },
+  amountText: {
+    fontSize: 48,
     fontWeight: '700',
     color: 'white',
-    textAlign: 'center',
-    marginHorizontal: 16,
+    marginBottom: 8,
   },
-  headerSpacer: {
-    width: 40,
+  cashbackBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
+  cashbackText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  
+  // Content
   content: {
     flex: 1,
+    backgroundColor: '#F8F9FA',
   },
+  
+  // Store Confirmation
+  storeConfirmation: {
+    backgroundColor: '#FEF3E2',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  storeWarning: {
+    fontSize: 13,
+    color: '#92400E',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  
+  // Sections
   section: {
     backgroundColor: 'white',
-    marginBottom: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  
+  // Promo Code Card
+  promoCodeCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  promoCodeContent: {
+    flex: 1,
+  },
+  promoCodeTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  promoCodeSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  
+  // Coin Toggles
+  coinToggles: {
+    gap: 12,
+  },
+  coinToggleCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
-  sectionHeader: {
+  coinToggleContent: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 12,
-  },
-  addNew: {
-    fontSize: 14,
-    color: '#8B5CF6',
-    fontWeight: '600',
-  },
-  
-  // Order Items
-  orderItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  itemImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  itemDetails: {
-    flex: 1,
-  },
-  itemName: {
+  coinToggleTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 2,
+    fontWeight: '500',
+    color: '#111827',
+    marginBottom: 4,
   },
-  itemVariant: {
+  coinToggleSubtitle: {
     fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
+    color: '#6B7280',
+    lineHeight: 16,
+    maxWidth: width * 0.6,
   },
-  itemPrice: {
-    fontSize: 14,
-    color: '#666',
+  coinToggleRight: {
+    alignItems: 'center',
+    gap: 8,
   },
-  itemTotal: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-  },
-  
-  // Address Cards
-  addressCard: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  selectedCard: {
-    borderColor: '#8B5CF6',
-    backgroundColor: '#F8F7FF',
-  },
-  addressHeader: {
+  coinValue: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 4,
   },
-  addressName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-    flex: 1,
-  },
-  defaultBadge: {
-    backgroundColor: '#22C55E',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  defaultText: {
-    fontSize: 10,
-    color: 'white',
+  coinValueText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#111827',
   },
-  addressText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  addressPhone: {
-    fontSize: 14,
-    color: '#666',
+  promoCoinValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginTop: 8,
   },
   
-  // Coupon Section
-  couponInput: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  couponField: {
-    flex: 1,
+  // Bill Summary
+  billSummaryCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#333',
-  },
-  applyButton: {
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  applyText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  appliedCoupon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#22C55E',
-    borderRadius: 8,
-    padding: 12,
-  },
-  couponCode: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#22C55E',
-    marginLeft: 8,
-  },
-  couponDiscount: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#22C55E',
-    marginRight: 8,
-  },
-  
-  // Wallet Section
-  walletRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  walletInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  walletTitle: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 8,
-  },
-  
-  // Payment Methods
-  paymentCard: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 16,
+    paddingVertical: 16,
     marginBottom: 12,
   },
-  paymentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  paymentDetails: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  paymentTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 2,
-  },
-  paymentSubtitle: {
-    fontSize: 12,
-    color: '#666',
-  },
-  
-  // Order Summary
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#6B7280',
   },
   summaryValue: {
     fontSize: 14,
-    color: '#333',
     fontWeight: '500',
-  },
-  totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    marginTop: 8,
-    paddingTop: 16,
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-  },
-  totalValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#111827',
   },
   
-  // Bottom Action
-  bottomSpace: {
-    height: 100,
-  },
-  bottomBar: {
-    backgroundColor: 'white',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  actionButton: {
+  // Total Payable
+  totalPayableCard: {
     backgroundColor: '#8B5CF6',
     borderRadius: 12,
+    paddingHorizontal: 16,
     paddingVertical: 16,
-    paddingHorizontal: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  actionButtonDisabled: {
-    backgroundColor: '#D1D5DB',
-  },
-  actionButtonText: {
-    color: 'white',
+  totalPayableLabel: {
     fontSize: 16,
-    fontWeight: '700',
-  },
-  actionButtonPrice: {
+    fontWeight: '600',
     color: 'white',
+  },
+  totalPayableValue: {
     fontSize: 18,
     fontWeight: '700',
+    color: 'white',
   },
   
-  // Confirmation Page
-  confirmationContainer: {
+  // Bottom Buttons
+  bottomSpace: {
+    height: 120,
+  },
+  bottomButtonsContainer: {
+    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    gap: 12,
+  },
+  otherPaymentButton: {
+    backgroundColor: 'white',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  otherPaymentText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  loadWalletButton: {
+    backgroundColor: '#8B5CF6',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  loadWalletText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  walletBalanceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  walletBalanceText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'white',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+
+  // Applied Promo Code
+  appliedPromoCard: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#22C55E',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  appliedPromoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
+  },
+  appliedPromoText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  appliedPromoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#22C55E',
+    marginBottom: 2,
+  },
+  appliedPromoSubtitle: {
+    fontSize: 12,
+    color: '#16A34A',
+  },
+  appliedPromoActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  changePromoButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  changePromoText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
+  },
+  removePromoButton: {
+    padding: 4,
+  },
+  
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  modalBody: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  promoInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 16,
+    color: '#111827',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  availablePromos: {
+    marginTop: 10,
+  },
+  availablePromosTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  promoOption: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  currentPromoOption: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#22C55E',
+  },
+  ineligiblePromoOption: {
+    backgroundColor: '#F5F5F5',
+    opacity: 0.6,
+  },
+  promoOptionContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  promoOptionText: {
+    flex: 1,
+  },
+  promoOptionCode: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    marginBottom: 2,
+  },
+  currentPromoCode: {
+    color: '#22C55E',
+  },
+  ineligibleText: {
+    color: '#9CA3AF',
+  },
+  promoOptionDesc: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  minOrderText: {
+    fontSize: 11,
+    color: '#EF4444',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  appliedBadge: {
+    backgroundColor: '#22C55E',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  confirmationContent: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
-  successIcon: {
-    marginBottom: 32,
-  },
-  successTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  successMessage: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  orderInfo: {
-    alignItems: 'center',
-    marginBottom: 48,
-  },
-  orderNumber: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: 8,
-  },
-  estimatedDelivery: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  confirmationActions: {
-    width: '100%',
-  },
-  trackOrderButton: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  trackOrderText: {
-    color: '#22C55E',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  continueShoppingButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+  applyPromoButton: {
+    backgroundColor: '#8B5CF6',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  continueShoppingText: {
-    color: 'white',
+  applyPromoText: {
     fontSize: 16,
     fontWeight: '600',
+    color: 'white',
+  },
+  
+  // Savings Card
+  savingsCard: {
+    backgroundColor: '#FEF3E2',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  savingsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#D97706',
+    textAlign: 'center',
   },
 });

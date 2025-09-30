@@ -131,64 +131,105 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       
-      // Use real backend API
-      const categoriesApi = (await import('@/services/categoriesApi')).default;
-      const response = await categoriesApi.getCategoryBySlug(slug);
-      
-      if (!response.data) {
-        throw new Error(`Category '${slug}' not found`);
+      // Try to load from local category data first as fallback
+      let localCategory: Category | null = null;
+      try {
+        const categoryData = await import('@/data/categoryData');
+        // Use the default export which contains categories
+        console.log('🔍 CategoryData loaded, categories count:', categoryData.default.categories?.length);
+        localCategory = categoryData.default.categories.find((cat: any) => cat.slug === slug) || null;
+        console.log('🔍 Local category found for', slug, ':', localCategory ? 'Yes' : 'No');
+        if (localCategory) {
+          console.log('🔍 Local category items count:', localCategory.items?.length);
+        }
+      } catch (e) {
+        console.log('No local category data available:', e);
       }
       
-      // Map backend category to frontend format  
-      const category = {
-        id: response.data._id,
-        name: response.data.name,
-        slug: response.data.slug,
-        description: response.data.description,
-        type: response.data.type,
-        image: response.data.image,
-        bannerImage: response.data.bannerImage,
-        color: response.data.metadata?.color,
-        icon: response.data.icon,
-        items: [], // Will be populated by products API
-        totalCount: response.data.productCount || 0,
-        headerConfig: {
-          title: response.data.name,
-          backgroundColor: response.data.metadata?.color ? [response.data.metadata.color, response.data.metadata.color] : ['#8B5CF6', '#7C3AED'],
-          textColor: '#FFFFFF',
-          showSearch: true,
-          showCart: true,
-          showCoinBalance: true,
-          searchPlaceholder: `Search ${response.data.name.toLowerCase()}...`
-        },
-        layoutConfig: { displayStyle: 'grid' },
-        seo: { title: response.data.name, description: response.data.description },
-        filters: [],
-        features: [],
-        analytics: { totalViews: 0, conversionRate: 0 }
-      } as Category;
-      
-      dispatch({ type: 'SET_CURRENT_CATEGORY', payload: category });
-      
-      // Set initial pagination based on product count
-      dispatch({ 
-        type: 'SET_PAGINATION', 
-        payload: { 
-          total: response.data.productCount || 0,
-          hasMore: (response.data.productCount || 0) > initialState.pagination.limit
+      // Try backend API
+      try {
+        const categoriesApi = (await import('@/services/categoriesApi')).default;
+        const response = await categoriesApi.getCategoryBySlug(slug);
+        
+        if (response.data) {
+          // Get items from local data if available, otherwise use empty array
+          let items = [];
+          let filters = [];
+          let carouselItems = [];
+          
+          if (localCategory) {
+            items = localCategory.items || [];
+            filters = localCategory.filters || [];
+            carouselItems = localCategory.carouselItems || [];
+          }
+          
+          // Map backend category to frontend format  
+          const category = {
+            id: response.data._id,
+            name: response.data.name,
+            slug: response.data.slug,
+            description: response.data.description,
+            type: response.data.type,
+            image: response.data.image,
+            bannerImage: response.data.bannerImage,
+            color: response.data.metadata?.color,
+            icon: response.data.icon,
+            items: items, // Use local items if available
+            carouselItems: carouselItems,
+            totalCount: Math.max(response.data.productCount || 0, items.length),
+            headerConfig: {
+              title: response.data.name,
+              backgroundColor: response.data.metadata?.color ? [response.data.metadata.color, response.data.metadata.color] : ['#8B5CF6', '#7C3AED'],
+              textColor: '#FFFFFF',
+              showSearch: true,
+              showCart: true,
+              showCoinBalance: true,
+              searchPlaceholder: `Search ${response.data.name.toLowerCase()}...`
+            },
+            layoutConfig: { displayStyle: 'grid' },
+            seo: { title: response.data.name, description: response.data.description },
+            filters: filters,
+            features: [],
+            analytics: { totalViews: 0, conversionRate: 0 }
+          } as Category;
+          
+          dispatch({ type: 'SET_CURRENT_CATEGORY', payload: category });
+          
+          // Set initial pagination based on actual items count
+          const actualTotal = Math.max(response.data.productCount || 0, items.length);
+          dispatch({ 
+            type: 'SET_PAGINATION', 
+            payload: { 
+              total: actualTotal,
+              hasMore: actualTotal > initialState.pagination.limit
+            }
+          });
+          return;
         }
-      });
+      } catch (apiError) {
+        console.log('Backend API failed, falling back to local data or mock');
+      }
       
-    } catch (error) {
-      console.error('CategoryContext: Failed to load category:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load category';
+      // Use local category if available
+      if (localCategory) {
+        console.log(`CategoryContext: Using local category data for ${slug}`);
+        dispatch({ type: 'SET_CURRENT_CATEGORY', payload: localCategory });
+        dispatch({ 
+          type: 'SET_PAGINATION', 
+          payload: { 
+            total: localCategory.items?.length || 0,
+            hasMore: false
+          }
+        });
+        return;
+      }
       
-      // Fallback: Create a mock category for testing
+      // Final fallback: Create a basic mock category
       const mockCategory = {
         id: `mock-${slug}`,
-        name: slug.charAt(0).toUpperCase() + slug.slice(1).replace('-', ' '),
+        name: slug.charAt(0).toUpperCase() + slug.slice(1).replace(/[-_]/g, ' '),
         slug: slug,
-        description: `Browse ${slug} category`,
+        description: `Browse ${slug.replace(/[-_]/g, ' ')} category`,
         type: 'general' as const,
         image: '',
         bannerImage: '',
@@ -197,41 +238,49 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
         items: [
           {
             id: `${slug}-item-1`,
-            title: `${slug.charAt(0).toUpperCase() + slug.slice(1)} Item 1`,
-            description: `Sample ${slug} item`,
-            price: 29.99,
+            name: `${slug.charAt(0).toUpperCase() + slug.slice(1).replace(/[-_]/g, ' ')} Item 1`,
+            metadata: {
+              description: `Sample ${slug.replace(/[-_]/g, ' ')} item`,
+              tags: [slug]
+            },
+            price: { current: 29.99, original: 35.99, currency: '₹' },
             image: '',
             category: slug,
-            rating: 4.5,
-            reviewCount: 12,
+            rating: { value: 4.5, count: 12 },
             isAvailable: true,
-            type: 'product'
+            type: 'product',
+            timing: { availability: 'always' },
+            isFeatured: false
           },
           {
             id: `${slug}-item-2`,
-            title: `${slug.charAt(0).toUpperCase() + slug.slice(1)} Item 2`,
-            description: `Another sample ${slug} item`,
-            price: 39.99,
+            name: `${slug.charAt(0).toUpperCase() + slug.slice(1).replace(/[-_]/g, ' ')} Item 2`,
+            metadata: {
+              description: `Another sample ${slug.replace(/[-_]/g, ' ')} item`,
+              tags: [slug]
+            },
+            price: { current: 39.99, original: 45.99, currency: '₹' },
             image: '',
             category: slug,
-            rating: 4.2,
-            reviewCount: 8,
+            rating: { value: 4.2, count: 8 },
             isAvailable: true,
-            type: 'product'
+            type: 'product',
+            timing: { availability: 'always' },
+            isFeatured: false
           }
         ],
         totalCount: 2,
         headerConfig: {
-          title: slug.charAt(0).toUpperCase() + slug.slice(1).replace('-', ' '),
+          title: slug.charAt(0).toUpperCase() + slug.slice(1).replace(/[-_]/g, ' '),
           backgroundColor: ['#8B5CF6', '#7C3AED'],
           textColor: '#FFFFFF',
           showSearch: true,
           showCart: true,
           showCoinBalance: true,
-          searchPlaceholder: `Search ${slug}...`
+          searchPlaceholder: `Search ${slug.replace(/[-_]/g, ' ')}...`
         },
         layoutConfig: { displayStyle: 'grid' as const },
-        seo: { title: slug, description: `${slug} category` },
+        seo: { title: slug, description: `${slug.replace(/[-_]/g, ' ')} category` },
         filters: [],
         features: [],
         analytics: { totalViews: 0, conversionRate: 0 }
@@ -246,7 +295,13 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
           hasMore: false
         }
       });
-      dispatch({ type: 'SET_ERROR', payload: null }); // Clear error since we have fallback
+      
+    } catch (error) {
+      console.error('CategoryContext: Failed to load category:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load category';
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, []);
 

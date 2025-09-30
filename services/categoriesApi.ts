@@ -68,7 +68,7 @@ class CategoriesService {
 
   // Get category by slug
   async getCategoryBySlug(slug: string): Promise<ApiResponse<Category>> {
-    return apiClient.get(`${this.baseUrl}/slug/${slug}`);
+    return apiClient.get(`${this.baseUrl}/${slug}`);
   }
 
   // Get category tree structure

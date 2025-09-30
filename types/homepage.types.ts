@@ -84,6 +84,10 @@ export interface ProductItem extends HomepageSectionItem {
   isNewArrival?: boolean;
   isRecommended?: boolean;
   availabilityStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
+  inventory?: {
+    stock: number;
+    lowStockThreshold?: number;
+  };
   tags: string[];
   arrivalDate?: string;
 }
@@ -165,6 +169,7 @@ export interface HorizontalScrollSectionProps {
   cardWidth?: number;
   spacing?: number;
   showIndicator?: boolean;
+  extraData?: any;
 }
 
 export interface EventCardProps {

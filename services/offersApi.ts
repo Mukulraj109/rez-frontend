@@ -450,8 +450,12 @@ class MockOffersApi implements OffersApiEndpoints {
   }
 }
 
-// Export the API instance
-export const offersApi = new MockOffersApi();
+// Import real API
+import realOffersApi from './realOffersApi';
+
+// Export the API instance - Switch between mock and real
+const USE_REAL_API = process.env.EXPO_PUBLIC_MOCK_API !== 'true';
+export const offersApi = USE_REAL_API ? realOffersApi : new MockOffersApi();
 
 // Export utilities
 export { API_CONFIG, offersCache, categoriesCache, userCache };

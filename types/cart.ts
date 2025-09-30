@@ -11,6 +11,11 @@ export interface CartItem {
   category: 'products' | 'service';
   quantity?: number; // Quantity in cart
   selected?: boolean; // Selection state for bulk operations
+  inventory?: {
+    stock: number;
+    lowStockThreshold?: number;
+  };
+  availabilityStatus?: 'in_stock' | 'low_stock' | 'out_of_stock';
 }
 
 export interface LockedProduct {
@@ -63,6 +68,7 @@ export interface TabData {
 export interface CartItemProps {
   item: CartItem;
   onRemove: (id: string) => void;
+  onUpdateQuantity?: (id: string, quantity: number) => void;
   showAnimation?: boolean;
 }
 

@@ -58,30 +58,35 @@ export default function RegistrationScreen() {
     if (!validateForm()) {
       return;
     }
-    
+
     try {
-      // Format phone number for backend
-      let phoneNumber = formData.phoneNumber.replace(/\s/g, '');
-      if (!phoneNumber.startsWith('+')) {
-        phoneNumber = phoneNumber.startsWith('91') ? `+${phoneNumber}` : `+91${phoneNumber}`;
-      }
-      
+      // Format phone number for backend - add +91 prefix
+      const formattedPhone = `+91${formData.phoneNumber}`;
+
       // Send OTP to phone number with email and referral code
-      await actions.sendOTP(phoneNumber, formData.email, formData.referralCode || undefined);
-      
+      await actions.sendOTP(formattedPhone, formData.email, formData.referralCode || undefined);
+
       // Only navigate if OTP was sent successfully (no error thrown)
       router.push({
         pathname: '/onboarding/otp-verification',
-        params: { phoneNumber }
+        params: { phoneNumber: formattedPhone }
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[Registration] Send OTP failed:', error);
+
+      // Get the error message
+      const errorMessage = error?.message || state.error || 'Failed to send OTP. Please try again.';
+
       // Check if it's an existing user error
-      const errorMessage = state.error || 'Failed to send OTP. Please try again.';
-      if (errorMessage.includes('already registered') && errorMessage.includes('Sign In')) {
+      if (errorMessage.toLowerCase().includes('already') &&
+          (errorMessage.toLowerCase().includes('registered') ||
+           errorMessage.toLowerCase().includes('exists'))) {
         setShowExistingUserMessage(true);
       } else {
         Alert.alert('Error', errorMessage);
       }
+
+      // Clear errors to reset state
       actions.clearError();
     }
   };
@@ -143,6 +148,7 @@ export default function RegistrationScreen() {
                 keyboardType="phone-pad"
                 error={errors.phoneNumber}
                 containerStyle={styles.inputContainer}
+                prefix="+91"
               />
 
               <FormInput

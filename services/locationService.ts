@@ -1,428 +1,468 @@
+import axios from 'axios';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Types
-export interface LocationCoords {
-  latitude: number;
-  longitude: number;
-  altitude?: number | null;
-  accuracy?: number | null;
-  altitudeAccuracy?: number | null;
-  heading?: number | null;
-  speed?: number | null;
-}
-
-export interface UserLocation {
-  coords: LocationCoords;
-  timestamp: number;
-  address?: string;
-  city?: string;
-  region?: string;
-  country?: string;
-  postalCode?: string;
-}
-
-export interface LocationPermissionStatus {
-  granted: boolean;
-  canAskAgain: boolean;
-  status: Location.PermissionStatus;
-}
-
-export interface LocationServiceOptions {
-  accuracy?: Location.LocationAccuracy;
-  timeout?: number;
-  maximumAge?: number;
-  enableHighAccuracy?: boolean;
-  distanceInterval?: number;
-}
+import {
+  LocationCoordinates,
+  LocationAddress,
+  UserLocation,
+  LocationHistoryEntry,
+  AddressSearchResult,
+  GeocodeResult,
+  LocationStats,
+  LocationPermissionResult,
+  LocationUpdateOptions,
+  LocationServiceConfig,
+} from '@/types/location.types';
 
 // Storage keys
 const STORAGE_KEYS = {
-  LAST_LOCATION: 'last_known_location',
-  LOCATION_SETTINGS: 'location_settings',
-  PERMISSION_STATUS: 'location_permission_status',
+  CURRENT_LOCATION: 'current_location',
+  LOCATION_HISTORY: 'location_history',
+  LOCATION_PERMISSION: 'location_permission',
+  LOCATION_PREFERENCES: 'location_preferences',
 };
 
-// Default options
-const DEFAULT_OPTIONS: Required<LocationServiceOptions> = {
-  accuracy: Location.LocationAccuracy.Balanced,
-  timeout: 10000, // 10 seconds
-  maximumAge: 300000, // 5 minutes
-  enableHighAccuracy: true,
-  distanceInterval: 10, // 10 meters
+// Default configuration
+const DEFAULT_CONFIG: LocationServiceConfig = {
+  apiBaseUrl: process.env.EXPO_PUBLIC_LOCATION_API_URL || 'http://localhost:5001/api/location',
+  geocodingApiUrl: process.env.EXPO_PUBLIC_GEOCODING_API_URL || 'http://localhost:5001/api/location/geocode',
+  storesApiUrl: process.env.EXPO_PUBLIC_STORES_API_URL || 'http://localhost:5001/api/stores',
+  defaultLocation: {
+    latitude: parseFloat(process.env.EXPO_PUBLIC_DEFAULT_LOCATION_LAT || '12.9716'),
+    longitude: parseFloat(process.env.EXPO_PUBLIC_DEFAULT_LOCATION_LNG || '77.5946'),
+  },
+  defaultLocationName: process.env.EXPO_PUBLIC_DEFAULT_LOCATION_NAME || 'Bangalore, India',
+  enableBackgroundLocation: process.env.EXPO_PUBLIC_ENABLE_BACKGROUND_LOCATION === 'true',
+  locationUpdateInterval: parseInt(process.env.EXPO_PUBLIC_LOCATION_UPDATE_INTERVAL || '300000'),
+  maxLocationAge: parseInt(process.env.EXPO_PUBLIC_MAX_LOCATION_AGE || '3600000'),
 };
 
 class LocationService {
-  private lastKnownLocation: UserLocation | null = null;
-  private isWatchingLocation = false;
-  private watchSubscription: Location.LocationSubscription | null = null;
-  private permissionStatus: LocationPermissionStatus | null = null;
+  private config: LocationServiceConfig;
+  private apiClient: any;
 
-  // Initialize location service
-  async initialize(): Promise<void> {
-    try {
-      // Load cached location and settings
-      await this.loadCachedLocation();
-      await this.checkPermissionStatus();
-    } catch (error) {
-      console.error('Failed to initialize location service:', error);
-    }
+  constructor(config?: Partial<LocationServiceConfig>) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.apiClient = axios.create({
+      baseURL: this.config.apiBaseUrl,
+      timeout: 10000,
+    });
   }
 
-  // Request location permissions
-  async requestPermissions(): Promise<LocationPermissionStatus> {
+  /**
+   * Request location permission
+   */
+  async requestLocationPermission(): Promise<LocationPermissionResult> {
     try {
-      // Check if location services are enabled
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
-      if (!servicesEnabled) {
-        return {
-          granted: false,
-          canAskAgain: false,
-          status: Location.PermissionStatus.DENIED,
-        };
-      }
-
-      // Get current permission status
-      const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      // Request permission if not already granted
-      if (existingStatus !== Location.PermissionStatus.GRANTED) {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        finalStatus = status;
-      }
-
-      const permissionResult: LocationPermissionStatus = {
-        granted: finalStatus === Location.PermissionStatus.GRANTED,
-        canAskAgain: finalStatus !== Location.PermissionStatus.DENIED,
-        status: finalStatus,
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      const result: LocationPermissionResult = {
+        status: status as any,
+        canAskAgain: status !== 'denied',
       };
 
-      this.permissionStatus = permissionResult;
-      await this.savePermissionStatus(permissionResult);
-
-      return permissionResult;
+      // Save permission status
+      await AsyncStorage.setItem(STORAGE_KEYS.LOCATION_PERMISSION, JSON.stringify(result));
+      
+      return result;
     } catch (error) {
-      console.error('Error requesting location permissions:', error);
+      console.error('Location permission error:', error);
       return {
-        granted: false,
+        status: 'denied',
         canAskAgain: false,
-        status: Location.PermissionStatus.DENIED,
+        message: 'Failed to request location permission',
       };
     }
   }
 
-  // Get current location
-  async getCurrentLocation(options?: LocationServiceOptions): Promise<UserLocation | null> {
+  /**
+   * Get current location permission status
+   */
+  async getLocationPermissionStatus(): Promise<LocationPermissionResult> {
     try {
-      // Check permissions first
-      if (!this.permissionStatus?.granted) {
-        const permissionResult = await this.requestPermissions();
-        if (!permissionResult.granted) {
-          throw new Error('Location permission denied');
-        }
+      const { status } = await Location.getForegroundPermissionsAsync();
+        return {
+        status: status as any,
+        canAskAgain: status !== 'denied',
+      };
+    } catch (error) {
+      console.error('Get permission status error:', error);
+      return {
+        status: 'undetermined',
+        canAskAgain: true,
+      };
+    }
+  }
+
+  /**
+   * Get current location
+   */
+  async getCurrentLocation(options?: LocationUpdateOptions): Promise<LocationCoordinates> {
+    try {
+      const permission = await this.getLocationPermissionStatus();
+      if (permission.status !== 'granted') {
+        throw new Error('Location permission not granted');
       }
 
-      const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
+      const locationOptions: Location.LocationOptions = {
+        accuracy: this.mapAccuracy(options?.accuracy || 'balanced'),
+        enableHighAccuracy: options?.enableHighAccuracy || true,
+      };
 
-      // Get current position
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: mergedOptions.accuracy,
-        timeInterval: mergedOptions.timeout,
-        distanceInterval: mergedOptions.distanceInterval,
+      const location = await Location.getCurrentPositionAsync(locationOptions);
+      
+      return {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+    } catch (error) {
+      console.error('Get current location error:', error);
+      throw new Error('Failed to get current location');
+    }
+  }
+
+  /**
+   * Update user location on server
+   */
+  async updateUserLocation(
+    coordinates: LocationCoordinates,
+    address?: string,
+    source: 'manual' | 'gps' | 'ip' = 'gps'
+  ): Promise<UserLocation> {
+    try {
+      const response = await this.apiClient.post('/update', {
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        address,
+        source,
       });
 
-      // Create user location object
+      const locationData = response.data.data.location;
+      
       const userLocation: UserLocation = {
-        coords: {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          altitude: location.coords.altitude,
-          accuracy: location.coords.accuracy,
-          altitudeAccuracy: location.coords.altitudeAccuracy,
-          heading: location.coords.heading,
-          speed: location.coords.speed,
+        coordinates: {
+          latitude: locationData.coordinates[1],
+          longitude: locationData.coordinates[0],
         },
-        timestamp: location.timestamp,
+        address: {
+          address: locationData.address,
+          city: locationData.city,
+          state: locationData.state,
+          country: 'India', // Default for now
+          pincode: locationData.pincode,
+          formattedAddress: locationData.address,
+        },
+        timezone: locationData.timezone,
+        lastUpdated: new Date(),
+        source,
       };
 
-      // Try to get address
-      try {
-        const address = await this.reverseGeocode(userLocation.coords);
-        if (address) {
-          userLocation.address = address.address;
-          userLocation.city = address.city;
-          userLocation.region = address.region;
-          userLocation.country = address.country;
-          userLocation.postalCode = address.postalCode;
-        }
-      } catch (geocodeError) {
-        console.warn('Failed to get address for location:', geocodeError);
-      }
-
-      // Cache the location
-      this.lastKnownLocation = userLocation;
-      await this.saveLocation(userLocation);
+      // Save to local storage
+      await this.saveCurrentLocation(userLocation);
 
       return userLocation;
     } catch (error) {
-      console.error('Error getting current location:', error);
-      
-      // Return cached location if available
-      if (this.lastKnownLocation) {
-        console.log('Returning cached location');
-        return this.lastKnownLocation;
-      }
-      
-      return null;
+      console.error('Update location error:', error);
+      throw new Error('Failed to update location');
     }
   }
 
-  // Start watching location changes
-  async startWatchingLocation(
-    callback: (location: UserLocation) => void,
-    options?: LocationServiceOptions
-  ): Promise<boolean> {
+  /**
+   * Get current user location from server
+   */
+  async getCurrentUserLocation(): Promise<UserLocation | null> {
+    console.log('🌐 LocationService: Getting current user location from server...');
     try {
-      if (this.isWatchingLocation) {
-        console.warn('Already watching location');
-        return true;
-      }
-
-      // Check permissions
-      if (!this.permissionStatus?.granted) {
-        const permissionResult = await this.requestPermissions();
-        if (!permissionResult.granted) {
-          throw new Error('Location permission denied');
-        }
-      }
-
-      const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
-
-      // Start watching location
-      this.watchSubscription = await Location.watchPositionAsync(
-        {
-          accuracy: mergedOptions.accuracy,
-          timeInterval: 5000, // Update every 5 seconds
-          distanceInterval: mergedOptions.distanceInterval,
+      const response = await this.apiClient.get('/current');
+      console.log('🌐 LocationService: Server response:', response.data);
+      const locationData = response.data.data.location;
+      
+      return {
+        coordinates: {
+          latitude: locationData.coordinates[1],
+          longitude: locationData.coordinates[0],
         },
-        async (location) => {
-          const userLocation: UserLocation = {
-            coords: {
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-              altitude: location.coords.altitude,
-              accuracy: location.coords.accuracy,
-              altitudeAccuracy: location.coords.altitudeAccuracy,
-              heading: location.coords.heading,
-              speed: location.coords.speed,
-            },
-            timestamp: location.timestamp,
-          };
-
-          // Update cached location
-          this.lastKnownLocation = userLocation;
-          await this.saveLocation(userLocation);
-
-          // Call callback
-          callback(userLocation);
-        }
-      );
-
-      this.isWatchingLocation = true;
-      return true;
+        address: {
+          address: locationData.address,
+          city: locationData.city,
+          state: locationData.state,
+          country: 'India',
+          pincode: locationData.pincode,
+          formattedAddress: locationData.address,
+        },
+        timezone: locationData.timezone,
+        lastUpdated: new Date(),
+        source: 'gps',
+      };
     } catch (error) {
-      console.error('Error starting location watch:', error);
-      return false;
+      console.error('❌ LocationService: Get current user location error:', error);
+      return null;
     }
   }
 
-  // Stop watching location
-  async stopWatchingLocation(): Promise<void> {
+  /**
+   * Get location history
+   */
+  async getLocationHistory(page: number = 1, limit: number = 10): Promise<LocationHistoryEntry[]> {
     try {
-      if (this.watchSubscription) {
-        this.watchSubscription.remove();
-        this.watchSubscription = null;
-      }
-      this.isWatchingLocation = false;
-    } catch (error) {
-      console.error('Error stopping location watch:', error);
-    }
-  }
-
-  // Reverse geocode coordinates to address
-  async reverseGeocode(coords: LocationCoords): Promise<{
-    address?: string;
-    city?: string;
-    region?: string;
-    country?: string;
-    postalCode?: string;
-  } | null> {
-    try {
-      const result = await Location.reverseGeocodeAsync({
-        latitude: coords.latitude,
-        longitude: coords.longitude,
+      const response = await this.apiClient.get('/history', {
+        params: { page, limit },
       });
-
-      if (result.length > 0) {
-        const location = result[0];
-        return {
-          address: [location.streetNumber, location.street].filter(Boolean).join(' '),
-          city: location.city || undefined,
-          region: location.region || undefined,
-          country: location.country || undefined,
-          postalCode: location.postalCode || undefined,
-        };
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error reverse geocoding:', error);
-      return null;
-    }
-  }
-
-  // Forward geocode address to coordinates
-  async forwardGeocode(address: string): Promise<LocationCoords[]> {
-    try {
-      const result = await Location.geocodeAsync(address);
-      return result.map(location => ({
-        latitude: location.latitude,
-        longitude: location.longitude,
+      
+      return response.data.data.history.map((entry: any) => ({
+        coordinates: {
+          latitude: entry.coordinates[1],
+          longitude: entry.coordinates[0],
+        },
+        address: entry.address,
+        city: entry.city,
+        timestamp: new Date(entry.timestamp),
+        source: entry.source,
       }));
     } catch (error) {
-      console.error('Error forward geocoding:', error);
+      console.error('Get location history error:', error);
       return [];
     }
   }
 
-  // Calculate distance between two points
-  calculateDistance(
-    point1: LocationCoords,
-    point2: LocationCoords
-  ): number {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = this.toRadians(point2.latitude - point1.latitude);
-    const dLon = this.toRadians(point2.longitude - point1.longitude);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRadians(point1.latitude)) *
-        Math.cos(this.toRadians(point2.latitude)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in kilometers
-  }
-
-  // Get last known location
-  getLastKnownLocation(): UserLocation | null {
-    return this.lastKnownLocation;
-  }
-
-  // Check if location services are available
-  async isLocationAvailable(): Promise<boolean> {
+  /**
+   * Reverse geocoding - Convert coordinates to address
+   */
+  async reverseGeocode(coordinates: LocationCoordinates): Promise<LocationAddress> {
     try {
-      return await Location.hasServicesEnabledAsync();
+      const response = await this.apiClient.post('/geocode', {
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+      });
+      
+      const data = response.data.data;
+        return {
+        address: data.formattedAddress,
+        city: data.city,
+        state: data.state,
+        country: data.country,
+        pincode: data.pincode,
+        formattedAddress: data.formattedAddress,
+      };
     } catch (error) {
-      console.error('Error checking location availability:', error);
+      console.error('Reverse geocoding error:', error);
+      throw new Error('Failed to get address from coordinates');
+    }
+  }
+
+  /**
+   * Search addresses
+   */
+  async searchAddresses(query: string, limit: number = 5): Promise<AddressSearchResult[]> {
+    try {
+      const response = await this.apiClient.post('/search', {
+        query,
+        limit,
+      });
+      
+      return response.data.data.results.map((result: any) => ({
+        address: result.address,
+        coordinates: {
+          latitude: result.coordinates[1],
+          longitude: result.coordinates[0],
+        },
+        formattedAddress: result.formattedAddress,
+        placeId: result.placeId,
+      }));
+    } catch (error) {
+      console.error('Address search error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Validate address
+   */
+  async validateAddress(address: string): Promise<boolean> {
+    try {
+      const response = await this.apiClient.post('/validate', { address });
+      return response.data.data.isValid;
+    } catch (error) {
+      console.error('Address validation error:', error);
       return false;
     }
   }
 
-  // Get permission status
-  getPermissionStatus(): LocationPermissionStatus | null {
-    return this.permissionStatus;
-  }
-
-  // Private methods
-  private toRadians(degrees: number): number {
-    return degrees * (Math.PI / 180);
-  }
-
-  private async loadCachedLocation(): Promise<void> {
+  /**
+   * Get timezone for coordinates
+   */
+  async getTimezone(coordinates: LocationCoordinates): Promise<string> {
     try {
-      const cached = await AsyncStorage.getItem(STORAGE_KEYS.LAST_LOCATION);
+      const response = await this.apiClient.get('/timezone', {
+        params: {
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+        },
+      });
+      
+      return response.data.data.timezone;
+    } catch (error) {
+      console.error('Get timezone error:', error);
+      return 'Asia/Kolkata'; // Default timezone
+    }
+  }
+
+  /**
+   * Get nearby stores
+   */
+  async getNearbyStores(
+    coordinates: LocationCoordinates,
+    radius: number = 5,
+    limit: number = 20
+  ): Promise<any[]> {
+    try {
+      const response = await this.apiClient.get('/nearby-stores', {
+        params: {
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          radius,
+          limit,
+        },
+      });
+      
+      return response.data.data.stores;
+    } catch (error) {
+      console.error('Get nearby stores error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get location statistics
+   */
+  async getLocationStats(): Promise<LocationStats> {
+    try {
+      const response = await this.apiClient.get('/stats');
+      const data = response.data.data.stats;
+      
+      return {
+        totalLocations: data.totalLocations,
+        uniqueCities: data.uniqueCities,
+        mostVisitedCity: data.mostVisitedCity,
+        lastUpdated: data.lastUpdated ? new Date(data.lastUpdated) : null,
+        currentLocation: data.currentLocation ? {
+          city: data.currentLocation.city,
+          state: data.currentLocation.state,
+          coordinates: {
+            latitude: data.currentLocation.coordinates[1],
+            longitude: data.currentLocation.coordinates[0],
+          },
+        } : null,
+      };
+    } catch (error) {
+      console.error('Get location stats error:', error);
+      throw new Error('Failed to get location statistics');
+    }
+  }
+
+  /**
+   * Save current location to local storage
+   */
+  private async saveCurrentLocation(location: UserLocation): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_LOCATION, JSON.stringify(location));
+    } catch (error) {
+      console.error('Save location error:', error);
+    }
+  }
+
+  /**
+   * Get current location from local storage
+   */
+  async getCachedLocation(): Promise<UserLocation | null> {
+    try {
+      const cached = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_LOCATION);
       if (cached) {
-        this.lastKnownLocation = JSON.parse(cached);
+        const location = JSON.parse(cached);
+        location.lastUpdated = new Date(location.lastUpdated);
+        return location;
       }
+      return null;
     } catch (error) {
-      console.error('Error loading cached location:', error);
+      console.error('Get cached location error:', error);
+      return null;
     }
   }
 
-  private async saveLocation(location: UserLocation): Promise<void> {
+  /**
+   * Clear location data
+   */
+  async clearLocationData(): Promise<void> {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.LAST_LOCATION, JSON.stringify(location));
+      await AsyncStorage.multiRemove([
+        STORAGE_KEYS.CURRENT_LOCATION,
+        STORAGE_KEYS.LOCATION_HISTORY,
+        STORAGE_KEYS.LOCATION_PERMISSION,
+      ]);
     } catch (error) {
-      console.error('Error saving location:', error);
+      console.error('Clear location data error:', error);
     }
   }
 
-  private async checkPermissionStatus(): Promise<void> {
-    try {
-      const cached = await AsyncStorage.getItem(STORAGE_KEYS.PERMISSION_STATUS);
-      if (cached) {
-        this.permissionStatus = JSON.parse(cached);
-      }
-
-      // Also check current status
-      const { status } = await Location.getForegroundPermissionsAsync();
-      if (this.permissionStatus) {
-        this.permissionStatus.status = status;
-        this.permissionStatus.granted = status === Location.PermissionStatus.GRANTED;
-      }
-    } catch (error) {
-      console.error('Error checking permission status:', error);
+  /**
+   * Map accuracy string to Location.Accuracy
+   */
+  private mapAccuracy(accuracy: string): Location.Accuracy {
+    switch (accuracy) {
+      case 'lowest':
+        return Location.Accuracy.Lowest;
+      case 'low':
+        return Location.Accuracy.Low;
+      case 'balanced':
+        return Location.Accuracy.Balanced;
+      case 'high':
+        return Location.Accuracy.High;
+      case 'highest':
+        return Location.Accuracy.Highest;
+      default:
+        return Location.Accuracy.Balanced;
     }
   }
 
-  private async savePermissionStatus(status: LocationPermissionStatus): Promise<void> {
+  /**
+   * Check if location is fresh (not too old)
+   */
+  isLocationFresh(location: UserLocation): boolean {
+    const now = new Date();
+    const age = now.getTime() - location.lastUpdated.getTime();
+    return age < this.config.maxLocationAge;
+  }
+
+  /**
+   * Get default location
+   */
+  getDefaultLocation(): UserLocation {
+    return {
+      coordinates: this.config.defaultLocation,
+      address: {
+        address: this.config.defaultLocationName,
+        city: 'Bangalore',
+        state: 'Karnataka',
+        country: 'India',
+        formattedAddress: this.config.defaultLocationName,
+      },
+      timezone: 'Asia/Kolkata',
+      lastUpdated: new Date(),
+      source: 'manual',
+    };
+  }
+
+  /**
+   * Cache location locally
+   */
+  async cacheLocation(location: UserLocation): Promise<void> {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.PERMISSION_STATUS, JSON.stringify(status));
+      await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_LOCATION, JSON.stringify(location));
+      console.log('📍 LocationService: Location cached locally');
     } catch (error) {
-      console.error('Error saving permission status:', error);
+      console.error('❌ LocationService: Failed to cache location:', error);
     }
   }
 }
 
-// Create and export singleton instance
 export const locationService = new LocationService();
-
-// Utility functions
-export const LocationUtils = {
-  // Format coordinates for display
-  formatCoordinates: (coords: LocationCoords): string => {
-    return `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
-  },
-
-  // Format distance for display
-  formatDistance: (distance: number): string => {
-    if (distance < 1) {
-      return `${Math.round(distance * 1000)}m`;
-    }
-    return `${distance.toFixed(1)}km`;
-  },
-
-  // Check if location is within radius
-  isWithinRadius: (
-    center: LocationCoords,
-    point: LocationCoords,
-    radiusKm: number
-  ): boolean => {
-    const distance = locationService.calculateDistance(center, point);
-    return distance <= radiusKm;
-  },
-
-  // Get location accuracy description
-  getAccuracyDescription: (accuracy: number | null): string => {
-    if (!accuracy) return 'Unknown';
-    if (accuracy < 5) return 'High';
-    if (accuracy < 20) return 'Good';
-    if (accuracy < 100) return 'Fair';
-    return 'Low';
-  },
-};
-
-export default locationService;

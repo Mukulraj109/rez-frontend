@@ -50,6 +50,125 @@ interface DynamicStoreData {
   [key: string]: any;
 }
 
+// New interface for backend store data
+interface BackendStoreData {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  logo?: string;
+  banner?: string;
+  location: {
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    coordinates: [number, number];
+    deliveryRadius: number;
+  };
+  ratings: {
+    average: number;
+    count: number;
+  };
+  operationalInfo: {
+    deliveryTime?: string;
+    minimumOrder?: number;
+    deliveryFee?: number;
+    freeDeliveryAbove?: number;
+    acceptsWalletPayment: boolean;
+    paymentMethods: string[];
+  };
+  deliveryCategories: {
+    fastDelivery: boolean;
+    budgetFriendly: boolean;
+    premium: boolean;
+    organic: boolean;
+    alliance: boolean;
+    lowestPrice: boolean;
+    mall: boolean;
+    cashStore: boolean;
+  };
+  distance?: number;
+  isActive: boolean;
+  isFeatured: boolean;
+  isVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Helper function to transform backend store data to MainStorePage format
+const transformBackendStoreData = (backendData: BackendStoreData): DynamicStoreData => {
+  if (!backendData) {
+    console.error('❌ [DYNAMIC MAINSTORE] Backend data is null or undefined');
+    return {} as DynamicStoreData;
+  }
+  
+  console.log('🔍 [DYNAMIC MAINSTORE] Transforming store data for:', backendData.name);
+  console.log('🔍 [DYNAMIC MAINSTORE] Backend data structure:', {
+    hasRating: !!backendData.rating,
+    hasRatings: !!backendData.ratings,
+    hasMinimumOrder: !!backendData.minimumOrder,
+    hasOperationalInfo: !!backendData.operationalInfo,
+    hasAddress: !!backendData.address,
+    hasLocation: !!backendData.location
+  });
+  
+  return {
+    id: backendData._id,
+    name: backendData.name,
+    title: backendData.name,
+    description: backendData.description,
+    image: backendData.banner,
+    logo: backendData.logo,
+    rating: backendData.rating || backendData.ratings?.average || 0,
+    ratingCount: backendData.reviewCount || backendData.ratings?.count || 0,
+    category: getCategoryFromDeliveryCategories(backendData.deliveryCategories),
+    location: {
+      address: backendData.address?.street || backendData.location?.address,
+      city: backendData.address?.city || backendData.location?.city,
+      state: backendData.address?.state || backendData.location?.state,
+      pincode: backendData.address?.pincode || backendData.location?.pincode,
+      coordinates: backendData.address?.coordinates || backendData.location?.coordinates,
+      deliveryRadius: backendData.location?.deliveryRadius,
+    },
+    deliveryTime: backendData.deliveryTime || backendData.operationalInfo?.deliveryTime,
+    minimumOrder: backendData.minimumOrder || backendData.operationalInfo?.minimumOrder,
+    deliveryFee: backendData.deliveryFee || backendData.operationalInfo?.deliveryFee,
+    freeDeliveryAbove: backendData.operationalInfo?.freeDeliveryAbove,
+    acceptsWalletPayment: backendData.operationalInfo?.acceptsWalletPayment,
+    paymentMethods: backendData.operationalInfo?.paymentMethods,
+    distance: backendData.distance,
+    isActive: backendData.isActive,
+    isFeatured: backendData.isFeatured,
+    isVerified: backendData.isVerified,
+    deliveryCategories: backendData.deliveryCategories,
+    // Add default values for compatibility
+    cashback: {
+      percentage: 5,
+      minOrder: backendData.minimumOrder || backendData.operationalInfo?.minimumOrder || 100,
+      maxCashback: 50,
+    },
+    discount: {
+      percentage: 10,
+      minOrder: backendData.minimumOrder || backendData.operationalInfo?.minimumOrder || 200,
+    },
+    section: 'stores',
+  };
+};
+
+// Helper function to determine category from delivery categories
+const getCategoryFromDeliveryCategories = (deliveryCategories: BackendStoreData['deliveryCategories']): string => {
+  if (deliveryCategories.fastDelivery) return 'Fast Delivery';
+  if (deliveryCategories.budgetFriendly) return 'Budget Friendly';
+  if (deliveryCategories.premium) return 'Premium';
+  if (deliveryCategories.organic) return 'Organic';
+  if (deliveryCategories.alliance) return 'Alliance';
+  if (deliveryCategories.lowestPrice) return 'Lowest Price';
+  if (deliveryCategories.mall) return 'Mall';
+  if (deliveryCategories.cashStore) return 'Cash Store';
+  return 'General';
+};
+
 export default function MainStorePage({ productId, initialProduct }: MainStorePageProps = {}) {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -62,19 +181,39 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
 
   // Parse dynamic store data from navigation params
   useEffect(() => {
-    if (params.storeData && params.storeId && params.storeType) {
+    if (params.storeData && params.storeId) {
       try {
         const parsedData = JSON.parse(params.storeData as string);
-        setStoreData(parsedData);
+        
+        // Check if it's backend store data (has _id) or legacy data (has id)
+        let transformedData: DynamicStoreData;
+        
+        if (parsedData._id) {
+          // New backend store data format
+          transformedData = transformBackendStoreData(parsedData as BackendStoreData);
+          console.log('🏪 [BACKEND MAINSTORE] Loaded backend store data:', {
+            storeId: params.storeId,
+            storeName: transformedData.name,
+            category: transformedData.category,
+            rating: transformedData.rating,
+            deliveryCategories: parsedData.deliveryCategories,
+            transformedData
+          });
+        } else {
+          // Legacy store data format
+          transformedData = parsedData as DynamicStoreData;
+          console.log('🏪 [LEGACY MAINSTORE] Loaded legacy store data:', {
+            storeId: params.storeId,
+            storeName: transformedData.name,
+            category: transformedData.category,
+            rating: transformedData.rating,
+            fullData: transformedData
+          });
+        }
+        
+        setStoreData(transformedData);
         setIsDynamic(true);
-        console.log('🏪 [DYNAMIC MAINSTORE] Loaded store data:', {
-          storeId: params.storeId,
-          storeType: params.storeType,
-          storeName: parsedData.name,
-          category: parsedData.category,
-          rating: parsedData.rating,
-          fullData: parsedData
-        });
+        
         console.log('🎯 [DYNAMIC MAINSTORE] MainStorePage now using dynamic store data:', {
           header: 'Dynamic store name, logo, category',
           content: 'Dynamic store info, ratings, delivery, cashback',

@@ -17,15 +17,16 @@ import {
   Dimensions,
   Alert,
   Platform,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { WalletBalanceCard } from '../components/WalletBalanceCard';
 import { CoinBalance, WalletScreenProps } from '@/types/wallet';
-import { mockWalletData } from '@/utils/mock-wallet-data';
 import { useWallet } from '@/hooks/useWallet';
 import { mockProfileData, mockReferData, mockRechargeOptions } from '@/utils/mock-profile-data';
+import walletApi from '@/services/walletApi';
 
 
 const WalletScreen: React.FC<WalletScreenProps> = ({
@@ -77,10 +78,79 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
     retryLastOperation();
   }, [retryLastOperation]);
 
+  // Topup state management
+  const [topupLoading, setTopupLoading] = useState(false);
+  const [selectedTopupAmount, setSelectedTopupAmount] = useState<number | null>(null);
+  const [showTopupConfirm, setShowTopupConfirm] = useState(false);
+
+  const handleAmountSelect = useCallback((amount: number | "other") => {
+    if (amount !== "other") {
+      setSelectedTopupAmount(amount);
+    }
+  }, []);
+
+  const handleTopupSubmit = useCallback((amount: number) => {
+    console.log('💰 [Wallet] Topup requested:', amount);
+    setSelectedTopupAmount(amount);
+    setShowTopupConfirm(true);
+  }, []);
+
+  const handleTopupConfirm = useCallback(async () => {
+    if (!selectedTopupAmount) return;
+
+    console.log('💰 [Wallet] Processing topup:', selectedTopupAmount);
+    setShowTopupConfirm(false);
+    setTopupLoading(true);
+
+    try {
+      const response = await walletApi.topup({
+        amount: selectedTopupAmount,
+        paymentMethod: 'TEST', // In production, this would be from payment gateway
+        paymentId: `TOPUP_${Date.now()}` // Mock payment ID for testing
+      });
+
+      if (response.success && response.data) {
+        console.log('💰 [Wallet] Topup successful:', {
+          transactionId: response.data.transaction.transactionId,
+          newBalance: response.data.wallet.balance.total
+        });
+
+        // Show success message
+        Alert.alert(
+          'Topup Successful! 🎉',
+          `${selectedTopupAmount} RC has been added to your wallet.\n\nNew Balance: ${response.data.wallet.balance.total} RC`,
+          [{ text: 'OK' }]
+        );
+
+        // Refresh wallet data
+        await refreshWallet(true);
+        setSelectedTopupAmount(null);
+      } else {
+        console.error('💰 [Wallet] Topup failed:', response.error);
+        Alert.alert(
+          'Topup Failed',
+          response.error || 'Unable to process topup. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('💰 [Wallet] Topup error:', error);
+      Alert.alert(
+        'Topup Error',
+        error instanceof Error ? error.message : 'An unexpected error occurred',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setTopupLoading(false);
+    }
+  }, [selectedTopupAmount, refreshWallet]);
+
+  const handleTopupCancel = useCallback(() => {
+    setShowTopupConfirm(false);
+    setSelectedTopupAmount(null);
+  }, []);
 
   const styles = useMemo(() => createStyles(screenData), [screenData]);
-
-  const walletData = walletState.data || mockWalletData;
 
   if (walletState.isLoading && !walletState.data) {
     return (
@@ -118,6 +188,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
           <Text style={styles.errorTitle}>Unable to load wallet</Text>
+          <Text style={styles.errorDetails}>{walletState.error.message}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
             <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
@@ -125,6 +196,12 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
       </View>
     );
   }
+
+  if (!walletState.data) {
+    return null;
+  }
+
+  const walletData = walletState.data;
 
   return (
     <View style={styles.root}>
@@ -193,16 +270,10 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
          <RechargeWalletCard
   cashbackText="Upto 10% cashback on wallet recharge"
   amountOptions={mockRechargeOptions}
-  onAmountSelect={(amount: number | "other") => {
-    if (amount === "other") {
-      console.log("User selected custom amount");
-    } else {
-      console.log("Selected amount:", amount);
-    }
-  }}
-  onSubmit={(amount: number) => console.log("Recharge with amount:", amount)}
-  isLoading={false}
-  currency="₹"
+  onAmountSelect={handleAmountSelect}
+  onSubmit={handleTopupSubmit}
+  isLoading={topupLoading}
+  currency="RC"
 />
 
         {/* Only Image Coin Info Cards */}
@@ -246,6 +317,55 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
        />
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* Topup Confirmation Modal */}
+      <Modal
+        visible={showTopupConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={handleTopupCancel}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="diamond" size={48} color="#8B5CF6" />
+              <Text style={styles.modalTitle}>Confirm Topup</Text>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.modalText}>
+                You are about to add
+              </Text>
+              <Text style={styles.modalAmount}>
+                {selectedTopupAmount} RC
+              </Text>
+              <Text style={styles.modalText}>
+                to your wallet
+              </Text>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={handleTopupCancel}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleTopupConfirm}
+              >
+                <Text style={styles.confirmButtonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalNote}>
+              Note: This is a test topup. In production, you'll be directed to a payment gateway.
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -309,8 +429,9 @@ const createStyles = (screenData: { width: number; height: number }) => {
     scroll: { flex: 1, paddingHorizontal: horizontalPadding },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { fontSize: 16, color: '#6B7280' },
-    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
     errorTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginTop: 16 },
+    errorDetails: { fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center' },
     retryButton: {
       backgroundColor: '#7C3AED',
       paddingHorizontal: 24,
@@ -376,6 +497,87 @@ const createStyles = (screenData: { width: number; height: number }) => {
     container: {
       flex: 1,
       backgroundColor: "#f8f8f8",
+    },
+
+    // Modal styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContent: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 20,
+      padding: 24,
+      width: '100%',
+      maxWidth: 400,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    modalHeader: {
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    modalTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: '#1F2937',
+      marginTop: 12,
+    },
+    modalBody: {
+      alignItems: 'center',
+      marginBottom: 24,
+      paddingVertical: 12,
+    },
+    modalText: {
+      fontSize: 16,
+      color: '#6B7280',
+      marginVertical: 4,
+    },
+    modalAmount: {
+      fontSize: 36,
+      fontWeight: '700',
+      color: '#8B5CF6',
+      marginVertical: 8,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 16,
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cancelButton: {
+      backgroundColor: '#F3F4F6',
+    },
+    confirmButton: {
+      backgroundColor: '#8B5CF6',
+    },
+    cancelButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#6B7280',
+    },
+    confirmButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#FFFFFF',
+    },
+    modalNote: {
+      fontSize: 12,
+      color: '#9CA3AF',
+      textAlign: 'center',
+      lineHeight: 16,
     },
   });
 };

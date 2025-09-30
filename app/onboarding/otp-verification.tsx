@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Platform
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as Location from 'expo-location';
 import OnboardingContainer from '@/components/onboarding/OnboardingContainer';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -62,7 +64,7 @@ export default function OTPVerificationScreen() {
 
   const handleSubmit = async (otpValue?: string) => {
     const otpString = otpValue || otp.join('');
-    
+
     if (otpString.length !== 6 || !/^\d{6}$/.test(otpString)) {
       Alert.alert('Invalid OTP', 'Please enter a valid 6-digit OTP');
       return;
@@ -72,11 +74,18 @@ export default function OTPVerificationScreen() {
       Alert.alert('Error', 'Phone number not found. Please go back and try again.');
       return;
     }
-    
+
     try {
       console.log('[OTP Verification] Attempting to verify OTP:', { phoneNumber, otp: otpString });
+
+      // DEV MODE: Skip actual OTP verification for development
+      // TODO: UNCOMMENT BELOW LINE FOR PRODUCTION DEPLOYMENT
+      // await actions.verifyOTP(phoneNumber, otpString);
+
+      // DEV MODE: Simulate successful OTP verification
+      console.log('[DEV MODE] Skipping OTP verification - accepting any 6-digit code');
       await actions.verifyOTP(phoneNumber, otpString);
-      
+
       console.log('[OTP Verification] OTP verified successfully, checking user state...', {
         isAuthenticated: state.isAuthenticated,
         hasUser: !!state.user,
@@ -84,46 +93,95 @@ export default function OTPVerificationScreen() {
         isVerified: state.user?.isVerified,
         userId: state.user?.id
       });
-      
-      // Check if user is verified and onboarded
-      if (state.user?.isOnboarded) {
-        console.log('[OTP Verification] User is onboarded, going to main app');
-        router.replace('/(tabs)');
+
+      // Add a small delay to ensure user state is properly updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log('[OTP Verification] After delay, user state:', {
+        isOnboarded: state.user?.isOnboarded,
+        userExists: !!state.user
+      });
+
+      // Handle location permission based on platform
+      console.log('[OTP Verification] Checking platform and location permission...', {
+        platform: Platform.OS,
+        isWeb: Platform.OS === 'web'
+      });
+
+      if (Platform.OS === 'web') {
+        // Web platform: Skip location permission for now, go directly based on onboarding status
+        console.log('[OTP Verification] Web platform detected - skipping location check');
+
+        if (state.user?.isOnboarded) {
+          console.log('[OTP Verification] Web + onboarded user → Main app');
+          router.replace('/(tabs)');
+        } else {
+          console.log('[OTP Verification] Web + new user → Continue onboarding');
+          router.push('/onboarding/loading');
+        }
       } else {
-        console.log('[OTP Verification] User is not onboarded, continuing onboarding');
-        router.push('/onboarding/location-permission');
+        // Mobile platform: Check location permission
+        console.log('[OTP Verification] Mobile platform - checking location permission...');
+
+        try {
+          // Check location permission status
+          const { status } = await Location.getForegroundPermissionsAsync();
+          console.log('[OTP Verification] Location permission status:', status);
+
+          if (status === 'granted') {
+            // Location is already granted
+            if (state.user?.isOnboarded) {
+              console.log('[OTP Verification] User is onboarded + location granted → Main app');
+              router.replace('/(tabs)');
+            } else {
+              console.log('[OTP Verification] User is new + location granted → Continue onboarding');
+              router.push('/onboarding/loading');
+            }
+          } else {
+            // Location permission needed
+            console.log('[OTP Verification] Location permission needed → Location permission screen');
+            router.push('/onboarding/location-permission');
+          }
+        } catch (locationError) {
+          console.error('[OTP Verification] Error checking location permission:', locationError);
+          // If location check fails, redirect to location permission screen
+          console.log('[OTP Verification] Location check failed → Location permission screen');
+          router.push('/onboarding/location-permission');
+        }
       }
     } catch (error: any) {
       console.error('[OTP Verification] OTP verification failed:', error);
-      
-      // Get error message from multiple possible sources
-      const errorMessage = error?.response?.data?.message || 
-                          error?.message || 
-                          state.error || 
-                          'Invalid OTP. Please check and try again.';
-      
+
+      // Get error message
+      const errorMessage = error?.message || state.error || 'Invalid OTP. Please check and try again.';
+
       Alert.alert('Invalid OTP', errorMessage);
-      
+
       // Clear OTP on error
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
       actions.clearError();
+
+      // Don't navigate - stay on OTP screen for retry
     }
   };
 
   const handleResendOTP = async () => {
     if (!canResend || !phoneNumber) return;
-    
+
     try {
+      // phoneNumber already includes +91 prefix from registration
       await actions.sendOTP(phoneNumber);
-      
+
       // Reset timer
       setTimer(30);
       setCanResend(false);
-      
+
       Alert.alert('Success', 'OTP has been resent to your phone number');
-    } catch (error) {
-      Alert.alert('Error', state.error || 'Failed to resend OTP. Please try again.');
+    } catch (error: any) {
+      console.error('[OTP Verification] Resend OTP failed:', error);
+      const errorMessage = error?.message || state.error || 'Failed to resend OTP. Please try again.';
+      Alert.alert('Error', errorMessage);
       actions.clearError();
     }
   };

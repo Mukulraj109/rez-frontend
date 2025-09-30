@@ -1,1 +1,7 @@
-study the just for you and new arrivals section card and the each card of these part connected to the specific product page and these product belong to specific store and the page is StorePage but basically it shows the product data but currently card and the productpage which is StorePage using dummy data but i want the data to come from the the monogdb database so for that there is user-backend folder and in that folder there is models folder and there is product.ts file check it make it compatable to the card and the Storepage dummy data and make a route so that we can fetch the product details for a specific store and show in the card and as well as in the StorePage  
+make a online voucher page and ui of that page is"C:\Users\Mukul raj\OneDrive\Pictures\Screenshots\Screenshot 2025-08-22 174434.png"
+"C:\Users\Mukul raj\OneDrive\Pictures\Screenshots\Screenshot 2025-08-22 174357.png"
+"C:\Users\Mukul raj\OneDrive\Pictures\Screenshots\Screenshot 2025-08-22 174403.png"
+"C:\Users\Mukul raj\OneDrive\Pictures\Screenshots\Screenshot 2025-08-22 174414.png"
+"C:\Users\Mukul raj\OneDrive\Pictures\Screenshots\Screenshot 2025-08-22 174421.png"
+"C:\Users\Mukul raj\OneDrive\Pictures\Screenshots\Screenshot 2025-08-22 174429.png"
+and make it mordern and it should be backend ready and manage the state properly and make the ui modern and link this page by making a voucher icon or you can add this in model so see this will fit  and add  options{{ headerShown: false }} for this page make it as functional as possible 

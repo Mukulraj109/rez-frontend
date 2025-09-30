@@ -2,6 +2,7 @@
 // Handles product catalog, search, and recommendations
 
 import apiClient, { ApiResponse } from './apiClient';
+import { ProductItem, RecommendationItem } from '@/types/homepage.types';
 
 export interface Product {
   id: string;
@@ -196,6 +197,220 @@ class ProductsService {
       variantId,
       quantity
     });
+  }
+
+  // ===== FRONTEND HOMEPAGE INTEGRATION METHODS =====
+
+  /**
+   * Get featured products for "Just for You" section - Returns formatted RecommendationItems
+   */
+  async getFeaturedForHomepage(limit: number = 10): Promise<RecommendationItem[]> {
+    try {
+      console.log('🚀 [PRODUCTS API] Fetching featured products from backend...');
+      const response = await apiClient.get('/products/featured', { limit });
+
+      console.log('📡 [PRODUCTS API] Backend response:', {
+        success: response.success,
+        dataLength: response.data?.length,
+        message: response.message
+      });
+
+      if (response.success && response.data && Array.isArray(response.data)) {
+        console.log('✅ [PRODUCTS API] Processing featured products:', response.data.length, 'items');
+
+        const recommendations = response.data.map((product: any) => ({
+          ...product,
+          recommendationReason: this.generateRecommendationReason(product),
+          recommendationScore: Math.random() * 0.5 + 0.5, // Generate score between 0.5-1.0
+          personalizedFor: this.determinePersonalization(product)
+        }));
+
+        console.log('🎯 [PRODUCTS API] Returning', recommendations.length, 'formatted recommendations');
+        return recommendations;
+      }
+
+      console.warn('⚠️ [PRODUCTS API] Invalid response structure:', response);
+      throw new Error(response.message || 'Failed to fetch featured products');
+    } catch (error) {
+      console.error('❌ [PRODUCTS API] Error fetching homepage featured products:', error);
+      // Return empty array on error to prevent homepage crash
+      return [];
+    }
+  }
+
+  /**
+   * Get new arrival products for "New Arrivals" section - Returns formatted ProductItems
+   */
+  async getNewArrivalsForHomepage(limit: number = 10): Promise<ProductItem[]> {
+    try {
+      console.log('🚀 [PRODUCTS API] Fetching new arrivals from backend...');
+      const response = await apiClient.get('/products/new-arrivals', { limit });
+
+      console.log('📡 [PRODUCTS API] New arrivals response:', {
+        success: response.success,
+        dataLength: response.data?.length,
+        message: response.message
+      });
+
+      if (response.success && response.data && Array.isArray(response.data)) {
+        console.log('✅ [PRODUCTS API] Processing new arrivals:', response.data.length, 'items');
+        console.log('🎯 [PRODUCTS API] Returning', response.data.length, 'new arrivals');
+        return response.data;
+      }
+
+      console.warn('⚠️ [PRODUCTS API] Invalid new arrivals response structure:', response);
+      throw new Error(response.message || 'Failed to fetch new arrivals');
+    } catch (error) {
+      console.error('❌ [PRODUCTS API] Error fetching homepage new arrivals:', error);
+      // Return empty array on error to prevent homepage crash
+      return [];
+    }
+  }
+
+  /**
+   * Get products by store for StorePage - Returns store and products data
+   */
+  async getStoreProducts(
+    storeId: string, 
+    options?: {
+      category?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      sortBy?: 'price_low' | 'price_high' | 'rating' | 'newest';
+      page?: number;
+      limit?: number;
+    }
+  ): Promise<{ store: any; products: ProductItem[] } | null> {
+    try {
+      const queryParams = {
+        category: options?.category,
+        minPrice: options?.minPrice,
+        maxPrice: options?.maxPrice,
+        sortBy: options?.sortBy || 'newest',
+        page: options?.page || 1,
+        limit: options?.limit || 20
+      };
+
+      // Filter out undefined values
+      const cleanParams = Object.fromEntries(
+        Object.entries(queryParams).filter(([_, v]) => v !== undefined)
+      );
+
+      const response = await apiClient.get(`/products/store/${storeId}`, cleanParams);
+      
+      if (response.success && response.data) {
+        // API returns paginated response, extract the first item which contains store and products
+        const result = Array.isArray(response.data) ? response.data[0] : response.data;
+        return result;
+      }
+
+      throw new Error(response.message || 'Failed to fetch store products');
+    } catch (error) {
+      console.error('❌ Error fetching store products:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get single product details for StorePage dynamic content
+   */
+  async getProductDetails(productId: string): Promise<(ProductItem & { similarProducts?: ProductItem[] }) | null> {
+    try {
+      // Validate productId format (MongoDB ObjectIds are 24 hex characters)
+      if (!productId || productId.length !== 24 || !/^[0-9a-fA-F]{24}$/.test(productId)) {
+        console.warn(`⚠️ Invalid MongoDB ObjectId format: ${productId}`);
+        return null;
+      }
+      
+      const response = await apiClient.get(`/products/${productId}`);
+      
+      if (response.success && response.data) {
+        return response.data;
+      }
+
+      throw new Error(response.message || 'Failed to fetch product details');
+    } catch (error) {
+      // Don't log errors for invalid IDs to avoid spam
+      if (error.message?.includes('Invalid MongoDB ObjectId')) {
+        console.warn(`⚠️ Skipping invalid product ID: ${productId}`);
+      } else {
+        console.error('❌ Error fetching product details:', error);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Check if backend API is available
+   */
+  async isBackendAvailable(): Promise<boolean> {
+    try {
+      console.log('🔍 [PRODUCTS API] Checking backend availability...');
+
+      // Try to make a simple API call to check connectivity
+      const response = await apiClient.get('/products/featured', { limit: 1 });
+
+      if (response.success) {
+        console.log('✅ [PRODUCTS API] Backend is available and responding');
+        return true;
+      } else {
+        console.warn('⚠️ [PRODUCTS API] Backend responded but with error:', response.message);
+        return false;
+      }
+    } catch (error) {
+      console.warn('⚠️ [PRODUCTS API] Backend not available, falling back to dummy data:', error);
+      return false;
+    }
+  }
+
+  // ===== HELPER METHODS =====
+
+  /**
+   * Generate recommendation reason based on product data
+   */
+  private generateRecommendationReason(product: ProductItem): string {
+    const reasons = [
+      'Based on your recent purchases',
+      'Popular in your area',
+      'Trending in your interests',
+      'Recommended for you',
+      'Perfect for your preferences',
+      'Others like you also bought this',
+      'Based on your browsing history'
+    ];
+
+    // Use product category to generate contextual reasons
+    const category = product.category?.toLowerCase() || '';
+    if (category.includes('home') || category.includes('furniture')) {
+      return 'Based on your home office setup';
+    }
+    if (category.includes('sports') || category.includes('fitness')) {
+      return 'Perfect for your fitness goals';
+    }
+    if (category.includes('beauty')) {
+      return 'Matches your beauty routine';
+    }
+    if (category.includes('candle') || category.includes('decor')) {
+      return 'Based on your home decor interest';
+    }
+
+    return reasons[Math.floor(Math.random() * reasons.length)];
+  }
+
+  /**
+   * Determine personalization category
+   */
+  private determinePersonalization(product: ProductItem): string {
+    const category = product.category?.toLowerCase() || '';
+    
+    if (category.includes('home') || category.includes('furniture')) return 'home_office';
+    if (category.includes('sports') || category.includes('fitness')) return 'fitness';
+    if (category.includes('beauty') || category.includes('personal')) return 'beauty';
+    if (category.includes('book') || category.includes('education')) return 'books';
+    if (category.includes('health') || category.includes('wellness')) return 'wellness';
+    if (category.includes('candle') || category.includes('decor')) return 'home_decor';
+    
+    return 'general';
   }
 }
 

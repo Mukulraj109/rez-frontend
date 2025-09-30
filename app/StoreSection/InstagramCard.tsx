@@ -2,14 +2,32 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 export default function InstagramCard() {
+  const router = useRouter();
   const { width } = Dimensions.get('window');
   const responsiveMargin = width < 360 ? 16 : 20;
   const responsivePadding = width < 360 ? 16 : 20;
 
+  const handleNavigateToEarnSocial = () => {
+    console.log('🎯 InstagramCard: Button pressed!');
+    console.log('🎯 InstagramCard: Navigating to /earn-from-social-media');
+    try {
+      router.push('/earn-from-social-media');
+      console.log('✅ InstagramCard: Navigation call completed');
+    } catch (error) {
+      console.error('❌ InstagramCard: Navigation failed:', error);
+    }
+  };
+
   return (
-    <TouchableOpacity style={[styles.container, { marginHorizontal: responsiveMargin }]} activeOpacity={0.8}>
+    <TouchableOpacity 
+      style={[styles.container, { marginHorizontal: responsiveMargin }]} 
+      activeOpacity={0.8}
+      onPress={handleNavigateToEarnSocial}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
       <LinearGradient
         colors={['#EC4899', '#8B5CF6']}
         style={[styles.gradientBackground, { padding: responsivePadding }]}

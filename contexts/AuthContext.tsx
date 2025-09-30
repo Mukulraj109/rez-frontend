@@ -126,21 +126,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const sendOTP = async (phoneNumber: string, email?: string, referralCode?: string) => {
     try {
       dispatch({ type: 'AUTH_LOADING', payload: true });
-      
+
       const requestData: any = { phoneNumber };
       if (email) requestData.email = email;
       if (referralCode) requestData.referralCode = referralCode;
-      
+
       const response = await authService.sendOtp(requestData);
+
+      // Check if API returned an error
+      if (!response.success) {
+        const errorMessage = response.error || response.message || 'Failed to send OTP';
+        dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
+        throw new Error(errorMessage);
+      }
+
       console.log('[AuthContext] OTP sent successfully:', response.data || response);
-      
       dispatch({ type: 'AUTH_LOADING', payload: false });
     } catch (error: any) {
-      dispatch({ 
-        type: 'AUTH_FAILURE', 
-        payload: error?.response?.data?.message || error?.message || 'Failed to send OTP' 
+      dispatch({
+        type: 'AUTH_FAILURE',
+        payload: error?.message || 'Failed to send OTP'
       });
-      
+
       // Re-throw error so calling components know it failed
       throw error;
     }
@@ -149,23 +156,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       console.log('[AuthContext] Starting login for:', phoneNumber);
       dispatch({ type: 'AUTH_LOADING', payload: true });
-      
+
       const response = await authService.verifyOtp({ phoneNumber, otp });
+
+      // Check if API returned an error
+      if (!response.success) {
+        const errorMessage = response.error || response.message || 'Login failed';
+        dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
+        throw new Error(errorMessage);
+      }
+
       console.log('[AuthContext] Backend response:', { user: response.data.user.id, token: response.data.tokens.accessToken ? 'exists' : 'missing' });
-      
+
       // Store in AsyncStorage
       console.log('[AuthContext] Storing auth data...', {
         token: response.data.tokens.accessToken ? 'exists' : 'missing',
         refreshToken: response.data.tokens.refreshToken ? 'exists' : 'missing',
         user: response.data.user?.id || 'no-id'
       });
-      
+
       await AsyncStorage.multiSet([
         [STORAGE_KEYS.ACCESS_TOKEN, response.data.tokens.accessToken],
         [STORAGE_KEYS.REFRESH_TOKEN, response.data.tokens.refreshToken],
         [STORAGE_KEYS.USER, JSON.stringify(response.data.user)],
       ]);
-      
+
       // Verify storage (debug)
       const storedToken = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
       const storedUser = await AsyncStorage.getItem(STORAGE_KEYS.USER);
@@ -179,16 +194,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       console.log('[AuthContext] Stored in AsyncStorage, dispatching AUTH_SUCCESS');
       dispatch({ type: 'AUTH_SUCCESS', payload: { user: response.data.user, token: response.data.tokens.accessToken } });
-      
+
       // Reset explicit logout flag since user is logging in again
       setHasExplicitlyLoggedOut(false);
     } catch (error: any) {
       console.error('[AuthContext] Login failed:', error);
-      dispatch({ 
-        type: 'AUTH_FAILURE', 
-        payload: error?.response?.data?.message || error?.message || 'Login failed' 
+      dispatch({
+        type: 'AUTH_FAILURE',
+        payload: error?.message || 'Login failed'
       });
-      
+
       // Re-throw error so calling components know it failed
       throw error;
     }
@@ -199,17 +214,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // This method can be used for additional registration data after OTP verification
     try {
       dispatch({ type: 'AUTH_LOADING', payload: true });
-      
+
       // Send OTP first
       await sendOTP(phoneNumber, email, referralCode);
-      
+
       dispatch({ type: 'AUTH_LOADING', payload: false });
     } catch (error: any) {
-      dispatch({ 
-        type: 'AUTH_FAILURE', 
-        payload: error?.response?.data?.message || error?.message || 'Registration failed' 
+      dispatch({
+        type: 'AUTH_FAILURE',
+        payload: error?.message || 'Registration failed'
       });
-      
+
       // Re-throw error so calling components know it failed
       throw error;
     }
@@ -223,22 +238,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = async () => {
     try {
       console.log('🔓 [AUTH] Starting logout process...');
-      
+
       // Call backend logout (invalidate token)
       try {
         console.log('🔓 [AUTH] Calling backend logout...');
-        await authService.logout();
-        console.log('✅ [AUTH] Backend logout successful');
+        const response = await authService.logout();
+
+        // Check if logout request failed
+        if (!response.success) {
+          console.warn('⚠️ [AUTH] Backend logout failed:', response.error);
+          // Continue with local logout even if backend fails
+        } else {
+          console.log('✅ [AUTH] Backend logout successful');
+        }
       } catch (error) {
         console.warn('⚠️ [AUTH] Backend logout failed:', error);
         // Continue with local logout even if backend fails
       }
-      
+
       // Remove from AsyncStorage
       console.log('🔓 [AUTH] Clearing AsyncStorage...');
       await AsyncStorage.multiRemove([
-        STORAGE_KEYS.ACCESS_TOKEN, 
-        STORAGE_KEYS.REFRESH_TOKEN, 
+        STORAGE_KEYS.ACCESS_TOKEN,
+        STORAGE_KEYS.REFRESH_TOKEN,
         STORAGE_KEYS.USER
       ]);
       console.log('✅ [AUTH] AsyncStorage cleared');
@@ -247,13 +269,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('🔓 [AUTH] Clearing API client token...');
       authService.setAuthToken(null);
       console.log('✅ [AUTH] API client token cleared');
-      
+
       console.log('🔓 [AUTH] Dispatching AUTH_LOGOUT...');
       dispatch({ type: 'AUTH_LOGOUT' });
-      
+
       // Set explicit logout flag to prevent auto-restoration
       setHasExplicitlyLoggedOut(true);
-      
+
       // Double-check that state is properly cleared
       console.log('✅ [AUTH] Logout complete - Auth state should be:', {
         user: null,
@@ -305,7 +327,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         profile: data.profile,
         preferences: data.preferences
       });
-      
+
+      // Check if API returned an error
+      if (!response.success) {
+        const errorMessage = response.error || response.message || 'Profile update failed';
+        dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
+        throw new Error(errorMessage);
+      }
+
       // Update AsyncStorage with proper null check
       if (response.data) {
         await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data));
@@ -314,11 +343,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error('No user data received from server');
       }
     } catch (error: any) {
-      dispatch({ 
-        type: 'AUTH_FAILURE', 
-        payload: error?.response?.data?.message || error?.message || 'Profile update failed' 
+      dispatch({
+        type: 'AUTH_FAILURE',
+        payload: error?.message || 'Profile update failed'
       });
-      
+
       // Re-throw error so calling components know it failed
       throw error;
     }
@@ -330,7 +359,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         userId: state.user?.id,
         currentOnboardedStatus: state.user?.isOnboarded
       });
-      
+
       if (!state.user?.id) {
         throw new Error('User not authenticated');
       }
@@ -339,19 +368,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
         profile: data.profile,
         preferences: data.preferences
       });
-      
+
+      // Check if API returned an error
+      if (!response.success) {
+        const errorMessage = response.error || response.message || 'Onboarding completion failed';
+        dispatch({ type: 'AUTH_FAILURE', payload: errorMessage });
+        throw new Error(errorMessage);
+      }
+
       console.log('🎯 [COMPLETE ONBOARDING] Backend response:', {
         userId: response.data.id,
         isOnboarded: response.data.isOnboarded
       });
-      
+
       // Update AsyncStorage with new user data
       if (response.data) {
         await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data));
       } else {
         throw new Error('No user data received from server');
       }
-      
+
       // Verify the storage update
       const storedUserData = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       const parsedUser = storedUserData ? JSON.parse(storedUserData) : null;
@@ -361,15 +397,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       dispatch({ type: 'UPDATE_USER', payload: response.data });
-      
+
       console.log('✅ [COMPLETE ONBOARDING] Onboarding completion successful');
     } catch (error: any) {
       console.error('❌ [COMPLETE ONBOARDING] Error:', error);
-      dispatch({ 
-        type: 'AUTH_FAILURE', 
-        payload: error?.response?.data?.message || error?.message || 'Onboarding completion failed' 
+      dispatch({
+        type: 'AUTH_FAILURE',
+        payload: error?.message || 'Onboarding completion failed'
       });
-      
+
       // Re-throw error so calling components know it failed
       throw error;
     }
@@ -431,8 +467,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           try {
             console.log('🔍 [AUTH CHECK] Validating token with backend...');
             const response = await authService.getProfile();
-            
-            if (response.data) {
+
+            // Check if API returned an error
+            if (!response.success) {
+              console.warn('⚠️ [AUTH CHECK] Token validation failed, trying refresh...', response.error);
+              await tryRefreshToken();
+            } else if (response.data) {
               console.log('✅ [AUTH CHECK] Token validation successful');
               // Update stored user data if changed
               if (JSON.stringify(response.data) !== JSON.stringify(storedUser)) {
@@ -467,9 +507,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (refreshToken) {
         console.log('🔄 [REFRESH TOKEN] Refresh token found, calling backend...');
         const response = await authService.refreshToken(refreshToken);
-        
+
+        // Check if API returned an error
+        if (!response.success) {
+          console.warn('❌ [REFRESH TOKEN] Token refresh failed:', response.error);
+          throw new Error(response.error || 'Token refresh failed');
+        }
+
         console.log('✅ [REFRESH TOKEN] Token refresh successful');
-        
+
         // Update stored tokens
         await AsyncStorage.multiSet([
           [STORAGE_KEYS.ACCESS_TOKEN, response.data.tokens.accessToken],

@@ -16,25 +16,32 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useProfile } from '@/contexts/ProfileContext';
-import { 
-  PROFILE_COLORS, 
-  PROFILE_SPACING, 
+import {
+  PROFILE_COLORS,
+  PROFILE_SPACING,
   PROFILE_RADIUS,
   ProfileIconGridItem,
-  ProfileMenuListItem 
+  ProfileMenuListItem
 } from '@/types/profile.types';
-import { 
-  profileIconGridItems, 
-  profileMenuListItems,
-  profileStats
+import {
+  profileIconGridItems,
+  profileMenuListItems
 } from '@/data/profileData';
+import { LocationDisplay, TimeDisplay } from '@/components/location';
+import { useUserStatistics } from '@/hooks/useUserStatistics';
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user } = useProfile();
+  const { statistics, isLoading: statsLoading, refetch: refetchStats } = useUserStatistics(true);
 
   const handleBackPress = () => {
-    router.back();
+    // Check if we can go back, otherwise navigate to home
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.push('/(tabs)');
+    }
   };
 
   const handleIconGridItemPress = (item: ProfileIconGridItem) => {
@@ -52,7 +59,7 @@ export default function ProfilePage() {
         break;
       case 'voucher':
         // Navigate to account settings for voucher management
-        router.push('/account/');
+        router.push('/account/' as any);
         break;
       case 'earns':
         router.push('/(tabs)/earn');
@@ -106,6 +113,14 @@ export default function ProfilePage() {
         }
         break;
     }
+  };
+
+  const handleLocationHistoryPress = () => {
+    router.push('/location/history' as any);
+  };
+
+  const handleLocationSettingsPress = () => {
+    router.push('/location/settings' as any);
   };
 
   const renderIconGridItem = (item: ProfileIconGridItem) => (
@@ -257,6 +272,25 @@ export default function ProfilePage() {
           </View>
         </View>
 
+        {/* Location & Time Section */}
+        <View style={styles.section}>
+          <View style={styles.locationTimeContainer}>
+            <LocationDisplay
+              showCoordinates={true}
+              showLastUpdated={true}
+              showRefreshButton={true}
+              style={styles.locationCard}
+              onPress={handleLocationSettingsPress}
+            />
+            <TimeDisplay
+              showDate={true}
+              showTimezone={true}
+              showTimeOfDay={true}
+              style={styles.timeCard}
+            />
+          </View>
+        </View>
+
         {/* Icon Grid Section */}
         <View style={styles.section}>
           <View style={styles.iconGrid}>
@@ -274,25 +308,49 @@ export default function ProfilePage() {
         {/* Stats Section */}
         <View style={styles.section}>
           <View style={styles.statsCard}>
-            <ThemedText style={styles.statsTitle}>Your Activity</ThemedText>
-            <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
-                <ThemedText style={styles.statNumber}>{profileStats.totalOrders}</ThemedText>
-                <ThemedText style={styles.statLabel}>Orders</ThemedText>
-              </View>
-              <View style={styles.statItem}>
-                <ThemedText style={styles.statNumber}>₹{profileStats.totalSpent}</ThemedText>
-                <ThemedText style={styles.statLabel}>Spent</ThemedText>
-              </View>
-              <View style={styles.statItem}>
-                <ThemedText style={styles.statNumber}>{profileStats.loyaltyPoints}</ThemedText>
-                <ThemedText style={styles.statLabel}>Points</ThemedText>
-              </View>
-              <View style={styles.statItem}>
-                <ThemedText style={styles.statNumber}>{profileStats.reviewsGiven}</ThemedText>
-                <ThemedText style={styles.statLabel}>Reviews</ThemedText>
-              </View>
+            <View style={styles.statsHeader}>
+              <ThemedText style={styles.statsTitle}>Your Activity</ThemedText>
+              <TouchableOpacity
+                onPress={() => router.push('/profile/activity' as any)}
+                style={styles.viewAllButton}
+              >
+                <ThemedText style={styles.viewAllText}>View All</ThemedText>
+                <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+              </TouchableOpacity>
             </View>
+            {statsLoading ? (
+              <ThemedText style={styles.loadingText}>Loading stats...</ThemedText>
+            ) : statistics ? (
+              <View style={styles.statsGrid}>
+                <TouchableOpacity
+                  style={styles.statItem}
+                  onPress={() => router.push('/transactions' as any)}
+                >
+                  <ThemedText style={styles.statNumber}>{statistics.orders?.total || 0}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Orders</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.statItem}
+                  onPress={() => router.push('/WalletScreen' as any)}
+                >
+                  <ThemedText style={styles.statNumber}>₹{statistics.wallet?.totalSpent || 0}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Spent</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.statItem}
+                  onPress={() => router.push('/profile/achievements' as any)}
+                >
+                  <ThemedText style={styles.statNumber}>{statistics.achievements?.unlocked || 0}/{statistics.achievements?.total || 0}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Badges</ThemedText>
+                </TouchableOpacity>
+                <View style={styles.statItem}>
+                  <ThemedText style={styles.statNumber}>{statistics.reviews?.total || 0}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Reviews</ThemedText>
+                </View>
+              </View>
+            ) : (
+              <ThemedText style={styles.errorText}>Unable to load stats</ThemedText>
+            )}
           </View>
         </View>
 
@@ -370,6 +428,18 @@ const styles = StyleSheet.create({
   section: {
     marginHorizontal: 20,
     marginBottom: 20,
+  },
+  
+  // Location & Time Section
+  locationTimeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  locationCard: {
+    flex: 1,
+  },
+  timeCard: {
+    flex: 1,
   },
   
   // User Section
@@ -559,12 +629,26 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  statsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: PROFILE_SPACING.md,
+  },
   statsTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: PROFILE_COLORS.text,
-    marginBottom: PROFILE_SPACING.md,
-    textAlign: 'center',
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B5CF6',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -584,7 +668,19 @@ const styles = StyleSheet.create({
     color: PROFILE_COLORS.textSecondary,
     fontWeight: '500',
   },
-  
+  loadingText: {
+    fontSize: 14,
+    color: PROFILE_COLORS.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+
   footer: {
     height: 40,
   },

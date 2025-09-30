@@ -96,19 +96,62 @@ export default function SignInScreen() {
     }
 
     try {
-      await actions.sendOTP(formData.phoneNumber);
-      
+      // Format phone number for backend - add +91 prefix
+      const formattedPhone = `+91${formData.phoneNumber}`;
+
+      await actions.sendOTP(formattedPhone);
+
+      // Only proceed to next step if sendOTP was successful (no error thrown)
       setStep('otp');
       setOtpTimer(60); // 60 seconds timer
       setCanResendOTP(false);
-      
+
       Alert.alert(
         'OTP Sent',
-        `Verification code sent to ${formData.phoneNumber}\n\nFor demo, use: 123456`,
+        `Verification code sent to +91${formData.phoneNumber}\n\nFor demo, use: 123456`,
         [{ text: 'OK' }]
       );
-    } catch (error) {
-      Alert.alert('Error', state.error || 'Failed to send OTP. Please try again.');
+    } catch (error: any) {
+      console.error('[SignIn] Send OTP failed:', error);
+
+      // Get the error message
+      const errorMessage = error?.message || state.error || 'Failed to send OTP. Please try again.';
+
+      console.log('[SignIn] Error message to check:', errorMessage);
+
+      // Check if it's a user not found error - be more specific with the detection
+      if (errorMessage.toLowerCase().includes('user not found') ||
+          errorMessage.toLowerCase().includes('user does not exist') ||
+          errorMessage.toLowerCase().includes("user doesn't exist") ||
+          errorMessage.toLowerCase().includes('please sign up')) {
+
+        // Show error in the phone input field
+        setErrors(prev => ({
+          ...prev,
+          phoneNumber: 'This phone number is not registered. Please sign up first.'
+        }));
+
+        // Also show Alert
+        Alert.alert(
+          'User Not Found',
+          'This phone number is not registered. Please sign up first.',
+          [
+            { text: 'Sign Up', onPress: () => router.push('/onboarding/splash') },
+            { text: 'Try Again', style: 'cancel' }
+          ]
+        );
+      } else {
+        // Show generic error in the phone input field
+        setErrors(prev => ({
+          ...prev,
+          phoneNumber: errorMessage
+        }));
+
+        Alert.alert('Error', errorMessage);
+      }
+
+      // Clear errors to reset state
+      actions.clearError();
     }
   };
 
@@ -124,30 +167,49 @@ export default function SignInScreen() {
     }
 
     try {
-      console.log('[SignIn] Verifying OTP:', { phone: formData.phoneNumber, otp: formData.otp });
-      await actions.login(formData.phoneNumber, formData.otp);
+      // Format phone number for backend - add +91 prefix
+      const formattedPhone = `+91${formData.phoneNumber}`;
+
+      console.log('[SignIn] Verifying OTP:', { phone: formattedPhone, otp: formData.otp });
+      await actions.login(formattedPhone, formData.otp);
       console.log('[SignIn] Login successful, isAuthenticated:', state.isAuthenticated);
-      
-      // Navigation handled by useEffect
-    } catch (error) {
+
+      // Navigation handled by useEffect only if login was successful
+    } catch (error: any) {
       console.error('[SignIn] Login error:', error);
-      setErrors(prev => ({ 
-        ...prev, 
-        otp: state.error || 'Invalid OTP. Please try again.' 
+
+      // Get the error message
+      const errorMessage = error?.message || state.error || 'Invalid OTP. Please try again.';
+
+      // Set the error to show in the OTP field
+      setErrors(prev => ({
+        ...prev,
+        otp: errorMessage
       }));
+
+      // Clear errors from context to reset state
+      actions.clearError();
+
+      // Don't navigate - stay on the OTP screen to let user try again
     }
   };
 
   const handleResendOTP = async () => {
     if (!canResendOTP) return;
-    
+
     try {
-      await actions.sendOTP(formData.phoneNumber);
+      // Format phone number for backend - add +91 prefix
+      const formattedPhone = `+91${formData.phoneNumber}`;
+
+      await actions.sendOTP(formattedPhone);
       setOtpTimer(60);
       setCanResendOTP(false);
       Alert.alert('OTP Resent', 'New verification code sent to your phone');
-    } catch (error) {
-      Alert.alert('Error', state.error || 'Failed to resend OTP. Please try again.');
+    } catch (error: any) {
+      console.error('[SignIn] Resend OTP failed:', error);
+      const errorMessage = error?.message || state.error || 'Failed to resend OTP. Please try again.';
+      Alert.alert('Error', errorMessage);
+      actions.clearError();
     }
   };
 
@@ -179,6 +241,7 @@ export default function SignInScreen() {
           keyboardType="phone-pad"
           error={errors.phoneNumber}
           containerStyle={styles.inputContainer}
+          prefix="+91"
           leftIcon={
             <Ionicons name="call-outline" size={20} color="#8B5CF6" />
           }
@@ -214,7 +277,7 @@ export default function SignInScreen() {
         <Text style={styles.title}>Enter OTP</Text>
         <Text style={styles.subtitle}>
           We've sent a verification code to{'\n'}
-          <Text style={styles.phoneNumber}>{formData.phoneNumber}</Text>
+          <Text style={styles.phoneNumber}>+91{formData.phoneNumber}</Text>
         </Text>
         <View style={styles.underline} />
       </View>

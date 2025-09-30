@@ -14,6 +14,7 @@ import Section5 from './StoreSection/Section5';
 import Section6 from './StoreSection/Section6';
 import CombinedSection78 from './StoreSection/CombinedSection78';
 import { createSimpleMockHandlers } from '@/utils/simple-mock-handlers';
+import homepageDataService from '@/services/homepageDataService';
 
 interface DynamicCardData {
   id: string;
@@ -33,6 +34,8 @@ export default function StorePage() {
   const params = useLocalSearchParams();
   const [cardData, setCardData] = useState<DynamicCardData | null>(null);
   const [isDynamic, setIsDynamic] = useState(false);
+  const [backendData, setBackendData] = useState<any>(null);
+  const [isLoadingBackend, setIsLoadingBackend] = useState(false);
 
   // Parse dynamic card data from navigation params
   useEffect(() => {
@@ -65,6 +68,54 @@ export default function StorePage() {
       setIsDynamic(false);
     }
   }, [params]);
+
+  // Fetch additional backend data if we have a product ID
+  useEffect(() => {
+    async function fetchBackendData() {
+      if (cardData?.id && isDynamic) {
+        console.log('🔄 [BACKEND FETCH] Attempting to fetch backend data for product:', cardData.id);
+        setIsLoadingBackend(true);
+        
+        try {
+          // Try to get enhanced product data from backend
+          const productDetails = await homepageDataService.getProductForStorePage(cardData.id);
+          
+          if (productDetails) {
+            console.log('✅ [BACKEND FETCH] Successfully loaded backend data:', productDetails);
+            setBackendData(productDetails);
+            
+            // Optionally merge backend data with existing cardData
+            const enhancedCardData = {
+              ...cardData,
+              // Merge in additional backend fields if available
+              description: productDetails.description || cardData.description,
+              specifications: productDetails.specifications,
+              similarProducts: productDetails.similarProducts,
+              detailedRating: productDetails.rating,
+              availability: productDetails.availabilityStatus,
+              tags: productDetails.tags,
+              // Keep original data for fallback
+              backendEnhanced: true
+            };
+            
+            setCardData(enhancedCardData);
+            console.log('🎯 [BACKEND MERGE] Enhanced card data with backend details');
+          } else {
+            console.log('⚠️ [BACKEND FETCH] No backend data found, using original card data');
+          }
+        } catch (error) {
+          console.error('❌ [BACKEND FETCH] Failed to fetch backend data:', error);
+        } finally {
+          setIsLoadingBackend(false);
+        }
+      }
+    }
+
+    // Only fetch if we have dynamic data and haven't already fetched
+    if (cardData?.id && isDynamic && !backendData && !isLoadingBackend) {
+      fetchBackendData();
+    }
+  }, [cardData?.id, isDynamic, backendData, isLoadingBackend]);
 
   // TODO: Replace with actual store data from backend API
   // const { data: storeData, isLoading } = useStoreData(storeId);
@@ -130,6 +181,8 @@ export default function StorePage() {
           dynamicData={isDynamic ? cardData : null}
           cardType={params.cardType as string}
         />
+        
+        
         <CombinedSection78 
           dynamicData={isDynamic ? cardData : null}
           cardType={params.cardType as string}

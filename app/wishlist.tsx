@@ -8,8 +8,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  Platform,
-  Image,
   Alert,
   RefreshControl,
   SafeAreaView,
@@ -17,17 +15,23 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
-import { useWishlist, WishlistItem } from '@/contexts/WishlistContext';
+import { useWishlist } from '@/contexts/WishlistContext';
+import { useCart } from '@/contexts/CartContext';
+import WishlistItem from '@/components/wishlist/WishlistItem';
+import WishlistEmpty from '@/components/wishlist/WishlistEmpty';
+import type { WishlistItem as WishlistItemType } from '@/contexts/WishlistContext';
 
 export default function WishlistPage() {
   const router = useRouter();
-  const { 
-    wishlistItems, 
-    removeFromWishlist, 
-    clearWishlist, 
-    isLoading, 
-    error 
+  const {
+    wishlistItems,
+    removeFromWishlist,
+    clearWishlist,
+    isLoading,
+    error,
+    getWishlistCount,
   } = useWishlist();
+  const { actions: cartActions } = useCart();
   const [refreshing, setRefreshing] = useState(false);
 
   const handleBackPress = () => {
@@ -37,8 +41,8 @@ export default function WishlistPage() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      // In real app, this would reload wishlist from API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Reload wishlist from backend
+      window.location.reload();
     } catch (error) {
       console.error('Error refreshing wishlist:', error);
     } finally {
@@ -46,25 +50,12 @@ export default function WishlistPage() {
     }
   };
 
-  const handleRemoveItem = async (productId: string, productName: string) => {
-    Alert.alert(
-      'Remove from Wishlist',
-      `Remove "${productName}" from your wishlist?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeFromWishlist(productId);
-            } catch (error) {
-              Alert.alert('Error', 'Failed to remove item from wishlist');
-            }
-          }
-        }
-      ]
-    );
+  const handleRemoveItem = async (productId: string) => {
+    try {
+      await removeFromWishlist(productId);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to remove item from wishlist');
+    }
   };
 
   const handleClearWishlist = () => {
@@ -94,89 +85,31 @@ export default function WishlistPage() {
     router.push(`/product/${productId}`);
   };
 
-  const handleAddToCart = (item: WishlistItem) => {
-    Alert.alert(
-      'Added to Cart',
-      `${item.productName} has been added to your cart!`,
-      [
-        { text: 'Continue Shopping' },
-        { text: 'View Cart', onPress: () => router.push('/CartPage') },
-      ]
-    );
+  const handleAddToCart = async (item: WishlistItemType) => {
+    try {
+      await cartActions.addItem({
+        productId: item.productId,
+        name: item.productName,
+        price: item.price,
+        image: item.productImage,
+        quantity: 1,
+        storeId: 'default-store',
+        storeName: item.brand,
+      });
+
+      Alert.alert(
+        'Added to Cart',
+        `${item.productName} has been added to your cart!`,
+        [
+          { text: 'Continue Shopping' },
+          { text: 'View Cart', onPress: () => router.push('/CartPage') },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add item to cart');
+    }
   };
 
-  const renderWishlistItem = (item: WishlistItem) => (
-    <TouchableOpacity
-      key={item.id}
-      style={styles.itemCard}
-      onPress={() => handleItemPress(item.productId)}
-      activeOpacity={0.8}
-    >
-      <Image source={{ uri: item.productImage }} style={styles.itemImage} />
-      
-      <View style={styles.itemInfo}>
-        <View style={styles.itemHeader}>
-          <ThemedText style={styles.itemBrand}>{item.brand}</ThemedText>
-          <TouchableOpacity
-            style={styles.removeButton}
-            onPress={() => handleRemoveItem(item.productId, item.productName)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="heart" size={20} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
-        
-        <ThemedText style={styles.itemName} numberOfLines={2}>
-          {item.productName}
-        </ThemedText>
-        
-        <View style={styles.ratingRow}>
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={12} color="#FFD700" />
-            <ThemedText style={styles.ratingText}>{item.rating}</ThemedText>
-            <ThemedText style={styles.reviewText}>({item.reviewCount})</ThemedText>
-          </View>
-          
-          <View style={[
-            styles.availabilityBadge,
-            { backgroundColor: item.availability === 'IN_STOCK' ? '#22C55E' : item.availability === 'LIMITED' ? '#F59E0B' : '#EF4444' }
-          ]}>
-            <ThemedText style={styles.availabilityText}>
-              {item.availability === 'IN_STOCK' ? 'In Stock' : item.availability === 'LIMITED' ? 'Limited' : 'Out of Stock'}
-            </ThemedText>
-          </View>
-        </View>
-        
-        <View style={styles.priceRow}>
-          <View style={styles.priceContainer}>
-            <ThemedText style={styles.price}>₹{item.price.toLocaleString()}</ThemedText>
-            {item.originalPrice && (
-              <>
-                <ThemedText style={styles.originalPrice}>₹{item.originalPrice.toLocaleString()}</ThemedText>
-                <ThemedText style={styles.discount}>{item.discount}% OFF</ThemedText>
-              </>
-            )}
-          </View>
-          
-          <TouchableOpacity
-            style={[
-              styles.addToCartButton,
-              { opacity: item.availability === 'OUT_OF_STOCK' ? 0.5 : 1 }
-            ]}
-            onPress={() => handleAddToCart(item)}
-            disabled={item.availability === 'OUT_OF_STOCK'}
-          >
-            <Ionicons name="cart-outline" size={16} color="#8B5CF6" />
-            <ThemedText style={styles.addToCartText}>Add to Cart</ThemedText>
-          </TouchableOpacity>
-        </View>
-        
-        <ThemedText style={styles.addedDate}>
-          Added {new Date(item.addedAt).toLocaleDateString()}
-        </ThemedText>
-      </View>
-    </TouchableOpacity>
-  );
 
   if (isLoading) {
     return (
@@ -239,17 +172,7 @@ export default function WishlistPage() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <Ionicons name="heart-outline" size={80} color="#D1D5DB" />
-          <ThemedText style={styles.emptyTitle}>Your wishlist is empty</ThemedText>
-          <ThemedText style={styles.emptySubtitle}>
-            Save items you love by tapping the heart icon
-          </ThemedText>
-          <TouchableOpacity
-            style={styles.shopButton}
-            onPress={() => router.push('/Store')}
-          >
-            <ThemedText style={styles.shopButtonText}>Start Shopping</ThemedText>
-          </TouchableOpacity>
+          <WishlistEmpty onShopPress={() => router.push('/Store')} />
         </ScrollView>
       ) : (
         <ScrollView
@@ -260,9 +183,17 @@ export default function WishlistPage() {
           }
         >
           <View style={styles.itemsList}>
-            {wishlistItems.map(renderWishlistItem)}
+            {wishlistItems.map((item) => (
+              <WishlistItem
+                key={item.id}
+                item={item}
+                onRemove={handleRemoveItem}
+                onPress={handleItemPress}
+                onAddToCart={handleAddToCart}
+              />
+            ))}
           </View>
-          
+
           <View style={styles.bottomSpace} />
         </ScrollView>
       )}
@@ -334,157 +265,9 @@ const styles = StyleSheet.create({
   },
   itemsList: {
     padding: 16,
-    gap: 12,
-  },
-  itemCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  itemImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  itemInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  itemBrand: {
-    fontSize: 12,
-    color: '#8B5CF6',
-    fontWeight: '600',
-  },
-  removeButton: {
-    padding: 4,
-  },
-  itemName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 6,
-    lineHeight: 18,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingText: {
-    fontSize: 12,
-    color: '#333',
-    fontWeight: '600',
-    marginLeft: 2,
-  },
-  reviewText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 2,
-  },
-  availabilityBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  availabilityText: {
-    fontSize: 10,
-    color: 'white',
-    fontWeight: '600',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  price: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-  },
-  originalPrice: {
-    fontSize: 12,
-    color: '#666',
-    textDecorationLine: 'line-through',
-  },
-  discount: {
-    fontSize: 10,
-    color: '#22C55E',
-    fontWeight: '600',
-  },
-  addToCartButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#8B5CF6',
-  },
-  addToCartText: {
-    fontSize: 11,
-    color: '#8B5CF6',
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  addedDate: {
-    fontSize: 10,
-    color: '#999',
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  shopButton: {
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  shopButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 16,
   },
   bottomSpace: {
     height: 20,

@@ -21,7 +21,7 @@ import deal from '@/assets/images/deal.png';
 import { Image } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Rect, Circle } from 'react-native-svg';
+import { LocationDisplay } from '@/components/location';
 
 const { width } = Dimensions.get('window');
 const CARD_GAP = 14;
@@ -32,68 +32,205 @@ type Store = {
   id: string;
   title: string;
   accent?: string;
+  icon?: string;
+  gradient?: string[];
+  badge?: string;
+  description?: string;
 };
 
 const STORES: Store[] = [
-  { id: 's1', title: '30 min delivery', accent: '#7B61FF' },
-  { id: 's2', title: '1 rupees store', accent: '#6E56CF' },
-  { id: 's3', title: '99 Rupees store', accent: '#6A5ACD' },
-  { id: 's4', title: 'Luxury store', accent: '#A78BFA' },
-  { id: 's6', title: 'Alliance Store', accent: '#9F7AEA' },
-  { id: 's8', title: 'Organic Store', accent: '#34D399' },
-  { id: 's9', title: 'Lowest Price', accent: '#22D3EE' },
-  { id: 's11', title: 'Rez Mall', accent: '#60A5FA' },
-  { id: 's12', title: 'Cash Store', accent: '#8B5CF6' },
+  { 
+    id: 's1', 
+    title: '30 min delivery', 
+    accent: '#7B61FF',
+    icon: 'flash',
+    gradient: ['#7B61FF', '#A855F7'],
+    badge: '30 min',
+    description: 'Lightning fast delivery'
+  },
+  { 
+    id: 's2', 
+    title: '1 rupees store', 
+    accent: '#6E56CF',
+    icon: 'cash',
+    gradient: ['#6E56CF', '#8B5CF6'],
+    badge: '₹1',
+    description: 'Everything at ₹1'
+  },
+  { 
+    id: 's3', 
+    title: '99 Rupees store', 
+    accent: '#6A5ACD',
+    icon: 'wallet',
+    gradient: ['#6A5ACD', '#7C3AED'],
+    badge: '₹99',
+    description: 'Budget friendly shopping'
+  },
+  { 
+    id: 's4', 
+    title: 'Luxury store', 
+    accent: '#A78BFA',
+    icon: 'diamond',
+    gradient: ['#A78BFA', '#C084FC'],
+    badge: 'Premium',
+    description: 'Luxury & premium brands'
+  },
+  { 
+    id: 's6', 
+    title: 'Alliance Store', 
+    accent: '#9F7AEA',
+    icon: 'people',
+    gradient: ['#9F7AEA', '#A855F7'],
+    badge: 'Partner',
+    description: 'Partner stores network'
+  },
+  { 
+    id: 's8', 
+    title: 'Organic Store', 
+    accent: '#34D399',
+    icon: 'leaf',
+    gradient: ['#34D399', '#10B981'],
+    badge: 'Organic',
+    description: 'Natural & organic products'
+  },
+  { 
+    id: 's9', 
+    title: 'Lowest Price', 
+    accent: '#22D3EE',
+    icon: 'trending-down',
+    gradient: ['#22D3EE', '#06B6D4'],
+    badge: 'Best Price',
+    description: 'Guaranteed lowest prices'
+  },
+  { 
+    id: 's11', 
+    title: 'Rez Mall', 
+    accent: '#60A5FA',
+    icon: 'storefront',
+    gradient: ['#60A5FA', '#3B82F6'],
+    badge: 'Mall',
+    description: 'Complete shopping experience'
+  },
+  { 
+    id: 's12', 
+    title: 'Cash Store', 
+    accent: '#8B5CF6',
+    icon: 'card',
+    gradient: ['#8B5CF6', '#7C3AED'],
+    badge: 'Cash',
+    description: 'Cashback & rewards'
+  },
 ];
 
 
-function Illustration({ color = '#8B5CF6' }: { color?: string }) {
+function ModernCardIllustration({ 
+  icon, 
+  gradient = ['#8B5CF6', '#A855F7'],
+  badge 
+}: { 
+  icon?: string;
+  gradient?: string[];
+  badge?: string;
+}) {
   return (
-    <Svg width={CARD_WIDTH - 32} height={80} viewBox="0 0 160 80">
-      {/* Background rectangle */}
-      <Rect x="0" y="20" width="160" height="60" rx="16" fill={color} opacity={0.1} />
-
-      {/* Big rounded rectangle */}
-      <Rect x="8" y="28" width="72" height="44" rx="12" fill={color} opacity={0.25} />
-
-      {/* Medium rectangle */}
-      <Rect x="82" y="16" width="52" height="50" rx="10" fill={color} opacity={0.35} />
-
-      {/* Circle with gradient effect */}
-      <Circle cx="140" cy="40" r="20" fill={color} opacity={0.5} />
-
-      {/* Decorative small circles */}
-      <Circle cx="20" cy="35" r="4" fill={color} opacity={0.7} />
-      <Circle cx="60" cy="55" r="6" fill={color} opacity={0.5} />
-      <Circle cx="120" cy="30" r="3" fill={color} opacity={0.6} />
-    </Svg>
+    <View style={styles.illustrationContainer}>
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientBackground}
+      >
+        {/* Badge */}
+        {badge && (
+          <View style={styles.badgeContainer}>
+            <Text style={styles.badgeText}>{badge}</Text>
+          </View>
+        )}
+        
+        {/* Icon */}
+        {icon && (
+          <View style={styles.iconContainer}>
+            <Ionicons name={icon as any} size={32} color="white" />
+          </View>
+        )}
+        
+        {/* Decorative Elements */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
+      </LinearGradient>
+    </View>
   );
 }
 
 
 function StoreCard({ item }: { item: Store }) {
-  const { handleItemPress } = useHomepageNavigation();
+  const router = useRouter();
+  
+  // Map store IDs to delivery category names
+  const getCategoryFromId = (id: string): string => {
+    const categoryMap: { [key: string]: string } = {
+      's1': 'fastDelivery',      // 30 min delivery
+      's2': 'budgetFriendly',    // 1 rupees store (matches database)
+      's3': 'ninetyNineStore',   // 99 Rupees store
+      's4': 'premium',           // Luxury store
+      's6': 'alliance',          // Alliance Store
+      's8': 'organic',           // Organic Store
+      's9': 'lowestPrice',       // Lowest Price
+      's11': 'mall',             // Rez Mall
+      's12': 'cashStore',        // Cash Store
+    };
+    return categoryMap[id] || 'fastDelivery';
+  };
+
+  const handleStorePress = () => {
+    const category = getCategoryFromId(item.id);
+    router.push({
+      pathname: '/StoreSearch' as any,
+      params: {
+        category,
+        title: item.title,
+      },
+    });
+  };
   
   return (
     <TouchableOpacity 
-      activeOpacity={0.8} 
+      activeOpacity={0.7} 
       style={styles.card}
-      onPress={() => handleItemPress('stores', { id: item.id, type: 'store' })}
+      onPress={handleStorePress}
     >
       <View style={styles.cardIllustration}>
-        <Illustration color={item.accent} />
+        <ModernCardIllustration 
+          icon={item.icon}
+          gradient={item.gradient}
+          badge={item.badge}
+        />
       </View>
-      <Text numberOfLines={1} allowFontScaling={false} style={styles.cardTitle}>
-        {item.title}
-      </Text>
+      
+      <View style={styles.cardContent}>
+        <Text numberOfLines={1} allowFontScaling={false} style={styles.cardTitle}>
+          {item.title}
+        </Text>
+        {item.description && (
+          <Text numberOfLines={2} allowFontScaling={false} style={styles.cardDescription}>
+            {item.description}
+          </Text>
+        )}
+      </View>
     </TouchableOpacity>
   );
 }
 
 export default function App() {
   const router = useRouter();
-    const { user, isModalVisible, showModal, hideModal } = useProfile();
-    const { handleMenuItemPress } = useProfileMenu();
+  const { user, isModalVisible, showModal, hideModal } = useProfile();
+  const { handleMenuItemPress } = useProfileMenu();
+  const [showLocationDropdown, setShowLocationDropdown] = React.useState(false);
+
+  const handleLocationDropdownToggle = () => {
+    setShowLocationDropdown(!showLocationDropdown);
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
@@ -109,13 +246,25 @@ export default function App() {
         >
           {/* Top section */}
           <View style={styles.headerTop}>
-            <View style={styles.locationContainer}>
-              <Ionicons name="location" size={16} color="white" />
-              <ThemedText allowFontScaling={false} style={styles.locationText}>
-                BTM,Bangalore
-              </ThemedText>
-              <Ionicons name="chevron-down" size={16} color="white" />
-            </View>
+            <TouchableOpacity 
+              style={styles.locationContainer}
+              onPress={handleLocationDropdownToggle}
+              activeOpacity={0.7}
+            >
+              <LocationDisplay
+                compact={!showLocationDropdown}
+                showCoordinates={false}
+                showLastUpdated={false}
+                showRefreshButton={false}
+                style={styles.locationDisplay}
+                textStyle={styles.locationText}
+              />
+              <Ionicons 
+                name={showLocationDropdown ? "chevron-up" : "chevron-down"} 
+                size={16} 
+                color="white" 
+              />
+            </TouchableOpacity>
 
             <View style={styles.headerRight}>
               <TouchableOpacity
@@ -227,15 +376,29 @@ const styles = StyleSheet.create({
 
   locationContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 18,
+    alignItems: 'flex-start',
+    flex: 1,
+    marginRight: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
   },
 
-  locationText: { color: '#fff', fontWeight: '600', fontSize: 12.5 },
+  locationDisplay: {
+    backgroundColor: 'transparent',
+    shadowOpacity: 0,
+    elevation: 0,
+    padding: 0,
+    margin: 0,
+    flex: 1,
+  },
+
+  locationText: { 
+    color: '#fff', 
+    fontWeight: '600', 
+    fontSize: 12.5,
+    lineHeight: 16,
+  },
 
   headerRight: {
     flexDirection: 'row',
@@ -321,25 +484,104 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
   },
 
   cardIllustration: {
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+
+  cardContent: {
+    alignItems: 'center',
   },
 
   cardTitle: {
-    color: '#332D41',
-    fontSize: 13,
-    fontWeight: '600',
+    color: '#1F2937',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+
+  cardDescription: {
+    color: '#6B7280',
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+
+  // Modern Illustration Styles
+  illustrationContainer: {
+    width: CARD_WIDTH - 32,
+    height: 90,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+
+  gradientBackground: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+
+  badgeContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backdropFilter: 'blur(10px)',
+  },
+
+  badgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+
+  decorativeCircle1: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+
+  decorativeCircle2: {
+    position: 'absolute',
+    bottom: -5,
+    left: -5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
 
   // Brand promo pieces (kept for reuse if you add the banner back)
