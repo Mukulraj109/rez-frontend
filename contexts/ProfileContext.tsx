@@ -49,10 +49,14 @@ const mapBackendUserToProfileUser = (backendUser: BackendUser): User => {
     isVerified: backendUser.isVerified,
     // Map wallet data from backend
     wallet: {
-      balance: backendUser.wallet?.balance || 0,
+      balance: typeof backendUser.wallet?.balance === 'object'
+        ? (backendUser.wallet.balance as any).available || (backendUser.wallet.balance as any).total || 0
+        : backendUser.wallet?.balance || 0,
       totalEarned: backendUser.wallet?.totalEarned || 0,
       totalSpent: backendUser.wallet?.totalSpent || 0,
-      pendingAmount: backendUser.wallet?.pendingAmount || 0,
+      pendingAmount: typeof backendUser.wallet?.pendingAmount === 'object'
+        ? (backendUser.wallet.pendingAmount as any).pending || 0
+        : backendUser.wallet?.pendingAmount || 0,
     },
     preferences: {
       notifications: {

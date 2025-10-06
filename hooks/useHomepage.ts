@@ -14,6 +14,7 @@ import {
 } from '@/data/homepageData';
 import homepageDataService from '@/services/homepageDataService';
 import { useCart } from '@/contexts/CartContext';
+import { showToast } from '@/components/common/ToastManager';
 
 // Homepage Reducer
 function homepageReducer(state: HomepageState, action: HomepageAction): HomepageState {
@@ -82,13 +83,6 @@ function homepageReducer(state: HomepageState, action: HomepageAction): Homepage
 // Main Homepage Hook
 export function useHomepage(): UseHomepageDataResult {
   const [state, dispatch] = useReducer(homepageReducer, initialHomepageState);
-  
-  console.log('🏠 [HOMEPAGE HOOK] Hook initialized, current state:', {
-    sectionsCount: state.sections.length,
-    loading: state.loading,
-    error: state.error,
-    sectionsIds: state.sections.map(s => `${s.id}:${s.items.length}`)
-  });
 
   // Load all homepage sections
   const refreshAllSections = useCallback(async () => {
@@ -561,6 +555,20 @@ export function useHomepageNavigation() {
         return;
       }
 
+      // Extract price - handle complex price objects
+      let currentPrice = 0;
+      let originalPrice = 0;
+
+      if (item.price) {
+        if (typeof item.price === 'number') {
+          currentPrice = item.price;
+          originalPrice = item.originalPrice || item.price;
+        } else if (typeof item.price === 'object') {
+          currentPrice = item.price.current || item.price.amount || 0;
+          originalPrice = item.price.original || item.price.current || item.price.amount || 0;
+        }
+      }
+
       // Extract image - handle multiple possible formats
       let imageUrl = '';
       if (item.image) {
@@ -574,6 +582,7 @@ export function useHomepageNavigation() {
       }
 
       console.log('🛒 [Add to Cart] Using image URL:', imageUrl);
+      console.log('🛒 [Add to Cart] Prices:', { currentPrice, originalPrice });
 
       // Check if item already exists in cart
       const existingItem = cartActions.isItemInCart(productId);
@@ -588,20 +597,33 @@ export function useHomepageNavigation() {
         productId: productId,
         name: item.name || item.title || 'Product',
         image: imageUrl,
-        originalPrice: item.originalPrice || item.price || 0,
-        discountedPrice: item.price || item.originalPrice || 0,
+        originalPrice: originalPrice,
+        discountedPrice: currentPrice,
         discount: item.discount || 0,
         quantity: 1,
         store: item.store,
         variant: item.variant,
       });
 
-      console.log('✅ [Add to Cart] Item added successfully');
-      Alert.alert('Success', `${item.name || 'Item'} added to cart!`);
+      console.log('✅ [Add to Cart] Item added successfully, waiting for cart to refresh...');
+
+      // Wait a bit for the cart state to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Show success toast
+      showToast({
+        message: `${item.name || item.title || 'Item'} added to cart`,
+        type: 'success',
+        duration: 3000
+      });
 
     } catch (error) {
       console.error('❌ [Add to Cart] Failed:', error);
-      Alert.alert('Error', 'Failed to add item to cart. Please try again.');
+      showToast({
+        message: 'Failed to add item to cart',
+        type: 'error',
+        duration: 3000
+      });
     }
   }, [cartActions]);
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -10,11 +10,13 @@ import {
   RefreshControl,
   Dimensions,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
+import ordersApi, { Order } from '@/services/ordersApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -44,124 +46,185 @@ interface TrackingOrder {
   progress: number; // 0-100
 }
 
+// Helper to map backend order to TrackingOrder
+const mapOrderToTracking = (order: Order): TrackingOrder => {
+  // Map backend status to tracking status
+  const statusMap: Record<string, 'PREPARING' | 'ON_THE_WAY' | 'DELIVERED' | 'CANCELLED'> = {
+    'placed': 'PREPARING',
+    'pending': 'PREPARING',
+    'confirmed': 'PREPARING',
+    'preparing': 'PREPARING',
+    'processing': 'PREPARING',
+    'ready': 'PREPARING',
+    'dispatched': 'ON_THE_WAY',
+    'shipped': 'ON_THE_WAY',
+    'out_for_delivery': 'ON_THE_WAY',
+    'delivered': 'DELIVERED',
+    'cancelled': 'CANCELLED',
+    'refunded': 'CANCELLED',
+  };
+
+  const trackingStatus = statusMap[order.status] || 'PREPARING';
+
+  // Map status to color
+  const colorMap = {
+    'PREPARING': '#F59E0B',
+    'ON_THE_WAY': '#3B82F6',
+    'DELIVERED': '#10B981',
+    'CANCELLED': '#EF4444',
+  };
+
+  // Calculate progress
+  const progressMap = {
+    'PREPARING': 25,
+    'ON_THE_WAY': 65,
+    'DELIVERED': 100,
+    'CANCELLED': 0,
+  };
+
+  // Create tracking steps from order timeline
+  const steps: OrderStatus[] = order.timeline?.map((event, index) => ({
+    step: index + 1,
+    title: event.status.charAt(0).toUpperCase() + event.status.slice(1).replace('_', ' '),
+    description: event.message,
+    timestamp: new Date(event.timestamp).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    isCompleted: true,
+    isActive: index === order.timeline.length - 1,
+  })) || [];
+
+  // Get item names
+  const items = order.items?.map(item => item.product?.name || 'Product') || [];
+
+  // Format address - use delivery.address from backend
+  const addr = order.delivery?.address || order.shippingAddress;
+  const deliveryAddress = addr
+    ? order.delivery?.address
+      ? `${addr.addressLine1}, ${addr.city}, ${addr.state} ${addr.pincode}`
+      : `${(addr as any).address1}, ${addr.city}, ${addr.state} ${(addr as any).zipCode}`
+    : 'Address not available';
+
+  // Get store info - it might be populated or just an ID
+  const firstItem = order.items?.[0];
+  const storeName = typeof firstItem?.store === 'object'
+    ? (firstItem.store as any).name
+    : firstItem?.name || 'Store';
+  const storeLogo = typeof firstItem?.store === 'object'
+    ? (firstItem.store as any).logo
+    : undefined;
+
+  // Calculate total if it's 0 (fallback calculation)
+  let totalAmount = order.totals?.total || order.summary?.total || 0;
+  if (totalAmount === 0 && order.totals) {
+    // Recalculate: subtotal + tax + delivery - discount
+    totalAmount = (order.totals.subtotal || 0) +
+                  (order.totals.tax || 0) +
+                  (order.totals.delivery || 0) -
+                  (order.totals.discount || 0);
+    console.log('⚠️ [ORDER TRACKING] Total was 0, recalculated:', {
+      orderNumber: order.orderNumber,
+      subtotal: order.totals.subtotal,
+      tax: order.totals.tax,
+      delivery: order.totals.delivery,
+      discount: order.totals.discount,
+      calculatedTotal: totalAmount
+    });
+  }
+
+  return {
+    id: order._id || order.id,
+    orderNumber: order.orderNumber,
+    merchantName: storeName,
+    merchantLogo: storeLogo,
+    totalAmount,
+    status: trackingStatus,
+    statusColor: colorMap[trackingStatus],
+    estimatedDelivery: order.tracking?.estimatedDelivery || 'Calculating...',
+    trackingSteps: steps,
+    items,
+    deliveryAddress,
+    deliveryPersonName: order.tracking?.carrier,
+    deliveryPersonPhone: order.tracking?.number,
+    progress: progressMap[trackingStatus],
+  };
+};
+
 export default function OrderTrackingScreen() {
   const router = useRouter();
   const [activeOrders, setActiveOrders] = useState<TrackingOrder[]>([]);
+  const [deliveredOrders, setDeliveredOrders] = useState<TrackingOrder[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<'active' | 'delivered'>('active');
+
+  const loadActiveOrders = useCallback(async (isRefresh: boolean = false) => {
+    console.log('📦 [ORDER TRACKING] Loading orders from real API...');
+
+    if (!isRefresh) {
+      setLoading(true);
+    }
+    setError(null);
+
+    try {
+      const response = await ordersApi.getOrders({
+        page: 1,
+        limit: 50,
+      });
+
+      console.log('📦 [ORDER TRACKING] API Response:', {
+        success: response.success,
+        ordersCount: response.data?.orders?.length || 0,
+      });
+
+      if (response.success && response.data?.orders) {
+        console.log('📊 [ORDER TRACKING] Raw orders from API:', response.data.orders.length);
+
+        const allOrders = response.data.orders.map(mapOrderToTracking);
+
+        console.log('📊 [ORDER TRACKING] Mapped orders:', allOrders);
+
+        // Separate active and delivered
+        const active = allOrders.filter(o =>
+          o.status === 'PREPARING' || o.status === 'ON_THE_WAY'
+        );
+
+        const delivered = allOrders.filter(o =>
+          o.status === 'DELIVERED' || o.status === 'CANCELLED'
+        );
+
+        setActiveOrders(active);
+        setDeliveredOrders(delivered);
+
+        console.log('✅ [ORDER TRACKING] Orders loaded:', {
+          total: allOrders.length,
+          active: active.length,
+          delivered: delivered.length,
+          activeOrders: active,
+          deliveredOrders: delivered
+        });
+      } else {
+        throw new Error(response.message || 'Failed to fetch orders');
+      }
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to load orders';
+      console.error('❌ [ORDER TRACKING] Error:', errorMsg);
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadActiveOrders();
-  }, []);
-
-  const loadActiveOrders = async () => {
-    const mockOrders: TrackingOrder[] = [
-      {
-        id: '1',
-        orderNumber: 'WAS123456',
-        merchantName: 'Tasty Bites Restaurant',
-        totalAmount: 1250,
-        status: 'ON_THE_WAY',
-        statusColor: '#F59E0B',
-        estimatedDelivery: '25 mins',
-        progress: 65,
-        deliveryPersonName: 'Raj Kumar',
-        deliveryPersonPhone: '+91 98765 43210',
-        trackingSteps: [
-          {
-            step: 1,
-            title: 'Order Confirmed',
-            description: 'Your order has been confirmed',
-            timestamp: '2:30 PM',
-            isCompleted: true,
-            isActive: false,
-          },
-          {
-            step: 2,
-            title: 'Preparing',
-            description: 'Restaurant is preparing your order',
-            timestamp: '2:35 PM',
-            isCompleted: true,
-            isActive: false,
-          },
-          {
-            step: 3,
-            title: 'On the way',
-            description: 'Delivery partner picked up your order',
-            timestamp: '3:10 PM',
-            isCompleted: false,
-            isActive: true,
-          },
-          {
-            step: 4,
-            title: 'Delivered',
-            description: 'Order delivered to your location',
-            isCompleted: false,
-            isActive: false,
-          },
-        ],
-        items: ['Pizza Margherita', 'Garlic Bread', 'Coke'],
-        deliveryAddress: '123 Main Street, Apartment 4B',
-      },
-      {
-        id: '2',
-        orderNumber: 'WAS789012',
-        merchantName: 'Fashion Central',
-        totalAmount: 2100,
-        status: 'PREPARING',
-        statusColor: '#3B82F6',
-        estimatedDelivery: '2-3 days',
-        progress: 25,
-        trackingSteps: [
-          {
-            step: 1,
-            title: 'Order Placed',
-            description: 'Your order has been placed successfully',
-            timestamp: 'Today, 11:30 AM',
-            isCompleted: true,
-            isActive: false,
-          },
-          {
-            step: 2,
-            title: 'Order Processing',
-            description: 'Merchant is preparing your items',
-            isCompleted: false,
-            isActive: true,
-          },
-          {
-            step: 3,
-            title: 'Shipped',
-            description: 'Order has been shipped',
-            isCompleted: false,
-            isActive: false,
-          },
-          {
-            step: 4,
-            title: 'Out for Delivery',
-            description: 'Order is out for delivery',
-            isCompleted: false,
-            isActive: false,
-          },
-          {
-            step: 5,
-            title: 'Delivered',
-            description: 'Order delivered successfully',
-            isCompleted: false,
-            isActive: false,
-          },
-        ],
-        items: ['Cotton T-Shirt', 'Denim Jeans'],
-        deliveryAddress: '123 Main Street, Apartment 4B',
-      },
-    ];
-
-    setActiveOrders(mockOrders);
-  };
+  }, [loadActiveOrders]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadActiveOrders();
-    setIsRefreshing(false);
+    await loadActiveOrders(true);
   };
 
   const getStatusIcon = (status: string) => {
@@ -316,15 +379,31 @@ export default function OrderTrackingScreen() {
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.secondaryButton}>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => router.push(`/orders/${order.id}` as any)}
+        >
           <Ionicons name="receipt-outline" size={16} color="#8B5CF6" />
           <ThemedText style={styles.secondaryButtonText}>View Details</ThemedText>
         </TouchableOpacity>
-        
+
         {order.status === 'ON_THE_WAY' && (
-          <TouchableOpacity style={styles.primaryButton}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => router.push(`/orders/${order.id}/tracking` as any)}
+          >
             <Ionicons name="location" size={16} color="white" />
             <ThemedText style={styles.primaryButtonText}>Track Live</ThemedText>
+          </TouchableOpacity>
+        )}
+
+        {order.status === 'DELIVERED' && (
+          <TouchableOpacity
+            style={styles.shareButton}
+            onPress={() => router.push(`/social-media?orderId=${order.id}` as any)}
+          >
+            <Ionicons name="share-social" size={16} color="#10B981" />
+            <ThemedText style={styles.shareButtonText}>Share & Earn 5%</ThemedText>
           </TouchableOpacity>
         )}
       </View>
@@ -354,7 +433,10 @@ export default function OrderTrackingScreen() {
             <View style={styles.headerCenter}>
               <ThemedText style={styles.headerTitle}>Order Tracking</ThemedText>
               <ThemedText style={styles.headerSubtitle}>
-                {activeOrders.length} active order{activeOrders.length !== 1 ? 's' : ''}
+                {selectedTab === 'active'
+                  ? `${activeOrders.length} active order${activeOrders.length !== 1 ? 's' : ''}`
+                  : `${deliveredOrders.length} past order${deliveredOrders.length !== 1 ? 's' : ''}`
+                }
               </ThemedText>
             </View>
             
@@ -394,7 +476,7 @@ export default function OrderTrackingScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -407,25 +489,66 @@ export default function OrderTrackingScreen() {
           />
         }
       >
-        {activeOrders.length > 0 ? (
-          activeOrders.map(renderModernOrderCard)
-        ) : (
+        {loading ? (
           <View style={styles.modernEmptyState}>
-            <LinearGradient
-              colors={['#F3F4F6', '#F9FAFB']}
-              style={styles.emptyIconContainer}
-            >
-              <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
-            </LinearGradient>
-            <ThemedText style={styles.emptyTitle}>No Active Orders</ThemedText>
-            <ThemedText style={styles.emptyDescription}>
-              You don't have any orders to track right now.{'\n'}
-              Start shopping to see your orders here!
+            <ActivityIndicator size="large" color="#8B5CF6" />
+            <ThemedText style={[styles.emptyDescription, { marginTop: 20 }]}>
+              Loading your orders...
             </ThemedText>
-            <TouchableOpacity style={styles.emptyActionButton}>
-              <ThemedText style={styles.emptyActionText}>Browse Stores</ThemedText>
+          </View>
+        ) : error ? (
+          <View style={styles.modernEmptyState}>
+            <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+            <ThemedText style={styles.emptyTitle}>Failed to Load Orders</ThemedText>
+            <ThemedText style={styles.emptyDescription}>{error}</ThemedText>
+            <TouchableOpacity style={styles.emptyActionButton} onPress={() => loadActiveOrders()}>
+              <ThemedText style={styles.emptyActionText}>Try Again</ThemedText>
             </TouchableOpacity>
           </View>
+        ) : (
+          <>
+            {selectedTab === 'active' && (
+              activeOrders.length > 0 ? (
+                activeOrders.map(renderModernOrderCard)
+              ) : (
+                <View style={styles.modernEmptyState}>
+                  <LinearGradient
+                    colors={['#F3F4F6', '#F9FAFB']}
+                    style={styles.emptyIconContainer}
+                  >
+                    <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
+                  </LinearGradient>
+                  <ThemedText style={styles.emptyTitle}>No Active Orders</ThemedText>
+                  <ThemedText style={styles.emptyDescription}>
+                    You don't have any orders to track right now.{'\n'}
+                    Start shopping to see your orders here!
+                  </ThemedText>
+                  <TouchableOpacity style={styles.emptyActionButton} onPress={() => router.push('/')}>
+                    <ThemedText style={styles.emptyActionText}>Browse Stores</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              )
+            )}
+
+            {selectedTab === 'delivered' && (
+              deliveredOrders.length > 0 ? (
+                deliveredOrders.map(renderModernOrderCard)
+              ) : (
+                <View style={styles.modernEmptyState}>
+                  <LinearGradient
+                    colors={['#F3F4F6', '#F9FAFB']}
+                    style={styles.emptyIconContainer}
+                  >
+                    <Ionicons name="checkmark-done-circle-outline" size={48} color="#9CA3AF" />
+                  </LinearGradient>
+                  <ThemedText style={styles.emptyTitle}>No Past Orders</ThemedText>
+                  <ThemedText style={styles.emptyDescription}>
+                    Your order history will appear here
+                  </ThemedText>
+                </View>
+              )
+            )}
+          </>
         )}
 
         <View style={styles.footer} />
@@ -841,6 +964,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: 'white',
+    marginLeft: 6,
+  },
+  shareButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  shareButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10B981',
     marginLeft: 6,
   },
 

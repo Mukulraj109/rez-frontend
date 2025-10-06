@@ -12,13 +12,18 @@ import {
   TextInput,
   Alert,
   SafeAreaView,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useProfile } from '@/contexts/ProfileContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { PROFILE_COLORS } from '@/types/profile.types';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadProfileImage } from '@/services/imageUploadService';
 
 interface ProfileFormData {
   name: string;
@@ -32,7 +37,8 @@ interface ProfileFormData {
 export default function ProfileEditPage() {
   const router = useRouter();
   const { user, updateUser } = useProfile();
-  
+  const { state: authState, actions: authActions } = useAuth();
+
   const [formData, setFormData] = useState<ProfileFormData>({
     name: user?.name || '',
     email: user?.email || '',
@@ -41,8 +47,9 @@ export default function ProfileEditPage() {
     location: '',
     website: '',
   });
-  
+
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
@@ -87,6 +94,74 @@ export default function ProfileEditPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleImageUpload = async () => {
+    try {
+      const token = authState.token;
+
+      if (!token) {
+        if (Platform.OS === 'web') {
+          alert('Authentication required. Please log in again.');
+        } else {
+          Alert.alert('Error', 'Authentication required. Please log in again.');
+        }
+        return;
+      }
+
+      // Request permission (not needed on web)
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permission Required',
+            'Please allow access to your photo library to upload a profile picture.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setUploadingImage(true);
+
+        const uploadResult = await uploadProfileImage(result.assets[0].uri, token);
+
+        if (uploadResult.success) {
+          // Refresh user data to show new avatar
+          await authActions.checkAuthStatus();
+
+          if (Platform.OS === 'web') {
+            alert('Profile picture updated successfully!');
+          } else {
+            Alert.alert('Success', 'Profile picture updated successfully!');
+          }
+        } else {
+          if (Platform.OS === 'web') {
+            alert(`Upload Failed: ${uploadResult.error || 'Failed to upload image'}`);
+          } else {
+            Alert.alert('Upload Failed', uploadResult.error || 'Failed to upload image');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      if (Platform.OS === 'web') {
+        alert(`Error: ${error instanceof Error ? error.message : 'An error occurred while uploading the image'}`);
+      } else {
+        Alert.alert('Error', 'An error occurred while uploading the image');
+      }
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
@@ -193,11 +268,55 @@ export default function ProfileEditPage() {
         </View>
       </LinearGradient>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+
+        {/* Profile Photo Section */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Profile Photo</ThemedText>
+          <View style={styles.photoContainer}>
+            <TouchableOpacity
+              style={styles.photoWrapper}
+              onPress={handleImageUpload}
+              disabled={uploadingImage}
+              activeOpacity={0.7}
+            >
+              <View style={styles.photoCircle}>
+                {user?.avatar ? (
+                  <Image
+                    source={{ uri: user.avatar }}
+                    style={styles.photoImage}
+                  />
+                ) : (
+                  <View style={styles.photoPlaceholder}>
+                    <ThemedText style={styles.photoInitials}>
+                      {user?.name?.substring(0, 2).toUpperCase() || 'U'}
+                    </ThemedText>
+                  </View>
+                )}
+                {uploadingImage && (
+                  <View style={styles.uploadingOverlay}>
+                    <ActivityIndicator size="large" color="white" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.cameraIconContainer}>
+                <Ionicons name="camera" size={20} color="white" />
+              </View>
+            </TouchableOpacity>
+            <View style={styles.photoTextContainer}>
+              <ThemedText style={styles.photoText}>
+                {uploadingImage ? 'Uploading...' : 'Tap to change photo'}
+              </ThemedText>
+              <ThemedText style={styles.photoSubtext}>
+                JPG, PNG or GIF. Max size 5MB
+              </ThemedText>
+            </View>
+          </View>
+        </View>
 
         {/* Personal Information */}
         <View style={styles.section}>
@@ -487,5 +606,80 @@ const styles = StyleSheet.create({
   },
   bottomSpace: {
     height: 40,
+  },
+  photoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  photoWrapper: {
+    position: 'relative',
+    marginRight: 20,
+  },
+  photoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    overflow: 'hidden',
+    backgroundColor: PROFILE_COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoInitials: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: 'white',
+  },
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: PROFILE_COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  photoTextContainer: {
+    flex: 1,
+  },
+  photoText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PROFILE_COLORS.text,
+    marginBottom: 4,
+  },
+  photoSubtext: {
+    fontSize: 13,
+    color: PROFILE_COLORS.textSecondary,
   },
 });

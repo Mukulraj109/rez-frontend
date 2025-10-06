@@ -274,8 +274,43 @@ class WalletService {
   async getTransactions(
     filters?: TransactionFilters
   ): Promise<ApiResponse<TransactionListResponse>> {
-    console.log('📜 [WALLET API] Getting transactions:', filters);
-    return apiClient.get('/wallet/transactions', filters);
+    console.log('\n╔════════════════════════════════════════╗');
+    console.log('║  WALLET API - GET TRANSACTIONS         ║');
+    console.log('╚════════════════════════════════════════╝');
+    console.log('📞 Method: getTransactions');
+    console.log('📝 Filters:', JSON.stringify(filters, null, 2));
+    console.log('🌐 Endpoint: /wallet/transactions');
+    console.log('🔑 Auth token present:', !!apiClient.getAuthToken());
+    console.log('🔑 Token preview:', apiClient.getAuthToken()?.substring(0, 30) + '...' || 'NONE');
+    console.log('----------------------------------------');
+
+    try {
+      const response = await apiClient.get('/wallet/transactions', filters);
+
+      console.log('\n✅ [WALLET API] API Client Response:');
+      console.log('Success:', response.success);
+      console.log('Has data:', !!response.data);
+      console.log('Error:', response.error || 'none');
+      console.log('Message:', response.message || 'none');
+
+      if (response.data) {
+        console.log('\n📊 [WALLET API] Data received:');
+        console.log('Transactions array:', Array.isArray(response.data.transactions));
+        console.log('Transactions count:', response.data.transactions?.length || 0);
+        console.log('Has pagination:', !!response.data.pagination);
+        if (response.data.pagination) {
+          console.log('Pagination:', JSON.stringify(response.data.pagination, null, 2));
+        }
+      }
+
+      console.log('╚════════════════════════════════════════╝\n');
+      return response;
+    } catch (error) {
+      console.error('\n❌❌❌ [WALLET API] EXCEPTION IN getTransactions ❌❌❌');
+      console.error('Error:', error);
+      console.error('╚════════════════════════════════════════╝\n');
+      throw error;
+    }
   }
 
   /**

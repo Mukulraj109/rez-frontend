@@ -12,70 +12,85 @@ import {
   SafeAreaView,
   Alert,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
-import { 
-  ACCOUNT_COLORS,
-  DeliveryAddress,
-  DeliverySettings as DeliverySettingsType,
-  TimeSlot 
-} from '@/types/account.types';
-import { mockAccountSettings } from '@/data/accountData';
+import { ACCOUNT_COLORS } from '@/types/account.types';
+import { Address, AddressType, AddressCreate, AddressUpdate } from '@/services/addressApi';
+import { useAddresses } from '@/hooks/useAddresses';
+import AddAddressModal from '@/components/account/AddAddressModal';
+import EditAddressModal from '@/components/account/EditAddressModal';
+import EditInstructionsModal from '@/components/account/EditInstructionsModal';
 
 export default function DeliverySettingsScreen() {
   const router = useRouter();
-  const [deliverySettings, setDeliverySettings] = useState<DeliverySettingsType>(
-    mockAccountSettings.delivery
-  );
+  const {
+    addresses,
+    isLoading,
+    error,
+    addAddress,
+    updateAddress,
+    deleteAddress: deleteAddressApi,
+    setDefaultAddress: setDefaultAddressApi,
+    refetch,
+    clearError
+  } = useAddresses();
+
+  const [contactlessDelivery, setContactlessDelivery] = useState(false);
+  const [deliveryNotifications, setDeliveryNotifications] = useState(true);
+  const [deliveryInstructions, setDeliveryInstructions] = useState('Ring doorbell twice, leave at door if no answer');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
 
   const handleBackPress = () => {
     router.back();
   };
 
   const handleAddAddress = () => {
-    Alert.alert(
-      'Add New Address',
-      'This will open the add address form',
-      [{ text: 'OK' }]
-    );
+    setShowAddModal(true);
   };
 
-  const handleEditAddress = (address: DeliveryAddress) => {
-    Alert.alert(
-      'Edit Address',
-      `Edit ${address.title}`,
-      [{ text: 'OK' }]
-    );
+  const handleAddSubmit = async (addressData: AddressCreate): Promise<boolean> => {
+    const result = await addAddress(addressData);
+    return result !== null;
   };
 
-  const handleSetDefault = (addressId: string) => {
-    setDeliverySettings(prev => ({
-      ...prev,
-      savedAddresses: prev.savedAddresses.map(addr => ({
-        ...addr,
-        isDefault: addr.id === addressId
-      })),
-      defaultAddress: prev.savedAddresses.find(addr => addr.id === addressId) || null
-    }));
+  const handleEditAddress = (address: Address) => {
+    setEditingAddress(address);
+    setShowEditModal(true);
   };
 
-  const handleDeleteAddress = (addressId: string) => {
+  const handleUpdateSubmit = async (id: string, data: AddressUpdate): Promise<boolean> => {
+    const result = await updateAddress(id, data);
+    return result !== null;
+  };
+
+  const handleSetDefault = async (addressId: string) => {
+    const result = await setDefaultAddressApi(addressId);
+    if (result) {
+      Alert.alert('Success', 'Default address updated successfully');
+    }
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
     Alert.alert(
       'Delete Address',
       'Are you sure you want to delete this address?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setDeliverySettings(prev => ({
-              ...prev,
-              savedAddresses: prev.savedAddresses.filter(addr => addr.id !== addressId)
-            }));
+          onPress: async () => {
+            const success = await deleteAddressApi(addressId);
+            if (success) {
+              Alert.alert('Success', 'Address deleted successfully');
+            }
           }
         }
       ]
@@ -83,20 +98,22 @@ export default function DeliverySettingsScreen() {
   };
 
   const toggleContactlessDelivery = () => {
-    setDeliverySettings(prev => ({
-      ...prev,
-      contactlessDelivery: !prev.contactlessDelivery
-    }));
+    setContactlessDelivery(prev => !prev);
+    // TODO: Save to backend user preferences
   };
 
   const toggleDeliveryNotifications = () => {
-    setDeliverySettings(prev => ({
-      ...prev,
-      deliveryNotifications: !prev.deliveryNotifications
-    }));
+    setDeliveryNotifications(prev => !prev);
+    // TODO: Save to backend user preferences
   };
 
-  const renderAddressCard = (address: DeliveryAddress) => (
+  const handleSaveInstructions = (instructions: string) => {
+    setDeliveryInstructions(instructions);
+    Alert.alert('Success', 'Delivery instructions updated');
+    // TODO: Save to backend user preferences
+  };
+
+  const renderAddressCard = (address: Address) => (
     <View key={address.id} style={styles.addressCard}>
       <View style={styles.addressHeader}>
         <View style={styles.addressTypeContainer}>
@@ -151,18 +168,18 @@ export default function DeliverySettingsScreen() {
       <View style={styles.addressActions}>
         {!address.isDefault && (
           <TouchableOpacity
-            style={styles.actionButton}
+            style={styles.addressActionButton}
             onPress={() => handleSetDefault(address.id)}
           >
-            <ThemedText style={styles.actionButtonText}>Set as Default</ThemedText>
+            <ThemedText style={styles.addressActionButtonText}>Set as Default</ThemedText>
           </TouchableOpacity>
         )}
-        
+
         <TouchableOpacity
-          style={[styles.actionButton, styles.dangerButton]}
+          style={[styles.addressActionButton, styles.dangerButton]}
           onPress={() => handleDeleteAddress(address.id)}
         >
-          <ThemedText style={[styles.actionButtonText, styles.dangerButtonText]}>Delete</ThemedText>
+          <ThemedText style={[styles.addressActionButtonText, styles.dangerButtonText]}>Delete</ThemedText>
         </TouchableOpacity>
       </View>
     </View>
@@ -217,90 +234,157 @@ export default function DeliverySettingsScreen() {
         </View>
       </LinearGradient>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Saved Addresses */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText style={styles.sectionTitle}>Saved Addresses</ThemedText>
-            <TouchableOpacity style={styles.addButton} onPress={handleAddAddress}>
-              <Ionicons name="add" size={20} color={ACCOUNT_COLORS.primary} />
-              <ThemedText style={styles.addButtonText}>Add New</ThemedText>
+        {/* Error Display */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={20} color={ACCOUNT_COLORS.error} />
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+            <TouchableOpacity onPress={clearError} style={styles.dismissButton}>
+              <Ionicons name="close" size={18} color={ACCOUNT_COLORS.error} />
             </TouchableOpacity>
           </View>
+        )}
 
-          <View style={styles.addressList}>
-            {deliverySettings.savedAddresses.map(renderAddressCard)}
+        {/* Loading State */}
+        {isLoading && addresses.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={ACCOUNT_COLORS.primary} />
+            <ThemedText style={styles.loadingText}>Loading addresses...</ThemedText>
           </View>
-        </View>
+        ) : (
+          <>
+            {/* Saved Addresses */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <ThemedText style={styles.sectionTitle}>Saved Addresses</ThemedText>
+                <TouchableOpacity style={styles.addButton} onPress={handleAddAddress}>
+                  <Ionicons name="add" size={20} color={ACCOUNT_COLORS.primary} />
+                  <ThemedText style={styles.addButtonText}>Add New</ThemedText>
+                </TouchableOpacity>
+              </View>
 
-        {/* Delivery Preferences */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Delivery Preferences</ThemedText>
-          
-          <View style={styles.settingsCard}>
-            <View style={styles.settingItem}>
-              <View style={styles.settingLeft}>
-                <Ionicons name="shield-checkmark" size={20} color={ACCOUNT_COLORS.primary} />
-                <View style={styles.settingText}>
-                  <ThemedText style={styles.settingTitle}>Contactless Delivery</ThemedText>
-                  <ThemedText style={styles.settingDescription}>
-                    Leave packages at the door without contact
+              {addresses.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="location-outline" size={64} color={ACCOUNT_COLORS.textSecondary} />
+                  <ThemedText style={styles.emptyTitle}>No Addresses Yet</ThemedText>
+                  <ThemedText style={styles.emptyDescription}>
+                    Add your first delivery address to get started
                   </ThemedText>
+                  <TouchableOpacity style={styles.emptyButton} onPress={handleAddAddress}>
+                    <ThemedText style={styles.emptyButtonText}>Add Address</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.addressList}>
+                  {addresses.map(renderAddressCard)}
+                </View>
+              )}
+            </View>
+          </>
+        )}
+
+        {!isLoading && (
+          <>
+            {/* Delivery Preferences */}
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Delivery Preferences</ThemedText>
+
+              <View style={styles.settingsCard}>
+                <View style={styles.settingItem}>
+                  <View style={styles.settingLeft}>
+                    <Ionicons name="shield-checkmark" size={20} color={ACCOUNT_COLORS.primary} />
+                    <View style={styles.settingText}>
+                      <ThemedText style={styles.settingTitle}>Contactless Delivery</ThemedText>
+                      <ThemedText style={styles.settingDescription}>
+                        Leave packages at the door without contact
+                      </ThemedText>
+                    </View>
+                  </View>
+                  <Switch
+                    value={contactlessDelivery}
+                    onValueChange={toggleContactlessDelivery}
+                    trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
+                    thumbColor={contactlessDelivery ? ACCOUNT_COLORS.primary : '#f4f3f4'}
+                  />
+                </View>
+
+                <View style={styles.settingItem}>
+                  <View style={styles.settingLeft}>
+                    <Ionicons name="notifications" size={20} color={ACCOUNT_COLORS.primary} />
+                    <View style={styles.settingText}>
+                      <ThemedText style={styles.settingTitle}>Delivery Notifications</ThemedText>
+                      <ThemedText style={styles.settingDescription}>
+                        Get notified about delivery updates
+                      </ThemedText>
+                    </View>
+                  </View>
+                  <Switch
+                    value={deliveryNotifications}
+                    onValueChange={toggleDeliveryNotifications}
+                    trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
+                    thumbColor={deliveryNotifications ? ACCOUNT_COLORS.primary : '#f4f3f4'}
+                  />
                 </View>
               </View>
-              <Switch
-                value={deliverySettings.contactlessDelivery}
-                onValueChange={toggleContactlessDelivery}
-                trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
-                thumbColor={deliverySettings.contactlessDelivery ? ACCOUNT_COLORS.primary : '#f4f3f4'}
-              />
             </View>
 
-            <View style={styles.settingItem}>
-              <View style={styles.settingLeft}>
-                <Ionicons name="notifications" size={20} color={ACCOUNT_COLORS.primary} />
-                <View style={styles.settingText}>
-                  <ThemedText style={styles.settingTitle}>Delivery Notifications</ThemedText>
-                  <ThemedText style={styles.settingDescription}>
-                    Get notified about delivery updates
+            {/* Delivery Instructions */}
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>Default Instructions</ThemedText>
+
+              <View style={styles.instructionsCard}>
+                <Ionicons name="document-text" size={20} color={ACCOUNT_COLORS.primary} />
+                <View style={styles.instructionsContent}>
+                  <ThemedText style={styles.instructionsTitle}>Delivery Instructions</ThemedText>
+                  <ThemedText style={styles.instructionsText}>
+                    {deliveryInstructions || 'No special instructions'}
                   </ThemedText>
+                  <TouchableOpacity
+                    style={styles.editInstructionsButton}
+                    onPress={() => setShowInstructionsModal(true)}
+                  >
+                    <ThemedText style={styles.editInstructionsText}>Edit Instructions</ThemedText>
+                  </TouchableOpacity>
                 </View>
               </View>
-              <Switch
-                value={deliverySettings.deliveryNotifications}
-                onValueChange={toggleDeliveryNotifications}
-                trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
-                thumbColor={deliverySettings.deliveryNotifications ? ACCOUNT_COLORS.primary : '#f4f3f4'}
-              />
             </View>
-          </View>
-        </View>
-
-        {/* Delivery Instructions */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Default Instructions</ThemedText>
-          
-          <View style={styles.instructionsCard}>
-            <Ionicons name="document-text" size={20} color={ACCOUNT_COLORS.primary} />
-            <View style={styles.instructionsContent}>
-              <ThemedText style={styles.instructionsTitle}>Delivery Instructions</ThemedText>
-              <ThemedText style={styles.instructionsText}>
-                {deliverySettings.deliveryInstructions || 'No special instructions'}
-              </ThemedText>
-              <TouchableOpacity style={styles.editInstructionsButton}>
-                <ThemedText style={styles.editInstructionsText}>Edit Instructions</ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+          </>
+        )}
 
         {/* Footer Space */}
         <View style={styles.footer} />
       </ScrollView>
+
+      {/* Add Address Modal */}
+      <AddAddressModal
+        visible={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdd={handleAddSubmit}
+      />
+
+      {/* Edit Address Modal */}
+      <EditAddressModal
+        visible={showEditModal}
+        address={editingAddress}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingAddress(null);
+        }}
+        onUpdate={handleUpdateSubmit}
+      />
+
+      {/* Edit Instructions Modal */}
+      <EditInstructionsModal
+        visible={showInstructionsModal}
+        currentInstructions={deliveryInstructions}
+        onClose={() => setShowInstructionsModal(false)}
+        onSave={handleSaveInstructions}
+      />
     </View>
   );
 }
@@ -500,13 +584,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  actionButton: {
+  addressActionButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
     backgroundColor: ACCOUNT_COLORS.surface,
   },
-  actionButtonText: {
+  addressActionButtonText: {
     fontSize: 12,
     fontWeight: '600',
     color: ACCOUNT_COLORS.primary,
@@ -601,5 +685,78 @@ const styles = StyleSheet.create({
   
   footer: {
     height: 40,
+  },
+
+  // Error, Loading, and Empty States
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: ACCOUNT_COLORS.error + '15',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: ACCOUNT_COLORS.error,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: ACCOUNT_COLORS.error,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  dismissButton: {
+    padding: 4,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: ACCOUNT_COLORS.textSecondary,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    shadowColor: ACCOUNT_COLORS.text,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 0.5,
+    borderColor: '#F1F5F9',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: ACCOUNT_COLORS.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyDescription: {
+    fontSize: 14,
+    color: ACCOUNT_COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  emptyButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: ACCOUNT_COLORS.primary,
+    borderRadius: 8,
+  },
+  emptyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
   },
 });

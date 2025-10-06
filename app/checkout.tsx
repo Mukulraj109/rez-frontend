@@ -226,14 +226,22 @@ export default function CheckoutPage() {
               </View>
             </View>
           ) : (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.promoCodeCard}
               onPress={() => setShowPromoModal(true)}
               activeOpacity={0.7}
             >
               <View style={styles.promoCodeContent}>
-                <ThemedText style={styles.promoCodeTitle}>Apply Promocode</ThemedText>
-                <ThemedText style={styles.promoCodeSubtitle}>View all</ThemedText>
+                <View>
+                  <ThemedText style={styles.promoCodeTitle}>Apply Coupon</ThemedText>
+                  <ThemedText style={styles.promoCodeSubtitle}>
+                    {state.availablePromoCodes.length > 0
+                      ? `${state.availablePromoCodes.length} coupons available`
+                      : 'Browse coupons'
+                    }
+                  </ThemedText>
+                </View>
+                <Ionicons name="pricetag" size={20} color="#8B5CF6" />
               </View>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </TouchableOpacity>
@@ -445,54 +453,86 @@ export default function CheckoutPage() {
               />
               
               <View style={styles.availablePromos}>
-                <ThemedText style={styles.availablePromosTitle}>Available Promo Codes:</ThemedText>
-                {state.availablePromoCodes.slice(0, 3).map((promo) => {
-                  const isCurrentlyApplied = state.appliedPromoCode?.code === promo.code;
-                  const itemTotal = state.items.reduce((total, item) => total + (item.price * item.quantity), 0);
-                  const isEligible = itemTotal >= promo.minOrderValue;
-                  
-                  return (
+                <View style={styles.promoHeaderRow}>
+                  <ThemedText style={styles.availablePromosTitle}>My Coupons:</ThemedText>
+                  <TouchableOpacity onPress={() => {
+                    setShowPromoModal(false);
+                    router.push('/account/coupons');
+                  }}>
+                    <ThemedText style={styles.viewAllLink}>View All →</ThemedText>
+                  </TouchableOpacity>
+                </View>
+                {state.availablePromoCodes.length === 0 ? (
+                  <View style={styles.noCouponsContainer}>
+                    <Ionicons name="pricetag-outline" size={48} color="#999" />
+                    <ThemedText style={styles.noCouponsText}>No coupons available</ThemedText>
                     <TouchableOpacity
-                      key={promo.id}
-                      style={[
-                        styles.promoOption, 
-                        isCurrentlyApplied && styles.currentPromoOption,
-                        !isEligible && styles.ineligiblePromoOption
-                      ]}
-                      onPress={() => isEligible ? handleQuickPromoSelect(promo.code) : null}
-                      disabled={!isEligible}
-                      activeOpacity={isEligible ? 0.7 : 1}
+                      style={styles.browseCouponsButton}
+                      onPress={() => {
+                        setShowPromoModal(false);
+                        router.push('/account/coupons');
+                      }}
                     >
-                      <View style={styles.promoOptionContent}>
-                        <View style={styles.promoOptionText}>
-                          <ThemedText style={[
-                            styles.promoOptionCode, 
-                            isCurrentlyApplied && styles.currentPromoCode,
-                            !isEligible && styles.ineligibleText
-                          ]}>
-                            {promo.code}
-                          </ThemedText>
-                          <ThemedText style={[
-                            styles.promoOptionDesc,
-                            !isEligible && styles.ineligibleText
-                          ]}>
-                            {promo.description}
-                          </ThemedText>
-                          {!isEligible && (
-                            <ThemedText style={styles.minOrderText}>
-                              Min order: ₹{promo.minOrderValue}
+                      <ThemedText style={styles.browseCouponsText}>Browse Coupons</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  state.availablePromoCodes.slice(0, 4).map((promo) => {
+                    const isCurrentlyApplied = state.appliedPromoCode?.code === promo.code;
+                    const itemTotal = state.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+                    const isEligible = itemTotal >= promo.minOrderValue;
+
+                    // Calculate discount display
+                    const discountDisplay = promo.discountType === 'PERCENTAGE'
+                      ? `${promo.discount}% OFF`
+                      : `₹${promo.discount} OFF`;
+
+                    return (
+                      <TouchableOpacity
+                        key={promo.id}
+                        style={[
+                          styles.promoOption,
+                          isCurrentlyApplied && styles.currentPromoOption,
+                          !isEligible && styles.ineligiblePromoOption
+                        ]}
+                        onPress={() => isEligible ? handleQuickPromoSelect(promo.code) : null}
+                        disabled={!isEligible}
+                        activeOpacity={isEligible ? 0.7 : 1}
+                      >
+                        <View style={styles.promoOptionContent}>
+                          <View style={styles.promoDiscountBadge}>
+                            <ThemedText style={styles.promoDiscountText}>{discountDisplay}</ThemedText>
+                          </View>
+                          <View style={styles.promoOptionText}>
+                            <ThemedText style={[
+                              styles.promoOptionCode,
+                              isCurrentlyApplied && styles.currentPromoCode,
+                              !isEligible && styles.ineligibleText
+                            ]}>
+                              {promo.code}
                             </ThemedText>
+                            <ThemedText style={[
+                              styles.promoOptionDesc,
+                              !isEligible && styles.ineligibleText
+                            ]}>
+                              {promo.description}
+                            </ThemedText>
+                            {promo.minOrderValue > 0 && (
+                              <ThemedText style={[styles.minOrderText, isEligible && styles.eligibleMinOrder]}>
+                                Min order: ₹{promo.minOrderValue}
+                              </ThemedText>
+                            )}
+                          </View>
+                          {isCurrentlyApplied && (
+                            <View style={styles.appliedBadge}>
+                              <Ionicons name="checkmark" size={14} color="white" />
+                            </View>
                           )}
                         </View>
-                        {isCurrentlyApplied && (
-                          <View style={styles.appliedBadge}>
-                            <Ionicons name="checkmark" size={14} color="white" />
-                          </View>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
               </View>
             </View>
             
@@ -896,23 +936,55 @@ const styles = StyleSheet.create({
   availablePromos: {
     marginTop: 10,
   },
+  promoHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   availablePromosTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: 12,
+  },
+  viewAllLink: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#8B5CF6',
+  },
+  noCouponsContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noCouponsText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  browseCouponsButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  browseCouponsText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
   promoOption: {
     backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: '#E5E7EB',
   },
   currentPromoOption: {
     backgroundColor: '#F0FDF4',
     borderColor: '#22C55E',
+    borderWidth: 2,
   },
   ineligiblePromoOption: {
     backgroundColor: '#F5F5F5',
@@ -920,8 +992,21 @@ const styles = StyleSheet.create({
   },
   promoOptionContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
+  },
+  promoDiscountBadge: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  promoDiscountText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'white',
   },
   promoOptionText: {
     flex: 1,
@@ -947,6 +1032,9 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontWeight: '500',
     marginTop: 2,
+  },
+  eligibleMinOrder: {
+    color: '#22C55E',
   },
   appliedBadge: {
     backgroundColor: '#22C55E',

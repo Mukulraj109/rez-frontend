@@ -135,6 +135,37 @@ export interface GeneralSettings {
   theme: 'light' | 'dark' | 'auto';
 }
 
+// Courier Preferences
+export interface CourierPreferences {
+  preferredCourier: 'any' | 'delhivery' | 'bluedart' | 'ekart' | 'dtdc' | 'fedex';
+  deliveryTimePreference: {
+    weekdays: ('MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN')[];
+    preferredTimeSlot: {
+      start: string;
+      end: string;
+    };
+    avoidWeekends: boolean;
+  };
+  deliveryInstructions: {
+    contactlessDelivery: boolean;
+    leaveAtDoor: boolean;
+    signatureRequired: boolean;
+    callBeforeDelivery: boolean;
+    specificInstructions?: string;
+  };
+  alternateContact?: {
+    name: string;
+    phone: string;
+    relation: string;
+  };
+  courierNotifications: {
+    smsUpdates: boolean;
+    emailUpdates: boolean;
+    whatsappUpdates: boolean;
+    callUpdates: boolean;
+  };
+}
+
 // Complete User Settings
 export interface UserSettings {
   id: string;
@@ -146,6 +177,7 @@ export interface UserSettings {
   delivery: DeliveryPreferences;
   payment: PaymentPreferences;
   preferences: AppPreferences;
+  courier: CourierPreferences;
   lastUpdated: string;
   createdAt: string;
   updatedAt: string;
@@ -192,6 +224,16 @@ class UserSettingsApiService {
   // Update app preferences
   async updateAppPreferences(data: Partial<AppPreferences>): Promise<ApiResponse<UserSettings>> {
     return apiClient.put(`${this.baseUrl}/preferences`, data);
+  }
+
+  // Update courier preferences
+  async updateCourierPreferences(data: Partial<CourierPreferences>): Promise<ApiResponse<UserSettings>> {
+    return apiClient.put(`${this.baseUrl}/courier`, data);
+  }
+
+  // Generic update method (for any settings)
+  async updateSettings(data: Partial<UserSettings>): Promise<ApiResponse<UserSettings>> {
+    return apiClient.put(this.baseUrl, data);
   }
 
   // Reset settings to default

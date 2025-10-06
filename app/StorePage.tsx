@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View, Modal, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/ThemedText';
 import StoreHeader from './StoreSection/StoreHeader';
 import ProductInfo from './StoreSection/ProductInfo';
 import StoreActionButtons from './StoreSection/StoreActionButtons';
@@ -13,8 +15,11 @@ import Section4 from './StoreSection/Section4';
 import Section5 from './StoreSection/Section5';
 import Section6 from './StoreSection/Section6';
 import CombinedSection78 from './StoreSection/CombinedSection78';
+import ReviewList from '@/components/reviews/ReviewList';
+import ReviewForm from '@/components/reviews/ReviewForm';
 import { createSimpleMockHandlers } from '@/utils/simple-mock-handlers';
 import homepageDataService from '@/services/homepageDataService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DynamicCardData {
   id: string;
@@ -32,10 +37,12 @@ interface DynamicCardData {
 
 export default function StorePage() {
   const params = useLocalSearchParams();
+  const { user } = useAuth();
   const [cardData, setCardData] = useState<DynamicCardData | null>(null);
   const [isDynamic, setIsDynamic] = useState(false);
   const [backendData, setBackendData] = useState<any>(null);
   const [isLoadingBackend, setIsLoadingBackend] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
 
   // Parse dynamic card data from navigation params
   useEffect(() => {
@@ -182,12 +189,69 @@ export default function StorePage() {
           cardType={params.cardType as string}
         />
         
-        
-        <CombinedSection78 
+
+        <CombinedSection78
           dynamicData={isDynamic ? cardData : null}
           cardType={params.cardType as string}
         />
+
+        {/* Reviews Section */}
+        <View style={styles.reviewsSection}>
+          <View style={styles.reviewsSectionHeader}>
+            <ThemedText style={styles.reviewsSectionTitle}>
+              Customer Reviews
+            </ThemedText>
+            <TouchableOpacity
+              style={styles.seeAllButton}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.seeAllText}>See All</ThemedText>
+              <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+            </TouchableOpacity>
+          </View>
+
+          {cardData?.id && (
+            <ReviewList
+              storeId={cardData.id}
+              onWriteReviewPress={() => setShowReviewForm(true)}
+              showWriteButton={true}
+              currentUserId={user?.id}
+            />
+          )}
+        </View>
       </ScrollView>
+
+      {/* Review Form Modal */}
+      <Modal
+        visible={showReviewForm}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowReviewForm(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <ThemedText style={styles.modalTitle}>Write a Review</ThemedText>
+            <TouchableOpacity
+              onPress={() => setShowReviewForm(false)}
+              style={styles.closeButton}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={28} color="#111827" />
+            </TouchableOpacity>
+          </View>
+
+          {cardData?.id && (
+            <ReviewForm
+              storeId={cardData.id}
+              onSubmit={(review) => {
+                setShowReviewForm(false);
+                // Optionally reload reviews or update UI
+              }}
+              onCancel={() => setShowReviewForm(false)}
+            />
+          )}
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -195,5 +259,52 @@ export default function StorePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  reviewsSection: {
+    marginTop: 24,
+    marginBottom: 32,
+  },
+  reviewsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  reviewsSectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: '#8B5CF6',
+    fontWeight: '600',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  closeButton: {
+    padding: 4,
   },
 });

@@ -47,7 +47,7 @@ class ApiClient {
 
   // Make HTTP request
   private async makeRequest<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestOptions = {}
   ): Promise<ApiResponse<T>> {
     const {
@@ -60,11 +60,17 @@ class ApiClient {
     const url = `${this.baseURL}${endpoint}`;
     const requestHeaders = { ...this.defaultHeaders, ...headers };
 
+    console.log('\n┌─────────────────────────────────────────┐');
+    console.log('│        API CLIENT REQUEST               │');
+    console.log('└─────────────────────────────────────────┘');
+    console.log('🌐 URL:', url);
+    console.log('📤 Method:', method);
+    console.log('📋 Headers:', JSON.stringify(requestHeaders, null, 2));
+    console.log('📦 Body:', body ? JSON.stringify(body, null, 2) : 'none');
+    console.log('⏱️  Timeout:', timeout + 'ms');
+    console.log('─────────────────────────────────────────');
+
     try {
-      console.log('🚀 API Request URL:', url);
-      console.log('🚀 API Request Headers:', requestHeaders);
-      console.log('🚀 API Request Body:', body);
-      
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -85,18 +91,33 @@ class ApiClient {
         }
       }
 
+      console.log('🚀 [API CLIENT] Sending request...');
       const response = await fetch(url, config);
       clearTimeout(timeoutId);
 
+      console.log('\n📥 [API CLIENT] Response received:');
+      console.log('Status:', response.status, response.statusText);
+      console.log('OK:', response.ok);
+      console.log('Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+
       const responseData = await response.json();
+      console.log('Response Data:', JSON.stringify(responseData, null, 2));
 
       if (!response.ok) {
+        console.error('❌ [API CLIENT] Request failed (non-200 status)');
+        console.error('Error message:', responseData.message || response.statusText);
+        console.error('Status code:', response.status);
+        console.error('Response:', responseData);
+
         return {
           success: false,
           error: responseData.message || `HTTP ${response.status}: ${response.statusText}`,
           errors: responseData.errors
         };
       }
+
+      console.log('✅ [API CLIENT] Request successful');
+      console.log('└─────────────────────────────────────────┘\n');
 
       return {
         success: true,
@@ -105,8 +126,14 @@ class ApiClient {
       };
 
     } catch (error) {
-      console.error('API Request failed:', error);
-      
+      console.error('\n❌❌❌ [API CLIENT] REQUEST EXCEPTION ❌❌❌');
+      console.error('URL:', url);
+      console.error('Method:', method);
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown');
+      console.error('Full error:', error);
+      console.error('└─────────────────────────────────────────┘\n');
+
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           return {

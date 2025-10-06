@@ -11,11 +11,23 @@ import {
   OutOfStockPayload,
   PriceUpdatePayload,
   ProductAvailabilityPayload,
+  FlashSaleStartedPayload,
+  FlashSaleEndingSoonPayload,
+  FlashSaleEndedPayload,
+  FlashSaleStockUpdatedPayload,
+  FlashSaleStockLowPayload,
+  FlashSaleSoldOutPayload,
   StockUpdateCallback,
   LowStockCallback,
   OutOfStockCallback,
   PriceUpdateCallback,
   ProductAvailabilityCallback,
+  FlashSaleStartedCallback,
+  FlashSaleEndingSoonCallback,
+  FlashSaleEndedCallback,
+  FlashSaleStockUpdatedCallback,
+  FlashSaleStockLowCallback,
+  FlashSaleSoldOutCallback,
   ConnectionCallback,
   ErrorCallback,
 } from '@/types/socket.types';
@@ -63,6 +75,14 @@ interface SocketContextType {
   onConnect: (callback: ConnectionCallback) => () => void;
   onDisconnect: (callback: ConnectionCallback) => () => void;
   onError: (callback: ErrorCallback) => () => void;
+
+  // Flash sale event subscription methods
+  onFlashSaleStarted: (callback: FlashSaleStartedCallback) => () => void;
+  onFlashSaleEndingSoon: (callback: FlashSaleEndingSoonCallback) => () => void;
+  onFlashSaleEnded: (callback: FlashSaleEndedCallback) => () => void;
+  onFlashSaleStockUpdated: (callback: FlashSaleStockUpdatedCallback) => () => void;
+  onFlashSaleStockLow: (callback: FlashSaleStockLowCallback) => () => void;
+  onFlashSaleSoldOut: (callback: FlashSaleSoldOutCallback) => () => void;
 
   // Product/Store subscription methods
   subscribeToProduct: (productId: string) => void;
@@ -205,6 +225,31 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
         console.log('🏷️ [SocketContext] Product availability changed:', payload);
       });
 
+      // Flash sale event handlers (for debugging)
+      socket.on(SocketEvents.FLASH_SALE_STARTED, (payload: FlashSaleStartedPayload) => {
+        console.log('🔥 [SocketContext] Flash sale started:', payload);
+      });
+
+      socket.on(SocketEvents.FLASH_SALE_ENDING_SOON, (payload: FlashSaleEndingSoonPayload) => {
+        console.log('⏰ [SocketContext] Flash sale ending soon:', payload);
+      });
+
+      socket.on(SocketEvents.FLASH_SALE_ENDED, (payload: FlashSaleEndedPayload) => {
+        console.log('❌ [SocketContext] Flash sale ended:', payload);
+      });
+
+      socket.on(SocketEvents.FLASH_SALE_STOCK_UPDATED, (payload: FlashSaleStockUpdatedPayload) => {
+        console.log('📦 [SocketContext] Flash sale stock updated:', payload);
+      });
+
+      socket.on(SocketEvents.FLASH_SALE_STOCK_LOW, (payload: FlashSaleStockLowPayload) => {
+        console.log('⚠️ [SocketContext] Flash sale stock low:', payload);
+      });
+
+      socket.on(SocketEvents.FLASH_SALE_SOLD_OUT, (payload: FlashSaleSoldOutPayload) => {
+        console.log('🚫 [SocketContext] Flash sale sold out:', payload);
+      });
+
     } catch (error) {
       console.error('🔌 [SocketContext] Failed to initialize socket:', error);
       setSocketState(prev => ({
@@ -338,6 +383,67 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
     };
   }, []);
 
+  // Flash sale event subscription methods
+  const onFlashSaleStarted = useCallback((callback: FlashSaleStartedCallback) => {
+    if (!socketRef.current) return () => {};
+
+    socketRef.current.on(SocketEvents.FLASH_SALE_STARTED, callback);
+
+    return () => {
+      socketRef.current?.off(SocketEvents.FLASH_SALE_STARTED, callback);
+    };
+  }, []);
+
+  const onFlashSaleEndingSoon = useCallback((callback: FlashSaleEndingSoonCallback) => {
+    if (!socketRef.current) return () => {};
+
+    socketRef.current.on(SocketEvents.FLASH_SALE_ENDING_SOON, callback);
+
+    return () => {
+      socketRef.current?.off(SocketEvents.FLASH_SALE_ENDING_SOON, callback);
+    };
+  }, []);
+
+  const onFlashSaleEnded = useCallback((callback: FlashSaleEndedCallback) => {
+    if (!socketRef.current) return () => {};
+
+    socketRef.current.on(SocketEvents.FLASH_SALE_ENDED, callback);
+
+    return () => {
+      socketRef.current?.off(SocketEvents.FLASH_SALE_ENDED, callback);
+    };
+  }, []);
+
+  const onFlashSaleStockUpdated = useCallback((callback: FlashSaleStockUpdatedCallback) => {
+    if (!socketRef.current) return () => {};
+
+    socketRef.current.on(SocketEvents.FLASH_SALE_STOCK_UPDATED, callback);
+
+    return () => {
+      socketRef.current?.off(SocketEvents.FLASH_SALE_STOCK_UPDATED, callback);
+    };
+  }, []);
+
+  const onFlashSaleStockLow = useCallback((callback: FlashSaleStockLowCallback) => {
+    if (!socketRef.current) return () => {};
+
+    socketRef.current.on(SocketEvents.FLASH_SALE_STOCK_LOW, callback);
+
+    return () => {
+      socketRef.current?.off(SocketEvents.FLASH_SALE_STOCK_LOW, callback);
+    };
+  }, []);
+
+  const onFlashSaleSoldOut = useCallback((callback: FlashSaleSoldOutCallback) => {
+    if (!socketRef.current) return () => {};
+
+    socketRef.current.on(SocketEvents.FLASH_SALE_SOLD_OUT, callback);
+
+    return () => {
+      socketRef.current?.off(SocketEvents.FLASH_SALE_SOLD_OUT, callback);
+    };
+  }, []);
+
   // Product/Store subscription methods
   const subscribeToProduct = useCallback((productId: string) => {
     if (!socketRef.current || !socketRef.current.connected) {
@@ -394,6 +500,12 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
     onConnect,
     onDisconnect,
     onError,
+    onFlashSaleStarted,
+    onFlashSaleEndingSoon,
+    onFlashSaleEnded,
+    onFlashSaleStockUpdated,
+    onFlashSaleStockLow,
+    onFlashSaleSoldOut,
     subscribeToProduct,
     unsubscribeFromProduct,
     subscribeToStore,

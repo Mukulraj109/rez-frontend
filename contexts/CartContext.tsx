@@ -3,6 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CartItem as CartItemType } from '@/types/cart';
 import cartService from '@/services/cartApi';
 import { mapBackendCartToFrontend } from '@/utils/dataMappers';
+import offlineQueueService from '@/services/offlineQueueService';
+import NetInfo from '@react-native-community/netinfo';
+import { useAuth } from './AuthContext';
 
 // Extended cart item with quantity and selected state
 interface CartItemWithQuantity extends CartItemType {
@@ -18,6 +21,8 @@ interface CartState {
   isLoading: boolean;
   error: string | null;
   lastUpdated: string | null;
+  isOnline: boolean;
+  pendingSync: boolean;
 }
 
 type CartAction =
@@ -30,7 +35,9 @@ type CartAction =
   | { type: 'TOGGLE_ITEM_SELECTION'; payload: string }
   | { type: 'SELECT_ALL_ITEMS'; payload: boolean }
   | { type: 'CLEAR_CART' }
-  | { type: 'CLEAR_ERROR' };
+  | { type: 'CLEAR_ERROR' }
+  | { type: 'SET_ONLINE_STATUS'; payload: boolean }
+  | { type: 'SET_PENDING_SYNC'; payload: boolean };
 
 // Storage key
 const CART_STORAGE_KEY = 'shopping_cart';
@@ -43,6 +50,8 @@ const initialState: CartState = {
   isLoading: false,
   error: null,
   lastUpdated: null,
+  isOnline: true,
+  pendingSync: false,
 };
 
 // Helper functions
@@ -200,7 +209,13 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     
     case 'CLEAR_ERROR':
       return { ...state, error: null };
-    
+
+    case 'SET_ONLINE_STATUS':
+      return { ...state, isOnline: action.payload };
+
+    case 'SET_PENDING_SYNC':
+      return { ...state, pendingSync: action.payload };
+
     default:
       return state;
   }
@@ -209,6 +224,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 // Context
 interface CartContextType {
   state: CartState;
+  refreshCart: () => Promise<void>; // Alias for loadCart
   actions: {
     loadCart: () => Promise<void>;
     addItem: (item: CartItemType) => Promise<void>;
@@ -223,6 +239,7 @@ interface CartContextType {
     getItemQuantity: (itemId: string) => number;
     applyCoupon: (couponCode: string) => Promise<void>;
     removeCoupon: () => Promise<void>;
+    syncWithServer: () => Promise<void>;
   };
 }
 
@@ -235,10 +252,34 @@ interface CartProviderProps {
 
 export function CartProvider({ children }: CartProviderProps) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
+  const { state: authState } = useAuth();
 
-  // Load cart on mount
+  // Load cart only when user is authenticated
   useEffect(() => {
-    loadCart();
+    if (!authState.isLoading && authState.isAuthenticated && authState.token) {
+      loadCart();
+    }
+  }, [authState.isLoading, authState.isAuthenticated, authState.token]);
+
+  // Monitor network status
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(netState => {
+      const isOnline = netState.isConnected ?? false;
+      dispatch({ type: 'SET_ONLINE_STATUS', payload: isOnline });
+
+      // Auto-sync when connection is restored
+      if (isOnline && offlineQueueService.hasPendingOperations()) {
+        console.log('🌐 [CART] Connection restored, auto-syncing...');
+        syncWithServer();
+      }
+    });
+
+    // Initial check
+    NetInfo.fetch().then(netState => {
+      dispatch({ type: 'SET_ONLINE_STATUS', payload: netState.isConnected ?? false });
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Save cart to storage whenever it changes
@@ -247,6 +288,16 @@ export function CartProvider({ children }: CartProviderProps) {
       saveCartToStorage();
     }
   }, [state.items]);
+
+  // Update pending sync status
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const hasPending = offlineQueueService.hasPendingOperations();
+      dispatch({ type: 'SET_PENDING_SYNC', payload: hasPending });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Actions
   const loadCart = async () => {
@@ -328,27 +379,42 @@ export function CartProvider({ children }: CartProviderProps) {
 
   const addItem = async (item: CartItemType) => {
     try {
-      console.log('🛒 [CartContext] Adding item to cart via API:', item);
+      console.log('🛒 [CartContext] Adding item to cart:', item);
 
-      // First update UI optimistically
+      // Update UI optimistically
       dispatch({ type: 'ADD_ITEM', payload: item });
 
-      // Then sync with backend
-      try {
-        const response = await cartService.addToCart({
+      // Check if online
+      if (state.isOnline) {
+        // Sync with backend
+        try {
+          const response = await cartService.addToCart({
+            productId: item.productId || item.id,
+            quantity: 1,
+            variant: item.variant,
+          });
+
+          if (response.success && response.data) {
+            console.log('🛒 [CartContext] Item added to API cart successfully');
+            await loadCart();
+          }
+        } catch (apiError) {
+          console.error('🛒 [CartContext] API add failed, queuing for later:', apiError);
+          // Queue for offline sync
+          await offlineQueueService.addToQueue('add', {
+            productId: item.productId || item.id,
+            quantity: 1,
+            variant: item.variant,
+          });
+        }
+      } else {
+        // Queue for offline sync
+        console.log('🛒 [CartContext] Offline - queuing add operation');
+        await offlineQueueService.addToQueue('add', {
           productId: item.productId || item.id,
           quantity: 1,
           variant: item.variant,
         });
-
-        if (response.success && response.data) {
-          console.log('🛒 [CartContext] Item added to API cart successfully');
-          // Reload cart from backend to get updated totals
-          await loadCart();
-        }
-      } catch (apiError) {
-        console.error('🛒 [CartContext] API add failed, keeping local change:', apiError);
-        // Keep the optimistic update even if API fails
       }
     } catch (error) {
       console.error('🛒 [CartContext] Failed to add item:', error);
@@ -565,8 +631,44 @@ export function CartProvider({ children }: CartProviderProps) {
     }
   };
 
+  const syncWithServer = async () => {
+    try {
+      if (!state.isOnline) {
+        console.log('🔄 [CartContext] Cannot sync - offline');
+        return;
+      }
+
+      console.log('🔄 [CartContext] Syncing with server...');
+      dispatch({ type: 'CART_LOADING', payload: true });
+
+      // Process offline queue
+      const result = await offlineQueueService.processQueue();
+
+      if (result.success) {
+        console.log('🔄 [CartContext] Sync successful');
+        // Reload cart from server
+        await loadCart();
+      } else {
+        console.error('🔄 [CartContext] Sync partially failed:', result);
+        dispatch({
+          type: 'CART_ERROR',
+          payload: `Failed to sync ${result.failed} operations`
+        });
+      }
+    } catch (error) {
+      console.error('🔄 [CartContext] Sync error:', error);
+      dispatch({
+        type: 'CART_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to sync'
+      });
+    } finally {
+      dispatch({ type: 'CART_LOADING', payload: false });
+    }
+  };
+
   const contextValue: CartContextType = {
     state,
+    refreshCart: loadCart, // Alias for loadCart
     actions: {
       loadCart,
       addItem,
@@ -581,6 +683,7 @@ export function CartProvider({ children }: CartProviderProps) {
       getItemQuantity,
       applyCoupon,
       removeCoupon,
+      syncWithServer,
     },
   };
 

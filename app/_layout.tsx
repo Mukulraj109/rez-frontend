@@ -16,6 +16,7 @@ import { WishlistProvider } from '@/contexts/WishlistContext';
 import { LocationProvider } from '@/contexts/LocationContext';
 import { GreetingProvider } from '@/contexts/GreetingContext';
 import { SocketProvider } from '@/contexts/SocketContext';
+import ToastManager from '@/components/common/ToastManager';
 // import AuthDebugger from '@/components/common/AuthDebugger';
 
 export default function RootLayout() {
@@ -81,11 +82,23 @@ export default function RootLayout() {
                     <Stack.Screen name="profile/index" options={{ headerShown: false }} />
                     <Stack.Screen name="profile/partner" options={{ headerShown: false }} />
                     <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
+
+                    {/* Profile Icon Grid Pages */}
+                    <Stack.Screen name="my-products" options={{ headerShown: false }} />
+                    <Stack.Screen name="my-services" options={{ headerShown: false }} />
+                    <Stack.Screen name="my-vouchers" options={{ headerShown: false }} />
+                    <Stack.Screen name="my-earnings" options={{ headerShown: false }} />
                     <Stack.Screen name="search" options={{ headerShown: false }} />
                     <Stack.Screen name="going-out" options={{ headerShown: false }} />
                     <Stack.Screen name="home-delivery" options={{ headerShown: false }} />
-                    <Stack.Screen name="transactions" options={{ headerShown: false }} />
+                    <Stack.Screen name="home-delivery/section/[sectionId]" options={{ headerShown: false }} />
+                    <Stack.Screen name="transactions/index" options={{ headerShown: false }} />
+                    <Stack.Screen name="transactions/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="transactions/incomplete" options={{ headerShown: false }} />
                     <Stack.Screen name="account/delivery" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/payment-methods" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/payment" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/wasilpay" options={{ headerShown: false }} />
                     <Stack.Screen name="tracking" options={{ headerShown: false }} />
                     
                     {/* Checkout System Screens */}
@@ -109,10 +122,13 @@ export default function RootLayout() {
                   <Stack.Screen name="+not-found" />
                 </Stack>
                 <StatusBar style="auto" />
-                
+
+                {/* Toast Manager for notifications */}
+                <ToastManager />
+
                 {/* Debug component for development */}
                 {/* {process.env.NODE_ENV === 'development' && <AuthDebugger />} */}
-                
+
                         </ThemeProvider>
                       </WishlistProvider>
                     </ProfileProvider>

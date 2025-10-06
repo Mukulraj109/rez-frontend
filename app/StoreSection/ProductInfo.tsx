@@ -16,6 +16,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import useRecommendations from "@/hooks/useRecommendations";
+import SimilarProducts from "@/components/products/SimilarProducts";
+import FrequentlyBoughtTogether from "@/components/products/FrequentlyBoughtTogether";
+import BundleDeals from "@/components/products/BundleDeals";
 
 interface ProductInfoProps {
   dynamicData?: {
@@ -40,17 +44,32 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
   // Use dynamic data if available, otherwise use defaults
   const productTitle = dynamicData?.title || "Premium Product";
   const productDescription = dynamicData?.description || "High-quality product with exceptional features and benefits";
-  
+
   // Safely handle price with proper type checking
   const rawPrice = dynamicData?.price;
   const productPrice = typeof rawPrice === 'number' && !isNaN(rawPrice) ? rawPrice : 999;
-  
+
   // Safely handle rating with proper type checking
   const rawRating = dynamicData?.rating;
   const rating = typeof rawRating === 'number' && !isNaN(rawRating) ? rawRating : 4.5;
-  
+
   const merchantName = dynamicData?.merchant || "Premium Store";
   const category = dynamicData?.category || "Featured";
+
+  // Get product ID from dynamicData or generate a dummy ID for testing
+  const productId = dynamicData?.id || dynamicData?._id || "sample-product-id";
+
+  // Use recommendations hook
+  const {
+    similar,
+    frequentlyBought,
+    bundles,
+    loading: recommendationsLoading
+  } = useRecommendations({
+    productId,
+    autoFetch: true,
+    trackView: true
+  });
 
   // Debug logging
   console.log('🛍️ [PRODUCT INFO] Component received:', {
@@ -58,7 +77,9 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
     productPrice,
     rating,
     productTitle,
-    merchantName
+    merchantName,
+    productId,
+    recommendationsLoading
   });
 
   const onContainerLayout = (e:any) => {
@@ -238,6 +259,46 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
 
           {/* small spacing */}
         </View>
+
+        {/* Recommendation Sections */}
+
+        {/* Similar Products Section */}
+        <SimilarProducts
+          similarProducts={similar}
+          loading={recommendationsLoading}
+          onProductPress={(productId) => {
+            console.log('Navigate to product:', productId);
+            // Add navigation logic here
+          }}
+        />
+
+        {/* Frequently Bought Together Section */}
+        <FrequentlyBoughtTogether
+          bundles={frequentlyBought}
+          loading={recommendationsLoading}
+          onAddToCart={(products) => {
+            console.log('Add bundle to cart:', products);
+            // Add to cart logic here
+          }}
+          onProductPress={(productId) => {
+            console.log('Navigate to product:', productId);
+            // Add navigation logic here
+          }}
+        />
+
+        {/* Bundle Deals Section */}
+        <BundleDeals
+          bundles={bundles}
+          loading={recommendationsLoading}
+          onAddToCart={(products) => {
+            console.log('Add bundle to cart:', products);
+            // Add to cart logic here
+          }}
+          onProductPress={(productId) => {
+            console.log('Navigate to product:', productId);
+            // Add navigation logic here
+          }}
+        />
       </ScrollView>
     </View>
   );

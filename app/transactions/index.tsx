@@ -13,8 +13,11 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import walletApi, { TransactionResponse } from '@/services/walletApi';
+import { useAuth } from '@/contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import authService from '@/services/authApi';
 
 type TransactionFilters = {
   type?: 'credit' | 'debit';
@@ -26,6 +29,8 @@ type TransactionFilters = {
 
 const TransactionsPage = () => {
   const router = useRouter();
+  const navigation = useNavigation();
+  const { state: authState } = useAuth();
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,7 +44,71 @@ const TransactionsPage = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Handle back button press
+  const handleBackPress = useCallback(() => {
+    if (navigation.canGoBack()) {
+      router.back();
+    } else {
+      // If no history, go to home/profile
+      router.push('/(tabs)' as any);
+    }
+  }, [navigation, router]);
+
+  // Check auth on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      console.log('\n🔐🔐🔐 [TRANSACTIONS PAGE] AUTH CHECK 🔐🔐🔐');
+      console.log('Auth State:', {
+        isAuthenticated: authState.isAuthenticated,
+        isLoading: authState.isLoading,
+        hasUser: !!authState.user,
+        userId: authState.user?.id,
+        userPhone: authState.user?.phoneNumber,
+        hasToken: !!authState.token,
+        tokenPreview: authState.token?.substring(0, 30) + '...' || 'NONE'
+      });
+
+      // Check AsyncStorage
+      const storedToken = await AsyncStorage.getItem('access_token');
+      const storedUser = await AsyncStorage.getItem('auth_user');
+
+      console.log('AsyncStorage:', {
+        hasStoredToken: !!storedToken,
+        tokenPreview: storedToken?.substring(0, 30) + '...' || 'NONE',
+        hasStoredUser: !!storedUser,
+      });
+
+      // Check authService token
+      const apiToken = authService.getAuthToken();
+      console.log('AuthService token:', {
+        hasToken: !!apiToken,
+        tokenPreview: apiToken?.substring(0, 30) + '...' || 'NONE'
+      });
+
+      if (!authState.isAuthenticated) {
+        console.error('❌ [TRANSACTIONS PAGE] User is NOT authenticated!');
+        setError('Please login to view transactions');
+      } else if (!authState.token && !storedToken) {
+        console.error('❌ [TRANSACTIONS PAGE] No auth token found!');
+        setError('Authentication token missing. Please login again.');
+      } else {
+        console.log('✅ [TRANSACTIONS PAGE] User is authenticated');
+      }
+      console.log('🔐🔐🔐 END AUTH CHECK 🔐🔐🔐\n');
+    };
+
+    checkAuth();
+  }, [authState]);
+
   const fetchTransactions = useCallback(async (pageNum: number = 1, refresh: boolean = false) => {
+    console.log('\n========================================');
+    console.log('📜 [TRANSACTIONS PAGE] Starting fetch...');
+    console.log('========================================');
+    console.log('Page:', pageNum);
+    console.log('Refresh:', refresh);
+    console.log('Filters:', filters);
+    console.log('----------------------------------------\n');
+
     try {
       if (pageNum === 1) {
         setLoading(true);
@@ -48,7 +117,12 @@ const TransactionsPage = () => {
       }
       setError(null);
 
-      console.log('📜 [Transactions] Fetching transactions:', { page: pageNum, filters });
+      console.log('📞 [TRANSACTIONS PAGE] Calling walletApi.getTransactions...');
+      console.log('Request params:', {
+        page: pageNum,
+        limit: 20,
+        ...filters,
+      });
 
       const response = await walletApi.getTransactions({
         page: pageNum,
@@ -56,8 +130,20 @@ const TransactionsPage = () => {
         ...filters,
       });
 
+      console.log('\n✅ [TRANSACTIONS PAGE] API Response received:');
+      console.log('Success:', response.success);
+      console.log('Has data:', !!response.data);
+      console.log('Error:', response.error || 'none');
+
+      if (response.data) {
+        console.log('Transactions count:', response.data.transactions?.length || 0);
+        console.log('Pagination:', response.data.pagination);
+      }
+
       if (response.success && response.data) {
-        console.log('📜 [Transactions] Fetched:', response.data.transactions.length, 'transactions');
+        console.log('✅ [TRANSACTIONS PAGE] Processing successful response');
+        console.log('Transactions fetched:', response.data.transactions.length);
+        console.log('First transaction ID:', response.data.transactions[0]?.transactionId || 'none');
 
         if (refresh || pageNum === 1) {
           setTransactions(response.data.transactions);
@@ -67,13 +153,26 @@ const TransactionsPage = () => {
 
         setHasMore(response.data.pagination.hasNext);
         setPage(pageNum);
+
+        console.log('✅ [TRANSACTIONS PAGE] State updated successfully');
       } else {
-        setError(response.error || 'Failed to load transactions');
+        const errorMsg = response.error || 'Failed to load transactions';
+        console.error('❌ [TRANSACTIONS PAGE] API returned error:', errorMsg);
+        setError(errorMsg);
       }
     } catch (err) {
-      console.error('📜 [Transactions] Error:', err);
+      console.error('\n❌❌❌ [TRANSACTIONS PAGE] EXCEPTION CAUGHT ❌❌❌');
+      console.error('Error type:', err?.constructor?.name);
+      console.error('Error message:', err instanceof Error ? err.message : 'Unknown error');
+      console.error('Full error:', err);
+      console.error('Stack trace:', err instanceof Error ? err.stack : 'N/A');
+
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
+      console.log('\n🏁 [TRANSACTIONS PAGE] Fetch complete');
+      console.log('Loading:', false);
+      console.log('========================================\n');
+
       setLoading(false);
       setRefreshing(false);
       setLoadingMore(false);
@@ -81,8 +180,24 @@ const TransactionsPage = () => {
   }, [filters]);
 
   useEffect(() => {
-    fetchTransactions(1);
-  }, [filters]);
+    // Only fetch if user is authenticated and not loading
+    if (authState.isAuthenticated && !authState.isLoading && authState.token) {
+      console.log('✅ [TRANSACTIONS PAGE] Auth ready, fetching transactions...');
+      fetchTransactions(1);
+    } else {
+      console.warn('⚠️ [TRANSACTIONS PAGE] Waiting for auth...', {
+        isAuthenticated: authState.isAuthenticated,
+        isLoading: authState.isLoading,
+        hasToken: !!authState.token
+      });
+
+      // If auth is done loading but user is not authenticated, show error
+      if (!authState.isLoading && !authState.isAuthenticated) {
+        setError('Please login to view transactions');
+        setLoading(false);
+      }
+    }
+  }, [filters, authState.isAuthenticated, authState.isLoading, authState.token, fetchTransactions]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
@@ -232,7 +347,7 @@ const TransactionsPage = () => {
         <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
         <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
           <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Transactions</Text>
@@ -254,7 +369,7 @@ const TransactionsPage = () => {
       {/* Header */}
       <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Transactions</Text>

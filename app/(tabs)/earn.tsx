@@ -124,7 +124,10 @@ export default function EarnScreen() {
             <View style={styles.coinsContainer}>
               <Ionicons name="star" size={16} color="#FFD700" />
               <ThemedText style={styles.coinsText}>
-                {state.walletInfo.balance + state.walletInfo.pendingBalance}
+                {(typeof state.walletInfo.balance === 'object'
+                  ? ((state.walletInfo.balance as any).available || (state.walletInfo.balance as any).total || 0)
+                  : state.walletInfo.balance || 0) +
+                 (state.walletInfo.pendingBalance || 0)}
               </ThemedText>
             </View>
 

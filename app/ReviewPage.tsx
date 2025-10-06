@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -18,46 +19,7 @@ import { useReviewState } from '@/hooks/useReviewState';
 import { CashbackEarning } from '@/types/review.types';
 import { useCashbackModal } from '@/hooks/useCashbackModal';
 import CashbackModal from '@/components/CashbackModal';
-
-// Dummy data for recent cashback
-const recentCashbackData: CashbackEarning[] = [
-  {
-    id: '1',
-    userId: '1',
-    userName: 'Swathi',
-    userAvatar:
-      'https://images.unsplash.com/photo-1494790108755-2616b2126625?w=100&h=100&fit=crop&crop=face',
-    amount: 219.9,
-    productId: 'product-1',
-    reviewId: 'review-1',
-    createdAt: new Date('2025-08-15T10:30:00Z'),
-    status: 'credited',
-  },
-  {
-    id: '2',
-    userId: '2',
-    userName: 'Priya',
-    userAvatar:
-      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
-    amount: 219.9,
-    productId: 'product-1',
-    reviewId: 'review-2',
-    createdAt: new Date('2025-08-15T09:15:00Z'),
-    status: 'credited',
-  },
-  {
-    id: '3',
-    userId: '3',
-    userName: 'Priya',
-    userAvatar:
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-    amount: 219.9,
-    productId: 'product-1',
-    reviewId: 'review-3',
-    createdAt: new Date('2025-08-15T08:45:00Z'),
-    status: 'credited',
-  },
-];
+import walletApi from '@/services/walletApi';
 
 export default function ReviewPage() {
   const router = useRouter();
@@ -69,13 +31,67 @@ export default function ReviewPage() {
     isSubmitting,
     submitReview,
   } = useReviewState();
-  
+
   const {
     isVisible: isModalVisible,
     cashbackAmount,
     showModal,
     hideModal,
   } = useCashbackModal();
+
+  // State for recent cashback from real API
+  const [recentCashback, setRecentCashback] = useState<CashbackEarning[]>([]);
+  const [loadingCashback, setLoadingCashback] = useState(true);
+
+  // Fetch recent cashback transactions
+  useEffect(() => {
+    fetchRecentCashback();
+  }, []);
+
+  const fetchRecentCashback = async () => {
+    console.log('💰 [REVIEW PAGE] Fetching recent cashback from Wallet API...');
+    setLoadingCashback(true);
+
+    try {
+      const response = await walletApi.getTransactions({
+        category: 'review_reward',
+        type: 'credit',
+        page: 1,
+        limit: 5,
+      });
+
+      console.log('💰 [REVIEW PAGE] Cashback transactions response:', {
+        success: response.success,
+        count: response.data?.transactions?.length || 0,
+      });
+
+      if (response.success && response.data?.transactions) {
+        // Map wallet transactions to CashbackEarning format
+        const cashbackData: CashbackEarning[] = response.data.transactions.map((txn: any) => ({
+          id: txn._id || txn.id,
+          userId: txn.user?._id || txn.user?.id || txn.userId,
+          userName: txn.user?.profile?.name || txn.metadata?.userName || 'User',
+          userAvatar: txn.user?.profile?.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(txn.user?.profile?.name || 'User'),
+          amount: txn.amount || 0,
+          productId: txn.metadata?.productId || '',
+          reviewId: txn.metadata?.reviewId || '',
+          createdAt: new Date(txn.createdAt),
+          status: 'credited' as const,
+        }));
+
+        setRecentCashback(cashbackData);
+        console.log('✅ [REVIEW PAGE] Recent cashback loaded:', cashbackData.length);
+      } else {
+        console.warn('⚠️ [REVIEW PAGE] No cashback transactions found');
+        setRecentCashback([]);
+      }
+    } catch (error: any) {
+      console.error('❌ [REVIEW PAGE] Failed to fetch cashback:', error);
+      setRecentCashback([]);
+    } finally {
+      setLoadingCashback(false);
+    }
+  };
 
   const handleBackPress = () => {
     router.back();
@@ -125,15 +141,28 @@ export default function ReviewPage() {
         <ThemedText style={styles.recentCashbackTitle}>
           Recent cashback
         </ThemedText>
-        {recentCashbackData.map((item) => (
-          <View key={item.id} style={styles.cashbackItem}>
-            <Image source={{ uri: item.userAvatar }} style={styles.userAvatar} />
-            <View>
-              <Text style={styles.userName}>{item.userName} earned</Text>
-              <Text style={styles.amountText}>₹{item.amount.toFixed(2)}</Text>
-            </View>
+        {loadingCashback ? (
+          <View style={styles.cashbackLoading}>
+            <ActivityIndicator size="small" color="#8B5CF6" />
+            <Text style={styles.loadingText}>Loading recent rewards...</Text>
           </View>
-        ))}
+        ) : recentCashback.length > 0 ? (
+          recentCashback.map((item) => (
+            <View key={item.id} style={styles.cashbackItem}>
+              <Image source={{ uri: item.userAvatar }} style={styles.userAvatar} />
+              <View>
+                <Text style={styles.userName}>{item.userName} earned</Text>
+                <Text style={styles.amountText}>₹{item.amount.toFixed(2)}</Text>
+              </View>
+            </View>
+          ))
+        ) : (
+          <View style={styles.noCashback}>
+            <Ionicons name="gift-outline" size={32} color="#9CA3AF" />
+            <Text style={styles.noCashbackText}>No recent cashback yet</Text>
+            <Text style={styles.noCashbackSubtext}>Be the first to earn rewards!</Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -383,5 +412,31 @@ const styles = StyleSheet.create({
   amountText: {
     fontSize: 14,
     color: '#6B7280',
+  },
+  cashbackLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginLeft: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  noCashback: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noCashbackText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 12,
+  },
+  noCashbackSubtext: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 4,
   },
 });

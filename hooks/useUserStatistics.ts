@@ -1,18 +1,31 @@
 // useUserStatistics Hook
-// Fetches and manages user statistics from all phases
+// Fetches and manages user statistics from all phases with caching
 
 import { useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import authService from '@/services/authApi';
 
+// Cache configuration
+const CACHE_KEY = 'user_statistics_cache';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+interface CachedData {
+  data: UserStatistics;
+  timestamp: number;
+}
+
 export interface UserStatistics {
+  user: {
+    joinedDate: string;
+    isVerified: boolean;
+    totalReferrals: number;
+    referralEarnings: number;
+  };
   orders: {
     total: number;
-    delivered: number;
+    completed: number;
     cancelled: number;
-    pending: number;
-    confirmed: number;
-    processing: number;
-    shipped: number;
+    totalSpent: number;
   };
   wallet: {
     balance: number;
@@ -20,33 +33,40 @@ export interface UserStatistics {
     totalSpent: number;
     pendingAmount: number;
   };
-  reviews: {
+  reviews?: {
     total: number;
   };
-  achievements: {
+  achievements?: {
     total: number;
     unlocked: number;
   };
-  activities: {
+  activities?: {
     total: number;
   };
   videos: {
-    total: number;
+    totalCreated: number;
     totalViews: number;
-    totalEarnings: number;
+    totalLikes: number;
+    totalShares: number;
   };
   projects: {
-    total: number;
+    totalParticipated: number;
+    approved: number;
+    rejected: number;
     totalEarned: number;
-    completed: number;
-    ongoing: number;
   };
   offers: {
-    redeemed: number;
+    totalRedeemed: number;
   };
   vouchers: {
+    total: number;
+    used: number;
     active: number;
-    redeemed: number;
+  };
+  summary: {
+    totalActivity: number;
+    totalEarnings: number;
+    totalSpendings: number;
   };
 }
 
@@ -63,15 +83,86 @@ export const useUserStatistics = (autoFetch: boolean = true): UseUserStatisticsR
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStatistics = useCallback(async () => {
+  // Load cached data
+  const loadCachedData = useCallback(async (): Promise<UserStatistics | null> => {
+    try {
+      const cachedJson = await AsyncStorage.getItem(CACHE_KEY);
+      if (!cachedJson) return null;
+
+      const cached: CachedData = JSON.parse(cachedJson);
+      const now = Date.now();
+
+      // Check if cache is still valid
+      if (now - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      } else {
+        // Cache expired, remove it
+        await AsyncStorage.removeItem(CACHE_KEY);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error loading cached statistics:', error);
+      return null;
+    }
+  }, []);
+
+  // Save data to cache
+  const saveToCache = useCallback(async (data: UserStatistics): Promise<void> => {
+    try {
+      const cacheData: CachedData = {
+        data,
+        timestamp: Date.now(),
+      };
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+      console.error('Error saving statistics to cache:', error);
+    }
+  }, []);
+
+  // Fetch statistics from API
+  const fetchStatistics = useCallback(async (forceRefresh: boolean = false) => {
     setIsLoading(true);
     setError(null);
 
     try {
+      // Try to load from cache first if not forcing refresh
+      if (!forceRefresh) {
+        const cachedData = await loadCachedData();
+        if (cachedData) {
+          setStatistics(cachedData);
+          setIsLoading(false);
+          return; // Return early with cached data
+        }
+      }
+
+      // Fetch fresh data from API
       const response = await authService.getUserStatistics();
 
       if (response.success && response.data) {
-        setStatistics(response.data);
+        // Ensure all expected fields exist with defaults
+        // Handle wallet balance if it's returned as an object instead of a number
+        const walletBalance = typeof response.data.wallet?.balance === 'object'
+          ? (response.data.wallet.balance as any).available || (response.data.wallet.balance as any).total || 0
+          : response.data.wallet?.balance || 0;
+
+        const statsData: UserStatistics = {
+          ...response.data,
+          wallet: {
+            ...response.data.wallet,
+            balance: walletBalance,
+            totalEarned: response.data.wallet?.totalEarned || 0,
+            totalSpent: response.data.wallet?.totalSpent || 0,
+            pendingAmount: response.data.wallet?.pendingAmount || 0,
+          },
+          reviews: response.data.reviews || { total: 0 },
+          achievements: response.data.achievements || { total: 0, unlocked: 0 },
+          activities: response.data.activities || { total: 0 },
+        };
+
+        setStatistics(statsData);
+
+        // Save to cache
+        await saveToCache(statsData);
       } else {
         throw new Error(response.message || 'Failed to fetch statistics');
       }
@@ -79,10 +170,20 @@ export const useUserStatistics = (autoFetch: boolean = true): UseUserStatisticsR
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch user statistics';
       setError(errorMessage);
       console.error('Error fetching user statistics:', err);
+      console.error('Full error details:', JSON.stringify(err, null, 2));
+
+      // If the fetch fails and we don't have data yet, try to load from cache
+      if (!forceRefresh) {
+        const cachedData = await loadCachedData();
+        if (cachedData) {
+          setStatistics(prevStats => prevStats || cachedData);
+          console.log('Loaded statistics from cache after error');
+        }
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [loadCachedData, saveToCache]);
 
   const clearError = useCallback(() => {
     setError(null);

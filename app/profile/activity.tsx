@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useActivities } from '@/hooks/useActivities';
 import { Activity, ActivityType } from '@/services/activityApi';
@@ -134,6 +134,7 @@ export default function ActivityFeedPage() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
 
       {/* Header */}
@@ -162,47 +163,55 @@ export default function ActivityFeedPage() {
             contentContainerStyle={styles.summaryContent}
           >
             {summary.summary.map((stat, index) => (
-              <View key={index} style={styles.summaryCard}>
+              <LinearGradient
+                key={index}
+                colors={['rgba(255, 255, 255, 0.98)', 'rgba(255, 255, 255, 0.95)']}
+                style={styles.summaryCard}
+              >
                 <ThemedText style={styles.summaryNumber}>{stat.count}</ThemedText>
                 <ThemedText style={styles.summaryLabel}>{stat.type}</ThemedText>
                 {stat.totalAmount > 0 && (
-                  <ThemedText style={styles.summaryAmount}>
-                    ₹{stat.totalAmount.toFixed(0)}
-                  </ThemedText>
+                  <View style={styles.amountBadge}>
+                    <ThemedText style={styles.summaryAmount}>
+                      ₹{stat.totalAmount.toFixed(0)}
+                    </ThemedText>
+                  </View>
                 )}
-              </View>
+              </LinearGradient>
             ))}
           </ScrollView>
         )}
       </LinearGradient>
 
       {/* Filter Pills */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filterContent}
-      >
-        {ACTIVITY_TYPE_FILTERS.map((filter) => (
-          <TouchableOpacity
-            key={filter.value}
-            style={[
-              styles.filterPill,
-              selectedFilter === filter.value && styles.filterPillActive,
-            ]}
-            onPress={() => handleFilterChange(filter.value)}
-          >
-            <ThemedText
+      <View style={styles.filterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContent}
+        >
+          {ACTIVITY_TYPE_FILTERS.map((filter) => (
+            <TouchableOpacity
+              key={filter.value}
               style={[
-                styles.filterPillText,
-                selectedFilter === filter.value && styles.filterPillTextActive,
+                styles.filterPill,
+                selectedFilter === filter.value && styles.filterPillActive,
               ]}
+              onPress={() => handleFilterChange(filter.value)}
+              activeOpacity={0.7}
             >
-              {filter.label}
-            </ThemedText>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+              <ThemedText
+                style={[
+                  styles.filterPillText,
+                  selectedFilter === filter.value && styles.filterPillTextActive,
+                ]}
+              >
+                {filter.label}
+              </ThemedText>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Activity List */}
       <FlatList
@@ -283,78 +292,105 @@ const styles = StyleSheet.create({
     paddingRight: 20,
   },
   summaryCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
-    padding: 12,
-    minWidth: 100,
+    borderRadius: 16,
+    padding: 16,
+    minWidth: 110,
     alignItems: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   summaryNumber: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#8B5CF6',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   summaryLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#6B7280',
-    fontWeight: '600',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  amountBadge: {
+    backgroundColor: '#10B98110',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 6,
   },
   summaryAmount: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#10B981',
-    fontWeight: '600',
-    marginTop: 4,
+    fontWeight: '700',
   },
-  filterScroll: {
+  filterContainer: {
     backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
   },
   filterContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: 16,
+    gap: 10,
   },
   filterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
   },
   filterPillActive: {
     backgroundColor: '#8B5CF6',
+    borderColor: '#8B5CF6',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   filterPillText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#6B7280',
   },
   filterPillTextActive: {
     color: 'white',
   },
   listContent: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
   activityCard: {
     flexDirection: 'row',
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   activityIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   activityContent: {
     flex: 1,
@@ -366,29 +402,36 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   activityTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#111827',
     flex: 1,
     marginRight: 8,
+    letterSpacing: -0.2,
   },
   activityTime: {
     fontSize: 12,
     color: '#9CA3AF',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   activityDescription: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#6B7280',
-    lineHeight: 18,
+    lineHeight: 20,
     marginBottom: 8,
+    marginTop: 2,
   },
   activityAmount: {
     alignSelf: 'flex-start',
+    backgroundColor: '#10B98110',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 4,
   },
   amountText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
   },
   footerLoader: {
     flexDirection: 'row',
@@ -405,7 +448,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
   },
   emptyText: {
     fontSize: 18,

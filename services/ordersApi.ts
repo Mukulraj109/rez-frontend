@@ -32,20 +32,69 @@ export interface OrderItem {
 }
 
 export interface Order {
+  _id: string; // MongoDB ID from backend
   id: string;
   orderNumber: string;
   userId: string;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
+  status: 'placed' | 'confirmed' | 'preparing' | 'ready' | 'dispatched' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'refunded' | 'pending' | 'processing' | 'shipped';
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
   items: OrderItem[];
-  summary: {
+  createdAt: string; // Order creation timestamp
+  updatedAt: string; // Last update timestamp
+  totals: {
+    subtotal: number;
+    tax: number;
+    delivery: number;
+    discount: number;
+    cashback: number;
+    total: number;
+    paidAmount: number;
+    refundAmount: number;
+  };
+  summary?: { // Deprecated - use totals instead
     subtotal: number;
     shipping: number;
     tax: number;
     discount: number;
     total: number;
   };
-  shippingAddress: {
+  payment: {
+    method: 'cod' | 'wallet' | 'card' | 'upi' | 'netbanking';
+    status: 'pending' | 'paid' | 'failed' | 'refunded';
+  };
+  delivery: {
+    method: 'standard' | 'express' | 'pickup';
+    status: 'pending' | 'confirmed' | 'dispatched' | 'delivered';
+    address: {
+      name: string;
+      phone: string;
+      addressLine1: string;
+      addressLine2?: string;
+      city: string;
+      state: string;
+      pincode: string;
+      country?: string;
+      landmark?: string;
+      addressType?: 'home' | 'work' | 'other';
+    };
+    deliveryFee: number;
+    attempts: any[];
+  };
+  timeline: Array<{
+    status: string;
+    message: string;
+    timestamp: string;
+    _id?: string;
+  }>;
+  couponCode?: string;
+  specialInstructions?: string;
+  cancellation?: {
+    reason: string;
+    cancelledAt: string;
+  };
+  cancelReason?: string;
+  cancelledAt?: string;
+  shippingAddress?: { // Deprecated - use delivery.address instead
     firstName: string;
     lastName: string;
     company?: string;

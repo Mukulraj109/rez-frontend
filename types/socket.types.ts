@@ -55,6 +55,51 @@ export interface ProductAvailabilityPayload {
   timestamp: string;
 }
 
+// Flash sale event payloads
+export interface FlashSaleStartedPayload {
+  flashSaleId: string;
+  title: string;
+  discountPercentage: number;
+  endTime: Date;
+  timestamp: string;
+}
+
+export interface FlashSaleEndingSoonPayload {
+  flashSaleId: string;
+  title: string;
+  endTime: Date;
+  remainingQuantity: number;
+  timestamp: string;
+}
+
+export interface FlashSaleEndedPayload {
+  flashSaleId: string;
+  title: string;
+  timestamp: string;
+}
+
+export interface FlashSaleStockUpdatedPayload {
+  flashSaleId: string;
+  soldQuantity: number;
+  remainingQuantity: number;
+  progress: number;
+  timestamp: string;
+}
+
+export interface FlashSaleStockLowPayload {
+  flashSaleId: string;
+  title: string;
+  remainingQuantity: number;
+  progress: number;
+  timestamp: string;
+}
+
+export interface FlashSaleSoldOutPayload {
+  flashSaleId: string;
+  title: string;
+  timestamp: string;
+}
+
 // Socket event names (must match backend)
 export const SocketEvents = {
   // Connection events
@@ -82,6 +127,15 @@ export const SocketEvents = {
   UNSUBSCRIBE_PRODUCT: 'unsubscribe:product',
   SUBSCRIBE_STORE: 'subscribe:store',
   UNSUBSCRIBE_STORE: 'unsubscribe:store',
+
+  // Flash sale events
+  FLASH_SALE_STARTED: 'flashsale:started',
+  FLASH_SALE_ENDING_SOON: 'flashsale:ending_soon',
+  FLASH_SALE_ENDED: 'flashsale:ended',
+  FLASH_SALE_STOCK_UPDATED: 'flashsale:stock_updated',
+  FLASH_SALE_STOCK_LOW: 'flashsale:stock_low',
+  FLASH_SALE_SOLD_OUT: 'flashsale:sold_out',
+  FLASH_SALE_UPDATED: 'flashsale:updated',
 } as const;
 
 // Socket connection state
@@ -118,3 +172,11 @@ export type PriceUpdateCallback = (payload: PriceUpdatePayload) => void;
 export type ProductAvailabilityCallback = (payload: ProductAvailabilityPayload) => void;
 export type ConnectionCallback = () => void;
 export type ErrorCallback = (error: Error) => void;
+
+// Flash sale callback types
+export type FlashSaleStartedCallback = (payload: FlashSaleStartedPayload) => void;
+export type FlashSaleEndingSoonCallback = (payload: FlashSaleEndingSoonPayload) => void;
+export type FlashSaleEndedCallback = (payload: FlashSaleEndedPayload) => void;
+export type FlashSaleStockUpdatedCallback = (payload: FlashSaleStockUpdatedPayload) => void;
+export type FlashSaleStockLowCallback = (payload: FlashSaleStockLowPayload) => void;
+export type FlashSaleSoldOutCallback = (payload: FlashSaleSoldOutPayload) => void;

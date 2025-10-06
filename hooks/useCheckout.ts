@@ -13,6 +13,7 @@ import { CheckoutData } from '@/data/checkoutData';
 import cartService from '@/services/cartApi';
 import ordersService from '@/services/ordersApi';
 import walletApi from '@/services/walletApi';
+import couponService from '@/services/couponApi';
 import { mapBackendCartToFrontend, mapFrontendCheckoutToBackendOrder } from '@/utils/dataMappers';
 
 export const useCheckout = (): UseCheckoutReturn => {
@@ -107,6 +108,30 @@ export const useCheckout = (): UseCheckoutReturn => {
             console.error('💳 [Checkout] Failed to load wallet, using 0 balance:', walletError);
           }
 
+          // Fetch real coupons from API
+          let realAvailableCoupons: PromoCode[] = [];
+          try {
+            console.log('💳 [Checkout] Fetching available coupons...');
+            const couponsResponse = await couponService.getMyCoupons({ status: 'available' });
+
+            if (couponsResponse.success && couponsResponse.data) {
+              realAvailableCoupons = couponsResponse.data.coupons.map((coupon: any) => ({
+                id: coupon._id,
+                code: coupon.couponCode,
+                description: coupon.title,
+                discount: coupon.discountValue,
+                discountType: coupon.discountType,
+                minOrderValue: coupon.minOrderValue,
+                maxDiscount: coupon.maxDiscountCap || 0,
+                isActive: coupon.status === 'active',
+                validUntil: coupon.validTo,
+              }));
+              console.log('💳 [Checkout] Loaded', realAvailableCoupons.length, 'coupons');
+            }
+          } catch (couponError) {
+            console.error('💳 [Checkout] Failed to load coupons:', couponError);
+          }
+
           // Use mock data for payment methods only
           const mockData = await CheckoutData.api.initializeCheckout();
 
@@ -116,7 +141,7 @@ export const useCheckout = (): UseCheckoutReturn => {
             store: mockData.store, // Use mock store for now
             billSummary,
             appliedPromoCode,
-            availablePromoCodes: mockData.availablePromoCodes,
+            availablePromoCodes: realAvailableCoupons.length > 0 ? realAvailableCoupons : mockData.availablePromoCodes,
             coinSystem: realCoinSystem, // NEW: Use real wallet data
             availablePaymentMethods: mockData.paymentMethods,
             recentPaymentMethods: mockData.paymentMethods.filter(m => m.isRecent),
@@ -204,37 +229,71 @@ export const useCheckout = (): UseCheckoutReturn => {
 
   const applyPromoCode = useCallback(async (code: PromoCode) => {
     setState(prev => ({ ...prev, loading: true }));
-    
+
     try {
-      const response = await CheckoutData.api.validatePromoCode(
-        code.code,
-        state.items,
-        state.store
-      );
-      
-      if (response.isValid && response.promoCode) {
+      console.log('💳 [Checkout] Validating coupon:', code.code);
+
+      // Prepare cart data for validation
+      const cartData = {
+        items: state.items.map(item => ({
+          product: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          category: item.category,
+          store: item.store?.id,
+        })),
+        subtotal: state.items.reduce((total, item) => total + (item.price * item.quantity), 0),
+      };
+
+      const response = await couponService.validateCoupon(code.code, cartData);
+
+      if (response.success && response.data) {
+        console.log('💳 [Checkout] Coupon valid, discount:', response.data.discount);
+
+        // Calculate new bill summary with coupon discount
+        const itemTotal = cartData.subtotal;
+        const coinUsage = {
+          wasil: state.coinSystem.wasilCoin.used,
+          promo: state.coinSystem.promoCoin.used,
+        };
+
+        const newBillSummary = CheckoutData.helpers.calculateBillSummary(
+          state.items,
+          state.store,
+          code,
+          coinUsage
+        );
+
+        // Override promo discount with actual backend value
+        newBillSummary.promoDiscount = response.data.discount;
+        newBillSummary.totalSavings = newBillSummary.discount + response.data.discount + coinUsage.wasil + coinUsage.promo;
+        newBillSummary.grandTotal = newBillSummary.itemTotal + newBillSummary.deliveryFee + newBillSummary.tax - response.data.discount - coinUsage.wasil - coinUsage.promo;
+
         setState(prev => ({
           ...prev,
-          appliedPromoCode: response.promoCode,
-          billSummary: response.updatedBillSummary,
+          appliedPromoCode: code,
+          billSummary: newBillSummary,
           loading: false,
           showPromoCodeSection: false,
+          error: null,
         }));
       } else {
+        console.error('💳 [Checkout] Coupon invalid:', response.message);
         setState(prev => ({
           ...prev,
           loading: false,
-          error: response.error || 'Invalid promo code',
+          error: response.message || 'Invalid coupon code',
         }));
       }
     } catch (error) {
+      console.error('💳 [Checkout] Coupon validation error:', error);
       setState(prev => ({
         ...prev,
         loading: false,
-        error: 'Failed to apply promo code',
+        error: 'Failed to validate coupon',
       }));
     }
-  }, [state.items, state.store]);
+  }, [state.items, state.store, state.coinSystem]);
 
   const removePromoCode = useCallback(() => {
     setState(prev => {

@@ -28,13 +28,17 @@ export const usePaymentMethods = (autoFetch: boolean = true): UsePaymentMethodsR
   const [error, setError] = useState<string | null>(null);
 
   const fetchPaymentMethods = useCallback(async () => {
+    console.log('[usePaymentMethods] Fetching payment methods...');
     setIsLoading(true);
     setError(null);
 
     try {
       const response = await paymentMethodApi.getUserPaymentMethods();
+      console.log('[usePaymentMethods] Fetch response:', response);
 
       if (response.success && response.data) {
+        console.log('[usePaymentMethods] Setting payment methods, count:', response.data.length);
+        console.log('[usePaymentMethods] Payment methods:', response.data);
         setPaymentMethods(response.data);
       } else {
         throw new Error(response.message || 'Failed to fetch payment methods');
@@ -42,7 +46,7 @@ export const usePaymentMethods = (autoFetch: boolean = true): UsePaymentMethodsR
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch payment methods';
       setError(errorMessage);
-      console.error('Error fetching payment methods:', err);
+      console.error('[usePaymentMethods] Error fetching payment methods:', err);
     } finally {
       setIsLoading(false);
     }
@@ -93,12 +97,16 @@ export const usePaymentMethods = (autoFetch: boolean = true): UsePaymentMethodsR
 
   const deletePaymentMethod = useCallback(async (id: string): Promise<boolean> => {
     setError(null);
+    console.log('[usePaymentMethods] Deleting payment method ID:', id);
 
     try {
       const response = await paymentMethodApi.deletePaymentMethod(id);
+      console.log('[usePaymentMethods] Delete API response:', response);
 
       if (response.success) {
+        console.log('[usePaymentMethods] Delete successful, fetching updated list...');
         await fetchPaymentMethods(); // Refresh list
+        console.log('[usePaymentMethods] Fetch complete');
         return true;
       } else {
         throw new Error(response.message || 'Failed to delete payment method');
@@ -106,7 +114,7 @@ export const usePaymentMethods = (autoFetch: boolean = true): UsePaymentMethodsR
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to delete payment method';
       setError(errorMessage);
-      console.error('Error deleting payment method:', err);
+      console.error('[usePaymentMethods] Error deleting payment method:', err);
       return false;
     }
   }, [fetchPaymentMethods]);

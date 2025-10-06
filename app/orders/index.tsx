@@ -12,6 +12,8 @@ import {
 import { router } from 'expo-router';
 import ordersService, { Order } from '@/services/ordersApi';
 import { mapBackendOrderToFrontend } from '@/utils/dataMappers';
+import ReorderButton from '@/components/orders/ReorderButton';
+import ReorderSuggestions from '@/components/orders/ReorderSuggestions';
 
 export default function OrdersListScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -163,6 +165,19 @@ export default function OrdersListScreen() {
           </Text>
         </View>
       </View>
+
+      {(item.status === 'delivered' || item.status === 'cancelled') && (
+        <View style={styles.orderActions}>
+          <ReorderButton
+            orderId={item.id}
+            orderNumber={item.orderNumber}
+            variant="secondary"
+            size="small"
+            fullWidth
+            onSuccess={handleRefresh}
+          />
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -221,6 +236,11 @@ export default function OrdersListScreen() {
           styles.listContent,
           orders.length === 0 && styles.emptyListContent,
         ]}
+        ListHeaderComponent={
+          orders.length > 0 ? (
+            <ReorderSuggestions />
+          ) : null
+        }
         ListEmptyComponent={renderEmptyState}
         ListFooterComponent={renderFooter}
         refreshControl={
@@ -429,5 +449,10 @@ const styles = StyleSheet.create({
   footerLoader: {
     paddingVertical: 20,
     alignItems: 'center',
+  },
+  orderActions: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
   },
 });

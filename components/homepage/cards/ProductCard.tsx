@@ -12,6 +12,7 @@ import { ProductCardProps } from '@/types/homepage.types';
 import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import StockBadge from '@/components/common/StockBadge';
+import RatingStars from '@/components/reviews/RatingStars';
 import { useStockStatus } from '@/hooks/useStockStatus';
 import { useStockNotifications } from '@/hooks/useStockNotifications';
 
@@ -227,16 +228,15 @@ export default function ProductCard({
             {product.name}
           </ThemedText>
 
-          {/* Rating */}
+          {/* Rating - Using RatingStars component for consistency */}
           {product.rating && (
             <View style={styles.ratingContainer}>
-              <Ionicons name="star" size={12} color="#F59E0B" />
-              <ThemedText style={styles.ratingText}>
-                {product.rating.value}
-              </ThemedText>
-              <ThemedText style={styles.ratingCount}>
-                ({product.rating.count})
-              </ThemedText>
+              <RatingStars
+                rating={product.rating.value}
+                size={12}
+                showCount={true}
+                count={product.rating.count}
+              />
             </View>
           )}
 

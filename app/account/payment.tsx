@@ -1,7 +1,7 @@
 // Payment Settings Screen
 // Manage payment methods, preferences, and security settings
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -12,240 +12,452 @@ import {
   SafeAreaView,
   Alert,
   Switch,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ACCOUNT_COLORS } from '@/types/account.types';
+import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { PaymentMethod as APIPaymentMethod, PaymentMethodType, CardBrand } from '@/services/paymentMethodApi';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { PaymentPreferences as BackendPaymentPreferences } from '@/services/userSettingsApi';
 
-interface PaymentMethod {
-  id: string;
-  type: 'CARD' | 'BANK' | 'UPI' | 'WALLET';
-  title: string;
-  subtitle: string;
-  icon: string;
-  isDefault: boolean;
-  isVerified: boolean;
-}
-
-interface PaymentPreferences {
+// Local preferences interface for UI
+interface LocalPaymentPreferences {
   saveCards: boolean;
   autoFillCVV: boolean;
   biometricPayments: boolean;
   oneClickPayments: boolean;
-  rememberPreference: boolean;
 }
 
 export default function PaymentSettingsScreen() {
   const router = useRouter();
-  
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
-    {
-      id: '1',
-      type: 'CARD',
-      title: 'Visa **** 4242',
-      subtitle: 'Expires 12/26',
-      icon: 'card',
-      isDefault: true,
-      isVerified: true,
-    },
-    {
-      id: '2',
-      type: 'CARD',
-      title: 'Mastercard **** 8765',
-      subtitle: 'Expires 08/25',
-      icon: 'card',
-      isDefault: false,
-      isVerified: true,
-    },
-    {
-      id: '3',
-      type: 'UPI',
-      title: 'UPI - user@okaxis',
-      subtitle: 'Linked to Axis Bank',
-      icon: 'phone-portrait',
-      isDefault: false,
-      isVerified: true,
-    },
-    {
-      id: '4',
-      type: 'BANK',
-      title: 'Axis Bank Account',
-      subtitle: 'Account ending in 1234',
-      icon: 'business',
-      isDefault: false,
-      isVerified: false,
-    },
-  ]);
 
-  const [preferences, setPreferences] = useState<PaymentPreferences>({
+  // Backend integration for payment methods
+  const {
+    paymentMethods,
+    isLoading,
+    error,
+    refetch,
+    deletePaymentMethod,
+    setDefaultPaymentMethod,
+    defaultPaymentMethod,
+  } = usePaymentMethods(true);
+
+  // Backend integration for user settings (payment preferences)
+  const {
+    settings: userSettings,
+    isLoading: settingsLoading,
+    error: settingsError,
+    updatePayment: updatePaymentPreferences,
+  } = useUserSettings(true);
+
+  // Local state for UI preferences
+  const [preferences, setPreferences] = useState<LocalPaymentPreferences>({
     saveCards: true,
     autoFillCVV: false,
-    biometricPayments: true,
-    oneClickPayments: true,
-    rememberPreference: true,
+    biometricPayments: false,
+    oneClickPayments: false,
   });
 
+  // Track if preferences are being saved
+  const [isSavingPreference, setIsSavingPreference] = useState(false);
+
+  // Load preferences from backend settings
+  useEffect(() => {
+    if (userSettings?.payment) {
+      const backendPrefs = userSettings.payment;
+      setPreferences({
+        saveCards: backendPrefs.autoPayEnabled ?? true,
+        autoFillCVV: false, // Not in backend, keep local
+        biometricPayments: backendPrefs.biometricPaymentEnabled ?? false,
+        oneClickPayments: !backendPrefs.paymentPinEnabled ?? false,
+      });
+      console.log('[Payment Settings] Loaded preferences from backend:', backendPrefs);
+    }
+  }, [userSettings]);
+
+  // Debug: Log payment methods when they change
+  useEffect(() => {
+    console.log('Payment methods updated:', {
+      count: paymentMethods.length,
+      methods: paymentMethods.map(pm => ({
+        id: pm.id,
+        type: pm.type,
+        isDefault: pm.isDefault,
+        hasId: !!pm.id
+      }))
+    });
+  }, [paymentMethods]);
+
+  // Refetch payment methods when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('[Payment Settings] Screen focused, refetching payment methods...');
+      refetch();
+    }, [refetch])
+  );
+
   const handleBackPress = () => {
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.push('/account' as any);
+    }
   };
 
   const handleAddPaymentMethod = () => {
-    Alert.alert(
-      'Add Payment Method',
-      'Choose a payment method to add',
-      [
-        { text: 'Credit/Debit Card', onPress: () => console.log('Add card') },
-        { text: 'Bank Account', onPress: () => console.log('Add bank') },
-        { text: 'UPI', onPress: () => console.log('Add UPI') },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
+    // Navigate to payment-methods page which has full add/edit functionality
+    router.push('/account/payment-methods' as any);
   };
 
-  const handleSetDefault = (methodId: string) => {
-    setPaymentMethods(prev => 
-      prev.map(method => ({
-        ...method,
-        isDefault: method.id === methodId
-      }))
-    );
+  const handleSetDefault = async (methodId: string) => {
+    console.log('handleSetDefault called with ID:', methodId);
+
+    if (!methodId) {
+      if (Platform.OS === 'web') {
+        window.alert('Invalid payment method ID. Please restart the app and try again.');
+      } else {
+        Alert.alert('Error', 'Invalid payment method ID. Please restart the app and try again.');
+      }
+      return;
+    }
+
+    const success = await setDefaultPaymentMethod(methodId);
+    if (success) {
+      // Refetch to update the UI with the new default
+      await refetch();
+      if (Platform.OS === 'web') {
+        window.alert('Default payment method updated');
+      } else {
+        Alert.alert('Success', 'Default payment method updated');
+      }
+    } else {
+      if (Platform.OS === 'web') {
+        window.alert('Failed to set default payment method');
+      } else {
+        Alert.alert('Error', 'Failed to set default payment method');
+      }
+    }
   };
 
-  const handleDeleteMethod = (methodId: string, methodTitle: string) => {
-    Alert.alert(
-      'Delete Payment Method',
-      `Are you sure you want to delete ${methodTitle}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: () => {
-            setPaymentMethods(prev => prev.filter(method => method.id !== methodId));
-          }
+  const handleDeleteMethod = async (method: APIPaymentMethod) => {
+    console.log('handleDeleteMethod called with method:', method);
+    console.log('Method ID:', method.id);
+
+    if (!method.id) {
+      if (Platform.OS === 'web') {
+        window.alert('Invalid payment method ID. Please restart the app and try again.');
+      } else {
+        Alert.alert('Error', 'Invalid payment method ID. Please restart the app and try again.');
+      }
+      return;
+    }
+
+    const methodName = method.type === PaymentMethodType.CARD && method.card
+      ? `Card ending ${method.card.lastFourDigits}`
+      : method.type === PaymentMethodType.UPI && method.upi
+      ? method.upi.vpa
+      : method.type === PaymentMethodType.BANK_ACCOUNT && method.bankAccount
+      ? `Bank account ${method.bankAccount.bankName}`
+      : 'Payment method';
+
+    // Use window.confirm for web, Alert.alert for native
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Are you sure you want to delete ${methodName}?`);
+
+      if (!confirmed) {
+        console.log('Delete cancelled by user');
+        return;
+      }
+
+      console.log('Delete confirmed, deleting method ID:', method.id);
+
+      try {
+        const success = await deletePaymentMethod(method.id);
+        console.log('Delete API response - success:', success);
+
+        if (success) {
+          console.log('Deletion successful, refetching payment methods...');
+          // Refetch to update the UI
+          await refetch();
+          console.log('Refetch complete, payment methods count:', paymentMethods.length);
+          window.alert('Payment method deleted successfully');
+        } else {
+          console.error('Deletion failed');
+          window.alert('Failed to delete payment method');
         }
-      ]
-    );
+      } catch (error) {
+        console.error('Error during deletion:', error);
+        window.alert('An error occurred while deleting the payment method');
+      }
+    } else {
+      // Native platform - use Alert.alert
+      Alert.alert(
+        'Delete Payment Method',
+        `Are you sure you want to delete ${methodName}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              console.log('Delete confirmed, deleting method ID:', method.id);
+
+              try {
+                const success = await deletePaymentMethod(method.id);
+                console.log('Delete API response - success:', success);
+
+                if (success) {
+                  console.log('Deletion successful, refetching payment methods...');
+                  await refetch();
+                  console.log('Refetch complete, payment methods count:', paymentMethods.length);
+                  Alert.alert('Success', 'Payment method deleted');
+                } else {
+                  console.error('Deletion failed');
+                  Alert.alert('Error', 'Failed to delete payment method');
+                }
+              } catch (error) {
+                console.error('Error during deletion:', error);
+                Alert.alert('Error', 'An error occurred while deleting the payment method');
+              }
+            }
+          }
+        ]
+      );
+    }
   };
 
   const handleVerifyMethod = (methodId: string) => {
-    Alert.alert(
-      'Verify Payment Method',
-      'Please verify your payment method to ensure secure transactions',
-      [
-        { text: 'Later' },
-        { text: 'Verify Now', onPress: () => console.log('Verify method') }
-      ]
-    );
+    console.log('handleVerifyMethod called with ID:', methodId);
+
+    if (!methodId) {
+      if (Platform.OS === 'web') {
+        window.alert('Invalid payment method ID. Please restart the app and try again.');
+      } else {
+        Alert.alert('Error', 'Invalid payment method ID. Please restart the app and try again.');
+      }
+      return;
+    }
+
+    if (Platform.OS === 'web') {
+      const verify = window.confirm('Please verify your payment method to ensure secure transactions. Verify now?');
+
+      if (verify) {
+        console.log('Verify method:', methodId);
+        // TODO: Implement verification flow
+        window.alert('Payment method verification will be available soon.');
+      }
+    } else {
+      Alert.alert(
+        'Verify Payment Method',
+        'Please verify your payment method to ensure secure transactions',
+        [
+          { text: 'Later' },
+          {
+            text: 'Verify Now',
+            onPress: () => {
+              console.log('Verify method:', methodId);
+              // TODO: Implement verification flow
+              Alert.alert('Coming Soon', 'Payment method verification will be available soon.');
+            }
+          }
+        ]
+      );
+    }
   };
 
-  const togglePreference = (key: keyof PaymentPreferences) => {
+  const togglePreference = async (key: keyof LocalPaymentPreferences) => {
+    const newValue = !preferences[key];
+
+    // Optimistic UI update
     setPreferences(prev => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: newValue
     }));
+
+    // Map local preferences to backend format
+    const backendPreferences: Partial<BackendPaymentPreferences> = {
+      autoPayEnabled: key === 'saveCards' ? newValue : preferences.saveCards,
+      biometricPaymentEnabled: key === 'biometricPayments' ? newValue : preferences.biometricPayments,
+      paymentPinEnabled: key === 'oneClickPayments' ? !newValue : !preferences.oneClickPayments,
+    };
+
+    console.log(`[Payment Settings] Saving ${key} = ${newValue} to backend...`);
+    setIsSavingPreference(true);
+
+    try {
+      const updated = await updatePaymentPreferences(backendPreferences);
+
+      if (updated) {
+        console.log('[Payment Settings] Preference saved successfully');
+        if (Platform.OS === 'web') {
+          // Don't show alert for every toggle on web - it's annoying
+        } else {
+          // On mobile, could show a toast
+        }
+      } else {
+        throw new Error('Failed to save preference');
+      }
+    } catch (error) {
+      console.error('[Payment Settings] Error saving preference:', error);
+
+      // Revert optimistic update on error
+      setPreferences(prev => ({
+        ...prev,
+        [key]: !newValue
+      }));
+
+      if (Platform.OS === 'web') {
+        window.alert(`Failed to save ${key} preference. Please try again.`);
+      } else {
+        Alert.alert('Error', `Failed to save ${key} preference. Please try again.`);
+      }
+    } finally {
+      setIsSavingPreference(false);
+    }
   };
 
-  const getPaymentMethodIcon = (type: string) => {
+  const getPaymentMethodIcon = (type: PaymentMethodType) => {
     switch (type) {
-      case 'CARD': return 'card';
-      case 'BANK': return 'business';
-      case 'UPI': return 'phone-portrait';
-      case 'WALLET': return 'wallet';
+      case PaymentMethodType.CARD: return 'card';
+      case PaymentMethodType.BANK_ACCOUNT: return 'business';
+      case PaymentMethodType.UPI: return 'flash';
       default: return 'card';
     }
   };
 
-  const getPaymentMethodColor = (type: string) => {
+  const getPaymentMethodColor = (type: PaymentMethodType) => {
     switch (type) {
-      case 'CARD': return ACCOUNT_COLORS.primary;
-      case 'BANK': return ACCOUNT_COLORS.info;
-      case 'UPI': return ACCOUNT_COLORS.secondary;
-      case 'WALLET': return ACCOUNT_COLORS.warning;
+      case PaymentMethodType.CARD: return ACCOUNT_COLORS.primary;
+      case PaymentMethodType.BANK_ACCOUNT: return ACCOUNT_COLORS.info;
+      case PaymentMethodType.UPI: return '#F59E0B';
       default: return ACCOUNT_COLORS.primary;
     }
   };
 
-  const renderPaymentMethod = (method: PaymentMethod) => (
-    <View key={method.id} style={styles.paymentMethodCard}>
-      <View style={styles.paymentMethodHeader}>
-        <View style={styles.paymentMethodLeft}>
-          <View style={[
-            styles.paymentMethodIcon,
-            { backgroundColor: getPaymentMethodColor(method.type) + '15' }
-          ]}>
-            <Ionicons 
-              name={getPaymentMethodIcon(method.type) as any} 
-              size={20} 
-              color={getPaymentMethodColor(method.type)} 
-            />
-          </View>
-          
-          <View style={styles.paymentMethodText}>
-            <View style={styles.paymentMethodTitleRow}>
-              <ThemedText style={styles.paymentMethodTitle}>
-                {method.title}
-              </ThemedText>
-              {method.isDefault && (
-                <View style={styles.defaultBadge}>
-                  <ThemedText style={styles.defaultBadgeText}>Default</ThemedText>
-                </View>
-              )}
-              {!method.isVerified && (
-                <TouchableOpacity 
-                  style={styles.verifyButton}
-                  onPress={() => handleVerifyMethod(method.id)}
-                >
-                  <ThemedText style={styles.verifyButtonText}>Verify</ThemedText>
-                </TouchableOpacity>
-              )}
+  const getPaymentMethodTitle = (method: APIPaymentMethod): string => {
+    if (method.type === PaymentMethodType.CARD && method.card) {
+      return `${method.card.brand} **** ${method.card.lastFourDigits}`;
+    }
+    if (method.type === PaymentMethodType.UPI && method.upi) {
+      return `UPI - ${method.upi.vpa}`;
+    }
+    if (method.type === PaymentMethodType.BANK_ACCOUNT && method.bankAccount) {
+      return method.bankAccount.bankName;
+    }
+    return 'Payment Method';
+  };
+
+  const getPaymentMethodSubtitle = (method: APIPaymentMethod): string => {
+    if (method.type === PaymentMethodType.CARD && method.card) {
+      return `Expires ${String(method.card.expiryMonth).padStart(2, '0')}/${String(method.card.expiryYear).slice(-2)}`;
+    }
+    if (method.type === PaymentMethodType.UPI && method.upi) {
+      return method.upi.nickname || 'UPI Payment';
+    }
+    if (method.type === PaymentMethodType.BANK_ACCOUNT && method.bankAccount) {
+      return `Account ending in ${method.bankAccount.accountNumber.slice(-4)}`;
+    }
+    return '';
+  };
+
+  const renderPaymentMethod = (method: APIPaymentMethod) => {
+    console.log('Rendering payment method:', {
+      id: method.id,
+      type: method.type,
+      isDefault: method.isDefault,
+      hasId: !!method.id
+    });
+
+    const isVerified = method.type === PaymentMethodType.CARD && method.card
+      ? true // Cards are verified by default
+      : method.type === PaymentMethodType.UPI && method.upi
+      ? method.upi.isVerified
+      : method.type === PaymentMethodType.BANK_ACCOUNT && method.bankAccount
+      ? method.bankAccount.isVerified
+      : false;
+
+    return (
+      <View key={method.id} style={styles.paymentMethodCard}>
+        <View style={styles.paymentMethodHeader}>
+          <View style={styles.paymentMethodLeft}>
+            <View style={[
+              styles.paymentMethodIcon,
+              { backgroundColor: getPaymentMethodColor(method.type) + '15' }
+            ]}>
+              <Ionicons
+                name={getPaymentMethodIcon(method.type) as any}
+                size={20}
+                color={getPaymentMethodColor(method.type)}
+              />
             </View>
-            <ThemedText style={styles.paymentMethodSubtitle}>
-              {method.subtitle}
-            </ThemedText>
+
+            <View style={styles.paymentMethodText}>
+              <View style={styles.paymentMethodTitleRow}>
+                <ThemedText style={styles.paymentMethodTitle}>
+                  {getPaymentMethodTitle(method)}
+                </ThemedText>
+                {method.isDefault && (
+                  <View style={styles.defaultBadge}>
+                    <ThemedText style={styles.defaultBadgeText}>Default</ThemedText>
+                  </View>
+                )}
+                {!isVerified && (
+                  <TouchableOpacity
+                    style={styles.verifyButton}
+                    onPress={() => handleVerifyMethod(method.id)}
+                  >
+                    <ThemedText style={styles.verifyButtonText}>Verify</ThemedText>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <ThemedText style={styles.paymentMethodSubtitle}>
+                {getPaymentMethodSubtitle(method)}
+              </ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.paymentMethodActions}>
+            {isVerified && (
+              <Ionicons name="checkmark-circle" size={20} color={ACCOUNT_COLORS.success} />
+            )}
           </View>
         </View>
 
-        <View style={styles.paymentMethodActions}>
-          {method.isVerified && (
-            <Ionicons name="checkmark-circle" size={20} color={ACCOUNT_COLORS.success} />
+        <View style={styles.paymentMethodFooter}>
+          {!method.isDefault && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleSetDefault(method.id)}
+            >
+              <ThemedText style={styles.actionButtonText}>Set as Default</ThemedText>
+            </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.moreButton}>
-            <Ionicons name="ellipsis-vertical" size={16} color={ACCOUNT_COLORS.textSecondary} />
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.dangerButton]}
+            onPress={() => handleDeleteMethod(method)}
+          >
+            <ThemedText style={[styles.actionButtonText, styles.dangerButtonText]}>Remove</ThemedText>
           </TouchableOpacity>
         </View>
       </View>
-
-      <View style={styles.paymentMethodFooter}>
-        {!method.isDefault && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleSetDefault(method.id)}
-          >
-            <ThemedText style={styles.actionButtonText}>Set as Default</ThemedText>
-          </TouchableOpacity>
-        )}
-        
-        <TouchableOpacity
-          style={[styles.actionButton, styles.dangerButton]}
-          onPress={() => handleDeleteMethod(method.id, method.title)}
-        >
-          <ThemedText style={[styles.actionButtonText, styles.dangerButtonText]}>Remove</ThemedText>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
       <StatusBar
         barStyle="light-content"
         backgroundColor={ACCOUNT_COLORS.primary}
         translucent={true}
       />
-      
+
       {/* Header */}
       <LinearGradient
         colors={[ACCOUNT_COLORS.primary, ACCOUNT_COLORS.primaryLight]}
@@ -255,18 +467,42 @@ export default function PaymentSettingsScreen() {
           <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          
+
           <ThemedText style={styles.headerTitle}>Payment Settings</ThemedText>
-          
+
           <View style={styles.headerRight} />
         </View>
       </LinearGradient>
 
-      <ScrollView 
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={ACCOUNT_COLORS.primary} />
+          <ThemedText style={styles.loadingText}>Loading payment methods...</ThemedText>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color={ACCOUNT_COLORS.error} />
+          <ThemedText style={styles.errorText}>Failed to load payment methods</ThemedText>
+          {error && (
+            <ThemedText style={styles.errorDetailText}>{error}</ThemedText>
+          )}
+          <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={refetch}
+              tintColor={ACCOUNT_COLORS.primary}
+            />
+          }
+        >
         {/* Payment Methods */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -277,15 +513,33 @@ export default function PaymentSettingsScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.paymentMethodsList}>
-            {paymentMethods.map(renderPaymentMethod)}
-          </View>
+          {paymentMethods && paymentMethods.length > 0 ? (
+            <View style={styles.paymentMethodsList}>
+              {paymentMethods.map(renderPaymentMethod)}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="card-outline" size={48} color={ACCOUNT_COLORS.textSecondary} />
+              <ThemedText style={styles.emptyStateText}>No payment methods saved</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>
+                Add a payment method to make checkout faster
+              </ThemedText>
+            </View>
+          )}
         </View>
 
         {/* Payment Preferences */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Payment Preferences</ThemedText>
-          
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>Payment Preferences</ThemedText>
+            {isSavingPreference && (
+              <View style={styles.savingIndicator}>
+                <ActivityIndicator size="small" color={ACCOUNT_COLORS.primary} />
+                <ThemedText style={styles.savingText}>Saving...</ThemedText>
+              </View>
+            )}
+          </View>
+
           <View style={styles.settingsCard}>
             <View style={styles.settingItem}>
               <View style={styles.settingLeft}>
@@ -300,6 +554,7 @@ export default function PaymentSettingsScreen() {
               <Switch
                 value={preferences.saveCards}
                 onValueChange={() => togglePreference('saveCards')}
+                disabled={isSavingPreference}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                 thumbColor={preferences.saveCards ? ACCOUNT_COLORS.primary : '#f4f3f4'}
               />
@@ -318,6 +573,7 @@ export default function PaymentSettingsScreen() {
               <Switch
                 value={preferences.biometricPayments}
                 onValueChange={() => togglePreference('biometricPayments')}
+                disabled={isSavingPreference}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                 thumbColor={preferences.biometricPayments ? ACCOUNT_COLORS.primary : '#f4f3f4'}
               />
@@ -336,6 +592,7 @@ export default function PaymentSettingsScreen() {
               <Switch
                 value={preferences.oneClickPayments}
                 onValueChange={() => togglePreference('oneClickPayments')}
+                disabled={isSavingPreference}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                 thumbColor={preferences.oneClickPayments ? ACCOUNT_COLORS.primary : '#f4f3f4'}
               />
@@ -354,6 +611,7 @@ export default function PaymentSettingsScreen() {
               <Switch
                 value={preferences.autoFillCVV}
                 onValueChange={() => togglePreference('autoFillCVV')}
+                disabled={isSavingPreference}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.success + '40' }}
                 thumbColor={preferences.autoFillCVV ? ACCOUNT_COLORS.success : '#f4f3f4'}
               />
@@ -381,18 +639,15 @@ export default function PaymentSettingsScreen() {
                   <Ionicons name="checkmark-circle" size={16} color={ACCOUNT_COLORS.success} />
                   <ThemedText style={styles.securityFeatureText}>PCI DSS compliant</ThemedText>
                 </View>
-                <View style={styles.securityFeature}>
-                  <Ionicons name="checkmark-circle" size={16} color={ACCOUNT_COLORS.success} />
-                  <ThemedText style={styles.securityFeatureText}>Two-factor authentication</ThemedText>
-                </View>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Footer Space */}
-        <View style={styles.footer} />
-      </ScrollView>
+          {/* Footer Space */}
+          <View style={styles.footer} />
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -451,6 +706,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: ACCOUNT_COLORS.text,
+  },
+  savingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  savingText: {
+    fontSize: 12,
+    color: ACCOUNT_COLORS.primary,
+    fontWeight: '500',
   },
   addButton: {
     flexDirection: 'row',
@@ -659,5 +924,71 @@ const styles = StyleSheet.create({
 
   footer: {
     height: 40,
+  },
+
+  // Loading State
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: ACCOUNT_COLORS.textSecondary,
+  },
+
+  // Error State
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 40,
+  },
+  errorText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: ACCOUNT_COLORS.text,
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorDetailText: {
+    fontSize: 12,
+    color: ACCOUNT_COLORS.error,
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: ACCOUNT_COLORS.primary,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+  },
+
+  // Empty State
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: ACCOUNT_COLORS.text,
+    marginTop: 16,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: ACCOUNT_COLORS.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

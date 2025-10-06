@@ -189,8 +189,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         userStored: !!storedUser
       });
 
-      // Set auth token in API client
+      // Set auth token in API client (authService sets it in apiClient)
+      console.log('[AuthContext] Setting token in authService and apiClient...');
       authService.setAuthToken(response.data.tokens.accessToken);
+
+      // Double-check: Also set directly in apiClient to be safe
+      const apiClient = require('@/services/apiClient').default;
+      apiClient.setAuthToken(response.data.tokens.accessToken);
+
+      console.log('[AuthContext] Token set successfully:', {
+        authServiceHasToken: !!authService.getAuthToken(),
+        apiClientHasToken: !!apiClient.getAuthToken(),
+        tokenPreview: response.data.tokens.accessToken.substring(0, 30) + '...'
+      });
 
       console.log('[AuthContext] Stored in AsyncStorage, dispatching AUTH_SUCCESS');
       dispatch({ type: 'AUTH_SUCCESS', payload: { user: response.data.user, token: response.data.tokens.accessToken } });
@@ -448,16 +459,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       if (storedToken && storedUser) {
-        // Set auth token in API client
+        // Set auth token in API client FIRST (critical for transaction page)
+        console.log('🔑 [AUTH CHECK] Setting token in authService...');
         authService.setAuthToken(storedToken);
+        console.log('✅ [AUTH CHECK] Token set in authService:', authService.getAuthToken()?.substring(0, 30) + '...');
+
+        // Also ensure apiClient has the token (import and set directly)
+        console.log('🔑 [AUTH CHECK] Verifying token in apiClient...');
+        const apiClient = require('@/services/apiClient').default;
+        apiClient.setAuthToken(storedToken);
+        console.log('✅ [AUTH CHECK] Token verified in apiClient:', apiClient.getAuthToken()?.substring(0, 30) + '...');
 
         // For better UX, restore auth state immediately and validate in background
         console.log('✅ [AUTH CHECK] Restoring auth state from storage');
-        dispatch({ 
-          type: 'AUTH_SUCCESS', 
-          payload: { user: storedUser, token: storedToken } 
+        dispatch({
+          type: 'AUTH_SUCCESS',
+          payload: { user: storedUser, token: storedToken }
         });
-        
+
         // Reset explicit logout flag since auth is restored
         setHasExplicitlyLoggedOut(false);
 

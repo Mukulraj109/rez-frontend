@@ -106,7 +106,11 @@ class PaymentMethodApiService {
 
   // Delete payment method (soft delete)
   async deletePaymentMethod(id: string): Promise<ApiResponse<{ deletedId: string }>> {
-    return apiClient.delete(`${this.baseUrl}/${id}`);
+    console.log('[PaymentMethodApi] DELETE call - ID:', id);
+    console.log('[PaymentMethodApi] DELETE URL:', `${this.baseUrl}/${id}`);
+    const response = await apiClient.delete(`${this.baseUrl}/${id}`);
+    console.log('[PaymentMethodApi] DELETE response:', response);
+    return response;
   }
 
   // Set default payment method

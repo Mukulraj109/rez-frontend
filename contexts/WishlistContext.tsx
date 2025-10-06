@@ -113,6 +113,14 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
       // Get user's wishlists from backend
       const response = await wishlistApi.getWishlists(1, 50);
 
+      // If unauthorized (401), silently skip - user may not be logged in
+      if (!response || !response.success) {
+        console.log('ℹ️ [WISHLIST] Could not load wishlist (user may not be authenticated)');
+        setWishlistItems([]);
+        setIsLoading(false);
+        return;
+      }
+
       if (!response.data || !response.data.wishlists || response.data.wishlists.length === 0) {
         // If no wishlists exist, create a default one
         const newWishlistResponse = await wishlistApi.createWishlist({
@@ -163,8 +171,15 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
 
       setWishlistItems(wishlistItems);
     } catch (err) {
-      setError('Failed to load wishlist');
-      console.error('Error loading wishlist:', err);
+      // Don't show errors for authentication issues (401) - user may not be logged in
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.includes('401') || errorMessage.includes('Access token')) {
+        console.log('ℹ️ [WISHLIST] Wishlist requires authentication');
+        setWishlistItems([]);
+      } else {
+        setError('Failed to load wishlist');
+        console.error('❌ [WISHLIST] Error loading wishlist:', err);
+      }
     } finally {
       setIsLoading(false);
     }

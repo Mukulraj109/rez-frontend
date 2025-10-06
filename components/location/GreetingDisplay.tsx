@@ -47,18 +47,6 @@ export default function GreetingDisplay({
   const [fadeAnim] = useState(new Animated.Value(1));
   const [slideAnim] = useState(new Animated.Value(0));
 
-  // Debug logging
-  console.log('🌅 GreetingDisplay: Render state:', {
-    greeting,
-    isLoading,
-    error,
-    formattedTime,
-    timeOfDay,
-    showEmoji,
-    showTime,
-    showLocation
-  });
-
   // Update greeting when context changes
   useEffect(() => {
     if (greeting) {
