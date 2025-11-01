@@ -141,7 +141,7 @@ const UGCGrid: React.FC<UGCGridProps> = ({
         </View>
       ))}
     </View>
-  );
+    );
 };
 
 const styles = StyleSheet.create({

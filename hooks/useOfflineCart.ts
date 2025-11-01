@@ -22,7 +22,7 @@ export function useOfflineCart() {
   // Auto-sync when coming back online
   useEffect(() => {
     if (wasOffline && isOnline) {
-      console.log('🔄 [OFFLINE CART] Connection restored, auto-syncing...');
+
       syncCart();
       resetWasOffline();
     }
@@ -60,12 +60,12 @@ export function useOfflineCart() {
    */
   const syncCart = async (): Promise<boolean> => {
     if (isSyncing) {
-      console.log('🔄 [OFFLINE CART] Already syncing');
+
       return false;
     }
 
     if (!isOnline) {
-      console.log('🔄 [OFFLINE CART] Cannot sync while offline');
+
       setSyncError('No internet connection');
       return false;
     }
@@ -74,13 +74,12 @@ export function useOfflineCart() {
     setSyncError(null);
 
     try {
-      console.log('🔄 [OFFLINE CART] Starting sync...');
 
       // Process offline queue
       const result = await offlineQueueService.processQueue();
 
       if (result.success) {
-        console.log('🔄 [OFFLINE CART] Sync successful');
+
         const now = new Date().toISOString();
         setLastSyncTime(now);
         await asyncStorageService.save('cart_last_sync', now);

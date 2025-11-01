@@ -166,7 +166,7 @@ export default function LocationDropdown({
   }
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, style as any]}>
       <View style={styles.dropdown}>
         {/* Search Input */}
         <View style={styles.searchContainer}>
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,
-    maxHeight: Platform.OS === 'web' ? '60vh' : 280, // Responsive height for mobile
+    maxHeight: Platform.OS === 'web' ? 500 : 280, // Responsive height for mobile
     marginHorizontal: 16,
     borderWidth: 0,
     borderColor: 'transparent',

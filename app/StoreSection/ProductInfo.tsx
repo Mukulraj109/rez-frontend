@@ -29,6 +29,7 @@ interface ProductInfoProps {
     merchant?: string;
     category?: string;
     section?: string;
+    productType?: 'product' | 'service';
     [key: string]: any;
   } | null;
   cardType?: string;
@@ -41,45 +42,34 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
   const containerWidthRef = useRef(0);
   const { width: screenW } = useWindowDimensions();
 
-  // Use dynamic data if available, otherwise use defaults
-  const productTitle = dynamicData?.title || "Premium Product";
-  const productDescription = dynamicData?.description || "High-quality product with exceptional features and benefits";
+  // Use dynamic data if available, show loading state if not
+  const productTitle = dynamicData?.title || "Loading...";
+  const productDescription = dynamicData?.description || "Loading product information...";
 
   // Safely handle price with proper type checking
   const rawPrice = dynamicData?.price;
-  const productPrice = typeof rawPrice === 'number' && !isNaN(rawPrice) ? rawPrice : 999;
+  const productPrice = typeof rawPrice === 'number' && !isNaN(rawPrice) ? rawPrice : 0;
 
   // Safely handle rating with proper type checking
   const rawRating = dynamicData?.rating;
-  const rating = typeof rawRating === 'number' && !isNaN(rawRating) ? rawRating : 4.5;
+  const rating = typeof rawRating === 'number' && !isNaN(rawRating) ? rawRating : 0;
 
-  const merchantName = dynamicData?.merchant || "Premium Store";
-  const category = dynamicData?.category || "Featured";
+  const merchantName = dynamicData?.merchant || "Loading...";
+  const category = dynamicData?.category || "Loading...";
 
-  // Get product ID from dynamicData or generate a dummy ID for testing
-  const productId = dynamicData?.id || dynamicData?._id || "sample-product-id";
+  // Get product ID from dynamicData - this should be the real product ID from navigation
+  const productId = dynamicData?.id || dynamicData?._id;
 
-  // Use recommendations hook
+  // Enable recommendations with trackView disabled to prevent infinite loops
   const {
     similar,
     frequentlyBought,
     bundles,
     loading: recommendationsLoading
   } = useRecommendations({
-    productId,
-    autoFetch: true,
-    trackView: true
-  });
-
-  // Debug logging
-  console.log('🛍️ [PRODUCT INFO] Component received:', {
-    dynamicData,
-    productPrice,
-    rating,
-    productTitle,
-    merchantName,
-    productId,
-    recommendationsLoading
+    productId: productId || '',
+    autoFetch: !!productId,
+    trackView: false  // Disable view tracking to prevent infinite API calls
   });
 
   const onContainerLayout = (e:any) => {
@@ -104,8 +94,33 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
     setActive("visit");
     const half = containerWidthRef.current / 2;
     animateTo(0);
-    // TODO: replace with real action (open store-visit flow)
-    console.log("STORE VISIT pressed");
+    
+    // Navigate to MainStorePage with store data
+    if (dynamicData?.store || dynamicData?.merchant) {
+      const storeData = {
+        id: dynamicData.store?._id || dynamicData.store?.id || dynamicData.storeId || '',
+        name: dynamicData.store?.name || dynamicData.merchant || 'Store',
+        title: dynamicData.store?.name || dynamicData.merchant || 'Store',
+        description: dynamicData.store?.description || '',
+        logo: dynamicData.store?.logo || '',
+        banner: dynamicData.store?.banner || '',
+        rating: dynamicData.store?.ratings?.average || 0,
+        ratingCount: dynamicData.store?.ratings?.count || 0,
+        category: dynamicData.category || '',
+        location: dynamicData.store?.location || null,
+        deliveryTime: dynamicData.store?.operationalInfo?.deliveryTime || '30-45 mins',
+        minimumOrder: dynamicData.store?.operationalInfo?.minimumOrder || 0,
+      };
+
+      // Navigate to MainStorePage with store data as query params
+      router.push({
+        pathname: '/MainStorePage',
+        params: {
+          storeId: storeData.id,
+          storeData: JSON.stringify(storeData)
+        }
+      } as any);
+    }
   };
 
   const onBookNowPress = () => {
@@ -113,9 +128,20 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
     setActive("book");
     const half = containerWidthRef.current / 2;
     animateTo(half);
-    // TODO: replace with real action (open booking flow)
-    console.log("BOOK NOW pressed");
+    // TODO: Implement booking flow
   };
+
+  // If no productId, show loading state instead of returning null (to maintain hooks order)
+  if (!productId) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.infoContainer}>
+          <Text style={styles.title}>Loading...</Text>
+          <Text style={styles.description}>Loading product information...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -147,14 +173,49 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
           <View style={styles.locationRow}>
             <Ionicons name="location" size={14} color="#7C3AED" />
             <Text style={styles.locationText}>
-              {dynamicData?.location || "0.7 Km, BTM"}
+              {dynamicData?.store?.location?.address || dynamicData?.store?.location?.city || dynamicData?.location || "Location not available"}
             </Text>
-            <View style={styles.openBadge}>
-              <Text style={styles.openText}>
-                • {dynamicData?.availabilityStatus === 'in_stock' ? 'in stock' : 'open'}
-              </Text>
-            </View>
+            {dynamicData?.store && (
+              <View style={styles.openBadge}>
+                <Text style={styles.openText}>
+                  • {dynamicData.availabilityStatus === 'in_stock' || dynamicData.availabilityStatus === 'low_stock' ? 'in stock' : 'available'}
+                </Text>
+              </View>
+            )}
+            {(dynamicData?.computedDelivery || dynamicData?.store?.operationalInfo?.deliveryTime || dynamicData?.deliveryInfo?.estimatedDays) && (
+              <>
+                <View style={{ marginLeft: 8 }} />
+                <Ionicons name="time-outline" size={14} color="#6B7280" />
+                <Text style={[styles.locationText, { marginLeft: 4 }]}>
+                  {dynamicData?.computedDelivery || dynamicData?.store?.operationalInfo?.deliveryTime || dynamicData?.deliveryInfo?.estimatedDays}
+                </Text>
+              </>
+            )}
           </View>
+
+          {/* Store Visit Card - For Products */}
+          {dynamicData?.productType === 'product' && dynamicData?.store && (
+            <TouchableOpacity
+              style={styles.storeVisitCard}
+              onPress={() => {
+                const storeId = dynamicData?.store?.id || dynamicData?.store?._id || dynamicData?.storeId;
+                if (storeId) {
+
+                  router.push(`/MainStorePage?storeId=${storeId}`);
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.storeVisitContent}>
+                <Ionicons name="storefront" size={18} color="#8B5CF6" />
+                <View style={styles.storeVisitText}>
+                  <Text style={styles.storeVisitLabel}>Visit Store</Text>
+                  <Text style={styles.storeVisitName}>{dynamicData.store.name || dynamicData.merchant || 'Store'}</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#8B5CF6" />
+            </TouchableOpacity>
+          )}
 
           {/* rating/review section */}
           <View style={styles.ratingRow}>
@@ -163,14 +224,27 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
               <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
             </View>
             <Text style={styles.reviewCount}>
-              {dynamicData?.originalRating?.count || 300} reviews
+              {dynamicData?.ratings?.count || dynamicData?.originalRating?.count || 0} reviews
             </Text>
           </View>
 
           {/* Enhanced review CTA card */}
-          <TouchableOpacity 
-            style={styles.reviewCTACard} 
-            onPress={() => router.push('/ReviewPage')}
+          <TouchableOpacity
+            style={styles.reviewCTACard}
+            onPress={() => {
+              // Pass product data to ReviewPage
+              router.push({
+                pathname: '/ReviewPage',
+                params: {
+                  productId: productId,
+                  productTitle: productTitle,
+                  productImage: dynamicData?.image || dynamicData?.images?.[0] || '',
+                  productPrice: productPrice,
+                  cashbackPercentage: dynamicData?.computedCashback?.percentage || dynamicData?.cashback?.percentage || dynamicData?.analytics?.cashback?.percentage || 0,
+                  cashbackAmount: dynamicData?.computedCashback?.amount || dynamicData?.cashback?.maxAmount || dynamicData?.analytics?.cashback?.amount || 0,
+                }
+              } as any);
+            }}
             activeOpacity={0.8}
           >
             <View style={styles.reviewCardContent}>
@@ -181,81 +255,85 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
                 <View style={styles.reviewTextContent}>
                   <Text style={styles.reviewMainText}>Write a review</Text>
                   <Text style={styles.reviewSubText}>
-                    Earn {dynamicData?.cashback?.percentage || 10}% cashback instantly
+                    Earn {dynamicData?.computedCashback?.percentage || dynamicData?.cashback?.percentage || dynamicData?.analytics?.cashback?.percentage || 0}% cashback instantly
                   </Text>
                 </View>
               </View>
               <View style={styles.cashbackBadge}>
                 <Ionicons name="wallet-outline" size={16} color="#10B981" />
                 <Text style={styles.cashbackText}>
-                  ₹{dynamicData?.cashback?.maxAmount || 220}
+                  ₹{dynamicData?.computedCashback?.amount || dynamicData?.cashback?.maxAmount || dynamicData?.analytics?.cashback?.amount || 0}
                 </Text>
               </View>
             </View>
           </TouchableOpacity>
 
-          <View style={styles.peopleBought}>
-            <Text style={styles.peopleNumber}>1200</Text>
-            <View style={styles.avatarGroup}>
-              {["#ff6b6b", "#4ecdc4", "#3b82f6", "#f9ca24"].map((color, i) => (
-                <LinearGradient
-                  key={i}
-                  colors={[color, color]}
-                  style={[styles.avatar, { marginLeft: i === 0 ? 0 : -8 }]}
-                />
-              ))}
+          {((dynamicData?.analytics?.todayPurchases || dynamicData?.todayPurchases) > 0) && (
+            <View style={styles.peopleBought}>
+              <Text style={styles.peopleNumber}>{dynamicData?.analytics?.todayPurchases || dynamicData?.todayPurchases || 0}</Text>
+              <View style={styles.avatarGroup}>
+                {["#ff6b6b", "#4ecdc4", "#3b82f6", "#f9ca24"].map((color, i) => (
+                  <LinearGradient
+                    key={i}
+                    colors={[color, color]}
+                    style={[styles.avatar, { marginLeft: i === 0 ? 0 : -8 }]}
+                  />
+                ))}
+              </View>
+              <Text style={styles.peopleText}>People brought today</Text>
             </View>
-            <Text style={styles.peopleText}>People brought today</Text>
-          </View>
+          )}
 
-          {/* ---------- Segmented Action Buttons (NEW) ---------- */}
-          <View onLayout={onContainerLayout} style={styles.segmentContainer}>
-            {/* sliding indicator */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.slider,
-                {
-                  transform: [{ translateX }],
-                },
-              ]}
-            >
-              <LinearGradient
-                colors={["#8B5CF6", "#6D28D9"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.sliderGradient}
-              />
-            </Animated.View>
+          {/* ---------- Segmented Action Buttons (Only for Services) ---------- */}
+          {dynamicData?.productType === 'service' && (
+            <View onLayout={onContainerLayout} style={styles.segmentContainer}>
+              {/* sliding indicator */}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.slider,
+                  {
+                    transform: [{ translateX }],
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={["#8B5CF6", "#6D28D9"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.sliderGradient}
+                />
+              </Animated.View>
 
-            {/* left button */}
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.segmentButton}
-              onPress={onStoreVisitPress}
-            >
-              <View style={styles.segmentContent}>
-                <Ionicons name="storefront" size={16} color={active === "visit" ? "#fff" : "#7C3AED"} />
-                <Text style={[styles.segmentText, active === "visit" ? styles.segmentTextActive : styles.segmentTextInactive]}>
-                  STORE VISIT
-                </Text>
-              </View>
-            </TouchableOpacity>
+              {/* left button */}
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={styles.segmentButton}
+                onPress={onStoreVisitPress}
+              >
+                <View style={styles.segmentContent}>
+                  <Ionicons name="storefront" size={16} color={active === "visit" ? "#fff" : "#7C3AED"} />
+                  <Text style={[styles.segmentText, active === "visit" ? styles.segmentTextActive : styles.segmentTextInactive]}>
+                    STORE VISIT
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
-            {/* right button */}
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.segmentButton}
-              onPress={onBookNowPress}
-            >
-              <View style={styles.segmentContent}>
-                <Ionicons name="calendar-outline" size={16} color={active === "book" ? "#fff" : "#7C3AED"} />
-                <Text style={[styles.segmentText, active === "book" ? styles.segmentTextActive : styles.segmentTextInactive]}>
-                  Book Now
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
+              {/* right button */}
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={styles.segmentButton}
+                onPress={onBookNowPress}
+              >
+                <View style={styles.segmentContent}>
+                  <Ionicons name="calendar-outline" size={16} color={active === "book" ? "#fff" : "#7C3AED"} />
+                  <Text style={[styles.segmentText, active === "book" ? styles.segmentTextActive : styles.segmentTextInactive]}>
+                    Book Now
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* small spacing */}
         </View>
@@ -267,8 +345,10 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
           similarProducts={similar}
           loading={recommendationsLoading}
           onProductPress={(productId) => {
-            console.log('Navigate to product:', productId);
-            // Add navigation logic here
+            router.push({
+              pathname: '/ProductPage',
+              params: { cardId: productId, cardType: 'product' }
+            } as any);
           }}
         />
 
@@ -277,12 +357,13 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
           bundles={frequentlyBought}
           loading={recommendationsLoading}
           onAddToCart={(products) => {
-            console.log('Add bundle to cart:', products);
-            // Add to cart logic here
+            // TODO: Implement bundle add to cart
           }}
           onProductPress={(productId) => {
-            console.log('Navigate to product:', productId);
-            // Add navigation logic here
+            router.push({
+              pathname: '/ProductPage',
+              params: { cardId: productId, cardType: 'product' }
+            } as any);
           }}
         />
 
@@ -291,17 +372,18 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
           bundles={bundles}
           loading={recommendationsLoading}
           onAddToCart={(products) => {
-            console.log('Add bundle to cart:', products);
-            // Add to cart logic here
+            // TODO: Implement bundle add to cart
           }}
           onProductPress={(productId) => {
-            console.log('Navigate to product:', productId);
-            // Add navigation logic here
+            router.push({
+              pathname: '/ProductPage',
+              params: { cardId: productId, cardType: 'product' }
+            } as any);
           }}
         />
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -346,7 +428,51 @@ const styles = StyleSheet.create({
   },
   ratingText: { marginLeft: 6, fontWeight: "700" },
   reviewCount: { marginLeft: 12, fontWeight: "600", color: "#6B7280", fontSize: 14 },
-  
+
+  // Store Visit Card styles
+  storeVisitCard: {
+    backgroundColor: "#F9F5FF",
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "#E9D5FF",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#8B5CF6",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  storeVisitContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  storeVisitText: {
+    flexDirection: "column",
+  },
+  storeVisitLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#8B5CF6",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  storeVisitName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#111827",
+  },
+
   // Enhanced review CTA card styles
   reviewCTACard: {
     backgroundColor: "#F8FAFC",
@@ -417,26 +543,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F8FAFC",
-    padding: 12,
+    padding: 14,
     borderRadius: 16,
-    marginVertical: 16,
+    marginTop: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
   },
-  peopleNumber: { fontSize: 16, fontWeight: "800" },
-  avatarGroup: { flexDirection: "row", marginLeft: 8 },
+  peopleNumber: { fontSize: 17, fontWeight: "800", color: "#111827" },
+  avatarGroup: { flexDirection: "row", marginLeft: 10 },
   avatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: "#fff" },
-  peopleText: { marginLeft: 8, color: "#555" },
+  peopleText: { marginLeft: 10, color: "#6B7280", fontSize: 14, fontWeight: "500" },
 
   /* Segmented control styles */
   segmentContainer: {
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1,
+    height: 58,
+    borderRadius: 30,
+    borderWidth: 1.5,
     borderColor: "#E6E0FF",
     backgroundColor: "#FFFFFF",
     overflow: "hidden",
     position: "relative",
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 8,
   },
   slider: {
     position: "absolute",

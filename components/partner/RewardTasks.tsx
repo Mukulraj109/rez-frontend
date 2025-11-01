@@ -32,6 +32,8 @@ export default function RewardTasks({
         return 'people';
       case 'social':
         return 'share-social';
+      case 'profile':
+        return 'person';
       default:
         return 'trophy';
     }
@@ -40,15 +42,17 @@ export default function RewardTasks({
   const getTaskColor = (type: RewardTask['type']) => {
     switch (type) {
       case 'review':
-        return ['#F59E0B', '#FBBF24'];
+        return ['#F59E0B', '#FBBF24'] as const;
       case 'purchase':
-        return ['#8B5CF6', '#A78BFA'];
+        return ['#8B5CF6', '#A78BFA'] as const;
       case 'referral':
-        return ['#10B981', '#34D399'];
+        return ['#10B981', '#34D399'] as const;
       case 'social':
-        return ['#EF4444', '#F87171'];
+        return ['#EF4444', '#F87171'] as const;
+      case 'profile':
+        return ['#3B82F6', '#60A5FA'] as const;
       default:
-        return ['#6B7280', '#9CA3AF'];
+        return ['#6B7280', '#9CA3AF'] as const;
     }
   };
 
@@ -92,13 +96,23 @@ export default function RewardTasks({
   const renderProgressBar = (task: RewardTask) => {
     if (!task.progress) return null;
 
-    const progressPercentage = (task.progress.current / task.progress.target) * 100;
+    // For profile task, use the actual completion percentage from backend
+    let progressPercentage;
+    let progressText;
+    
+    if (task.type === 'profile' && (task as any).profileCompletionPercent !== undefined) {
+      progressPercentage = (task as any).profileCompletionPercent;
+      progressText = `Profile: ${Math.round(progressPercentage)}% complete`;
+    } else {
+      progressPercentage = (task.progress.current / task.progress.target) * 100;
+      progressText = `Progress: ${task.progress.current}/${task.progress.target}`;
+    }
 
     return (
       <View style={styles.progressContainer}>
         <View style={styles.progressInfo}>
           <Text style={styles.progressText}>
-            Progress: {task.progress.current}/{task.progress.target}
+            {progressText}
           </Text>
           <Text style={styles.progressPercentage}>
             {Math.round(progressPercentage)}%
@@ -309,7 +323,7 @@ export default function RewardTasks({
         )}
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

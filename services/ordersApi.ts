@@ -85,6 +85,7 @@ export interface Order {
     message: string;
     timestamp: string;
     _id?: string;
+    details?: Record<string, any>;
   }>;
   couponCode?: string;
   specialInstructions?: string;
@@ -129,15 +130,7 @@ export interface Order {
     status: string;
     estimatedDelivery?: string;
   };
-  timeline: Array<{
-    status: string;
-    message: string;
-    timestamp: string;
-    details?: Record<string, any>;
-  }>;
   notes?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface CreateOrderRequest {
@@ -206,25 +199,25 @@ export interface RefundRequest {
 class OrdersService {
   // Create new order from cart
   async createOrder(data: CreateOrderRequest): Promise<ApiResponse<Order>> {
-    console.log('📦 [ORDER API] Creating order:', data);
+
     return apiClient.post('/orders', data);
   }
 
   // Get user orders with filtering
   async getOrders(query: OrdersQuery = {}): Promise<ApiResponse<OrdersResponse>> {
-    console.log('📦 [ORDER API] Getting orders:', query);
+
     return apiClient.get('/orders', query);
   }
 
   // Get single order by ID
   async getOrderById(orderId: string): Promise<ApiResponse<Order>> {
-    console.log('📦 [ORDER API] Getting order by ID:', orderId);
+
     return apiClient.get(`/orders/${orderId}`);
   }
 
   // Get order tracking
   async getOrderTracking(orderId: string): Promise<ApiResponse<any>> {
-    console.log('📦 [ORDER API] Getting order tracking:', orderId);
+
     return apiClient.get(`/orders/${orderId}/tracking`);
   }
 
@@ -233,7 +226,7 @@ class OrdersService {
     orderId: string,
     reason?: string
   ): Promise<ApiResponse<Order>> {
-    console.log('📦 [ORDER API] Cancelling order:', orderId, reason);
+
     return apiClient.patch(`/orders/${orderId}/cancel`, { reason });
   }
 
@@ -243,13 +236,13 @@ class OrdersService {
     rating: number,
     review?: string
   ): Promise<ApiResponse<Order>> {
-    console.log('📦 [ORDER API] Rating order:', orderId, rating);
+
     return apiClient.post(`/orders/${orderId}/rate`, { rating, review });
   }
 
   // Get order statistics
   async getOrderStats(): Promise<ApiResponse<any>> {
-    console.log('📦 [ORDER API] Getting order stats');
+
     return apiClient.get('/orders/stats');
   }
 
@@ -260,7 +253,7 @@ class OrdersService {
     estimatedDeliveryTime?: string,
     trackingInfo?: any
   ): Promise<ApiResponse<Order>> {
-    console.log('📦 [ORDER API] Updating order status:', orderId, status);
+
     return apiClient.patch(`/orders/${orderId}/status`, {
       status,
       estimatedDeliveryTime,

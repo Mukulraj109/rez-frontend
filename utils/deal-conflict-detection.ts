@@ -131,7 +131,7 @@ const checkMutualExclusions = (deals: Deal[]): DealConflict[] => {
   const otherDiscountDeals = deals.filter(deal => 
     deal.category === 'instant-discount' || deal.category === 'seasonal'
   );
-
+  
   if (clearanceDeals.length > 0 && otherDiscountDeals.length > 0) {
     conflicts.push({
       type: 'MUTUAL_EXCLUSION',
@@ -324,7 +324,7 @@ export const suggestAlternativeDeals = (
     !conflictingDeals.some(cd => cd.id === deal.id) &&
     (billAmount === 0 || billAmount >= deal.minimumBill)
   );
-
+  
   // Sort by potential value and return top 3
   return nonConflictingDeals
     .sort((a, b) => b.discountValue - a.discountValue)

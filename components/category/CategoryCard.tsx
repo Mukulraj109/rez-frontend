@@ -1,15 +1,18 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   TouchableOpacity,
   Image,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
 import { CategoryItem } from '@/types/category.types';
+import { useCart } from '@/contexts/CartContext';
+import { showToast } from '@/components/common/ToastManager';
 
 interface CategoryCardProps {
   item: CategoryItem;
@@ -30,14 +33,103 @@ export default function CategoryCard({
   showQuickActions = true,
   cardStyle = 'elevated',
 }: CategoryCardProps) {
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const { state: cartState, actions: cartActions } = useCart();
+  const [, forceUpdate] = useState({});
+
+  // Force re-render when cart changes
+  useEffect(() => {
+    forceUpdate({});
+  }, [cartState.items.length, cartState.items]);
+
+  // Check if product is in cart and get quantity - memoized to ensure proper re-renders
+  const { productId, cartItem, quantityInCart, isInCart } = useMemo(() => {
+    const id = item.id;
+    const cartItem = cartState.items.find(i => i.productId === id);
+    const qty = cartItem?.quantity || 0;
+    const inCart = qty > 0;
+
+    return {
+      productId: id,
+      cartItem,
+      quantityInCart: qty,
+      isInCart: inCart
+    };
+  }, [item.id, cartState.items, cartState.items.length]);
   
   const handlePress = () => {
     onPress(item);
   };
 
-  const handleAddToCart = (e: any) => {
+  const handleAddToCart = async (e: any) => {
     e.stopPropagation();
-    onAddToCart(item);
+    e.preventDefault();
+    
+    if (isAddingToCart) return;
+    
+    setIsAddingToCart(true);
+    try {
+      // Extract product ID - handle both product._id and product.id formats
+      const productId = item.id;
+
+      if (!productId) {
+        console.error('❌ [CategoryCard] No product ID found');
+        return;
+      }
+
+      // Extract price - handle complex price objects
+      let currentPrice = 0;
+      let originalPrice = 0;
+
+      if (item.price) {
+        currentPrice = item.price.current || 0;
+        originalPrice = item.price.original ?? item.price.current ?? 0;
+      }
+
+      // Extract image - handle multiple possible formats
+      let imageUrl = '';
+      if (item.image) {
+        imageUrl = item.image;
+      } else if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+        imageUrl = item.images[0];
+      }
+
+      // Prepare cart item data - match the CartItem type from @/types/cart
+      const cartItemData = {
+        id: productId,
+        name: item.name || 'Product',
+        price: currentPrice,
+        originalPrice: originalPrice,
+        discountedPrice: currentPrice,
+        image: imageUrl,
+        cashback: item.cashback?.percentage ? `${item.cashback.percentage}%` : '0%',
+        category: 'products' as const,
+        quantity: 1,
+        selected: false,
+        
+        availabilityStatus: 'in_stock' as const,
+      };
+      // Add to cart via CartContext
+      await cartActions.addItem(cartItemData);
+
+      // Show success toast
+      showToast({
+        message: `${item.name || 'Item'} added to cart`,
+        type: 'success',
+        duration: 3000
+      });
+    } catch (error) {
+      console.error('❌ [CategoryCard] Failed to add to cart:', error);
+      
+      // Show error toast
+      showToast({
+        message: 'Failed to add item to cart',
+        type: 'error',
+        duration: 3000
+      });
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const handleToggleFavorite = (e: any) => {
@@ -67,11 +159,11 @@ export default function CategoryCard({
     return (
       <View style={styles.priceContainer}>
         <ThemedText style={styles.currentPrice}>
-          {item.price.currency}{item.price.current}
+          {item.price.currency || '₹'}{item.price.current || 0}
         </ThemedText>
         {item.price.original && item.price.original > item.price.current && (
           <ThemedText style={styles.originalPrice}>
-            {item.price.currency}{item.price.original}
+            {item.price.currency || '₹'}{item.price.original}
           </ThemedText>
         )}
       </View>
@@ -86,16 +178,16 @@ export default function CategoryCard({
       <View style={styles.ratingContainer}>
         <Ionicons name="star" size={12} color="#FFD700" />
         <ThemedText style={styles.ratingText}>
-          {item.rating.value}
+          {item.rating.value || 0}
         </ThemedText>
         {item.rating.maxValue && item.rating.maxValue !== 5 && (
           <ThemedText style={styles.ratingMaxText}>
-            /{item.rating.maxValue}
+            /{item.rating.maxValue || 5}
           </ThemedText>
         )}
         {item.rating.count && (
           <ThemedText style={styles.ratingCount}>
-            ({item.rating.count})
+            ({item.rating.count || 0})
           </ThemedText>
         )}
       </View>
@@ -110,7 +202,7 @@ export default function CategoryCard({
       <View style={styles.timingContainer}>
         <Ionicons name="time-outline" size={12} color="#6B7280" />
         <ThemedText style={styles.timingText}>
-          {item.timing.deliveryTime}
+          {item.timing?.deliveryTime || 'N/A'}
         </ThemedText>
       </View>
     );
@@ -123,7 +215,7 @@ export default function CategoryCard({
     return (
       <View style={styles.cashbackContainer}>
         <ThemedText style={styles.cashbackText}>
-          Upto {item.cashback.percentage}% cash back
+          Upto {item.cashback?.percentage || 0}% cash back
         </ThemedText>
       </View>
     );
@@ -137,7 +229,7 @@ export default function CategoryCard({
       <View style={styles.locationContainer}>
         <Ionicons name="location-outline" size={12} color="#6B7280" />
         <ThemedText style={styles.locationText} numberOfLines={1}>
-          {item.location.address}
+          {item.location?.address || 'Location not available'}
         </ThemedText>
       </View>
     );
@@ -184,7 +276,11 @@ export default function CategoryCard({
   const renderCompactLayout = () => (
     <TouchableOpacity style={getContainerStyle()} onPress={handlePress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
-        <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
+        <Image 
+          source={{ uri: item.image || 'https://via.placeholder.com/200x200?text=No+Image' }} 
+          style={styles.image} 
+          resizeMode="cover" 
+        />
         {renderBadges()}
         {showQuickActions && (
           <TouchableOpacity 
@@ -202,7 +298,7 @@ export default function CategoryCard({
       
       <View style={styles.content}>
         <ThemedText style={styles.title} numberOfLines={2}>
-          {item.name}
+          {item.name || 'Unnamed Item'}
         </ThemedText>
         
         <View style={styles.metaContainer}>
@@ -210,33 +306,99 @@ export default function CategoryCard({
           {renderTiming()}
         </View>
         
-        {renderPrice()}
-        {renderCashback()}
-        
-        {showQuickActions && (
-          <TouchableOpacity 
-            style={styles.addToCartButton} 
-            onPress={handleAddToCart}
-          >
-            <ThemedText style={styles.addToCartText}>Add to cart</ThemedText>
-          </TouchableOpacity>
-        )}
+        <View style={styles.bottomSection}>
+          {renderPrice()}
+          {renderCashback()}
+          
+          {showQuickActions && (
+            <>
+              {isInCart ? (
+                // Quantity Controls (Flipkart style)
+                <View style={styles.quantityControls}>
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        if (quantityInCart > 1) {
+                          await cartActions.updateQuantity(cartItem!.id, quantityInCart - 1);
+                        } else {
+                          await cartActions.removeItem(cartItem!.id);
+                        }
+                      } catch (error) {
+                        console.error('❌ [CategoryCard] Failed to update quantity:', error);
+                        showToast({
+                          message: 'Failed to update quantity',
+                          type: 'error',
+                          duration: 3000
+                        });
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="remove" size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+
+                  <View style={styles.quantityDisplay}>
+                    <ThemedText style={styles.quantityText}>{quantityInCart}</ThemedText>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        await cartActions.updateQuantity(cartItem!.id, quantityInCart + 1);
+                      } catch (error) {
+                        console.error('❌ [CategoryCard] Failed to update quantity:', error);
+                        showToast({
+                          message: 'Failed to update quantity',
+                          type: 'error',
+                          duration: 3000
+                        });
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="add" size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                // Add to Cart Button
+                <TouchableOpacity 
+                  style={[styles.addToCartButton, isAddingToCart && styles.addToCartButtonDisabled]} 
+                  onPress={handleAddToCart}
+                  disabled={isAddingToCart}
+                >
+                  {isAddingToCart ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <ThemedText style={styles.addToCartText}>Add to cart</ThemedText>
+                  )}
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
-
   // Render detailed layout (list view)
   const renderDetailedLayout = () => (
     <TouchableOpacity style={[getContainerStyle(), styles.detailedContainer]} onPress={handlePress} activeOpacity={0.7}>
       <View style={styles.detailedImageContainer}>
-        <Image source={{ uri: item.image }} style={styles.detailedImage} resizeMode="cover" />
+        <Image 
+          source={{ uri: item.image || 'https://via.placeholder.com/200x200?text=No+Image' }} 
+          style={styles.detailedImage} 
+          resizeMode="cover" 
+        />
         {renderBadges()}
       </View>
       
       <View style={styles.detailedContent}>
         <View style={styles.detailedHeader}>
           <ThemedText style={styles.detailedTitle} numberOfLines={1}>
-            {item.name}
+            {item.name || 'Unnamed Item'}
           </ThemedText>
           {showQuickActions && (
             <TouchableOpacity onPress={handleToggleFavorite}>
@@ -245,11 +407,11 @@ export default function CategoryCard({
           )}
         </View>
         
-        {item.metadata.description && (
-          <ThemedText style={styles.description} numberOfLines={2}>
-            {item.metadata.description}
-          </ThemedText>
-        )}
+          {item.metadata?.description && (
+            <ThemedText style={styles.description} numberOfLines={2}>
+              {item.metadata.description || 'No description available'}
+            </ThemedText>
+          )}
         
         <View style={styles.detailedMeta}>
           {renderRating()}
@@ -264,23 +426,26 @@ export default function CategoryCard({
       </View>
     </TouchableOpacity>
   );
-
   // Render featured layout (hero style)
   const renderFeaturedLayout = () => (
     <TouchableOpacity style={[getContainerStyle(), styles.featuredContainer]} onPress={handlePress} activeOpacity={0.7}>
       <View style={styles.featuredImageContainer}>
-        <Image source={{ uri: item.image }} style={styles.featuredImage} resizeMode="cover" />
+        <Image 
+          source={{ uri: item.image || 'https://via.placeholder.com/200x200?text=No+Image' }} 
+          style={styles.featuredImage} 
+          resizeMode="cover" 
+        />
         <View style={styles.featuredOverlay} />
         {renderBadges()}
         
         <View style={styles.featuredContent}>
           <ThemedText style={styles.featuredTitle} numberOfLines={2}>
-            {item.name}
+            {item.name || 'Unnamed Item'}
           </ThemedText>
           
-          {item.metadata.description && (
+          {item.metadata?.description && (
             <ThemedText style={styles.featuredDescription} numberOfLines={3}>
-              {item.metadata.description}
+              {item.metadata.description || 'No description available'}
             </ThemedText>
           )}
           
@@ -305,7 +470,6 @@ export default function CategoryCard({
       {renderCashback()}
     </TouchableOpacity>
   );
-
   // Render based on layout type
   switch (layoutType) {
     case 'detailed':
@@ -321,26 +485,36 @@ export default function CategoryCard({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
+    height: 380, // Further increased height to ensure Add to cart button is fully visible
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.08)',
   },
   elevatedCard: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   outlinedCard: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 1.5,
+    borderColor: 'rgba(139, 92, 246, 0.2)',
   },
   flatCard: {
-    // No additional styles for flat cards
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   imageContainer: {
     position: 'relative',
-    height: 140,
+    height: 160,
+    minHeight: 160,
+    maxHeight: 160,
+    backgroundColor: '#F8FAFC',
   },
   image: {
     width: '100%',
@@ -374,29 +548,45 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   content: {
-    padding: 12,
+    padding: 16,
+    flex: 1,
+    justifyContent: 'space-between',
+    minHeight: 200, // Increased minimum height for content to accommodate button
+    maxHeight: 200, // Fixed max height for consistency
   },
   title: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#111827',
-    marginBottom: 6,
+    marginBottom: 8,
+    lineHeight: 20,
+    height: 40, // Fixed height for 2 lines
+    minHeight: 40,
+    maxHeight: 40,
   },
   metaContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: 12,
+    marginBottom: 12,
+    height: 20, // Fixed height for consistent alignment
+    minHeight: 20,
+    maxHeight: 20,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -404,8 +594,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   ratingText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#374151',
   },
   ratingMaxText: {
@@ -428,12 +618,15 @@ const styles = StyleSheet.create({
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     marginBottom: 6,
+    height: 24, // Fixed height for consistent alignment
+    minHeight: 24,
+    maxHeight: 24,
   },
   currentPrice: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#111827',
   },
   originalPrice: {
@@ -443,22 +636,77 @@ const styles = StyleSheet.create({
   },
   cashbackContainer: {
     marginBottom: 8,
+    height: 20, // Fixed height for consistent alignment
+    minHeight: 20,
+    maxHeight: 20,
   },
   cashbackText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#059669',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   addToCartButton: {
     backgroundColor: '#8B5CF6',
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
+    height: 44, // Fixed height for consistent alignment
+    minHeight: 44,
+    maxHeight: 44,
+    justifyContent: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   addToCartText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
+  },
+  addToCartButtonDisabled: {
+    backgroundColor: '#A78BFA',
+    opacity: 0.7,
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#8B5CF6',
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    gap: 12,
+    height: 44, // Fixed height for consistent alignment
+    minHeight: 44,
+    maxHeight: 44,
+  },
+  quantityButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityDisplay: {
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantityText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  bottomSection: {
+    marginTop: 'auto', // Push to bottom
+    paddingTop: 8,
+    height: 100, // Fixed height for consistent alignment
+    minHeight: 100,
+    maxHeight: 100,
+    justifyContent: 'space-between',
   },
   
   // Detailed layout styles

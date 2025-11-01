@@ -1,7 +1,7 @@
 // Achievements Screen
 // Displays user badges and achievements with progress tracking
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -12,6 +12,7 @@ import {
   RefreshControl,
   Modal,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,9 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useAchievements } from '@/hooks/useAchievements';
 import { Achievement } from '@/services/achievementApi';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
+import { HeaderBackButton } from '@/components/navigation/SafeBackButton';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 60) / 2;
@@ -27,24 +31,62 @@ type FilterType = 'all' | 'unlocked' | 'locked';
 
 export default function AchievementsPage() {
   const router = useRouter();
+  const { goBack } = useSafeNavigation();
+  const { state: authState, actions: authActions } = useAuth();
   const {
     achievements,
     progress,
     isLoading,
     refetch,
     recalculateAchievements,
+    error: achievementsError,
   } = useAchievements(true);
 
   const [filter, setFilter] = useState<FilterType>('all');
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const [isRecalculating, setIsRecalculating] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Handle authentication errors
+  useEffect(() => {
+    if (achievementsError && achievementsError.includes('User not found')) {
+      setAuthError('Authentication issue detected. Please log out and log back in.');
+      console.error('🔐 [ACHIEVEMENTS] Auth error:', achievementsError);
+    } else {
+      setAuthError(null);
+    }
+  }, [achievementsError]);
 
   const handleRecalculate = async () => {
     setIsRecalculating(true);
     const success = await recalculateAchievements();
     setIsRecalculating(false);
     if (success) {
-      console.log('Achievements recalculated successfully');
+
+    }
+  };
+
+  const handleAuthRefresh = async () => {
+    try {
+
+      await authActions.checkAuthStatus();
+      setAuthError(null);
+      // Retry achievements fetch after auth refresh
+      await refetch();
+    } catch (error) {
+      console.error('❌ [ACHIEVEMENTS] Auth refresh failed:', error);
+      Alert.alert(
+        'Authentication Error',
+        'Please log out and log back in to continue.',
+        [
+          {
+            text: 'Logout',
+            onPress: () => authActions.logout(),
+            style: 'destructive',
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
     }
   };
 
@@ -123,12 +165,11 @@ export default function AchievementsPage() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
+          <HeaderBackButton
+            fallbackRoute="/profile"
+            light={true}
+            iconSize={24}
+          />
 
           <View style={styles.headerTextContainer}>
             <ThemedText style={styles.headerTitle}>Achievements</ThemedText>
@@ -206,6 +247,25 @@ export default function AchievementsPage() {
         </TouchableOpacity>
       </View>
 
+      {/* Authentication Error Banner */}
+      {authError && (
+        <View style={styles.errorBanner}>
+          <View style={styles.errorContent}>
+            <Ionicons name="warning" size={20} color="#EF4444" />
+            <View style={styles.errorTextContainer}>
+              <ThemedText style={styles.errorTitle}>Authentication Issue</ThemedText>
+              <ThemedText style={styles.errorMessage}>{authError}</ThemedText>
+            </View>
+            <TouchableOpacity
+              style={styles.errorButton}
+              onPress={handleAuthRefresh}
+            >
+              <ThemedText style={styles.errorButtonText}>Fix</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Achievements Grid */}
       <ScrollView
         style={styles.content}
@@ -214,7 +274,21 @@ export default function AchievementsPage() {
           <RefreshControl refreshing={isLoading} onRefresh={refetch} />
         }
       >
-        {isLoading && achievements.length === 0 ? (
+        {authError ? (
+          <View style={styles.errorContainer}>
+            <Ionicons name="lock-closed" size={64} color="#EF4444" />
+            <ThemedText style={styles.errorTitle}>Authentication Required</ThemedText>
+            <ThemedText style={styles.errorMessage}>
+              There's an issue with your authentication. Please log out and log back in to continue.
+            </ThemedText>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => authActions.logout()}
+            >
+              <ThemedText style={styles.primaryButtonText}>Logout & Login Again</ThemedText>
+            </TouchableOpacity>
+          </View>
+        ) : isLoading && achievements.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ThemedText style={styles.loadingText}>Loading achievements...</ThemedText>
           </View>
@@ -311,7 +385,7 @@ export default function AchievementsPage() {
         </TouchableOpacity>
       </Modal>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -512,6 +586,65 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#9CA3AF',
     marginTop: 16,
+    textAlign: 'center',
+  },
+
+  // Error Styles
+  errorBanner: {
+    backgroundColor: '#FEF2F2',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FECACA',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  errorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  errorTextContainer: {
+    flex: 1,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#DC2626',
+    marginBottom: 2,
+  },
+  errorMessage: {
+    fontSize: 12,
+    color: '#B91C1C',
+    lineHeight: 16,
+  },
+  errorButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  errorButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  primaryButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 20,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
     textAlign: 'center',
   },
 

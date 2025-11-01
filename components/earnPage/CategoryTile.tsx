@@ -89,7 +89,7 @@ export default function CategoryTile({
         )}
       </LinearGradient>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

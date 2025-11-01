@@ -23,12 +23,13 @@ import * as Clipboard from 'expo-clipboard';
 
 const QRCodePage = () => {
   const router = useRouter();
-  const { user } = useAuth();
+  const { state: authState } = useAuth();
+  const user = authState.user;
   const [activeTab, setActiveTab] = useState<'profile' | 'wallet'>('profile');
 
   // Generate profile link
   const profileLink = `https://rezapp.com/user/${user?.id || 'user123'}`;
-  const walletId = user?.wallet?.walletId || `REZW${user?.phoneNumber?.slice(-6) || '123456'}`;
+  const walletId = `REZW${user?.phoneNumber?.slice(-6) || '123456'}`;
 
   const handleCopyLink = async () => {
     await Clipboard.setStringAsync(activeTab === 'profile' ? profileLink : walletId);
@@ -63,7 +64,16 @@ const QRCodePage = () => {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.push('/profile');
+              }
+            }}
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>QR Code</ThemedText>
@@ -152,11 +162,15 @@ const QRCodePage = () => {
                 <View style={styles.infoRow}>
                   <View style={styles.avatarSmall}>
                     <ThemedText style={styles.avatarText}>
-                      {user?.name?.charAt(0) || 'U'}
+                      {user?.profile?.firstName?.charAt(0) || user?.email?.charAt(0) || 'U'}
                     </ThemedText>
                   </View>
                   <View style={styles.infoText}>
-                    <ThemedText style={styles.infoName}>{user?.name || 'User Name'}</ThemedText>
+                    <ThemedText style={styles.infoName}>
+                      {user?.profile?.firstName && user?.profile?.lastName 
+                        ? `${user.profile.firstName} ${user.profile.lastName}`
+                        : user?.profile?.firstName || user?.email || 'User Name'}
+                    </ThemedText>
                     <ThemedText style={styles.infoEmail}>{user?.email || 'user@email.com'}</ThemedText>
                   </View>
                 </View>

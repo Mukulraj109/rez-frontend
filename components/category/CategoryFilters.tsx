@@ -324,7 +324,7 @@ export default function CategoryFilters({
         {filters.map(renderFilter)}
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

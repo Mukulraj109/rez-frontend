@@ -147,7 +147,7 @@ export default function UGCDetailPage() {
   };
 
   const handleUserPress = () => {
-    router.push('/profile/');
+    router.push('/profile' as any);
   };
 
   const handleProductPress = () => {
@@ -410,7 +410,7 @@ export default function UGCDetailPage() {
         </View>
       </ScrollView>
     </SafeAreaView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

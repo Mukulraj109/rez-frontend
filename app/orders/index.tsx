@@ -35,8 +35,6 @@ export default function OrdersListScreen() {
         setLoading(true);
       }
 
-      console.log('📦 [Orders] Loading orders, page:', pageNum);
-
       const response = await ordersService.getOrders({
         page: pageNum,
         limit: 20,
@@ -123,12 +121,12 @@ export default function OrdersListScreen() {
         {item.items.slice(0, 3).map((orderItem, index) => (
           <View key={index} style={styles.itemRow}>
             <Image
-              source={{ uri: orderItem.product.images[0]?.url }}
+              source={{ uri: orderItem.product?.images?.[0]?.url || 'https://via.placeholder.com/150' }}
               style={styles.itemImage}
             />
             <View style={styles.itemInfo}>
               <Text style={styles.itemName} numberOfLines={1}>
-                {orderItem.product.name}
+                {orderItem.product?.name || 'Product'}
               </Text>
               <Text style={styles.itemQuantity}>Qty: {orderItem.quantity}</Text>
             </View>
@@ -145,7 +143,7 @@ export default function OrdersListScreen() {
       <View style={styles.orderFooter}>
         <View style={styles.totalSection}>
           <Text style={styles.totalLabel}>Total Amount</Text>
-          <Text style={styles.totalAmount}>₹{item.summary.total}</Text>
+          <Text style={styles.totalAmount}>₹{item.totals?.total || item.summary?.total || 0}</Text>
         </View>
         <View style={styles.paymentStatus}>
           <Text
@@ -153,15 +151,15 @@ export default function OrdersListScreen() {
               styles.paymentStatusText,
               {
                 color:
-                  item.paymentStatus === 'paid'
+                  item.payment.status === 'paid'
                     ? '#10b981'
-                    : item.paymentStatus === 'failed'
+                    : item.payment.status === 'failed'
                     ? '#ef4444'
                     : '#f59e0b',
               },
             ]}
           >
-            {item.paymentStatus.toUpperCase()}
+            {item.payment.status.toUpperCase()}
           </Text>
         </View>
       </View>

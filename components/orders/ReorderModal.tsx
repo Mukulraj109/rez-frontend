@@ -99,7 +99,7 @@ export default function ReorderModal({
 
   const handleReorder = async () => {
     if (!validation) {
-      console.log('❌ [ReorderModal] No validation data');
+
       return;
     }
 
@@ -111,44 +111,33 @@ export default function ReorderModal({
         return;
       }
 
-      console.log('🔄 [ReorderModal] Starting reorder...', {
-        orderId,
-        selectedItemsCount: selectedItems.size,
-        selectedItemIds: Array.from(selectedItems)
-      });
-
       // Check if all available items are selected
       const availableItems = validation.items.filter(i => i.isAvailable);
       const allSelected = selectedItems.size === availableItems.length;
 
-      console.log('🔄 [ReorderModal] Reorder type:', allSelected ? 'FULL' : 'SELECTED');
-
       if (allSelected) {
         // Reorder full order
-        console.log('🔄 [ReorderModal] Calling reorderFull...');
+
         success = await reorderFull(orderId);
-        console.log('🔄 [ReorderModal] reorderFull result:', success);
+
       } else {
         // Reorder selected items
-        console.log('🔄 [ReorderModal] Calling reorderSelected...');
-        success = await reorderSelected(orderId, Array.from(selectedItems));
-        console.log('🔄 [ReorderModal] reorderSelected result:', success);
-      }
 
-      console.log('🔄 [ReorderModal] Final success status:', success);
+        success = await reorderSelected(orderId, Array.from(selectedItems));
+
+      }
 
       // Close modal regardless
       onClose();
 
       // Refresh cart to see if items were actually added
-      console.log('🔄 [ReorderModal] Refreshing cart to check status...');
+
       await refreshCart();
 
       // Wait a bit for modal to close
       await new Promise(resolve => setTimeout(resolve, 300));
 
       if (success) {
-        console.log('✅ [ReorderModal] Reorder successful, showing toast');
 
         // Show success toast with actions
         showToast({
@@ -159,7 +148,7 @@ export default function ReorderModal({
             {
               text: 'Continue Shopping',
               onPress: () => {
-                console.log('📱 User chose: Continue Shopping');
+
                 onSuccess?.();
               },
               style: 'cancel'
@@ -167,7 +156,7 @@ export default function ReorderModal({
             {
               text: 'View Cart',
               onPress: () => {
-                console.log('📱 User chose: View Cart');
+
                 router.push('/CartPage');
               },
               style: 'default'
@@ -175,10 +164,9 @@ export default function ReorderModal({
           ]
         });
       } else {
-        console.log('❌ [ReorderModal] Reorder failed, success = false');
+
         // Check the error state for more details
         const errorMessage = error || 'Failed to add items to cart. Please try again.';
-        console.log('❌ [ReorderModal] Error message:', errorMessage);
 
         showToast({
           message: errorMessage,

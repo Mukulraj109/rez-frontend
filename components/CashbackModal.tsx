@@ -193,7 +193,7 @@ export default function CashbackModal({
         </Animated.View>
       </Animated.View>
     </Modal>
-  );
+);
 }
 
 const styles = StyleSheet.create({

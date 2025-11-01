@@ -55,7 +55,7 @@ export default function CartHeader({ onBack, title = 'Cart' }: CartHeaderProps) 
         <View style={styles.spacer} />
       </View>
     </LinearGradient>
-  );
+);
 }
 
 const styles = StyleSheet.create({

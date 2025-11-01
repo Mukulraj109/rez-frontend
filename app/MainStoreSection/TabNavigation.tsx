@@ -178,7 +178,7 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
         <Animated.View style={[styles.underline, underlineAnimatedStyle]} />
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

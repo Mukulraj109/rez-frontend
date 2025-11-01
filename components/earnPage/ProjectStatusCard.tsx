@@ -39,7 +39,7 @@ export default function ProjectStatusCard({
         </ThemedText>
       </LinearGradient>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

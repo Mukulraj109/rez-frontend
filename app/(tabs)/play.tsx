@@ -54,7 +54,7 @@ export default function PlayScreen() {
   }, [actions]);
 
   const handleViewAllPress = React.useCallback(() => {
-    console.log('Navigate to all videos for category:', state.activeCategory);
+
   }, [state.activeCategory]);
 
   React.useEffect(() => {

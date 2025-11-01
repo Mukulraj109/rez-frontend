@@ -92,52 +92,75 @@ export function useHomepage(): UseHomepageDataResult {
       // Get base homepage data (for sections that don't need API integration)
       const data = await fetchHomepageData();
       
-      console.log('🏠 Initial homepage sections:', data.sections.length, data.sections.map(s => s.id));
-      
       // Update specific sections with backend data
       const updatedSections = await Promise.all(
         data.sections.map(async (section) => {
-          console.log(`🔍 Processing section: ${section.id} (${section.items.length} items)`);
-          
-          if (section.id === 'just_for_you') {
-            console.log('🔄 Loading "Just for You" section with backend data...');
+          if (section.id === 'events') {
+
+            try {
+              const backendSection = await homepageDataService.getEventsSection();
+
+              return backendSection;
+            } catch (error) {
+              console.warn('⚠️ Failed to load "Events" from backend, using fallback:', error);
+              return section; // fallback to original section
+            }
+          } else if (section.id === 'just_for_you') {
+
             try {
               const backendSection = await homepageDataService.getJustForYouSection();
-              console.log('✅ Backend "Just for You":', backendSection.items.length, 'items');
+
               return backendSection;
             } catch (error) {
               console.warn('⚠️ Failed to load "Just for You" from backend, using fallback:', error);
               return section; // fallback to original section
             }
           } else if (section.id === 'new_arrivals') {
-            console.log('🔄 Loading "New Arrivals" section with backend data...');
+
             try {
               const backendSection = await homepageDataService.getNewArrivalsSection();
-              console.log('✅ Backend "New Arrivals":', backendSection.items.length, 'items');
+
               return backendSection;
             } catch (error) {
               console.warn('⚠️ Failed to load "New Arrivals" from backend, using fallback:', error);
               return section; // fallback to original section
             }
           } else if (section.id === 'trending_stores') {
-            console.log('🔄 Loading "Trending Stores" section with backend data...');
+
             try {
               const backendSection = await homepageDataService.getTrendingStoresSection();
-              console.log('✅ Backend "Trending Stores":', backendSection.items.length, 'items');
+
               return backendSection;
             } catch (error) {
               console.warn('⚠️ Failed to load "Trending Stores" from backend, using fallback:', error);
               return section; // fallback to original section
             }
+          } else if (section.id === 'offers' || section.id === 'special_offers') {
+
+            try {
+              const backendSection = await homepageDataService.getOffersSection();
+
+              return backendSection;
+            } catch (error) {
+              console.warn('⚠️ Failed to load "Offers" from backend, using fallback:', error);
+              return section; // fallback to original section
+            }
+          } else if (section.id === 'flash_sales') {
+
+            try {
+              const backendSection = await homepageDataService.getFlashSalesSection();
+
+              return backendSection;
+            } catch (error) {
+              console.warn('⚠️ Failed to load "Flash Sales" from backend, using fallback:', error);
+              return section; // fallback to original section
+            }
           } else {
             // Keep other sections unchanged
-            console.log(`✅ Keeping section "${section.id}" unchanged (${section.items.length} items)`);
             return section;
           }
         })
       );
-      
-      console.log('🎯 Final updated sections:', updatedSections.length, updatedSections.map(s => `${s.id}:${s.items.length}`));
       
       dispatch({ type: 'SET_SECTIONS', payload: updatedSections });
       dispatch({ type: 'SET_LAST_REFRESH', payload: new Date().toISOString() });
@@ -156,13 +179,13 @@ export function useHomepage(): UseHomepageDataResult {
       
       // Use new backend service for specific sections
       if (sectionId === 'just_for_you') {
-        console.log('🔄 Refreshing "Just for You" section with backend data...');
+
         sectionData = await homepageDataService.getJustForYouSection();
       } else if (sectionId === 'new_arrivals') {
-        console.log('🔄 Refreshing "New Arrivals" section with backend data...');
+
         sectionData = await homepageDataService.getNewArrivalsSection();
       } else if (sectionId === 'trending_stores') {
-        console.log('🔄 Refreshing "Trending Stores" section with backend data...');
+
         sectionData = await homepageDataService.getTrendingStoresSection();
       } else {
         // Use fallback for other sections
@@ -203,29 +226,29 @@ export function useHomepage(): UseHomepageDataResult {
   // Analytics tracking (placeholder for backend integration)
   const trackSectionView = useCallback((sectionId: string) => {
     // TODO: Send analytics event to backend
-    console.log('Section viewed:', sectionId);
+
   }, []);
 
   const trackItemClick = useCallback((sectionId: string, itemId: string) => {
     // TODO: Send analytics event to backend
-    console.log('Item clicked:', { sectionId, itemId });
+
   }, []);
 
   // Auto-refresh on mount
   useEffect(() => {
-    console.log('🏠 [HOMEPAGE HOOK] useEffect triggered - sections length:', state.sections.length, 'loading:', state.loading);
+
     // Since we now have fallback data, sections.length will not be 0, so let's trigger refresh anyway
-    console.log('🏠 [HOMEPAGE HOOK] Calling refreshAllSections to get real backend data');
+
     refreshAllSections();
   }, [refreshAllSections]);
 
   // Debug effect to test service directly
   useEffect(() => {
     const testService = async () => {
-      console.log('🧪 [HOMEPAGE HOOK] Testing homepage service...');
+
       try {
         const justForYouSection = await homepageDataService.getJustForYouSection();
-        console.log('🧪 [HOMEPAGE HOOK] Direct service test - Just for you:', justForYouSection.items.length, 'items');
+
       } catch (error) {
         console.error('🧪 [HOMEPAGE HOOK] Direct service test failed:', error);
       }
@@ -304,18 +327,14 @@ export function useHomepageNavigation() {
   const { actions: cartActions } = useCart();
 
   const handleItemPress = useCallback((sectionId: string, item: any) => {
-    console.log('🔥 [HANDLE ITEM PRESS] Called with:', { sectionId, itemId: item.id, itemType: item.type });
-    
+
     // Track click
     actions.trackItemClick(sectionId, item.id);
     
     try {
       // For "Just for you" and "New Arrivals" sections, navigate to dynamic StorePage
       if (sectionId === 'just_for_you' || sectionId === 'new_arrivals') {
-        console.log('✅ [DYNAMIC NAVIGATION] Condition matched! Processing dynamic navigation...');
-        console.log(`Navigate to dynamic StorePage from ${sectionId}:`, item.id);
-        console.log('Original item data:', item);
-        
+
         // Pass complete item data to StorePage for dynamic content
         try {
           // Extract price from complex price object
@@ -353,25 +372,19 @@ export function useHomepageNavigation() {
             rating: extractedRating,
             category: item.category,
             merchant: item.merchant || item.store || item.brand,
+            storeId: item.store?._id || item.store?.id || item.storeId || item.store,
+            storeName: item.store?.name || item.storeName || 'Store',
             type: item.type,
             section: sectionId,
             // Include original price structure for reference
             originalPrice: item.price,
-            originalRating: item.rating
-            // Don't spread the item object since it overwrites our extracted values
+            originalRating: item.rating,
+            // Include full item data for reference
+            fullData: item
           };
 
-          console.log('Extracted cardData for StorePage:', {
-            extractedPrice,
-            extractedRating,
-            finalPrice: cardData.price,
-            finalRating: cardData.rating,
-            title: cardData.title,
-            merchant: cardData.merchant
-          });
-
           router.push({
-            pathname: '/StorePage',
+            pathname: '/ProductPage',
             params: {
               cardId: item.id,
               cardType: sectionId,
@@ -381,16 +394,14 @@ export function useHomepageNavigation() {
         } catch (error) {
           console.error('Failed to serialize card data:', error);
           // Fallback to basic navigation
-          router.push('/StorePage');
+          router.push('/ProductPage');
         }
         return;
       }
 
       // Store sections navigation to dynamic MainStorePage  
       if (sectionId === 'trending_stores' || sectionId === 'new_stores' || sectionId === 'top_stores') {
-        console.log(`✅ [STORE NAVIGATION] Navigate to dynamic MainStorePage from ${sectionId}:`, item.id);
-        console.log('Store data:', item);
-        
+
         // Pass complete store data to MainStorePage for dynamic content
         try {
           // Extract store data for MainStorePage
@@ -422,13 +433,6 @@ export function useHomepageNavigation() {
             originalData: item
           };
 
-          console.log('Extracted store data for MainStorePage:', {
-            name: storeData.name,
-            category: storeData.category,
-            rating: storeData.rating,
-            section: sectionId
-          });
-
           router.push({
             pathname: '/MainStorePage',
             params: {
@@ -447,9 +451,7 @@ export function useHomepageNavigation() {
 
       // Events section navigation to dynamic EventPage
       if (sectionId === 'events' || item.type === 'event') {
-        console.log('✅ [EVENT NAVIGATION] Navigate to dynamic EventPage:', item.id);
-        console.log('Event data:', item);
-        
+
         // Pass complete event data to EventPage for dynamic content
         try {
           const eventData = {
@@ -473,13 +475,6 @@ export function useHomepageNavigation() {
             originalData: item
           };
 
-          console.log('Extracted event data for EventPage:', {
-            title: eventData.title,
-            isOnline: eventData.isOnline,
-            price: eventData.price,
-            section: sectionId
-          });
-
           router.push({
             pathname: '/EventPage',
             params: {
@@ -500,26 +495,25 @@ export function useHomepageNavigation() {
       switch (item.type) {
         case 'event':
           // Fallback for events not from events section
-          console.log('Navigate to event (fallback):', item.id);
           router.push('/EventPage');
           break;
         case 'store':
           // Navigate to store page (fallback)
-          console.log('Navigate to store:', item.id);
-          router.push('/StorePage');
+
+          router.push('/StorePage' as any);
           break;
         case 'product':
           // Navigate to product detail
-          console.log('Navigate to product:', item.id);
+
           router.push(`/product/${item.id}`);
           break;
         case 'branded_store':
           // Navigate to brand store (fallback)
-          console.log('Navigate to brand store:', item.id);
+
           router.push('/MainStorePage');
           break;
         default:
-          console.log('❓ [DEFAULT NAVIGATION] Navigate to item:', item.id, 'from section:', sectionId);
+
           // Fallback navigation to dynamic StorePage with item data
           router.push({
             pathname: '/StorePage',
@@ -528,7 +522,7 @@ export function useHomepageNavigation() {
               cardType: sectionId,
               cardData: JSON.stringify(item)
             }
-          });
+          } as any);
       }
     } catch (error) {
       console.error('Navigation error:', error);
@@ -538,14 +532,6 @@ export function useHomepageNavigation() {
 
   const handleAddToCart = useCallback(async (item: any) => {
     try {
-      console.log('🛒 [Add to Cart] Adding item - Full object:', JSON.stringify(item, null, 2));
-      console.log('🛒 [Add to Cart] Image fields:', {
-        image: item.image,
-        imageUrl: item.imageUrl,
-        images: item.images,
-        allKeys: Object.keys(item)
-      });
-
       // Extract product ID - handle both product._id and product.id formats
       const productId = item._id || item.id;
 
@@ -581,31 +567,25 @@ export function useHomepageNavigation() {
         imageUrl = item.images;
       }
 
-      console.log('🛒 [Add to Cart] Using image URL:', imageUrl);
-      console.log('🛒 [Add to Cart] Prices:', { currentPrice, originalPrice });
-
       // Check if item already exists in cart
       const existingItem = cartActions.isItemInCart(productId);
 
       if (existingItem) {
-        console.log('🛒 [Add to Cart] Item already in cart, will increase quantity automatically');
+
       }
 
       // Add to cart via CartContext (CartContext will handle increasing quantity if it exists)
       await cartActions.addItem({
         id: productId,
-        productId: productId,
         name: item.name || item.title || 'Product',
         image: imageUrl,
+        price: currentPrice,
         originalPrice: originalPrice,
         discountedPrice: currentPrice,
-        discount: item.discount || 0,
         quantity: 1,
-        store: item.store,
-        variant: item.variant,
+        cashback: item.cashback || 0,
+        category: item.category || 'general',
       });
-
-      console.log('✅ [Add to Cart] Item added successfully, waiting for cart to refresh...');
 
       // Wait a bit for the cart state to update
       await new Promise(resolve => setTimeout(resolve, 100));

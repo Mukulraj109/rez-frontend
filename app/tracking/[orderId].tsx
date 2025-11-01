@@ -1,7 +1,7 @@
 // Detailed Order Tracking Page
 // Shows comprehensive tracking information for a specific order
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -13,12 +13,17 @@ import {
   RefreshControl,
   Alert,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { PROFILE_COLORS } from '@/types/profile.types';
+import { useOrderTracking } from '@/hooks/useOrderTracking';
+import { Order } from '@/services/ordersApi';
+import ordersService from '@/services/ordersApi';
+import ContactStoreModal from '@/components/store/ContactStoreModal';
 
 interface DeliveryPartner {
   name: string;
@@ -72,176 +77,109 @@ interface DetailedOrder {
 export default function DetailedOrderTrackingPage() {
   const router = useRouter();
   const { orderId } = useLocalSearchParams();
-  const [order, setOrder] = useState<DetailedOrder | null>(null);
+
+  // Use real-time order tracking hook
+  const {
+    order: realOrder,
+    loading: isLoading,
+    error,
+    statusUpdate,
+    locationUpdate,
+    deliveryPartner: liveDeliveryPartner,
+    timeline,
+    isLive,
+    refresh,
+    isConnected,
+  } = useOrderTracking(orderId as string, undefined, true);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
 
-  useEffect(() => {
-    loadOrderDetails(orderId as string);
-    
-    // Set up real-time updates (simulate with interval)
-    const interval = setInterval(() => {
-      // In real app, this would listen to WebSocket or polling
-      updateOrderStatus();
-    }, 30000); // Update every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [orderId]);
-
-  const loadOrderDetails = async (orderNumber: string) => {
-    try {
-      setIsLoading(true);
-      
-      // Mock detailed order data
-      const mockOrder: DetailedOrder = {
-        id: orderNumber,
-        orderNumber: 'WAS123456',
-        merchantName: 'TechHub Electronics',
-        merchantPhone: '+1 (555) 123-4567',
-        merchantAddress: '123 Tech Street, Digital City',
-        status: 'ON_THE_WAY',
-        statusColor: PROFILE_COLORS.warning,
-        estimatedDelivery: '15-20 minutes',
-        items: [
-          {
-            id: 'i1',
-            name: 'Premium Wireless Headphones',
-            quantity: 1,
-            price: 2999,
-            image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300',
-          },
-          {
-            id: 'i2',
-            name: 'USB-C Cable',
-            quantity: 2,
-            price: 299,
-            image: 'https://images.unsplash.com/photo-1558618047-0c90205020c5?w=300',
-          },
-        ],
-        subtotal: 3597,
-        deliveryFee: 99,
-        taxes: 304,
-        total: 4000,
-        deliveryAddress: '123 Main Street, Apartment 4B, Digital City, 12345',
-        deliveryInstructions: 'Ring the doorbell twice. Leave at door if no answer.',
-        deliveryPartner: {
-          name: 'Rajesh Kumar',
-          phone: '+1 (555) 987-6543',
-          rating: 4.8,
-          vehicleNumber: 'DL01AB1234',
-          photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-        },
-        trackingUpdates: [
-          {
-            id: 't1',
-            status: 'Order Placed',
-            description: 'Your order has been successfully placed and confirmed',
-            timestamp: 'Today, 2:30 PM',
-            location: 'TechHub Electronics',
-            isCompleted: true,
-            isActive: false,
-          },
-          {
-            id: 't2',
-            status: 'Order Confirmed',
-            description: 'Merchant has confirmed your order and started processing',
-            timestamp: 'Today, 2:32 PM',
-            location: 'TechHub Electronics',
-            isCompleted: true,
-            isActive: false,
-          },
-          {
-            id: 't3',
-            status: 'Preparing Order',
-            description: 'Your items are being prepared and packed',
-            timestamp: 'Today, 2:35 PM',
-            location: 'TechHub Electronics',
-            isCompleted: true,
-            isActive: false,
-          },
-          {
-            id: 't4',
-            status: 'Out for Pickup',
-            description: 'Delivery partner is on the way to pickup your order',
-            timestamp: 'Today, 3:05 PM',
-            location: 'En route to TechHub Electronics',
-            isCompleted: true,
-            isActive: false,
-          },
-          {
-            id: 't5',
-            status: 'Order Picked Up',
-            description: 'Delivery partner has picked up your order',
-            timestamp: 'Today, 3:15 PM',
-            location: 'TechHub Electronics',
-            isCompleted: true,
-            isActive: false,
-          },
-          {
-            id: 't6',
-            status: 'On the Way',
-            description: 'Your order is on the way to your delivery address',
-            timestamp: 'Today, 3:18 PM',
-            location: '2.5 km from your location',
-            isCompleted: false,
-            isActive: true,
-          },
-          {
-            id: 't7',
-            status: 'Delivered',
-            description: 'Order will be delivered to your address',
-            timestamp: '',
-            isCompleted: false,
-            isActive: false,
-          },
-        ],
-        paymentMethod: 'Credit Card ending in 4242',
-        orderDate: 'Today, 2:30 PM',
-      };
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      setOrder(mockOrder);
-    } catch (error) {
-      console.error('Error loading order details:', error);
-      Alert.alert('Error', 'Failed to load order details');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateOrderStatus = async () => {
-    // Simulate real-time updates
-    if (order && order.status === 'ON_THE_WAY') {
-      // Could update estimated delivery time, location, etc.
-      console.log('Checking for order updates...');
-    }
-  };
-
+  // Handle refresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadOrderDetails(orderId as string);
+    await refresh();
     setIsRefreshing(false);
   };
 
+  // Map backend order data to UI format
+  const order = useMemo(() => {
+    if (!realOrder) return null;
+
+    // Get merchant/store info from first item
+    const firstItem = realOrder.items?.[0];
+    const storeName = firstItem?.product?.store?.name || 'Store';
+
+    // Determine status and color
+    const statusMap: Record<string, { display: string; color: string; icon: string }> = {
+      placed: { display: 'Order Placed', color: PROFILE_COLORS.primary, icon: 'receipt' },
+      confirmed: { display: 'Confirmed', color: PROFILE_COLORS.success, icon: 'checkmark-circle' },
+      preparing: { display: 'Preparing', color: PROFILE_COLORS.warning, icon: 'restaurant' },
+      ready: { display: 'Ready for Pickup', color: PROFILE_COLORS.primary, icon: 'cube' },
+      dispatched: { display: 'Dispatched', color: PROFILE_COLORS.primary, icon: 'send' },
+      out_for_delivery: { display: 'Out for Delivery', color: PROFILE_COLORS.warning, icon: 'car' },
+      delivered: { display: 'Delivered', color: PROFILE_COLORS.success, icon: 'checkmark-circle' },
+      cancelled: { display: 'Cancelled', color: PROFILE_COLORS.error, icon: 'close-circle' },
+      pending: { display: 'Pending', color: PROFILE_COLORS.textSecondary, icon: 'time' },
+      processing: { display: 'Processing', color: PROFILE_COLORS.warning, icon: 'sync' },
+      shipped: { display: 'Shipped', color: PROFILE_COLORS.primary, icon: 'airplane' },
+    };
+
+    const statusInfo = statusMap[realOrder.status] || statusMap.pending;
+
+    // Format delivery partner info
+    const deliveryPartnerData = liveDeliveryPartner || (locationUpdate?.deliveryPartner ? {
+      name: locationUpdate.deliveryPartner.name,
+      phone: locationUpdate.deliveryPartner.phone,
+      rating: 0,
+      vehicleNumber: locationUpdate.deliveryPartner.vehicle || 'N/A',
+    } : null);
+
+    return {
+      ...realOrder,
+      merchantName: storeName,
+      statusDisplay: statusInfo.display,
+      statusColor: statusInfo.color,
+      statusIcon: statusInfo.icon,
+      deliveryPartnerData,
+      locationData: locationUpdate,
+    };
+  }, [realOrder, liveDeliveryPartner, locationUpdate]);
+
+  // Handle navigation
   const handleBackPress = () => {
     router.back();
   };
 
+  // Handle calling store/merchant - Now opens Contact Store Modal
   const handleCallMerchant = () => {
-    if (order?.merchantPhone) {
-      Linking.openURL(`tel:${order.merchantPhone}`);
-    }
+    setShowContactModal(true);
   };
 
+  // Handle calling delivery partner
   const handleCallDeliveryPartner = () => {
-    if (order?.deliveryPartner?.phone) {
-      Linking.openURL(`tel:${order.deliveryPartner.phone}`);
+    if (order?.deliveryPartnerData?.phone) {
+      Linking.openURL(`tel:${order.deliveryPartnerData.phone}`);
+    } else {
+      Alert.alert('Not Available', 'Delivery partner contact not available yet.');
     }
   };
 
+  // Handle order cancellation with backend API
   const handleCancelOrder = () => {
+    if (!order) return;
+
+    // Check if order can be cancelled
+    const cancellableStatuses = ['placed', 'confirmed', 'pending', 'processing'];
+    if (!cancellableStatuses.includes(order.status)) {
+      Alert.alert(
+        'Cannot Cancel',
+        'This order cannot be cancelled at this stage. Please contact support if you need assistance.'
+      );
+      return;
+    }
+
     Alert.alert(
       'Cancel Order',
       'Are you sure you want to cancel this order?',
@@ -250,110 +188,218 @@ export default function DetailedOrderTrackingPage() {
         {
           text: 'Yes, Cancel',
           style: 'destructive',
-          onPress: () => {
-            // Handle order cancellation
-            Alert.alert('Order Cancelled', 'Your order has been cancelled successfully.');
+          onPress: async () => {
+            try {
+              setIsCancelling(true);
+              const response = await ordersService.cancelOrder(order._id || order.id, 'Customer requested cancellation');
+
+              if (response.success) {
+                Alert.alert('Order Cancelled', 'Your order has been cancelled successfully.');
+                refresh(); // Refresh order data
+              } else {
+                Alert.alert('Error', response.error || 'Failed to cancel order');
+              }
+            } catch (error) {
+              console.error('Error cancelling order:', error);
+              Alert.alert('Error', 'Failed to cancel order. Please try again.');
+            } finally {
+              setIsCancelling(false);
+            }
           }
         }
       ]
     );
   };
 
+  // Get status icon based on status
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'PREPARING': return 'restaurant';
-      case 'ON_THE_WAY': return 'car';
-      case 'DELIVERED': return 'checkmark-circle';
-      case 'CANCELLED': return 'close-circle';
-      default: return 'time';
+    const statusMap: Record<string, string> = {
+      placed: 'receipt',
+      confirmed: 'checkmark-circle',
+      preparing: 'restaurant',
+      ready: 'cube',
+      dispatched: 'send',
+      out_for_delivery: 'car',
+      delivered: 'checkmark-circle',
+      cancelled: 'close-circle',
+      pending: 'time',
+      processing: 'sync',
+      shipped: 'airplane',
+    };
+    return statusMap[status] || 'time';
+  };
+
+  // Format timestamp for display
+  const formatTimestamp = (timestamp: string | Date) => {
+    if (!timestamp) return '';
+
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) {
+      return diffMins === 0 ? 'Just now' : `${diffMins} min ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else if (diffDays < 7) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     }
   };
 
-  const renderTrackingUpdate = (update: TrackingUpdate, index: number) => (
-    <View key={update.id} style={styles.trackingUpdate}>
-      <View style={styles.updateIndicator}>
-        <View style={[
-          styles.updateCircle,
-          update.isCompleted && styles.updateCompleted,
-          update.isActive && styles.updateActive,
-        ]}>
-          {update.isCompleted ? (
-            <Ionicons name="checkmark" size={12} color="white" />
-          ) : (
+  // Render timeline update from real backend data
+  const renderTimelineUpdate = (update: any, index: number, totalItems: number) => {
+    const isLast = index === totalItems - 1;
+    const isActive = index === totalItems - 1 && order?.status !== 'delivered' && order?.status !== 'cancelled';
+    const isCompleted = !isActive || order?.status === 'delivered';
+
+    return (
+      <View key={update._id || index} style={styles.trackingUpdate}>
+        <View style={styles.updateIndicator}>
+          <View style={[
+            styles.updateCircle,
+            isCompleted && styles.updateCompleted,
+            isActive && styles.updateActive,
+          ]}>
+            {isCompleted ? (
+              <Ionicons name="checkmark" size={12} color="white" />
+            ) : (
+              <View style={[
+                styles.updateDot,
+                isActive && styles.updateActiveDot,
+              ]} />
+            )}
+          </View>
+          {!isLast && (
             <View style={[
-              styles.updateDot,
-              update.isActive && styles.updateActiveDot,
+              styles.updateLine,
+              isCompleted && styles.updateLineCompleted,
             ]} />
           )}
         </View>
-        {index < (order?.trackingUpdates.length ?? 0) - 1 && (
-          <View style={[
-            styles.updateLine,
-            update.isCompleted && styles.updateLineCompleted,
-          ]} />
-        )}
-      </View>
-      
-      <View style={styles.updateContent}>
-        <ThemedText style={[
-          styles.updateStatus,
-          update.isActive && styles.updateActiveStatus,
-          update.isCompleted && styles.updateCompletedStatus,
-        ]}>
-          {update.status}
-        </ThemedText>
-        <ThemedText style={styles.updateDescription}>
-          {update.description}
-        </ThemedText>
-        {update.location && (
-          <ThemedText style={styles.updateLocation}>
-            📍 {update.location}
-          </ThemedText>
-        )}
-        {update.timestamp && (
-          <ThemedText style={styles.updateTimestamp}>
-            {update.timestamp}
-          </ThemedText>
-        )}
-      </View>
-    </View>
-  );
 
-  const renderOrderItem = (item: OrderItem) => (
-    <View key={item.id} style={styles.orderItem}>
+        <View style={styles.updateContent}>
+          <ThemedText style={[
+            styles.updateStatus,
+            isActive && styles.updateActiveStatus,
+            isCompleted && styles.updateCompletedStatus,
+          ]}>
+            {update.status || 'Update'}
+          </ThemedText>
+          <ThemedText style={styles.updateDescription}>
+            {update.message || 'Order status updated'}
+          </ThemedText>
+          {update.timestamp && (
+            <ThemedText style={styles.updateTimestamp}>
+              {formatTimestamp(update.timestamp)}
+            </ThemedText>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  // Render order item from real backend data
+  const renderOrderItem = (item: any, index: number) => (
+    <View key={item.id || index} style={styles.orderItem}>
       <View style={styles.itemInfo}>
-        <ThemedText style={styles.itemName}>{item.name}</ThemedText>
+        <ThemedText style={styles.itemName}>
+          {item.product?.name || item.productName || 'Product'}
+        </ThemedText>
         <ThemedText style={styles.itemDetails}>
-          Qty: {item.quantity} × ₹{item.price.toLocaleString()}
+          Qty: {item.quantity} × ₹{item.unitPrice?.toLocaleString() || item.price?.toLocaleString() || '0'}
         </ThemedText>
       </View>
       <ThemedText style={styles.itemTotal}>
-        ₹{(item.quantity * item.price).toLocaleString()}
+        ₹{(item.totalPrice || item.subtotal || 0).toLocaleString()}
       </ThemedText>
     </View>
   );
 
-  if (isLoading) {
+  // Show loading state
+  if (isLoading && !order) {
     return (
       <SafeAreaView style={styles.container}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={PROFILE_COLORS.primary}
+          translucent={false}
+        />
+        <LinearGradient
+          colors={[PROFILE_COLORS.primary, PROFILE_COLORS.primaryLight]}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity style={styles.headerButton} onPress={handleBackPress}>
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              <ThemedText style={styles.headerTitle}>Order Tracking</ThemedText>
+            </View>
+            <View style={styles.headerButton} />
+          </View>
+        </LinearGradient>
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PROFILE_COLORS.primary} />
           <ThemedText style={styles.loadingText}>Loading order details...</ThemedText>
+          {isConnected && (
+            <ThemedText style={styles.liveIndicator}>
+              Live tracking enabled
+            </ThemedText>
+          )}
         </View>
       </SafeAreaView>
     );
   }
 
-  if (!order) {
+  // Show error state
+  if (error || !order) {
     return (
       <SafeAreaView style={styles.container}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor={PROFILE_COLORS.primary}
+          translucent={false}
+        />
+        <LinearGradient
+          colors={[PROFILE_COLORS.primary, PROFILE_COLORS.primaryLight]}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity style={styles.headerButton} onPress={handleBackPress}>
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              <ThemedText style={styles.headerTitle}>Order Tracking</ThemedText>
+            </View>
+            <View style={styles.headerButton} />
+          </View>
+        </LinearGradient>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#666" />
-          <ThemedText style={styles.errorTitle}>Order Not Found</ThemedText>
+          <ThemedText style={styles.errorTitle}>
+            {error ? 'Error Loading Order' : 'Order Not Found'}
+          </ThemedText>
           <ThemedText style={styles.errorText}>
-            The order you're looking for could not be found.
+            {error || 'The order you are looking for could not be found.'}
           </ThemedText>
           <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
             <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.backButton, { backgroundColor: PROFILE_COLORS.primary, marginTop: 12 }]}
+            onPress={refresh}
+          >
+            <ThemedText style={styles.backButtonText}>Retry</ThemedText>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -377,12 +423,18 @@ export default function DetailedOrderTrackingPage() {
           <TouchableOpacity style={styles.headerButton} onPress={handleBackPress}>
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          
+
           <View style={styles.headerTitleContainer}>
             <ThemedText style={styles.headerTitle}>Order #{order.orderNumber}</ThemedText>
             <ThemedText style={styles.headerSubtitle}>{order.merchantName}</ThemedText>
+            {isLive && (
+              <View style={styles.liveBadge}>
+                <View style={styles.liveIndicatorDot} />
+                <ThemedText style={styles.liveText}>Live</ThemedText>
+              </View>
+            )}
           </View>
-          
+
           <TouchableOpacity style={styles.headerButton} onPress={handleRefresh}>
             <Ionicons name="refresh" size={24} color="white" />
           </TouchableOpacity>
@@ -405,46 +457,80 @@ export default function DetailedOrderTrackingPage() {
         <View style={styles.statusCard}>
           <View style={styles.statusHeader}>
             <View style={[styles.statusBadge, { backgroundColor: order.statusColor + '20' }]}>
-              <Ionicons 
-                name={getStatusIcon(order.status) as any} 
-                size={20} 
-                color={order.statusColor} 
+              <Ionicons
+                name={order.statusIcon as any}
+                size={20}
+                color={order.statusColor}
               />
               <ThemedText style={[styles.statusText, { color: order.statusColor }]}>
-                {order.status.replace('_', ' ')}
+                {order.statusDisplay}
               </ThemedText>
             </View>
           </View>
-          
-          <ThemedText style={styles.estimatedDelivery}>
-            Estimated delivery: {order.estimatedDelivery}
-          </ThemedText>
-          
-          {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
-            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelOrder}>
-              <ThemedText style={styles.cancelButtonText}>Cancel Order</ThemedText>
+
+          {/* Real-time status update message */}
+          {statusUpdate && (
+            <View style={styles.statusUpdateBanner}>
+              <Ionicons name="information-circle" size={16} color={PROFILE_COLORS.primary} />
+              <ThemedText style={styles.statusUpdateText}>{statusUpdate.message}</ThemedText>
+            </View>
+          )}
+
+          {/* Estimated delivery time */}
+          {order.tracking?.estimatedDelivery && order.status !== 'delivered' && order.status !== 'cancelled' && (
+            <ThemedText style={styles.estimatedDelivery}>
+              Estimated delivery: {formatTimestamp(order.tracking.estimatedDelivery)}
+            </ThemedText>
+          )}
+
+          {/* Location update if available */}
+          {locationUpdate && order.status === 'out_for_delivery' && (
+            <View style={styles.locationUpdateCard}>
+              <Ionicons name="location" size={16} color={PROFILE_COLORS.primary} />
+              <ThemedText style={styles.locationUpdateText}>
+                {locationUpdate.location.address || `${locationUpdate.distanceToDestination || '0'} km away`}
+              </ThemedText>
+            </View>
+          )}
+
+          {/* Cancel order button */}
+          {order.status !== 'delivered' && order.status !== 'cancelled' && order.status !== 'shipped' && (
+            <TouchableOpacity
+              style={[styles.cancelButton, isCancelling && styles.cancelButtonDisabled]}
+              onPress={handleCancelOrder}
+              disabled={isCancelling}
+            >
+              {isCancelling ? (
+                <ActivityIndicator size="small" color="#EF4444" />
+              ) : (
+                <ThemedText style={styles.cancelButtonText}>Cancel Order</ThemedText>
+              )}
             </TouchableOpacity>
           )}
         </View>
 
         {/* Delivery Partner Card */}
-        {order.deliveryPartner && order.status === 'ON_THE_WAY' && (
+        {order.deliveryPartnerData && (order.status === 'out_for_delivery' || order.status === 'dispatched') && (
           <View style={styles.deliveryPartnerCard}>
             <ThemedText style={styles.cardTitle}>Delivery Partner</ThemedText>
-            
+
             <View style={styles.partnerInfo}>
               <View style={styles.partnerDetails}>
-                <ThemedText style={styles.partnerName}>{order.deliveryPartner.name}</ThemedText>
-                <View style={styles.partnerRating}>
-                  <Ionicons name="star" size={14} color="#FFD700" />
-                  <ThemedText style={styles.ratingText}>{order.deliveryPartner.rating}</ThemedText>
-                </View>
-                <ThemedText style={styles.vehicleNumber}>
-                  Vehicle: {order.deliveryPartner.vehicleNumber}
-                </ThemedText>
+                <ThemedText style={styles.partnerName}>{order.deliveryPartnerData.name}</ThemedText>
+                {order.deliveryPartnerData.rating > 0 && (
+                  <View style={styles.partnerRating}>
+                    <Ionicons name="star" size={14} color="#FFD700" />
+                    <ThemedText style={styles.ratingText}>{order.deliveryPartnerData.rating.toFixed(1)}</ThemedText>
+                  </View>
+                )}
+                {order.deliveryPartnerData.vehicleNumber && (
+                  <ThemedText style={styles.vehicleNumber}>
+                    Vehicle: {order.deliveryPartnerData.vehicleNumber}
+                  </ThemedText>
+                )}
               </View>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.callButton}
                 onPress={handleCallDeliveryPartner}
               >
@@ -458,10 +544,17 @@ export default function DetailedOrderTrackingPage() {
         {/* Tracking Timeline */}
         <View style={styles.trackingCard}>
           <ThemedText style={styles.cardTitle}>Order Timeline</ThemedText>
-          
+
           <View style={styles.trackingTimeline}>
-            {order.trackingUpdates.map((update, index) => 
-              renderTrackingUpdate(update, index)
+            {(timeline && timeline.length > 0) ? (
+              timeline.map((update, index) =>
+                renderTimelineUpdate(update, index, timeline.length)
+              )
+            ) : (
+              <View style={styles.noTimelineContainer}>
+                <Ionicons name="time-outline" size={32} color="#999" />
+                <ThemedText style={styles.noTimelineText}>No tracking updates yet</ThemedText>
+              </View>
             )}
           </View>
         </View>
@@ -469,28 +562,59 @@ export default function DetailedOrderTrackingPage() {
         {/* Order Items */}
         <View style={styles.itemsCard}>
           <ThemedText style={styles.cardTitle}>Order Items</ThemedText>
-          
+
           <View style={styles.itemsList}>
-            {order.items.map(renderOrderItem)}
+            {order.items && order.items.length > 0 ? (
+              order.items.map((item: any, index: number) => renderOrderItem(item, index))
+            ) : (
+              <ThemedText style={styles.noItemsText}>No items found</ThemedText>
+            )}
           </View>
-          
+
           {/* Order Summary */}
           <View style={styles.orderSummary}>
             <View style={styles.summaryRow}>
               <ThemedText style={styles.summaryLabel}>Subtotal</ThemedText>
-              <ThemedText style={styles.summaryValue}>₹{order.subtotal.toLocaleString()}</ThemedText>
+              <ThemedText style={styles.summaryValue}>
+                ₹{(order.totals?.subtotal || order.summary?.subtotal || 0).toLocaleString()}
+              </ThemedText>
             </View>
             <View style={styles.summaryRow}>
               <ThemedText style={styles.summaryLabel}>Delivery Fee</ThemedText>
-              <ThemedText style={styles.summaryValue}>₹{order.deliveryFee.toLocaleString()}</ThemedText>
+              <ThemedText style={styles.summaryValue}>
+                ₹{(order.totals?.delivery || order.delivery?.deliveryFee || 0).toLocaleString()}
+              </ThemedText>
             </View>
             <View style={styles.summaryRow}>
               <ThemedText style={styles.summaryLabel}>Taxes</ThemedText>
-              <ThemedText style={styles.summaryValue}>₹{order.taxes.toLocaleString()}</ThemedText>
+              <ThemedText style={styles.summaryValue}>
+                ₹{(order.totals?.tax || order.summary?.tax || 0).toLocaleString()}
+              </ThemedText>
             </View>
+            {order.totals?.discount > 0 && (
+              <View style={styles.summaryRow}>
+                <ThemedText style={styles.summaryLabel}>Discount</ThemedText>
+                <ThemedText style={[styles.summaryValue, { color: PROFILE_COLORS.success }]}>
+                  -₹{order.totals.discount.toLocaleString()}
+                </ThemedText>
+              </View>
+            )}
+            {order.payment?.coinsUsed && (order.payment.coinsUsed.wasilCoins > 0 || order.payment.coinsUsed.promoCoins > 0 || order.payment.coinsUsed.storePromoCoins > 0) && (
+              <View style={styles.summaryRow}>
+                <ThemedText style={styles.summaryLabel}>
+                  💎 Coins Used
+                  {order.payment.coinsUsed.storePromoCoins > 0 && ' (includes Store Promo)'}
+                </ThemedText>
+                <ThemedText style={[styles.summaryValue, { color: '#8B5CF6' }]}>
+                  -₹{order.payment.coinsUsed.totalCoinsValue || 0}
+                </ThemedText>
+              </View>
+            )}
             <View style={[styles.summaryRow, styles.totalRow]}>
               <ThemedText style={styles.totalLabel}>Total</ThemedText>
-              <ThemedText style={styles.totalValue}>₹{order.total.toLocaleString()}</ThemedText>
+              <ThemedText style={styles.totalValue}>
+                ₹{(order.totals?.total || order.summary?.total || 0).toLocaleString()}
+              </ThemedText>
             </View>
           </View>
         </View>
@@ -498,39 +622,85 @@ export default function DetailedOrderTrackingPage() {
         {/* Order Details */}
         <View style={styles.detailsCard}>
           <ThemedText style={styles.cardTitle}>Order Details</ThemedText>
-          
+
           <View style={styles.detailRow}>
             <ThemedText style={styles.detailLabel}>Order Date</ThemedText>
-            <ThemedText style={styles.detailValue}>{order.orderDate}</ThemedText>
+            <ThemedText style={styles.detailValue}>
+              {new Date(order.createdAt).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </ThemedText>
           </View>
-          
+
           <View style={styles.detailRow}>
             <ThemedText style={styles.detailLabel}>Payment Method</ThemedText>
-            <ThemedText style={styles.detailValue}>{order.paymentMethod}</ThemedText>
+            <ThemedText style={styles.detailValue}>
+              {order.payment?.method?.toUpperCase() || 'N/A'}
+            </ThemedText>
           </View>
-          
+
+          <View style={styles.detailRow}>
+            <ThemedText style={styles.detailLabel}>Payment Status</ThemedText>
+            <ThemedText style={[
+              styles.detailValue,
+              { color: order.payment?.status === 'paid' ? PROFILE_COLORS.success : PROFILE_COLORS.warning }
+            ]}>
+              {order.payment?.status?.toUpperCase() || 'PENDING'}
+            </ThemedText>
+          </View>
+
           <View style={styles.detailRow}>
             <ThemedText style={styles.detailLabel}>Delivery Address</ThemedText>
-            <ThemedText style={styles.detailValue}>{order.deliveryAddress}</ThemedText>
+            <ThemedText style={styles.detailValue}>
+              {order.delivery?.address ?
+                `${order.delivery.address.addressLine1}, ${order.delivery.address.city}, ${order.delivery.address.state} ${order.delivery.address.pincode}` :
+                'Address not available'
+              }
+            </ThemedText>
           </View>
-          
-          {order.deliveryInstructions && (
+
+          {order.specialInstructions && (
             <View style={styles.detailRow}>
-              <ThemedText style={styles.detailLabel}>Instructions</ThemedText>
-              <ThemedText style={styles.detailValue}>{order.deliveryInstructions}</ThemedText>
+              <ThemedText style={styles.detailLabel}>Special Instructions</ThemedText>
+              <ThemedText style={styles.detailValue}>{order.specialInstructions}</ThemedText>
             </View>
           )}
-          
+
+          {order.couponCode && (
+            <View style={styles.detailRow}>
+              <ThemedText style={styles.detailLabel}>Coupon Applied</ThemedText>
+              <ThemedText style={[styles.detailValue, { color: PROFILE_COLORS.success }]}>
+                {order.couponCode}
+              </ThemedText>
+            </View>
+          )}
+
           <TouchableOpacity style={styles.contactMerchant} onPress={handleCallMerchant}>
             <Ionicons name="call-outline" size={20} color={PROFILE_COLORS.primary} />
-            <ThemedText style={styles.contactMerchantText}>Contact Merchant</ThemedText>
+            <ThemedText style={styles.contactMerchantText}>Contact Store</ThemedText>
           </TouchableOpacity>
         </View>
 
         <View style={styles.bottomSpace} />
       </ScrollView>
+
+      {/* Contact Store Modal */}
+      <ContactStoreModal
+        visible={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        storeId={order?.items?.[0]?.product?.store?.id || ''}
+        storeName={order?.merchantName || 'Store'}
+        storePhone={order?.items?.[0]?.product?.store?.phone}
+        storeEmail={order?.items?.[0]?.product?.store?.email}
+        orderId={order?._id || order?.id}
+        orderNumber={order?.orderNumber}
+      />
     </SafeAreaView>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -542,10 +712,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   loadingText: {
     fontSize: 16,
     color: '#666',
+    marginTop: 16,
+  },
+  liveIndicator: {
+    fontSize: 12,
+    color: PROFILE_COLORS.success,
+    marginTop: 8,
   },
   errorContainer: {
     flex: 1,
@@ -610,6 +787,27 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  liveIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+    marginRight: 4,
+  },
+  liveText: {
+    fontSize: 10,
+    color: 'white',
+    fontWeight: '600',
+  },
   content: {
     flex: 1,
   },
@@ -652,12 +850,45 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
+  statusUpdateBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PROFILE_COLORS.primary + '10',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  statusUpdateText: {
+    fontSize: 13,
+    color: PROFILE_COLORS.text,
+    marginLeft: 8,
+    flex: 1,
+  },
+  locationUpdateCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  locationUpdateText: {
+    fontSize: 12,
+    color: PROFILE_COLORS.text,
+    marginLeft: 8,
+    flex: 1,
+  },
   cancelButton: {
     borderWidth: 1,
     borderColor: '#EF4444',
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  cancelButtonDisabled: {
+    opacity: 0.6,
   },
   cancelButtonText: {
     color: '#EF4444',
@@ -813,7 +1044,17 @@ const styles = StyleSheet.create({
     color: PROFILE_COLORS.textSecondary,
     fontWeight: '500',
   },
-  
+  noTimelineContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  noTimelineText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 12,
+  },
+
   // Items Card
   itemsCard: {
     backgroundColor: 'white',
@@ -829,6 +1070,12 @@ const styles = StyleSheet.create({
   },
   itemsList: {
     marginBottom: 16,
+  },
+  noItemsText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    padding: 20,
   },
   orderItem: {
     flexDirection: 'row',

@@ -407,17 +407,10 @@ class StoresService {
    */
   async getFeaturedForHomepage(limit: number = 10): Promise<any[]> {
     try {
-      console.log('🚀 [STORES API] Fetching featured stores from backend...');
+
       const response = await apiClient.get('/stores/featured', { limit });
 
-      console.log('📡 [STORES API] Backend response:', {
-        success: response.success,
-        dataLength: response.data?.length,
-        message: response.message
-      });
-
       if (response.success && response.data && Array.isArray(response.data)) {
-        console.log('✅ [STORES API] Processing featured stores:', response.data.length, 'items');
 
         // Transform backend store data to frontend StoreItem format
         const stores = response.data.map((store: any) => ({
@@ -448,7 +441,6 @@ class StoresService {
           minimumOrder: store.operationalInfo?.minimumOrder || 299
         }));
 
-        console.log('🎯 [STORES API] Returning', stores.length, 'formatted stores');
         return stores;
       }
 
@@ -466,13 +458,12 @@ class StoresService {
    */
   async isBackendAvailable(): Promise<boolean> {
     try {
-      console.log('🔍 [STORES API] Checking backend availability...');
 
       // Try to make a simple API call to check connectivity
       const response = await apiClient.get('/stores/featured', { limit: 1 });
 
       if (response.success) {
-        console.log('✅ [STORES API] Backend is available and responding');
+
         return true;
       } else {
         console.warn('⚠️ [STORES API] Backend responded but with error:', response.message);

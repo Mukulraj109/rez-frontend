@@ -1,0 +1,576 @@
+// View All Offers Page
+// Displays all offers in a grid layout with the same header as offers page
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Dimensions,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ThemedText } from '@/components/ThemedText';
+import { useOffersPage } from '@/hooks/useOffersPage';
+import { shareOffersPage } from '@/utils/shareUtils';
+import { Offer } from '@/services/realOffersApi';
+import { useAuth } from '@/contexts/AuthContext';
+import realOffersApi from '@/services/realOffersApi';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 60) / 2; // 2 cards per row with padding
+
+export default function ViewAllOffersScreen() {
+  const router = useRouter();
+  const { category } = useLocalSearchParams<{ category?: string }>();
+  const { state: authState } = useAuth();
+  const [allOffers, setAllOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [userPoints, setUserPoints] = useState(0);
+
+  // Get category display name
+  const getCategoryTitle = () => {
+    const categoryMap: { [key: string]: string } = {
+      'mega': 'MEGA OFFERS',
+      'student': 'Offer for the students',
+      'new_arrival': 'New Arrivals',
+      'trending': 'Trending Now'
+    };
+    return categoryMap[category || ''] || 'All Offers';
+  };
+
+  // Fetch user points from API (same as offers page)
+  const fetchUserPoints = async () => {
+    try {
+      const response = await realOffersApi.getOffersPageData();
+      if (response.success && response.data) {
+        const points = response.data.userEngagement?.userPoints || 
+                       response.data.userPoints || 
+                       authState.user?.wallet?.balance || 0;
+        setUserPoints(points);
+        console.log('💰 [VIEW ALL] User points from API:', points);
+      }
+    } catch (error) {
+      console.error('Error fetching user points:', error);
+      // Fallback to auth state
+      setUserPoints(authState.user?.wallet?.balance || 0);
+    }
+  };
+
+  const loadAllOffers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch offers by category if specified, otherwise fetch all
+      let allOffersData: Offer[] = [];
+      
+      if (category) {
+        // Fetch offers by specific category
+        console.log('🔍 [VIEW ALL] Fetching offers for category:', category);
+        
+        let currentPage = 1;
+        const pageLimit = 50;
+        let hasMore = true;
+
+        // Fetch all offers of this category in batches
+        while (hasMore && currentPage <= 10) {
+          const response = await realOffersApi.getOffers({
+            category: category,
+            page: currentPage,
+            limit: pageLimit,
+          });
+
+          if (response.success && response.data) {
+            const offers = response.data.data || response.data || [];
+            
+            if (Array.isArray(offers)) {
+              allOffersData = [...allOffersData, ...offers];
+              if (offers.length < pageLimit) {
+                hasMore = false;
+              } else {
+                currentPage++;
+              }
+            } else {
+              hasMore = false;
+            }
+          } else {
+            hasMore = false;
+            if (currentPage === 1) {
+              setError(response.message || 'Failed to load offers');
+            }
+          }
+        }
+      } else {
+        // Fetch all offers from API (max limit is 50, so we'll fetch in batches)
+        let currentPage = 1;
+        const pageLimit = 50; // API max limit
+        let hasMore = true;
+
+        // Fetch offers in batches until we get all
+        while (hasMore && currentPage <= 10) { // Max 10 pages to avoid infinite loops
+          const response = await realOffersApi.getOffers({
+            page: currentPage,
+            limit: pageLimit,
+          });
+
+          if (response.success && response.data) {
+            const offers = response.data.data || response.data || [];
+            
+            if (Array.isArray(offers)) {
+              allOffersData = [...allOffersData, ...offers];
+              // If we got less than the limit, we've reached the end
+              if (offers.length < pageLimit) {
+                hasMore = false;
+              } else {
+                currentPage++;
+              }
+            } else {
+              hasMore = false;
+            }
+          } else {
+            hasMore = false;
+            if (currentPage === 1) {
+              setError(response.message || 'Failed to load offers');
+            }
+          }
+        }
+      }
+
+      setAllOffers(allOffersData);
+      
+      if (allOffersData.length === 0 && !error) {
+        setError('No offers found');
+      }
+    } catch (error) {
+      console.error('Error loading offers:', error);
+      setError('Failed to load offers');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAllOffers();
+    fetchUserPoints();
+  }, [category]); // Reload when category changes
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadAllOffers();
+  };
+
+  const handleBack = () => {
+    router.back();
+  };
+
+  const handleShare = async () => {
+    try {
+      await shareOffersPage();
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  const handleFavorite = () => {
+    setIsFavorited(!isFavorited);
+  };
+
+  const handleOfferPress = (offer: Offer) => {
+    router.push(`/offers/${offer._id}` as any);
+  };
+
+  const ProductCard = ({ offer }: { offer: Offer }) => {
+    const [imageError, setImageError] = React.useState(false);
+
+    return (
+      <TouchableOpacity 
+        style={styles.productCard}
+        onPress={() => handleOfferPress(offer)}
+      >
+        {imageError || !offer.image ? (
+          <View style={styles.productImagePlaceholder}>
+            <Ionicons name="image-outline" size={32} color="#ccc" />
+          </View>
+        ) : (
+          <Image 
+            source={{ uri: offer.image }} 
+            style={styles.productImage}
+            resizeMode="cover"
+            onError={() => {
+              console.log('❌ [OFFER CARD] Failed to load image:', offer.image);
+              setImageError(true);
+            }}
+            onLoad={() => {
+              setImageError(false);
+            }}
+          />
+        )}
+        
+        <View style={styles.productInfo}>
+          <ThemedText style={styles.productTitle} numberOfLines={2}>
+            {offer.title}
+          </ThemedText>
+          <ThemedText style={styles.cashBack}>
+            Upto {offer.cashbackPercentage}% cash back
+          </ThemedText>
+          {offer.store?.name && (
+            <ThemedText style={styles.storeName} numberOfLines={1}>
+              {offer.store.name}
+            </ThemedText>
+          )}
+          {offer.distance && (
+            <View style={styles.distanceContainer}>
+              <Ionicons name="location-outline" size={12} color="#666" />
+              <ThemedText style={styles.distance}>{offer.distance} km away</ThemedText>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header - Same as Offers Page */}
+      <LinearGradient
+        colors={['#8B5CF6', '#A855F7']}
+        style={styles.header}
+      >
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color="white" />
+          </TouchableOpacity>
+          
+          <View style={styles.headerCenter}>
+            <TouchableOpacity 
+              style={styles.pointsContainer}
+              onPress={() => router.push('/CoinPage')}
+            >
+              <Ionicons name="star" size={16} color="#FFD700" />
+              <ThemedText style={styles.pointsText}>{userPoints}</ThemedText>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
+              <Ionicons name="share-outline" size={20} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleFavorite} style={styles.headerButton}>
+              <Ionicons 
+                name={isFavorited ? "heart" : "heart-outline"} 
+                size={20} 
+                color={isFavorited ? "#EF4444" : "white"} 
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Mega Offers Banner */}
+        <View style={styles.bannerContainer}>
+          <View style={styles.megaOffersBanner}>
+            <ThemedText style={styles.megaOffersText}>MEGA</ThemedText>
+            <View style={styles.offersTextContainer}>
+              <ThemedText style={styles.offersText}>OFFERS</ThemedText>
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Scalloped Edge */}
+      <View style={styles.scalloped}>
+        <View style={styles.scallopedInner} />
+      </View>
+
+      {/* Content */}
+      <ScrollView 
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
+        {/* Section Header */}
+        <View style={styles.sectionHeader}>
+          <ThemedText style={styles.sectionTitle}>{getCategoryTitle()}</ThemedText>
+          <ThemedText style={styles.offersCount}>{allOffers.length} offers</ThemedText>
+        </View>
+
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#8B5CF6" />
+            <ThemedText style={styles.loadingText}>Loading offers...</ThemedText>
+          </View>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+            <TouchableOpacity style={styles.retryButton} onPress={loadAllOffers}>
+              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Offers Grid */}
+        {!loading && !error && (
+          <View style={styles.productsGrid}>
+            {allOffers.map((offer) => (
+              <ProductCard key={offer._id} offer={offer} />
+            ))}
+          </View>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && allOffers.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="ticket-outline" size={64} color="#ccc" />
+            <ThemedText style={styles.emptyText}>No offers available</ThemedText>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    paddingTop: 10,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  pointsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  pointsText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bannerContainer: {
+    alignItems: 'center',
+  },
+  megaOffersBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  megaOffersText: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: 'white',
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+    transform: [{ rotate: '-5deg' }],
+  },
+  offersTextContainer: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+    transform: [{ rotate: '5deg' }],
+  },
+  offersText: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#1F2937',
+  },
+  scalloped: {
+    height: 20,
+    backgroundColor: '#8B5CF6',
+    position: 'relative',
+  },
+  scallopedInner: {
+    position: 'absolute',
+    bottom: -1,
+    left: 0,
+    right: 0,
+    height: 20,
+    backgroundColor: '#f5f5f5',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  content: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  offersCount: {
+    fontSize: 14,
+    color: '#666',
+  },
+  productsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 15,
+  },
+  productCard: {
+    width: CARD_WIDTH,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    marginBottom: 10,
+  },
+  productImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#f0f0f0',
+  },
+  productImagePlaceholder: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  productInfo: {
+    padding: 12,
+    gap: 4,
+  },
+  productTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  storeName: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  cashBack: {
+    fontSize: 12,
+    color: '#8B5CF6',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  distanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  distance: {
+    fontSize: 12,
+    color: '#666',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+  },
+});

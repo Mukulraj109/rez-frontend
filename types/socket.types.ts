@@ -136,6 +136,36 @@ export const SocketEvents = {
   FLASH_SALE_STOCK_LOW: 'flashsale:stock_low',
   FLASH_SALE_SOLD_OUT: 'flashsale:sold_out',
   FLASH_SALE_UPDATED: 'flashsale:updated',
+
+  // Messaging events (imported from messaging.types.ts)
+  MESSAGE_SENT: 'message:sent',
+  MESSAGE_RECEIVED: 'message:received',
+  MESSAGE_DELIVERED: 'message:delivered',
+  MESSAGE_READ: 'message:read',
+  MESSAGE_FAILED: 'message:failed',
+  TYPING_START: 'typing:start',
+  TYPING_STOP: 'typing:stop',
+  CONVERSATION_CREATED: 'conversation:created',
+  CONVERSATION_UPDATED: 'conversation:updated',
+  CONVERSATION_ARCHIVED: 'conversation:archived',
+  CONVERSATION_CLOSED: 'conversation:closed',
+  STORE_ONLINE: 'store:online',
+  STORE_OFFLINE: 'store:offline',
+  STORE_JOINED_CONVERSATION: 'store:joined',
+  STORE_LEFT_CONVERSATION: 'store:left',
+  JOIN_CONVERSATION: 'join:conversation',
+  LEAVE_CONVERSATION: 'leave:conversation',
+
+  // Leaderboard events
+  LEADERBOARD_UPDATE: 'leaderboard:update',
+  LEADERBOARD_USER_SCORED: 'leaderboard:user_scored',
+  LEADERBOARD_RANK_CHANGE: 'leaderboard:rank_change',
+
+  // Social feed events
+  SOCIAL_NEW_POST: 'social:new_post',
+  SOCIAL_LIKE: 'social:like',
+  SOCIAL_COMMENT: 'social:comment',
+  SOCIAL_FOLLOW: 'social:follow',
 } as const;
 
 // Socket connection state
@@ -180,3 +210,81 @@ export type FlashSaleEndedCallback = (payload: FlashSaleEndedPayload) => void;
 export type FlashSaleStockUpdatedCallback = (payload: FlashSaleStockUpdatedPayload) => void;
 export type FlashSaleStockLowCallback = (payload: FlashSaleStockLowPayload) => void;
 export type FlashSaleSoldOutCallback = (payload: FlashSaleSoldOutPayload) => void;
+
+// Leaderboard event payloads
+export interface LeaderboardUpdatePayload {
+  userId: string;
+  username: string;
+  fullName: string;
+  coins: number;
+  rank: number;
+  previousRank?: number;
+  timestamp: string;
+}
+
+export interface LeaderboardUserScoredPayload {
+  userId: string;
+  username: string;
+  fullName: string;
+  coinsEarned: number;
+  newTotal: number;
+  source: string;
+  timestamp: string;
+}
+
+export interface LeaderboardRankChangePayload {
+  userId: string;
+  username: string;
+  fullName: string;
+  oldRank: number;
+  newRank: number;
+  coins: number;
+  direction: 'up' | 'down';
+  timestamp: string;
+}
+
+// Social feed event payloads
+export interface SocialNewPostPayload {
+  activityId: string;
+  userId: string;
+  username: string;
+  type: string;
+  content: any;
+  timestamp: string;
+}
+
+export interface SocialLikePayload {
+  activityId: string;
+  userId: string;
+  username: string;
+  likesCount: number;
+  timestamp: string;
+}
+
+export interface SocialCommentPayload {
+  activityId: string;
+  commentId: string;
+  userId: string;
+  username: string;
+  comment: string;
+  commentsCount: number;
+  timestamp: string;
+}
+
+export interface SocialFollowPayload {
+  followerId: string;
+  followingId: string;
+  followerName: string;
+  timestamp: string;
+}
+
+// Leaderboard callback types
+export type LeaderboardUpdateCallback = (payload: LeaderboardUpdatePayload) => void;
+export type LeaderboardUserScoredCallback = (payload: LeaderboardUserScoredPayload) => void;
+export type LeaderboardRankChangeCallback = (payload: LeaderboardRankChangePayload) => void;
+
+// Social callback types
+export type SocialNewPostCallback = (payload: SocialNewPostPayload) => void;
+export type SocialLikeCallback = (payload: SocialLikePayload) => void;
+export type SocialCommentCallback = (payload: SocialCommentPayload) => void;
+export type SocialFollowCallback = (payload: SocialFollowPayload) => void;

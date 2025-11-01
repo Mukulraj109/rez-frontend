@@ -58,11 +58,13 @@ export interface GoingOutPageState {
   activeCategory: string;
   searchQuery: string;
   showSearchBar: boolean;
+  filters: GoingOutFilters;
   loading: boolean;
   error: string | null;
   hasMore: boolean;
   page: number;
   sortBy: 'default' | 'price_low' | 'price_high' | 'cashback_high' | 'rating' | 'newest';
+  wishlist: string[]; // Array of product IDs in wishlist
 }
 
 export interface GoingOutFilters {
@@ -110,23 +112,30 @@ export interface GoingOutProductCardProps {
   product: GoingOutProduct;
   onPress: (product: GoingOutProduct) => void;
   onAddToCart?: (product: GoingOutProduct) => void;
+  onToggleWishlist?: (product: GoingOutProduct) => void;
   showAddToCart?: boolean;
   width?: number;
+  isInWishlist?: boolean;
 }
 
 export interface ProductGridProps {
   products: GoingOutProduct[];
   loading: boolean;
   onProductPress: (product: GoingOutProduct) => void;
+  onToggleWishlist?: (product: GoingOutProduct) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
   numColumns?: number;
+  wishlist?: string[];
+  showHeader?: boolean;
 }
 
 export interface CashbackHubSectionProps {
   section: CashbackHubSection;
   onProductPress: (product: GoingOutProduct) => void;
+  onToggleWishlist?: (product: GoingOutProduct) => void;
   onViewAll: (section: CashbackHubSection) => void;
+  wishlist?: string[];
 }
 
 export interface GoingOutSortModalProps {
@@ -201,6 +210,7 @@ export interface UseGoingOutPageReturn {
     refreshProducts: () => Promise<void>;
     applyFilters: (filters: GoingOutFilters) => Promise<void>;
     resetFilters: () => Promise<void>;
+    clearWishlist: () => Promise<void>;
   };
   handlers: {
     handleCategoryChange: (categoryId: string) => void;
@@ -208,10 +218,12 @@ export interface UseGoingOutPageReturn {
     handleSearchSubmit: (query: string) => void;
     handleProductPress: (product: GoingOutProduct) => void;
     handleSortChange: (sortBy: GoingOutPageState['sortBy']) => void;
+    handleFilterChange: (filters: GoingOutFilters) => void;
     handleLoadMore: () => void;
     handleRefresh: () => void;
     handleHideSearch: () => void;
     handleShowSearch: () => void;
+    handleToggleWishlist: (product: GoingOutProduct) => void;
   };
 }
 

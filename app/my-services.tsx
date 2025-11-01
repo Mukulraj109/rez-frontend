@@ -28,6 +28,37 @@ interface ServiceProject {
   type: 'video' | 'content' | 'review';
 }
 
+// Mock data fallback for when backend is unavailable
+const MOCK_SERVICES: ServiceProject[] = [
+  {
+    id: 'mock-1',
+    title: 'Product Review Video',
+    description: 'Create a 2-minute video review of your recent purchase',
+    status: 'active',
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    reward: 150,
+    type: 'video',
+  },
+  {
+    id: 'mock-2',
+    title: 'Store Review',
+    description: 'Write a detailed review of your shopping experience',
+    status: 'completed',
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    reward: 50,
+    type: 'review',
+  },
+  {
+    id: 'mock-3',
+    title: 'Social Media Post',
+    description: 'Share your favorite product on Instagram with #MyStore',
+    status: 'pending',
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    reward: 100,
+    type: 'content',
+  },
+];
+
 const MyServicesPage = () => {
   const router = useRouter();
   const navigation = useNavigation();
@@ -35,6 +66,8 @@ const MyServicesPage = () => {
   const [projects, setProjects] = useState<ServiceProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [useMockData, setUseMockData] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleBackPress = useCallback(() => {
     // Always go to profile page to avoid "no page exists" error
@@ -54,48 +87,59 @@ const MyServicesPage = () => {
   const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
+      setErrorMessage(null);
 
       // Wait for auth to be ready
       if (authState.isLoading) {
-        console.log('⏳ Auth still loading, waiting...');
+
         return;
       }
 
       if (!authState.isAuthenticated || !authState.token) {
-        console.log('❌ Not authenticated, cannot fetch projects');
-        setProjects([]);
+
+        setUseMockData(true);
+        setProjects(MOCK_SERVICES);
+        setErrorMessage('Not authenticated. Showing sample data.');
         setLoading(false);
         return;
       }
 
-      // Fetch user's project submissions from API
-      // Note: Backend endpoint may not be fully implemented yet
-      const response = await projectsService.getMySubmissions();
+      // Try to fetch user's project submissions from API
+      try {
+        const response = await projectsService.getMySubmissions();
 
-      if (response.success && response.data?.submissions) {
-        // Map backend submission format to frontend ServiceProject format
-        const mappedProjects: ServiceProject[] = response.data.submissions.map((submission: any) => ({
-          id: submission._id || submission.id,
-          title: submission.project?.title || 'Untitled Project',
-          description: submission.project?.description || 'No description available',
-          status: mapSubmissionStatus(submission.status),
-          createdAt: submission.submittedAt || submission.createdAt,
-          reward: submission.paidAmount || submission.project?.reward?.amount || 0,
-          type: (submission.content?.type === 'video' ? 'video' :
-                 submission.content?.type === 'text' ? 'content' : 'review') as 'video' | 'content' | 'review'
-        }));
+        if (response.success && response.data?.submissions) {
+          // Map backend submission format to frontend ServiceProject format
+          const mappedProjects: ServiceProject[] = response.data.submissions.map((submission: any) => ({
+            id: submission._id || submission.id,
+            title: submission.project?.title || 'Untitled Project',
+            description: submission.project?.description || 'No description available',
+            status: mapSubmissionStatus(submission.status),
+            createdAt: submission.submittedAt || submission.createdAt,
+            reward: submission.paidAmount || submission.project?.reward?.amount || 0,
+            type: (submission.content?.type === 'video' ? 'video' :
+                   submission.content?.type === 'text' ? 'content' : 'review') as 'video' | 'content' | 'review'
+          }));
 
-        setProjects(mappedProjects);
-      } else {
-        console.log('No submissions in response');
-        setProjects([]);
+          setProjects(mappedProjects);
+          setUseMockData(false);
+        } else {
+
+          setProjects(MOCK_SERVICES);
+          setUseMockData(true);
+          setErrorMessage('No services found. Showing sample data.');
+        }
+      } catch (apiError: any) {
+        console.error('❌ API Error, falling back to mock data:', apiError);
+        setProjects(MOCK_SERVICES);
+        setUseMockData(true);
+        setErrorMessage('Unable to load services. Showing sample data.');
       }
     } catch (error: any) {
       console.error('❌ Error fetching projects:', error);
-      console.error('❌ Error response:', error?.response?.data);
-      console.error('❌ Error status:', error?.response?.status);
-      console.error('❌ Full error:', JSON.stringify(error, null, 2));
-      setProjects([]);
+      setProjects(MOCK_SERVICES);
+      setUseMockData(true);
+      setErrorMessage('Error loading services. Showing sample data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -162,7 +206,7 @@ const MyServicesPage = () => {
       style={styles.projectCard}
       onPress={() => {
         // TODO: Navigate to project details
-        console.log('View project:', item.id);
+
       }}
       activeOpacity={0.7}
     >
@@ -266,6 +310,18 @@ const MyServicesPage = () => {
           Video projects and content creation
         </Text>
       </LinearGradient>
+
+      {/* Error/Info Banner */}
+      {errorMessage && (
+        <View style={styles.infoBanner}>
+          <Ionicons
+            name={useMockData ? 'information-circle' : 'alert-circle'}
+            size={20}
+            color={useMockData ? '#3B82F6' : '#F59E0B'}
+          />
+          <Text style={styles.infoBannerText}>{errorMessage}</Text>
+        </View>
+      )}
 
       {/* Projects List */}
       <FlatList
@@ -439,6 +495,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 8,
+    gap: 10,
+  },
+  infoBannerText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1F2937',
   },
 });
 

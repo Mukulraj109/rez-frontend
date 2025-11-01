@@ -50,7 +50,7 @@ export default function WishlistEmpty({ onShopPress }: WishlistEmptyProps) {
         </View>
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

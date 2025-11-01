@@ -81,7 +81,7 @@ export default function BrandedStoreCard({
         )}
       </ThemedView>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

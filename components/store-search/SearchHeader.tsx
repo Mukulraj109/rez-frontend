@@ -171,7 +171,6 @@ title: {
   textAlign: 'center',
 },
 
-
     rightSpacer: {
       width: 44,
     },

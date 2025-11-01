@@ -376,7 +376,7 @@ ${deal.description || 'Don\'t miss out on this incredible offer!'}
         </View>
       </TouchableWithoutFeedback>
     </Modal>
-  );
+);
 }
 
 const createStyles = (screenData: { width: number; height: number }) => {

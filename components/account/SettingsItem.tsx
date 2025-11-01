@@ -94,7 +94,7 @@ export default function SettingsItem({
         )}
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

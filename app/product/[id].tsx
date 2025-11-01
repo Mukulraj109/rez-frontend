@@ -18,8 +18,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
-import ReviewSystem, { Review, ReviewSummary } from '@/components/common/ReviewSystem';
 import { useWishlist } from '@/contexts/WishlistContext';
+import { useProductReviews } from '@/hooks/useProductReviews';
+import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
+import productsApi from '@/services/productsApi';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -48,13 +50,30 @@ export default function ProductDetailPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [reviewSummary, setReviewSummary] = useState<ReviewSummary>({
-    totalReviews: 0,
-    averageRating: 0,
-    ratingBreakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
-  });
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'reviews'>('details');
+
+  // Use the reviews hook for complete review management
+  const {
+    reviews,
+    summary: reviewSummary,
+    isLoading: reviewsLoading,
+    isRefreshing: reviewsRefreshing,
+    hasMore: hasMoreReviews,
+    sortBy,
+    filterRating,
+    refreshReviews,
+    loadMoreReviews,
+    setSortBy,
+    setFilterRating,
+    submitReview,
+    updateReview,
+    deleteReview,
+    markHelpful,
+  } = useProductReviews({
+    productId: id as string,
+    autoLoad: true,
+  });
 
   useEffect(() => {
     loadProductDetails(id as string);
@@ -62,135 +81,46 @@ export default function ProductDetailPage() {
 
   const loadProductDetails = async (productId: string) => {
     try {
-      // Mock data - in real app, this would fetch from API
-      const mockProduct: ProductDetails = {
-        id: productId,
-        name: 'Premium Wireless Headphones',
-        price: 2999,
-        originalPrice: 4999,
-        discount: 40,
-        images: [
-          'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500',
-          'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=500',
-          'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=500',
+
+      // Fetch product details from backend
+      const productResponse = await productsApi.getProductById(productId);
+
+      if (!productResponse.success || !productResponse.data) {
+        console.error('❌ [PRODUCT PAGE] Failed to load product:', productResponse.message);
+        setIsLoading(false);
+        return;
+      }
+
+      const productData = productResponse.data;
+
+      // Transform backend product data to component format
+      const transformedProduct: ProductDetails = {
+        id: productData.id || (productData as any)._id,
+        name: productData.name,
+        price: productData.pricing?.salePrice || productData.pricing?.basePrice || 0,
+        originalPrice: productData.pricing?.basePrice !== productData.pricing?.salePrice
+          ? productData.pricing?.basePrice
+          : undefined,
+        discount: productData.pricing?.salePrice && productData.pricing?.basePrice
+          ? Math.round(((productData.pricing.basePrice - productData.pricing.salePrice) / productData.pricing.basePrice) * 100)
+          : undefined,
+        images: productData.images?.map(img => img.url) || [
+          'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500'
         ],
-        description: 'Experience premium sound quality with these wireless headphones featuring active noise cancellation, 30-hour battery life, and superior comfort for all-day listening.',
-        specifications: {
-          'Battery Life': '30 hours',
-          'Connectivity': 'Bluetooth 5.0',
-          'Driver Size': '40mm',
-          'Weight': '250g',
-          'Charging Time': '2 hours',
-          'Noise Cancellation': 'Active ANC',
-        },
-        availability: 'IN_STOCK',
-        rating: 4.5,
-        reviewCount: 1250,
-        category: 'Electronics',
-        brand: 'AudioTech',
-        tags: ['wireless', 'premium', 'noise-cancelling'],
+        description: productData.description || 'No description available',
+        specifications: productData.variants?.[0]?.attributes || {},
+        availability: productData.variants?.[0]?.inventory?.quantity > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK',
+        rating: reviewSummary?.averageRating || productData.ratings?.average || 0,
+        reviewCount: reviewSummary?.totalReviews || productData.ratings?.count || 0,
+        category: productData.category?.name || 'General',
+        brand: productData.store?.name || 'Unknown',
+        tags: productData.tags || [],
       };
 
-      setProduct(mockProduct);
-      
-      // Load mock reviews
-      const mockReviews: Review[] = [
-        {
-          id: '1',
-          userId: 'user1',
-          userName: 'Sarah Wilson',
-          userAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b95d6667?w=150',
-          rating: 5,
-          title: 'Exceptional Sound Quality!',
-          content: 'Amazing sound quality! The noise cancellation works perfectly during my commute. Battery life is excellent and the comfort is top-notch for long listening sessions.',
-          images: ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300'],
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          helpfulCount: 23,
-          isHelpful: false,
-          isVerifiedPurchase: true,
-          canEdit: false,
-          canDelete: false,
-        },
-        {
-          id: '2',
-          userId: 'user2',
-          userName: 'Mike Chen',
-          rating: 4,
-          title: 'Great for the price',
-          content: 'Really solid headphones for the price point. The bass is punchy and the highs are clear. Only complaint is that they can get a bit uncomfortable after 3+ hours of use.',
-          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          helpfulCount: 15,
-          isHelpful: true,
-          isVerifiedPurchase: true,
-          canEdit: false,
-          canDelete: false,
-          response: {
-            id: 'resp1',
-            content: 'Thank you for your feedback! We\'re glad you\'re enjoying the sound quality. We\'re always working to improve comfort in future models.',
-            author: 'AudioTech Team',
-            createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-          }
-        },
-        {
-          id: '3',
-          userId: 'user3',
-          userName: 'Emma Rodriguez',
-          rating: 3,
-          title: 'Good but not great',
-          content: 'Good build quality and decent sound. Battery life could be better and the noise cancellation isn\'t as strong as advertised. Still decent value for money.',
-          createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          helpfulCount: 8,
-          isHelpful: false,
-          isVerifiedPurchase: true,
-          canEdit: false,
-          canDelete: false,
-        },
-        {
-          id: '4',
-          userId: 'user4',
-          userName: 'David Kim',
-          rating: 5,
-          title: 'Perfect for work',
-          content: 'I use these daily for work calls and music. The microphone quality is excellent and colleagues say I sound crystal clear. Highly recommend!',
-          createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-          helpfulCount: 12,
-          isHelpful: false,
-          isVerifiedPurchase: true,
-          canEdit: false,
-          canDelete: false,
-        },
-        {
-          id: '5',
-          userId: 'current-user',
-          userName: 'You',
-          rating: 4,
-          title: 'Impressed with performance',
-          content: 'Just received these yesterday and I\'m already impressed. Setup was super easy and the sound quality exceeded my expectations. Looking forward to testing them more!',
-          createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-          helpfulCount: 2,
-          isHelpful: false,
-          isVerifiedPurchase: true,
-          canEdit: true,
-          canDelete: true,
-        }
-      ];
-      
-      // Calculate review summary
-      const totalReviews = mockReviews.length;
-      const averageRating = mockReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
-      const ratingBreakdown = mockReviews.reduce((breakdown, review) => {
-        breakdown[review.rating as keyof typeof breakdown]++;
-        return breakdown;
-      }, { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
-      
-      setReviews(mockReviews);
-      setReviewSummary({
-        totalReviews,
-        averageRating,
-        ratingBreakdown,
-      });
+      setProduct(transformedProduct);
     } catch (error) {
-      console.error('Error loading product:', error);
+      console.error('❌ [PRODUCT PAGE] Error loading product:', error);
+      setError('Failed to load product details. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -206,14 +136,14 @@ export default function ProductDetailPage() {
       `${product?.name} (${quantity} item${quantity > 1 ? 's' : ''}) added to your cart!`,
       [
         { text: 'Continue Shopping' },
-        { text: 'View Cart', onPress: () => router.push('/CartPage') },
+        { text: 'View Cart', onPress: () => router.push('/CartPage' as any) },
       ]
     );
   };
 
   const handleBuyNow = () => {
     // Navigate directly to checkout with this product
-    router.push(`/checkout?productId=${product?.id}&quantity=${quantity}`);
+    router.push(`/checkout?productId=${product?.id}&quantity=${quantity}` as any);
   };
 
   const handleWishlist = async () => {
@@ -244,74 +174,6 @@ export default function ProductDetailPage() {
     } catch (error) {
       Alert.alert('Error', 'Failed to update wishlist. Please try again.');
     }
-  };
-
-  // Review handlers
-  const handleAddReview = async (review: Omit<Review, 'id' | 'createdAt' | 'helpfulCount' | 'isHelpful' | 'canEdit' | 'canDelete'>): Promise<void> => {
-    const newReview: Review = {
-      ...review,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      helpfulCount: 0,
-      isHelpful: false,
-      canEdit: true,
-      canDelete: true,
-    };
-
-    setReviews(prev => [newReview, ...prev]);
-    
-    // Recalculate summary
-    const updatedReviews = [newReview, ...reviews];
-    const totalReviews = updatedReviews.length;
-    const averageRating = updatedReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews;
-    const ratingBreakdown = updatedReviews.reduce((breakdown, r) => {
-      breakdown[r.rating as keyof typeof breakdown]++;
-      return breakdown;
-    }, { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
-    
-    setReviewSummary({ totalReviews, averageRating, ratingBreakdown });
-  };
-
-  const handleEditReview = async (reviewId: string, updatedReview: Partial<Review>): Promise<void> => {
-    setReviews(prev => prev.map(review => 
-      review.id === reviewId 
-        ? { ...review, ...updatedReview, updatedAt: new Date().toISOString() }
-        : review
-    ));
-  };
-
-  const handleDeleteReview = async (reviewId: string): Promise<void> => {
-    setReviews(prev => {
-      const updatedReviews = prev.filter(review => review.id !== reviewId);
-      
-      // Recalculate summary
-      const totalReviews = updatedReviews.length;
-      if (totalReviews > 0) {
-        const averageRating = updatedReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews;
-        const ratingBreakdown = updatedReviews.reduce((breakdown, r) => {
-          breakdown[r.rating as keyof typeof breakdown]++;
-          return breakdown;
-        }, { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
-        
-        setReviewSummary({ totalReviews, averageRating, ratingBreakdown });
-      } else {
-        setReviewSummary({ totalReviews: 0, averageRating: 0, ratingBreakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } });
-      }
-      
-      return updatedReviews;
-    });
-  };
-
-  const handleMarkHelpful = async (reviewId: string): Promise<void> => {
-    setReviews(prev => prev.map(review => 
-      review.id === reviewId 
-        ? {
-            ...review,
-            isHelpful: !review.isHelpful,
-            helpfulCount: review.isHelpful ? review.helpfulCount - 1 : review.helpfulCount + 1,
-          }
-        : review
-    ));
   };
 
   if (isLoading) {
@@ -361,7 +223,7 @@ export default function ProductDetailPage() {
               color={product && isInWishlist(product.id) ? "#EF4444" : "#333"} 
             />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/CartPage')}>
+          <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/CartPage' as any)}>
             <Ionicons name="cart-outline" size={24} color="#333" />
           </TouchableOpacity>
         </View>
@@ -485,21 +347,25 @@ export default function ProductDetailPage() {
           </>
         ) : (
           <View style={styles.reviewsSection}>
-            <ReviewSystem
-              entityId={product.id}
-              entityType="product"
+            <ProductReviewsSection
+              productId={product.id}
+              productName={product.name}
               reviews={reviews}
-              reviewSummary={reviewSummary}
-              onAddReview={handleAddReview}
-              onEditReview={handleEditReview}
-              onDeleteReview={handleDeleteReview}
-              onMarkHelpful={handleMarkHelpful}
+              summary={reviewSummary}
+              isLoading={reviewsLoading}
+              isRefreshing={reviewsRefreshing}
+              hasMore={hasMoreReviews}
+              sortBy={sortBy}
+              filterRating={filterRating}
               currentUserId="current-user"
-              allowPhotos={true}
-              maxPhotos={5}
-              showSummary={true}
-              showFilters={true}
-              style={styles.reviewSystem}
+              onRefresh={refreshReviews}
+              onLoadMore={loadMoreReviews}
+              onSortChange={setSortBy as any}
+              onFilterChange={setFilterRating as any}
+              onSubmitReview={submitReview}
+              onUpdateReview={updateReview}
+              onDeleteReview={deleteReview}
+              onMarkHelpful={markHelpful}
             />
           </View>
         )}
@@ -545,7 +411,7 @@ export default function ProductDetailPage() {
         </View>
       </View>
     </SafeAreaView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

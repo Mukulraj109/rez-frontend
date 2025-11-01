@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from '@/components/ThemedText';
 import { 
   fileUploadService, 
@@ -65,7 +66,7 @@ export default function FileUploader({
       // Configure picker options
       const pickerOptions: UploadOptions = {
         allowsMultipleSelection: maxFiles > 1,
-        mediaTypes: allowedTypes.includes('video') ? 'All' : 'Images',
+        mediaTypes: allowedTypes.includes('video') ? ImagePicker.MediaTypeOptions.All : ImagePicker.MediaTypeOptions.Images,
         ...options,
       };
 

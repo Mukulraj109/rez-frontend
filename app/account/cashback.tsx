@@ -22,6 +22,7 @@ import cashbackService, {
   UserCashback,
   CashbackCampaign,
 } from '@/services/cashbackApi';
+// import { generateSampleCashbackData } from '@/utils/cashbackSampleData';
 
 type TabType = 'all' | 'pending' | 'credited' | 'expired';
 
@@ -44,6 +45,7 @@ export default function CashbackPage() {
   const [cashbacks, setCashbacks] = useState<UserCashback[]>([]);
   const [pendingReady, setPendingReady] = useState<UserCashback[]>([]);
   const [campaigns, setCampaigns] = useState<CashbackCampaign[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -57,6 +59,7 @@ export default function CashbackPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [summaryRes, pendingRes, campaignsRes] = await Promise.all([
         cashbackService.getCashbackSummary(),
@@ -66,19 +69,27 @@ export default function CashbackPage() {
 
       if (summaryRes.success && summaryRes.data) {
         setSummary(summaryRes.data);
+      } else {
+        console.warn('Failed to load cashback summary:', summaryRes.error);
+        setError('Failed to load cashback summary');
       }
 
       if (pendingRes.success && pendingRes.data) {
         setPendingReady(pendingRes.data.cashbacks);
+      } else {
+        console.warn('Failed to load pending cashback:', pendingRes.error);
       }
 
       if (campaignsRes.success && campaignsRes.data) {
         setCampaigns(campaignsRes.data.campaigns);
+      } else {
+        console.warn('Failed to load campaigns:', campaignsRes.error);
       }
 
       await loadCashbackHistory();
     } catch (error) {
       console.error('Failed to load cashback data:', error);
+      setError('Failed to load cashback data. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -91,9 +102,13 @@ export default function CashbackPage() {
 
       if (response.success && response.data) {
         setCashbacks(response.data.cashbacks);
+      } else {
+        console.warn('Failed to load cashback history:', response.error);
+        setCashbacks([]);
       }
     } catch (error) {
       console.error('Failed to load cashback history:', error);
+      setCashbacks([]);
     }
   };
 
@@ -123,10 +138,10 @@ export default function CashbackPage() {
               const response = await cashbackService.redeemCashback();
               if (response.success) {
                 Alert.alert(
-                  'Success',
-                  `₹${response.data?.totalAmount || totalAmount} cashback redeemed successfully!`
-                );
-                loadData();
+                'Success',
+                `₹${response.data?.totalAmount || totalAmount} cashback redeemed successfully!`
+              );
+              loadData();
               } else {
                 Alert.alert('Error', response.error || 'Failed to redeem cashback');
               }
@@ -217,7 +232,7 @@ export default function CashbackPage() {
           </View>
           <View style={styles.cashbackInfo}>
             <ThemedText style={styles.cashbackDescription} numberOfLines={2}>
-              {cashback.description}
+              {cashback.description || 'Cashback earned'}
             </ThemedText>
             <View style={styles.cashbackMeta}>
               <ThemedText style={styles.cashbackDate}>
@@ -225,13 +240,13 @@ export default function CashbackPage() {
               </ThemedText>
               <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
                 <ThemedText style={[styles.statusText, { color: statusColor }]}>
-                  {cashback.status}
+                  {cashback.status.charAt(0).toUpperCase() + cashback.status.slice(1)}
                 </ThemedText>
               </View>
             </View>
           </View>
           <ThemedText style={[styles.cashbackAmount, { color: statusColor }]}>
-            ₹{cashback.amount}
+            ₹{cashback.amount || 0}
           </ThemedText>
         </View>
 
@@ -397,11 +412,23 @@ export default function CashbackPage() {
           </TouchableOpacity>
         </View>
 
+        {/* Error Display */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={24} color="#EF4444" />
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+            <TouchableOpacity style={styles.retryButton} onPress={loadData}>
+              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Cashback History */}
         <View style={styles.section}>
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#667eea" />
+              <ThemedText style={styles.loadingText}>Loading cashback data...</ThemedText>
             </View>
           ) : cashbacks.length > 0 ? (
             cashbacks.map(renderCashbackCard)
@@ -409,12 +436,17 @@ export default function CashbackPage() {
             <View style={styles.emptyContainer}>
               <Ionicons name="wallet-outline" size={64} color="#9CA3AF" />
               <ThemedText style={styles.emptyText}>No cashback found</ThemedText>
+              <ThemedText style={styles.emptySubtext}>
+                {activeTab === 'all' 
+                  ? 'Start shopping to earn cashback!' 
+                  : `No ${activeTab} cashback found`}
+              </ThemedText>
             </View>
           )}
         </View>
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -710,6 +742,38 @@ const styles = StyleSheet.create({
     padding: 40,
     alignItems: 'center',
   },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 12,
+  },
+  errorContainer: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    margin: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#DC2626',
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   emptyContainer: {
     padding: 40,
     alignItems: 'center',
@@ -718,5 +782,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#9CA3AF',
     marginTop: 16,
+    fontWeight: '600',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

@@ -80,7 +80,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
       >
         <Animated.View style={[styles.productCard, { transform: [{ scale: scaleAnim }] }]}>
           <ImageBackground
-            source={{ uri: item.image }}
+            source={{ uri: item.image || 'https://via.placeholder.com/300x200?text=No+Image' }}
             style={styles.productImage}
             imageStyle={styles.imageStyle}
           >
@@ -88,15 +88,15 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
               colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
               style={styles.overlay}
             >
-              <Text style={styles.brandText}>{item.brand}</Text>
+              <Text style={styles.brandText}>{item.brand || 'Brand'}</Text>
 
               <View style={styles.ribbon}>
-                <Text style={styles.ribbonText}>CASHBACK {item.cashback}%</Text>
+                <Text style={styles.ribbonText}>CASHBACK {item.cashback || 0}%</Text>
               </View>
 
               <View style={styles.textContainer}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.subtitle}>{item.subtitle}</Text>
+                <Text style={styles.title}>{item.title || 'Title'}</Text>
+                <Text style={styles.subtitle}>{item.subtitle || 'Subtitle'}</Text>
               </View>
 
               <TouchableOpacity 
@@ -105,7 +105,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
                 onPress={() => handleItemPress(item)}
               >
                 <Text style={styles.cashbackInfo}>
-                  Cashback upto {item.cashback}%
+                  Cashback upto {item.cashback || 0}%
                 </Text>
                 <Text style={styles.arrow}>›</Text>
               </TouchableOpacity>
@@ -141,7 +141,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
     <View style={styles.container}>
       {title && (
         <View style={styles.headerContainer}>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={styles.sectionTitle}>{title || 'Section Title'}</Text>
         </View>
       )}
       <ScrollView

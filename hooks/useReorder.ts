@@ -54,17 +54,11 @@ export function useReorder(): UseReorderReturn {
       setValidating(true);
       setError(null);
 
-      console.log('🔍 [useReorder] Validating reorder:', orderId);
-
       const response = await reorderService.validateReorder(orderId, itemIds);
 
       if (response.success && response.data) {
         setValidation(response.data);
-        console.log('✅ [useReorder] Validation successful:', {
-          canReorder: response.data.canReorder,
-          itemCount: response.data.items.length,
-          warnings: response.data.warnings.length
-        });
+
         return response.data.canReorder;
       } else {
         throw new Error(response.message || 'Failed to validate reorder');
@@ -84,17 +78,10 @@ export function useReorder(): UseReorderReturn {
       setReordering(true);
       setError(null);
 
-      console.log('🔄 [useReorder] Re-ordering full order:', orderId);
-
       const response = await reorderService.reorderFullOrder(orderId);
 
       if (response.success && response.data) {
         const result = response.data;
-
-        console.log('✅ [useReorder] Reorder successful:', {
-          addedItems: result.addedItems.length,
-          skippedItems: result.skippedItems.length
-        });
 
         // Refresh cart
         await refreshCart();
@@ -124,17 +111,10 @@ export function useReorder(): UseReorderReturn {
       setReordering(true);
       setError(null);
 
-      console.log('🔄 [useReorder] Re-ordering selected items:', orderId, itemIds);
-
       const response = await reorderService.reorderSelectedItems(orderId, itemIds);
 
       if (response.success && response.data) {
         const result = response.data;
-
-        console.log('✅ [useReorder] Selective reorder successful:', {
-          addedItems: result.addedItems.length,
-          skippedItems: result.skippedItems.length
-        });
 
         // Refresh cart
         await refreshCart();
@@ -183,13 +163,11 @@ export function useFrequentlyOrdered(limit: number = 10): UseFrequentlyOrderedRe
       setLoading(true);
       setError(null);
 
-      console.log('📊 [useFrequentlyOrdered] Loading frequently ordered items');
-
       const response = await reorderService.getFrequentlyOrdered(limit);
 
       if (response.success && response.data) {
         setItems(response.data);
-        console.log('✅ [useFrequentlyOrdered] Loaded items:', response.data.length);
+
       } else {
         throw new Error(response.message || 'Failed to load frequently ordered items');
       }
@@ -220,13 +198,11 @@ export function useReorderSuggestions(): UseReorderSuggestionsReturn {
       setLoading(true);
       setError(null);
 
-      console.log('💡 [useReorderSuggestions] Loading reorder suggestions');
-
       const response = await reorderService.getReorderSuggestions();
 
       if (response.success && response.data) {
         setSuggestions(response.data);
-        console.log('✅ [useReorderSuggestions] Loaded suggestions:', response.data.length);
+
       } else {
         throw new Error(response.message || 'Failed to load reorder suggestions');
       }

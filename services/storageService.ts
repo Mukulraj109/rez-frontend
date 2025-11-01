@@ -182,7 +182,6 @@ class StorageService {
       const promises = Object.entries(items).map(([key, value]) =>
         this.setItem(key, value, options)
       );
-
       await Promise.all(promises);
     } catch (error) {
       console.error('Error setting multiple items:', error);
@@ -298,8 +297,7 @@ class StorageService {
       });
 
       await Promise.all(promises);
-      
-      console.log(`Cleaned up ${cleanedCount} expired items`);
+
       return cleanedCount;
     } catch (error) {
       console.error('Error during cleanup:', error);

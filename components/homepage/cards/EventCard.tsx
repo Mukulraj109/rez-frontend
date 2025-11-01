@@ -105,7 +105,7 @@ export default function EventCard({
         </View>
       </ThemedView>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -190,15 +190,18 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     lineHeight: 24,
     letterSpacing: -0.3,
+    height: 48, // Fixed height for 2 lines (24px line-height x 2)
   },
   subtitle: {
     fontSize: 14,
     marginBottom: 16,
     lineHeight: 20,
+    height: 20, // Fixed height for 1 line
   },
   metaInfo: {
     gap: 8,
     marginBottom: 16,
+    minHeight: 60, // Fixed height for location + date/time
   },
   locationContainer: {
     flexDirection: 'row',

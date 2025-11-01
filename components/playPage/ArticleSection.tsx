@@ -4,7 +4,6 @@ import { UGCVideoItem, PLAY_PAGE_COLORS } from '@/types/playPage.types';
 import SectionHeader from './SectionHeader';
 import VideoGrid from './VideoGrid';
 
-
 interface ArticleSectionProps {
   articles: UGCVideoItem[];
   onArticlePress: (article: UGCVideoItem) => void;
@@ -42,7 +41,7 @@ export default function ArticleSection({
       />
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -12,6 +12,7 @@ import {
   Dimensions,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,8 +25,10 @@ import {
   SearchSuggestion,
   SearchViewMode,
 } from '@/types/search.types';
-import { searchDummyData } from '@/data/searchData';
-import { SearchHeader, SearchSection as SearchSectionComponent } from '@/components/search';
+import { SearchHeader, SearchSection as SearchSectionComponent, FilterModal } from '@/components/search';
+import { useSearchPage } from '@/hooks/useSearchPage';
+import useDebouncedSearch from '@/hooks/useDebouncedSearch';
+import type { FilterState } from '@/components/search/FilterModal';
 
 const { width } = Dimensions.get('window');
 
@@ -33,124 +36,156 @@ export default function SearchPage() {
   const params = useLocalSearchParams();
   const initialQuery = (params.q as string) || '';
 
-  const [searchState, setSearchState] = useState<SearchPageState>({
-    query: initialQuery,
-    isSearching: false,
-    sections: [],
-    results: [],
-    suggestions: [],
-    activeFilters: {},
-    availableFilters: [],
-    sortBy: 'relevance',
-    searchHistory: [],
-    recentSearches: [],
-    showSuggestions: false,
-    showFilters: false,
-    loading: true,
-    error: null,
-    pagination: {
-      page: 1,
-      limit: 20,
-      total: 0,
-      hasMore: false,
-    },
-  });
+  // Use the new search page hook
+  const { state: searchState, actions } = useSearchPage();
+
+  // Use debounced search hook
+  const { value: searchQuery, debouncedValue: debouncedQuery, isDebouncing, setValue: setSearchQuery } = useDebouncedSearch(initialQuery, { delay: 300, minLength: 2 });
 
   const [viewMode, setViewMode] = useState<SearchViewMode>(initialQuery ? 'results' : 'categories');
   const [inputFocused, setInputFocused] = useState(false);
-
-  useEffect(() => {
-    // Load initial data
-    setTimeout(() => {
-      setSearchState(prev => ({
-        ...prev,
-        sections: searchDummyData.sections,
-        suggestions: searchDummyData.suggestions.slice(0, 5),
-        loading: false,
-      }));
-    }, 300);
-  }, []);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState<FilterState>({
+    priceRange: { min: 0, max: 100000 },
+    rating: null,
+    categories: [],
+    inStock: false,
+    cashbackMin: 0,
+  });
 
   useEffect(() => {
     // Perform search if initial query exists
     if (initialQuery) {
-      performSearch(initialQuery);
+      actions.performSearch(initialQuery);
     }
-  }, [initialQuery]);
+  }, [initialQuery, actions]);
+
+  // Perform search when debounced query changes
+  useEffect(() => {
+    if (debouncedQuery && debouncedQuery.trim().length >= 2) {
+      actions.performSearch(debouncedQuery);
+    }
+  }, [debouncedQuery, actions]);
 
   const handleBack = () => {
     router.back();
   };
 
   const handleQueryChange = (text: string) => {
-    setSearchState(prev => ({ ...prev, query: text }));
+    actions.handleSearchChange(text);
+    setSearchQuery(text); // Update debounced search
 
     if (text.length > 0) {
       setViewMode('suggestions');
-      setSearchState(prev => ({ ...prev, showSuggestions: true }));
-      // TODO: Add debounced search suggestions
     } else {
       setViewMode('categories');
-      setSearchState(prev => ({ ...prev, showSuggestions: false }));
     }
   };
 
-  const performSearch = useCallback((query: string) => {
-    if (!query.trim()) return;
-
-    setSearchState(prev => ({
-      ...prev,
-      isSearching: true,
-      loading: true,
-      showSuggestions: false,
-    }));
-    setViewMode('results');
-
-    // Simulate API call
-    setTimeout(() => {
-      const filteredResults = searchDummyData.results.filter(result =>
-        result.title.toLowerCase().includes(query.toLowerCase()) ||
-        result.description.toLowerCase().includes(query.toLowerCase()) ||
-        result.category.toLowerCase().includes(query.toLowerCase())
-      );
-
-      setSearchState(prev => ({
-        ...prev,
-        results: filteredResults,
-        isSearching: false,
-        loading: false,
-        pagination: {
-          ...prev.pagination,
-          total: filteredResults.length,
-          hasMore: false,
-        },
-      }));
-    }, 800);
-  }, []);
-
   const handleSearch = () => {
     if (searchState.query.trim()) {
-      performSearch(searchState.query);
+      actions.handleSearchSubmit(searchState.query);
+      setViewMode('results');
     }
   };
 
   const handleSuggestionPress = (suggestion: SearchSuggestion) => {
-    setSearchState(prev => ({ ...prev, query: suggestion.text }));
-    performSearch(suggestion.text);
+    actions.handleSearchChange(suggestion.text);
+    actions.handleSearchSubmit(suggestion.text);
+    setViewMode('results');
   };
 
-  const handleCategoryPress = (category: SearchCategory) => {
-    setSearchState(prev => ({ ...prev, query: category.name }));
-    performSearch(category.name);
+  const handleCategoryPress = async (category: SearchCategory) => {
+    await actions.handleCategoryPress(category);
+    
+    // Navigate to category page to show all products in this category
+    router.push({
+      pathname: '/category/[slug]' as any,
+      params: {
+        slug: category.slug,
+        name: category.name,
+        categoryId: category.id
+      }
+    });
   };
 
-  const handleResultPress = (result: SearchResult) => {
-    Alert.alert('Result Selected', `Selected: ${result.title}`);
-    // TODO: Navigate to result detail page
+  const handleResultPress = async (result: SearchResult, position: number) => {
+    await actions.handleResultPress(result, position);
+
+    if (result.category === 'Store') {
+      // Navigate to MainStorePage with storeId to show store view
+
+      router.push(`/MainStorePage?storeId=${result.id}`);
+    } else {
+      // Navigate to product page
+      router.push({
+        pathname: '/product/[id]' as any,
+        params: {
+          id: result.id
+        }
+      });
+    }
+  };
+
+  const handleViewAll = (sectionId: string) => {
+    actions.handleViewAllSection(sectionId);
+
+    // Navigate to the appropriate page based on section
+    if (sectionId === 'going-out') {
+      router.push('/going-out');
+    } else if (sectionId === 'home-delivery') {
+      router.push('/home-delivery');
+    }
+  };
+
+  const handleOpenFilters = () => {
+    setShowFilterModal(true);
+  };
+
+  const handleApplyFilters = (filters: FilterState) => {
+    setCurrentFilters(filters);
+
+    // Convert FilterState to SearchPageState activeFilters format
+    const activeFilters: SearchPageState['activeFilters'] = {};
+
+    if (filters.categories.length > 0) {
+      activeFilters.category = filters.categories.map(cat => ({
+        id: cat,
+        label: cat,
+        value: cat,
+      }));
+    }
+
+    if (filters.rating !== null) {
+      activeFilters.rating = [{
+        id: 'rating',
+        label: `${filters.rating}+ Stars`,
+        value: filters.rating,
+      }];
+    }
+
+    if (filters.priceRange.min > 0 || filters.priceRange.max < 100000) {
+      activeFilters.price = [{
+        id: 'price-range',
+        label: `₹${filters.priceRange.min} - ₹${filters.priceRange.max}`,
+        value: `${filters.priceRange.min}-${filters.priceRange.max}`,
+      }];
+    }
+
+    if (filters.cashbackMin > 0) {
+      activeFilters.cashback = [{
+        id: 'cashback-min',
+        label: `${filters.cashbackMin}% and above`,
+        value: filters.cashbackMin,
+      }];
+    }
+
+    actions.applyFilters(activeFilters);
+    setShowFilterModal(false);
   };
 
   const renderHeader = () => (
-    <LinearGradient colors={['#7C3AED', '#8B5CF6', '#C084FC']} style={styles.header}>
+    <LinearGradient colors={['#7C3AED', '#8B5CF6', '#C084FC'] as const} style={styles.header}>
       <View style={styles.headerContent}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.8}>
           <View style={styles.backButtonContainer}>
@@ -195,8 +230,13 @@ export default function SearchPage() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.filterButton} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.filterButton} activeOpacity={0.8} onPress={handleOpenFilters}>
           <Ionicons name="options-outline" size={20} color="white" />
+          {Object.keys(searchState.activeFilters).length > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{Object.keys(searchState.activeFilters).length}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -211,9 +251,19 @@ export default function SearchPage() {
       {searchState.sections.map((section, index) => (
         <View key={section.id} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <TouchableOpacity>
+            <View>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              {section.subtitle && (
+                <Text style={styles.sectionSubtitle}>{section.subtitle}</Text>
+              )}
+            </View>
+            <TouchableOpacity 
+              style={styles.viewAllButton}
+              onPress={() => handleViewAll(section.id)}
+              activeOpacity={0.7}
+            >
               <Text style={styles.viewAllText}>View all</Text>
+              <Ionicons name="arrow-forward" size={16} color="#8B5CF6" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </View>
 
@@ -279,57 +329,152 @@ export default function SearchPage() {
 
   const renderResults = () => (
     <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.resultsHeader}>
-        <Text style={styles.resultsTitle}>
-          {searchState.results.length} results for "{searchState.query}"
+      {/* Search Results Header */}
+      <View style={styles.searchResultsHeader}>
+        <View style={styles.searchResultsTitleContainer}>
+          <Ionicons name="search" size={20} color="#8B5CF6" />
+          <Text style={styles.searchResultsTitle}>
+            Search Results
+          </Text>
+        </View>
+        <Text style={styles.searchResultsCount}>
+          {searchState.loading ? 'Searching...' : `${searchState.results.length} ${searchState.results.length === 1 ? 'result' : 'results'} found`}
+        </Text>
+        <Text style={styles.searchQueryText}>
+          for "{searchState.query}"
         </Text>
       </View>
 
-      {searchState.results.map((result) => (
-        <TouchableOpacity key={result.id} style={styles.resultCard} onPress={() => handleResultPress(result)} activeOpacity={0.9}>
-          <View style={styles.resultImageContainer}>
-            {result.image ? (
-              <Image source={{ uri: result.image }} style={styles.resultImage} resizeMode="cover" />
-            ) : (
-              <View style={styles.resultImagePlaceholder}>
-                <Text style={styles.resultImageText}>{result.title.charAt(0)}</Text>
-              </View>
-            )}
-          </View>
+      {/* Results Grid */}
+      <View style={styles.resultsGrid}>
+        {searchState.results.map((result, index) => (
+          <TouchableOpacity 
+            key={result.id} 
+            style={styles.resultCard} 
+            onPress={() => handleResultPress(result, index + 1)} 
+            activeOpacity={0.9}
+          >
+            <View style={styles.resultImageContainer}>
+              {result.image ? (
+                <Image source={{ uri: result.image }} style={styles.resultImage} resizeMode="cover" />
+              ) : (
+                <View style={styles.resultImagePlaceholder}>
+                  <Text style={styles.resultImageText}>{result.title.charAt(0)}</Text>
+                </View>
+              )}
+            </View>
 
-          <View style={styles.resultInfo}>
-            <Text style={styles.resultTitle}>{result.title}</Text>
-            <Text style={styles.resultDescription} numberOfLines={2}>
-              {result.description}
-            </Text>
-            <View style={styles.resultMeta}>
-              <View style={styles.resultCashback}>
-                <Ionicons name="cash-outline" size={14} color="#10B981" />
-                <Text style={styles.resultCashbackText}>{result.cashbackPercentage}% cashback</Text>
-              </View>
-              <View style={styles.categoryTag}>
-                <Text style={styles.categoryTagText}>{result.category}</Text>
+            <View style={styles.resultInfo}>
+              <Text style={styles.resultTitle} numberOfLines={2}>{result.title}</Text>
+              <Text style={styles.resultDescription} numberOfLines={2}>
+                {result.description}
+              </Text>
+              <View style={styles.resultMeta}>
+                <View style={styles.resultCashback}>
+                  <Ionicons name="cash-outline" size={14} color="#10B981" />
+                  <Text style={styles.resultCashbackText}>{result.cashbackPercentage}% cashback</Text>
+                </View>
+                <View style={styles.categoryTag}>
+                  <Text style={styles.categoryTagText}>{result.category}</Text>
+                </View>
               </View>
             </View>
-          </View>
-        </TouchableOpacity>
-      ))}
+          </TouchableOpacity>
+        ))}
+      </View>
     </ScrollView>
   );
 
+  const renderErrorState = () => (
+    <View style={styles.errorContainer}>
+      <Ionicons name="alert-circle-outline" size={80} color="#EF4444" />
+      <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
+      <Text style={styles.errorMessage}>{searchState.error}</Text>
+      <TouchableOpacity
+        style={styles.retryButton}
+        onPress={() => {
+          actions.handleClearError();
+          if (viewMode === 'results' && searchState.query) {
+            actions.performSearch(searchState.query);
+          } else {
+            actions.loadCategories();
+          }
+        }}
+      >
+        <Text style={styles.retryButtonText}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderLoadingState = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#7C3AED" />
+      <Text style={styles.loadingText}>
+        {searchState.isSearching ? 'Searching...' : 'Loading...'}
+      </Text>
+    </View>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyIconContainer}>
+        <Ionicons name="search-outline" size={80} color="#D1D5DB" />
+      </View>
+      <Text style={styles.emptyTitle}>No results found</Text>
+      <Text style={styles.emptyMessage}>
+        We couldn't find anything for "{searchState.query}"
+      </Text>
+      <Text style={styles.emptySuggestion}>
+        Try different keywords or browse our categories
+      </Text>
+      <View style={styles.emptyActionContainer}>
+        <TouchableOpacity
+          style={styles.emptyActionButton}
+        onPress={() => {
+          actions.handleClearSearch();
+          setViewMode('categories');
+        }}
+        >
+          <Text style={styles.emptyActionText}>Browse Categories</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderSearchHint = () => (
+    <View style={styles.searchHintContainer}>
+      <Ionicons name="information-circle-outline" size={48} color="#D1D5DB" />
+      <Text style={styles.searchHintTitle}>Keep typing...</Text>
+      <Text style={styles.searchHintText}>
+        Enter at least 2 characters to start searching
+      </Text>
+    </View>
+  );
+
   const renderContent = () => {
-    if (searchState.loading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      );
+    // Show error if there's an error
+    if (searchState.error && !searchState.sections.length) {
+      return renderErrorState();
+    }
+
+    // Show loading
+    if (searchState.loading && !searchState.sections.length) {
+      return renderLoadingState();
     }
 
     switch (viewMode) {
       case 'suggestions':
         return renderSuggestions();
       case 'results':
+        if (searchState.loading) {
+          return renderLoadingState();
+        }
+        if (searchState.query.trim().length < 2) {
+          return renderSearchHint();
+        }
+        if (searchState.results.length === 0 && !searchState.loading) {
+          return renderEmptyState();
+        }
         return renderResults();
       default:
         return renderCategories();
@@ -340,9 +485,23 @@ export default function SearchPage() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
       {renderHeader()}
+      {searchState.error && searchState.sections.length > 0 && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="warning-outline" size={16} color="#F59E0B" />
+          <Text style={styles.errorBannerText}>{searchState.error}</Text>
+        </View>
+      )}
       {renderContent()}
+
+      {/* Filter Modal */}
+      <FilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={handleApplyFilters}
+        currentFilters={currentFilters}
+      />
     </SafeAreaView>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -423,6 +582,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.18)',
+    position: 'relative',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#7C3AED',
+  },
+  filterBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
   },
   floatingElement1: {
     position: 'absolute',
@@ -457,18 +636,49 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    alignItems: 'flex-start',
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
     color: '#0F172A',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#F5F3FF',
+    borderRadius: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(139, 92, 246, 0.15)',
+      },
+    }),
   },
   viewAllText: {
     fontSize: 14,
     color: '#7C3AED',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   categoriesGrid: {
     flexDirection: 'row',
@@ -479,15 +689,25 @@ const styles = StyleSheet.create({
   categoryCard: {
     width: (width - 56) / 2,
     backgroundColor: 'white',
-    borderRadius: 14,
-    padding: 12,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    borderWidth: 0.4,
-    borderColor: 'rgba(15,23,42,0.03)',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.12)',
+      },
+    }),
+    borderWidth: 0.5,
+    borderColor: 'rgba(139,92,246,0.08)',
   },
   categoryImageContainer: {
     marginBottom: 10,
@@ -496,14 +716,13 @@ const styles = StyleSheet.create({
   },
   categoryImage: {
     width: '100%',
-    height: 110,
-    borderRadius: 12,
+    height: 120,
+    borderRadius: 16,
   },
   categoryImagePlaceholder: {
     width: '100%',
-    height: 110,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
+    height: 120,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -527,15 +746,30 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cashbackBadge: {
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#10B981',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(16, 185, 129, 0.2)',
+      },
+    }),
   },
   cashbackBadgeText: {
-    color: '#065F46',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#047857',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   categoryCashback: {
     fontSize: 12,
@@ -577,100 +811,340 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
   },
-  resultsHeader: {
+  searchResultsHeader: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 24,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: 16,
+    marginHorizontal: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+      },
+    }),
   },
-  resultsTitle: {
+  searchResultsTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  searchResultsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  searchResultsCount: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0F172A',
+    color: '#8B5CF6',
+    marginBottom: 4,
+  },
+  searchQueryText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  resultsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
   resultCard: {
-    flexDirection: 'row',
+    width: (width - 48) / 2,
     backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 12,
-    padding: 12,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    borderWidth: 0.4,
-    borderColor: 'rgba(15,23,42,0.03)',
+    marginBottom: 16,
+    marginHorizontal: 2,
+    borderRadius: 20,
+    padding: 16,
+    height: 300, // Increased height for better consistency
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0px 4px 12px rgba(139, 92, 246, 0.12)',
+      },
+    }),
+    borderWidth: 1,
+    borderColor: 'rgba(139,92,246,0.08)',
   },
   resultImageContainer: {
-    marginRight: 12,
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   resultImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
+    width: '100%',
+    height: 120,
+    backgroundColor: '#F8FAFC',
   },
   resultImagePlaceholder: {
-    width: 72,
-    height: 72,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
+    width: '100%',
+    height: 120,
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
   },
   resultImageText: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
     color: '#8B5CF6',
   },
   resultInfo: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
   resultTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
+    color: '#1F2937',
+    marginBottom: 6,
+    lineHeight: 22,
   },
   resultDescription: {
     fontSize: 13,
     color: '#6B7280',
     marginBottom: 10,
     lineHeight: 18,
+    fontWeight: '500',
   },
   resultMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 'auto',
   },
   resultCashback: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
   },
   resultCashbackText: {
-    fontSize: 12,
-    color: '#10B981',
+    fontSize: 11,
+    color: '#047857',
     fontWeight: '700',
-    marginLeft: 6,
+    marginLeft: 4,
+    letterSpacing: 0.3,
   },
   categoryTag: {
-    backgroundColor: 'rgba(124,58,237,0.08)',
+    backgroundColor: '#F5F3FF',
     paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.2)',
   },
   categoryTagText: {
-    color: '#5B21B6',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#6B21A8',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   loadingText: {
     fontSize: 16,
     color: '#6B7280',
+    marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 20,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  retryButton: {
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 24,
+    elevation: 2,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400E',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginTop: 20,
+    marginHorizontal: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+      },
+    }),
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 8,
+  },
+  emptySuggestion: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  emptyActionContainer: {
+    width: '100%',
+  },
+  emptyActionButton: {
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0px 4px 8px rgba(139, 92, 246, 0.3)',
+      },
+    }),
+  },
+  emptyActionText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  searchHintContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginTop: 20,
+    marginHorizontal: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+      },
+    }),
+  },
+  searchHintTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  searchHintText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

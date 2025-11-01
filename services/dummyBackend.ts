@@ -226,7 +226,7 @@ export class DummyBackendService {
     
     DummyDatabase.setOTP(phoneNumber, otp);
 
-    console.log(`[DEV] OTP for ${phoneNumber}: ${otp}`); // Remove in production
+     // Remove in production
 
     return {
       success: true,
@@ -252,7 +252,7 @@ export class DummyBackendService {
     let user = DummyDatabase.getUser(phoneNumber);
     if (!user) {
       // Create new user for sign-in (simplified flow)
-      console.log(`[DEV] Creating new user for phone: ${phoneNumber}`);
+
       user = DummyDatabase.createUser({
         phoneNumber,
         email: `user${Date.now()}@example.com`, // Generate email

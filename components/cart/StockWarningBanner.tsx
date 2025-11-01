@@ -297,7 +297,7 @@ export function CompactStockWarning({
   onPress?: () => void;
 }) {
   const iconName = VALIDATION_ISSUE_ICONS[issue.type] as keyof typeof Ionicons.glyphMap;
-  const colors = VALIDATION_ISSUE_COLORS[issue.type];
+  const colors = VALIDATION_ISSUE_COLORS[issue.type] as any;
 
   const iconColor = issue.severity === 'error'
     ? colors.error
@@ -317,7 +317,7 @@ export function CompactStockWarning({
         {issue.message}
       </ThemedText>
     </TouchableOpacity>
-  );
+);
 }
 
 const compactStyles = StyleSheet.create({

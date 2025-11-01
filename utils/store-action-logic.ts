@@ -50,11 +50,11 @@ export function createButtonConfigs(props: StoreActionButtonsProps): ActionButto
       id: 'buy',
       title: props.customBuyText || 'Buy',
       iconName: 'card-outline',
-      onPress: props.onBuyPress || (() => console.log('Buy pressed')),
+      onPress: props.onBuyPress || (() => {}),
       isVisible: true,
       isEnabled: !props.isBuyDisabled && props.buyButtonState !== 'disabled',
       isLoading: props.isBuyLoading || props.buyButtonState === 'loading',
-      backgroundColor: ['#10B981', '#059669'] as const, // Green gradient for buy
+      backgroundColor: ['#10B981', '#047857'] as const, // Enhanced green gradient for buy
       textColor: '#FFFFFF',
     });
   }
@@ -65,11 +65,11 @@ export function createButtonConfigs(props: StoreActionButtonsProps): ActionButto
       id: 'lock',
       title: props.customLockText || 'Lock',
       iconName: 'lock-closed-outline',
-      onPress: props.onLockPress || (() => console.log('Lock pressed')),
+      onPress: props.onLockPress || (() => {}),
       isVisible: true,
       isEnabled: !props.isLockDisabled && props.lockButtonState !== 'disabled',
       isLoading: props.isLockLoading || props.lockButtonState === 'loading',
-      backgroundColor: ['#F59E0B', '#D97706'] as const, // Amber gradient for lock
+      backgroundColor: ['#F59E0B', '#DC2626'] as const, // Enhanced amber-to-red gradient for lock
       textColor: '#FFFFFF',
     });
   }
@@ -80,11 +80,11 @@ export function createButtonConfigs(props: StoreActionButtonsProps): ActionButto
       id: 'booking',
       title: props.customBookingText || 'Booking',
       iconName: 'calendar-outline',
-      onPress: props.onBookingPress || (() => console.log('Booking pressed')),
+      onPress: props.onBookingPress || (() => {}),
       isVisible: true,
       isEnabled: !props.isBookingDisabled && props.bookingButtonState !== 'disabled',
       isLoading: props.isBookingLoading || props.bookingButtonState === 'loading',
-      backgroundColor: ['#8B5CF6', '#7C3AED'] as const, // Purple gradient for booking (matches theme)
+      backgroundColor: ['#8B5CF6', '#6D28D9'] as const, // Enhanced purple gradient for booking
       textColor: '#FFFFFF',
     });
   }
@@ -118,15 +118,15 @@ export function getButtonLayout(buttonCount: number, screenWidth?: number): {
         return {
           flexDirection: 'column',
           buttonWidth: '100%',
-          containerPadding: 12,
-          buttonGap: 8,
+          containerPadding: 16,
+          buttonGap: 12,
         };
       }
       return {
         flexDirection: 'row',
-        buttonWidth: isSmallScreen ? '49%' : '48%',
-        containerPadding: isSmallScreen ? 12 : 16,
-        buttonGap: isSmallScreen ? 8 : 12,
+        buttonWidth: isSmallScreen ? '48.5%' : '48%',
+        containerPadding: isSmallScreen ? 14 : 18,
+        buttonGap: isSmallScreen ? 10 : 12,
       };
     
     case 3:

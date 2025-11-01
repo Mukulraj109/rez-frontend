@@ -4,7 +4,7 @@ import { useColorScheme as useNativeColorScheme } from 'react-native';
 
 // Types
 type ColorScheme = 'light' | 'dark' | 'auto';
-type Language = 'en' | 'hi' | 'es' | 'fr';
+type Language = 'en' | 'hi' | 'te' | 'ta' | 'bn' | 'es' | 'fr' | 'de' | 'zh' | 'ja';
 
 interface AppSettings {
   colorScheme: ColorScheme;

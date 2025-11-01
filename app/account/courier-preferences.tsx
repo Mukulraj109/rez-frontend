@@ -17,7 +17,7 @@ import apiClient from '../../services/apiClient';
 interface CourierPreferences {
   preferredCourier: 'any' | 'delhivery' | 'bluedart' | 'ekart' | 'dtdc' | 'fedex';
   deliveryTimePreference: {
-    weekdays: string[];
+    weekdays: ('MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN')[];
     preferredTimeSlot: {
       start: string;
       end: string;
@@ -29,7 +29,7 @@ interface CourierPreferences {
     leaveAtDoor: boolean;
     signatureRequired: boolean;
     callBeforeDelivery: boolean;
-    specificInstructions: string;
+    specificInstructions?: string;
   };
   alternateContact?: {
     name: string;
@@ -61,6 +61,7 @@ export default function CourierPreferencesScreen() {
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState<CourierPreferences | null>(null);
   const [showAlternateContact, setShowAlternateContact] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   useEffect(() => {
     loadPreferences();
@@ -72,16 +73,46 @@ export default function CourierPreferencesScreen() {
       const response = await apiClient.get('/user-settings/courier');
 
       if (response.success && response.data) {
-        setPreferences(response.data);
-        setShowAlternateContact(!!response.data.alternateContact?.name);
+        setPreferences(response.data as CourierPreferences);
+        setShowAlternateContact(!!(response.data as CourierPreferences).alternateContact?.name);
+      } else {
+        console.warn('Failed to load courier preferences:', response.error);
+        // Set default preferences if none exist
+        setPreferences(getDefaultPreferences());
       }
     } catch (error) {
       console.error('Error loading courier preferences:', error);
-      Alert.alert('Error', 'Failed to load courier preferences');
+      // Set default preferences on error
+      setPreferences(getDefaultPreferences());
     } finally {
       setLoading(false);
     }
   };
+
+  const getDefaultPreferences = (): CourierPreferences => ({
+    preferredCourier: 'any',
+    deliveryTimePreference: {
+      weekdays: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'],
+      preferredTimeSlot: {
+        start: '09:00',
+        end: '18:00',
+      },
+      avoidWeekends: false,
+    },
+    deliveryInstructions: {
+      contactlessDelivery: false,
+      leaveAtDoor: false,
+      signatureRequired: true,
+      callBeforeDelivery: false,
+      specificInstructions: '',
+    },
+    courierNotifications: {
+      smsUpdates: true,
+      emailUpdates: true,
+      whatsappUpdates: false,
+      callUpdates: false,
+    },
+  });
 
   const savePreferences = async (updates: Partial<CourierPreferences>) => {
     if (!preferences) return;
@@ -94,13 +125,20 @@ export default function CourierPreferencesScreen() {
       const response = await apiClient.put('/user-settings/courier', newPreferences);
 
       if (!response.success) {
-        Alert.alert('Error', 'Failed to update courier preferences');
-        await loadPreferences();
+        console.warn('Failed to save courier preferences:', response.error);
+        Alert.alert('Error', 'Failed to update courier preferences. Please try again.');
+        // Revert to previous state
+        setPreferences(preferences);
+      } else {
+        // Show success message
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
       }
     } catch (error) {
       console.error('Error updating courier preferences:', error);
-      Alert.alert('Error', 'Failed to update courier preferences');
-      await loadPreferences();
+      Alert.alert('Error', 'Failed to update courier preferences. Please check your connection and try again.');
+      // Revert to previous state
+      setPreferences(preferences);
     } finally {
       setSaving(false);
     }
@@ -110,18 +148,41 @@ export default function CourierPreferencesScreen() {
     if (!preferences) return;
 
     const weekdays = [...preferences.deliveryTimePreference.weekdays];
-    const index = weekdays.indexOf(day);
+    const index = weekdays.indexOf(day as any);
 
     if (index > -1) {
       weekdays.splice(index, 1);
     } else {
-      weekdays.push(day);
+      weekdays.push(day as any);
     }
 
     savePreferences({
       deliveryTimePreference: {
         ...preferences.deliveryTimePreference,
         weekdays,
+      },
+    });
+  };
+
+  const handleAvoidWeekendsToggle = (value: boolean) => {
+    if (!preferences) return;
+
+    let weekdays = [...preferences.deliveryTimePreference.weekdays];
+    
+    if (value) {
+      // Remove weekends when "Avoid Weekends" is enabled
+      weekdays = weekdays.filter(day => day !== 'SAT' && day !== 'SUN');
+    } else {
+      // Add weekends back when "Avoid Weekends" is disabled
+      if (!weekdays.includes('SAT')) weekdays.push('SAT');
+      if (!weekdays.includes('SUN')) weekdays.push('SUN');
+    }
+
+    savePreferences({
+      deliveryTimePreference: {
+        ...preferences.deliveryTimePreference,
+        weekdays,
+        avoidWeekends: value,
       },
     });
   };
@@ -193,7 +254,7 @@ export default function CourierPreferencesScreen() {
                 key={day}
                 style={[
                   styles.weekdayButton,
-                  preferences.deliveryTimePreference.weekdays.includes(day) &&
+                  preferences.deliveryTimePreference.weekdays.includes(day as any) &&
                     styles.weekdayButtonSelected,
                 ]}
                 onPress={() => toggleWeekday(day)}
@@ -201,7 +262,7 @@ export default function CourierPreferencesScreen() {
                 <Text
                   style={[
                     styles.weekdayText,
-                    preferences.deliveryTimePreference.weekdays.includes(day) &&
+                    preferences.deliveryTimePreference.weekdays.includes(day as any) &&
                       styles.weekdayTextSelected,
                   ]}
                 >
@@ -215,14 +276,7 @@ export default function CourierPreferencesScreen() {
             <Text style={styles.settingText}>Avoid Weekends</Text>
             <Switch
               value={preferences.deliveryTimePreference.avoidWeekends}
-              onValueChange={(value) =>
-                savePreferences({
-                  deliveryTimePreference: {
-                    ...preferences.deliveryTimePreference,
-                    avoidWeekends: value,
-                  },
-                })
-              }
+              onValueChange={handleAvoidWeekendsToggle}
               disabled={saving}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
               thumbColor={preferences.deliveryTimePreference.avoidWeekends ? '#FFFFFF' : '#F3F4F6'}
@@ -400,6 +454,14 @@ export default function CourierPreferencesScreen() {
         <View style={styles.savingIndicator}>
           <ActivityIndicator size="small" color="#FFFFFF" />
           <Text style={styles.savingText}>Saving...</Text>
+        </View>
+      )}
+
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <View style={styles.successIndicator}>
+          <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+          <Text style={styles.successText}>Preferences saved!</Text>
         </View>
       )}
     </View>
@@ -588,6 +650,28 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   savingText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  successIndicator: {
+    position: 'absolute',
+    bottom: 16,
+    alignSelf: 'center',
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  successText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',

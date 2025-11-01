@@ -35,13 +35,16 @@ export interface StoreActionButtonsProps {
   isBuyDisabled?: boolean;
   isLockDisabled?: boolean;
   isBookingDisabled?: boolean;
-  
+
+  // Lock status
+  isLocked?: boolean; // Whether product is already locked
+
   // Customization
   showBookingButton?: boolean; // Override for conditional rendering
   customBuyText?: string;
   customLockText?: string;
   customBookingText?: string;
-  
+
   // Styling
   containerStyle?: any; // ViewStyle
   buttonStyle?: any; // ViewStyle

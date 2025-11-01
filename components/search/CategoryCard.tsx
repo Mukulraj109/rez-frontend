@@ -6,10 +6,13 @@ import {
   StyleSheet,
   Image,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { CategoryCardProps } from '@/types/search.types';
+
+const { width } = Dimensions.get('window');
 
 export default function CategoryCard({
   category,
@@ -23,21 +26,24 @@ export default function CategoryCard({
     onPress(category);
   };
 
+  const [imageError, setImageError] = React.useState(false);
+
   const renderImage = () => {
-    if (category.image) {
+    if (category.image && !imageError) {
       return (
         <Image
-          source={{ uri: category.image }}
+          source={{ uri: category.image || 'https://via.placeholder.com/200x200?text=No+Image' }}
           style={[styles.categoryImage, { height: cardSize.imageHeight }]}
           resizeMode="cover"
+          onError={() => setImageError(true)}
         />
       );
     }
 
-    // Fallback with gradient and icon/text
+    // Fallback with gradient and icon/text (when no image or image fails to load)
     return (
       <LinearGradient
-        colors={getCategoryGradient(category.name)}
+        colors={getCategoryGradient(category.name) as [string, string, ...string[]]}
         style={[styles.categoryImagePlaceholder, { height: cardSize.imageHeight }]}
       >
         <View style={styles.placeholderContent}>
@@ -75,7 +81,7 @@ export default function CategoryCard({
         {showCashback && (
           <View style={styles.cashbackBadge}>
             <Text style={styles.cashbackText}>
-              {category.cashbackPercentage}%
+              {category.cashbackPercentage || 0}%
             </Text>
           </View>
         )}
@@ -83,17 +89,17 @@ export default function CategoryCard({
 
       {/* Category Info */}
       <View style={styles.categoryInfo}>
-        <Text style={[styles.categoryName, { fontSize: cardSize.nameSize }]}>
-          {category.name}
+        <Text style={[styles.categoryName, { fontSize: cardSize.nameSize }]} numberOfLines={2}>
+          {category.name || 'Category'}
         </Text>
         {showCashback && (
           <Text style={[styles.categoryCashback, { fontSize: cardSize.cashbackSize }]}>
-            Upto {category.cashbackPercentage}% cash back
+            Upto {category.cashbackPercentage || 0}% cash back
           </Text>
         )}
         {category.description && size !== 'small' && (
-          <Text style={[styles.categoryDescription, { fontSize: cardSize.descriptionSize }]}>
-            {category.description}
+          <Text style={[styles.categoryDescription, { fontSize: cardSize.descriptionSize }]} numberOfLines={2}>
+            {category.description || 'No description available'}
           </Text>
         )}
       </View>
@@ -103,15 +109,22 @@ export default function CategoryCard({
         <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const getCardSize = (size: 'small' | 'medium' | 'large') => {
+  const cardWidth = (width - 56) / 2; // Account for padding and gap
+  
   switch (size) {
     case 'small':
       return {
-        container: { width: 140, minHeight: 160 },
-        imageHeight: 80,
+        container: { 
+          width: cardWidth, 
+          height: 200, // Fixed height for consistency
+          minHeight: 200,
+          maxHeight: 200,
+        },
+        imageHeight: 100,
         iconSize: 20,
         textSize: 18,
         nameSize: 14,
@@ -120,8 +133,13 @@ const getCardSize = (size: 'small' | 'medium' | 'large') => {
       };
     case 'large':
       return {
-        container: { width: '100%', minHeight: 120 },
-        imageHeight: 100,
+        container: { 
+          width: cardWidth, 
+          height: 140, // Fixed height for consistency
+          minHeight: 140,
+          maxHeight: 140,
+        },
+        imageHeight: 80,
         iconSize: 28,
         textSize: 24,
         nameSize: 18,
@@ -130,8 +148,13 @@ const getCardSize = (size: 'small' | 'medium' | 'large') => {
       };
     default: // medium
       return {
-        container: { width: 160, minHeight: 180 },
-        imageHeight: 90,
+        container: { 
+          width: cardWidth, 
+          height: 220, // Fixed height for consistency
+          minHeight: 220,
+          maxHeight: 220,
+        },
+        imageHeight: 120,
         iconSize: 24,
         textSize: 20,
         nameSize: 16,
@@ -161,37 +184,40 @@ const getCategoryGradient = (categoryName: string): string[] => {
 const styles = StyleSheet.create({
   categoryCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 8,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    marginHorizontal: 4,
     position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.08)',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 3,
+        elevation: 6,
       },
       web: {
-        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+        boxShadow: '0px 4px 12px rgba(139, 92, 246, 0.12)',
       },
     }),
   },
   imageContainer: {
     position: 'relative',
     marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   categoryImage: {
     width: '100%',
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F8FAFC',
   },
   categoryImagePlaceholder: {
     width: '100%',
-    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -200,8 +226,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   placeholderText: {
-    fontWeight: '700',
+    fontWeight: '800',
     color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   popularBadge: {
     position: 'absolute',
@@ -210,57 +239,98 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 10,
-    gap: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#10B981',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   popularBadgeText: {
-    fontSize: 9,
+    fontSize: 10,
     color: 'white',
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   cashbackBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   cashbackText: {
     fontSize: 11,
     color: 'white',
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   categoryInfo: {
     flex: 1,
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
   },
   categoryName: {
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 4,
+    marginBottom: 6,
+    lineHeight: 20,
   },
   categoryCashback: {
     color: '#10B981',
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 4,
+    letterSpacing: 0.3,
   },
   categoryDescription: {
     color: '#6B7280',
-    lineHeight: 16,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   arrowContainer: {
     position: 'absolute',
-    bottom: 12,
-    right: 12,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    bottom: 16,
+    right: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 });

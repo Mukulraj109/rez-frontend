@@ -47,7 +47,7 @@ export default function ProjectDashboard({
         />
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

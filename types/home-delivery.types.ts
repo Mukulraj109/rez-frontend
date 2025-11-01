@@ -48,6 +48,7 @@ export interface HomeDeliveryCategory {
   icon: string;
   productCount: number;
   isActive: boolean;
+  backendId?: string; // MongoDB ObjectID for API calls
 }
 
 export interface HomeDeliverySection {
@@ -141,6 +142,7 @@ export interface ProductGridProps {
   onLoadMore: () => void;
   hasMore: boolean;
   numColumns?: number;
+  showHeader?: boolean; // Whether to show product count header
 }
 
 // Hook Return Types

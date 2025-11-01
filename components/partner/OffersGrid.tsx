@@ -8,10 +8,12 @@ import {
   ScrollView,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ClaimableOffer } from '@/types/partner.types';
+import toast from '@/utils/toast';
 
 interface OffersGridProps {
   offers: ClaimableOffer[];
@@ -27,31 +29,54 @@ export default function OffersGrid({
   onClaimOffer,
   onViewTerms 
 }: OffersGridProps) {
-  const availableOffers = offers.filter(offer => !offer.isClaimed);
-  const claimedOffers = offers.filter(offer => offer.isClaimed);
+  // Normalize offers data (backend might send claimed or isClaimed)
+  const normalizedOffers = offers.map(offer => ({
+    ...offer,
+    isClaimed: offer.isClaimed ?? offer.claimed ?? false
+  }));
+
+  const availableOffers = normalizedOffers.filter(offer => !offer.isClaimed);
+  const claimedOffers = normalizedOffers.filter(offer => offer.isClaimed);
 
   const handleClaimPress = (offer: ClaimableOffer) => {
     if (offer.isClaimed) {
-      Alert.alert('Already Claimed', 'This offer has already been claimed.');
+      if (Platform.OS === 'web') {
+        toast.warning('This offer has already been claimed.');
+      } else {
+        Alert.alert('Already Claimed', 'This offer has already been claimed.');
+      }
       return;
     }
-
-    Alert.alert(
-      'Claim Offer',
-      `Claim ${offer.title}?\n\n${offer.description}`,
-      [
-        { text: 'View Terms', onPress: () => onViewTerms?.(offer), style: 'default' },
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Claim Now', 
-          onPress: () => onClaimOffer?.(offer.id),
-          style: 'default'
-        }
-      ]
-    );
+    
+    // Web-compatible confirmation
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        `Claim ${offer.title}?\n\n${offer.description}\n\nYou'll receive a voucher code that you can use during checkout.`
+      );
+      
+      if (confirmed) {
+        onClaimOffer?.(offer.id);
+      }
+    } else {
+      // Native Alert for iOS/Android
+      Alert.alert(
+        'Claim Offer',
+        `Claim ${offer.title}?\n\n${offer.description}\n\nYou'll receive a voucher code that you can use during checkout.`,
+        [
+          { text: 'View Terms', onPress: () => onViewTerms?.(offer), style: 'default' },
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Claim Now', 
+            onPress: () => onClaimOffer?.(offer.id),
+            style: 'default'
+          }
+        ]
+      );
+    }
   };
 
   const handleTermsPress = (offer: ClaimableOffer) => {
+    // Always use Alert for terms (works better for long text)
     Alert.alert(
       'Terms & Conditions',
       offer.termsAndConditions.join('\n\n'),
@@ -75,10 +100,16 @@ export default function OffersGrid({
       >
         {/* Offer Image */}
         <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: offer.image || 'https://via.placeholder.com/150x100' }}
-            style={styles.offerImage}
-          />
+          {offer.image ? (
+            <Image
+              source={{ uri: offer.image }}
+              style={styles.offerImage}
+            />
+          ) : (
+            <View style={[styles.offerImage, styles.placeholderImage]}>
+              <Ionicons name="gift-outline" size={40} color="#9CA3AF" />
+            </View>
+          )}
           {/* Discount Badge */}
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{offer.discount}</Text>
@@ -364,6 +395,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#F3F4F6',
+  },
+  placeholderImage: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
   },
   discountBadge: {
     position: 'absolute',

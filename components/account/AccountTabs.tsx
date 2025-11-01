@@ -53,7 +53,7 @@ export default function AccountTabs({
         </TouchableOpacity>
       ))}
     </ScrollView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

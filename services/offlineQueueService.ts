@@ -32,7 +32,7 @@ class OfflineQueueService {
     try {
       const savedQueue = await asyncStorageService.getOfflineQueue();
       this.queue = savedQueue || [];
-      console.log('🔄 [OFFLINE QUEUE] Loaded queue:', this.queue.length, 'items');
+
     } catch (error) {
       console.error('🔄 [OFFLINE QUEUE] Failed to load queue:', error);
       this.queue = [];
@@ -45,7 +45,7 @@ class OfflineQueueService {
   private async saveQueue(): Promise<void> {
     try {
       await asyncStorageService.saveOfflineQueue(this.queue);
-      console.log('🔄 [OFFLINE QUEUE] Saved queue:', this.queue.length, 'items');
+
     } catch (error) {
       console.error('🔄 [OFFLINE QUEUE] Failed to save queue:', error);
     }
@@ -72,8 +72,6 @@ class OfflineQueueService {
     this.queue.push(operation);
     await this.saveQueue();
 
-    console.log('🔄 [OFFLINE QUEUE] Added operation to queue:', operation.id, operation.type);
-
     return operation.id;
   }
 
@@ -83,7 +81,7 @@ class OfflineQueueService {
   async removeFromQueue(operationId: string): Promise<void> {
     this.queue = this.queue.filter(op => op.id !== operationId);
     await this.saveQueue();
-    console.log('🔄 [OFFLINE QUEUE] Removed operation from queue:', operationId);
+
   }
 
   /**
@@ -118,7 +116,7 @@ class OfflineQueueService {
   async clearCompleted(): Promise<void> {
     this.queue = this.queue.filter(op => op.status !== 'completed');
     await this.saveQueue();
-    console.log('🔄 [OFFLINE QUEUE] Cleared completed operations');
+
   }
 
   /**
@@ -127,18 +125,15 @@ class OfflineQueueService {
   async clearQueue(): Promise<void> {
     this.queue = [];
     await asyncStorageService.clearOfflineQueue();
-    console.log('🔄 [OFFLINE QUEUE] Cleared entire queue');
+
   }
 
   /**
    * Process a single operation
    */
   private async processOperation(operation: QueuedOperation): Promise<boolean> {
-    console.log('🔄 [OFFLINE QUEUE] Processing operation:', operation.id, operation.type);
-
     operation.status = 'processing';
     await this.saveQueue();
-
     try {
       let success = false;
 
@@ -187,7 +182,7 @@ class OfflineQueueService {
 
       if (success) {
         operation.status = 'completed';
-        console.log('🔄 [OFFLINE QUEUE] Operation completed successfully:', operation.id);
+
       } else {
         throw new Error('Operation failed');
       }
@@ -204,7 +199,7 @@ class OfflineQueueService {
         console.error('🔄 [OFFLINE QUEUE] Operation exceeded max retries:', operation.id);
       } else {
         operation.status = 'pending';
-        console.log('🔄 [OFFLINE QUEUE] Operation will be retried:', operation.id, 'Retry count:', operation.retryCount);
+
       }
 
       return false;
@@ -218,17 +213,15 @@ class OfflineQueueService {
    */
   async processQueue(): Promise<{ success: boolean; processed: number; failed: number }> {
     if (this.isProcessing) {
-      console.log('🔄 [OFFLINE QUEUE] Already processing queue');
+
       return { success: false, processed: 0, failed: 0 };
     }
 
     this.isProcessing = true;
-    console.log('🔄 [OFFLINE QUEUE] Starting queue processing');
 
     const pendingOperations = this.queue.filter(
       op => op.status === 'pending' || op.status === 'processing'
     );
-
     let processed = 0;
     let failed = 0;
 
@@ -254,8 +247,6 @@ class OfflineQueueService {
       processed,
       failed
     };
-
-    console.log('🔄 [OFFLINE QUEUE] Queue processing completed:', result);
 
     // Notify callbacks
     this.syncCallbacks.forEach(callback => callback(result.success));
@@ -304,8 +295,6 @@ class OfflineQueueService {
 
     await this.saveQueue();
 
-    console.log('🔄 [OFFLINE QUEUE] Reset', failedOperations.length, 'failed operations for retry');
-
     // Process the queue
     await this.processQueue();
   }
@@ -319,7 +308,6 @@ class OfflineQueueService {
     serverData: any,
     strategy: 'local' | 'server' | 'merge' = 'server'
   ): Promise<any> {
-    console.log('🔄 [OFFLINE QUEUE] Resolving conflict with strategy:', strategy);
 
     switch (strategy) {
       case 'local':

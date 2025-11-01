@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Image,
@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
+import discountsApi from "@/services/discountsApi";
 
 interface Section4Props {
   title?: string;
@@ -17,6 +18,7 @@ interface Section4Props {
   iconEmoji?: string;
   // accept either a remote URL (string) or a local image module (number/object)
   cardImageUri?: string | number;
+  productPrice?: number;
   testID?: string;
 }
 
@@ -28,14 +30,54 @@ const SECONDARY_TEXT = "#666666";
 const DEFAULT_CARD_IMAGE = require('@/assets/images/card.jpg');
 
 export default function Section4({
-  title = "Upto 10% card offers",
-  subtitle = "On 3 card & payment offers",
+  title: initialTitle = "Upto 10% card offers",
+  subtitle: initialSubtitle = "On 3 card & payment offers",
   iconEmoji = "🛍️",
   cardImageUri = DEFAULT_CARD_IMAGE,
+  productPrice = 1000,
   testID,
 }: Section4Props) {
   const [loading, setLoading] = useState<boolean>(true);
   const [errored, setErrored] = useState<boolean>(false);
+  const [imageLoading, setImageLoading] = useState<boolean>(true);
+  const [cardOffers, setCardOffers] = useState<any[]>([]);
+  const [title, setTitle] = useState(initialTitle);
+  const [subtitle, setSubtitle] = useState(initialSubtitle);
+
+  useEffect(() => {
+    fetchCardOffers();
+  }, [productPrice]);
+
+  const fetchCardOffers = async () => {
+    try {
+      setLoading(true);
+
+      const response = await discountsApi.getDiscounts({
+        applicableOn: 'bill_payment',
+        page: 1,
+        limit: 10,
+      });
+
+      if (response.success && response.data?.discounts && response.data.discounts.length > 0) {
+        setCardOffers(response.data.discounts);
+
+        // Update title based on best offer
+        const bestOffer = response.data.discounts[0];
+        const maxDiscount = bestOffer.type === 'percentage' ? bestOffer.value : null;
+
+        if (maxDiscount) {
+          setTitle(`Upto ${maxDiscount}% card offers`);
+        }
+
+        const offersCount = response.data.discounts.length;
+        setSubtitle(`On ${offersCount} card & payment offer${offersCount > 1 ? 's' : ''}`);
+      }
+    } catch (error) {
+      console.error('Error fetching card offers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // resolve Image source: remote -> { uri: ... } ; local module -> use directly
   const resolvedSource =
@@ -64,7 +106,7 @@ export default function Section4({
         <View style={styles.rightContainer} accessibilityElementsHidden>
           <View style={styles.coupon}>
             {/* loading spinner */}
-            {loading && !errored && (
+            {imageLoading && !errored && (
               <View style={styles.loaderContainer}>
                 <ActivityIndicator size="small" color="#ffffff" />
               </View>
@@ -77,11 +119,11 @@ export default function Section4({
                 source={resolvedSource as any}
                 style={styles.couponImage}
                 resizeMode="cover"
-                onLoad={() => setLoading(false)}
+                onLoad={() => setImageLoading(false)}
                 onError={(e) => {
                   console.warn("Coupon image failed to load:", e.nativeEvent);
                   setErrored(true);
-                  setLoading(false);
+                  setImageLoading(false);
                 }}
                 accessibilityLabel="card-offer-image"
               />
@@ -102,7 +144,7 @@ export default function Section4({
       {/* dashed divider */}
       <View style={styles.divider} />
     </View>
-  );
+);
 }
 
 /* --- Styles --- */

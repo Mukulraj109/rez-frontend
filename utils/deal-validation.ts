@@ -234,7 +234,6 @@ export const getBestDeal = (
   const eligibleDeals = deals.filter(deal => 
     isDealEligible(deal, billAmount, userType)
   );
-
   if (eligibleDeals.length === 0) return null;
 
   // Find deal with maximum discount amount

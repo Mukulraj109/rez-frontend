@@ -69,25 +69,18 @@ export default function SocialMediaPage() {
   useEffect(() => {
     // Wait for auth to finish loading
     if (authState.isLoading) {
-      console.log('⏳ [SOCIAL MEDIA] Waiting for auth to initialize...');
+
       return;
     }
 
     // Check if user is authenticated
     if (!authState.token || !authState.user) {
-      console.log('⚠️ [SOCIAL MEDIA] No token/user available, redirecting to sign-in...');
-      console.log('Auth state:', {
-        hasToken: !!authState.token,
-        hasUser: !!authState.user,
-        isLoading: authState.isLoading
-      });
+
       router.replace('/sign-in');
       return;
     }
 
     // Token is available, set it and load data
-    console.log('🔑 [SOCIAL MEDIA] Token available, loading data...');
-    console.log('🔑 [SOCIAL MEDIA] Token preview:', authState.token.substring(0, 30) + '...');
     apiClient.setAuthToken(authState.token);
     loadData();
     loadCompletedOrders();
@@ -96,16 +89,14 @@ export default function SocialMediaPage() {
   const loadCompletedOrders = async () => {
     setLoadingOrders(true);
     try {
-      console.log('📦 [SOCIAL MEDIA] Loading completed orders...');
-      const response = await ordersApi.getUserOrders();
+      const response = await ordersApi.getOrders({ status: 'delivered' });
 
       // Filter for delivered/completed orders only
-      const delivered = response.orders.filter(order =>
-        order.status === 'DELIVERED' || order.status === 'COMPLETED'
+      const delivered = (response.data?.orders || []).filter((order: Order) =>
+        order.status === 'delivered' || order.status === 'cancelled'
       );
-
       setCompletedOrders(delivered);
-      console.log(`✅ [SOCIAL MEDIA] Loaded ${delivered.length} completed orders`);
+
     } catch (error: any) {
       console.error('❌ [SOCIAL MEDIA] Failed to load orders:', error);
     } finally {
@@ -116,17 +107,13 @@ export default function SocialMediaPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      console.log('📥 [SOCIAL MEDIA] Loading data...');
-
       // Verify token is set
       const currentToken = apiClient.getAuthToken();
-      console.log('🔍 [SOCIAL MEDIA] Current token in apiClient:', currentToken ? currentToken.substring(0, 30) + '...' : 'NONE');
 
       if (!currentToken) {
         console.error('❌ [SOCIAL MEDIA] No token in apiClient! Setting it now...');
         if (authState.token) {
           apiClient.setAuthToken(authState.token);
-          console.log('✅ [SOCIAL MEDIA] Token set:', authState.token.substring(0, 30) + '...');
         } else {
           throw new Error('No authentication token available');
         }
@@ -137,11 +124,6 @@ export default function SocialMediaPage() {
         socialMediaApi.getUserEarnings(),
         socialMediaApi.getUserPosts({ page: 1, limit: 50 })
       ]);
-
-      console.log('✅ [SOCIAL MEDIA] Data loaded:', {
-        earnings: earningsData,
-        postsCount: postsData.posts.length
-      });
 
       // Set earnings data
       setEarnings({
@@ -171,7 +153,7 @@ export default function SocialMediaPage() {
 
       // Check for auth error
       if (error.response?.status === 401 || error.message?.includes('Access token')) {
-        console.log('🔒 [SOCIAL MEDIA] Authentication required, redirecting to sign-in...');
+
         if (typeof window !== 'undefined' && window.alert) {
           window.alert('Please sign in to continue');
         } else {
@@ -205,11 +187,6 @@ export default function SocialMediaPage() {
 
     setSubmitting(true);
     try {
-      console.log('📤 [SOCIAL MEDIA] Submitting post:', {
-        platform: selectedPlatform,
-        url: postUrl,
-        orderId: selectedOrderId
-      });
 
       // Submit post to API with optional orderId
       const response = await socialMediaApi.submitPost({
@@ -217,8 +194,6 @@ export default function SocialMediaPage() {
         postUrl: postUrl.trim(),
         ...(selectedOrderId && { orderId: selectedOrderId })
       });
-
-      console.log('✅ [SOCIAL MEDIA] Post submitted:', response);
 
       // Calculate cashback message
       const selectedOrder = completedOrders.find(o => o._id === selectedOrderId);
@@ -572,7 +547,7 @@ export default function SocialMediaPage() {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Submission History</Text>
                 {loading ? (
-                  <View style={styles.loadingContainer}>
+                  <View style={styles.historyLoadingContainer}>
                     <ActivityIndicator size="large" color="#8B5CF6" />
                   </View>
                 ) : posts.length === 0 ? (
@@ -1011,7 +986,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
   },
-  loadingContainer: {
+  historyLoadingContainer: {
     paddingVertical: 40,
     alignItems: 'center',
   },

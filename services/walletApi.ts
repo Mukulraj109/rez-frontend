@@ -264,7 +264,7 @@ class WalletService {
    * Get wallet balance and status
    */
   async getBalance(): Promise<ApiResponse<WalletBalanceResponse>> {
-    console.log('💰 [WALLET API] Getting wallet balance');
+
     return apiClient.get('/wallet/balance');
   }
 
@@ -274,36 +274,9 @@ class WalletService {
   async getTransactions(
     filters?: TransactionFilters
   ): Promise<ApiResponse<TransactionListResponse>> {
-    console.log('\n╔════════════════════════════════════════╗');
-    console.log('║  WALLET API - GET TRANSACTIONS         ║');
-    console.log('╚════════════════════════════════════════╝');
-    console.log('📞 Method: getTransactions');
-    console.log('📝 Filters:', JSON.stringify(filters, null, 2));
-    console.log('🌐 Endpoint: /wallet/transactions');
-    console.log('🔑 Auth token present:', !!apiClient.getAuthToken());
-    console.log('🔑 Token preview:', apiClient.getAuthToken()?.substring(0, 30) + '...' || 'NONE');
-    console.log('----------------------------------------');
-
     try {
-      const response = await apiClient.get('/wallet/transactions', filters);
+      const response = await apiClient.get<TransactionListResponse>('/wallet/transactions', filters);
 
-      console.log('\n✅ [WALLET API] API Client Response:');
-      console.log('Success:', response.success);
-      console.log('Has data:', !!response.data);
-      console.log('Error:', response.error || 'none');
-      console.log('Message:', response.message || 'none');
-
-      if (response.data) {
-        console.log('\n📊 [WALLET API] Data received:');
-        console.log('Transactions array:', Array.isArray(response.data.transactions));
-        console.log('Transactions count:', response.data.transactions?.length || 0);
-        console.log('Has pagination:', !!response.data.pagination);
-        if (response.data.pagination) {
-          console.log('Pagination:', JSON.stringify(response.data.pagination, null, 2));
-        }
-      }
-
-      console.log('╚════════════════════════════════════════╝\n');
       return response;
     } catch (error) {
       console.error('\n❌❌❌ [WALLET API] EXCEPTION IN getTransactions ❌❌❌');
@@ -319,7 +292,7 @@ class WalletService {
   async getTransactionById(
     transactionId: string
   ): Promise<ApiResponse<{ transaction: TransactionResponse }>> {
-    console.log('🔍 [WALLET API] Getting transaction:', transactionId);
+
     return apiClient.get(`/wallet/transaction/${transactionId}`);
   }
 
@@ -327,7 +300,7 @@ class WalletService {
    * Topup wallet
    */
   async topup(data: TopupRequest): Promise<ApiResponse<TopupResponse>> {
-    console.log('💵 [WALLET API] Topup wallet:', data);
+
     return apiClient.post('/wallet/topup', data);
   }
 
@@ -337,7 +310,7 @@ class WalletService {
   async withdraw(
     data: WithdrawalRequest
   ): Promise<ApiResponse<WithdrawalResponse>> {
-    console.log('💸 [WALLET API] Withdraw funds:', data);
+
     return apiClient.post('/wallet/withdraw', data);
   }
 
@@ -347,7 +320,7 @@ class WalletService {
   async processPayment(
     data: PaymentRequest
   ): Promise<ApiResponse<PaymentResponse>> {
-    console.log('💳 [WALLET API] Processing payment:', data);
+
     return apiClient.post('/wallet/payment', data);
   }
 
@@ -357,7 +330,7 @@ class WalletService {
   async getSummary(
     period: 'day' | 'week' | 'month' | 'year' = 'month'
   ): Promise<ApiResponse<TransactionSummaryResponse>> {
-    console.log('📊 [WALLET API] Getting summary:', period);
+
     return apiClient.get('/wallet/summary', { period });
   }
 
@@ -367,7 +340,7 @@ class WalletService {
   async updateSettings(
     settings: WalletSettingsRequest
   ): Promise<ApiResponse<{ settings: any }>> {
-    console.log('⚙️ [WALLET API] Updating settings:', settings);
+
     return apiClient.put('/wallet/settings', settings);
   }
 
@@ -377,8 +350,33 @@ class WalletService {
   async getCategoriesBreakdown(): Promise<
     ApiResponse<CategoriesBreakdownResponse>
   > {
-    console.log('📊 [WALLET API] Getting categories breakdown');
+
     return apiClient.get('/wallet/categories');
+  }
+
+  /**
+   * Credit loyalty points to wallet
+   */
+  async creditLoyaltyPoints(data: {
+    amount: number;
+    source?: {
+      type?: string;
+      reference?: string;
+      description?: string;
+      metadata?: any;
+    };
+  }): Promise<ApiResponse<{
+    balance: {
+      total: number;
+      available: number;
+      pending: number;
+    };
+    coins: any[];
+    credited: number;
+    message: string;
+  }>> {
+
+    return apiClient.post('/wallet/credit-loyalty-points', data);
   }
 }
 

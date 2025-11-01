@@ -14,8 +14,7 @@ export type {
   AuthResponse,
   OtpRequest,
   OtpVerification,
-  ProfileUpdate,
-  PreferencesUpdate
+  ProfileUpdate
 } from './authApi';
 
 // Products service

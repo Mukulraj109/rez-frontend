@@ -14,6 +14,8 @@ import {
   SafeAreaView,
   Image,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +23,8 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
+import { HeaderBackButton } from '@/components/navigation/SafeBackButton';
 import { PROFILE_COLORS } from '@/types/profile.types';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadProfileImage } from '@/services/imageUploadService';
@@ -32,10 +36,13 @@ interface ProfileFormData {
   bio: string;
   location: string;
   website: string;
+  dateOfBirth: string;
+  gender: string;
 }
 
 export default function ProfileEditPage() {
   const router = useRouter();
+  const { goBack } = useSafeNavigation();
   const { user, updateUser } = useProfile();
   const { state: authState, actions: authActions } = useAuth();
 
@@ -44,13 +51,38 @@ export default function ProfileEditPage() {
     email: user?.email || '',
     phone: user?.phone || '',
     bio: user?.bio || '',
-    location: '',
-    website: '',
+    location: user?.location || '',
+    website: user?.website || '',
+    dateOfBirth: user?.dateOfBirth || '',
+    gender: user?.gender || '',
   });
 
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showGenderModal, setShowGenderModal] = useState(false);
+
+  const genderOptions = [
+    { label: 'Male', value: 'male' },
+    { label: 'Female', value: 'female' },
+    { label: 'Other', value: 'other' },
+  ];
+
+  // Update form data when user data changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        bio: user.bio || '',
+        location: user.location || '',
+        website: user.website || '',
+        dateOfBirth: user.dateOfBirth || '',
+        gender: user.gender || '',
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     // Check if form has changes
@@ -59,8 +91,10 @@ export default function ProfileEditPage() {
       email: user?.email || '',
       phone: user?.phone || '',
       bio: user?.bio || '',
-      location: '',
-      website: '',
+      location: user?.location || '',
+      website: user?.website || '',
+      dateOfBirth: user?.dateOfBirth || '',
+      gender: user?.gender || '',
     };
     
     const currentData = {
@@ -70,6 +104,8 @@ export default function ProfileEditPage() {
       bio: formData.bio,
       location: formData.location,
       website: formData.website,
+      dateOfBirth: formData.dateOfBirth,
+      gender: formData.gender,
     };
     
     setHasChanges(JSON.stringify(originalData) !== JSON.stringify(currentData));
@@ -82,16 +118,37 @@ export default function ProfileEditPage() {
         'You have unsaved changes. Are you sure you want to leave?',
         [
           { text: 'Stay', style: 'cancel' },
-          { text: 'Leave', style: 'destructive', onPress: () => router.back() },
+          {
+            text: 'Leave',
+            style: 'destructive',
+            onPress: () => {
+              goBack('/profile' as any);
+            }
+          },
         ]
       );
     } else {
-      router.back();
+      goBack('/profile' as any);
     }
   };
 
   const handleInputChange = (field: keyof ProfileFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleGenderSelect = (gender: string) => {
+    setFormData(prev => ({ ...prev, gender }));
+    setShowGenderModal(false);
+  };
+
+  const formatDateForInput = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    } catch {
+      return dateString;
+    }
   };
 
   const handleImageUpload = async () => {
@@ -121,33 +178,57 @@ export default function ProfileEditPage() {
         }
       }
 
-      // Pick image
+      // Pick image with EXTREME compression for fastest Cloudinary upload
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8,
+        quality: 0.2, // Extreme compression (20% quality) for slow Cloudinary connection
+        base64: false,
+        allowsMultipleSelection: false,
+        exif: false,
       });
 
       if (!result.canceled && result.assets[0]) {
         setUploadingImage(true);
 
-        const uploadResult = await uploadProfileImage(result.assets[0].uri, token);
+        // Try upload with retry logic (Cloudinary is slow from your location)
+        let uploadResult;
+        let retryCount = 0;
+        const maxRetries = 2;
 
-        if (uploadResult.success) {
+        while (retryCount <= maxRetries) {
+          console.log(`🔄 [UPLOAD] Attempt ${retryCount + 1} of ${maxRetries + 1}`);
+          uploadResult = await uploadProfileImage(result.assets[0].uri, token);
+
+          if (uploadResult.success) {
+            break; // Success, exit retry loop
+          }
+
+          retryCount++;
+          if (retryCount <= maxRetries) {
+            console.log('⏳ [UPLOAD] Retrying in 2 seconds...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
+
+        if (uploadResult?.success) {
           // Refresh user data to show new avatar
           await authActions.checkAuthStatus();
+          
+          // Force re-render by updating a state (triggers ProfileContext refresh)
+          console.log('✅ [PROFILE] Avatar updated, refreshing UI...');
 
           if (Platform.OS === 'web') {
-            alert('Profile picture updated successfully!');
+            alert('Profile picture updated successfully! The new image should appear immediately.');
           } else {
             Alert.alert('Success', 'Profile picture updated successfully!');
           }
         } else {
           if (Platform.OS === 'web') {
-            alert(`Upload Failed: ${uploadResult.error || 'Failed to upload image'}`);
+            alert(`Upload Failed after ${retryCount} attempts: ${uploadResult?.error || 'Failed to upload image'}\n\nYour Cloudinary connection is very slow. Try:\n1. Using a different network\n2. Uploading a smaller image\n3. Using a VPN`);
           } else {
-            Alert.alert('Upload Failed', uploadResult.error || 'Failed to upload image');
+            Alert.alert('Upload Failed', `After ${retryCount} attempts: ${uploadResult?.error || 'Failed to upload image'}\n\nCloudinary connection is slow. Try different network or smaller image.`);
           }
         }
       }
@@ -189,10 +270,14 @@ export default function ProfileEditPage() {
         email: formData.email,
         phone: formData.phone,
         bio: formData.bio,
+        location: formData.location,
+        website: formData.website,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
       });
-      
+
       // Automatically navigate back after successful save
-      router.back();
+      goBack('/profile' as any);
     } catch (error) {
       console.error('Profile update error:', error);
       Alert.alert('Error', 'Failed to update profile. Please try again.');
@@ -287,8 +372,12 @@ export default function ProfileEditPage() {
               <View style={styles.photoCircle}>
                 {user?.avatar ? (
                   <Image
-                    source={{ uri: user.avatar }}
+                    source={{ 
+                      uri: user.avatar,
+                      cache: 'reload' // Force reload image (web)
+                    }}
                     style={styles.photoImage}
+                    key={user.avatar} // Force re-render when URL changes
                   />
                 ) : (
                   <View style={styles.photoPlaceholder}>
@@ -325,6 +414,25 @@ export default function ProfileEditPage() {
           {renderFormField('Full Name', 'name', 'Enter your full name')}
           {renderFormField('Email Address', 'email', 'Enter your email', false, 'email-address', true)}
           {renderFormField('Phone Number', 'phone', 'Enter your phone number', false, 'phone-pad', true)}
+          {renderFormField('Date of Birth', 'dateOfBirth', 'YYYY-MM-DD', false, 'default')}
+          
+          {/* Gender Selection */}
+          <View style={styles.fieldContainer}>
+            <ThemedText style={styles.fieldLabel}>Gender</ThemedText>
+            <TouchableOpacity 
+              style={styles.genderSelector}
+              onPress={() => setShowGenderModal(true)}
+            >
+              <ThemedText style={[
+                styles.genderText,
+                !formData.gender && styles.placeholderText
+              ]}>
+                {formData.gender ? genderOptions.find(opt => opt.value === formData.gender)?.label : 'Select gender'}
+              </ThemedText>
+              <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+          
           {renderFormField('Bio', 'bio', 'Tell us about yourself...', true)}
         </View>
 
@@ -411,8 +519,51 @@ export default function ProfileEditPage() {
 
         <View style={styles.bottomSpace} />
       </ScrollView>
+
+      {/* Gender Selection Modal */}
+      <Modal
+        visible={showGenderModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowGenderModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Select Gender</ThemedText>
+              <TouchableOpacity onPress={() => setShowGenderModal(false)}>
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            
+            <FlatList
+              data={genderOptions}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.genderOption,
+                    formData.gender === item.value && styles.selectedGenderOption
+                  ]}
+                  onPress={() => handleGenderSelect(item.value)}
+                >
+                  <ThemedText style={[
+                    styles.genderOptionText,
+                    formData.gender === item.value && styles.selectedGenderOptionText
+                  ]}>
+                    {item.label}
+                  </ThemedText>
+                  {formData.gender === item.value && (
+                    <Ionicons name="checkmark" size={20} color={PROFILE_COLORS.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -606,6 +757,73 @@ const styles = StyleSheet.create({
   },
   bottomSpace: {
     height: 40,
+  },
+  // Gender selector styles
+  genderSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginTop: 8,
+  },
+  genderText: {
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  placeholderText: {
+    color: '#9CA3AF',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '50%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  genderOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  selectedGenderOption: {
+    backgroundColor: '#F3F4F6',
+  },
+  genderOptionText: {
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  selectedGenderOptionText: {
+    color: PROFILE_COLORS.primary,
+    fontWeight: '600',
   },
   photoContainer: {
     flexDirection: 'row',

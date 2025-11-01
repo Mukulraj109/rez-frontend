@@ -21,9 +21,18 @@ import { useRouter, Stack, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ACCOUNT_COLORS } from '@/types/account.types';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
+import { HeaderBackButton } from '@/components/navigation/SafeBackButton';
 import { PaymentMethod as APIPaymentMethod, PaymentMethodType, CardBrand } from '@/services/paymentMethodApi';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { PaymentPreferences as BackendPaymentPreferences } from '@/services/userSettingsApi';
+
+// Import verification modals
+import CardVerificationModal from '@/components/payment/CardVerificationModal';
+import BankVerificationModal from '@/components/payment/BankVerificationModal';
+import UPIVerificationModal from '@/components/payment/UPIVerificationModal';
+import KYCUploadModal from '@/components/payment/KYCUploadModal';
+import OTPVerificationModal from '@/components/payment/OTPVerificationModal';
 
 // Local preferences interface for UI
 interface LocalPaymentPreferences {
@@ -35,6 +44,7 @@ interface LocalPaymentPreferences {
 
 export default function PaymentSettingsScreen() {
   const router = useRouter();
+  const { goBack } = useSafeNavigation();
 
   // Backend integration for payment methods
   const {
@@ -74,40 +84,20 @@ export default function PaymentSettingsScreen() {
         saveCards: backendPrefs.autoPayEnabled ?? true,
         autoFillCVV: false, // Not in backend, keep local
         biometricPayments: backendPrefs.biometricPaymentEnabled ?? false,
-        oneClickPayments: !backendPrefs.paymentPinEnabled ?? false,
+        oneClickPayments: !(backendPrefs.paymentPinEnabled ?? true),
       });
-      console.log('[Payment Settings] Loaded preferences from backend:', backendPrefs);
+
     }
   }, [userSettings]);
-
-  // Debug: Log payment methods when they change
-  useEffect(() => {
-    console.log('Payment methods updated:', {
-      count: paymentMethods.length,
-      methods: paymentMethods.map(pm => ({
-        id: pm.id,
-        type: pm.type,
-        isDefault: pm.isDefault,
-        hasId: !!pm.id
-      }))
-    });
-  }, [paymentMethods]);
 
   // Refetch payment methods when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      console.log('[Payment Settings] Screen focused, refetching payment methods...');
+
       refetch();
     }, [refetch])
   );
-
-  const handleBackPress = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push('/account' as any);
-    }
-  };
+  // Removed - using SafeBackButton component instead
 
   const handleAddPaymentMethod = () => {
     // Navigate to payment-methods page which has full add/edit functionality
@@ -115,7 +105,6 @@ export default function PaymentSettingsScreen() {
   };
 
   const handleSetDefault = async (methodId: string) => {
-    console.log('handleSetDefault called with ID:', methodId);
 
     if (!methodId) {
       if (Platform.OS === 'web') {
@@ -145,8 +134,6 @@ export default function PaymentSettingsScreen() {
   };
 
   const handleDeleteMethod = async (method: APIPaymentMethod) => {
-    console.log('handleDeleteMethod called with method:', method);
-    console.log('Method ID:', method.id);
 
     if (!method.id) {
       if (Platform.OS === 'web') {
@@ -170,21 +157,18 @@ export default function PaymentSettingsScreen() {
       const confirmed = window.confirm(`Are you sure you want to delete ${methodName}?`);
 
       if (!confirmed) {
-        console.log('Delete cancelled by user');
+
         return;
       }
 
-      console.log('Delete confirmed, deleting method ID:', method.id);
-
       try {
         const success = await deletePaymentMethod(method.id);
-        console.log('Delete API response - success:', success);
 
         if (success) {
-          console.log('Deletion successful, refetching payment methods...');
+
           // Refetch to update the UI
           await refetch();
-          console.log('Refetch complete, payment methods count:', paymentMethods.length);
+
           window.alert('Payment method deleted successfully');
         } else {
           console.error('Deletion failed');
@@ -205,16 +189,14 @@ export default function PaymentSettingsScreen() {
             text: 'Delete',
             style: 'destructive',
             onPress: async () => {
-              console.log('Delete confirmed, deleting method ID:', method.id);
 
               try {
                 const success = await deletePaymentMethod(method.id);
-                console.log('Delete API response - success:', success);
 
                 if (success) {
-                  console.log('Deletion successful, refetching payment methods...');
+
                   await refetch();
-                  console.log('Refetch complete, payment methods count:', paymentMethods.length);
+
                   Alert.alert('Success', 'Payment method deleted');
                 } else {
                   console.error('Deletion failed');
@@ -231,10 +213,16 @@ export default function PaymentSettingsScreen() {
     }
   };
 
-  const handleVerifyMethod = (methodId: string) => {
-    console.log('handleVerifyMethod called with ID:', methodId);
+  // =====================================================
+  // VERIFICATION STATE
+  // =====================================================
+  const [verificationModalVisible, setVerificationModalVisible] = useState(false);
+  const [verificationType, setVerificationType] = useState<'card' | 'bank' | 'upi' | 'kyc' | 'otp' | null>(null);
+  const [selectedMethodForVerification, setSelectedMethodForVerification] = useState<APIPaymentMethod | null>(null);
 
-    if (!methodId) {
+  const handleVerifyMethod = (method: APIPaymentMethod) => {
+
+    if (!method || !method.id) {
       if (Platform.OS === 'web') {
         window.alert('Invalid payment method ID. Please restart the app and try again.');
       } else {
@@ -243,31 +231,59 @@ export default function PaymentSettingsScreen() {
       return;
     }
 
-    if (Platform.OS === 'web') {
-      const verify = window.confirm('Please verify your payment method to ensure secure transactions. Verify now?');
+    setSelectedMethodForVerification(method);
 
-      if (verify) {
-        console.log('Verify method:', methodId);
-        // TODO: Implement verification flow
-        window.alert('Payment method verification will be available soon.');
-      }
+    // Determine verification type based on payment method type
+    if (method.type === PaymentMethodType.CARD) {
+      setVerificationType('card');
+      setVerificationModalVisible(true);
+    } else if (method.type === PaymentMethodType.BANK_ACCOUNT) {
+      setVerificationType('bank');
+      setVerificationModalVisible(true);
+    } else if (method.type === PaymentMethodType.UPI) {
+      setVerificationType('upi');
+      setVerificationModalVisible(true);
     } else {
-      Alert.alert(
-        'Verify Payment Method',
-        'Please verify your payment method to ensure secure transactions',
-        [
-          { text: 'Later' },
-          {
-            text: 'Verify Now',
-            onPress: () => {
-              console.log('Verify method:', methodId);
-              // TODO: Implement verification flow
-              Alert.alert('Coming Soon', 'Payment method verification will be available soon.');
-            }
-          }
-        ]
-      );
+      if (Platform.OS === 'web') {
+        window.alert('Verification for this payment method type is not yet supported.');
+      } else {
+        Alert.alert('Not Supported', 'Verification for this payment method type is not yet supported.');
+      }
     }
+  };
+
+  const handleVerificationSuccess = async () => {
+
+    // Refetch payment methods to update verification status
+    await refetch();
+
+    // Show success message
+    if (Platform.OS === 'web') {
+      window.alert('Payment method verified successfully!');
+    } else {
+      Alert.alert('Success', 'Payment method verified successfully!');
+    }
+
+    // Close modal
+    setVerificationModalVisible(false);
+    setSelectedMethodForVerification(null);
+    setVerificationType(null);
+  };
+
+  const handleVerificationError = (error: string) => {
+    console.error('❌ Verification error:', error);
+
+    if (Platform.OS === 'web') {
+      window.alert(`Verification failed: ${error}`);
+    } else {
+      Alert.alert('Verification Failed', error);
+    }
+  };
+
+  const handleVerificationClose = () => {
+    setVerificationModalVisible(false);
+    setSelectedMethodForVerification(null);
+    setVerificationType(null);
   };
 
   const togglePreference = async (key: keyof LocalPaymentPreferences) => {
@@ -286,14 +302,13 @@ export default function PaymentSettingsScreen() {
       paymentPinEnabled: key === 'oneClickPayments' ? !newValue : !preferences.oneClickPayments,
     };
 
-    console.log(`[Payment Settings] Saving ${key} = ${newValue} to backend...`);
     setIsSavingPreference(true);
 
     try {
       const updated = await updatePaymentPreferences(backendPreferences);
 
       if (updated) {
-        console.log('[Payment Settings] Preference saved successfully');
+
         if (Platform.OS === 'web') {
           // Don't show alert for every toggle on web - it's annoying
         } else {
@@ -366,12 +381,6 @@ export default function PaymentSettingsScreen() {
   };
 
   const renderPaymentMethod = (method: APIPaymentMethod) => {
-    console.log('Rendering payment method:', {
-      id: method.id,
-      type: method.type,
-      isDefault: method.isDefault,
-      hasId: !!method.id
-    });
 
     const isVerified = method.type === PaymentMethodType.CARD && method.card
       ? true // Cards are verified by default
@@ -409,7 +418,7 @@ export default function PaymentSettingsScreen() {
                 {!isVerified && (
                   <TouchableOpacity
                     style={styles.verifyButton}
-                    onPress={() => handleVerifyMethod(method.id)}
+                    onPress={() => handleVerifyMethod(method)}
                   >
                     <ThemedText style={styles.verifyButtonText}>Verify</ThemedText>
                   </TouchableOpacity>
@@ -464,9 +473,11 @@ export default function PaymentSettingsScreen() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
+          <HeaderBackButton
+            fallbackRoute="/account"
+            light={true}
+            iconSize={24}
+          />
 
           <ThemedText style={styles.headerTitle}>Payment Settings</ThemedText>
 
@@ -648,8 +659,72 @@ export default function PaymentSettingsScreen() {
           <View style={styles.footer} />
         </ScrollView>
       )}
+
+      {/* Verification Modals */}
+      {selectedMethodForVerification && (
+        <>
+          {/* Card Verification Modal (3D Secure) */}
+          {verificationType === 'card' && (
+            <CardVerificationModal
+              visible={verificationModalVisible}
+              paymentMethodId={selectedMethodForVerification.id}
+              onClose={handleVerificationClose}
+              onSuccess={handleVerificationSuccess}
+              onError={handleVerificationError}
+            />
+          )}
+
+          {/* Bank Verification Modal (Micro-deposits) */}
+          {verificationType === 'bank' && selectedMethodForVerification.bankAccount && (
+            <BankVerificationModal
+              visible={verificationModalVisible}
+              paymentMethodId={selectedMethodForVerification.id}
+              accountNumber={selectedMethodForVerification.bankAccount.accountNumber}
+              ifscCode={selectedMethodForVerification.bankAccount.ifscCode}
+              accountHolderName="Account Holder"
+              onClose={handleVerificationClose}
+              onSuccess={handleVerificationSuccess}
+              onError={handleVerificationError}
+            />
+          )}
+
+          {/* UPI Verification Modal */}
+          {verificationType === 'upi' && selectedMethodForVerification.upi && (
+            <UPIVerificationModal
+              visible={verificationModalVisible}
+              paymentMethodId={selectedMethodForVerification.id}
+              vpa={selectedMethodForVerification.upi.vpa}
+              onClose={handleVerificationClose}
+              onSuccess={handleVerificationSuccess}
+              onError={handleVerificationError}
+            />
+          )}
+        </>
+      )}
+
+      {/* KYC Upload Modal (can be opened independently) */}
+      {verificationType === 'kyc' && (
+        <KYCUploadModal
+          visible={verificationModalVisible}
+          paymentMethodId={selectedMethodForVerification?.id}
+          onClose={handleVerificationClose}
+          onSuccess={handleVerificationSuccess}
+          onError={handleVerificationError}
+        />
+      )}
+
+      {/* OTP Verification Modal (can be opened independently) */}
+      {verificationType === 'otp' && (
+        <OTPVerificationModal
+          visible={verificationModalVisible}
+          purpose="PAYMENT_METHOD"
+          onClose={handleVerificationClose}
+          onSuccess={handleVerificationSuccess}
+          onError={handleVerificationError}
+        />
+      )}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -87,6 +87,7 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
     (sum, p) => sum + (p.price?.original || p.price?.current || 0),
     0
   );
+  
   const savingsPercentage = originalPrice > 0
     ? Math.round((bundle.savings / originalPrice) * 100)
     : 0;
@@ -175,7 +176,7 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
         </View>
       </LinearGradient>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

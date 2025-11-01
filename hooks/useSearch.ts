@@ -57,7 +57,6 @@ export const useSearch = () => {
     setState(prev => ({ ...prev, loading: true, isSearching: true, query, error: null }));
 
     try {
-      console.log('🔍 [Search] Searching products:', query, filters);
 
       const response = await searchService.searchProducts({
         q: query,
@@ -104,7 +103,6 @@ export const useSearch = () => {
     setState(prev => ({ ...prev, loading: true, isSearching: true, query, error: null }));
 
     try {
-      console.log('🔍 [Search] Searching stores:', query, filters);
 
       const response = await searchService.searchStores({
         q: query,
@@ -150,7 +148,6 @@ export const useSearch = () => {
     setState(prev => ({ ...prev, loading: true, isSearching: true, query, error: null }));
 
     try {
-      console.log('🔍 [Search] Searching all:', query);
 
       const [productsResponse, storesResponse] = await Promise.all([
         searchService.searchProducts({

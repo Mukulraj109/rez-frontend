@@ -36,7 +36,7 @@ export default function SignInScreen() {
 
   // OTP timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (otpTimer > 0) {
       interval = setInterval(() => {
         setOtpTimer(prev => {
@@ -53,14 +53,14 @@ export default function SignInScreen() {
 
   // Navigate to homepage on successful login
   useEffect(() => {
-    console.log('[SignIn] Auth state changed:', { isAuthenticated: state.isAuthenticated, user: state.user?.id });
+
     if (state.isAuthenticated && state.user) {
-      console.log('[SignIn] User authenticated, checking onboarding status...');
+
       if (state.user.isOnboarded) {
-        console.log('[SignIn] User is onboarded, navigating to homepage...');
-        router.replace('/(tabs)/');
+
+        router.replace('/(tabs)/' as any);
       } else {
-        console.log('[SignIn] User is not onboarded, continuing onboarding...');
+
         router.replace('/onboarding/location-permission');
       }
     }
@@ -117,8 +117,6 @@ export default function SignInScreen() {
       // Get the error message
       const errorMessage = error?.message || state.error || 'Failed to send OTP. Please try again.';
 
-      console.log('[SignIn] Error message to check:', errorMessage);
-
       // Check if it's a user not found error - be more specific with the detection
       if (errorMessage.toLowerCase().includes('user not found') ||
           errorMessage.toLowerCase().includes('user does not exist') ||
@@ -170,9 +168,7 @@ export default function SignInScreen() {
       // Format phone number for backend - add +91 prefix
       const formattedPhone = `+91${formData.phoneNumber}`;
 
-      console.log('[SignIn] Verifying OTP:', { phone: formattedPhone, otp: formData.otp });
       await actions.login(formattedPhone, formData.otp);
-      console.log('[SignIn] Login successful, isAuthenticated:', state.isAuthenticated);
 
       // Navigation handled by useEffect only if login was successful
     } catch (error: any) {

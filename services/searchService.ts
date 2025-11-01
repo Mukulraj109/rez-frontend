@@ -230,7 +230,6 @@ class SearchService {
         '/search/image',
         formData
       );
-
       return response.data;
     } catch (error) {
       console.error('Image search error:', error);
@@ -260,7 +259,6 @@ class SearchService {
     this.searchHistory = this.searchHistory.filter(
       item => item.query.toLowerCase() !== entry.query.toLowerCase()
     );
-
     // Add new entry at the beginning
     this.searchHistory.unshift(entry);
 

@@ -37,7 +37,6 @@ export function useStockNotifications() {
             response.data.message || "You'll be notified when this product is back in stock",
             [{ text: 'OK' }]
           );
-
           // Update local subscriptions
           setSubscriptions((prev) => {
             const exists = prev.find((s) => s.productId === productId && s.status === 'pending');
@@ -90,7 +89,6 @@ export function useStockNotifications() {
           setSubscriptions((prev) =>
             prev.filter((s) => !(s.productId === productId && s.status === 'pending'))
           );
-
           Alert.alert('Success', 'Unsubscribed from stock notifications', [{ text: 'OK' }]);
           options?.onSuccess?.();
         } else {

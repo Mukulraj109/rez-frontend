@@ -54,7 +54,7 @@ export default function ShimmerEffect({
         />
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -71,7 +71,7 @@ export default function TaskCard({
         )}
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

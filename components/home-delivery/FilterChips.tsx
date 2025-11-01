@@ -151,7 +151,7 @@ export function FilterChips({
         )}
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

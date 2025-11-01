@@ -298,7 +298,7 @@ export default function DealList({
           key={numColumns} // Force re-render when columns change
         />
       </View>
-    );
+    )
   }
 
   return (

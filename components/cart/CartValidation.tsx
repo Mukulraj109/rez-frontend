@@ -74,10 +74,10 @@ export default function CartValidation({
     const colors = VALIDATION_ISSUE_COLORS[issue.type];
 
     const iconColor = issue.severity === 'error'
-      ? colors.error
+      ? (colors as any).error
       : issue.severity === 'warning'
-      ? colors.warning
-      : colors.info;
+      ? (colors as any).warning
+      : (colors as any).info;
 
     return (
       <View key={`${issue.itemId}-${index}`} style={[styles.issueCard, { borderLeftColor: iconColor }]}>
@@ -303,7 +303,7 @@ export default function CartValidation({
         </View>
       </View>
     </Modal>
-  );
+);
 }
 
 const styles = StyleSheet.create({

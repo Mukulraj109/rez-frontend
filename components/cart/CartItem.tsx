@@ -96,8 +96,7 @@ export default function CartItem({
                 style={styles.productImage}
                 resizeMode="cover"
                 onError={(e) => {
-                  console.log('🖼️ Failed to load image:', item.image);
-                  console.log('🖼️ Error details:', e.nativeEvent.error);
+
                 }}
               />
             ) : (

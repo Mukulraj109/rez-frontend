@@ -33,12 +33,10 @@ const TransactionDetailPage = () => {
       setLoading(true);
       setError(null);
 
-      console.log('📜 [Transaction Detail] Fetching:', id);
-
       const response = await walletApi.getTransactionById(id);
 
       if (response.success && response.data) {
-        console.log('📜 [Transaction Detail] Loaded:', response.data.transaction.transactionId);
+
         setTransaction(response.data.transaction);
       } else {
         setError(response.error || 'Transaction not found');

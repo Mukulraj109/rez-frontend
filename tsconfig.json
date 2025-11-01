@@ -15,5 +15,14 @@
     "expo-env.d.ts",
     "src",
     "components"
+  ],
+  "exclude": [
+    "node_modules",
+    "tests.bak",
+    "tests",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
   ]
 }

@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useReviewState } from '@/hooks/useReviewState';
@@ -23,6 +23,15 @@ import walletApi from '@/services/walletApi';
 
 export default function ReviewPage() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+
+  // Get product data from params
+  const productId = params.productId as string || '';
+  const productTitle = params.productTitle as string || 'Product';
+  const productImage = params.productImage as string || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop';
+  const productPrice = params.productPrice as string || '0';
+  const cashbackPercentage = params.cashbackPercentage as string || '10';
+  const productCashbackAmount = params.cashbackAmount as string || '0';
   const {
     reviewText,
     setReviewText,
@@ -49,7 +58,7 @@ export default function ReviewPage() {
   }, []);
 
   const fetchRecentCashback = async () => {
-    console.log('💰 [REVIEW PAGE] Fetching recent cashback from Wallet API...');
+
     setLoadingCashback(true);
 
     try {
@@ -58,11 +67,6 @@ export default function ReviewPage() {
         type: 'credit',
         page: 1,
         limit: 5,
-      });
-
-      console.log('💰 [REVIEW PAGE] Cashback transactions response:', {
-        success: response.success,
-        count: response.data?.transactions?.length || 0,
       });
 
       if (response.success && response.data?.transactions) {
@@ -80,7 +84,7 @@ export default function ReviewPage() {
         }));
 
         setRecentCashback(cashbackData);
-        console.log('✅ [REVIEW PAGE] Recent cashback loaded:', cashbackData.length);
+
       } else {
         console.warn('⚠️ [REVIEW PAGE] No cashback transactions found');
         setRecentCashback([]);
@@ -98,8 +102,13 @@ export default function ReviewPage() {
   };
 
   const handleSubmitReview = async () => {
+    if (!productId) {
+      Alert.alert('Error', 'Product information not available');
+      return;
+    }
+
     await submitReview(
-      'product-1', // Mock product ID
+      productId, // Use actual product ID from params
       (cashbackAmount) => {
         // Show celebration modal instead of alert
         showModal(cashbackAmount);
@@ -183,17 +192,18 @@ export default function ReviewPage() {
         <View style={styles.productImageContainer}>
           <Image
             source={{
-              uri: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop',
+              uri: productImage,
             }}
             style={styles.productImage}
             resizeMode="cover"
           />
+          <Text style={styles.productTitle}>{productTitle}</Text>
         </View>
 
         {/* Cashback Section */}
         <View style={styles.cashbackSection}>
           <ThemedText style={styles.cashbackText}>
-            💰 Earn <Text style={{ fontWeight: '700' }}>10% cashback</Text> by
+            💰 Earn <Text style={{ fontWeight: '700' }}>{cashbackPercentage}% cashback</Text> by
             leaving a review for this product!
           </ThemedText>
 
@@ -247,7 +257,7 @@ export default function ReviewPage() {
               <Text style={styles.submitButtonText}>
                 {isSubmitting
                   ? 'Submitting...'
-                  : 'Submit & get 10% cashback'}
+                  : `Submit & get ${cashbackPercentage}% cashback`}
               </Text>
             </TouchableOpacity>
           </View>
@@ -264,7 +274,7 @@ export default function ReviewPage() {
         cashbackAmount={cashbackAmount}
       />
     </ThemedView>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -306,6 +316,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 5,
+    marginBottom: 12,
+  },
+  productTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 20,
   },
   cashbackSection: {
     paddingHorizontal: 20,

@@ -165,12 +165,12 @@ export const mockApiResponses = {
  */
 export const createMockHandlers = (storeId: string, productId: string) => ({
   handleBuy: async () => {
-    console.log('🛒 Buy button pressed:', { storeId, productId });
+
     const result = await mockApiResponses.buyAction(storeId, productId);
     
     if (result.success) {
       // In real app: show success toast, update cart count, etc.
-      console.log('✅ Buy success:', result.message);
+
     } else {
       // In real app: show error toast
       console.error('❌ Buy failed:', result.error);
@@ -180,11 +180,11 @@ export const createMockHandlers = (storeId: string, productId: string) => ({
   },
 
   handleLock: async () => {
-    console.log('🔒 Lock button pressed:', { storeId, productId });
+
     const result = await mockApiResponses.lockAction(storeId, productId);
     
     if (result.success) {
-      console.log('✅ Lock success:', result.message);
+
       // In real app: start countdown timer, update UI state
     } else {
       console.error('❌ Lock failed:', result.error);
@@ -194,11 +194,11 @@ export const createMockHandlers = (storeId: string, productId: string) => ({
   },
 
   handleBooking: async () => {
-    console.log('📅 Booking button pressed:', { storeId, productId });
+
     const result = await mockApiResponses.bookingAction(storeId, productId);
     
     if (result.success) {
-      console.log('✅ Booking success:', result.message);
+
       // In real app: navigate to booking screen
     } else {
       console.error('❌ Booking failed:', result.error);

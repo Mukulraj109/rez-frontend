@@ -43,17 +43,13 @@ export default function MyReviewsPage() {
         setLoading(true);
       }
 
-      console.log('📝 [MY REVIEWS] Loading user reviews...');
-
       const response = await reviewService.getUserReviews(isRefresh ? 1 : page, 20);
 
       if (response.success && response.data) {
-        console.log('📝 [MY REVIEWS] Reviews loaded:', response.data.reviews.length);
-
         if (isRefresh) {
-          setReviews(response.data.reviews);
+          setReviews(response.data.reviews || []);
         } else {
-          setReviews(prev => [...prev, ...response.data.reviews]);
+          setReviews(prev => [...prev, ...(response.data?.reviews || [])]);
         }
 
         setHasMore(response.data.pagination?.hasNextPage || false);
@@ -156,7 +152,7 @@ export default function MyReviewsPage() {
         <View style={styles.reviewStats}>
           <View style={styles.stat}>
             <Ionicons name="thumbs-up-outline" size={16} color="#6B7280" />
-            <Text style={styles.statText}>{review.helpfulCount || 0} helpful</Text>
+            <Text style={styles.statText}>{review.helpful || 0} helpful</Text>
           </View>
           {review.merchantReply && (
             <View style={styles.stat}>
@@ -181,7 +177,10 @@ export default function MyReviewsPage() {
         <View style={styles.actions}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => router.push(`/stores/${typeof review.store === 'object' ? review.store._id : review.store}` as any)}
+            onPress={() => {
+              const storeId = typeof review.store === 'object' ? review.store._id : review.store;
+              router.push(`/stores/${storeId}` as any);
+            }}
           >
             <Ionicons name="storefront-outline" size={16} color="#8B5CF6" />
             <Text style={styles.actionButtonText}>View Store</Text>
@@ -252,7 +251,7 @@ export default function MyReviewsPage() {
                 You haven't written any reviews yet.{'\n'}
                 Order from a store and share your experience!
               </Text>
-              <TouchableOpacity style={styles.shopButton} onPress={() => router.push('/')}>
+              <TouchableOpacity style={styles.shopButton} onPress={() => router.push('/(tabs)/' as any)}>
                 <Text style={styles.shopButtonText}>Browse Stores</Text>
               </TouchableOpacity>
             </View>
@@ -289,16 +288,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     backgroundColor: '#8B5CF6',
-    ...Platform.select({
-      ios: {
-        paddingTop: 50,
-      },
-      android: {
-        paddingTop: StatusBar.currentHeight || 16,
-      },
-      web: {
-        paddingTop: 16,
-      },
+    paddingTop: Platform.select({
+      ios: 50,
+      android: StatusBar.currentHeight || 16,
+      web: 16,
+      default: 16,
     }),
   },
   backButton: {

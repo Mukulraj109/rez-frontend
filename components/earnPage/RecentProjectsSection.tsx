@@ -78,7 +78,7 @@ export default function RecentProjectsSection({
         </ScrollView>
       )}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

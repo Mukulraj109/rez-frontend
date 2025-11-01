@@ -37,7 +37,7 @@ export const Config = {
   ENV,
   
   // API
-  API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5000/api',
+  API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5001/api',
   API_TIMEOUT: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000'),
   
   // Auth

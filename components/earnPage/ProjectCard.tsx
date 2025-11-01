@@ -102,7 +102,7 @@ export default function ProjectCard({
         )}
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

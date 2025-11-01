@@ -192,7 +192,7 @@ export default function RegistrationScreen() {
         )}
       </View>
     </OnboardingContainer>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -138,7 +138,7 @@ export default function TransactionCard({
         </View>
       )}
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

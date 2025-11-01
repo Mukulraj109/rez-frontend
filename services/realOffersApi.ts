@@ -1,23 +1,191 @@
-// Real Offers API - Connects to actual backend
-import apiClient from './apiClient';
-import { Offer } from '@/types/offers.types';
+import apiClient, { ApiResponse } from './apiClient';
 
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-  meta?: {
-    pagination?: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
+// Types for the new offers API
+export interface Offer {
+  _id: string;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  image: string;
+  category: 'mega' | 'student' | 'new_arrival' | 'trending' | 'food' | 'fashion' | 'electronics' | 'general';
+  type: 'cashback' | 'discount' | 'voucher' | 'combo' | 'special';
+  cashbackPercentage: number;
+  originalPrice?: number;
+  discountedPrice?: number;
+  location: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+  distance?: number;
+  store: {
+    id: string;
+    name: string;
+    logo?: string;
+    rating?: number;
+    verified?: boolean;
+  };
+  validity: {
+    startDate: string;
+    endDate: string;
+    isActive: boolean;
+  };
+  engagement: {
+    likesCount: number;
+    sharesCount: number;
+    viewsCount: number;
+    isLikedByUser?: boolean;
+  };
+  restrictions: {
+    minOrderValue?: number;
+    maxDiscountAmount?: number;
+    applicableOn?: string[];
+    excludedProducts?: string[];
+    ageRestriction?: {
+      minAge?: number;
+      maxAge?: number;
     };
-    timestamp: string;
+    userTypeRestriction?: 'student' | 'new_user' | 'premium' | 'all';
+  };
+  metadata: {
+    isNew?: boolean;
+    isTrending?: boolean;
+    isBestSeller?: boolean;
+    isSpecial?: boolean;
+    priority: number;
+    tags: string[];
+    featured?: boolean;
+    flashSale?: {
+      isActive: boolean;
+      endTime?: string;
+      originalPrice?: number;
+      salePrice?: number;
+    };
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfferCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  color: string;
+  backgroundColor?: string;
+  isActive: boolean;
+  priority: number;
+  offers: string[];
+  metadata: {
+    displayOrder: number;
+    isFeatured: boolean;
+    parentCategory?: string;
+    subcategories?: string[];
+    tags: string[];
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HeroBanner {
+  _id: string;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  image: string;
+  ctaText: string;
+  ctaAction: string;
+  ctaUrl?: string;
+  backgroundColor: string;
+  textColor?: string;
+  isActive: boolean;
+  priority: number;
+  validFrom: string;
+  validUntil: string;
+  targetAudience: {
+    userTypes?: ('student' | 'new_user' | 'premium' | 'all')[];
+    ageRange?: {
+      min?: number;
+      max?: number;
+    };
+    locations?: string[];
+    categories?: string[];
+  };
+  analytics: {
+    views: number;
+    clicks: number;
+    conversions: number;
+  };
+  metadata: {
+    page: 'offers' | 'home' | 'category' | 'product' | 'all';
+    position: 'top' | 'middle' | 'bottom';
+    size: 'small' | 'medium' | 'large' | 'full';
+    animation?: string;
+    tags: string[];
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfferSection {
+  id: string;
+  title: string;
+  offers: Offer[];
+  viewAllEnabled?: boolean;
+}
+
+export interface OffersPageData {
+  heroBanner: HeroBanner | null;
+  sections: {
+    mega: {
+      title: string;
+      offers: Offer[];
+    };
+    students: {
+      title: string;
+      offers: Offer[];
+    };
+    newArrivals: {
+      title: string;
+      offers: Offer[];
+    };
+    trending: {
+      title: string;
+      offers: Offer[];
+    };
+  };
+  userEngagement: {
+    likedOffers: string[];
+    userPoints: number;
   };
 }
 
-export const realOffersApi = {
+export interface PaginatedResponse<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
+class RealOffersApi {
+  /**
+   * Get complete offers page data
+   */
+  async getOffersPageData(params?: {
+    lat?: number;
+    lng?: number;
+  }): Promise<ApiResponse<OffersPageData>> {
+    try {
+      const response = await apiClient.get<OffersPageData>('/offers/page-data', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching offers page data:', error);
+      throw error;
+    }
+  }
+
   /**
    * Get all offers with filters
    */
@@ -26,42 +194,105 @@ export const realOffersApi = {
     store?: string;
     featured?: boolean;
     trending?: boolean;
-    bestSeller?: boolean;
-    special?: boolean;
     isNew?: boolean;
     minCashback?: number;
     maxCashback?: number;
-    sortBy?: 'cashback' | 'createdAt' | 'redemptionCount' | 'endDate';
-    order?: 'asc' | 'desc';
+    sortBy?: string;
+    order?: string;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<Offer[]>> {
-    const queryParams = new URLSearchParams();
-
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value));
-        }
-      });
+  }): Promise<ApiResponse<PaginatedResponse<Offer>>> {
+    try {
+      const response = await apiClient.get<PaginatedResponse<Offer>>('/offers', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching offers:', error);
+      throw error;
     }
-
-    return apiClient.get(`/offers?${queryParams.toString()}`);
-  },
+  }
 
   /**
-   * Get featured offers
+   * Get mega offers
    */
-  async getFeaturedOffers(limit: number = 10): Promise<ApiResponse<Offer[]>> {
-    return apiClient.get(`/offers/featured?limit=${limit}`);
-  },
+  async getMegaOffers(limit?: number): Promise<ApiResponse<Offer[]>> {
+    try {
+      const response = await apiClient.get<Offer[]>('/offers/mega', { limit });
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching mega offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get student offers
+   */
+  async getStudentOffers(limit?: number): Promise<ApiResponse<Offer[]>> {
+    try {
+      const response = await apiClient.get<Offer[]>('/offers/students', { limit });
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching student offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get new arrival offers
+   */
+  async getNewArrivalOffers(limit?: number): Promise<ApiResponse<Offer[]>> {
+    try {
+      const response = await apiClient.get<Offer[]>('/offers/new-arrivals', { limit });
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching new arrival offers:', error);
+      throw error;
+    }
+  }
 
   /**
    * Get trending offers
    */
-  async getTrendingOffers(limit: number = 10): Promise<ApiResponse<Offer[]>> {
-    return apiClient.get(`/offers/trending?limit=${limit}`);
-  },
+  async getTrendingOffers(limit?: number): Promise<ApiResponse<Offer[]>> {
+    try {
+      const response = await apiClient.get<Offer[]>('/offers/trending', { limit });
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching trending offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get nearby offers
+   */
+  async getNearbyOffers(params: {
+    lat: number;
+    lng: number;
+    maxDistance?: number;
+    limit?: number;
+  }): Promise<ApiResponse<Offer[]>> {
+    try {
+      const response = await apiClient.get<Offer[]>('/offers/nearby', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching nearby offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get single offer by ID
+   */
+  async getOfferById(id: string): Promise<ApiResponse<Offer>> {
+    try {
+      const response = await apiClient.get<Offer>(`/offers/${id}`);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error fetching offer ${id}:`, error);
+      throw error;
+    }
+  }
 
   /**
    * Search offers
@@ -73,168 +304,273 @@ export const realOffersApi = {
     minCashback?: number;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<Offer[]>> {
-    const queryParams = new URLSearchParams();
-
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        queryParams.append(key, String(value));
-      }
-    });
-
-    return apiClient.get(`/offers/search?${queryParams.toString()}`);
-  },
-
-  /**
-   * Get offers by category
-   */
-  async getOffersByCategory(
-    categoryId: string,
-    params?: {
-      featured?: boolean;
-      trending?: boolean;
-      sortBy?: string;
-      order?: string;
-      page?: number;
-      limit?: number;
+  }): Promise<ApiResponse<PaginatedResponse<Offer>>> {
+    try {
+      const response = await apiClient.get<PaginatedResponse<Offer>>('/offers/search', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error searching offers:', error);
+      throw error;
     }
-  ): Promise<ApiResponse<Offer[]>> {
-    const queryParams = new URLSearchParams();
+  }
 
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value));
-        }
-      });
+  /**
+   * Like/unlike an offer
+   */
+  async toggleOfferLike(id: string): Promise<ApiResponse<{ isLiked: boolean; likesCount: number }>> {
+    try {
+      const response = await apiClient.post<{ isLiked: boolean; likesCount: number }>(`/offers/${id}/like`);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error toggling like for offer ${id}:`, error);
+      throw error;
     }
-
-    return apiClient.get(`/offers/category/${categoryId}?${queryParams.toString()}`);
-  },
+  }
 
   /**
-   * Get offers by store
+   * Share an offer
    */
-  async getOffersByStore(
-    storeId: string,
-    params?: {
-      category?: string;
-      active?: boolean;
-      page?: number;
-      limit?: number;
+  async shareOffer(id: string, params?: {
+    platform?: string;
+    message?: string;
+  }): Promise<ApiResponse<{ success: boolean }>> {
+    try {
+      const response = await apiClient.post<{ success: boolean }>(`/offers/${id}/share`, params);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error sharing offer ${id}:`, error);
+      throw error;
     }
-  ): Promise<ApiResponse<Offer[]>> {
-    const queryParams = new URLSearchParams();
+  }
 
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value));
-        }
-      });
+  /**
+   * Track offer view
+   */
+  async trackOfferView(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    try {
+      const response = await apiClient.post<{ success: boolean }>(`/offers/${id}/view`);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error tracking view for offer ${id}:`, error);
+      throw error;
     }
-
-    return apiClient.get(`/offers/store/${storeId}?${queryParams.toString()}`);
-  },
+  }
 
   /**
-   * Get single offer by ID
+   * Track offer click
    */
-  async getOfferById(id: string): Promise<ApiResponse<Offer>> {
-    return apiClient.get(`/offers/${id}`);
-  },
+  async trackOfferClick(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    try {
+      const response = await apiClient.post<{ success: boolean }>(`/offers/${id}/click`);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error tracking click for offer ${id}:`, error);
+      throw error;
+    }
+  }
 
   /**
-   * Get recommended offers (requires authentication)
+   * Get offer categories
    */
-  async getRecommendedOffers(limit: number = 10): Promise<ApiResponse<Offer[]>> {
-    return apiClient.get(`/offers/user/recommendations?limit=${limit}`);
-  },
+  async getOfferCategories(): Promise<ApiResponse<OfferCategory[]>> {
+    try {
+      const response = await apiClient.get<OfferCategory[]>('/offer-categories');
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching offer categories:', error);
+      throw error;
+    }
+  }
 
   /**
-   * Redeem an offer (requires authentication)
+   * Get offer category by slug
    */
-  async redeemOffer(
-    id: string,
-    data: {
-      redemptionType: 'online' | 'instore';
+  async getOfferCategoryBySlug(slug: string): Promise<ApiResponse<OfferCategory>> {
+    try {
+      const response = await apiClient.get<OfferCategory>(`/offer-categories/${slug}`);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error fetching category ${slug}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get offers by category slug
+   */
+  async getOffersByCategorySlug(slug: string, params?: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    order?: string;
+    lat?: number;
+    lng?: number;
+  }): Promise<ApiResponse<PaginatedResponse<Offer>>> {
+    try {
+      const response = await apiClient.get<PaginatedResponse<Offer>>(`/offer-categories/${slug}/offers`, params);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error fetching offers for category ${slug}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get hero banners
+   */
+  async getHeroBanners(params?: {
+    page?: string;
+    position?: string;
+  }): Promise<ApiResponse<HeroBanner[]>> {
+    try {
+      const response = await apiClient.get<HeroBanner[]>('/hero-banners', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching hero banners:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Track hero banner view
+   */
+  async trackHeroBannerView(id: string, params?: {
+    source?: string;
+    device?: string;
       location?: {
         type: 'Point';
         coordinates: [number, number];
       };
+  }): Promise<ApiResponse<{ success: boolean }>> {
+    try {
+      const response = await apiClient.post<{ success: boolean }>(`/hero-banners/${id}/view`, params);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error tracking hero banner view ${id}:`, error);
+      throw error;
     }
-  ): Promise<ApiResponse<any>> {
-    return apiClient.post(`/offers/${id}/redeem`, data);
-  },
+  }
 
   /**
-   * Get user's redemptions (requires authentication)
+   * Track hero banner click
    */
-  async getUserRedemptions(params?: {
-    status?: 'pending' | 'active' | 'used' | 'expired' | 'cancelled';
-    page?: number;
-    limit?: number;
-  }): Promise<ApiResponse<any[]>> {
-    const queryParams = new URLSearchParams();
-
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value));
-        }
-      });
+  async trackHeroBannerClick(id: string, params?: {
+    source?: string;
+    device?: string;
+    location?: {
+      type: 'Point';
+      coordinates: [number, number];
+    };
+  }): Promise<ApiResponse<{ success: boolean }>> {
+    try {
+      const response = await apiClient.post<{ success: boolean }>(`/hero-banners/${id}/click`, params);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error tracking hero banner click ${id}:`, error);
+      throw error;
     }
-
-    return apiClient.get(`/offers/user/redemptions?${queryParams.toString()}`);
-  },
+  }
 
   /**
-   * Get user's favorite offers (requires authentication)
+   * Get user's favorite offers
    */
   async getUserFavoriteOffers(params?: {
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<Offer[]>> {
-    const queryParams = new URLSearchParams();
-
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value));
-        }
-      });
+  }): Promise<ApiResponse<PaginatedResponse<Offer>>> {
+    try {
+      const response = await apiClient.get<PaginatedResponse<Offer>>('/offers/user/favorites', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching user favorite offers:', error);
+      throw error;
     }
-
-    return apiClient.get(`/offers/user/favorites?${queryParams.toString()}`);
-  },
+  }
 
   /**
-   * Add offer to favorites (requires authentication)
+   * Add offer to favorites
    */
-  async addOfferToFavorites(id: string): Promise<ApiResponse<any>> {
-    return apiClient.post(`/offers/${id}/favorite`);
-  },
+  async addOfferToFavorites(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    try {
+      const response = await apiClient.post<{ success: boolean }>(`/offers/${id}/favorite`);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error adding offer ${id} to favorites:`, error);
+      throw error;
+    }
+  }
 
   /**
-   * Remove offer from favorites (requires authentication)
+   * Remove offer from favorites
    */
-  async removeOfferFromFavorites(id: string): Promise<ApiResponse<any>> {
-    return apiClient.delete(`/offers/${id}/favorite`);
-  },
+  async removeOfferFromFavorites(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    try {
+      const response = await apiClient.delete<{ success: boolean }>(`/offers/${id}/favorite`);
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error removing offer ${id} from favorites:`, error);
+      throw error;
+    }
+  }
 
   /**
-   * Track offer view (analytics)
+   * Get recommended offers
    */
-  async trackOfferView(id: string): Promise<ApiResponse<any>> {
-    return apiClient.post(`/offers/${id}/view`);
-  },
+  async getRecommendedOffers(limit?: number): Promise<ApiResponse<Offer[]>> {
+    try {
+      const response = await apiClient.get<Offer[]>('/offers/user/recommendations', { limit });
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching recommended offers:', error);
+      throw error;
+    }
+  }
 
   /**
-   * Track offer click (analytics)
+   * Redeem an offer - generates a voucher for the user
    */
-  async trackOfferClick(id: string): Promise<ApiResponse<any>> {
-    return apiClient.post(`/offers/${id}/click`);
-  },
-};
+  async redeemOffer(id: string, redemptionType: 'online' | 'instore' = 'online'): Promise<ApiResponse<{
+    offer: Offer;
+    voucher: {
+      voucherCode: string;
+      cashbackAmount: number;
+      expiresAt: string;
+    };
+  }>> {
+    try {
+      const response = await apiClient.post<{
+        offer: Offer;
+        voucher: {
+          voucherCode: string;
+          cashbackAmount: number;
+          expiresAt: string;
+        };
+      }>(`/offers/${id}/redeem`, { redemptionType });
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error redeeming offer ${id}:`, error);
+      throw error;
+    }
+  }
 
+  /**
+   * Get user's offer redemptions
+   */
+  async getUserRedemptions(params?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.get<any>('/offers/user/redemptions', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching user redemptions:', error);
+      throw error;
+    }
+  }
+}
+
+// Create and export singleton instance
+const realOffersApi = new RealOffersApi();
 export default realOffersApi;

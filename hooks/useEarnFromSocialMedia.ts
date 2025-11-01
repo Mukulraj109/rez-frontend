@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
-import { 
-  EarnSocialState, 
+import {
+  EarnSocialState,
   UseEarnSocialReturn,
-  InstagramPostValidation 
+  InstagramPostValidation
 } from '@/types/earn-social.types';
 import EarnSocialData from '@/data/earnSocialData';
 
-export const useEarnFromSocialMedia = (): UseEarnSocialReturn => {
+export const useEarnFromSocialMedia = (orderId?: string): UseEarnSocialReturn => {
   const [state, setState] = useState<EarnSocialState>(EarnSocialData.initialState);
+  const [contextOrderId] = useState(orderId);
 
   // Initialize data on mount
   useEffect(() => {
@@ -82,7 +83,7 @@ export const useEarnFromSocialMedia = (): UseEarnSocialReturn => {
 
       // Validate URL with API
       const validation = await EarnSocialData.api.validateInstagramUrl(state.instagramUrl);
-      
+
       if (!validation.isValid) {
         clearInterval(progressInterval);
         setState(prev => ({
@@ -95,8 +96,9 @@ export const useEarnFromSocialMedia = (): UseEarnSocialReturn => {
         return;
       }
 
-      // Submit the post
-      const result = await EarnSocialData.api.submitPost(state.instagramUrl);
+      // Submit the post with order/product ID if available
+
+      const result = await EarnSocialData.api.submitPost(state.instagramUrl, contextOrderId);
       
       clearInterval(progressInterval);
       setState(prev => ({ ...prev, uploadProgress: 100 }));
@@ -191,10 +193,22 @@ export const useEarnFromSocialMedia = (): UseEarnSocialReturn => {
   const handleGoBack = useCallback(() => {
     if (state.currentStep === 'url_input' || state.currentStep === 'uploading') {
       setState(prev => ({ ...prev, currentStep: 'overview' }));
+    } else if (state.currentStep === 'success' || state.currentStep === 'error') {
+      // On success/error, navigate to home page
+      router.replace('/');
     } else {
-      router.back();
+      // For overview, try to go back or go to home
+      try {
+        router.back();
+      } catch (error) {
+        router.replace('/');
+      }
     }
   }, [state.currentStep]);
+
+  const handleStartUpload = useCallback(() => {
+    setState(prev => ({ ...prev, currentStep: 'url_input' }));
+  }, []);
 
   // Clear error after some time
   useEffect(() => {
@@ -229,7 +243,8 @@ export const useEarnFromSocialMedia = (): UseEarnSocialReturn => {
       handleUrlChange,
       handleSubmit,
       handleRetry,
-      handleGoBack
+      handleGoBack,
+      handleStartUpload
     }
   };
 };

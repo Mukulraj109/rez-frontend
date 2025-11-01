@@ -19,7 +19,7 @@ import { offersPageData } from '@/data/offersData';
 
 // API Configuration
 const API_CONFIG: ApiConfig = {
-  baseUrl: process.env.EXPO_PUBLIC_API_URL || 'https://api.example.com',
+  baseUrl: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5001/api',
   timeout: 10000,
   retryAttempts: 3,
   retryDelay: 1000,
@@ -310,7 +310,6 @@ class MockOffersApi implements OffersApiEndpoints {
       offer.category.toLowerCase().includes(query) ||
       offer.store.name.toLowerCase().includes(query)
     );
-
     // Pagination
     const page = params.page || 1;
     const pageSize = params.pageSize || 20;

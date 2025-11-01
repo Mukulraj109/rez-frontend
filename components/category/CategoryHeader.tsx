@@ -14,6 +14,9 @@ import { useRouter } from 'expo-router';
 
 import { ThemedText } from '@/components/ThemedText';
 import { Category } from '@/types/category.types';
+import { useProfile, useProfileMenu } from '@/contexts/ProfileContext';
+import ProfileMenuModal from '@/components/profile/ProfileMenuModal';
+import { profileMenuSections } from '@/data/profileData';
 
 interface CategoryHeaderProps {
   category: Category;
@@ -33,6 +36,8 @@ export default function CategoryHeader({
   showFilterBadge = false,
 }: CategoryHeaderProps) {
   const router = useRouter();
+  const { user, isModalVisible, showModal, hideModal } = useProfile();
+  const { handleMenuItemPress } = useProfileMenu();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const { width, height } = Dimensions.get('window');
   
@@ -112,8 +117,19 @@ export default function CategoryHeader({
           )}
 
           {/* Profile Avatar */}
-          <TouchableOpacity style={styles.profileAvatar}>
-            <ThemedText style={styles.profileText}>R</ThemedText>
+          <TouchableOpacity 
+            style={styles.profileAvatar}
+            onPress={() => {
+              if (Platform.OS === 'ios') {
+                setTimeout(() => showModal(), 50);
+              } else {
+                showModal();
+              }
+            }}
+            activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
+            delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+          >
+            <ThemedText style={styles.profileText}>{user?.initials || 'R'}</ThemedText>
           </TouchableOpacity>
         </View>
       </View>
@@ -199,8 +215,19 @@ export default function CategoryHeader({
           </ThemedText>
         </View>
       )}
+
+      {/* Profile Menu Modal */}
+      {user && (
+        <ProfileMenuModal 
+          visible={isModalVisible} 
+          onClose={hideModal} 
+          user={user} 
+          menuSections={profileMenuSections} 
+          onMenuItemPress={handleMenuItemPress} 
+        />
+      )}
     </LinearGradient>
-  );
+);
 }
 
 const styles = StyleSheet.create({

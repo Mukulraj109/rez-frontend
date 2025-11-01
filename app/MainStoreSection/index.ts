@@ -22,3 +22,6 @@ export { default as UGCSection } from './UGCSection';
 
 // Phase 8: Bottom Action Button
 export { default as VisitStoreButton } from './VisitStoreButton';
+
+// Default export for the main component
+export { default } from './MainStoreHeader';

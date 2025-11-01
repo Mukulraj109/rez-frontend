@@ -588,7 +588,7 @@ export default function PaymentMethodsManagementPage() {
       <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
 
       {/* Header */}
-      <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
+      <LinearGradient colors={['#8B5CF6', '#7C3AED'] as const} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="white" />
@@ -993,7 +993,7 @@ export default function PaymentMethodsManagementPage() {
         </KeyboardAvoidingView>
       </Modal>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

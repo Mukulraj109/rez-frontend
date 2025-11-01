@@ -70,11 +70,6 @@ class WebLocationService {
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('[WebLocation] Browser location obtained:', {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          });
           resolve(position);
         },
         (error) => {
@@ -127,12 +122,6 @@ class WebLocationService {
         postalCode,
       };
 
-      console.log('[WebLocation] OpenCage API response:', {
-        status: data.status,
-        results_count: data.results?.length,
-        components: result.components
-      });
-      console.log('[WebLocation] Extracted address:', address);
       return address;
 
     } catch (error) {
@@ -210,12 +199,6 @@ class WebLocationService {
         postalCode,
       };
 
-      console.log('[WebLocation] Google Maps API response:', {
-        status: data.status,
-        results_count: data.results?.length,
-        address_components: addressComponents
-      });
-      console.log('[WebLocation] Extracted address:', address);
       return address;
 
     } catch (error) {
@@ -231,9 +214,8 @@ class WebLocationService {
     // Try OpenCage first (it was working for you previously)
     if (this.opencageApiKey) {
       try {
-        console.log('[WebLocation] Trying OpenCage API first...');
         return await this.reverseGeocodeOpenCage(lat, lng);
-      } catch (opencageError) {
+      } catch (opencageError: any) {
         console.warn('[WebLocation] OpenCage failed, trying Google Maps...', opencageError.message);
       }
     }
@@ -241,9 +223,8 @@ class WebLocationService {
     // Fallback to Google Maps
     if (this.googleMapsApiKey) {
       try {
-        console.log('[WebLocation] Trying Google Maps API...');
         return await this.reverseGeocodeGoogleMaps(lat, lng);
-      } catch (googleError) {
+      } catch (googleError: any) {
         console.warn('[WebLocation] Google Maps failed, using coordinate-based fallback...', googleError.message);
       }
     }
@@ -261,8 +242,6 @@ class WebLocationService {
     }
 
     try {
-      console.log('[WebLocation] Getting current location...');
-
       // Get coordinates from browser
       const position = await this.getBrowserLocation();
       const coords = {
@@ -275,7 +254,7 @@ class WebLocationService {
       try {
         // Try to get address from Google Maps
         address = await this.reverseGeocode(coords.latitude, coords.longitude);
-      } catch (geocodingError) {
+      } catch (geocodingError: any) {
         console.warn('[WebLocation] Geocoding failed (billing may not be enabled), using coordinate-based location:', geocodingError.message);
 
         // Fallback: Create a reasonable location name based on coordinates
@@ -294,7 +273,6 @@ class WebLocationService {
         timestamp: Date.now(),
       };
 
-      console.log('[WebLocation] Location result:', result);
       return result;
 
     } catch (error) {

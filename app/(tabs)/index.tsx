@@ -11,6 +11,8 @@ import {
   InteractionManager,
   Image,
   Animated,
+  Modal,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +42,15 @@ import { profileMenuSections } from '@/data/profileData';
 import VoucherNavButton from '@/components/voucher/VoucherNavButton';
 import { GreetingDisplay, LocationDisplay } from '@/components/location';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import authService from '@/services/authApi';
+import NavigationShortcuts from '@/components/navigation/NavigationShortcuts';
+import QuickAccessFAB from '@/components/navigation/QuickAccessFAB';
+import FeatureHighlights from '@/components/homepage/FeatureHighlights';
+import TierBadge from '@/components/subscription/TierBadge';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import NotificationBell from '@/components/common/NotificationBell';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -48,25 +59,151 @@ export default function HomeScreen() {
   const { user, isModalVisible, showModal, hideModal } = useProfile();
   const { handleMenuItemPress } = useProfileMenu();
   const { state: cartState } = useCart();
+  const { state: authState, actions: authActions } = useAuth();
+  const { state: subscriptionState } = useSubscription();
   const [refreshing, setRefreshing] = React.useState(false);
   const [showDetailedLocation, setShowDetailedLocation] = React.useState(false);
+  const [userPoints, setUserPoints] = React.useState(0);
+  const [userStats, setUserStats] = React.useState<any>(null);
+  const [syncStatus, setSyncStatus] = React.useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
 
+  // Initialize push notifications
+  usePushNotifications();
+
+  // Load user points and statistics
+  React.useEffect(() => {
+    if (authState.user) {
+
+      loadUserStatistics();
+    } else {
+
+    }
+  }, [authState.user]);
+
+  const loadUserStatistics = async () => {
+    try {
+
+      // Loading user statistics
+      const response = await authService.getUserStatistics();
+      if (response.success && response.data) {
+        setUserStats(response.data);
+        
+        // Calculate loyalty points based on the documentation:
+        // Shop: 1 point per ₹10 spent
+        // Review: 50 points per review
+        // Refer: 200 points per referral
+        // Video: 100 points per video
+        
+        const stats = response.data;
+        const shopPoints = Math.floor((stats.orders?.totalSpent || 0) / 10); // 1 point per ₹10
+        const reviewPoints = 0; // Reviews not available in current API response
+        const referralPoints = (stats.user?.totalReferrals || 0) * 200; // 200 points per referral
+        const videoPoints = (stats.videos?.totalCreated || 0) * 100; // 100 points per video
+        
+        const totalLoyaltyPoints = shopPoints + reviewPoints + referralPoints + videoPoints;
+
+        // NEW: Sync loyalty points with wallet
+        try {
+          const walletApi = (await import('@/services/walletApi')).default;
+          const walletResponse = await walletApi.getBalance();
+          
+          if (walletResponse.success && walletResponse.data) {
+            const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
+            const actualWalletCoins = wasilCoin?.amount || 0;
+
+            // If loyalty points > wallet coins, sync the difference
+            if (totalLoyaltyPoints > actualWalletCoins) {
+              const difference = totalLoyaltyPoints - actualWalletCoins;
+
+              setSyncStatus('syncing');
+              
+              const creditResponse = await walletApi.creditLoyaltyPoints({
+                amount: difference,
+                source: {
+                  type: 'loyalty_sync',
+                  description: 'Syncing loyalty points to wallet',
+                  metadata: {
+                    shopPoints,
+                    referralPoints,
+                    videoPoints,
+                    totalCalculated: totalLoyaltyPoints,
+                    previousWalletBalance: actualWalletCoins
+                  }
+                }
+              });
+              
+              if (creditResponse.success && creditResponse.data) {
+
+                // Display the synced wallet coins
+                setUserPoints(creditResponse.data.balance.available);
+                setSyncStatus('success');
+              } else {
+                console.error('❌ [HOME] Failed to sync loyalty points:', creditResponse.error);
+                // Fallback to calculated loyalty points
+                setUserPoints(totalLoyaltyPoints);
+                setSyncStatus('error');
+              }
+            } else {
+              // Wallet has more or equal coins, use wallet balance
+
+              setUserPoints(actualWalletCoins);
+              setSyncStatus('success');
+            }
+          } else {
+            console.warn('⚠️ [HOME] Could not get wallet balance, using calculated loyalty points');
+            setUserPoints(totalLoyaltyPoints);
+          }
+        } catch (walletError) {
+          console.error('❌ [HOME] Error syncing with wallet:', walletError);
+          // Fallback to calculated loyalty points
+          setUserPoints(totalLoyaltyPoints);
+        }
+      } else {
+        // Fallback to wallet data if statistics API fails
+        const loyaltyPoints = authState.user?.wallet?.totalEarned || authState.user?.wallet?.balance || 0;
+        setUserPoints(loyaltyPoints);
+
+      }
+    } catch (error) {
+      console.error('❌ [HOME] Error loading user statistics:', error);
+      // Fallback to wallet data
+      const loyaltyPoints = authState.user?.wallet?.totalEarned || authState.user?.wallet?.balance || 0;
+      setUserPoints(loyaltyPoints);
+    }
+  };
+
+  // Check auth status if not authenticated
+  React.useEffect(() => {
+    if (!authState.isLoading && !authState.isAuthenticated && !authState.user) {
+      // User not authenticated, checking auth status
+      authActions.checkAuthStatus();
+    }
+  }, [authState.isLoading, authState.isAuthenticated, authState.user, authActions]);
+
+  // Debug function removed for production
+
+  // Debug user and modal state (removed for production)
 
   const handleRefresh = React.useCallback(
     async () => {
+
       setRefreshing(true);
       try {
         await actions.refreshAllSections();
+        // Also refresh user statistics
+        if (authState.user) {
+
+          await loadUserStatistics();
+        }
       } catch (error) {
-        console.error('Failed to refresh homepage:', error);
+        console.error('❌ [HOME] Failed to refresh homepage:', error);
       } finally {
         setRefreshing(false);
       }
     },
-    [actions]
-  );
+    [actions, authState.user]);
 
   const handleFashionPress = () => {
     router.push('/FashionPage');
@@ -167,8 +304,8 @@ export default function HomeScreen() {
 
   const renderProductCard = (item: HomepageSectionItem) => {
     const product = item as ProductItem;
-    const productId = product._id || product.id;
-    const cartItem = cartState.items.find(i => i.productId === productId);
+    const productId = product.id;
+    const cartItem = cartState.items.find(i => i.id === productId);
     const inCart = cartItem ? cartItem.quantity : 0;
 
     return (
@@ -239,6 +376,23 @@ export default function HomeScreen() {
 
           <View style={viewStyles.headerRight}>
             <TouchableOpacity
+              onPress={() => {
+                if (Platform.OS === 'ios') {
+                  setTimeout(() => router.push('/subscription/plans'), 50);
+                } else {
+                  router.push('/subscription/plans');
+                }
+              }}
+              activeOpacity={0.7}
+              style={{ marginRight: 12 }}
+            >
+              <TierBadge
+                tier={subscriptionState.currentSubscription?.tier || 'free'}
+                size="small"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={viewStyles.coinsContainer}
               onPress={() => {
                 if (Platform.OS === 'ios') {
@@ -251,8 +405,10 @@ export default function HomeScreen() {
               delayPressIn={Platform.OS === 'ios' ? 50 : 0}
             >
               <Ionicons name="star" size={16} color="#FFD700" />
-              <ThemedText style={textStyles.coinsText}>382</ThemedText>
+              <ThemedText style={textStyles.coinsText}>{userPoints}</ThemedText>
             </TouchableOpacity>
+
+            <NotificationBell iconSize={24} iconColor="white" />
 
             <TouchableOpacity
               onPress={() => {
@@ -271,16 +427,19 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={viewStyles.profileAvatar}
               onPress={() => {
-                if (Platform.OS === 'ios') {
-                  setTimeout(() => showModal(), 50);
-                } else {
+                // Only open modal if user is authenticated
+                if (authState.isAuthenticated && authState.user) {
                   showModal();
                 }
               }}
-              activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
-              delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+              activeOpacity={0.7}
             >
-              <ThemedText style={textStyles.profileText}>{user?.initials || 'R'}</ThemedText>
+              <ThemedText style={textStyles.profileText}>
+                {user?.initials ||
+                 (authState.user?.profile?.firstName ? authState.user.profile.firstName.charAt(0).toUpperCase() :
+                  (authState.isAuthenticated ? 'U' : '?')
+                 )}
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -368,7 +527,11 @@ export default function HomeScreen() {
       {/* Content */}
       <View style={viewStyles.content}>
         {/* Partner Card */}
-        <TouchableOpacity style={viewStyles.partnerCard} onPress={handlePartnerPress} activeOpacity={0.9}>
+        <TouchableOpacity 
+          style={viewStyles.partnerCard} 
+          onPress={handlePartnerPress} 
+          activeOpacity={0.9}
+        >
           <View style={viewStyles.partnerInfo}>
             <View style={viewStyles.partnerIcon}>
               <Ionicons name="star" size={20} color="#8B5CF6" />
@@ -381,15 +544,15 @@ export default function HomeScreen() {
 
           <View style={viewStyles.partnerStats}>
             <View style={viewStyles.stat}>
-              <ThemedText style={textStyles.statNumber}>12/15</ThemedText>
-              <ThemedText style={textStyles.statLabel}>Orders</ThemedText>
+              <ThemedText style={textStyles.statNumber}>{userPoints || 0}</ThemedText>
+              <ThemedText style={textStyles.statLabel}>Points</ThemedText>
             </View>
 
             <View style={viewStyles.progressDot} />
 
             <View style={viewStyles.stat}>
-              <ThemedText style={textStyles.statNumber}>3 Orders in 44</ThemedText>
-              <ThemedText style={textStyles.statLabel}>Days to go</ThemedText>
+              <ThemedText style={textStyles.statNumber}>Level 1</ThemedText>
+              <ThemedText style={textStyles.statLabel}>Partner</ThemedText>
             </View>
           </View>
 
@@ -415,7 +578,11 @@ export default function HomeScreen() {
               <Ionicons name="location-outline" size={24} color="#333" />
             </View>
             <ThemedText style={textStyles.actionLabel}>Track Orders</ThemedText>
-            <ThemedText style={textStyles.actionValue}>2 Active</ThemedText>
+            <ThemedText style={textStyles.actionValue}>
+              {userStats ? 
+                `${Math.max(0, (userStats.orders?.total || 0) - (userStats.orders?.completed || 0) - (userStats.orders?.cancelled || 0))} Active` 
+                : 'Loading...'}
+            </ThemedText>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -433,7 +600,9 @@ export default function HomeScreen() {
               <Ionicons name="wallet-outline" size={24} color="#333" />
             </View>
             <ThemedText style={textStyles.actionLabel}>Wallet</ThemedText>
-            <ThemedText style={textStyles.actionValue}>₹ 0</ThemedText>
+            <ThemedText style={textStyles.actionValue}>
+              ₹ {userPoints.toLocaleString()}
+            </ThemedText>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -451,7 +620,11 @@ export default function HomeScreen() {
               <Ionicons name="pricetag-outline" size={24} color="#333" />
             </View>
             <ThemedText style={textStyles.actionLabel}>Offers</ThemedText>
-            <ThemedText style={textStyles.actionValue}>2 New</ThemedText>
+            <ThemedText style={textStyles.actionValue}>
+              {userStats?.offers?.totalRedeemed !== undefined ? 
+                `${Math.max(0, 5 - (userStats.offers.totalRedeemed || 0))} New` 
+                : '5 New'}
+            </ThemedText>
           </TouchableOpacity>
 
           <View style={viewStyles.actionItem}>
@@ -483,6 +656,12 @@ export default function HomeScreen() {
 
         {/* Online Voucher Button */}
         <VoucherNavButton variant="minimal" style={{ marginBottom: 20 }} />
+
+        {/* Navigation Shortcuts */}
+        <NavigationShortcuts />
+
+        {/* Feature Highlights */}
+        <FeatureHighlights />
 
         {/* Going Out Section */}
         <View style={viewStyles.section}>
@@ -628,47 +807,52 @@ export default function HomeScreen() {
         </View>
 
         {/* Sections from state */}
-        {state.sections.map(section => (
-          <HorizontalScrollSection
-            key={`${section.id}-${cartState.items.length}`}
-            section={section}
-            onItemPress={item => handleItemPress(section.id, item)}
-            onRefresh={() => actions.refreshSection(section.id)}
-            renderCard={item => {
-              switch (section.type) {
-                case 'events':
-                  return renderEventCard(item);
-                case 'recommendations':
-                  return renderRecommendationCard(item);
-                case 'stores':
-                  return renderStoreCard(item, section.id);
-                case 'branded_stores':
-                  return renderBrandedStoreCard(item);
-                case 'products':
-                  return renderProductCard(item);
-                default:
-                  return renderStoreCard(item, section.id);
+        {state.sections
+          .filter(section => section.items && section.items.length > 0)
+          .map(section => (
+            <HorizontalScrollSection
+              key={`${section.id}-${cartState.items.length}`}
+              section={section}
+              onItemPress={item => handleItemPress(section.id, item)}
+              onRefresh={() => actions.refreshSection(section.id)}
+              renderCard={item => {
+                switch (section.type) {
+                  case 'events':
+                    return renderEventCard(item);
+                  case 'recommendations':
+                    return renderRecommendationCard(item);
+                  case 'stores':
+                    return renderStoreCard(item, section.id);
+                  case 'branded_stores':
+                    return renderBrandedStoreCard(item);
+                  case 'products':
+                    return renderProductCard(item);
+                  default:
+                    return renderStoreCard(item, section.id);
+                }
+              }}
+              cardWidth={
+                section.id === 'new_arrivals' ? 180 :
+                section.id === 'just_for_you' ? 230 :
+                section.type === 'branded_stores' ? 200 : 280
               }
-            }}
-            cardWidth={
-              section.id === 'new_arrivals' ? 180 :
-              section.id === 'just_for_you' ? 230 :
-              section.type === 'branded_stores' ? 200 : 280
-            }
-            spacing={
-              section.id === 'new_arrivals' ? 12 :
-              section.id === 'just_for_you' ? 12 : 16
-            }
-            showIndicator={false}
-            extraData={cartState.items}
-          />
-        ))}
+              spacing={
+                section.id === 'new_arrivals' ? 12 :
+                section.id === 'just_for_you' ? 12 : 16
+              }
+              showIndicator={false}
+              extraData={cartState.items}
+            />
+          ))}
       </View>
 
       {/* Profile Menu Modal */}
       {user && (
         <ProfileMenuModal visible={isModalVisible} onClose={hideModal} user={user} menuSections={profileMenuSections} onMenuItemPress={handleMenuItemPress} />
       )}
+
+      {/* Quick Access FAB */}
+      <QuickAccessFAB />
     </ScrollView>
   );
 }

@@ -46,7 +46,7 @@ export const orderActivityTriggers = {
    */
   onOrderPlaced: async (orderId: string, storeName: string, amount: number) => {
     await createActivity(
-      'ORDER',
+      'ORDER' as ActivityType,
       'Order Placed',
       `Placed an order at ${storeName}`,
       { orderId, storeName },
@@ -59,7 +59,7 @@ export const orderActivityTriggers = {
    */
   onOrderDelivered: async (orderId: string, storeName: string) => {
     await createActivity(
-      'ORDER',
+      'ORDER' as ActivityType,
       'Order Delivered',
       `Order from ${storeName} was delivered successfully`,
       { orderId, storeName, status: 'delivered' }
@@ -71,7 +71,7 @@ export const orderActivityTriggers = {
    */
   onOrderCancelled: async (orderId: string, storeName: string) => {
     await createActivity(
-      'ORDER',
+      'ORDER' as ActivityType,
       'Order Cancelled',
       `Cancelled order from ${storeName}`,
       { orderId, storeName, status: 'cancelled' }
@@ -88,7 +88,7 @@ export const cashbackActivityTriggers = {
    */
   onCashbackEarned: async (amount: number, orderId: string, storeName: string) => {
     await createActivity(
-      'CASHBACK',
+      'CASHBACK' as ActivityType,
       'Cashback Earned',
       `Earned ₹${amount} cashback from ${storeName}`,
       { orderId, storeName, type: 'earned' },
@@ -101,7 +101,7 @@ export const cashbackActivityTriggers = {
    */
   onCashbackCredited: async (amount: number, orderId: string) => {
     await createActivity(
-      'CASHBACK',
+      'CASHBACK' as ActivityType,
       'Cashback Credited',
       `₹${amount} cashback credited to your wallet`,
       { orderId, type: 'credited' },
@@ -119,7 +119,7 @@ export const reviewActivityTriggers = {
    */
   onReviewSubmitted: async (productId: string, productName: string, rating: number) => {
     await createActivity(
-      'REVIEW',
+      'REVIEW' as ActivityType,
       'Review Submitted',
       `Reviewed ${productName} (${rating}★)`,
       { productId, productName, rating }
@@ -131,7 +131,7 @@ export const reviewActivityTriggers = {
    */
   onReviewLiked: async (reviewId: string, productName: string, totalLikes: number) => {
     await createActivity(
-      'REVIEW',
+      'REVIEW' as ActivityType,
       'Review Liked',
       `Your review of ${productName} received ${totalLikes} likes`,
       { reviewId, productName, totalLikes }
@@ -148,7 +148,7 @@ export const videoActivityTriggers = {
    */
   onVideoUploaded: async (videoId: string, title: string) => {
     await createActivity(
-      'VIDEO',
+      'VIDEO' as ActivityType,
       'Video Uploaded',
       `Uploaded video: ${title}`,
       { videoId, title }
@@ -160,7 +160,7 @@ export const videoActivityTriggers = {
    */
   onVideoEarnings: async (videoId: string, title: string, amount: number) => {
     await createActivity(
-      'VIDEO',
+      'VIDEO' as ActivityType,
       'Video Earnings',
       `Earned ₹${amount} from video: ${title}`,
       { videoId, title },
@@ -173,7 +173,7 @@ export const videoActivityTriggers = {
    */
   onVideoMilestone: async (videoId: string, title: string, views: number) => {
     await createActivity(
-      'VIDEO',
+      'VIDEO' as ActivityType,
       'Video Milestone',
       `Your video "${title}" reached ${views.toLocaleString()} views!`,
       { videoId, title, views, milestone: views }
@@ -190,7 +190,7 @@ export const projectActivityTriggers = {
    */
   onProjectCompleted: async (projectId: string, title: string, earnings: number) => {
     await createActivity(
-      'PROJECT',
+      'PROJECT' as ActivityType,
       'Project Completed',
       `Completed project: ${title}`,
       { projectId, title },
@@ -203,7 +203,7 @@ export const projectActivityTriggers = {
    */
   onProjectPayment: async (projectId: string, title: string, amount: number) => {
     await createActivity(
-      'PROJECT',
+      'PROJECT' as ActivityType,
       'Project Payment',
       `Received ₹${amount} for project: ${title}`,
       { projectId, title, type: 'payment' },
@@ -221,7 +221,7 @@ export const offerActivityTriggers = {
    */
   onOfferRedeemed: async (offerId: string, offerTitle: string, savings: number) => {
     await createActivity(
-      'OFFER',
+      'OFFER' as ActivityType,
       'Offer Redeemed',
       `Redeemed: ${offerTitle}`,
       { offerId, offerTitle },
@@ -234,7 +234,7 @@ export const offerActivityTriggers = {
    */
   onOfferExpired: async (offerId: string, offerTitle: string) => {
     await createActivity(
-      'OFFER',
+      'OFFER' as ActivityType,
       'Offer Expired',
       `Offer expired: ${offerTitle}`,
       { offerId, offerTitle, expired: true }
@@ -251,7 +251,7 @@ export const voucherActivityTriggers = {
    */
   onVoucherPurchased: async (voucherId: string, voucherName: string, amount: number) => {
     await createActivity(
-      'VOUCHER',
+      'VOUCHER' as ActivityType,
       'Voucher Purchased',
       `Purchased voucher: ${voucherName}`,
       { voucherId, voucherName, type: 'purchased' },
@@ -264,7 +264,7 @@ export const voucherActivityTriggers = {
    */
   onVoucherRedeemed: async (voucherId: string, voucherName: string, storeName: string) => {
     await createActivity(
-      'VOUCHER',
+      'VOUCHER' as ActivityType,
       'Voucher Redeemed',
       `Used ${voucherName} at ${storeName}`,
       { voucherId, voucherName, storeName, type: 'redeemed' }
@@ -281,7 +281,7 @@ export const referralActivityTriggers = {
    */
   onReferralSent: async (referredEmail: string) => {
     await createActivity(
-      'REFERRAL',
+      'REFERRAL' as ActivityType,
       'Referral Sent',
       `Invited ${referredEmail} to join REZ`,
       { referredEmail, type: 'sent' }
@@ -293,7 +293,7 @@ export const referralActivityTriggers = {
    */
   onReferralJoined: async (referredName: string, bonusAmount: number) => {
     await createActivity(
-      'REFERRAL',
+      'REFERRAL' as ActivityType,
       'Referral Joined',
       `${referredName} joined using your referral!`,
       { referredName, type: 'joined' },
@@ -306,7 +306,7 @@ export const referralActivityTriggers = {
    */
   onReferralBonus: async (referredName: string, amount: number) => {
     await createActivity(
-      'REFERRAL',
+      'REFERRAL' as ActivityType,
       'Referral Bonus',
       `Earned ₹${amount} referral bonus from ${referredName}`,
       { referredName, type: 'bonus' },
@@ -324,7 +324,7 @@ export const profileActivityTriggers = {
    */
   onProfileUpdated: async (fieldsUpdated: string[]) => {
     await createActivity(
-      'PROFILE',
+      'PROFILE' as ActivityType,
       'Profile Updated',
       `Updated profile: ${fieldsUpdated.join(', ')}`,
       { fieldsUpdated }
@@ -336,7 +336,7 @@ export const profileActivityTriggers = {
    */
   onProfilePictureAdded: async () => {
     await createActivity(
-      'PROFILE',
+      'PROFILE' as ActivityType,
       'Profile Picture Added',
       'Added a new profile picture',
       { type: 'picture_added' }
@@ -348,7 +348,7 @@ export const profileActivityTriggers = {
    */
   onMilestoneReached: async (milestoneName: string, value: number) => {
     await createActivity(
-      'PROFILE',
+      'PROFILE' as ActivityType,
       'Milestone Reached',
       `Reached ${milestoneName}: ${value}`,
       { milestoneName, value, type: 'milestone' }
@@ -365,7 +365,7 @@ export const storeActivityTriggers = {
    */
   onStoreFavorited: async (storeId: string, storeName: string) => {
     await createActivity(
-      'OTHER',
+      'OTHER' as ActivityType,
       'Store Favorited',
       `Added ${storeName} to favorites`,
       { storeId, storeName, type: 'store_favorited' }
@@ -377,7 +377,7 @@ export const storeActivityTriggers = {
    */
   onStoreUnfavorited: async (storeId: string, storeName: string) => {
     await createActivity(
-      'OTHER',
+      'OTHER' as ActivityType,
       'Store Unfavorited',
       `Removed ${storeName} from favorites`,
       { storeId, storeName, type: 'store_unfavorited' }
@@ -389,7 +389,7 @@ export const storeActivityTriggers = {
    */
   onStoreFollowed: async (storeId: string, storeName: string) => {
     await createActivity(
-      'OTHER',
+      'OTHER' as ActivityType,
       'Store Followed',
       `Started following ${storeName}`,
       { storeId, storeName, type: 'store_followed' }
@@ -406,7 +406,7 @@ export const walletActivityTriggers = {
    */
   onWalletRecharge: async (amount: number, method: string) => {
     await createActivity(
-      'OTHER',
+      'OTHER' as ActivityType,
       'Wallet Recharged',
       `Added ₹${amount} to wallet via ${method}`,
       { method, type: 'wallet_recharge' },
@@ -419,7 +419,7 @@ export const walletActivityTriggers = {
    */
   onWalletWithdrawal: async (amount: number, method: string) => {
     await createActivity(
-      'OTHER',
+      'OTHER' as ActivityType,
       'Wallet Withdrawal',
       `Withdrew ₹${amount} from wallet to ${method}`,
       { method, type: 'wallet_withdrawal' },
@@ -432,7 +432,7 @@ export const walletActivityTriggers = {
    */
   onWalletPayment: async (amount: number, purpose: string) => {
     await createActivity(
-      'OTHER',
+      'OTHER' as ActivityType,
       'Wallet Payment',
       `Paid ₹${amount} from wallet for ${purpose}`,
       { purpose, type: 'wallet_payment' },

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,10 +10,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ supports 'edges'
 
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import CartHeader from '@/components/cart/CartHeader';
 import SlidingTabs from '@/components/cart/SlidingTabs';
 import CartItem from '@/components/cart/CartItem';
+import LockedItem from '@/components/cart/LockedItem';
 import PriceSection from '@/components/cart/PriceSection';
 import CartValidation from '@/components/cart/CartValidation';
 import StockWarningBanner from '@/components/cart/StockWarningBanner';
@@ -30,6 +31,7 @@ import {
 } from '@/utils/mockCartData';
 import { useCart } from '@/contexts/CartContext';
 import { useCartValidation } from '@/hooks/useCartValidation';
+import cartApi from '@/services/cartApi';
 
 export default function CartPage() {
   const router = useRouter();
@@ -61,34 +63,19 @@ export default function CartPage() {
 
   // Use real cart items from CartContext
   const productItems = useMemo(() => {
-    console.log('🛒 [CartPage] Mapping cart items from CartContext:', {
-      itemCount: cartState.items.length,
-      isLoading: cartState.isLoading,
-      error: cartState.error,
-      items: cartState.items
-    });
-
     return cartState.items.map(item => {
-      console.log('🖼️ [CartPage] Processing cart item:', {
-        id: item.id,
-        name: item.name,
-        image: item.image,
-        imageType: typeof item.image,
-        hasImage: !!item.image
-      });
-
       return {
         id: item.id,
-        productId: item.productId,
+        productId: (item as any).productId || item.id,
         name: item.name,
         image: item.image || '',
         price: item.discountedPrice || item.originalPrice || 0,
         originalPrice: item.originalPrice,
         cashback: `Upto 12% cash back`,
         quantity: item.quantity,
-        discount: item.discount,
-        variant: item.variant,
-        store: item.store,
+        discount: (item as any).discount,
+        variant: (item as any).variant,
+        store: (item as any).store,
         category: 'products' as const,
       };
     });
@@ -97,24 +84,20 @@ export default function CartPage() {
   const currentItems = useMemo(() => {
     if (activeTab === 'products') return productItems;
     if (activeTab === 'service') return serviceItems;
-    return []; // lockedproduct tab will use different rendering logic
-  }, [activeTab, productItems, serviceItems]);
+    if (activeTab === 'lockedproduct') return lockedProducts;
+    return [];
+  }, [activeTab, productItems, serviceItems, lockedProducts]);
 
   const allItems = useMemo(() => [...productItems, ...serviceItems], [productItems, serviceItems]);
 
   // Use real cart totals from CartContext
   const overallTotal = useMemo(() => {
-    console.log('🛒 [CartPage] Calculating total:', {
-      cartTotal: cartState.totalPrice,
-      cartItemCount: cartState.totalItems,
-      productItemsLength: productItems.length,
-      serviceItemsLength: serviceItems.length
-    });
-
     // Use real cart total from backend, not calculated from mock data
     const cartTotal = cartState.totalPrice || 0;
     const lockedTotal = calculateLockedTotal(lockedProducts);
-    return cartTotal + lockedTotal;
+    const total = cartTotal + lockedTotal;
+
+    return total;
   }, [cartState.totalPrice, lockedProducts]);
 
   const overallItemCount = useMemo(() => {
@@ -124,68 +107,133 @@ export default function CartPage() {
     return cartCount + lockedCount;
   }, [cartState.totalItems, lockedProducts]);
 
-  // Load cart on mount
-  useEffect(() => {
-    console.log('🛒 [CartPage] Component mounted, loading cart...');
-    const loadData = async () => {
-      await cartActions.loadCart();
-      console.log('🛒 [CartPage] Cart loaded. Current state:', {
-        items: cartState.items,
-        itemCount: cartState.items.length,
-        totalPrice: cartState.totalPrice,
-        totalItems: cartState.totalItems,
-        isLoading: cartState.isLoading,
-        error: cartState.error
-      });
-    };
-    loadData();
+  // Function to load locked items
+  const loadLockedItems = useCallback(async () => {
+    try {
+      const response = await cartApi.getLockedItems();
+      if (response.success && response.data) {
+        const formattedLockedItems = response.data.lockedItems.map((item: any) => {
+          const productId = item.product?._id || item.product;
+          const lockedAt = new Date(item.lockedAt);
+          const expiresAt = new Date(item.expiresAt);
+          const remainingTime = expiresAt.getTime() - Date.now();
+          const lockDuration = expiresAt.getTime() - lockedAt.getTime();
+          
+          // Determine status based on remaining time
+          const status: 'active' | 'expiring' | 'expired' = 
+            remainingTime <= 0 ? 'expired' : 
+            remainingTime <= 120000 ? 'expiring' : 
+            'active';
+          
+          return {
+            id: item._id || item.product?._id,
+            productId: productId,
+            name: item.product?.name || 'Product',
+            price: item.lockedPrice,
+            originalPrice: item.originalPrice,
+            quantity: item.quantity,
+            image: item.product?.images?.[0]?.url || item.product?.images?.[0],
+            store: item.store?.name || 'Store',
+            variant: item.variant,
+            cashback: `Upto 12% cash back`,
+            category: 'products' as const,
+            lockedAt,
+            expiresAt,
+            remainingTime: Math.max(0, remainingTime),
+            lockDuration,
+            status,
+            notes: item.notes,
+          };
+        });
+        setLockedProducts(formattedLockedItems);
+      }
+    } catch (error) {
+      console.error('Failed to load locked items:', error);
+    }
   }, []);
 
-  // Debug: Log whenever cartState changes
+  // Load cart on mount
   useEffect(() => {
-    console.log('🛒 [CartPage] CartState changed:', {
-      itemCount: cartState.items.length,
-      totalPrice: cartState.totalPrice,
-      totalItems: cartState.totalItems,
-      isLoading: cartState.isLoading,
-      error: cartState.error,
-      firstItem: cartState.items[0]
-    });
-  }, [cartState]);
+    const loadData = async () => {
+      await cartActions.loadCart();
+      await loadLockedItems();
+    };
+    loadData();
+  }, [loadLockedItems]);
+
+  // Reload locked items when page comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadLockedItems();
+    }, [loadLockedItems])
+  );
 
   const handleTabChange = (tabKey: 'products' | 'service' | 'lockedproduct') => {
     setActiveTab(tabKey);
   };
 
   const handleRemoveItem = async (itemId: string) => {
-    console.log('🗑️ [CartPage] Remove button clicked for item:', itemId);
-
     if (activeTab === 'products') {
-      console.log('🗑️ [CartPage] Removing product from cart via CartContext...');
       // Use CartContext to remove item (will sync with backend)
       await cartActions.removeItem(itemId);
     } else if (activeTab === 'service') {
-      console.log('🗑️ [CartPage] Removing service from local state (mock data)');
       setServiceItems(prev => prev.filter(item => item.id !== itemId));
     }
   };
 
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
-    console.log('📊 [CartPage] Update quantity for item:', itemId, 'to:', newQuantity);
-
     if (activeTab === 'products') {
-      console.log('📊 [CartPage] Updating product quantity via CartContext...');
       await cartActions.updateQuantity(itemId, newQuantity);
     }
   };
 
-  const handleUnlockItem = (itemId: string) => {
-    console.log('🔓 [UNLOCK] Removing locked item:', itemId);
-    setLockedProducts(prev => prev.filter(item => item.id !== itemId));
+  const handleUnlockItem = async (itemId: string, productId: string) => {
+    if (!productId) {
+      Alert.alert('Error', 'Product ID is missing');
+      return;
+    }
+
+    try {
+      const response = await cartApi.unlockItem(productId);
+
+      if (response.success) {
+        setLockedProducts(prev => prev.filter(item => item.id !== itemId));
+        Alert.alert('Success', 'Item unlocked successfully');
+      } else {
+        Alert.alert('Error', response.message || response.error || 'Failed to unlock item');
+      }
+    } catch (error) {
+      console.error('Failed to unlock item:', error);
+      Alert.alert('Error', 'Unable to unlock item. Please try again.');
+    }
+  };
+
+  const handleMoveToCart = async (itemId: string, productId: string) => {
+    try {
+      const response = await cartApi.moveLockedToCart(productId);
+      if (response.success) {
+        // Remove from locked items
+        setLockedProducts(prev => prev.filter(item => item.id !== itemId));
+        // Reload cart to show the moved item
+        await cartActions.loadCart();
+        Alert.alert(
+          'Moved to Cart!',
+          'Item has been moved to your cart at the locked price.',
+          [
+            { text: 'OK', style: 'cancel' },
+            { text: 'View Cart', onPress: () => setActiveTab('products') }
+          ]
+        );
+      } else {
+        Alert.alert('Error', response.message || 'Failed to move item to cart');
+      }
+    } catch (error) {
+      console.error('Failed to move item to cart:', error);
+      Alert.alert('Error', 'Unable to move item to cart. Please try again.');
+    }
   };
 
   const handleExpireItem = (itemId: string) => {
-    console.log('⏰ [EXPIRE] Auto-removing expired item:', itemId);
     setLockedProducts(prev => prev.filter(item => item.id !== itemId));
   };
 
@@ -193,25 +241,37 @@ export default function CartPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (lockedProducts.length > 0) {
+    // Set up interval only once when component mounts or when we have locked products
+    if (lockedProducts.length > 0 && !timerRef.current) {
       timerRef.current = setInterval(() => {
         setLockedProducts(prev => {
+          // Only update if there are still locked products
+          if (prev.length === 0) return prev;
+
           const updated = updateLockedProductTimers(prev);
-          // Check if any items were removed (expired)
-          if (updated.length < prev.length) {
-            console.log('⏰ [AUTO-EXPIRE] Removed expired locked products');
-          }
-          return updated;
+
+          // Only update state if something actually changed
+          const hasChanges = updated.length !== prev.length ||
+            updated.some((item, i) => item.remainingTime !== prev[i]?.remainingTime);
+
+          return hasChanges ? updated : prev;
         });
       }, LOCK_CONFIG.UPDATE_INTERVAL);
+    }
+
+    // Clear interval if no locked products
+    if (lockedProducts.length === 0 && timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
-  }, [lockedProducts.length]);
+  }, [lockedProducts.length]); // Safe to ignore timeLeft changes
 
   // Clean up timer on component unmount
   useEffect(() => {
@@ -223,8 +283,6 @@ export default function CartPage() {
   }, []);
 
   const handleBuyNow = async () => {
-    console.log('🛒 [CartPage] Proceed to Checkout clicked, validating cart...');
-
     // Validate cart before proceeding to checkout
     const validationResult = await validateCart();
 
@@ -233,27 +291,17 @@ export default function CartPage() {
       return;
     }
 
-    console.log('🛒 [CartPage] Validation result:', {
-      valid: validationResult.valid,
-      canCheckout: validationResult.canCheckout,
-      issueCount: validationResult.issues.length,
-      invalidItemCount: validationResult.invalidItems.length,
-    });
-
     // If there are any issues, show validation modal
     if (validationResult.issues.length > 0 || !validationResult.canCheckout) {
-      console.log('🛒 [CartPage] Validation issues found, showing modal');
       setShowValidationModal(true);
       return;
     }
 
     // If validation passed, proceed to checkout
-    console.log('🛒 [CartPage] Validation passed, navigating to checkout');
     router.push('/checkout');
   };
 
   const handleContinueToCheckout = () => {
-    console.log('🛒 [CartPage] Continue to checkout from validation modal');
     setShowValidationModal(false);
 
     // Only proceed if we have valid items
@@ -265,13 +313,11 @@ export default function CartPage() {
   };
 
   const handleRemoveInvalidItems = async () => {
-    console.log('🛒 [CartPage] Removing invalid items');
     await removeInvalidItems();
     setShowValidationModal(false);
   };
 
   const handleRefreshValidation = async () => {
-    console.log('🛒 [CartPage] Refreshing validation');
     await validateCart();
   };
 
@@ -279,24 +325,41 @@ export default function CartPage() {
     router.back();
   };
 
-  const renderCartItem = ({ item }: { item: CartItemType }) => (
-    <View style={styles.cardWrapper}>
-      <CartItem
-        item={item}
-        onRemove={handleRemoveItem}
-        onUpdateQuantity={handleUpdateQuantity}
-        showAnimation={true}
-      />
-    </View>
-  );
+  const renderCartItem = ({ item }: { item: CartItemType }) => {
+    // Render locked item if on locked products tab
+    if (activeTab === 'lockedproduct') {
+      return (
+        <View style={styles.cardWrapper}>
+          <LockedItem
+            item={item as any}
+            onMoveToCart={handleMoveToCart}
+            onUnlock={handleUnlockItem}
+            showAnimation={true}
+          />
+        </View>
+      );
+    }
+
+    // Render regular cart item
+    return (
+      <View style={styles.cardWrapper}>
+        <CartItem
+          item={item}
+          onRemove={handleRemoveItem}
+          onUpdateQuantity={handleUpdateQuantity}
+          showAnimation={true}
+        />
+      </View>
+    );
+  };
 
   const renderEmptyState = () => {
     let title = "Your cart is empty 🛒";
     let subtitle = "Add some items to get started";
-    
+
     if (activeTab === 'lockedproduct') {
       title = "No locked products 🔒";
-      subtitle = "Lock products from the store to reserve them for 15 minutes";
+      subtitle = "Lock products to reserve them at current price for 24 hours";
     } else if (activeTab === 'products') {
       subtitle = "Add some products to get started";
     } else if (activeTab === 'service') {
@@ -375,7 +438,7 @@ export default function CartPage() {
         onRefresh={handleRefreshValidation}
       />
     </SafeAreaView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -38,7 +38,7 @@ export default function LoadingSpinner({
         </ThemedText>
       )}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

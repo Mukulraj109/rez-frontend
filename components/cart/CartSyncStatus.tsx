@@ -107,7 +107,6 @@ export function CartSyncStatus({ showDetails = false, compact = false }: CartSyn
           {getSyncMessage()}
         </Text>
       </TouchableOpacity>
-    );
   }
 
   return (
@@ -163,7 +162,7 @@ export function CartSyncStatus({ showDetails = false, compact = false }: CartSyn
         )}
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

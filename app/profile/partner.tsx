@@ -10,12 +10,16 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  Clipboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { PartnerPageState, ClaimableOffer, RewardTask, OrderMilestone, JackpotMilestone } from '@/types/partner.types';
-import { partnerDummyData, partnerLevels } from '@/data/partnerData';
+import { partnerLevels } from '@/data/partnerData';
+import partnerApi from '@/services/partnerApi';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
+import toast from '@/utils/toast';
 
 // Import all partner components
 import JackpotTimeline from '@/components/partner/JackpotTimeline';
@@ -26,6 +30,7 @@ import FAQAccordion from '@/components/partner/FAQAccordion';
 import OffersGrid from '@/components/partner/OffersGrid';
 
 export default function PartnerProfilePage() {
+  const { goBack } = useSafeNavigation();
   const [partnerState, setPartnerState] = useState<PartnerPageState>({
     profile: null,
     milestones: [],
@@ -38,25 +43,69 @@ export default function PartnerProfilePage() {
   });
 
   useEffect(() => {
-    // Simulate API call with dummy data
-    setTimeout(() => {
-      setPartnerState({
-        ...partnerDummyData,
-        loading: false,
-        error: null,
-      });
-    }, 500);
+    // Fetch real data from backend API
+    loadPartnerData();
   }, []);
 
-  const handleGoBack = () => {
-    router.back();
+  const loadPartnerData = async () => {
+    try {
+      setPartnerState(prev => ({ ...prev, loading: true, error: null }));
+
+      // Fetch both dashboard and benefits data
+      const [dashboardResponse, benefitsResponse] = await Promise.all([
+        partnerApi.getDashboard(),
+        partnerApi.getBenefits()
+      ]);
+
+      if (dashboardResponse.success && dashboardResponse.data) {
+        // Get levels with benefits from backend
+        const levelsWithBenefits = benefitsResponse.success && benefitsResponse.data 
+          ? benefitsResponse.data.allLevels 
+          : [];
+        
+        setPartnerState({
+          profile: dashboardResponse.data.profile,
+          milestones: dashboardResponse.data.milestones,
+          tasks: dashboardResponse.data.tasks,
+          jackpotProgress: dashboardResponse.data.jackpotProgress,
+          claimableOffers: dashboardResponse.data.claimableOffers,
+          faqs: dashboardResponse.data.faqs,
+          levels: levelsWithBenefits, // Add levels with actual benefit data
+          loading: false,
+          error: null,
+        });
+      } else {
+        throw new Error(dashboardResponse.error || 'Failed to load partner data');
+      }
+    } catch (error) {
+      console.error('Error loading partner data:', error);
+      setPartnerState(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to load partner data',
+      }));
+    }
   };
 
-  const handleClaimReward = (milestoneId: string) => {
-    // Simulate claiming a reward
-    Alert.alert('Reward Claimed!', 'Your reward has been successfully claimed.', [
-      { text: 'OK', onPress: () => console.log('Reward claimed:', milestoneId) }
-    ]);
+  const handleGoBack = () => {
+    goBack('/profile' as any);
+  };
+
+  const handleClaimReward = async (milestoneId: string) => {
+    try {
+      const response = await partnerApi.claimMilestoneReward(milestoneId);
+
+      if (response.success) {
+        Alert.alert('Reward Claimed!', response.data?.message || 'Your reward has been successfully claimed.', [
+          { text: 'OK', onPress: () => loadPartnerData() }
+        ]);
+      } else {
+        Alert.alert('Error', response.error || 'Failed to claim reward');
+      }
+    } catch (error) {
+      console.error('Error claiming reward:', error);
+      Alert.alert('Error', 'Failed to claim reward. Please try again.');
+    }
   };
 
   const handleCompleteTask = (taskId: string) => {
@@ -65,16 +114,73 @@ export default function PartnerProfilePage() {
     ]);
   };
 
-  const handleClaimTaskReward = (taskId: string) => {
-    Alert.alert('Task Reward Claimed!', 'Congratulations! Your task reward has been claimed.', [
-      { text: 'OK', onPress: () => console.log('Task reward claimed:', taskId) }
-    ]);
+  const handleClaimTaskReward = async (taskId: string) => {
+    try {
+      const response = await partnerApi.claimTaskReward(taskId);
+
+      if (response.success) {
+        Alert.alert('Task Reward Claimed!', response.data?.message || 'Congratulations! Your task reward has been claimed.', [
+          { text: 'OK', onPress: () => loadPartnerData() }
+        ]);
+      } else {
+        Alert.alert('Error', response.error || 'Failed to claim task reward');
+      }
+    } catch (error) {
+      console.error('Error claiming task reward:', error);
+      Alert.alert('Error', 'Failed to claim task reward. Please try again.');
+    }
   };
 
-  const handleClaimOffer = (offerId: string) => {
-    Alert.alert('Offer Claimed!', 'Your exclusive offer has been activated and is ready to use.', [
-      { text: 'OK', onPress: () => console.log('Offer claimed:', offerId) }
-    ]);
+  const handleClaimOffer = async (offerId: string) => {
+    try {
+      const response = await partnerApi.claimOffer(offerId);
+
+      if (response.success && response.data) {
+        const voucherCode = response.data.voucher.code;
+        const expiryDate = new Date(response.data.voucher.expiryDate).toLocaleDateString();
+        
+        // Reload data to show updated claimed status
+        await loadPartnerData();
+        
+        if (Platform.OS === 'web') {
+          // Copy voucher code to clipboard
+          navigator.clipboard.writeText(voucherCode).then(() => {
+            toast.success(
+              `Voucher Code: ${voucherCode} (Copied!)\n\nUse this code during checkout. Expires: ${expiryDate}`,
+              { duration: 8000 }
+            );
+          }).catch(() => {
+            toast.success(
+              `Voucher Code: ${voucherCode}\n\nUse this code during checkout. Expires: ${expiryDate}`,
+              { duration: 8000 }
+            );
+          });
+        } else {
+          Alert.alert(
+            '🎉 Offer Claimed!',
+            `Your exclusive offer has been activated.\n\nVoucher Code: ${voucherCode}\nExpires: ${expiryDate}\n\nUse this code during checkout to get your discount!`,
+            [
+              { text: 'Copy Code', onPress: () => Clipboard.setString(voucherCode) },
+              { text: 'OK', style: 'default' }
+            ]
+          );
+        }
+      } else {
+        const errorMsg = response.error || 'Failed to claim offer';
+        if (Platform.OS === 'web') {
+          toast.error(errorMsg);
+        } else {
+          Alert.alert('Error', errorMsg);
+        }
+      }
+    } catch (error) {
+      const errorMsg = 'Failed to claim offer. Please try again.';
+      if (Platform.OS === 'web') {
+        toast.error(errorMsg);
+      } else {
+        Alert.alert('Error', errorMsg);
+      }
+    }
   };
 
   const handleViewOfferTerms = (offer: ClaimableOffer) => {
@@ -89,11 +195,57 @@ export default function PartnerProfilePage() {
     ]);
   };
 
-  const handleJackpotMilestonePress = (milestone: JackpotMilestone) => {
+  const handleJackpotMilestonePress = async (milestone: JackpotMilestone) => {
+    // If already claimed, just show info
+    if (milestone.claimedAt) {
+      Alert.alert(
+        'Already Claimed',
+        `You claimed this jackpot reward on ${new Date(milestone.claimedAt).toLocaleDateString()}`,
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+
+    // If not achieved yet, show progress
+    if (!milestone.achieved) {
+      const remaining = milestone.spendAmount - (partnerState.profile?.totalSpent || 0);
+      Alert.alert(
+        milestone.title,
+        `${milestone.description}\n\nSpend ₹${remaining.toLocaleString()} more to unlock this jackpot!`,
+        [{ text: 'Close', style: 'default' }]
+      );
+      return;
+    }
+
+    // If achieved but not claimed, allow claiming
     Alert.alert(
-      milestone.title,
-      `${milestone.description}\n\nReward: ${milestone.reward.title} (${milestone.reward.value})`,
-      [{ text: 'Close', style: 'default' }]
+      'Claim Jackpot Reward?',
+      `${milestone.title}\n\nReward: ${milestone.reward.title}\nValue: ₹${milestone.reward.value}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Claim Now', 
+          onPress: async () => {
+            try {
+              const response = await partnerApi.claimJackpotReward(milestone.spendAmount);
+              
+              if (response.success) {
+                Alert.alert(
+                  '🎉 Jackpot Claimed!', 
+                  `Congratulations! ₹${milestone.reward.value} has been added to your wallet!`,
+                  [{ text: 'Awesome!', onPress: () => loadPartnerData() }]
+                );
+              } else {
+                Alert.alert('Error', response.error || 'Failed to claim jackpot reward');
+              }
+            } catch (error) {
+              console.error('Error claiming jackpot reward:', error);
+              Alert.alert('Error', 'Failed to claim jackpot reward. Please try again.');
+            }
+          },
+          style: 'default'
+        }
+      ]
     );
   };
 
@@ -165,7 +317,21 @@ export default function PartnerProfilePage() {
             <Text style={styles.modernHeaderTitle}>Partner Profile</Text>
             <Text style={styles.headerSubtitle}>Rewards & Benefits Dashboard</Text>
           </View>
-          <TouchableOpacity style={styles.headerMenuButton}>
+          <TouchableOpacity 
+            style={styles.headerMenuButton}
+            onPress={() => {
+              Alert.alert(
+                'Partner Menu',
+                'Choose an option',
+                [
+                  { text: 'View Statistics', onPress: () => router.push('/profile/partner/stats' as any) },
+                  { text: 'Program Rules', onPress: () => router.push('/profile/partner/rules' as any) },
+                  { text: 'Refer Friends', onPress: () => router.push('/referral' as any) },
+                  { text: 'Cancel', style: 'cancel' }
+                ]
+              );
+            }}
+          >
             <Ionicons name="ellipsis-horizontal" size={20} color="white" />
           </TouchableOpacity>
         </View>
@@ -193,10 +359,22 @@ export default function PartnerProfilePage() {
             <View style={styles.glassOverlay}>
             <View style={styles.partnerInfo}>
               <View style={styles.avatarContainer}>
-                <Image
-                  source={{ uri: profile?.avatar || 'https://via.placeholder.com/60' }}
-                  style={styles.avatar}
-                />
+                {profile?.avatar ? (
+                  <Image
+                    source={{ 
+                      uri: profile.avatar,
+                      cache: 'reload' // Force reload to show updated image
+                    }}
+                    style={styles.avatar}
+                    key={profile.avatar} // Force re-render when avatar changes
+                  />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.avatarInitials}>
+                      {profile?.name?.substring(0, 2).toUpperCase() || 'U'}
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.levelBadge}>
                   <Text style={styles.levelBadgeText}>
                     {levelName}
@@ -219,7 +397,18 @@ export default function PartnerProfilePage() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.modernBenefitsButton}>
+            <TouchableOpacity 
+              style={styles.modernBenefitsButton}
+              onPress={() => {
+                const benefits = profile?.level?.benefits || profile?.currentBenefits || [];
+                const benefitsList = Array.isArray(benefits) ? benefits.join('\n• ') : 'No benefits available';
+                Alert.alert(
+                  'Your Current Benefits',
+                  `As a ${levelName}, you enjoy:\n\n• ${benefitsList}`,
+                  [{ text: 'Great!', style: 'default' }]
+                );
+              }}
+            >
               <LinearGradient
                 colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
                 style={styles.benefitsButtonGradient}
@@ -247,13 +436,34 @@ export default function PartnerProfilePage() {
             </View>
           </View>
           <View style={styles.modernLevelOptions}>
-            <TouchableOpacity style={styles.modernUpgradeButton}>
+            <TouchableOpacity 
+              style={styles.modernUpgradeButton}
+              onPress={() => {
+                const nextLevel = profile?.level?.level ? profile.level.level + 1 : 2;
+                const levelNames = ['Partner', 'Influencer', 'Ambassador'];
+                const nextLevelName = levelNames[nextLevel - 1] || 'Next Level';
+                Alert.alert(
+                  `Upgrade to ${nextLevelName}`,
+                  `Complete ${profile?.level?.requirements?.orders || 0} more orders within ${profile?.daysRemaining || 0} days to upgrade to ${nextLevelName} level and unlock exclusive benefits!`,
+                  [{ text: 'Got It!', style: 'default' }]
+                );
+              }}
+            >
               <LinearGradient colors={['#8B5CF6', '#A78BFA']} style={styles.upgradeButtonGradient}>
                 <Ionicons name="trending-up" size={16} color="white" />
                 <Text style={styles.modernUpgradeButtonText}>Upgrade Level</Text>
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.modernMaintainButton}>
+            <TouchableOpacity 
+              style={styles.modernMaintainButton}
+              onPress={() => {
+                Alert.alert(
+                  'Maintain Your Level',
+                  `To maintain your current level, complete ${profile?.level?.requirements?.orders || 0} orders every ${profile?.level?.requirements?.timeframe || 44} days. Keep shopping to retain your benefits!`,
+                  [{ text: 'Understood', style: 'default' }]
+                );
+              }}
+            >
               <View style={styles.maintainButtonContainer}>
                 <Ionicons name="shield-checkmark" size={16} color="#8B5CF6" />
                 <Text style={styles.modernMaintainButtonText}>Maintain Level</Text>
@@ -347,14 +557,14 @@ export default function PartnerProfilePage() {
         {/* Jackpot Timeline */}
         <JackpotTimeline 
           milestones={partnerState.jackpotProgress}
-          currentSpent={18500}
+          currentSpent={profile?.totalSpent || 0}
           onMilestonePress={handleJackpotMilestonePress}
         />
 
         {/* Milestone Tracker */}
         <MilestoneTracker 
           milestones={partnerState.milestones}
-          currentOrders={profile?.totalOrders || 12}
+          currentOrders={profile?.totalOrders ?? 0}
           onClaimReward={handleClaimReward}
         />
 
@@ -367,7 +577,7 @@ export default function PartnerProfilePage() {
 
         {/* Benefits Comparison Table */}
         <BenefitsTable 
-          levels={partnerLevels}
+          levels={partnerState.levels || partnerLevels}
           currentLevel={currentLevelNumber}
           onUpgradePress={handleUpgradeLevel}
         />
@@ -560,8 +770,18 @@ const styles = StyleSheet.create({
   avatar: {
     width: 60,
     height: 60,
-    borderRadius: 25,
+    borderRadius: 30,
     backgroundColor: 'white',
+  },
+  avatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#8B5CF6',
+  },
+  avatarInitials: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: 'white',
   },
   levelBadge: {
     position: 'absolute',

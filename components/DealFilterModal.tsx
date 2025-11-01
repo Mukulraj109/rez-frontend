@@ -325,7 +325,7 @@ export default function DealFilterModal({
         </View>
       </TouchableWithoutFeedback>
     </Modal>
-  );
+);
 }
 
 const createStyles = (screenData: { width: number; height: number }) => {

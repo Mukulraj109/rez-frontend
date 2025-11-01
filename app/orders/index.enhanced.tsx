@@ -58,8 +58,6 @@ export default function OrdersListScreen() {
         setLoading(true);
       }
 
-      console.log('📦 [Orders] Loading orders, page:', pageNum);
-
       const response = await ordersService.getOrders({
         page: pageNum,
         limit: 20,
@@ -226,11 +224,11 @@ export default function OrdersListScreen() {
             )}
             <View style={styles.itemInfo}>
               <Text style={styles.itemName} numberOfLines={1}>
-                {orderItem.product?.name || orderItem.name}
+                {orderItem.product?.name || (orderItem as any).name}
               </Text>
               <Text style={styles.itemQuantity}>Qty: {orderItem.quantity}</Text>
             </View>
-            <Text style={styles.itemPrice}>₹{orderItem.totalPrice}</Text>
+            <Text style={styles.itemPrice}>₹{(orderItem as any).subtotal}</Text>
           </View>
         ))}
         {item.items.length > 3 && (
@@ -243,7 +241,7 @@ export default function OrdersListScreen() {
       <View style={styles.orderFooter}>
         <View style={styles.totalSection}>
           <Text style={styles.totalLabel}>Total Amount</Text>
-          <Text style={styles.totalAmount}>₹{item.summary.total}</Text>
+          <Text style={styles.totalAmount}>₹{item.summary?.total}</Text>
         </View>
         <TouchableOpacity
           style={styles.trackButton}
@@ -468,7 +466,7 @@ export default function OrdersListScreen() {
         </View>
       </Modal>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

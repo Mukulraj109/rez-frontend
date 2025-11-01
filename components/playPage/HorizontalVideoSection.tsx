@@ -45,7 +45,7 @@ export default function HorizontalVideoSection({
         />
       ))}
     </ScrollView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

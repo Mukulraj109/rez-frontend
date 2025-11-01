@@ -7,6 +7,10 @@ export interface User {
   email: string;
   avatar?: string;
   bio?: string;
+  location?: string;
+  website?: string;
+  dateOfBirth?: string;
+  gender?: string;
   initials: string;
   phone?: string;
   joinDate: string;

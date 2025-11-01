@@ -317,7 +317,7 @@ class CameraService {
           }
         }
       );
-
+      
       const uploadResult: UploadResult = {
         success: true,
         url: result.data.url,
@@ -377,7 +377,7 @@ class CameraService {
       if (status !== 'granted') {
         Alert.alert(
           'Permission Required',
-          'Permission to access media library is required to save images.',
+          'Permission to access media library is required to save images.'
         );
         return false;
       }

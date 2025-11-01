@@ -49,7 +49,7 @@ export default function PaymentSuccessPage() {
             
             <TouchableOpacity
               style={styles.continueShoppingButton}
-              onPress={() => router.replace('/(tabs)/')}
+              onPress={() => router.replace('/(tabs)/' as any)}
             >
               <ThemedText style={styles.continueShoppingText}>Continue Shopping</ThemedText>
             </TouchableOpacity>

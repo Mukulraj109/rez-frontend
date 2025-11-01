@@ -260,7 +260,7 @@ export default function ReviewItem({
         </View>
       )}
     </ThemedView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -6,7 +6,7 @@ const fetch = require('node-fetch');
 async function testBackendConnectivity() {
   console.log('🧪 Testing Backend Connectivity...\n');
 
-  const baseURL = 'http://localhost:5000';
+  const baseURL = 'http://localhost:5001';
   
   const endpoints = [
     { path: '/health', description: 'Health Check' },
@@ -73,8 +73,8 @@ async function testWithFallback() {
       
       // Fallback test using curl
       const { spawn } = require('child_process');
-      
-      const curlTest = spawn('curl', ['-s', 'http://localhost:5000/health']);
+
+      const curlTest = spawn('curl', ['-s', 'http://localhost:5001/health']);
       
       curlTest.stdout.on('data', (data) => {
         console.log('✅ Backend is responding');

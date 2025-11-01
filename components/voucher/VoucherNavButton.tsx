@@ -19,7 +19,7 @@ export default function VoucherNavButton({
   const router = useRouter();
 
   const handleNavigateToVouchers = () => {
-    console.log('🎫 VoucherNavButton: Navigating to online vouchers');
+
     router.push('/online-voucher');
   };
 

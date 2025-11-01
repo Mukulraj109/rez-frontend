@@ -108,7 +108,7 @@ export default function EditInstructionsModal({
         </TouchableOpacity>
       </KeyboardAvoidingView>
     </Modal>
-  );
+);
 }
 
 const styles = StyleSheet.create({

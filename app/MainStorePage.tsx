@@ -30,6 +30,8 @@ import AboutModal from "@/components/AboutModal";
 import WalkInDealsModal from "@/components/WalkInDealsModal";
 import ReviewModal from "@/components/ReviewModal";
 import { mockReviews, mockRatingBreakdown, mockReviewStats } from "@/utils/mock-reviews-data";
+import reviewsApi from "@/services/reviewsApi";
+import storesApi from "@/services/storesApi";
 
 interface DynamicStoreData {
   id: string;
@@ -38,14 +40,62 @@ interface DynamicStoreData {
   description?: string;
   image?: string;
   logo?: string;
+  banner?: string;
   rating: number;
   ratingCount: number;
   category?: string;
-  location?: any;
+  categorySlug?: string;
+  location?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    coordinates?: [number, number];
+    deliveryRadius?: number;
+    landmark?: string;
+    fullAddress?: string;
+  };
+  contact?: {
+    phone?: string;
+    email?: string;
+    website?: string;
+    whatsapp?: string;
+  };
+  operationalInfo?: {
+    hours?: {
+      [key: string]: { open: string; close: string; closed?: boolean };
+    };
+    deliveryTime?: string;
+    minimumOrder?: number;
+    deliveryFee?: number;
+    freeDeliveryAbove?: number;
+    acceptsWalletPayment?: boolean;
+    paymentMethods?: string[];
+  };
   deliveryTime?: string;
   minimumOrder?: number;
-  cashback?: any;
-  discount?: any;
+  deliveryFee?: number;
+  freeDeliveryAbove?: number;
+  acceptsWalletPayment?: boolean;
+  paymentMethods?: string[];
+  cashback?: {
+    percentage: number;
+    minOrder: number;
+    maxCashback: number;
+    isPartner?: boolean;
+    partnerLevel?: string;
+  };
+  discount?: {
+    percentage: number;
+    minOrder: number;
+  };
+  videos?: any[];
+  tags?: string[];
+  distance?: number;
+  isActive?: boolean;
+  isFeatured?: boolean;
+  isVerified?: boolean;
+  deliveryCategories?: any;
   section?: string;
   [key: string]: any;
 }
@@ -58,29 +108,72 @@ interface BackendStoreData {
   description?: string;
   logo?: string;
   banner?: string;
+  videos?: {
+    url: string;
+    thumbnail?: string;
+    title?: string;
+    duration?: number;
+    uploadedAt?: Date;
+  }[];
+  category?: {
+    _id: string;
+    name: string;
+    slug: string;
+  };
   location: {
     address: string;
     city: string;
-    state: string;
-    pincode: string;
-    coordinates: [number, number];
-    deliveryRadius: number;
+    state?: string;
+    pincode?: string;
+    coordinates?: [number, number];
+    deliveryRadius?: number;
+    landmark?: string;
+  };
+  contact?: {
+    phone?: string;
+    email?: string;
+    website?: string;
+    whatsapp?: string;
   };
   ratings: {
     average: number;
     count: number;
+    distribution?: {
+      5: number;
+      4: number;
+      3: number;
+      2: number;
+      1: number;
+    };
+  };
+  offers?: {
+    cashback?: number;
+    minOrderAmount?: number;
+    maxCashback?: number;
+    isPartner?: boolean;
+    partnerLevel?: 'bronze' | 'silver' | 'gold' | 'platinum';
   };
   operationalInfo: {
+    hours?: {
+      monday?: { open: string; close: string; closed?: boolean };
+      tuesday?: { open: string; close: string; closed?: boolean };
+      wednesday?: { open: string; close: string; closed?: boolean };
+      thursday?: { open: string; close: string; closed?: boolean };
+      friday?: { open: string; close: string; closed?: boolean };
+      saturday?: { open: string; close: string; closed?: boolean };
+      sunday?: { open: string; close: string; closed?: boolean };
+    };
     deliveryTime?: string;
     minimumOrder?: number;
     deliveryFee?: number;
     freeDeliveryAbove?: number;
-    acceptsWalletPayment: boolean;
-    paymentMethods: string[];
+    acceptsWalletPayment?: boolean;
+    paymentMethods?: string[];
   };
   deliveryCategories: {
     fastDelivery: boolean;
     budgetFriendly: boolean;
+    ninetyNineStore?: boolean;
     premium: boolean;
     organic: boolean;
     alliance: boolean;
@@ -88,10 +181,12 @@ interface BackendStoreData {
     mall: boolean;
     cashStore: boolean;
   };
+  tags?: string[];
   distance?: number;
   isActive: boolean;
   isFeatured: boolean;
   isVerified: boolean;
+  merchantId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -102,38 +197,56 @@ const transformBackendStoreData = (backendData: BackendStoreData): DynamicStoreD
     console.error('❌ [DYNAMIC MAINSTORE] Backend data is null or undefined');
     return {} as DynamicStoreData;
   }
-  
-  console.log('🔍 [DYNAMIC MAINSTORE] Transforming store data for:', backendData.name);
-  console.log('🔍 [DYNAMIC MAINSTORE] Backend data structure:', {
-    hasRating: !!backendData.rating,
-    hasRatings: !!backendData.ratings,
-    hasMinimumOrder: !!backendData.minimumOrder,
-    hasOperationalInfo: !!backendData.operationalInfo,
-    hasAddress: !!backendData.address,
-    hasLocation: !!backendData.location
-  });
-  
+
+  // Calculate full address
+  const fullAddress = [
+    backendData.location?.address,
+    backendData.location?.landmark,
+    backendData.location?.city,
+    backendData.location?.state,
+    backendData.location?.pincode
+  ].filter(Boolean).join(', ');
+
   return {
     id: backendData._id,
     name: backendData.name,
     title: backendData.name,
-    description: backendData.description,
-    image: backendData.banner,
+    description: backendData.description || `Welcome to ${backendData.name}. Quality products and great service.`,
+    image: backendData.banner || backendData.logo,
     logo: backendData.logo,
-    rating: backendData.rating || backendData.ratings?.average || 0,
-    ratingCount: backendData.reviewCount || backendData.ratings?.count || 0,
-    category: getCategoryFromDeliveryCategories(backendData.deliveryCategories),
+    banner: backendData.banner,
+    rating: backendData.ratings?.average || 0,
+    ratingCount: backendData.ratings?.count || 0,
+    category: backendData.category?.name || getCategoryFromDeliveryCategories(backendData.deliveryCategories),
+    categorySlug: backendData.category?.slug,
     location: {
-      address: backendData.address?.street || backendData.location?.address,
-      city: backendData.address?.city || backendData.location?.city,
-      state: backendData.address?.state || backendData.location?.state,
-      pincode: backendData.address?.pincode || backendData.location?.pincode,
-      coordinates: backendData.address?.coordinates || backendData.location?.coordinates,
+      address: backendData.location?.address,
+      city: backendData.location?.city,
+      state: backendData.location?.state,
+      pincode: backendData.location?.pincode,
+      coordinates: backendData.location?.coordinates,
       deliveryRadius: backendData.location?.deliveryRadius,
+      landmark: backendData.location?.landmark,
+      fullAddress: fullAddress
     },
-    deliveryTime: backendData.deliveryTime || backendData.operationalInfo?.deliveryTime,
-    minimumOrder: backendData.minimumOrder || backendData.operationalInfo?.minimumOrder,
-    deliveryFee: backendData.deliveryFee || backendData.operationalInfo?.deliveryFee,
+    contact: {
+      phone: backendData.contact?.phone,
+      email: backendData.contact?.email,
+      website: backendData.contact?.website,
+      whatsapp: backendData.contact?.whatsapp
+    },
+    operationalInfo: {
+      hours: backendData.operationalInfo?.hours,
+      deliveryTime: backendData.operationalInfo?.deliveryTime || '30-45 mins',
+      minimumOrder: backendData.operationalInfo?.minimumOrder || 0,
+      deliveryFee: backendData.operationalInfo?.deliveryFee,
+      freeDeliveryAbove: backendData.operationalInfo?.freeDeliveryAbove,
+      acceptsWalletPayment: backendData.operationalInfo?.acceptsWalletPayment || false,
+      paymentMethods: backendData.operationalInfo?.paymentMethods || []
+    },
+    deliveryTime: backendData.operationalInfo?.deliveryTime || '30-45 mins',
+    minimumOrder: backendData.operationalInfo?.minimumOrder || 0,
+    deliveryFee: backendData.operationalInfo?.deliveryFee,
     freeDeliveryAbove: backendData.operationalInfo?.freeDeliveryAbove,
     acceptsWalletPayment: backendData.operationalInfo?.acceptsWalletPayment,
     paymentMethods: backendData.operationalInfo?.paymentMethods,
@@ -142,16 +255,20 @@ const transformBackendStoreData = (backendData: BackendStoreData): DynamicStoreD
     isFeatured: backendData.isFeatured,
     isVerified: backendData.isVerified,
     deliveryCategories: backendData.deliveryCategories,
-    // Add default values for compatibility
+    tags: backendData.tags || [],
+    // Use actual cashback from store offers
     cashback: {
-      percentage: 5,
-      minOrder: backendData.minimumOrder || backendData.operationalInfo?.minimumOrder || 100,
-      maxCashback: 50,
+      percentage: backendData.offers?.cashback || 5,
+      minOrder: backendData.offers?.minOrderAmount || backendData.operationalInfo?.minimumOrder || 100,
+      maxCashback: backendData.offers?.maxCashback || 50,
+      isPartner: backendData.offers?.isPartner || false,
+      partnerLevel: backendData.offers?.partnerLevel
     },
     discount: {
       percentage: 10,
-      minOrder: backendData.minimumOrder || backendData.operationalInfo?.minimumOrder || 200,
+      minOrder: backendData.operationalInfo?.minimumOrder || 200,
     },
+    videos: backendData.videos || [],
     section: 'stores',
   };
 };
@@ -178,55 +295,97 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
   // Dynamic store data state
   const [storeData, setStoreData] = useState<DynamicStoreData | null>(null);
   const [isDynamic, setIsDynamic] = useState(false);
+  const [storeVideos, setStoreVideos] = useState<any[]>([]);
 
-  // Parse dynamic store data from navigation params
+  // Parse dynamic store data from navigation params OR fetch from API if only storeId provided
   useEffect(() => {
-    if (params.storeData && params.storeId) {
-      try {
-        const parsedData = JSON.parse(params.storeData as string);
-        
-        // Check if it's backend store data (has _id) or legacy data (has id)
-        let transformedData: DynamicStoreData;
-        
-        if (parsedData._id) {
-          // New backend store data format
-          transformedData = transformBackendStoreData(parsedData as BackendStoreData);
-          console.log('🏪 [BACKEND MAINSTORE] Loaded backend store data:', {
-            storeId: params.storeId,
-            storeName: transformedData.name,
-            category: transformedData.category,
-            rating: transformedData.rating,
-            deliveryCategories: parsedData.deliveryCategories,
-            transformedData
-          });
-        } else {
-          // Legacy store data format
-          transformedData = parsedData as DynamicStoreData;
-          console.log('🏪 [LEGACY MAINSTORE] Loaded legacy store data:', {
-            storeId: params.storeId,
-            storeName: transformedData.name,
-            category: transformedData.category,
-            rating: transformedData.rating,
-            fullData: transformedData
-          });
+    const loadStoreData = async () => {
+      // If only storeId is provided (Visit Store button clicked), fetch from API
+      if (params.storeId && !params.storeData) {
+        try {
+
+          const storeResponse = await storesApi.getStoreById(params.storeId as string);
+
+          if (storeResponse.success && storeResponse.data) {
+            const responseData = storeResponse.data;
+            const backendStore = (responseData as any).store || responseData;
+
+            // Transform backend store data
+            const transformedData = transformBackendStoreData(backendStore as BackendStoreData);
+            setStoreData(transformedData);
+            setIsDynamic(true);
+
+            // Transform store videos to UGC format
+            if (backendStore.videos && backendStore.videos.length > 0) {
+              const ugcVideos = backendStore.videos.map((video: any, index: number) => ({
+                id: `store-video-${index}`,
+                videoUrl: video.url,
+                uri: video.thumbnail || backendStore.banner || backendStore.logo,
+                viewCount: '0', // Can be updated if you track views
+                description: video.title || `${backendStore.name} - Video ${index + 1}`,
+                category: backendStore.category?.name || 'Store Video',
+                author: backendStore.name,
+                productThumb: backendStore.logo || backendStore.banner,
+                productTitle: backendStore.name,
+                productPrice: '',
+              }));
+              setStoreVideos(ugcVideos);
+
+            }
+          }
+        } catch (error) {
+          console.error('❌ [MAINSTORE] Failed to fetch store data:', error);
+          setIsDynamic(false);
         }
-        
-        setStoreData(transformedData);
-        setIsDynamic(true);
-        
-        console.log('🎯 [DYNAMIC MAINSTORE] MainStorePage now using dynamic store data:', {
-          header: 'Dynamic store name, logo, category',
-          content: 'Dynamic store info, ratings, delivery, cashback',
-          branding: 'Store-specific theme and layout'
-        });
-      } catch (error) {
-        console.error('❌ [DYNAMIC MAINSTORE] Failed to parse store data:', error);
+      }
+      // If storeData is provided in params (navigated from search/home)
+      else if (params.storeData && params.storeId) {
+        try {
+          const parsedData = JSON.parse(params.storeData as string);
+
+          // Check if it's backend store data (has _id) or legacy data (has id)
+          let transformedData: DynamicStoreData;
+
+          if (parsedData._id) {
+            // New backend store data format
+            transformedData = transformBackendStoreData(parsedData as BackendStoreData);
+
+            // Transform store videos if available
+            if (parsedData.videos && parsedData.videos.length > 0) {
+              const ugcVideos = parsedData.videos.map((video: any, index: number) => ({
+                id: `store-video-${index}`,
+                videoUrl: video.url,
+                uri: video.thumbnail || parsedData.banner || parsedData.logo,
+                viewCount: '0',
+                description: video.title || `${parsedData.name} - Video ${index + 1}`,
+                category: parsedData.category?.name || 'Store Video',
+                author: parsedData.name,
+                productThumb: parsedData.logo || parsedData.banner,
+                productTitle: parsedData.name,
+                productPrice: '',
+              }));
+              setStoreVideos(ugcVideos);
+            }
+          } else {
+            // Legacy store data format
+            transformedData = parsedData as DynamicStoreData;
+
+          }
+
+          setStoreData(transformedData);
+          setIsDynamic(true);
+
+        } catch (error) {
+          console.error('❌ [DYNAMIC MAINSTORE] Failed to parse store data:', error);
+          setIsDynamic(false);
+        }
+      } else {
+
         setIsDynamic(false);
       }
-    } else {
-      console.log('🏪 [STATIC MAINSTORE] Loading default store page');
-      setIsDynamic(false);
-    }
+    };
+
+    loadStoreData();
   }, [params]);
 
   const HORIZONTAL_PADDING = screenData.width < 375 ? 12 : screenData.width > 768 ? 24 : 16;
@@ -252,38 +411,48 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showDealsModal, setShowDealsModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [storeReviews, setStoreReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [ratingBreakdown, setRatingBreakdown] = useState<any>(mockRatingBreakdown);
 
   const productData: MainStoreProduct = useMemo(
     () => {
       // Use dynamic store data if available, otherwise fallback to static data
       if (isDynamic && storeData) {
-        console.log('🏪 [DYNAMIC MAINSTORE] Using dynamic store data for product:', storeData);
+
+        // Build location string
+        const locationStr = storeData.location?.city ||
+                           storeData.location?.address ||
+                           "BTM";
+
+        // Build distance string
+        const distanceStr = storeData.distance
+          ? `${storeData.distance.toFixed(1)} Km`
+          : "0.7 Km";
+
+        // Build images array - use banner, logo, or defaults
+        const storeImages = [
+          { id: "1", uri: storeData.banner || storeData.image || storeData.logo || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=900" },
+          { id: "2", uri: storeData.logo || storeData.banner || "https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=900" },
+          { id: "3", uri: storeData.banner || storeData.logo || "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=900" },
+        ];
+
         return {
           id: storeData.id,
-          title: storeData.title || storeData.name || "Store Product",
-          description: storeData.description || `Discover amazing products at ${storeData.name}. Quality items with great deals and cashback offers.`,
-          price: "₹2,199", // Default product price - stores will have their own products
-          location: typeof storeData.location === 'object' 
-            ? storeData.location.address || storeData.location.city || "BTM"
-            : storeData.location || "BTM",
-          distance: typeof storeData.location === 'object' && storeData.location.distance 
-            ? storeData.location.distance 
-            : "0.7 Km",
-          isOpen: true, // Default to open
-          images: [
-            { id: "1", uri: storeData.image || storeData.logo || "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=900&h=1100&fit=crop&crop=center" },
-            { id: "2", uri: "https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?w=900&h=1100&fit=crop&crop=center" },
-            { id: "3", uri: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=900&h=1100&fit=crop&crop=center" },
-          ],
-          cashbackPercentage: typeof storeData.cashback === 'object' 
-            ? storeData.cashback.percentage?.toString() || "10"
-            : storeData.cashback?.toString() || "10",
-          storeName: storeData.name || storeData.title || "Store",
+          title: storeData.name,
+          description: storeData.description || `Welcome to ${storeData.name}. Quality products and great service.`,
+          price: storeData.minimumOrder ? `₹${storeData.minimumOrder}` : "₹0", // Show min order as price
+          location: locationStr,
+          distance: distanceStr,
+          isOpen: true, // Can be calculated from operational hours if needed
+          images: storeImages,
+          cashbackPercentage: storeData.cashback?.percentage?.toString() || "5",
+          storeName: storeData.name,
           storeId: storeData.id,
-          category: storeData.category || "General",
+          category: storeData.category || "General Store",
         };
       }
-      
+
       // Fallback to existing logic for static mode
       return initialProduct || {
         id: productId || "product-001",
@@ -335,6 +504,34 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
     });
   }, [productData.title]);
 
+  // Load reviews from backend
+  const loadStoreReviews = useCallback(async (storeId: string) => {
+    try {
+      setReviewsLoading(true);
+
+      const reviewsResponse = await reviewsApi.getTargetReviews('store', storeId, {
+        page: 1,
+        limit: 20,
+        sort: 'newest'
+      });
+
+      if (reviewsResponse.success && reviewsResponse.data) {
+
+        setStoreReviews(reviewsResponse.data.reviews);
+        setRatingBreakdown(reviewsResponse.data.summary.ratingBreakdown);
+      } else {
+        console.warn('⚠️ [MAINSTORE] No reviews found, using mock data');
+        setStoreReviews(mockReviews);
+      }
+    } catch (error) {
+      console.error('❌ [MAINSTORE] Error loading reviews:', error);
+      // Fallback to mock reviews on error
+      setStoreReviews(mockReviews);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, []);
+
   // FIX: Allow reopening modals even if tab is already active
   const handleTabChange = useCallback((tab: TabKey) => {
     setActiveTab(tab);
@@ -344,9 +541,14 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
     } else if (tab === "deals") {
       setShowDealsModal(true);
     } else if (tab === "reviews") {
+      // Load reviews when opening review modal
+      const storeId = isDynamic && storeData ? storeData.id : productData.storeId;
+      if (storeId) {
+        loadStoreReviews(storeId);
+      }
       setShowReviewModal(true);
     }
-  }, []);
+  }, [isDynamic, storeData, productData.storeId, loadStoreReviews]);
 
   const handleCloseAboutModal = useCallback(() => setShowAboutModal(false), []);
   const handleCloseDealsModal = useCallback(() => setShowDealsModal(false), []);
@@ -369,13 +571,22 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       cashback: `${productData.cashbackPercentage} cashback`,
       category: "products",
     };
-    console.log("Adding to cart:", cartItem);
+
     Alert.alert("Added to Cart", `${productData.title} has been added to your cart.`);
   }, [productData]);
 
   const handleVisitStorePress = useCallback(() => {
-    Alert.alert("Visit Store", `Open ${productData.storeName}`);
-  }, [productData.storeName]);
+    // Get store ID from dynamic store data or product data
+    const storeId = isDynamic && storeData ? storeData.id : params.storeId || productData.storeId;
+
+    if (!storeId) {
+      Alert.alert("Error", "Store information is not available");
+      return;
+    }
+
+    // Navigate to MainStorePage with storeId to show store details and videos
+    router.push(`/MainStorePage?storeId=${storeId}`);
+  }, [isDynamic, storeData, params.storeId, productData.storeId, router]);
 
   const handleBackPress = useCallback(() => router.back(), [router]);
 
@@ -429,7 +640,11 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         </View>
 
         <View style={styles.sectionCard}>
-          <UGCSection onViewAllPress={handleViewAllPress} onImagePress={handleImagePress} />
+          <UGCSection
+            onViewAllPress={handleViewAllPress}
+            onImagePress={handleImagePress}
+            images={storeVideos.length > 0 ? storeVideos : undefined}
+          />
         </View>
       </ScrollView>
 
@@ -455,9 +670,17 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         visible={showAboutModal}
         onClose={handleCloseAboutModal}
         storeData={{
-          name: isDynamic && storeData ? storeData.name || storeData.title : productData.storeName,
-          establishedYear: 2020,
-          address: {
+          name: isDynamic && storeData ? storeData.name : productData.storeName,
+          establishedYear: 2020, // Could be added to store model
+          address: isDynamic && storeData?.location ? {
+            doorNo: "",
+            floor: "",
+            street: storeData.location.address || "",
+            area: storeData.location.landmark || "",
+            city: storeData.location.city || "",
+            state: storeData.location.state || "",
+            pinCode: storeData.location.pincode || "",
+          } : {
             doorNo: "40A",
             floor: "1st floor",
             street: "5th A Main Rd",
@@ -467,18 +690,28 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
             pinCode: "560043",
           },
           isOpen: productData.isOpen,
-          categories: isDynamic && storeData?.category 
-            ? [storeData.category, "Gift cards", "Loyalty program"]
+          categories: isDynamic && storeData
+            ? [
+                storeData.category || "General",
+                ...(storeData.tags || []),
+                "Gift cards",
+                "Loyalty program"
+              ]
             : ["Boys", "Girls", "Personal items", "Gift cards", "Loyalty program"],
-          hours: [
-            { day: "Monday", time: "10:00 AM - 6:00 PM" },
-            { day: "Tuesday", time: "10:00 AM - 6:00 PM" },
-            { day: "Wednesday", time: "10:00 AM - 6:00 PM" },
-            { day: "Thursday", time: "10:00 AM - 6:00 PM" },
-            { day: "Friday", time: "10:00 AM - 6:00 PM" },
-            { day: "Saturday", time: "10:00 AM - 6:00 PM" },
-            { day: "Sunday", time: "Closed" },
-          ],
+          hours: isDynamic && storeData?.operationalInfo?.hours
+            ? Object.entries(storeData.operationalInfo.hours).map(([day, hours]: [string, any]) => ({
+                day: day.charAt(0).toUpperCase() + day.slice(1),
+                time: hours.closed ? "Closed" : `${hours.open} - ${hours.close}`
+              }))
+            : [
+                { day: "Monday", time: "10:00 AM - 6:00 PM" },
+                { day: "Tuesday", time: "10:00 AM - 6:00 PM" },
+                { day: "Wednesday", time: "10:00 AM - 6:00 PM" },
+                { day: "Thursday", time: "10:00 AM - 6:00 PM" },
+                { day: "Friday", time: "10:00 AM - 6:00 PM" },
+                { day: "Saturday", time: "10:00 AM - 6:00 PM" },
+                { day: "Sunday", time: "Closed" },
+              ],
         }}
       />
 
@@ -491,11 +724,11 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         storeId={productData.storeId}
         averageRating={isDynamic && storeData?.rating ? storeData.rating : mockReviewStats.averageRating}
         totalReviews={isDynamic && storeData?.ratingCount ? storeData.ratingCount : mockReviewStats.totalReviews}
-        ratingBreakdown={mockRatingBreakdown}
-        reviews={mockReviews}
+        ratingBreakdown={ratingBreakdown}
+        reviews={reviewsLoading ? mockReviews : storeReviews.length > 0 ? storeReviews : mockReviews}
       />
     </ThemedView>
-  );
+);
 }
 
 const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; height: number }) =>

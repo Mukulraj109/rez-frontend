@@ -17,7 +17,7 @@ export default function PurpleGradientBg({ children, style }: PurpleGradientBgPr
     >
       {children}
     </LinearGradient>
-  );
+);
 }
 
 const styles = StyleSheet.create({

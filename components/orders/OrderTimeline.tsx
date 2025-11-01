@@ -206,7 +206,7 @@ export default function OrderTimeline({
         </View>
       )}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -161,7 +161,6 @@ export function useOrderTracking(
   const subscribeToOrder = useCallback(() => {
     if (!socket || !orderId || subscriptionRef.current) return;
 
-    console.log('[useOrderTracking] Subscribing to order:', orderId);
     socket.emit(OrderSocketEvents.SUBSCRIBE_ORDER, { orderId, userId });
     subscriptionRef.current = true;
     setTrackingState(prev => ({ ...prev, isLive: true }));
@@ -171,7 +170,6 @@ export function useOrderTracking(
   const unsubscribeFromOrder = useCallback(() => {
     if (!socket || !orderId || !subscriptionRef.current) return;
 
-    console.log('[useOrderTracking] Unsubscribing from order:', orderId);
     socket.emit(OrderSocketEvents.UNSUBSCRIBE_ORDER, { orderId });
     subscriptionRef.current = false;
     setTrackingState(prev => ({ ...prev, isLive: false }));
@@ -184,7 +182,7 @@ export function useOrderTracking(
     // Status update handler
     const handleStatusUpdate = (payload: OrderStatusUpdate) => {
       if (payload.orderId === orderId) {
-        console.log('[useOrderTracking] Status updated:', payload);
+
         setTrackingState(prev => ({
           ...prev,
           statusUpdate: payload,
@@ -196,7 +194,7 @@ export function useOrderTracking(
     // Location update handler
     const handleLocationUpdate = (payload: OrderLocationUpdate) => {
       if (payload.orderId === orderId) {
-        console.log('[useOrderTracking] Location updated:', payload);
+
         setTrackingState(prev => ({
           ...prev,
           locationUpdate: payload,
@@ -207,7 +205,7 @@ export function useOrderTracking(
     // Partner assigned handler
     const handlePartnerAssigned = (payload: OrderPartnerAssigned) => {
       if (payload.orderId === orderId) {
-        console.log('[useOrderTracking] Delivery partner assigned:', payload);
+
         setTrackingState(prev => ({
           ...prev,
           deliveryPartner: payload.deliveryPartner,
@@ -228,7 +226,7 @@ export function useOrderTracking(
     // Timeline update handler
     const handleTimelineUpdate = (payload: OrderTimelineUpdate) => {
       if (payload.orderId === orderId) {
-        console.log('[useOrderTracking] Timeline updated:', payload);
+
         setTrackingState(prev => ({
           ...prev,
           timeline: payload.timeline,
@@ -240,7 +238,7 @@ export function useOrderTracking(
     // Delivered handler
     const handleDelivered = (payload: OrderDelivered) => {
       if (payload.orderId === orderId) {
-        console.log('[useOrderTracking] Order delivered:', payload);
+
         setTrackingState(prev => ({
           ...prev,
           order: prev.order
@@ -333,7 +331,7 @@ export function useNewOrders(userId: string | null) {
     if (!socket || !userId) return;
 
     const handleNewOrder = (orderData: any) => {
-      console.log('[useNewOrders] New order received:', orderData);
+
       setNewOrders(prev => [orderData, ...prev]);
     };
 

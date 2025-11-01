@@ -36,7 +36,7 @@ class FileUploadService {
 
   constructor() {
     // In real app, this would come from environment config
-    this.baseUrl = 'https://api.example.com/upload';
+    this.baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5001/api';
   }
 
   // Request permissions for camera and media library
@@ -151,10 +151,10 @@ class FileUploadService {
           type: asset.type === 'video' ? 'video' : 'image',
           width: asset.width,
           height: asset.height,
-          duration: asset.duration,
+          duration: asset.duration ?? undefined,
           fileName: asset.fileName || `${asset.type}_${Date.now()}.${asset.type === 'video' ? 'mp4' : 'jpg'}`,
           mimeType: asset.mimeType,
-          fileSize: fileInfo.exists ? fileInfo.size : undefined,
+          fileSize: fileInfo.exists && typeof fileInfo.size === 'number' ? fileInfo.size : undefined,
         };
 
         results.push(result);

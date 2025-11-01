@@ -181,7 +181,7 @@ export default function DealComparisonModal({
 
     if (dealsWithSavings.length === 0) return null;
     
-    return dealsWithSavings.reduce((best, current) => 
+    return dealsWithSavings.reduce((best, current) =>
       current.savings > best.savings ? current : best
     );
   };
@@ -218,8 +218,8 @@ export default function DealComparisonModal({
   };
 
   const toggleMetric = (metricKey: string) => {
-    setSelectedMetrics(prev => 
-      prev.includes(metricKey) 
+    setSelectedMetrics(prev =>
+      prev.includes(metricKey)
         ? prev.filter(k => k !== metricKey)
         : [...prev, metricKey]
     );

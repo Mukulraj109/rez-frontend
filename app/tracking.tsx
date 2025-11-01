@@ -108,12 +108,8 @@ const mapOrderToTracking = (order: Order): TrackingOrder => {
 
   // Get store info - it might be populated or just an ID
   const firstItem = order.items?.[0];
-  const storeName = typeof firstItem?.store === 'object'
-    ? (firstItem.store as any).name
-    : firstItem?.name || 'Store';
-  const storeLogo = typeof firstItem?.store === 'object'
-    ? (firstItem.store as any).logo
-    : undefined;
+  const storeName = firstItem?.product?.store?.name || 'Store';
+  const storeLogo = (firstItem?.product?.store as any)?.logo || undefined;
 
   // Calculate total if it's 0 (fallback calculation)
   let totalAmount = order.totals?.total || order.summary?.total || 0;
@@ -123,14 +119,7 @@ const mapOrderToTracking = (order: Order): TrackingOrder => {
                   (order.totals.tax || 0) +
                   (order.totals.delivery || 0) -
                   (order.totals.discount || 0);
-    console.log('⚠️ [ORDER TRACKING] Total was 0, recalculated:', {
-      orderNumber: order.orderNumber,
-      subtotal: order.totals.subtotal,
-      tax: order.totals.tax,
-      delivery: order.totals.delivery,
-      discount: order.totals.discount,
-      calculatedTotal: totalAmount
-    });
+
   }
 
   return {
@@ -161,7 +150,6 @@ export default function OrderTrackingScreen() {
   const [selectedTab, setSelectedTab] = useState<'active' | 'delivered'>('active');
 
   const loadActiveOrders = useCallback(async (isRefresh: boolean = false) => {
-    console.log('📦 [ORDER TRACKING] Loading orders from real API...');
 
     if (!isRefresh) {
       setLoading(true);
@@ -174,37 +162,20 @@ export default function OrderTrackingScreen() {
         limit: 50,
       });
 
-      console.log('📦 [ORDER TRACKING] API Response:', {
-        success: response.success,
-        ordersCount: response.data?.orders?.length || 0,
-      });
-
       if (response.success && response.data?.orders) {
-        console.log('📊 [ORDER TRACKING] Raw orders from API:', response.data.orders.length);
 
         const allOrders = response.data.orders.map(mapOrderToTracking);
-
-        console.log('📊 [ORDER TRACKING] Mapped orders:', allOrders);
 
         // Separate active and delivered
         const active = allOrders.filter(o =>
           o.status === 'PREPARING' || o.status === 'ON_THE_WAY'
         );
-
         const delivered = allOrders.filter(o =>
           o.status === 'DELIVERED' || o.status === 'CANCELLED'
         );
-
         setActiveOrders(active);
         setDeliveredOrders(delivered);
 
-        console.log('✅ [ORDER TRACKING] Orders loaded:', {
-          total: allOrders.length,
-          active: active.length,
-          delivered: delivered.length,
-          activeOrders: active,
-          deliveredOrders: delivered
-        });
       } else {
         throw new Error(response.message || 'Failed to fetch orders');
       }

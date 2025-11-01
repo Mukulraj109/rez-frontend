@@ -32,8 +32,7 @@ class VideoPreloadService {
         preloadedAt: Date.now(),
         ready: true 
       });
-      
-      console.log(`Video marked for optimized loading: ${videoUrl}`);
+
       return true;
     } catch (error) {
       console.warn('Video preload tracking failed:', videoUrl, error);
@@ -81,7 +80,7 @@ class VideoPreloadService {
     if (video) {
       // Since we're only tracking URLs now, just remove from map
       this.preloadedVideos.delete(videoUrl);
-      console.log(`Removed video from cache: ${videoUrl}`);
+
     }
   }
 
@@ -89,7 +88,7 @@ class VideoPreloadService {
   async clearAll(): Promise<void> {
     // Since we're only tracking URLs now, just clear the map
     this.preloadedVideos.clear();
-    console.log('Cleared all video cache entries');
+
   }
 
   // Get cache status for debugging

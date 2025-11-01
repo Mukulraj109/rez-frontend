@@ -23,9 +23,7 @@ export default function DealCardSkeleton() {
           duration: 1000,
           useNativeDriver: true,
         }),
-      ])
-    );
-
+      ]));
     shimmerAnimation.start();
 
     return () => shimmerAnimation.stop();
@@ -136,7 +134,7 @@ export default function DealCardSkeleton() {
         ]} 
       />
     </View>
-  );
+);
 }
 
 const createStyles = (screenWidth: number) => {

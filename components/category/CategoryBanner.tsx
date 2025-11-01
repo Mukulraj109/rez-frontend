@@ -35,7 +35,7 @@ export default function CategoryBanner({ banner, onPress }: CategoryBannerProps)
     >
       <View style={styles.imageContainer}>
         <Image 
-          source={{ uri: banner.image }} 
+          source={{ uri: banner.image || 'https://via.placeholder.com/400x200?text=No+Image' }} 
           style={styles.backgroundImage} 
           resizeMode="cover"
         />
@@ -53,24 +53,24 @@ export default function CategoryBanner({ banner, onPress }: CategoryBannerProps)
           <View style={styles.textContent}>
             {banner.subtitle && (
               <ThemedText style={[styles.subtitle, { color: banner.textColor }]}>
-                {banner.subtitle}
+                {banner.subtitle || 'Subtitle'}
               </ThemedText>
             )}
             
             <ThemedText style={[styles.title, { color: banner.textColor }]}>
-              {banner.title}
+              {banner.title || 'Title'}
             </ThemedText>
             
             {banner.description && (
               <ThemedText style={[styles.description, { color: banner.textColor }]}>
-                {banner.description}
+                {banner.description || 'No description available'}
               </ThemedText>
             )}
             
             {banner.action && (
               <TouchableOpacity style={styles.actionButton} onPress={handlePress}>
                 <ThemedText style={styles.actionButtonText}>
-                  {banner.action.label}
+                  {banner.action.label || 'Action'}
                 </ThemedText>
               </TouchableOpacity>
             )}
@@ -80,7 +80,7 @@ export default function CategoryBanner({ banner, onPress }: CategoryBannerProps)
           {banner.cashback && (
             <View style={styles.cashbackBadge}>
               <ThemedText style={styles.cashbackText}>
-                {banner.cashback.percentage}%
+                {banner.cashback.percentage || 0}%
               </ThemedText>
               <ThemedText style={styles.cashbackLabel}>
                 Cashback
@@ -90,7 +90,7 @@ export default function CategoryBanner({ banner, onPress }: CategoryBannerProps)
         </View>
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

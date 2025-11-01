@@ -48,7 +48,7 @@ export default function GameCard({
         </ThemedText>
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -333,7 +333,7 @@ export default function DealCard({
           </ThemedText>
         </TouchableOpacity>
       </TouchableOpacity>
-    </Animated.View>
+    </Animated.View>  
   );
 }
 

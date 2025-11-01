@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
+import { useDebouncedCallback } from 'use-debounce';
 
 import {
   HomeDeliveryPageState,
@@ -26,30 +27,45 @@ const mapBackendProductToHomeDelivery = (product: any): HomeDeliveryProduct => {
     availabilityStatus = 'low_stock';
   }
 
-  // Determine delivery time based on product category and availability
-  let deliveryTime = product.store?.deliveryInfo?.estimatedTime;
+  // Use delivery time from backend deliveryInfo
+  let deliveryTime = product.deliveryInfo?.estimatedDays || product.deliveryInfo?.standardDeliveryTime;
+  if (!deliveryTime && product.store?.deliveryInfo?.estimatedTime) {
+    deliveryTime = product.store.deliveryInfo.estimatedTime;
+  }
   if (!deliveryTime) {
-    // Vary delivery time based on category and stock
+    // Fallback based on category and stock
     const categoryName = product.category?.name?.toLowerCase() || '';
     if (categoryName.includes('fashion') || categoryName.includes('book')) {
       deliveryTime = '1-2 days';
     } else if (categoryName.includes('electronics') && stock > 50) {
-      deliveryTime = 'Under 30min'; // Express delivery for electronics with good stock
+      deliveryTime = 'Under 30min';
     } else if (stock > 20) {
       deliveryTime = '2-3 days';
     } else {
-      deliveryTime = '3-5 days'; // Longer for low stock items
+      deliveryTime = '3-5 days';
     }
   }
 
-  // Calculate cashback percentage (if available from product metadata)
-  const cashbackPercentage = product.cashback?.percentage || product.discountPercentage || 5;
+  // Use real cashback from backend
+  const cashbackPercentage = product.cashback?.percentage || 5;
+  const cashbackMaxAmount = product.cashback?.maxAmount;
 
-  return {
+  const mappedProduct = {
     id: product._id || product.id,
     name: product.name || product.title,
     brand: product.brand,
-    image: (Array.isArray(product.images) && product.images[0]) || product.image || product.thumbnail || '',
+    image: (() => {
+      // Try different image sources
+      if (Array.isArray(product.images) && product.images.length > 0) {
+        const firstImage = product.images[0];
+        // Handle both string URLs and objects with url property
+        return typeof firstImage === 'string' ? firstImage : (firstImage?.url || '');
+      }
+      if (product.image) return product.image;
+      if (product.thumbnail) return product.thumbnail;
+      // Return null to trigger placeholder in UI
+      return null;
+    })(),
     price: {
       current: product.price?.current || product.pricing?.selling || 0,
       original: product.price?.original || product.pricing?.compare,
@@ -62,15 +78,20 @@ const mapBackendProductToHomeDelivery = (product: any): HomeDeliveryProduct => {
     },
     cashback: {
       percentage: cashbackPercentage,
-      maxAmount: product.cashback?.maxAmount,
+      maxAmount: cashbackMaxAmount,
     },
     category: product.category?.name || product.category || 'Uncategorized',
     categoryId: product.category?._id || product.category?.id || product.categoryId || 'all',
     shipping: {
-      type: product.shipping?.type || ((product.price?.current || product.pricing?.selling || 0) > 500 ? 'free' : 'paid'),
-      cost: product.shipping?.cost || ((product.price?.current || product.pricing?.selling || 0) > 500 ? 0 : 40),
+      type: product.shipping?.type ||
+        ((product.price?.current || product.pricing?.selling || 0) >
+          (product.deliveryInfo?.freeShippingThreshold || 500) ? 'free' : 'paid'),
+      cost: product.shipping?.cost ||
+        ((product.price?.current || product.pricing?.selling || 0) >
+          (product.deliveryInfo?.freeShippingThreshold || 500) ? 0 : 40),
       estimatedDays: deliveryTime,
-      freeShippingEligible: (product.price?.current || product.pricing?.selling || 0) > 500,
+      freeShippingEligible: (product.price?.current || product.pricing?.selling || 0) >
+        (product.deliveryInfo?.freeShippingThreshold || 500),
     },
     rating: product.rating ? {
       value: product.rating.value || product.rating.average || 0,
@@ -88,10 +109,14 @@ const mapBackendProductToHomeDelivery = (product: any): HomeDeliveryProduct => {
     description: product.description || '',
     store: {
       id: product.store?._id || product.store?.id || '',
-      name: product.store?.name || '',
+      name: product.store?.name || 'Store',
       logo: product.store?.logo || product.store?.image,
     },
   };
+
+  // Debug category mapping
+
+  return mappedProduct;
 };
 
 // Helper to map backend categories
@@ -99,21 +124,119 @@ const mapBackendCategories = (categories: any[]): HomeDeliveryCategory[] => {
   // Icon mapping based on category name
   const getIconForCategory = (name: string): string => {
     const lowerName = name.toLowerCase();
-    if (lowerName.includes('electronic')) return 'phone-portrait';
-    if (lowerName.includes('fashion')) return 'shirt';
-    if (lowerName.includes('book')) return 'book';
-    if (lowerName.includes('sport')) return 'basketball';
-    if (lowerName.includes('home') || lowerName.includes('kitchen')) return 'home';
-    return 'cube';
+    
+    // Fashion & Beauty
+    if (lowerName.includes('fashion') || lowerName.includes('beauty') || lowerName.includes('clothing') || lowerName.includes('apparel')) {
+      return 'shirt-outline';
+    }
+    
+    // Food & Dining
+    if (lowerName.includes('food') || lowerName.includes('dining') || lowerName.includes('restaurant') || lowerName.includes('kitchen') || lowerName.includes('grocery')) {
+      return 'restaurant-outline';
+    }
+    
+    // Entertainment
+    if (lowerName.includes('entertainment') || lowerName.includes('movie') || lowerName.includes('music') || lowerName.includes('game')) {
+      return 'play-circle-outline';
+    }
+    
+    // Electronics
+    if (lowerName.includes('electronic') || lowerName.includes('tech') || lowerName.includes('phone') || lowerName.includes('computer')) {
+      return 'phone-portrait-outline';
+    }
+    
+    // Books
+    if (lowerName.includes('book') || lowerName.includes('education') || lowerName.includes('learning')) {
+      return 'book-outline';
+    }
+    
+    // Sports
+    if (lowerName.includes('sport') || lowerName.includes('fitness') || lowerName.includes('gym')) {
+      return 'basketball-outline';
+    }
+    
+    // Home & Garden
+    if (lowerName.includes('home') || lowerName.includes('garden') || lowerName.includes('furniture')) {
+      return 'home-outline';
+    }
+    
+    // Health & Beauty
+    if (lowerName.includes('health') || lowerName.includes('medical') || lowerName.includes('pharmacy')) {
+      return 'medical-outline';
+    }
+    
+    // Automotive
+    if (lowerName.includes('auto') || lowerName.includes('car') || lowerName.includes('vehicle')) {
+      return 'car-outline';
+    }
+    
+    // Default fallback
+    return 'cube-outline';
   };
 
-  const mapped = categories.map(cat => ({
-    id: cat._id || cat.id,
-    name: cat.name,
-    icon: cat.icon || getIconForCategory(cat.name),
-    productCount: cat.productCount || 0,
-    isActive: false,
-  }));
+  const mapped = categories.map(cat => {
+    const icon = cat.icon || getIconForCategory(cat.name);
+    const backendId = cat._id || cat.id;
+
+    return {
+      id: cat.slug || cat._id || cat.id, // Use slug for frontend ID
+      name: cat.name,
+      icon: icon,
+      productCount: cat.productCount || 0,
+      isActive: false,
+      backendId: backendId, // Store MongoDB ObjectID for API calls
+    };
+  });
+
+  // If no categories from backend, add default categories (without backendId)
+  if (mapped.length === 0) {
+    const defaultCategories = [
+      {
+        id: 'fashion-beauty',
+        name: 'Fashion & Beauty',
+        icon: 'shirt-outline',
+        productCount: 0,
+        isActive: false,
+        backendId: undefined, // No backend ID for default categories
+      },
+      {
+        id: 'food-dining',
+        name: 'Food & Dining',
+        icon: 'restaurant-outline',
+        productCount: 0,
+        isActive: false,
+        backendId: undefined,
+      },
+      {
+        id: 'entertainment',
+        name: 'Entertainment',
+        icon: 'play-circle-outline',
+        productCount: 0,
+        isActive: false,
+        backendId: undefined,
+      },
+      {
+        id: 'grocery-essentials',
+        name: 'Grocery & Essentials',
+        icon: 'basket-outline',
+        productCount: 0,
+        isActive: false,
+        backendId: undefined,
+      },
+    ];
+    
+    return [
+      {
+        id: 'all',
+        name: 'All',
+        icon: 'apps',
+        productCount: 0,
+        isActive: true,
+        backendId: undefined,
+      },
+      ...defaultCategories,
+    ];
+  }
 
   // Add "All" category at the beginning
   return [
@@ -123,6 +246,7 @@ const mapBackendCategories = (categories: any[]): HomeDeliveryCategory[] => {
       icon: 'apps',
       productCount: categories.reduce((sum, cat) => sum + (cat.productCount || 0), 0),
       isActive: true,
+      backendId: undefined, // "All" category doesn't have a backend ID
     },
     ...mapped,
   ];
@@ -136,7 +260,7 @@ const initialState: HomeDeliveryPageState = {
   sections: [],
   activeCategory: 'all',
   searchQuery: '',
-  sortBy: 'newest',
+  sortBy: 'default',
   filters: {
     shipping: [],
     ratings: [],
@@ -162,7 +286,7 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
   }, []);
 
   const loadInitialData = async () => {
-    console.log('🏠 [HOME DELIVERY] Loading initial data from real API...');
+
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
@@ -172,17 +296,12 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
         productsApi.getProducts({ page: 1, limit: 20 }),
       ]);
 
-      console.log('📦 [HOME DELIVERY] API responses:', {
-        categoriesSuccess: categoriesResponse.success,
-        productsSuccess: productsResponse.success,
-        categoriesCount: categoriesResponse.data?.length || 0,
-        productsCount: Array.isArray(productsResponse.data) ? productsResponse.data.length : (productsResponse.data?.products?.length || 0),
-      });
+      // Map categories from backend
 
-      // Map categories
-      const categories = categoriesResponse.success && categoriesResponse.data
-        ? mapBackendCategories(categoriesResponse.data)
-        : [initialState.categories[0]]; // Fallback to "All" category
+      const backendCategories = categoriesResponse.success && categoriesResponse.data
+        ? (Array.isArray(categoriesResponse.data) ? categoriesResponse.data : [])
+        : [];
+      const categories = mapBackendCategories(backendCategories);
 
       // Map products - handle both data structures: data[] or data.products[]
       const rawProducts = productsResponse.success && productsResponse.data
@@ -191,31 +310,9 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
 
       const products = rawProducts.map(mapBackendProductToHomeDelivery);
 
-      console.log('📦 [HOME DELIVERY] Mapped products sample:', {
-        total: products.length,
-        first: products[0] ? {
-          name: products[0].name,
-          price: products[0].price,
-          shipping: products[0].shipping,
-          deliveryTime: products[0].deliveryTime,
-          category: products[0].category,
-        } : null
-      });
-
       // Create sections from products
       const featuredProducts = products.filter(p => p.isFeatured);
       const newProducts = products.filter(p => p.isNew);
-
-      console.log('📊 [HOME DELIVERY] Section products:', {
-        total: products.length,
-        featured: featuredProducts.length,
-        new: newProducts.length,
-        sampleProduct: products[0] ? {
-          name: products[0].name,
-          isFeatured: products[0].isFeatured,
-          isNew: products[0].isNew
-        } : null
-      });
 
       const sections = [
         {
@@ -236,7 +333,7 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
         },
       ];
 
-      const hasMore = (productsResponse.meta?.pagination?.pages || productsResponse.data?.pagination?.pages || 1) > 1;
+      const hasMore = (productsResponse.data?.pagination?.pages || 1) > 1;
 
       setState(prev => ({
         ...prev,
@@ -249,7 +346,6 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
         hasMore,
       }));
 
-      console.log('✅ [HOME DELIVERY] Initial data loaded successfully');
     } catch (error) {
       console.error('❌ [HOME DELIVERY] Failed to load initial data:', error);
       setState(prev => ({
@@ -261,61 +357,140 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
   };
 
   // Actions
-  const setActiveCategory = useCallback(async (categoryId: string) => {
-    console.log('🏠 [HOME DELIVERY] Changing category to:', categoryId);
-    setState(prev => ({ ...prev, loading: true, activeCategory: categoryId }));
+  const setActiveCategory = useCallback((categoryId: string) => {
 
-    try {
-      // Fetch products for the selected category
-      const query = categoryId === 'all'
-        ? { page: 1, limit: 20 }
-        : { page: 1, limit: 20, category: categoryId };
+    setState(prev => {
+      let filteredProducts = prev.products;
+      
+      if (categoryId === 'all') {
+        // Show all products
+        filteredProducts = prev.products;
+      } else {
+        // Filter products by category
+        filteredProducts = prev.products.filter(product => {
+          // Check if product category matches the selected category
+          const productCategoryName = product.category?.toLowerCase() || '';
+          const productCategoryId = product.categoryId || '';
+          
+          // Map category ID to category name for comparison
+          const categoryNameMap: { [key: string]: string } = {
+            'fashion-beauty': 'fashion & beauty',
+            'food-dining': 'food & dining',
+            'entertainment': 'entertainment',
+            'grocery-essentials': 'grocery & essentials',
+          };
+          
+          const selectedCategoryName = categoryNameMap[categoryId] || categoryId.toLowerCase();
 
-      const response = await productsApi.getProducts(query);
+          // Multiple matching strategies
+          const matches = 
+            productCategoryName.includes(selectedCategoryName) || 
+            productCategoryId === categoryId ||
+            product.categoryId === categoryId ||
+            productCategoryName === selectedCategoryName;
 
-      if (response.success && response.data) {
-        const rawProducts = Array.isArray(response.data) ? response.data : (response.data.products || []);
-        const products = rawProducts.map(mapBackendProductToHomeDelivery);
-        const hasMore = (response.meta?.pagination?.pages || response.data?.pagination?.pages || 1) > 1;
-
-        setState(prev => ({
-          ...prev,
-          products,
-          filteredProducts: products,
-          loading: false,
-          hasMore,
-          page: 1,
-        }));
-
-        console.log('✅ [HOME DELIVERY] Category products loaded:', products.length);
+          return matches;
+        });
       }
-    } catch (error) {
-      console.error('❌ [HOME DELIVERY] Failed to load category products:', error);
-      setState(prev => ({
+
+      return {
         ...prev,
+        activeCategory: categoryId,
+        filteredProducts,
         loading: false,
-        error: 'Failed to load products for this category.',
-      }));
-    }
+      };
+    });
   }, []);
 
+  // Helper function to get products by category
+  const getProductsByCategory = useCallback((categoryId: string) => {
+    return state.products.filter(product => product.categoryId === categoryId);
+  }, [state.products]);
+
+  // Debounced API search (300ms delay for faster response)
+  const debouncedApiSearch = useDebouncedCallback(
+    async (query: string, activeCategory: string, categories: HomeDeliveryCategory[]) => {
+      if (!query.trim() || query.trim().length < 2) {
+        setState(prev => ({ ...prev, loading: false }));
+        return;
+      }
+
+      try {
+        // Find the actual category ID (MongoDB ObjectID) if a category is selected
+        let categoryId: string | undefined = undefined;
+        if (activeCategory !== 'all') {
+          const selectedCategory = categories.find(cat => cat.id === activeCategory);
+
+          // Only include category if we have a valid MongoDB ObjectID (24 hex characters)
+          if (selectedCategory?.backendId && /^[0-9a-fA-F]{24}$/.test(selectedCategory.backendId)) {
+            categoryId = selectedCategory.backendId;
+
+          } else {
+
+          }
+        }
+
+        const searchQuery = {
+          q: query,
+          ...(categoryId && { category: categoryId }), // Only include category if defined
+          page: 1,
+          limit: 20,
+        };
+
+        const response = await productsApi.searchProducts(searchQuery);
+
+        if (response.success && response.data?.products) {
+          const products = response.data.products.map(mapBackendProductToHomeDelivery);
+          
+          setState(prev => ({
+            ...prev,
+            filteredProducts: products,
+            loading: false,
+          }));
+
+        } else {
+          console.warn('⚠️ [SEARCH] API response not successful:', response);
+          setState(prev => ({
+            ...prev,
+            loading: false,
+          }));
+        }
+      } catch (error) {
+        console.error('❌ [SEARCH] API search failed:', error);
+        // Keep showing current products on error, just clear loading
+        setState(prev => ({
+          ...prev,
+          loading: false,
+        }));
+      }
+    },
+    300 // 300ms delay for fast response
+  );
+
   const setSearchQuery = useCallback((query: string) => {
+
+    // INSTANT LOCAL FILTERING - Show results immediately
     setState(prev => {
       let filteredProducts = prev.products;
       
       // Apply category filter first
       if (prev.activeCategory !== 'all') {
-        filteredProducts = getProductsByCategory(prev.activeCategory);
+        const selectedCategory = prev.categories.find(c => c.id === prev.activeCategory);
+        filteredProducts = prev.products.filter(p => {
+          return p.categoryId === prev.activeCategory || 
+                 p.category.toLowerCase().includes(selectedCategory?.name.toLowerCase() || '');
+        });
       }
       
-      // Apply search filter
-      if (query.trim()) {
-        const searchTerm = query.toLowerCase();
+      // Apply search filter instantly for immediate feedback
+      if (query.trim().length > 0) {
+        const searchTerm = query.toLowerCase().trim();
         filteredProducts = filteredProducts.filter(product =>
           product.name.toLowerCase().includes(searchTerm) ||
           product.brand?.toLowerCase().includes(searchTerm) ||
-          product.description.toLowerCase().includes(searchTerm) ||
-          product.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+          product.description?.toLowerCase().includes(searchTerm) ||
+          product.category?.toLowerCase().includes(searchTerm) ||
+          product.tags?.some(tag => tag.toLowerCase().includes(searchTerm))
         );
       }
       
@@ -323,9 +498,21 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
         ...prev,
         searchQuery: query,
         filteredProducts,
+        loading: query.trim().length >= 2, // Show loading indicator for API search
       };
     });
-  }, []);
+
+    // DEBOUNCED API SEARCH - Enhance with comprehensive backend results (300ms delay)
+    if (query.trim().length >= 2) {
+      debouncedApiSearch(query, state.activeCategory, state.categories);
+    } else if (query.trim().length === 0) {
+      // Clear loading state when search is empty
+      setState(prev => ({
+        ...prev,
+        loading: false,
+      }));
+    }
+  }, [debouncedApiSearch, state.activeCategory, state.categories]);
 
   const setSortBy = useCallback((sortBy: HomeDeliveryPageState['sortBy']) => {
     setState(prev => {
@@ -363,7 +550,7 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
   }, []);
 
   const loadProducts = useCallback(async () => {
-    console.log('🏠 [HOME DELIVERY] Reloading products...');
+
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
@@ -376,7 +563,7 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
       if (response.success && response.data) {
         const rawProducts = Array.isArray(response.data) ? response.data : (response.data.products || []);
         const products = rawProducts.map(mapBackendProductToHomeDelivery);
-        const hasMore = (response.meta?.pagination?.pages || response.data?.pagination?.pages || 1) > 1;
+        const hasMore = (response.data?.pagination?.pages || 1) > 1;
 
         setState(prev => ({
           ...prev,
@@ -400,7 +587,6 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
   const loadMoreProducts = useCallback(async () => {
     if (state.loading || !state.hasMore) return;
 
-    console.log('🏠 [HOME DELIVERY] Loading more products, page:', state.page + 1);
     setState(prev => ({ ...prev, loading: true }));
 
     try {
@@ -413,8 +599,8 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
       if (response.success && response.data) {
         const rawProducts = Array.isArray(response.data) ? response.data : (response.data.products || []);
         const newProducts = rawProducts.map(mapBackendProductToHomeDelivery);
-        const pagination = response.meta?.pagination || response.data?.pagination;
-        const hasMore = pagination ? pagination.page < pagination.pages : false;
+        const pagination = response.data?.pagination;
+        const hasMore = pagination ? pagination.current < pagination.pages : false;
 
         setState(prev => ({
           ...prev,
@@ -425,7 +611,6 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
           loading: false,
         }));
 
-        console.log('✅ [HOME DELIVERY] Loaded', newProducts.length, 'more products');
       }
     } catch (error) {
       console.error('❌ [HOME DELIVERY] Failed to load more products:', error);
@@ -444,7 +629,6 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
       return;
     }
 
-    console.log('🏠 [HOME DELIVERY] Searching products:', query);
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
@@ -466,7 +650,6 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
           loading: false,
         }));
 
-        console.log('✅ [HOME DELIVERY] Search results:', products.length);
       }
     } catch (error) {
       console.error('❌ [HOME DELIVERY] Search failed:', error);
@@ -483,7 +666,7 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
   }, [loadProducts]);
 
   const applyFilters = useCallback(async (filters: HomeDeliveryFilters) => {
-    console.log('🔍 [HOME DELIVERY] Applying filters:', filters);
+
     setState(prev => ({ ...prev, loading: true, filters }));
 
     try {
@@ -539,7 +722,6 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
         loading: false,
       }));
 
-      console.log('✅ [HOME DELIVERY] Filters applied, showing', filteredProducts.length, 'products');
     } catch (error) {
       console.error('❌ [HOME DELIVERY] Failed to apply filters:', error);
       setState(prev => ({
@@ -551,7 +733,7 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
   }, [state.products]);
 
   const resetFilters = useCallback(async () => {
-    console.log('🏠 [HOME DELIVERY] Resetting filters');
+
     setState(prev => ({
       ...prev,
       filters: initialState.filters,
@@ -573,7 +755,7 @@ export function useHomeDeliveryPage(): UseHomeDeliveryPageReturn {
   }, [searchProductsAction]);
 
   const handleProductPress = useCallback((product: HomeDeliveryProduct) => {
-    console.log(`🏠 [HOME DELIVERY] Product pressed: ${product.name}`);
+
     router.push(`/product/${product.id}` as any);
   }, [router]);
 

@@ -38,14 +38,19 @@ const getSocketUrl = (): string => {
   // Extract the base URL without /api path
   const baseUrl = apiBaseUrl.replace('/api', '');
 
-  // For web, use localhost. For mobile, use the machine's IP address
+  // For web, use the configured URL as-is
   if (Platform.OS === 'web') {
     return baseUrl;
   }
 
-  // For mobile development, replace localhost with your machine's IP
-  // You can get this from the Expo DevTools or by running `ipconfig` (Windows) or `ifconfig` (Mac/Linux)
-  return baseUrl.replace('localhost', '10.0.2.2'); // Default Android emulator host
+  // For mobile development on Android emulator, replace localhost with emulator host
+  // For iOS simulator or physical devices, use your machine's local IP address
+  // Android emulator: 10.0.2.2 maps to host machine's localhost
+  if (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
+    return baseUrl.replace('localhost', '10.0.2.2').replace('127.0.0.1', '10.0.2.2');
+  }
+
+  return baseUrl;
 };
 
 // Socket configuration with sensible defaults
@@ -116,9 +121,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
     const socketUrl = getSocketUrl();
     const socketConfig = { ...DEFAULT_CONFIG, ...config };
 
-    console.log('🔌 [SocketContext] Initializing Socket.IO connection to:', socketUrl);
-    console.log('🔌 [SocketContext] Config:', socketConfig);
-
     try {
       const socket = io(socketUrl, {
         transports: ['websocket', 'polling'],
@@ -134,7 +136,7 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
 
       // Connection event handlers
       socket.on(SocketEvents.CONNECT, () => {
-        console.log('🔌 [SocketContext] Socket connected');
+
         setSocketState(prev => ({
           ...prev,
           connected: true,
@@ -149,7 +151,7 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       });
 
       socket.on(SocketEvents.DISCONNECT, (reason) => {
-        console.log('🔌 [SocketContext] Socket disconnected. Reason:', reason);
+
         setSocketState(prev => ({
           ...prev,
           connected: false,
@@ -167,7 +169,7 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       });
 
       socket.on(SocketEvents.RECONNECT_ATTEMPT, (attemptNumber) => {
-        console.log('🔌 [SocketContext] Reconnection attempt:', attemptNumber);
+
         setSocketState(prev => ({
           ...prev,
           reconnecting: true,
@@ -176,7 +178,7 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       });
 
       socket.on(SocketEvents.RECONNECT, (attemptNumber) => {
-        console.log('🔌 [SocketContext] Reconnected after', attemptNumber, 'attempts');
+
         setSocketState(prev => ({
           ...prev,
           connected: true,
@@ -206,48 +208,78 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
 
       // Stock event handlers (for debugging)
       socket.on(SocketEvents.STOCK_UPDATED, (payload: StockUpdatePayload) => {
-        console.log('📦 [SocketContext] Stock updated:', payload);
+
       });
 
       socket.on(SocketEvents.STOCK_LOW, (payload: LowStockPayload) => {
-        console.log('⚠️ [SocketContext] Low stock alert:', payload);
+
       });
 
       socket.on(SocketEvents.STOCK_OUT, (payload: OutOfStockPayload) => {
-        console.log('❌ [SocketContext] Out of stock:', payload);
+
       });
 
       socket.on(SocketEvents.PRICE_UPDATED, (payload: PriceUpdatePayload) => {
-        console.log('💰 [SocketContext] Price updated:', payload);
+
       });
 
       socket.on(SocketEvents.PRODUCT_AVAILABILITY, (payload: ProductAvailabilityPayload) => {
-        console.log('🏷️ [SocketContext] Product availability changed:', payload);
+
       });
 
       // Flash sale event handlers (for debugging)
       socket.on(SocketEvents.FLASH_SALE_STARTED, (payload: FlashSaleStartedPayload) => {
-        console.log('🔥 [SocketContext] Flash sale started:', payload);
+
       });
 
       socket.on(SocketEvents.FLASH_SALE_ENDING_SOON, (payload: FlashSaleEndingSoonPayload) => {
-        console.log('⏰ [SocketContext] Flash sale ending soon:', payload);
+
       });
 
       socket.on(SocketEvents.FLASH_SALE_ENDED, (payload: FlashSaleEndedPayload) => {
-        console.log('❌ [SocketContext] Flash sale ended:', payload);
+
       });
 
       socket.on(SocketEvents.FLASH_SALE_STOCK_UPDATED, (payload: FlashSaleStockUpdatedPayload) => {
-        console.log('📦 [SocketContext] Flash sale stock updated:', payload);
+
       });
 
       socket.on(SocketEvents.FLASH_SALE_STOCK_LOW, (payload: FlashSaleStockLowPayload) => {
-        console.log('⚠️ [SocketContext] Flash sale stock low:', payload);
+
       });
 
       socket.on(SocketEvents.FLASH_SALE_SOLD_OUT, (payload: FlashSaleSoldOutPayload) => {
-        console.log('🚫 [SocketContext] Flash sale sold out:', payload);
+
+      });
+
+      // Leaderboard event handlers (for debugging)
+      socket.on(SocketEvents.LEADERBOARD_UPDATE, (payload: any) => {
+
+      });
+
+      socket.on(SocketEvents.LEADERBOARD_USER_SCORED, (payload: any) => {
+
+      });
+
+      socket.on(SocketEvents.LEADERBOARD_RANK_CHANGE, (payload: any) => {
+
+      });
+
+      // Social feed event handlers (for debugging)
+      socket.on(SocketEvents.SOCIAL_NEW_POST, (payload: any) => {
+
+      });
+
+      socket.on(SocketEvents.SOCIAL_LIKE, (payload: any) => {
+
+      });
+
+      socket.on(SocketEvents.SOCIAL_COMMENT, (payload: any) => {
+
+      });
+
+      socket.on(SocketEvents.SOCIAL_FOLLOW, (payload: any) => {
+
       });
 
     } catch (error) {
@@ -261,7 +293,7 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
     // Cleanup on unmount
     return () => {
       if (socketRef.current) {
-        console.log('🔌 [SocketContext] Cleaning up socket connection');
+
         socketRef.current.disconnect();
         socketRef.current = null;
       }
@@ -271,8 +303,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
   // Re-subscribe to all products and stores after reconnection
   const resubscribeAll = useCallback(() => {
     if (!socketRef.current) return;
-
-    console.log('🔄 [SocketContext] Re-subscribing to products and stores');
 
     subscribedProducts.current.forEach(productId => {
       socketRef.current?.emit(SocketEvents.SUBSCRIBE_PRODUCT, { productId });
@@ -286,14 +316,14 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
   // Connection methods
   const connect = useCallback(() => {
     if (socketRef.current && !socketRef.current.connected) {
-      console.log('🔌 [SocketContext] Manually connecting socket');
+
       socketRef.current.connect();
     }
   }, []);
 
   const disconnect = useCallback(() => {
     if (socketRef.current && socketRef.current.connected) {
-      console.log('🔌 [SocketContext] Manually disconnecting socket');
+
       socketRef.current.disconnect();
     }
   }, []);
@@ -451,7 +481,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       return;
     }
 
-    console.log('📦 [SocketContext] Subscribing to product:', productId);
     socketRef.current.emit(SocketEvents.SUBSCRIBE_PRODUCT, { productId });
     subscribedProducts.current.add(productId);
   }, []);
@@ -461,7 +490,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       return;
     }
 
-    console.log('📦 [SocketContext] Unsubscribing from product:', productId);
     socketRef.current.emit(SocketEvents.UNSUBSCRIBE_PRODUCT, { productId });
     subscribedProducts.current.delete(productId);
   }, []);
@@ -472,7 +500,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       return;
     }
 
-    console.log('🏪 [SocketContext] Subscribing to store:', storeId);
     socketRef.current.emit(SocketEvents.SUBSCRIBE_STORE, { storeId });
     subscribedStores.current.add(storeId);
   }, []);
@@ -482,7 +509,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       return;
     }
 
-    console.log('🏪 [SocketContext] Unsubscribing from store:', storeId);
     socketRef.current.emit(SocketEvents.UNSUBSCRIBE_STORE, { storeId });
     subscribedStores.current.delete(storeId);
   }, []);

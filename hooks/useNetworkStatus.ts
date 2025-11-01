@@ -33,9 +33,6 @@ export function useNetworkStatus() {
 
     // Subscribe to network state updates
     const unsubscribe = NetInfo.addEventListener(state => {
-      console.log('🌐 [NETWORK] Connection type:', state.type);
-      console.log('🌐 [NETWORK] Is connected?', state.isConnected);
-      console.log('🌐 [NETWORK] Is internet reachable?', state.isInternetReachable);
 
       const isConnected = state.isConnected ?? false;
       const isInternetReachable = state.isInternetReachable;
@@ -49,10 +46,10 @@ export function useNetworkStatus() {
 
       // Track if we were offline and are now online
       if (!prev.isConnected && isConnected) {
-        console.log('🌐 [NETWORK] Back online!');
+
         setWasOffline(true);
       } else if (prev.isConnected && !isConnected) {
-        console.log('🌐 [NETWORK] Gone offline!');
+
       }
     });
 
@@ -85,7 +82,7 @@ export function useNetworkStatus() {
     const newOfflineMode = forceOffline ?? !networkStatus.isOfflineMode;
     await asyncStorageService.setOfflineMode(newOfflineMode);
     setNetworkStatus(prev => ({ ...prev, isOfflineMode: newOfflineMode }));
-    console.log('🌐 [NETWORK] Offline mode:', newOfflineMode ? 'ON' : 'OFF');
+
   };
 
   /**

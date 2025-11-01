@@ -14,15 +14,18 @@ import { ProductGridProps } from '@/types/going-out.types';
 
 const { width: screenWidth } = Dimensions.get('window');
 const PADDING = 16;
-const GAP = 12;
+const GAP = 16;
 
 export function ProductGrid({
   products,
   loading,
   onProductPress,
+  onToggleWishlist,
   onLoadMore,
   hasMore = false,
   numColumns = 2,
+  wishlist = [],
+  showHeader = true,
 }: ProductGridProps) {
   const cardWidth = (screenWidth - (PADDING * 2) - (GAP * (numColumns - 1))) / numColumns;
 
@@ -39,7 +42,9 @@ export function ProductGrid({
       <GoingOutProductCard
         product={item}
         onPress={onProductPress}
+        onToggleWishlist={onToggleWishlist}
         width={cardWidth}
+        isInWishlist={wishlist.includes(item.id)}
       />
     </View>
   );
@@ -51,6 +56,18 @@ export function ProductGrid({
       <View style={styles.loadingFooter}>
         <ActivityIndicator size="small" color="#8B5CF6" />
         <ThemedText style={styles.loadingText}>Loading more products...</ThemedText>
+      </View>
+    );
+  };
+
+  const renderHeader = () => {
+    if (!showHeader || products.length === 0) return null;
+    
+    return (
+      <View style={styles.headerContainer}>
+        <ThemedText style={styles.resultCount}>
+          {products.length} product{products.length !== 1 ? 's' : ''} found
+        </ThemedText>
       </View>
     );
   };
@@ -71,8 +88,8 @@ export function ProductGrid({
   };
 
   const getItemLayout = (_: any, index: number) => ({
-    length: 280, // Approximate card height
-    offset: 280 * Math.floor(index / numColumns),
+    length: 380 + GAP, // Card height + gap
+    offset: (380 + GAP) * Math.floor(index / numColumns),
     index,
   });
 
@@ -88,6 +105,7 @@ export function ProductGrid({
         showsVerticalScrollIndicator={false}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.1}
+        ListHeaderComponent={renderHeader}
         ListFooterComponent={renderLoadingFooter}
         ListEmptyComponent={!loading ? renderEmptyState : null}
         getItemLayout={getItemLayout}
@@ -110,7 +128,7 @@ export function ProductGrid({
         </View>
       )}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -128,6 +146,7 @@ const styles = StyleSheet.create({
   },
   productContainer: {
     marginBottom: GAP,
+    marginHorizontal: 2,
   },
   loadingFooter: {
     alignItems: 'center',
@@ -173,5 +192,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     marginTop: 16,
+  },
+  headerContainer: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  resultCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
   },
 });

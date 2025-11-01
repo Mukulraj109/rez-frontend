@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import apiClient from './apiClient';
 import {
   LocationCoordinates,
   LocationAddress,
@@ -43,10 +44,8 @@ class LocationService {
 
   constructor(config?: Partial<LocationServiceConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.apiClient = axios.create({
-      baseURL: this.config.apiBaseUrl,
-      timeout: 10000,
-    });
+    // Use the main API client that has authentication
+    this.apiClient = apiClient;
   }
 
   /**
@@ -106,7 +105,6 @@ class LocationService {
 
       const locationOptions: Location.LocationOptions = {
         accuracy: this.mapAccuracy(options?.accuracy || 'balanced'),
-        enableHighAccuracy: options?.enableHighAccuracy || true,
       };
 
       const location = await Location.getCurrentPositionAsync(locationOptions);
@@ -130,7 +128,7 @@ class LocationService {
     source: 'manual' | 'gps' | 'ip' = 'gps'
   ): Promise<UserLocation> {
     try {
-      const response = await this.apiClient.post('/update', {
+      const response = await this.apiClient.post('/location/update', {
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
         address,
@@ -171,10 +169,10 @@ class LocationService {
    * Get current user location from server
    */
   async getCurrentUserLocation(): Promise<UserLocation | null> {
-    console.log('🌐 LocationService: Getting current user location from server...');
+
     try {
-      const response = await this.apiClient.get('/current');
-      console.log('🌐 LocationService: Server response:', response.data);
+      const response = await this.apiClient.get('/location/current');
+
       const locationData = response.data.data.location;
       
       return {
@@ -205,7 +203,7 @@ class LocationService {
    */
   async getLocationHistory(page: number = 1, limit: number = 10): Promise<LocationHistoryEntry[]> {
     try {
-      const response = await this.apiClient.get('/history', {
+      const response = await this.apiClient.get('/location/history', {
         params: { page, limit },
       });
       
@@ -230,7 +228,7 @@ class LocationService {
    */
   async reverseGeocode(coordinates: LocationCoordinates): Promise<LocationAddress> {
     try {
-      const response = await this.apiClient.post('/geocode', {
+      const response = await this.apiClient.post('/location/geocode', {
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
       });
@@ -255,7 +253,7 @@ class LocationService {
    */
   async searchAddresses(query: string, limit: number = 5): Promise<AddressSearchResult[]> {
     try {
-      const response = await this.apiClient.post('/search', {
+      const response = await this.apiClient.post('/location/search', {
         query,
         limit,
       });
@@ -280,7 +278,7 @@ class LocationService {
    */
   async validateAddress(address: string): Promise<boolean> {
     try {
-      const response = await this.apiClient.post('/validate', { address });
+      const response = await this.apiClient.post('/location/validate', { address });
       return response.data.data.isValid;
     } catch (error) {
       console.error('Address validation error:', error);
@@ -293,7 +291,7 @@ class LocationService {
    */
   async getTimezone(coordinates: LocationCoordinates): Promise<string> {
     try {
-      const response = await this.apiClient.get('/timezone', {
+      const response = await this.apiClient.get('/location/timezone', {
         params: {
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
@@ -458,7 +456,7 @@ class LocationService {
   async cacheLocation(location: UserLocation): Promise<void> {
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_LOCATION, JSON.stringify(location));
-      console.log('📍 LocationService: Location cached locally');
+
     } catch (error) {
       console.error('❌ LocationService: Failed to cache location:', error);
     }

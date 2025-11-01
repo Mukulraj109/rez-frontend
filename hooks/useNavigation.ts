@@ -263,7 +263,7 @@ export const NavigationUtils = {
     WALLET: '/WalletScreen',
     COIN: '/CoinPage',
     FASHION: '/FashionPage',
-    STORE: '/StorePage',
+    STORE: '/ProductPage',
     MAIN_STORE: '/MainStorePage',
     STORE_LIST: '/StoreListPage',
     REVIEW: '/ReviewPage',

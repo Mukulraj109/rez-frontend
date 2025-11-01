@@ -128,7 +128,7 @@ export default function ProductDisplay({
         </View>
       )}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -131,7 +131,7 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
         deal={selectedDealForDetails}
       />
     </Modal>
-  );
+);
 }
 
 const createStyles = (screenData: { width: number; height: number }) => {

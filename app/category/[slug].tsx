@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useCategory, useCategoryItems } from '@/contexts/CategoryContext';
+import { useCart } from '@/contexts/CartContext';
 import CategoryHeader from '@/components/category/CategoryHeader';
 import CategoryGrid from '@/components/category/CategoryGrid';
 import CategoryFilters from '@/components/category/CategoryFilters';
@@ -20,12 +21,14 @@ import CategoryBanner from '@/components/category/CategoryBanner';
 import CategoryCarousel from '@/components/category/CategoryCarousel';
 import { CategoryItem, CategoryCarouselItem } from '@/types/category.types';
 import { handleCarouselAction } from '@/utils/carouselUtils';
+import { showToast } from '@/components/common/ToastManager';
 
 export default function CategoryPage() {
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { state, actions } = useCategory();
   const { items, totalCount, filteredCount, hasMore, loading } = useCategoryItems();
+  const { actions: cartActions } = useCart();
   const [refreshing, setRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -75,15 +78,103 @@ export default function CategoryPage() {
   };
 
   const handleItemPress = (item: CategoryItem) => {
-    // Navigate to item detail page (to be implemented)
-    console.log('Item pressed:', item.name);
-    // router.push(`/item/${item.id}`);
+    // Navigate to product page like home-delivery
+
+    router.push(`/ProductPage?cardId=${item.id}&cardType=category&category=${category?.id || slug}` as any);
   };
 
-  const handleAddToCart = (item: CategoryItem) => {
-    actions.addToCart(item);
-    // Show success feedback
-    Alert.alert('Added to Cart', `${item.name} has been added to your cart.`);
+  const handleAddToCart = async (item: CategoryItem) => {
+    try {
+      // Extract product ID
+      const productId = item.id;
+
+      if (!productId) {
+        console.error('❌ [CATEGORY] No product ID found');
+        Alert.alert('Error', 'Cannot add item to cart - invalid product');
+        return;
+      }
+
+      // Extract price - handle complex price objects
+      let currentPrice = 0;
+      let originalPrice = 0;
+
+      if (item.price) {
+        if (typeof item.price === 'number') {
+          currentPrice = item.price;
+          originalPrice = item.price;
+        } else if (typeof item.price === 'object') {
+          currentPrice = item.price.current || 0;
+          originalPrice = item.price.original || item.price.current || 0;
+        }
+      }
+
+      // Extract image - handle multiple possible formats
+      let imageUrl = '';
+      if (item.image) {
+        imageUrl = item.image;
+      } else if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+        imageUrl = item.images[0];
+      }
+
+      // Calculate discount percentage
+      const discountPercentage = item.price?.discount || 0;
+
+      // Prepare cart item data
+      const cartItemData: any = {
+        id: productId,
+        productId: productId,
+        name: item.name || 'Product',
+        image: imageUrl,
+        price: currentPrice,
+        originalPrice: originalPrice,
+        discountedPrice: currentPrice,
+        discount: discountPercentage,
+        quantity: 1,
+      };
+
+      // Add to cart via CartContext (CartContext will handle increasing quantity if it exists)
+      await cartActions.addItem(cartItemData);
+
+      // Wait a bit for the cart state to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Show success toast
+      showToast({
+        message: `${item.name || 'Item'} added to cart`,
+        type: 'success',
+        duration: 3000
+      });
+
+    } catch (error) {
+      console.error('❌ [CATEGORY] Failed to add to cart via CartContext:', error);
+      
+      // Fallback: Try using cart API directly
+      try {
+        const cartApi = (await import('@/services/cartApi')).default;
+        
+        const cartResponse = await cartApi.addToCart({
+          productId: item.id,
+          quantity: 1
+        });
+
+        if (cartResponse.success) {
+          showToast({
+            message: `${item.name || 'Item'} added to cart`,
+            type: 'success',
+            duration: 3000
+          });
+        } else {
+          throw new Error(cartResponse.message || 'Failed to add to cart');
+        }
+      } catch (fallbackError) {
+        console.error('❌ [CATEGORY] Fallback cart API also failed:', fallbackError);
+        showToast({
+          message: 'Failed to add item to cart',
+          type: 'error',
+          duration: 3000
+        });
+      }
+    }
   };
 
   const handleToggleFavorite = (item: CategoryItem) => {
@@ -105,11 +196,11 @@ export default function CategoryPage() {
       // Handle carousel action with backend-ready analytics and logging
       const actionResult = await handleCarouselAction(
         carouselItem, 
-        slug || '', 
+        slug || ''
         // TODO: Get user ID from auth context
         // authContext.user?.id
       );
-
+      
       if (actionResult.success && carouselItem.action) {
         switch (carouselItem.action.type) {
           case 'filter':

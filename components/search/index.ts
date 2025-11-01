@@ -1,3 +1,10 @@
 export { default as SearchHeader } from './SearchHeader';
 export { default as CategoryCard } from './CategoryCard';
 export { default as SearchSection } from './SearchSection';
+export { default as FilterModal } from './FilterModal';
+export { default as SortModal } from './SortModal';
+export { default as ProductResultCard } from './ProductResultCard';
+export { default as StoreResultCard } from './StoreResultCard';
+export { default as RecentSearches } from './RecentSearches';
+export { default as VirtualizedResultsList } from './VirtualizedResultsList';
+export { default as OptimizedCategoryCard } from './OptimizedCategoryCard';

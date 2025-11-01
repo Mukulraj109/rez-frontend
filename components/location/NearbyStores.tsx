@@ -76,7 +76,7 @@ export default function NearbyStores({
         radius,
         limit
       );
-
+      
       // Transform the data to match our interface
       const transformedStores: NearbyStore[] = nearbyStores.map((store: any) => ({
         id: store._id || store.id,

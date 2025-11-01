@@ -41,7 +41,7 @@ export default function NotificationSection({
         ))}
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

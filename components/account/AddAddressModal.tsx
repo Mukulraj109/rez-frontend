@@ -320,7 +320,7 @@ export default function AddAddressModal({ visible, onClose, onAdd }: AddAddressM
         </View>
       </KeyboardAvoidingView>
     </Modal>
-  );
+);
 }
 
 const styles = StyleSheet.create({

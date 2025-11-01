@@ -110,7 +110,6 @@ export default function ReferralSection({
   </View>
 </View>
 
-
           
           {/* Action Buttons */}
           <View style={styles.actions}>
@@ -135,7 +134,7 @@ export default function ReferralSection({
         </LinearGradient>
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

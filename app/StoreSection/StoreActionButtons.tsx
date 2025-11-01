@@ -26,7 +26,7 @@ import {
 export default function StoreActionButtons({
   storeType,
   onBuyPress,
-  onLockPress, 
+  onLockPress,
   onBookingPress,
   isBuyLoading = false,
   isLockLoading = false,
@@ -34,6 +34,7 @@ export default function StoreActionButtons({
   isBuyDisabled = false,
   isLockDisabled = false,
   isBookingDisabled = false,
+  isLocked = false,
   showBookingButton,
   customBuyText,
   customLockText,
@@ -43,18 +44,19 @@ export default function StoreActionButtons({
   textStyle,
   dynamicData,
 }: StoreActionButtonsProps) {
-  
+
   const { width } = Dimensions.get('window');
   const backgroundColor = useThemeColor({}, 'background');
-  
+
   // Dynamic button text based on product data
-  const dynamicBuyText = customBuyText || 
+  const dynamicBuyText = customBuyText ||
     (dynamicData?.price ? `Buy for ₹${dynamicData.price}` : 'Buy Now');
-  
-  const dynamicLockText = customLockText || 
-    (dynamicData?.availabilityStatus === 'in_stock' ? 'Reserve Item' : 'Lock Price');
-    
-  const dynamicBookingText = customBookingText || 
+
+  const dynamicLockText = isLocked
+    ? 'Already Locked'
+    : (customLockText || (dynamicData?.availabilityStatus === 'in_stock' ? 'Reserve Item' : 'Lock Price'));
+
+  const dynamicBookingText = customBookingText ||
     (storeType === 'SERVICE' ? 'Book Service' : 'Schedule Pickup');
   
   // Component state management
@@ -65,27 +67,27 @@ export default function StoreActionButtons({
   );
 
   // Generate button configurations based on props
-  const buttonConfigs = useMemo(() => 
+  const buttonConfigs = useMemo(() =>
     createButtonConfigs({
       storeType,
       onBuyPress,
       onLockPress,
       onBookingPress,
       isBuyLoading,
-      isLockLoading, 
+      isLockLoading,
       isBookingLoading,
       isBuyDisabled,
-      isLockDisabled,
+      isLockDisabled: isLockDisabled || isLocked, // Disable if already locked
       isBookingDisabled,
       showBookingButton,
       customBuyText: dynamicBuyText,
       customLockText: dynamicLockText,
       customBookingText: dynamicBookingText,
-    }), 
+    }),
     [
       storeType, onBuyPress, onLockPress, onBookingPress,
       isBuyLoading, isLockLoading, isBookingLoading,
-      isBuyDisabled, isLockDisabled, isBookingDisabled,
+      isBuyDisabled, isLockDisabled, isBookingDisabled, isLocked,
       showBookingButton, dynamicBuyText, dynamicLockText, dynamicBookingText
     ]
   );
@@ -120,7 +122,6 @@ export default function StoreActionButtons({
       },
       stateManager
     );
-
     enhancedHandler();
   }, [buttonConfigs, stateManager]);
 
@@ -160,26 +161,30 @@ export default function StoreActionButtons({
           <View style={styles.buttonContent}>
             {/* Loading spinner or icon */}
             {isCurrentlyLoading ? (
-              <ActivityIndicator 
-                size="small" 
-                color="#FFFFFF" 
+              <ActivityIndicator
+                size="small"
+                color="#FFFFFF"
                 style={styles.buttonIcon}
               />
             ) : (
               <Ionicons
-                name={config.iconName as any}
-                size={18}
+                name={(config.id === 'lock' && !config.isEnabled) ? 'lock-closed' : config.iconName as any}
+                size={20}
                 color="#FFFFFF"
                 style={styles.buttonIcon}
               />
             )}
             
             {/* Button text */}
-            <ThemedText style={[
-              styles.buttonText,
-              { color: config.textColor },
-              textStyle,
-            ]}>
+            <ThemedText
+              style={[
+                styles.buttonText,
+                { color: config.textColor },
+                textStyle,
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="clip"
+            >
               {isCurrentlyLoading ? 'Loading...' : config.title}
             </ThemedText>
           </View>
@@ -206,49 +211,56 @@ export default function StoreActionButtons({
     ]}>
       {buttonConfigs.map(renderButton)}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 20,
+    paddingTop: 24,
+    paddingBottom: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonContainer: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 3,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+    height: 56,
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   buttonGradient: {
-    paddingVertical: 14,
+    paddingVertical: 0,
     paddingHorizontal: 16,
-    minHeight: 52,
+    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
+    flex: 1,
   },
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   },
   buttonIcon: {
-    marginRight: 8,
+    marginRight: 2,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.3,
     textAlign: 'center',
+    lineHeight: 20,
+    flexShrink: 0,
   },
 });

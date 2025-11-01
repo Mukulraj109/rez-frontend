@@ -158,7 +158,7 @@ function ProductCard({ recommendation, onPress }: ProductCardProps) {
         )}
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -318,7 +318,7 @@ export default function RecommendationCard({
         </View>
       </ThemedView>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -29,7 +29,7 @@ export interface PromoCode {
   code: string;
   title: string;
   description: string;
-  discountType: 'percentage' | 'fixed' | 'cashback';
+  discountType: 'PERCENTAGE' | 'FIXED' | 'CASHBACK';
   discountValue: number;
   maxDiscount?: number;
   minOrderValue: number;
@@ -51,6 +51,13 @@ export interface CoinSystem {
     conversionRate: number;
     maxUsagePercentage: number;
     promoCode?: string;
+  };
+  storePromoCoin: {
+    available: number;
+    used: number;
+    conversionRate: number; // 1 coin = 1 rupee
+    maxUsagePercentage: number; // Can use up to 30% of order value
+    storeId?: string; // The store these coins are from
   };
 }
 
@@ -206,6 +213,7 @@ export interface PayLaterSectionProps {
 // Hook Return Types
 export interface UseCheckoutReturn {
   state: CheckoutPageState;
+  paybillBalance: number;
   actions: {
     applyPromoCode: (code: PromoCode) => Promise<void>;
     removePromoCode: () => void;
@@ -218,11 +226,15 @@ export interface UseCheckoutReturn {
   };
   handlers: {
     handlePromoCodeApply: (code: string) => void;
-    handleCoinToggle: (coinType: 'wasil' | 'promo', enabled: boolean) => void;
+    handleCoinToggle: (coinType: 'wasil' | 'promo' | 'storePromo', enabled: boolean) => void;
+    handleCustomCoinAmount: (coinType: 'wasil' | 'promo' | 'storePromo', amount: number) => void;
     handlePaymentMethodSelect: (method: PaymentMethod) => void;
     handleProceedToPayment: () => void;
     handleBackNavigation: () => void;
     handleWalletPayment: () => Promise<void>;
+    handlePayBillPayment: () => Promise<void>;
+    handleCODPayment: () => Promise<void>;
+    handleRazorpayPayment: (userInfo?: { name?: string; email?: string; phone?: string }) => Promise<void>;
     removePromoCode: () => void;
     navigateToOtherPaymentMethods: () => void;
   };

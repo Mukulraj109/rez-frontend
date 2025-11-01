@@ -48,7 +48,7 @@ class VideoManager {
 
       video.isPlaying = true;
       this.currentlyPlaying.push(id);
-      console.log(`Video started: ${id}, Currently playing: ${this.currentlyPlaying.length}`);
+
       return true;
     } catch (error) {
       console.warn(`Failed to start video ${id}:`, error);
@@ -64,7 +64,7 @@ class VideoManager {
       await video.ref.setStatusAsync({ shouldPlay: false });
       video.isPlaying = false;
       this.currentlyPlaying = this.currentlyPlaying.filter(playingId => playingId !== id);
-      console.log(`Video stopped: ${id}, Currently playing: ${this.currentlyPlaying.length}`);
+
     } catch (error) {
       console.warn(`Failed to stop video ${id}:`, error);
     }

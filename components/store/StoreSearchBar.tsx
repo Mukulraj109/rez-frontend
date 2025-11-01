@@ -38,7 +38,7 @@ const StoreSearchBar: React.FC<StoreSearchBarProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<any>(null);
   const inputRef = useRef<TextInput>(null);
 
   // Predefined suggestions for quick access
@@ -96,13 +96,13 @@ const StoreSearchBar: React.FC<StoreSearchBarProps> = ({
       const quickMatches = quickSuggestions.filter(suggestion =>
         suggestion.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-
+      
       // Search in location suggestions
       const locationMatches = locationSuggestions.filter(suggestion =>
         suggestion.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (suggestion.description && suggestion.description.toLowerCase().includes(searchQuery.toLowerCase()))
       );
-
+      
       // TODO: Add actual store search API call here
       // const storeResults = await storeSearchService.searchStores(searchQuery);
       

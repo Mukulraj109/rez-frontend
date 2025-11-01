@@ -19,6 +19,9 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedView } from "@/components/ThemedView";
 import { EventItem } from "@/types/homepage.types";
 import { Ionicons } from "@expo/vector-icons";
+import EventBookingModal from "@/components/events/EventBookingModal";
+import { useEventBooking } from "@/hooks/useEventBooking";
+import eventsApiService from "@/services/eventsApi";
 
 interface EventPageProps {
   eventId?: string;
@@ -64,29 +67,39 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
   const [eventData, setEventData] = useState<DynamicEventData | null>(null);
   const [isDynamic, setIsDynamic] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [realEventData, setRealEventData] = useState<EventItem | null>(null);
 
-  // Parse dynamic event data from navigation params
+  // Parse dynamic event data from navigation params and fetch real data
   useEffect(() => {
-    if (params.eventData && params.eventId && params.eventType) {
-      try {
-        const parsedData = JSON.parse(params.eventData as string);
-        setEventData(parsedData);
-        setIsDynamic(true);
-        console.log("🎉 [DYNAMIC EVENT] Loaded event data:", {
-          eventId: params.eventId,
-          eventType: params.eventType,
-          eventName: parsedData.title,
-          isOnline: parsedData.isOnline,
-          fullData: parsedData,
-        });
-      } catch (error) {
-        console.error("❌ [DYNAMIC EVENT] Failed to parse event data:", error);
+    const loadEventData = async () => {
+      if (params.eventData && params.eventId && params.eventType) {
+        try {
+          const parsedData = JSON.parse(params.eventData as string);
+          setEventData(parsedData);
+          setIsDynamic(true);
+
+          // Try to fetch real event data from backend
+          try {
+            const realData = await eventsApiService.getEventById(params.eventId as string);
+            if (realData) {
+              setRealEventData(realData);
+
+            }
+          } catch (error) {
+
+          }
+        } catch (error) {
+          console.error("❌ [DYNAMIC EVENT] Failed to parse event data:", error);
+          setIsDynamic(false);
+        }
+      } else {
+
         setIsDynamic(false);
       }
-    } else {
-      console.log("🎉 [STATIC EVENT] Loading default event page");
-      setIsDynamic(false);
-    }
+    };
+
+    loadEventData();
   }, [params]);
 
   const HORIZONTAL_PADDING = screenData.width < 375 ? 16 : screenData.width > 768 ? 32 : 20;
@@ -110,6 +123,11 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
   const [error, setError] = useState<string | null>(null);
 
   const eventDetails: EventItem = useMemo(() => {
+    // Use real event data if available, otherwise fall back to dynamic or static data
+    if (realEventData) {
+      return realEventData;
+    }
+
     if (isDynamic && eventData) {
       return {
         id: eventData.id,
@@ -149,7 +167,7 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
         registrationRequired: true,
       }
     );
-  }, [initialEvent, eventId, isDynamic, eventData]);
+  }, [initialEvent, eventId, isDynamic, eventData, realEventData]);
 
   const handleSharePress = useCallback(async () => {
     try {
@@ -202,29 +220,13 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
 
   const handleOfflineBooking = useCallback(() => {
     if (eventDetails.isOnline) return;
+    setShowBookingModal(true);
+  }, [eventDetails.isOnline]);
 
-    if (!selectedSlot) {
-      Alert.alert("Select Time Slot", "Please select a time slot to continue with booking.");
-      return;
-    }
-
-    const cartItem = {
-      id: eventDetails.id,
-      name: eventDetails.title,
-      price: eventDetails.price.amount,
-      image: eventDetails.image,
-      category: "events",
-      eventDate: eventDetails.date,
-      eventTime: selectedSlot,
-      location: eventDetails.location,
-    };
-
-    console.log("Adding event to cart:", cartItem);
-    Alert.alert(
-      "Added to Cart",
-      `${eventDetails.title} has been added to your cart for ${eventDetails.date} at ${selectedSlot}.`
-    );
-  }, [eventDetails, selectedSlot]);
+  const handleBookingSuccess = useCallback(() => {
+    setShowBookingModal(false);
+    // Optionally refresh event data to show updated availability
+  }, []);
 
   const handleBackPress = useCallback(() => router.back(), [router]);
 
@@ -477,7 +479,7 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
           loading={isLoading}
           disabled={!!error}
           isOnline={eventDetails.isOnline}
-          price={eventDetails.price}
+          price={{ ...eventDetails.price, isFree: eventDetails.price.isFree ?? false }}
           hasSelectedSlot={!eventDetails.isOnline ? !!selectedSlot : true}
         />
       </View>
@@ -492,6 +494,14 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Event Booking Modal */}
+      <EventBookingModal
+        visible={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        event={eventDetails}
+        onBookingSuccess={handleBookingSuccess}
+      />
     </ThemedView>
   );
 }
@@ -544,7 +554,7 @@ function EventActionButton({
         <Text style={actionStyles.buttonText}>{getButtonText()}</Text>
       </LinearGradient>
     </TouchableOpacity>
-  );
+);
 }
 
 const createStyles = (

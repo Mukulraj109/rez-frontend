@@ -142,7 +142,7 @@ export default function WishlistItem({
         </ThemedText>
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

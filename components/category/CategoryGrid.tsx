@@ -44,7 +44,7 @@ export default function CategoryGrid({
   // Calculate item width based on layout configuration
   const getItemWidth = () => {
     const padding = 16; // Container padding
-    const spacing = layoutConfig.spacing || 12;
+    const spacing = layoutConfig.spacing || 16; // Increased default spacing
     const itemsPerRow = layoutConfig.itemsPerRow || 2;
     
     if (horizontal) {
@@ -85,8 +85,9 @@ export default function CategoryGrid({
         styles.itemContainer,
         {
           width: itemWidth,
-          marginRight: horizontal ? (layoutConfig.spacing || 12) : 0,
-          marginBottom: isLastRow ? 0 : (layoutConfig.spacing || 12),
+          marginRight: horizontal ? (layoutConfig.spacing || 16) : 0,
+          marginBottom: isLastRow ? 0 : (layoutConfig.spacing || 16),
+          marginHorizontal: horizontal ? 0 : 2,
         }
       ]}>
         <CategoryCard
@@ -186,6 +187,10 @@ export default function CategoryGrid({
           layoutConfig.type === 'list' ? (data, index) => ({
             length: 120, // Estimated item height for list items
             offset: 120 * index,
+            index,
+          }) : layoutConfig.type === 'cards' || layoutConfig.type === 'grid' ? (data, index) => ({
+            length: 380 + (layoutConfig.spacing || 16), // Card height + spacing
+            offset: (380 + (layoutConfig.spacing || 16)) * Math.floor(index / (layoutConfig.itemsPerRow || 2)),
             index,
           }) : undefined
         }

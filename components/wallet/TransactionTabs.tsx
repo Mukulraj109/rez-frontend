@@ -53,7 +53,6 @@ export default function TransactionTabs({ tabs, activeTab, onTabPress }: Transac
           </View>
         )}
       </TouchableOpacity>
-    );
   };
 
   return (
@@ -67,7 +66,7 @@ export default function TransactionTabs({ tabs, activeTab, onTabPress }: Transac
         {tabs.map(renderTab)}
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

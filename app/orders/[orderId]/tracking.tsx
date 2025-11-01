@@ -34,7 +34,7 @@ export default function OrderTrackingScreen() {
   useEffect(() => {
     if (statusUpdate) {
       // In production, this would trigger a push notification
-      console.log('Status updated:', statusUpdate);
+
     }
   }, [statusUpdate]);
 
@@ -56,7 +56,7 @@ export default function OrderTrackingScreen() {
           style: 'destructive',
           onPress: async () => {
             // Call cancel order API
-            console.log('Cancelling order:', orderId);
+
             // ordersService.cancelOrder(orderId);
           },
         },
@@ -66,7 +66,7 @@ export default function OrderTrackingScreen() {
 
   const handleContactSupport = () => {
     // Navigate to support page or open chat
-    console.log('Contact support for order:', orderId);
+
   };
 
   if (loading && !order) {

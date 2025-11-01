@@ -114,7 +114,7 @@ export default function MenuItemCard({
 
       {item.dividerAfter && <View style={styles.divider} />}
     </>
-  );
+    );
 }
 
 const styles = StyleSheet.create({

@@ -182,9 +182,25 @@ class ProductsService {
     return apiClient.get('/products/popular-searches', { limit });
   }
 
-  // Track product view
-  async trackProductView(productId: string): Promise<ApiResponse<void>> {
-    return apiClient.post(`/products/${productId}/view`);
+  // Track product view (updated endpoint)
+  async trackProductView(productId: string): Promise<ApiResponse<any>> {
+    return apiClient.post(`/products/${productId}/track-view`);
+  }
+
+  // Get product analytics
+  async getProductAnalytics(productId: string, location?: any): Promise<ApiResponse<any>> {
+    const params = location ? { location: JSON.stringify(location) } : {};
+    return apiClient.get(`/products/${productId}/analytics`, params);
+  }
+
+  // Get frequently bought together products
+  async getFrequentlyBoughtTogether(productId: string, limit: number = 4): Promise<ApiResponse<Product[]>> {
+    return apiClient.get(`/products/${productId}/frequently-bought`, { limit });
+  }
+
+  // Get bundle products
+  async getBundleProducts(productId: string): Promise<ApiResponse<any>> {
+    return apiClient.get(`/products/${productId}/bundles`);
   }
 
   // Get product availability
@@ -206,17 +222,10 @@ class ProductsService {
    */
   async getFeaturedForHomepage(limit: number = 10): Promise<RecommendationItem[]> {
     try {
-      console.log('🚀 [PRODUCTS API] Fetching featured products from backend...');
+
       const response = await apiClient.get('/products/featured', { limit });
 
-      console.log('📡 [PRODUCTS API] Backend response:', {
-        success: response.success,
-        dataLength: response.data?.length,
-        message: response.message
-      });
-
       if (response.success && response.data && Array.isArray(response.data)) {
-        console.log('✅ [PRODUCTS API] Processing featured products:', response.data.length, 'items');
 
         const recommendations = response.data.map((product: any) => ({
           ...product,
@@ -225,7 +234,6 @@ class ProductsService {
           personalizedFor: this.determinePersonalization(product)
         }));
 
-        console.log('🎯 [PRODUCTS API] Returning', recommendations.length, 'formatted recommendations');
         return recommendations;
       }
 
@@ -243,18 +251,11 @@ class ProductsService {
    */
   async getNewArrivalsForHomepage(limit: number = 10): Promise<ProductItem[]> {
     try {
-      console.log('🚀 [PRODUCTS API] Fetching new arrivals from backend...');
+
       const response = await apiClient.get('/products/new-arrivals', { limit });
 
-      console.log('📡 [PRODUCTS API] New arrivals response:', {
-        success: response.success,
-        dataLength: response.data?.length,
-        message: response.message
-      });
-
       if (response.success && response.data && Array.isArray(response.data)) {
-        console.log('✅ [PRODUCTS API] Processing new arrivals:', response.data.length, 'items');
-        console.log('🎯 [PRODUCTS API] Returning', response.data.length, 'new arrivals');
+
         return response.data;
       }
 
@@ -295,7 +296,7 @@ class ProductsService {
       const cleanParams = Object.fromEntries(
         Object.entries(queryParams).filter(([_, v]) => v !== undefined)
       );
-
+      
       const response = await apiClient.get(`/products/store/${storeId}`, cleanParams);
       
       if (response.success && response.data) {
@@ -322,7 +323,7 @@ class ProductsService {
         return null;
       }
       
-      const response = await apiClient.get(`/products/${productId}`);
+      const response = await apiClient.get<ProductItem & { similarProducts?: ProductItem[] }>(`/products/${productId}`);
       
       if (response.success && response.data) {
         return response.data;
@@ -331,7 +332,7 @@ class ProductsService {
       throw new Error(response.message || 'Failed to fetch product details');
     } catch (error) {
       // Don't log errors for invalid IDs to avoid spam
-      if (error.message?.includes('Invalid MongoDB ObjectId')) {
+      if ((error as any).message?.includes('Invalid MongoDB ObjectId')) {
         console.warn(`⚠️ Skipping invalid product ID: ${productId}`);
       } else {
         console.error('❌ Error fetching product details:', error);
@@ -345,13 +346,12 @@ class ProductsService {
    */
   async isBackendAvailable(): Promise<boolean> {
     try {
-      console.log('🔍 [PRODUCTS API] Checking backend availability...');
 
       // Try to make a simple API call to check connectivity
       const response = await apiClient.get('/products/featured', { limit: 1 });
 
       if (response.success) {
-        console.log('✅ [PRODUCTS API] Backend is available and responding');
+
         return true;
       } else {
         console.warn('⚠️ [PRODUCTS API] Backend responded but with error:', response.message);

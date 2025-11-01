@@ -51,7 +51,7 @@ export function useCartValidation(
     lastValidated: null,
   });
 
-  const validationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const validationTimerRef = useRef<any>(null);
   const isValidatingRef = useRef(false);
 
   /**
@@ -59,12 +59,12 @@ export function useCartValidation(
    */
   const validateCart = useCallback(async (): Promise<ValidationResult | null> => {
     if (isValidatingRef.current) {
-      console.log('⚠️ [VALIDATION HOOK] Validation already in progress, skipping...');
+
       return validationState.validationResult;
     }
 
     if (cartState.items.length === 0) {
-      console.log('ℹ️ [VALIDATION HOOK] Cart is empty, skipping validation');
+
       return null;
     }
 
@@ -76,19 +76,10 @@ export function useCartValidation(
         error: null,
       }));
 
-      console.log('✅ [VALIDATION HOOK] Validating cart with', cartState.items.length, 'items');
-
       const response = await cartValidationService.validateCart();
 
       if (response.success && response.data) {
         const result = cartValidationService.transformValidationResponse(response.data);
-
-        console.log('✅ [VALIDATION HOOK] Validation completed:', {
-          valid: result.valid,
-          canCheckout: result.canCheckout,
-          issueCount: result.issues.length,
-          invalidItemCount: result.invalidItems.length,
-        });
 
         setValidationState({
           isValidating: false,
@@ -131,7 +122,7 @@ export function useCartValidation(
    * Clear validation state
    */
   const clearValidation = useCallback(() => {
-    console.log('🗑️ [VALIDATION HOOK] Clearing validation state');
+
     setValidationState({
       isValidating: false,
       validationResult: null,
@@ -145,19 +136,18 @@ export function useCartValidation(
    */
   const removeInvalidItems = useCallback(async () => {
     if (!validationState.validationResult) {
-      console.log('⚠️ [VALIDATION HOOK] No validation result available');
+
       return;
     }
 
     const invalidItems = validationState.validationResult.invalidItems;
 
     if (invalidItems.length === 0) {
-      console.log('ℹ️ [VALIDATION HOOK] No invalid items to remove');
+
       return;
     }
 
     try {
-      console.log('🗑️ [VALIDATION HOOK] Removing', invalidItems.length, 'invalid items');
 
       // Remove each invalid item
       for (const invalidItem of invalidItems) {
@@ -174,7 +164,6 @@ export function useCartValidation(
         );
       }
 
-      console.log('✅ [VALIDATION HOOK] Invalid items removed successfully');
     } catch (error) {
       console.error('❌ [VALIDATION HOOK] Error removing invalid items:', error);
 
@@ -195,7 +184,6 @@ export function useCartValidation(
     const invalidItem = validationState.validationResult.invalidItems.find(
       item => item.itemId === itemId
     );
-
     return !invalidItem;
   }, [validationState.validationResult]);
 
@@ -218,7 +206,7 @@ export function useCartValidation(
         : `${warningIssues.length} items have low stock`;
 
       // Don't show alert for warnings, just log
-      console.log('⚠️ [VALIDATION HOOK] Warnings:', message);
+
     }
   }, []);
 
@@ -227,7 +215,6 @@ export function useCartValidation(
    */
   useEffect(() => {
     if (autoValidate && cartState.items.length > 0) {
-      console.log('🔄 [VALIDATION HOOK] Cart changed, auto-validating...');
 
       // Debounce validation to avoid excessive API calls
       const timeoutId = setTimeout(() => {
@@ -243,10 +230,9 @@ export function useCartValidation(
    */
   useEffect(() => {
     if (validationInterval > 0 && cartState.items.length > 0) {
-      console.log('⏰ [VALIDATION HOOK] Starting periodic validation every', validationInterval, 'ms');
 
       validationTimerRef.current = setInterval(() => {
-        console.log('🔄 [VALIDATION HOOK] Periodic validation triggered');
+
         validateCart();
       }, validationInterval);
 

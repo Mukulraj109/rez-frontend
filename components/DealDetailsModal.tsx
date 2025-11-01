@@ -283,7 +283,7 @@ export default function DealDetailsModal({ visible, onClose, deal }: DealDetails
         </View>
       </TouchableWithoutFeedback>
     </Modal>
-  );
+);
 }
 
 const createStyles = (screenData: { width: number; height: number }) => {

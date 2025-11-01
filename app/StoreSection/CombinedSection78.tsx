@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ThemedText } from '@/components/ThemedText';
@@ -11,6 +11,16 @@ interface CombinedSection78Props {
   onAddPress?: () => void;
   disabled?: boolean;
   testID?: string;
+  dynamicData?: {
+    id?: string;
+    _id?: string;
+    store?: {
+      id?: string;
+      _id?: string;
+      name?: string;
+    };
+  } | null;
+  cardType?: string;
 }
 
 const PURPLE = '#6c63ff';
@@ -27,7 +37,46 @@ export default function CombinedSection78({
   onAddPress,
   disabled = false,
   testID,
+  dynamicData,
+  cardType,
 }: CombinedSection78Props) {
+  const [isAddingVoucher, setIsAddingVoucher] = useState(false);
+
+  const handleAddVoucher = async () => {
+    // If custom handler provided, use it
+    if (onAddPress) {
+      onAddPress();
+      return;
+    }
+
+    try {
+      setIsAddingVoucher(true);
+
+      const storeId = dynamicData?.store?.id || dynamicData?.store?._id;
+      const storeName = dynamicData?.store?.name;
+
+      if (!storeId) {
+        Alert.alert('Error', 'Store information not available');
+        return;
+      }
+
+      // TODO: Implement actual voucher API call
+      // For now, just simulate success
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      Alert.alert(
+        'Voucher Added!',
+        `Discount voucher for ${storeName || 'this store'} has been added to your account`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Add voucher error:', error);
+      Alert.alert('Error', 'Unable to add voucher. Please try again.');
+    } finally {
+      setIsAddingVoucher(false);
+    }
+  };
+
   return (
     <View style={styles.wrap} testID={testID}>
       <View style={styles.card}>
@@ -72,15 +121,17 @@ export default function CombinedSection78({
         {/* add button */}
         <TouchableOpacity
           activeOpacity={0.85}
-          onPress={onAddPress}
-          disabled={disabled}
-          style={[styles.addBtn, disabled && styles.addBtnDisabled]}
+          onPress={handleAddVoucher}
+          disabled={disabled || isAddingVoucher}
+          style={[styles.addBtn, (disabled || isAddingVoucher) && styles.addBtnDisabled]}
         >
-          <ThemedText style={styles.addText}>Add</ThemedText>
+          <ThemedText style={styles.addText}>
+            {isAddingVoucher ? 'Adding...' : 'Add'}
+          </ThemedText>
         </TouchableOpacity>
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

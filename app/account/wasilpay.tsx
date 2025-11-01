@@ -21,6 +21,8 @@ import { useRouter, Stack } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ACCOUNT_COLORS } from '@/types/account.types';
 import { useWallet } from '@/hooks/useWallet';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
+import { HeaderBackButton } from '@/components/navigation/SafeBackButton';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import walletApi, { TransactionResponse } from '@/services/walletApi';
 import TopupModal from '@/components/wallet/TopupModal';
@@ -317,15 +319,21 @@ export default function RezPaySettingsScreen() {
   };
 
   const handleLimitEdit = (type: string, currentLimit: number) => {
+    // TODO: Update transaction limits via backend API
     Alert.alert(
       `Edit ${type} Limit`,
       `Current limit: ₹${currentLimit.toLocaleString()}`,
       [
-        { text: 'Cancel' },
-        { text: 'Edit', onPress: () => console.log(`Edit ${type} limit`) }
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Edit', 
+          onPress: () => {
+            // Navigate to limit edit screen or show input modal
+            console.log(`Editing ${type} limit:`, currentLimit);
+          }
+        }
       ]
     );
-    // TODO: Update transaction limits via backend API
   };
 
   const handleAddPaymentMethod = () => {

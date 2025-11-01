@@ -11,7 +11,6 @@ export default function BlurTabBarBackground() {
       intensity={100}
       style={StyleSheet.absoluteFill}
     />
-  );
 }
 
 export function useBottomTabOverflow() {

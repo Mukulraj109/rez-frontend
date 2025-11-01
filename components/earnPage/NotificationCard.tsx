@@ -72,7 +72,7 @@ export default function NotificationCard({
         </View>
       )}
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

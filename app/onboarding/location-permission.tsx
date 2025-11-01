@@ -15,12 +15,6 @@ export default function LocationPermissionScreen() {
   const [permissionRequested, setPermissionRequested] = useState(false);
 
   const requestLocationPermission = async () => {
-    console.log('[Location Permission] Starting location permission request...', {
-      permissionRequested,
-      isRequesting,
-      userIsOnboarded: authState.user?.isOnboarded,
-      userId: authState.user?.id
-    });
 
     if (permissionRequested || isRequesting) return;
 
@@ -29,10 +23,9 @@ export default function LocationPermissionScreen() {
 
     try {
       // Request location permission using our context
-      console.log('[Location Permission] Requesting permission...');
+
       const granted = await requestPermission();
-      console.log('[Location Permission] Permission result:', granted);
-      
+
       if (!granted) {
         Alert.alert(
           'Location Permission Required',
@@ -56,19 +49,14 @@ export default function LocationPermissionScreen() {
       });
 
       // Check if user is already onboarded (coming from login)
-      console.log('[Location Permission] Navigation decision - checking user status:', {
-        isOnboarded: authState.user?.isOnboarded,
-        userId: authState.user?.id,
-        hasUser: !!authState.user
-      });
 
       if (authState.user?.isOnboarded) {
-        console.log('[Location Permission] ✅ User is already onboarded, going to main app');
+
         navigationDebugger.logNavigation('location-permission', '(tabs)', 'location-granted-onboarded-user');
         router.replace('/(tabs)');
       } else {
         // Navigate to loading screen for new users
-        console.log('[Location Permission] ✅ New user, continuing onboarding flow');
+
         navigationDebugger.logNavigation('location-permission', 'loading', 'location-granted');
         router.push('/onboarding/loading');
       }
@@ -135,7 +123,7 @@ export default function LocationPermissionScreen() {
         </TouchableOpacity>
       </View>
     </OnboardingContainer>
-  );
+);
 }
 
 const styles = StyleSheet.create({

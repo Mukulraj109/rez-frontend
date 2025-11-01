@@ -40,6 +40,8 @@ export default function ProfileMenuModal({
   const router = useRouter();
   const { actions } = useAuth();
 
+  // Debug logs removed for production
+
   useEffect(() => {
     if (visible) {
       // Slide in from right
@@ -60,37 +62,33 @@ export default function ProfileMenuModal({
   }, [visible]);
 
   const performLogout = async () => {
-    console.log('🔓 [LOGOUT] Starting logout process...');
-    
+
     try {
       // Step 1: Close modal immediately
       onClose();
-      console.log('🔓 [LOGOUT] Modal closed');
-      
+
       // Step 2: Clear auth state properly
-      console.log('🔓 [LOGOUT] Clearing auth state...');
+
       await actions.logout(); // Use proper async logout
-      console.log('✅ [LOGOUT] Auth state cleared');
-      
+
       // Step 3: Navigate directly to sign-in page
-      console.log('🔓 [LOGOUT] Attempting navigation to sign-in...');
-      
+
       // Navigate directly to sign-in page
       try {
         router.replace('/sign-in');
-        console.log('✅ [LOGOUT] Router navigation to sign-in initiated');
+
       } catch (routerError) {
         console.warn('⚠️ [LOGOUT] Router failed, trying fallback:', routerError);
         
         // Fallback for web
         if (typeof window !== 'undefined') {
-          console.log('🌐 [LOGOUT] Using window.location fallback');
+
           window.location.href = '/sign-in';
         } else {
           // Try router.push as fallback for mobile
           try {
             router.push('/sign-in');
-            console.log('✅ [LOGOUT] Router.push fallback worked');
+
           } catch (pushError) {
             console.error('❌ [LOGOUT] All navigation methods failed:', pushError);
             throw new Error('Navigation failed');
@@ -121,11 +119,10 @@ export default function ProfileMenuModal({
   };
 
   const handleLogout = () => {
-    console.log('🔴 [LOGOUT BUTTON] Logout button clicked!');
-    
+
     // For web, skip Alert.alert and go directly to logout
     if (typeof window !== 'undefined') {
-      console.log('🌐 [WEB] Skipping alert, performing logout directly...');
+
       performLogout();
       return;
     }
@@ -139,14 +136,14 @@ export default function ProfileMenuModal({
           text: 'Cancel',
           style: 'cancel',
           onPress: () => {
-            console.log('🔴 [LOGOUT BUTTON] Logout cancelled');
+
           }
         },
         {
           text: 'Logout',
           style: 'destructive',
           onPress: () => {
-            console.log('🔓 [LOGOUT] Logout confirmed via alert');
+
             performLogout();
           },
         },
@@ -262,7 +259,7 @@ export default function ProfileMenuModal({
         </Animated.View>
       </TouchableOpacity>
     </Modal>
-  );
+);
 }
 
 const styles = StyleSheet.create({

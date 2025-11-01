@@ -18,6 +18,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
+import { useSecurity } from '@/contexts/SecurityContext';
+import { useAppPreferences } from '@/contexts/AppPreferencesContext';
 import userSettingsApi from '@/services/userSettingsApi';
 
 interface UserSettings {
@@ -29,7 +32,6 @@ interface UserSettings {
     timezone: string;
     dateFormat: string;
     timeFormat: '12h' | '24h';
-    theme: 'light' | 'dark' | 'auto';
   };
   notifications: {
     push: { enabled: boolean };
@@ -53,7 +55,11 @@ interface UserSettings {
 
 export default function AccountProfilePage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { state } = useAuth();
+  const user = state.user;
+  const { settings: notificationSettings, updateSettings: updateNotificationSettings } = useNotifications();
+  const { securitySettings, privacySettings, updateSecuritySettings, updatePrivacySettings } = useSecurity();
+  const { preferences: appPreferences, updatePreferences: updateAppPreferences } = useAppPreferences();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,14 +111,21 @@ export default function AccountProfilePage() {
 
       const updateData = buildNestedObject(keys, value);
 
+      // Handle notification settings through global context
+      if (keys[0] === 'notifications') {
+        const success = await updateNotificationSettings(updateData.notifications);
+        if (!success) {
+          await loadSettings();
+          Alert.alert('Error', 'Failed to update notification setting');
+        }
+        return;
+      }
+
       // API update - use specific endpoint based on top-level key
       let response;
       const topLevelKey = keys[0];
 
       switch (topLevelKey) {
-        case 'notifications':
-          response = await userSettingsApi.updateNotificationPreferences(updateData.notifications);
-          break;
         case 'privacy':
           response = await userSettingsApi.updatePrivacySettings(updateData.privacy);
           break;
@@ -173,7 +186,7 @@ export default function AccountProfilePage() {
 
           <TouchableOpacity
             style={styles.editButton}
-            onPress={() => router.push('/profile/edit')}
+            onPress={() => router.push('/profile/edit' as any)}
           >
             <Ionicons name="create-outline" size={22} color="white" />
           </TouchableOpacity>
@@ -216,7 +229,7 @@ export default function AccountProfilePage() {
           <View style={styles.settingsCard}>
             <TouchableOpacity
               style={styles.settingItem}
-              onPress={() => handleNavigateToSetting('/account/settings')}
+              onPress={() => handleNavigateToSetting('/account/language')}
             >
               <View style={styles.settingIcon}>
                 <Ionicons name="language" size={20} color="#8B5CF6" />
@@ -230,24 +243,6 @@ export default function AccountProfilePage() {
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </TouchableOpacity>
 
-            <View style={styles.divider} />
-
-            <TouchableOpacity style={styles.settingItem}>
-              <View style={styles.settingIcon}>
-                <Ionicons name={
-                  settings?.general.theme === 'dark' ? 'moon' :
-                  settings?.general.theme === 'light' ? 'sunny' : 'contrast'
-                } size={20} color="#8B5CF6" />
-              </View>
-              <View style={styles.settingInfo}>
-                <ThemedText style={styles.settingTitle}>Theme</ThemedText>
-                <ThemedText style={styles.settingValue}>
-                  {settings?.general.theme === 'auto' ? 'Auto' :
-                   settings?.general.theme === 'dark' ? 'Dark' : 'Light'}
-                </ThemedText>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -267,10 +262,10 @@ export default function AccountProfilePage() {
                 </ThemedText>
               </View>
               <Switch
-                value={settings?.notifications.push.enabled}
+                value={notificationSettings?.push.enabled || false}
                 onValueChange={(value) => handleToggleSetting('notifications.push.enabled', value)}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
-                thumbColor={settings?.notifications.push.enabled ? '#8B5CF6' : '#F3F4F6'}
+                thumbColor={notificationSettings?.push.enabled ? '#8B5CF6' : '#F3F4F6'}
               />
             </View>
 
@@ -287,10 +282,10 @@ export default function AccountProfilePage() {
                 </ThemedText>
               </View>
               <Switch
-                value={settings?.notifications.email.enabled}
+                value={notificationSettings?.email.enabled || false}
                 onValueChange={(value) => handleToggleSetting('notifications.email.enabled', value)}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
-                thumbColor={settings?.notifications.email.enabled ? '#8B5CF6' : '#F3F4F6'}
+                thumbColor={notificationSettings?.email.enabled ? '#8B5CF6' : '#F3F4F6'}
               />
             </View>
 
@@ -307,10 +302,10 @@ export default function AccountProfilePage() {
                 </ThemedText>
               </View>
               <Switch
-                value={settings?.notifications.sms.enabled}
+                value={notificationSettings?.sms.enabled || false}
                 onValueChange={(value) => handleToggleSetting('notifications.sms.enabled', value)}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
-                thumbColor={settings?.notifications.sms.enabled ? '#8B5CF6' : '#F3F4F6'}
+                thumbColor={notificationSettings?.sms.enabled ? '#8B5CF6' : '#F3F4F6'}
               />
             </View>
           </View>
@@ -321,14 +316,17 @@ export default function AccountProfilePage() {
           <ThemedText style={styles.sectionTitle}>Privacy & Security</ThemedText>
 
           <View style={styles.settingsCard}>
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={() => router.push('/account/profile-visibility' as any)}
+            >
               <View style={styles.settingIcon}>
                 <Ionicons name="eye" size={20} color="#8B5CF6" />
               </View>
               <View style={styles.settingInfo}>
                 <ThemedText style={styles.settingTitle}>Profile Visibility</ThemedText>
                 <ThemedText style={styles.settingValue}>
-                  {settings?.privacy.profileVisibility}
+                  {privacySettings?.profileVisibility || 'FRIENDS'}
                 </ThemedText>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
@@ -336,7 +334,10 @@ export default function AccountProfilePage() {
 
             <View style={styles.divider} />
 
-            <View style={styles.settingItem}>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={() => router.push('/account/two-factor-auth' as any)}
+            >
               <View style={styles.settingIcon}>
                 <Ionicons name="shield-checkmark" size={20} color="#8B5CF6" />
               </View>
@@ -346,13 +347,13 @@ export default function AccountProfilePage() {
                   Extra security for your account
                 </ThemedText>
               </View>
-              <Switch
-                value={settings?.security.twoFactorAuth.enabled}
-                onValueChange={(value) => handleToggleSetting('security.twoFactorAuth.enabled', value)}
-                trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
-                thumbColor={settings?.security.twoFactorAuth.enabled ? '#8B5CF6' : '#F3F4F6'}
-              />
-            </View>
+              <View style={styles.settingStatus}>
+                <ThemedText style={styles.settingValue}>
+                  {securitySettings?.twoFactorAuth.enabled ? 'Enabled' : 'Disabled'}
+                </ThemedText>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </View>
+            </TouchableOpacity>
 
             <View style={styles.divider} />
 
@@ -367,10 +368,21 @@ export default function AccountProfilePage() {
                 </ThemedText>
               </View>
               <Switch
-                value={settings?.security.biometric.fingerprintEnabled || settings?.security.biometric.faceIdEnabled}
-                onValueChange={(value) => handleToggleSetting('security.biometric.fingerprintEnabled', value)}
+                value={securitySettings?.biometric.fingerprintEnabled || securitySettings?.biometric.faceIdEnabled || false}
+                onValueChange={async (value) => {
+                  const success = await updateSecuritySettings({
+                    biometric: {
+                      ...securitySettings?.biometric,
+                      fingerprintEnabled: value,
+                      faceIdEnabled: value,
+                    }
+                  });
+                  if (!success) {
+                    Alert.alert('Error', 'Failed to update biometric settings');
+                  }
+                }}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
-                thumbColor={settings?.security.biometric.fingerprintEnabled ? '#8B5CF6' : '#F3F4F6'}
+                thumbColor={securitySettings?.biometric.fingerprintEnabled ? '#8B5CF6' : '#F3F4F6'}
               />
             </View>
           </View>
@@ -392,10 +404,15 @@ export default function AccountProfilePage() {
                 </ThemedText>
               </View>
               <Switch
-                value={settings?.preferences.animations}
-                onValueChange={(value) => handleToggleSetting('preferences.animations', value)}
+                value={appPreferences?.animations || false}
+                onValueChange={async (value) => {
+                  const success = await updateAppPreferences({ animations: value });
+                  if (!success) {
+                    Alert.alert('Error', 'Failed to update animations setting');
+                  }
+                }}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
-                thumbColor={settings?.preferences.animations ? '#8B5CF6' : '#F3F4F6'}
+                thumbColor={appPreferences?.animations ? '#8B5CF6' : '#F3F4F6'}
               />
             </View>
 
@@ -412,10 +429,15 @@ export default function AccountProfilePage() {
                 </ThemedText>
               </View>
               <Switch
-                value={settings?.preferences.sounds}
-                onValueChange={(value) => handleToggleSetting('preferences.sounds', value)}
+                value={appPreferences?.sounds || false}
+                onValueChange={async (value) => {
+                  const success = await updateAppPreferences({ sounds: value });
+                  if (!success) {
+                    Alert.alert('Error', 'Failed to update sounds setting');
+                  }
+                }}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
-                thumbColor={settings?.preferences.sounds ? '#8B5CF6' : '#F3F4F6'}
+                thumbColor={appPreferences?.sounds ? '#8B5CF6' : '#F3F4F6'}
               />
             </View>
 
@@ -432,10 +454,15 @@ export default function AccountProfilePage() {
                 </ThemedText>
               </View>
               <Switch
-                value={settings?.preferences.hapticFeedback}
-                onValueChange={(value) => handleToggleSetting('preferences.hapticFeedback', value)}
+                value={appPreferences?.hapticFeedback || false}
+                onValueChange={async (value) => {
+                  const success = await updateAppPreferences({ hapticFeedback: value });
+                  if (!success) {
+                    Alert.alert('Error', 'Failed to update haptic feedback setting');
+                  }
+                }}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
-                thumbColor={settings?.preferences.hapticFeedback ? '#8B5CF6' : '#F3F4F6'}
+                thumbColor={appPreferences?.hapticFeedback ? '#8B5CF6' : '#F3F4F6'}
               />
             </View>
           </View>
@@ -448,7 +475,7 @@ export default function AccountProfilePage() {
           <View style={styles.settingsCard}>
             <TouchableOpacity
               style={styles.settingItem}
-              onPress={() => router.push('/profile/edit')}
+              onPress={() => router.push('/profile/edit' as any)}
             >
               <View style={styles.settingIcon}>
                 <Ionicons name="person" size={20} color="#8B5CF6" />
@@ -466,7 +493,7 @@ export default function AccountProfilePage() {
 
             <TouchableOpacity
               style={styles.settingItem}
-              onPress={() => Alert.alert('Change Password', 'Redirect to change password')}
+              onPress={() => router.push('/account/change-password' as any)}
             >
               <View style={styles.settingIcon}>
                 <Ionicons name="key" size={20} color="#8B5CF6" />
@@ -484,10 +511,7 @@ export default function AccountProfilePage() {
 
             <TouchableOpacity
               style={styles.settingItem}
-              onPress={() => Alert.alert('Delete Account', 'Are you sure?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive' }
-              ])}
+              onPress={() => router.push('/account/delete-account' as any)}
             >
               <View style={[styles.settingIcon, { backgroundColor: '#FEE2E2' }]}>
                 <Ionicons name="trash" size={20} color="#EF4444" />
@@ -508,7 +532,7 @@ export default function AccountProfilePage() {
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -652,6 +676,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8B5CF6',
     fontWeight: '500',
+  },
+  settingStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   divider: {
     height: 1,

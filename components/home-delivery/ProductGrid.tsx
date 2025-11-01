@@ -20,8 +20,9 @@ export function ProductGrid({
   onLoadMore,
   hasMore,
   numColumns = 2,
+  showHeader = true,
 }: ProductGridProps) {
-  const cardWidth = (width - 60) / numColumns; // Account for padding and gaps
+  const cardWidth = (width - 64) / numColumns; // Account for padding and gaps
 
   const renderProductCard = ({ item }: { item: HomeDeliveryProduct }) => (
     <View style={[styles.cardContainer, { width: cardWidth }]}>
@@ -55,7 +56,7 @@ export function ProductGrid({
   };
 
   const renderHeader = () => {
-    if (products.length === 0) return null;
+    if (!showHeader || products.length === 0) return null;
     
     return (
       <View style={styles.headerContainer}>
@@ -106,7 +107,7 @@ export function ProductGrid({
         initialNumToRender={8}
       />
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -123,14 +124,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardContainer: {
-    marginVertical: 6,
+    marginVertical: 8,
+    marginHorizontal: 4,
   },
   row: {
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 16,
   },
   separator: {
-    height: 8,
+    height: 12,
   },
   headerContainer: {
     paddingVertical: 12,

@@ -4,6 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import wishlistApi from '@/services/wishlistApi';
 import { useSocket } from '@/contexts/SocketContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface WishlistItem {
   id: string;
@@ -51,10 +52,18 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { subscribeToProduct, onStockUpdate, onProductAvailability } = useSocket();
+  const { state: authState } = useAuth();
 
+  // Only load wishlist when user is authenticated and not loading
   useEffect(() => {
-    loadWishlist();
-  }, []);
+    if (!authState.isLoading && authState.isAuthenticated && authState.user) {
+      loadWishlist();
+    } else if (!authState.isLoading && !authState.isAuthenticated) {
+      // User is not authenticated, clear wishlist and stop loading
+      setWishlistItems([]);
+      setIsLoading(false);
+    }
+  }, [authState.isLoading, authState.isAuthenticated, authState.user]);
 
   // Subscribe to stock updates for all wishlist items
   useEffect(() => {
@@ -110,12 +119,14 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
       setIsLoading(true);
       setError(null);
 
+      // Small delay to ensure token is properly set in API client
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       // Get user's wishlists from backend
       const response = await wishlistApi.getWishlists(1, 50);
 
       // If unauthorized (401), silently skip - user may not be logged in
       if (!response || !response.success) {
-        console.log('ℹ️ [WISHLIST] Could not load wishlist (user may not be authenticated)');
         setWishlistItems([]);
         setIsLoading(false);
         return;
@@ -174,7 +185,7 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
       // Don't show errors for authentication issues (401) - user may not be logged in
       const errorMessage = err instanceof Error ? err.message : String(err);
       if (errorMessage.includes('401') || errorMessage.includes('Access token')) {
-        console.log('ℹ️ [WISHLIST] Wishlist requires authentication');
+
         setWishlistItems([]);
       } else {
         setError('Failed to load wishlist');
@@ -203,7 +214,7 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
       let wishlistId: string | undefined;
 
       if (wishlistsResponse.data && wishlistsResponse.data.wishlists && wishlistsResponse.data.wishlists.length > 0) {
-        wishlistId = wishlistsResponse.data.wishlists[0].id || wishlistsResponse.data.wishlists[0]._id;
+        wishlistId = wishlistsResponse.data.wishlists[0].id || (wishlistsResponse.data.wishlists[0] as any)._id;
       } else {
         // Create a default wishlist if none exists
         const newWishlistResponse = await wishlistApi.createWishlist({
@@ -211,7 +222,7 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
           description: 'Default wishlist',
           isPublic: false
         });
-        wishlistId = newWishlistResponse.data?.id || newWishlistResponse.data?._id;
+        wishlistId = newWishlistResponse.data?.id || (newWishlistResponse.data as any)?._id;
       }
 
       if (!wishlistId) {
@@ -220,7 +231,7 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
 
       // Add item to backend wishlist using the correct endpoint
       const response = await wishlistApi.addToWishlist({
-        itemType: 'Product',
+        itemType: 'product',
         itemId: item.productId,
         wishlistId,
         notes: `Added ${item.productName}`,
@@ -257,7 +268,7 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
         throw new Error('Wishlist not found');
       }
 
-      const wishlistId = wishlistsResponse.data.wishlists[0].id || wishlistsResponse.data.wishlists[0]._id;
+      const wishlistId = wishlistsResponse.data.wishlists[0].id || (wishlistsResponse.data.wishlists[0] as any)._id;
 
       // Remove from backend using the correct endpoint: DELETE /wishlist/:wishlistId/items/:itemId
       await wishlistApi.removeFromWishlist(itemToRemove.id);

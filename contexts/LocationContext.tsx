@@ -85,7 +85,6 @@ export function LocationProvider({ children }: LocationProviderProps) {
   }, []);
 
   const initializeLocation = async () => {
-    console.log('🚀 LocationContext: Starting location initialization...');
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       
@@ -93,52 +92,39 @@ export function LocationProvider({ children }: LocationProviderProps) {
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Location initialization timeout')), 10000)
       );
-      
       const initPromise = async () => {
-        console.log('📍 LocationContext: Checking permission status...');
         // Check permission status
         const permission = await locationService.getLocationPermissionStatus();
-        console.log('📍 LocationContext: Permission status:', permission);
         dispatch({ type: 'SET_PERMISSION_STATUS', payload: permission });
-        
-        console.log('📍 LocationContext: Checking cached location...');
         // Try to get cached location
         const cachedLocation = await locationService.getCachedLocation();
-        console.log('📍 LocationContext: Cached location:', cachedLocation);
-        
         if (cachedLocation && locationService.isLocationFresh(cachedLocation)) {
-          console.log('📍 LocationContext: Using cached location');
           dispatch({ type: 'SET_CURRENT_LOCATION', payload: cachedLocation });
         } else if (permission.status === 'granted') {
-          console.log('📍 LocationContext: Permission granted, trying to get location...');
           try {
             // Try to get current location from server first
             const serverLocation = await locationService.getCurrentUserLocation();
-            console.log('📍 LocationContext: Server location:', serverLocation);
             if (serverLocation) {
               dispatch({ type: 'SET_CURRENT_LOCATION', payload: serverLocation });
             }
           } catch (serverError) {
-            console.log('📍 LocationContext: Server location failed (user might not be authenticated), trying GPS...');
+            console.log('Server location failed, trying GPS...');
             try {
               // Fallback to GPS location
               const coordinates = await locationService.getCurrentLocation();
               const geocodedLocation = await locationService.reverseGeocode(coordinates);
-              const userLocation = {
+              const userLocation: UserLocation = {
                 coordinates,
-                address: geocodedLocation.address,
-                timezone: geocodedLocation.timezone,
+                address: geocodedLocation,
                 lastUpdated: new Date(),
                 source: 'gps' as const,
               };
               await locationService.cacheLocation(userLocation);
               dispatch({ type: 'SET_CURRENT_LOCATION', payload: userLocation });
             } catch (gpsError) {
-              console.log('📍 LocationContext: GPS location also failed, will use default location');
             }
           }
         } else {
-          console.log('📍 LocationContext: Permission not granted, will use default location');
         }
       };
       
@@ -148,21 +134,22 @@ export function LocationProvider({ children }: LocationProviderProps) {
     } catch (error) {
       console.error('❌ LocationContext: Location initialization error:', error);
       // Set a default location if initialization fails
-      const defaultLocation = {
+      const defaultLocation: UserLocation = {
         coordinates: {
           latitude: 12.9716,
           longitude: 77.5946,
         },
         address: {
+          address: 'Bangalore, Karnataka, India',
           city: 'Bangalore',
           state: 'Karnataka',
           country: 'India',
           pincode: '560001',
+          formattedAddress: 'Bangalore, Karnataka 560001, India',
         },
         lastUpdated: new Date(),
-        source: 'default' as const,
+        source: 'gps' as const,
       };
-      console.log('📍 LocationContext: Setting default location:', defaultLocation);
       dispatch({ type: 'SET_CURRENT_LOCATION', payload: defaultLocation });
       dispatch({ type: 'SET_ERROR', payload: null });
     }
@@ -246,19 +233,13 @@ export function LocationProvider({ children }: LocationProviderProps) {
       if (permission.status === 'granted') {
         // Try to get current location after permission is granted
         try {
-          console.log('📍 LocationContext: Getting current location after permission granted...');
           const coordinates = await locationService.getCurrentLocation();
-          console.log('📍 LocationContext: Got coordinates:', coordinates);
-          
           // Try to get address from coordinates using geocoding
           const geocodedLocation = await locationService.reverseGeocode(coordinates);
-          console.log('📍 LocationContext: Geocoded location:', geocodedLocation);
-          
           // Create user location object
-          const userLocation = {
+          const userLocation: UserLocation = {
             coordinates,
-            address: geocodedLocation.address,
-            timezone: geocodedLocation.timezone,
+            address: geocodedLocation,
             lastUpdated: new Date(),
             source: 'gps' as const,
           };
@@ -266,9 +247,8 @@ export function LocationProvider({ children }: LocationProviderProps) {
           // Try to update on server if authenticated, otherwise just store locally
           try {
             await locationService.updateUserLocation(coordinates, geocodedLocation.formattedAddress, 'gps');
-            console.log('📍 LocationContext: Location updated on server');
           } catch (serverError) {
-            console.log('📍 LocationContext: Server update failed (user might not be authenticated), storing locally');
+            console.log('Server update failed, storing locally');
             // Store locally if server update fails
             await locationService.cacheLocation(userLocation);
           }

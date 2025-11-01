@@ -12,25 +12,25 @@ import {
   ActivityIndicator,
   StatusBar,
   Dimensions,
+  Alert,
+  Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
-import walletService from '@/services/walletApi';
+import walletService, { TransactionResponse } from '@/services/walletApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
+import { HeaderBackButton } from '@/components/navigation';
+import earningsCalculationService, { EarningsStats } from '@/services/earningsCalculationService';
+import EarningsPieChart from '@/components/earnings/EarningsPieChart';
+import EarningsStatsCard from '@/components/earnings/EarningsStatsCard';
+import { Paths, File } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 const { width } = Dimensions.get('window');
 
-interface EarningsData {
-  totalEarnings: number;
-  availableBalance: number;
-  pendingEarnings: number;
-  breakdown: {
-    videos: number;
-    projects: number;
-    referrals: number;
-    cashback: number;
-  };
+interface EarningsData extends EarningsStats {
   recentTransactions: {
     id: string;
     type: string;
@@ -45,25 +45,26 @@ const MyEarningsPage = () => {
   const router = useRouter();
   const navigation = useNavigation();
   const { state: authState } = useAuth();
+  const { goBack } = useSafeNavigation();
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleBackPress = useCallback(() => {
-    router.push('/profile' as any);
-  }, [router]);
+    goBack('/profile' as any);
+  }, [goBack]);
 
   const fetchEarnings = useCallback(async () => {
     try {
       setLoading(true);
 
       if (authState.isLoading) {
-        console.log('⏳ Auth still loading, waiting...');
+
         return;
       }
 
       if (!authState.isAuthenticated || !authState.token) {
-        console.log('❌ Not authenticated, cannot fetch earnings');
+
         setEarnings(null);
         setLoading(false);
         return;
@@ -72,45 +73,37 @@ const MyEarningsPage = () => {
       // Fetch wallet balance and transactions
       const [balanceResponse, transactionsResponse] = await Promise.all([
         walletService.getBalance(),
-        walletService.getTransactions({ type: 'credit', limit: 50 })
+        walletService.getTransactions({ limit: 100 }) // Fetch more for accurate calculations
       ]);
 
       const balance = balanceResponse.data;
       const transactions = transactionsResponse.data?.transactions || [];
 
-      // Calculate breakdown by category and source type
-      const breakdown = {
-        videos: transactions
-          .filter(t => t.category === 'earning' && t.source?.type === 'project')
-          .reduce((sum, t) => sum + t.amount, 0),
-        projects: transactions
-          .filter(t => t.category === 'earning')
-          .reduce((sum, t) => sum + t.amount, 0),
-        referrals: transactions
-          .filter(t => t.category === 'bonus' || t.source?.type === 'referral')
-          .reduce((sum, t) => sum + t.amount, 0),
-        cashback: transactions
-          .filter(t => t.category === 'cashback')
-          .reduce((sum, t) => sum + t.amount, 0)
-      };
+      // Extract available balance
+      const availableBalance = typeof balance?.balance === 'object'
+        ? (balance.balance as any).available || (balance.balance as any).total || 0
+        : balance?.balance || 0;
 
+      // Use earnings calculation service for accurate breakdown
+      const stats = earningsCalculationService.calculateStats(
+        transactions,
+        availableBalance
+      );
       const earningsData: EarningsData = {
-        totalEarnings: balance?.totalEarned || 0,
-        availableBalance: typeof balance?.balance === 'object'
-          ? (balance.balance as any).available || (balance.balance as any).total || 0
-          : balance?.balance || 0,
-        pendingEarnings: transactions
-          .filter(t => t.status?.current === 'pending')
-          .reduce((sum, t) => sum + t.amount, 0),
-        breakdown,
-        recentTransactions: transactions.slice(0, 10).map(t => ({
-          id: t._id || t.transactionId,
-          type: t.source?.type || t.category,
-          amount: t.amount,
-          description: t.description,
-          date: t.createdAt,
-          status: t.status?.current === 'completed' ? 'completed' : 'pending'
-        }))
+        ...stats,
+        // Override total earnings with backend's totalEarned if available
+        totalEarnings: balance?.statistics?.totalEarned || stats.totalEarnings,
+        recentTransactions: transactions
+          .filter(t => t.type === 'credit')
+          .slice(0, 10)
+          .map(t => ({
+            id: t.id || t.transactionId,
+            type: t.source?.type || t.category,
+            amount: t.amount,
+            description: t.description,
+            date: t.createdAt,
+            status: t.status?.current === 'completed' ? 'completed' : 'pending'
+          }))
       };
 
       setEarnings(earningsData);
@@ -134,8 +127,83 @@ const MyEarningsPage = () => {
   }, [fetchEarnings]);
 
   const handleWithdraw = () => {
-    // TODO: Navigate to withdrawal page
     router.push('/WalletScreen' as any);
+  };
+
+  const handleExportReport = async () => {
+    if (!earnings) return;
+
+    try {
+      // Generate CSV report
+      const csvHeader = 'Date,Type,Description,Amount,Status\n';
+      const csvRows = earnings.recentTransactions
+        .map(
+          (t) =>
+            `${new Date(t.date).toLocaleDateString()},${t.type},"${t.description}",${t.amount},${t.status}`
+        )
+        .join('\n');
+
+      const csvContent = csvHeader + csvRows;
+
+      // Generate report text
+      const reportText = `
+📊 EARNINGS REPORT
+Generated: ${new Date().toLocaleString()}
+
+💰 SUMMARY
+Total Lifetime Earnings: ₹${earnings.totalEarnings.toFixed(2)}
+Available Balance: ₹${earnings.availableBalance.toFixed(2)}
+Pending Earnings: ₹${earnings.pendingEarnings.toFixed(2)}
+
+📈 BREAKDOWN
+Videos: ₹${earnings.breakdown.videos.toFixed(2)} (${earningsCalculationService.calculatePercentage(earnings.breakdown.videos, earnings.breakdown.total)}%)
+Projects: ₹${earnings.breakdown.projects.toFixed(2)} (${earningsCalculationService.calculatePercentage(earnings.breakdown.projects, earnings.breakdown.total)}%)
+Referrals: ₹${earnings.breakdown.referrals.toFixed(2)} (${earningsCalculationService.calculatePercentage(earnings.breakdown.referrals, earnings.breakdown.total)}%)
+Cashback: ₹${earnings.breakdown.cashback.toFixed(2)} (${earningsCalculationService.calculatePercentage(earnings.breakdown.cashback, earnings.breakdown.total)}%)
+Social Media: ₹${earnings.breakdown.socialMedia.toFixed(2)} (${earningsCalculationService.calculatePercentage(earnings.breakdown.socialMedia, earnings.breakdown.total)}%)
+Bonus: ₹${earnings.breakdown.bonus.toFixed(2)} (${earningsCalculationService.calculatePercentage(earnings.breakdown.bonus, earnings.breakdown.total)}%)
+
+📊 STATISTICS
+Daily Average: ₹${earnings.dailyAverage.toFixed(2)}
+Weekly Average: ₹${earnings.weeklyAverage.toFixed(2)}
+Monthly Average: ₹${earnings.monthlyAverage.toFixed(2)}
+Total Transactions: ${earnings.transactionCount}
+
+📋 RECENT TRANSACTIONS
+${earnings.recentTransactions.map((t, i) => `${i + 1}. ${new Date(t.date).toLocaleDateString()} - ${t.description} - ₹${t.amount} [${t.status}]`).join('\n')}
+      `.trim();
+
+      // Check if file sharing is available
+      const isAvailable = await Sharing.isAvailableAsync();
+
+      if (isAvailable) {
+        // Save CSV file using new expo-file-system API
+        const file = new File(Paths.document, `earnings_report_${Date.now()}.csv`);
+        await file.text().then(() => {}).catch(() => {}); // Ensure file exists
+        const writer = file.writableStream();
+        const encoder = new TextEncoder();
+        const writerObj = writer.getWriter();
+        await writerObj.write(encoder.encode(csvContent));
+        await writerObj.close();
+
+        // Share the file
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Export Earnings Report',
+        });
+
+        Alert.alert('Success', 'Earnings report exported successfully!');
+      } else {
+        // Fallback to text sharing
+        await Share.share({
+          message: reportText,
+          title: 'My Earnings Report',
+        });
+      }
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      Alert.alert('Error', 'Failed to export earnings report. Please try again.');
+    }
   };
 
   const getEarningIcon = (type: string) => {
@@ -174,9 +242,11 @@ const MyEarningsPage = () => {
         <StatusBar barStyle="light-content" backgroundColor="#EC4899" />
         <LinearGradient colors={['#EC4899', '#DB2777']} style={styles.header}>
           <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
+            <HeaderBackButton
+              onPress={handleBackPress}
+              iconColor="#FFFFFF"
+              style={styles.backButton}
+            />
             <Text style={styles.headerTitle}>My Earnings</Text>
             <View style={styles.headerRight} />
           </View>
@@ -198,16 +268,26 @@ const MyEarningsPage = () => {
       {/* Header */}
       <LinearGradient colors={['#EC4899', '#DB2777']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+          <HeaderBackButton
+            onPress={handleBackPress}
+            iconColor="#FFFFFF"
+            style={styles.backButton}
+          />
           <Text style={styles.headerTitle}>My Earnings</Text>
-          <TouchableOpacity
-            style={styles.historyButton}
-            onPress={() => router.push('/transactions' as any)}
-          >
-            <Ionicons name="time-outline" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={handleExportReport}
+            >
+              <Ionicons name="download-outline" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => router.push('/transactions' as any)}
+            >
+              <Ionicons name="time-outline" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
@@ -251,7 +331,12 @@ const MyEarningsPage = () => {
 
         {/* Earnings Breakdown */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Earnings Breakdown</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Earnings Breakdown</Text>
+            <Text style={styles.breakdownTotal}>
+              Total: {earningsCalculationService.formatCurrency(earnings.breakdown.total)}
+            </Text>
+          </View>
 
           <View style={styles.breakdownGrid}>
             <View style={styles.breakdownCard}>
@@ -259,7 +344,15 @@ const MyEarningsPage = () => {
                 <Ionicons name="videocam" size={24} color="#EC4899" />
               </View>
               <Text style={styles.breakdownLabel}>Videos</Text>
-              <Text style={styles.breakdownValue}>₹{earnings.breakdown.videos}</Text>
+              <Text style={styles.breakdownValue}>
+                {earningsCalculationService.formatCurrency(earnings.breakdown.videos)}
+              </Text>
+              <Text style={styles.breakdownPercentage}>
+                {earningsCalculationService.calculatePercentage(
+                  earnings.breakdown.videos,
+                  earnings.breakdown.total
+                )}%
+              </Text>
             </View>
 
             <View style={styles.breakdownCard}>
@@ -267,7 +360,15 @@ const MyEarningsPage = () => {
                 <Ionicons name="briefcase" size={24} color="#8B5CF6" />
               </View>
               <Text style={styles.breakdownLabel}>Projects</Text>
-              <Text style={styles.breakdownValue}>₹{earnings.breakdown.projects}</Text>
+              <Text style={styles.breakdownValue}>
+                {earningsCalculationService.formatCurrency(earnings.breakdown.projects)}
+              </Text>
+              <Text style={styles.breakdownPercentage}>
+                {earningsCalculationService.calculatePercentage(
+                  earnings.breakdown.projects,
+                  earnings.breakdown.total
+                )}%
+              </Text>
             </View>
 
             <View style={styles.breakdownCard}>
@@ -275,7 +376,15 @@ const MyEarningsPage = () => {
                 <Ionicons name="people" size={24} color="#10B981" />
               </View>
               <Text style={styles.breakdownLabel}>Referrals</Text>
-              <Text style={styles.breakdownValue}>₹{earnings.breakdown.referrals}</Text>
+              <Text style={styles.breakdownValue}>
+                {earningsCalculationService.formatCurrency(earnings.breakdown.referrals)}
+              </Text>
+              <Text style={styles.breakdownPercentage}>
+                {earningsCalculationService.calculatePercentage(
+                  earnings.breakdown.referrals,
+                  earnings.breakdown.total
+                )}%
+              </Text>
             </View>
 
             <View style={styles.breakdownCard}>
@@ -283,8 +392,61 @@ const MyEarningsPage = () => {
                 <Ionicons name="cash" size={24} color="#F59E0B" />
               </View>
               <Text style={styles.breakdownLabel}>Cashback</Text>
-              <Text style={styles.breakdownValue}>₹{earnings.breakdown.cashback}</Text>
+              <Text style={styles.breakdownValue}>
+                {earningsCalculationService.formatCurrency(earnings.breakdown.cashback)}
+              </Text>
+              <Text style={styles.breakdownPercentage}>
+                {earningsCalculationService.calculatePercentage(
+                  earnings.breakdown.cashback,
+                  earnings.breakdown.total
+                )}%
+              </Text>
             </View>
+
+            <View style={styles.breakdownCard}>
+              <View style={[styles.breakdownIcon, { backgroundColor: '#3B82F620' }]}>
+                <Ionicons name="logo-instagram" size={24} color="#3B82F6" />
+              </View>
+              <Text style={styles.breakdownLabel}>Social Media</Text>
+              <Text style={styles.breakdownValue}>
+                {earningsCalculationService.formatCurrency(earnings.breakdown.socialMedia)}
+              </Text>
+              <Text style={styles.breakdownPercentage}>
+                {earningsCalculationService.calculatePercentage(
+                  earnings.breakdown.socialMedia,
+                  earnings.breakdown.total
+                )}%
+              </Text>
+            </View>
+
+            <View style={styles.breakdownCard}>
+              <View style={[styles.breakdownIcon, { backgroundColor: '#EF444420' }]}>
+                <Ionicons name="gift" size={24} color="#EF4444" />
+              </View>
+              <Text style={styles.breakdownLabel}>Bonus</Text>
+              <Text style={styles.breakdownValue}>
+                {earningsCalculationService.formatCurrency(earnings.breakdown.bonus)}
+              </Text>
+              <Text style={styles.breakdownPercentage}>
+                {earningsCalculationService.calculatePercentage(
+                  earnings.breakdown.bonus,
+                  earnings.breakdown.total
+                )}%
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Statistics Card */}
+        <View style={styles.section}>
+          <EarningsStatsCard stats={earnings} />
+        </View>
+
+        {/* Pie Chart Visualization */}
+        <View style={styles.section}>
+          <View style={styles.chartCard}>
+            <Text style={styles.chartTitle}>Earnings Distribution</Text>
+            <EarningsPieChart breakdown={earnings.breakdown} size={220} />
           </View>
         </View>
 
@@ -383,6 +545,18 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 40,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   historyButton: {
     width: 40,
@@ -501,14 +675,42 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   breakdownLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6B7280',
     marginBottom: 4,
   },
   breakdownValue: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
+    marginBottom: 2,
+  },
+  breakdownPercentage: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '600',
+  },
+  breakdownTotal: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#EC4899',
+  },
+  chartCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   transactionCard: {
     flexDirection: 'row',

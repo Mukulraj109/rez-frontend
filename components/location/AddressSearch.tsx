@@ -40,7 +40,7 @@ export default function AddressSearch({
   const { search, searchResults, isSearching, clearResults } = useAddressSearch();
   const [query, setQuery] = useState('');
   const [showResultsList, setShowResultsList] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Debounced search
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function AddressSearch({
     if (query.trim().length >= 2) {
       debounceRef.current = setTimeout(() => {
         performSearch(query);
-      }, debounceMs);
+      }, debounceMs) as any;
     } else {
       clearResults();
       setShowResultsList(false);

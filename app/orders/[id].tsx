@@ -41,18 +41,11 @@ export default function OrderDetailsScreen() {
   const loadOrderDetails = async () => {
     try {
       setLoading(true);
-      console.log('📦 [Order Details] Loading order:', id);
 
       const response = await ordersService.getOrderById(id as string);
 
       if (response.success && response.data) {
-        console.log('📦 [Order Details] Backend response:', JSON.stringify(response.data, null, 2));
         const mappedOrder = mapBackendOrderToFrontend(response.data);
-        console.log('📦 [Order Details] Mapped order:', JSON.stringify(mappedOrder, null, 2));
-        console.log('📦 [Order Details] Delivery address check:', {
-          hasDeliveryAddress: !!mappedOrder.deliveryAddress,
-          deliveryAddress: mappedOrder.deliveryAddress
-        });
         setOrder(mappedOrder);
         setError(null);
       }
@@ -65,17 +58,10 @@ export default function OrderDetailsScreen() {
   };
 
   const handleCancelOrder = () => {
-    console.log('🚫 [Order Details] Cancel button clicked', {
-      orderId: order?.id,
-      orderNumber: order?.orderNumber,
-      status: order?.status,
-      canCancel: order ? canCancelOrder(order.status) : false
-    });
-
     // Use window.confirm for web, Alert for mobile
     if (typeof window !== 'undefined' && window.confirm) {
       const confirmed = window.confirm('Are you sure you want to cancel this order?');
-      console.log('🚫 [Order Details] Confirmation result:', confirmed);
+
       if (confirmed) {
         confirmCancelOrder();
       }
@@ -100,11 +86,8 @@ export default function OrderDetailsScreen() {
 
     try {
       setCancelling(true);
-      console.log('📦 [Order Details] Cancelling order:', order.id);
 
       const response = await ordersService.cancelOrder(order.id, 'Customer requested cancellation');
-
-      console.log('📦 [Order Details] Cancel response:', response);
 
       if (response.success) {
         // Use window.alert for web, Alert for mobile
@@ -221,21 +204,12 @@ export default function OrderDetailsScreen() {
         <Text style={styles.sectionTitle}>Items Ordered</Text>
         {order.items.map((item, index) => {
           // Handle both backend formats - full product object or minimal product
-          const productImage = item.product?.images?.[0]?.url ||
-                              item.product?.images?.[0] ||
-                              item.image ||
-                              'https://via.placeholder.com/100';
-          const productName = item.product?.name || item.name || 'Product';
-
-          // Handle store - can be string (ObjectId), object {id, name}, or nested object
-          let storeName = 'Store';
-          if (typeof item.store === 'string') {
-            storeName = item.store;
-          } else if (typeof item.store === 'object' && item.store?.name) {
-            storeName = item.store.name;
-          } else if (item.product?.store?.name) {
-            storeName = item.product.store.name;
-          }
+          const firstImage = item.product?.images?.[0];
+          const productImage = typeof firstImage === 'string' 
+            ? firstImage 
+            : firstImage?.url || 'https://via.placeholder.com/100';
+          const productName = item.product?.name || 'Product';
+          const storeName = item.product?.store?.name || 'Store';
 
           return (
             <View key={index} style={styles.itemCard}>
@@ -251,10 +225,10 @@ export default function OrderDetailsScreen() {
                 )}
                 <View style={styles.itemFooter}>
                   <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
-                  <Text style={styles.itemPrice}>₹{item.price || item.unitPrice || 0} each</Text>
+                  <Text style={styles.itemPrice}>₹{item.unitPrice || 0} each</Text>
                 </View>
               </View>
-              <Text style={styles.itemTotal}>₹{item.subtotal || item.totalPrice || 0}</Text>
+              <Text style={styles.itemTotal}>₹{item.totalPrice || 0}</Text>
             </View>
           );
         })}
@@ -311,22 +285,22 @@ export default function OrderDetailsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Delivery Address</Text>
         <View style={styles.addressCard}>
-          {order.deliveryAddress ? (
+          {order.delivery?.address ? (
             <>
-              <Text style={styles.addressName}>{order.deliveryAddress.name}</Text>
-              <Text style={styles.addressText}>{order.deliveryAddress.addressLine1 || order.deliveryAddress.address1}</Text>
-              {(order.deliveryAddress.addressLine2 || order.deliveryAddress.address2) && (
-                <Text style={styles.addressText}>{order.deliveryAddress.addressLine2 || order.deliveryAddress.address2}</Text>
+              <Text style={styles.addressName}>{order.delivery.address.name}</Text>
+              <Text style={styles.addressText}>{order.delivery.address.addressLine1}</Text>
+              {order.delivery.address.addressLine2 && (
+                <Text style={styles.addressText}>{order.delivery.address.addressLine2}</Text>
               )}
-              {order.deliveryAddress.landmark && (
-                <Text style={styles.addressText}>Landmark: {order.deliveryAddress.landmark}</Text>
+              {order.delivery.address.landmark && (
+                <Text style={styles.addressText}>Landmark: {order.delivery.address.landmark}</Text>
               )}
               <Text style={styles.addressText}>
-                {order.deliveryAddress.city}, {order.deliveryAddress.state}
+                {order.delivery.address.city}, {order.delivery.address.state}
               </Text>
-              <Text style={styles.addressText}>{order.deliveryAddress.pincode || order.deliveryAddress.zipCode}</Text>
-              {order.deliveryAddress.phone && (
-                <Text style={styles.addressPhone}>Phone: {order.deliveryAddress.phone}</Text>
+              <Text style={styles.addressText}>{order.delivery.address.pincode}</Text>
+              {order.delivery.address.phone && (
+                <Text style={styles.addressPhone}>Phone: {order.delivery.address.phone}</Text>
               )}
             </>
           ) : (

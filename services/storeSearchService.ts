@@ -1,6 +1,28 @@
 import { UserLocation } from '@/types/location.types';
 import apiClient from './apiClient';
 
+export interface StoreProduct {
+  _id: string;
+  name: string;
+  title?: string;
+  image?: string;
+  price?: {
+    current: number;
+    original: number;
+    currency: string;
+    discount: number;
+  };
+  rating?: {
+    value: number | string;
+    count: number;
+  };
+  inventory?: {
+    stock: number;
+    isAvailable: boolean;
+  };
+  tags?: string[];
+}
+
 export interface Store {
   _id: string;
   name: string;
@@ -39,6 +61,7 @@ export interface Store {
     mall: boolean;
     cashStore: boolean;
   };
+  products?: StoreProduct[]; // Added products field from backend
   distance?: number;
   isActive: boolean;
   isFeatured: boolean;
@@ -189,9 +212,11 @@ export interface ComparisonsResponse {
 
 class StoreSearchService {
   private baseUrl: string;
+  private apiBaseUrl: string;
 
   constructor() {
-    this.baseUrl = 'http://localhost:5001/api/stores';
+    this.apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5001/api';
+    this.baseUrl = `${this.apiBaseUrl}/stores`;
   }
 
   /**
@@ -223,7 +248,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -269,7 +294,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -341,7 +366,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -374,7 +399,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -459,7 +484,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -504,7 +529,7 @@ class StoreSearchService {
     });
 
     const response = await fetch(
-      `http://localhost:5001/api/reviews/store/${storeId}?${queryParams}`,
+      `${this.apiBaseUrl}/reviews/store/${storeId}?${queryParams}`,
       {
         method: 'GET',
         headers: {
@@ -512,7 +537,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -534,7 +559,7 @@ class StoreSearchService {
     const { storeId, rating, title, comment, images } = params;
 
     const response = await fetch(
-      `http://localhost:5001/api/reviews/store/${storeId}`,
+      `${this.apiBaseUrl}/reviews/store/${storeId}`,
       {
         method: 'POST',
         headers: {
@@ -549,7 +574,7 @@ class StoreSearchService {
         }),
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -563,7 +588,7 @@ class StoreSearchService {
    */
   async canUserReviewStore(storeId: string): Promise<{ success: boolean; data: { canReview: boolean; hasReviewed: boolean } }> {
     const response = await fetch(
-      `http://localhost:5001/api/reviews/store/${storeId}/can-review`,
+      `${this.apiBaseUrl}/reviews/store/${storeId}/can-review`,
       {
         method: 'GET',
         headers: {
@@ -572,7 +597,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -586,7 +611,7 @@ class StoreSearchService {
    */
   async markReviewHelpful(reviewId: string): Promise<{ success: boolean; data: { helpful: number }; message: string }> {
     const response = await fetch(
-      `http://localhost:5001/api/reviews/${reviewId}/helpful`,
+      `${this.apiBaseUrl}/reviews/${reviewId}/helpful`,
       {
         method: 'POST',
         headers: {
@@ -595,7 +620,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -609,7 +634,7 @@ class StoreSearchService {
    */
   async addToFavorites(storeId: string): Promise<{ success: boolean; data: { favorite: Favorite }; message: string }> {
     const response = await fetch(
-      `http://localhost:5001/api/favorites/store/${storeId}`,
+      `${this.apiBaseUrl}/favorites/store/${storeId}`,
       {
         method: 'POST',
         headers: {
@@ -618,7 +643,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -632,7 +657,7 @@ class StoreSearchService {
    */
   async removeFromFavorites(storeId: string): Promise<{ success: boolean; message: string }> {
     const response = await fetch(
-      `http://localhost:5001/api/favorites/store/${storeId}`,
+      `${this.apiBaseUrl}/favorites/store/${storeId}`,
       {
         method: 'DELETE',
         headers: {
@@ -641,7 +666,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -655,7 +680,7 @@ class StoreSearchService {
    */
   async toggleFavorite(storeId: string): Promise<{ success: boolean; data: { isFavorited: boolean; favorite?: Favorite }; message: string }> {
     const response = await fetch(
-      `http://localhost:5001/api/favorites/store/${storeId}/toggle`,
+      `${this.apiBaseUrl}/favorites/store/${storeId}/toggle`,
       {
         method: 'POST',
         headers: {
@@ -664,7 +689,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -678,7 +703,7 @@ class StoreSearchService {
    */
   async isStoreFavorited(storeId: string): Promise<{ success: boolean; data: { isFavorited: boolean } }> {
     const response = await fetch(
-      `http://localhost:5001/api/favorites/store/${storeId}/status`,
+      `${this.apiBaseUrl}/favorites/store/${storeId}/status`,
       {
         method: 'GET',
         headers: {
@@ -687,7 +712,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -710,26 +735,26 @@ class StoreSearchService {
       limit: limit.toString(),
     });
 
-    const response = await apiClient.get(`/favorites/user/my-favorites?${queryParams}`);
+    const response = await apiClient.get<FavoritesResponse>(`/favorites/user/my-favorites?${queryParams}`);
     
     if (!response.success) {
       throw new Error(response.error || 'Failed to fetch favorites');
     }
 
-    return response.data;
+    return response.data as FavoritesResponse;
   }
 
   /**
    * Get favorite statuses for multiple stores
    */
   async getFavoriteStatuses(storeIds: string[]): Promise<{ success: boolean; data: { statuses: { [key: string]: boolean } } }> {
-    const response = await apiClient.post('/favorites/statuses', { storeIds });
+    const response = await apiClient.post<{ success: boolean; data: { statuses: { [key: string]: boolean } } }>('/favorites/statuses', { storeIds });
     
     if (!response.success) {
       throw new Error(response.error || 'Failed to fetch favorite statuses');
     }
 
-    return response.data;
+    return response.data as { success: boolean; data: { statuses: { [key: string]: boolean } } };
   }
 
   /**
@@ -737,7 +762,7 @@ class StoreSearchService {
    */
   async clearAllFavorites(): Promise<{ success: boolean; data: { deletedCount: number }; message: string }> {
     const response = await fetch(
-      `http://localhost:5001/api/favorites/clear-all`,
+      `${this.apiBaseUrl}/favorites/clear-all`,
       {
         method: 'DELETE',
         headers: {
@@ -746,7 +771,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -765,7 +790,7 @@ class StoreSearchService {
     const { storeIds, name } = params;
 
     const response = await fetch(
-      `http://localhost:5001/api/comparisons`,
+      `${this.apiBaseUrl}/comparisons`,
       {
         method: 'POST',
         headers: {
@@ -778,7 +803,7 @@ class StoreSearchService {
         }),
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -801,13 +826,13 @@ class StoreSearchService {
       limit: limit.toString(),
     });
 
-    const response = await apiClient.get(`/comparisons/user/my-comparisons?${queryParams}`);
+    const response = await apiClient.get<ComparisonsResponse>(`/comparisons/user/my-comparisons?${queryParams}`);
     
     if (!response.success) {
       throw new Error(response.error || 'Failed to fetch comparisons');
     }
 
-    return response.data;
+    return response.data as ComparisonsResponse;
   }
 
   /**
@@ -815,7 +840,7 @@ class StoreSearchService {
    */
   async getComparisonById(comparisonId: string): Promise<ComparisonResponse> {
     const response = await fetch(
-      `http://localhost:5001/api/comparisons/${comparisonId}`,
+      `${this.apiBaseUrl}/comparisons/${comparisonId}`,
       {
         method: 'GET',
         headers: {
@@ -824,7 +849,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -844,7 +869,7 @@ class StoreSearchService {
     const { comparisonId, storeIds, name } = params;
 
     const response = await fetch(
-      `http://localhost:5001/api/comparisons/${comparisonId}`,
+      `${this.apiBaseUrl}/comparisons/${comparisonId}`,
       {
         method: 'PUT',
         headers: {
@@ -857,7 +882,7 @@ class StoreSearchService {
         }),
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -871,7 +896,7 @@ class StoreSearchService {
    */
   async deleteComparison(comparisonId: string): Promise<{ success: boolean; message: string }> {
     const response = await fetch(
-      `http://localhost:5001/api/comparisons/${comparisonId}`,
+      `${this.apiBaseUrl}/comparisons/${comparisonId}`,
       {
         method: 'DELETE',
         headers: {
@@ -880,7 +905,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -899,7 +924,7 @@ class StoreSearchService {
     const { comparisonId, storeId } = params;
 
     const response = await fetch(
-      `http://localhost:5001/api/comparisons/${comparisonId}/stores`,
+      `${this.apiBaseUrl}/comparisons/${comparisonId}/stores`,
       {
         method: 'POST',
         headers: {
@@ -911,7 +936,7 @@ class StoreSearchService {
         }),
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -930,7 +955,7 @@ class StoreSearchService {
     const { comparisonId, storeId } = params;
 
     const response = await fetch(
-      `http://localhost:5001/api/comparisons/${comparisonId}/stores/${storeId}`,
+      `${this.apiBaseUrl}/comparisons/${comparisonId}/stores/${storeId}`,
       {
         method: 'DELETE',
         headers: {
@@ -939,7 +964,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -953,7 +978,7 @@ class StoreSearchService {
    */
   async clearAllComparisons(): Promise<{ success: boolean; data: { deletedCount: number }; message: string }> {
     const response = await fetch(
-      `http://localhost:5001/api/comparisons/user/clear-all`,
+      `${this.apiBaseUrl}/comparisons/user/clear-all`,
       {
         method: 'DELETE',
         headers: {
@@ -962,7 +987,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -991,7 +1016,7 @@ class StoreSearchService {
     const { storeId, eventType, eventData } = params;
 
     const response = await fetch(
-      `http://localhost:5001/api/analytics/track`,
+      `${this.apiBaseUrl}/analytics/track`,
       {
         method: 'POST',
         headers: {
@@ -1005,7 +1030,7 @@ class StoreSearchService {
         }),
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -1034,7 +1059,7 @@ class StoreSearchService {
     });
 
     const response = await fetch(
-      `http://localhost:5001/api/analytics/store/${storeId}?${queryParams}`,
+      `${this.apiBaseUrl}/analytics/store/${storeId}?${queryParams}`,
       {
         method: 'GET',
         headers: {
@@ -1043,7 +1068,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -1071,7 +1096,7 @@ class StoreSearchService {
     });
 
     const response = await fetch(
-      `http://localhost:5001/api/analytics/popular?${queryParams}`,
+      `${this.apiBaseUrl}/analytics/popular?${queryParams}`,
       {
         method: 'GET',
         headers: {
@@ -1080,7 +1105,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -1106,7 +1131,7 @@ class StoreSearchService {
     });
 
     const response = await fetch(
-      `http://localhost:5001/api/analytics/user/my-analytics?${queryParams}`,
+      `${this.apiBaseUrl}/analytics/user/my-analytics?${queryParams}`,
       {
         method: 'GET',
         headers: {
@@ -1115,7 +1140,7 @@ class StoreSearchService {
         },
       }
     );
-
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }

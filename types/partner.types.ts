@@ -40,7 +40,8 @@ export interface PartnerBenefit {
 
 export interface OrderMilestone {
   id: string;
-  orderNumber: number; // 5, 10, 15, 20
+  orderNumber?: number; // 5, 10, 15, 20 (optional for backward compatibility)
+  orderCount?: number; // Backend sends this
   isCompleted: boolean;
   isLocked: boolean;
   reward?: RewardItem;
@@ -61,7 +62,7 @@ export interface RewardTask {
   id: string;
   title: string;
   description: string;
-  type: 'review' | 'purchase' | 'referral' | 'social';
+  type: 'review' | 'purchase' | 'referral' | 'social' | 'profile';
   reward: RewardItem;
   isCompleted: boolean;
   progress?: {
@@ -73,11 +74,14 @@ export interface RewardTask {
 export interface JackpotMilestone {
   id: string;
   amount: number; // ₹25K, ₹50K
+  spendAmount?: number; // Backend sends this
   title: string;
   description: string;
   isUnlocked: boolean;
   isCompleted: boolean;
+  achieved?: boolean; // Backend sends this instead of isCompleted
   reward: RewardItem;
+  claimedAt?: string; // When the reward was claimed
 }
 
 export interface ClaimableOffer {
@@ -105,6 +109,7 @@ export interface PartnerPageState {
   jackpotProgress: JackpotMilestone[];
   claimableOffers: ClaimableOffer[];
   faqs: FAQItem[];
+  levels?: any[]; // Partner levels with benefits from backend
   loading: boolean;
   error: string | null;
 }

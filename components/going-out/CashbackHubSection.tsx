@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -19,11 +20,18 @@ const CARD_SPACING = 12;
 export function CashbackHubSection({
   section,
   onProductPress,
+  onToggleWishlist,
   onViewAll,
+  wishlist = [],
 }: CashbackHubSectionProps) {
   const handleViewAll = () => {
     onViewAll(section);
   };
+
+  // Don't render section if no products
+  if (!section.products || section.products.length === 0) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -36,16 +44,6 @@ export function CashbackHubSection({
           )}
         </View>
         
-        {section.showViewAll && (
-          <TouchableOpacity 
-            style={styles.viewAllButton}
-            onPress={handleViewAll}
-            activeOpacity={0.8}
-          >
-            <ThemedText style={styles.viewAllText}>View all</ThemedText>
-            <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Products Horizontal Scroll */}
@@ -67,8 +65,10 @@ export function CashbackHubSection({
             <GoingOutProductCard
               product={product}
               onPress={onProductPress}
+              onToggleWishlist={onToggleWishlist}
               width={CARD_WIDTH}
               showAddToCart={true}
+              isInWishlist={wishlist.includes(product.id)}
             />
           </View>
         ))}
@@ -77,71 +77,68 @@ export function CashbackHubSection({
       {/* Section Stats */}
       <View style={styles.sectionStats}>
         <View style={styles.statItem}>
-          <Ionicons name="cube-outline" size={14} color="#6B7280" />
+          <View style={styles.statIconContainer}>
+            <Ionicons name="grid-outline" size={16} color="#8B5CF6" />
+          </View>
           <ThemedText style={styles.statText}>
-            {section.products.length} products
+            {section.products.length} {section.products.length === 1 ? 'product' : 'products'}
           </ThemedText>
         </View>
         
-        <View style={styles.statItem}>
-          <Ionicons name="trending-up-outline" size={14} color="#10B981" />
-          <ThemedText style={styles.statText}>
-            {section.products.filter(p => p.rating && p.rating.value >= 4.5).length} top rated
-          </ThemedText>
-        </View>
+        {section.products.filter(p => p.rating && p.rating.value >= 4.5).length > 0 && (
+          <View style={styles.statItem}>
+            <View style={[styles.statIconContainer, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="star" size={16} color="#10B981" />
+            </View>
+            <ThemedText style={styles.statText}>
+              {section.products.filter(p => p.rating && p.rating.value >= 4.5).length} top rated
+            </ThemedText>
+          </View>
+        )}
         
-        <View style={styles.statItem}>
-          <Ionicons name="cash-outline" size={14} color="#F59E0B" />
-          <ThemedText style={styles.statText}>
-            Up to {Math.max(...section.products.map(p => p.cashback.percentage))}% cashback
-          </ThemedText>
-        </View>
+        {section.products.length > 0 && Math.max(...section.products.map(p => p.cashback.percentage)) > 0 && (
+          <View style={styles.statItem}>
+            <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="wallet" size={16} color="#F59E0B" />
+            </View>
+            <ThemedText style={styles.statText}>
+              Up to {Math.max(...section.products.map(p => p.cashback.percentage))}% cashback
+            </ThemedText>
+          </View>
+        )}
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 32,
+    marginBottom: 40,
     backgroundColor: '#FFFFFF',
+    paddingTop: 8,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   headerLeft: {
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
     color: '#1F2937',
-    marginBottom: 4,
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   sectionSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#6B7280',
-    lineHeight: 20,
-  },
-  viewAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  viewAllText: {
-    fontSize: 14,
-    color: '#8B5CF6',
-    fontWeight: '600',
-    marginRight: 4,
+    lineHeight: 22,
+    fontWeight: '500',
   },
   scrollView: {
     marginBottom: 16,
@@ -163,12 +160,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     marginHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
+      },
+    }),
   },
   statItem: {
     flexDirection: 'row',
@@ -176,11 +187,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  statIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
   statText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
-    fontWeight: '500',
-    marginLeft: 4,
+    fontWeight: '600',
     textAlign: 'center',
+    letterSpacing: 0.2,
+    flex: 1,
   },
 });

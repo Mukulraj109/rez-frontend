@@ -63,6 +63,7 @@ export interface UseEarnSocialReturn {
     handleSubmit: () => Promise<void>;
     handleRetry: () => void;
     handleGoBack: () => void;
+    handleStartUpload: () => void;
   };
 }
 

@@ -596,7 +596,7 @@ export default function ReviewSystem({
       {/* Sort Modal */}
       {renderSortModal()}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

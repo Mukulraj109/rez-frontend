@@ -44,7 +44,7 @@ export default function FormInput({
         <TextInput
           style={[
             styles.input,
-            (leftIcon || prefix) && styles.inputWithIcon,
+            (leftIcon || prefix) ? styles.inputWithIcon : null,
             style
           ]}
           placeholderTextColor="#9CA3AF"
@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     minHeight: 48,
-    transition: 'all 0.2s ease-in-out',
   },
   leftIconContainer: {
     paddingLeft: 16,

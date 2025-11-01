@@ -54,7 +54,7 @@ export default function OpportunityCard({
         <Ionicons name="arrow-forward" size={12} color="#8B5CF6" />
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

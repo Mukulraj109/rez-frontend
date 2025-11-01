@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -16,9 +16,14 @@ export function GoingOutProductCard({
   product,
   onPress,
   onAddToCart,
+  onToggleWishlist,
   showAddToCart = true,
-  width = 160,
+  width = 180,
+  isInWishlist = false,
 }: GoingOutProductCardProps) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -48,6 +53,23 @@ export function GoingOutProductCard({
     }
   };
 
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    setImageLoading(false);
+    setImageError(true);
+  };
+
+  const handleWishlistToggle = (e: any) => {
+    e.stopPropagation();
+    if (onToggleWishlist) {
+      onToggleWishlist(product);
+    }
+  };
+
   return (
     <TouchableOpacity
       style={[styles.container, { width }]}
@@ -57,11 +79,36 @@ export function GoingOutProductCard({
       <View style={styles.card}>
         {/* Product Image */}
         <View style={styles.imageContainer}>
-          <Image 
-            source={{ uri: product.image }} 
-            style={styles.image}
-            resizeMode="cover"
-          />
+          {!imageError && product.image ? (
+            <Image 
+              source={{ uri: product.image }} 
+              style={styles.image}
+              resizeMode="cover"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Ionicons 
+                name="image-outline" 
+                size={48} 
+                color="#D1D5DB" 
+              />
+              <ThemedText style={styles.placeholderText}>
+                No Image
+              </ThemedText>
+            </View>
+          )}
+          
+          {imageLoading && !imageError && (
+            <View style={styles.imageLoadingOverlay}>
+              <Ionicons 
+                name="hourglass-outline" 
+                size={24} 
+                color="#8B5CF6" 
+              />
+            </View>
+          )}
           
           {/* Cashback Badge */}
           <LinearGradient
@@ -92,8 +139,16 @@ export function GoingOutProductCard({
           )}
 
           {/* Favorite Button */}
-          <TouchableOpacity style={styles.favoriteButton} activeOpacity={0.8}>
-            <Ionicons name="heart-outline" size={16} color="#6B7280" />
+          <TouchableOpacity 
+            style={styles.favoriteButton} 
+            activeOpacity={0.8}
+            onPress={handleWishlistToggle}
+          >
+            <Ionicons 
+              name={isInWishlist ? "heart" : "heart-outline"} 
+              size={16} 
+              color={isInWishlist ? "#EF4444" : "#6B7280"} 
+            />
           </TouchableOpacity>
         </View>
 
@@ -157,7 +212,7 @@ export function GoingOutProductCard({
         </View>
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -167,47 +222,94 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    height: 380, // Fixed height for all cards
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 4,
+        elevation: 8,
       },
       web: {
-        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.12)',
       },
     }),
   },
   imageContainer: {
     position: 'relative',
-    height: 140,
+    height: 160,
     backgroundColor: '#F8FAFC',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   image: {
     width: '100%',
     height: '100%',
   },
+  imagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  placeholderText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    marginTop: 8,
+  },
+  imageLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(248, 250, 252, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
   cashbackBadge: {
     position: 'absolute',
-    bottom: 8,
-    left: 8,
-    right: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    bottom: 12,
+    left: 12,
+    right: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
     alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(139, 92, 246, 0.3)',
+      },
+    }),
   },
   cashbackText: {
     color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   newBadge: {
     position: 'absolute',
@@ -239,70 +341,83 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
       web: {
-        boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.15)',
       },
     }),
   },
   content: {
-    padding: 12,
+    padding: 16,
+    paddingTop: 12,
+    flex: 1,
+    justifyContent: 'space-between',
   },
   productName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+    lineHeight: 20,
+    letterSpacing: -0.2,
+    minHeight: 40, // Fixed height for 2 lines
   },
   brandName: {
     fontSize: 12,
     color: '#8B5CF6',
     fontWeight: '500',
     marginBottom: 6,
+    minHeight: 16, // Ensure consistent height
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
+    minHeight: 16, // Ensure consistent height
   },
   ratingText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#111827',
-    marginLeft: 2,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginLeft: 4,
   },
   ratingCount: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    marginLeft: 2,
+    fontSize: 11,
+    color: '#6B7280',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+    minHeight: 20, // Ensure consistent height
   },
   currentPrice: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginRight: 6,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1F2937',
+    marginRight: 8,
+    letterSpacing: -0.3,
   },
   originalPrice: {
     fontSize: 12,
@@ -313,18 +428,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8F9FA',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#8B5CF6',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(139, 92, 246, 0.1)',
+      },
+    }),
   },
   addToCartText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#8B5CF6',
-    fontWeight: '600',
-    marginLeft: 4,
+    fontWeight: '700',
+    marginLeft: 6,
+    letterSpacing: 0.2,
   },
   outOfStockContainer: {
     backgroundColor: '#FEE2E2',

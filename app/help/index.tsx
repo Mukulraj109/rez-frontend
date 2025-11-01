@@ -106,6 +106,7 @@ export default function HelpPage() {
       icon: 'card',
       iconColor: '#3B82F6',
       itemCount: 8,
+      route: '/help/payments',
     },
     {
       id: 'account',
@@ -252,7 +253,7 @@ export default function HelpPage() {
       
       {/* Header */}
       <LinearGradient
-        colors={['#8B5CF6', '#A855F7']}
+        colors={['#8B5CF6', '#A855F7'] as const}
         style={styles.header}
       >
         <View style={styles.headerContent}>
@@ -334,7 +335,7 @@ export default function HelpPage() {
           
           <TouchableOpacity 
             style={styles.contactButton}
-            onPress={() => router.push('/help/contact')}
+            onPress={() => router.push('/help/contact' as any)}
           >
             <ThemedText style={styles.contactButtonText}>Contact Support</ThemedText>
           </TouchableOpacity>
@@ -343,7 +344,7 @@ export default function HelpPage() {
         <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

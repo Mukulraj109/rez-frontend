@@ -222,7 +222,6 @@ const StoreFilters: React.FC<StoreFiltersProps> = ({
                 onValueChange={(value) => handleDeliveryTimeChange('min', Math.round(value))}
                 minimumTrackTintColor="#7B61FF"
                 maximumTrackTintColor="#E5E5E5"
-                thumbStyle={styles.sliderThumb}
               />
             </View>
             <View style={styles.sliderContainer}>
@@ -235,7 +234,6 @@ const StoreFilters: React.FC<StoreFiltersProps> = ({
                 onValueChange={(value) => handleDeliveryTimeChange('max', Math.round(value))}
                 minimumTrackTintColor="#7B61FF"
                 maximumTrackTintColor="#E5E5E5"
-                thumbStyle={styles.sliderThumb}
               />
             </View>
           </View>
@@ -255,7 +253,6 @@ const StoreFilters: React.FC<StoreFiltersProps> = ({
                 onValueChange={(value) => handlePriceRangeChange('min', Math.round(value))}
                 minimumTrackTintColor="#7B61FF"
                 maximumTrackTintColor="#E5E5E5"
-                thumbStyle={styles.sliderThumb}
               />
             </View>
             <View style={styles.sliderContainer}>
@@ -268,7 +265,6 @@ const StoreFilters: React.FC<StoreFiltersProps> = ({
                 onValueChange={(value) => handlePriceRangeChange('max', Math.round(value))}
                 minimumTrackTintColor="#7B61FF"
                 maximumTrackTintColor="#E5E5E5"
-                thumbStyle={styles.sliderThumb}
               />
             </View>
           </View>
@@ -287,7 +283,6 @@ const StoreFilters: React.FC<StoreFiltersProps> = ({
                 onValueChange={(value) => handleRatingChange(Math.round(value * 2) / 2)}
                 minimumTrackTintColor="#7B61FF"
                 maximumTrackTintColor="#E5E5E5"
-                thumbStyle={styles.sliderThumb}
                 step={0.5}
               />
             </View>

@@ -58,7 +58,7 @@ export default function Section1({ dynamicData, cardType }: Section1Props) {
         ))}
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

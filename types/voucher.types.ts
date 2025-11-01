@@ -6,6 +6,7 @@ export interface VoucherState {
   selectedCategory: string | null;
   selectedBrand: Brand | null;
   brands: Brand[];
+  allBrands: Brand[]; // Store all brands for local filtering
   categories: Category[];
   featuredOffers: Offer[];
   loading: boolean;
@@ -79,6 +80,7 @@ export interface FilterOptions {
 
 export interface UseVoucherReturn {
   state: VoucherState;
+  heroCarousel: HeroCarouselItem[];
   actions: {
     searchBrands: (query: string) => void;
     selectCategory: (categoryId: string | null) => void;

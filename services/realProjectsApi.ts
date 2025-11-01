@@ -1,21 +1,5 @@
 // Real API implementation for Projects (Phase 5 - Social Earning)
-import apiClient from './apiClient';
-
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-  meta?: {
-    pagination?: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNext: boolean;
-      hasPrev: boolean;
-    };
-  };
-}
+import apiClient, { ApiResponse } from './apiClient';
 
 export interface Project {
   _id: string;

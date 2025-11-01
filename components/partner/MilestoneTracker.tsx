@@ -19,11 +19,13 @@ interface MilestoneTrackerProps {
 
 export default function MilestoneTracker({ 
   milestones, 
-  currentOrders = 12,
+  currentOrders = 0, // Fixed: Don't hardcode to 12, use actual value from props
   onClaimReward 
 }: MilestoneTrackerProps) {
-  const sortedMilestones = milestones.sort((a, b) => a.orderNumber - b.orderNumber);
-
+  const sortedMilestones = milestones.sort((a, b) => 
+    (a.orderNumber || a.orderCount || 0) - (b.orderNumber || b.orderCount || 0)
+  );
+  
   const handleClaimPress = (milestone: OrderMilestone) => {
     if (milestone.reward?.isClaimed) {
       Alert.alert('Already Claimed', 'This reward has already been claimed.');
@@ -52,7 +54,8 @@ export default function MilestoneTracker({
   const renderMilestone = (milestone: OrderMilestone) => {
     const isCompleted = milestone.isCompleted;
     const isClaimed = milestone.reward?.isClaimed || false;
-    const isNext = !isCompleted && currentOrders < milestone.orderNumber;
+    const milestoneOrderCount = milestone.orderNumber || milestone.orderCount || 0;
+    const isNext = !isCompleted && currentOrders < milestoneOrderCount;
     const canClaim = isCompleted && !isClaimed;
 
     return (
@@ -79,7 +82,7 @@ export default function MilestoneTracker({
             isCompleted && styles.completedOrderBadgeText,
             isNext && styles.nextOrderBadgeText
           ]}>
-            {milestone.orderNumber}
+            {milestoneOrderCount}
           </Text>
           <Text style={[
             styles.orderBadgeLabel,
@@ -100,7 +103,7 @@ export default function MilestoneTracker({
           ) : isCompleted ? (
             <View style={styles.completedContainer}>
               <LinearGradient
-                colors={['#10B981', '#059669']}
+                colors={['#10B981', '#059669'] as const}
                 style={styles.completedIcon}
               >
                 <Ionicons name="checkmark" size={16} color="white" />
@@ -110,13 +113,13 @@ export default function MilestoneTracker({
           ) : (
             <View style={styles.progressContainer}>
               <Text style={styles.progressText}>
-                {currentOrders}/{milestone.orderNumber}
+                {currentOrders}/{milestoneOrderCount}
               </Text>
               <View style={styles.progressBar}>
                 <View 
                   style={[
                     styles.progressFill,
-                    { width: `${Math.min((currentOrders / milestone.orderNumber) * 100, 100)}%` }
+                    { width: `${Math.min((currentOrders / milestoneOrderCount) * 100, 100)}%` }
                   ]} 
                 />
               </View>
@@ -169,7 +172,7 @@ export default function MilestoneTracker({
               onPress={() => handleClaimPress(milestone)}
             >
               <LinearGradient
-                colors={['#8B5CF6', '#A78BFA']}
+                colors={['#8B5CF6', '#A78BFA'] as const}
                 style={styles.claimButtonGradient}
               >
                 <Text style={styles.claimButtonText}>Claim Now</Text>
@@ -179,7 +182,7 @@ export default function MilestoneTracker({
           ) : (
             <View style={styles.pendingButton}>
               <Text style={styles.pendingButtonText}>
-                {milestone.orderNumber - currentOrders} more orders to unlock
+                {Math.max(0, milestoneOrderCount - currentOrders)} more orders to unlock
               </Text>
             </View>
           )}
@@ -199,7 +202,7 @@ export default function MilestoneTracker({
       <View style={styles.header}>
         <View style={styles.headerIcon}>
           <LinearGradient
-            colors={['#8B5CF6', '#A78BFA']}
+            colors={['#8B5CF6', '#A78BFA'] as const}
             style={styles.headerIconGradient}
           >
             <Ionicons name="ribbon" size={20} color="white" />

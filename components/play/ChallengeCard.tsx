@@ -68,7 +68,7 @@ export default function ChallengeCard({
         )}
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

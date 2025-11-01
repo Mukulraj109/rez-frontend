@@ -80,7 +80,7 @@ export default function RewardsIntroScreen() {
         </TouchableOpacity>
       </View>
     </OnboardingContainer>
-  );
+);
 }
 
 const styles = StyleSheet.create({

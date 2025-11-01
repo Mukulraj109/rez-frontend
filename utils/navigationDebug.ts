@@ -23,8 +23,6 @@ class NavigationDebugger {
     if (this.events.length > this.maxEvents) {
       this.events = this.events.slice(-this.maxEvents);
     }
-
-    console.log(`🧭 [NAV DEBUG] ${from} → ${to} (${trigger})`);
     
     // Check for potential loops
     this.detectNavigationLoops();

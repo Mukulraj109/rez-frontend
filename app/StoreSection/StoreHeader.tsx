@@ -5,6 +5,7 @@ import { Ionicons , MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useGamification } from '@/contexts/GamificationContext';
 
 interface StoreHeaderProps {
   dynamicData?: {
@@ -26,10 +27,25 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
   const surfaceColor = useThemeColor({}, 'surface');
   const primaryColor = useThemeColor({}, 'primary');
   const textColor = useThemeColor({}, 'text');
+  const { coinBalance, isLoading: isLoadingPoints } = useGamification();
 
   // Use dynamic data if available, otherwise use defaults
   const storeTitle = dynamicData?.title || "Featured Store";
-  const storeImageUrl = dynamicData?.image || 'https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?w=800&h=800&fit=crop';
+  
+  // Validate image URL - only use if it's a valid URL and not empty
+  const isValidImageUrl = (url: string | undefined): boolean => {
+    if (!url || url.trim() === '') return false;
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  
+  const storeImageUrl = isValidImageUrl(dynamicData?.image) 
+    ? dynamicData.image 
+    : null; // No fallback image - show placeholder instead
   const merchantName = dynamicData?.merchant || "Premium Merchant";
   const category = dynamicData?.category || "General";
   
@@ -58,12 +74,14 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
         </TouchableOpacity>
         
         <View style={styles.centerInfo}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.ratingBadge, { backgroundColor: primaryColor }]}
             onPress={() => router.push('/CoinPage')}
           >
             <Ionicons name="star" size={16} color="#FFD700" />
-            <ThemedText style={styles.ratingText}>382</ThemedText>
+            <ThemedText style={styles.ratingText}>
+              {isLoadingPoints ? '...' : (coinBalance?.total ?? 0).toLocaleString()}
+            </ThemedText>
           </TouchableOpacity>
           {/* Dynamic section label */}
           {dynamicData && (
@@ -94,11 +112,23 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
       
       {/* Product / Store image */}
       <View style={[styles.productImageContainer, { backgroundColor: surfaceColor }]}>
-        <Image 
-          source={{ uri: storeImageUrl }}
-          style={styles.productImage} 
-          resizeMode="cover"
-        />
+        {storeImageUrl ? (
+          <Image
+            source={{ uri: storeImageUrl }}
+            style={styles.productImage}
+            resizeMode="cover"
+            onError={(e) => {
+              // Only log once, don't cause re-renders
+              if (!e.nativeEvent.error) return;
+              console.warn('⚠️ [STORE HEADER] Image load failed:', storeImageUrl);
+            }}
+          />
+        ) : (
+          <View style={styles.placeholderContainer}>
+            <Ionicons name="image-outline" size={64} color="#D1D5DB" />
+            <ThemedText style={styles.placeholderText}>No Image Available</ThemedText>
+          </View>
+        )}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.4)']}
           style={styles.imageGradient}
@@ -110,7 +140,7 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
         </View>
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -145,6 +175,13 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 8,
   },
   productImage: { width: '100%', height: '100%' },
+  placeholderContainer: {
+    width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  placeholderText: {
+    fontSize: 16, color: '#6B7280', marginTop: 8, fontWeight: '500',
+  },
   imageGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 140 },
   brandBadge: {
     position: 'absolute', bottom: 20, left: 20, width: 48, height: 48, borderRadius: 24,

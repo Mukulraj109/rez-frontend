@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApiUrl, API_CONFIG } from '@/config/env';
 
 // Types
 interface ApiConfig {
@@ -21,10 +22,10 @@ interface ApiError {
   details?: any;
 }
 
-// Configuration
+// Configuration - Using environment variables
 const config: ApiConfig = {
-  baseURL: __DEV__ ? 'http://localhost:3000/api' : 'https://api.rezapp.com',
-  timeout: 10000, // 10 seconds
+  baseURL: getApiUrl(), // Uses EXPO_PUBLIC_API_BASE_URL from .env
+  timeout: API_CONFIG.timeout, // 30 seconds from env
   defaultHeaders: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -52,6 +53,11 @@ class ApiClient {
 
   // Load auth token from storage
   private async loadAuthToken(): Promise<void> {
+    // Skip during SSR (server-side rendering)
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       this.authToken = token;
@@ -63,6 +69,12 @@ class ApiClient {
   // Set auth token
   public async setAuthToken(token: string | null): Promise<void> {
     this.authToken = token;
+
+    // Skip storage during SSR
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       if (token) {
         await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);

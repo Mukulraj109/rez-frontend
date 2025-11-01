@@ -154,9 +154,9 @@ export const useUserStatistics = (autoFetch: boolean = true): UseUserStatisticsR
             totalSpent: response.data.wallet?.totalSpent || 0,
             pendingAmount: response.data.wallet?.pendingAmount || 0,
           },
-          reviews: response.data.reviews || { total: 0 },
-          achievements: response.data.achievements || { total: 0, unlocked: 0 },
-          activities: response.data.activities || { total: 0 },
+          reviews: (response.data as any).reviews || { total: 0 },
+          achievements: (response.data as any).achievements || { total: 0, unlocked: 0 },
+          activities: (response.data as any).activities || { total: 0 },
         };
 
         setStatistics(statsData);
@@ -177,7 +177,6 @@ export const useUserStatistics = (autoFetch: boolean = true): UseUserStatisticsR
         const cachedData = await loadCachedData();
         if (cachedData) {
           setStatistics(prevStats => prevStats || cachedData);
-          console.log('Loaded statistics from cache after error');
         }
       }
     } finally {
@@ -193,7 +192,8 @@ export const useUserStatistics = (autoFetch: boolean = true): UseUserStatisticsR
     if (autoFetch) {
       fetchStatistics();
     }
-  }, [autoFetch, fetchStatistics]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch]);
 
   return {
     statistics,

@@ -1,6 +1,8 @@
 // API Client
 // Base client for all backend API communications
 
+import { parseConnectionError, formatConnectionError, isConnectionError } from '@/utils/connectionUtils';
+
 interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -20,6 +22,10 @@ class ApiClient {
   private baseURL: string;
   private defaultHeaders: Record<string, string>;
   private authToken: string | null = null;
+  private refreshTokenCallback: (() => Promise<boolean>) | null = null;
+  private logoutCallback: (() => void) | null = null;
+  private isRefreshing: boolean = false;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor() {
     // Use environment variable or fallback to user backend localhost
@@ -43,6 +49,39 @@ class ApiClient {
   // Get current auth token
   getAuthToken(): string | null {
     return this.authToken;
+  }
+
+  // Set refresh token callback
+  setRefreshTokenCallback(callback: (() => Promise<boolean>) | null) {
+    this.refreshTokenCallback = callback;
+  }
+
+  // Set logout callback
+  setLogoutCallback(callback: (() => void) | null) {
+    this.logoutCallback = callback;
+  }
+
+  // Handle token refresh
+  private async handleTokenRefresh(): Promise<boolean> {
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    if (!this.refreshTokenCallback) {
+      console.warn('⚠️ [API CLIENT] No refresh token callback set');
+      return false;
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = this.refreshTokenCallback();
+
+    try {
+      const success = await this.refreshPromise;
+      return success;
+    } finally {
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+    }
   }
 
   // Make HTTP request
@@ -109,6 +148,40 @@ class ApiClient {
         console.error('Status code:', response.status);
         console.error('Response:', responseData);
 
+        // Handle 401 Unauthorized - try to refresh token
+        if (response.status === 401 && this.authToken) {
+          // Check if the error is due to expired token
+          const errorMessage = responseData.message?.toLowerCase() || '';
+          const isTokenExpired = errorMessage.includes('expired') || errorMessage.includes('invalid') || errorMessage.includes('jwt');
+
+          if (isTokenExpired && this.refreshTokenCallback) {
+            console.log('🔄 [API CLIENT] 401 error detected (token expired), attempting token refresh...');
+
+            const refreshSuccess = await this.handleTokenRefresh();
+            if (refreshSuccess) {
+              console.log('✅ [API CLIENT] Token refreshed successfully, retrying request...');
+              // Retry the original request with new token
+              return this.makeRequest<T>(endpoint, options);
+            } else {
+              console.error('❌ [API CLIENT] Token refresh failed, clearing auth token and logging out');
+              // Clear the auth token and trigger logout
+              this.setAuthToken(null);
+              if (this.logoutCallback) {
+                console.log('🚪 [API CLIENT] Triggering logout callback');
+                this.logoutCallback();
+              }
+            }
+          } else {
+            console.error('❌ [API CLIENT] 401 error but not token-related, clearing auth token and logging out');
+            // Clear the auth token and trigger logout
+            this.setAuthToken(null);
+            if (this.logoutCallback) {
+              console.log('🚪 [API CLIENT] Triggering logout callback');
+              this.logoutCallback();
+            }
+          }
+        }
+
         return {
           success: false,
           error: responseData.message || `HTTP ${response.status}: ${response.statusText}`,
@@ -132,15 +205,38 @@ class ApiClient {
       console.error('Error type:', error?.constructor?.name);
       console.error('Error message:', error instanceof Error ? error.message : 'Unknown');
       console.error('Full error:', error);
+
+      // Parse connection error for better diagnostics
+      if (isConnectionError(error)) {
+        const connectionError = parseConnectionError(error);
+        console.error('\n📋 [API CLIENT] Connection Error Details:');
+        console.error('Type:', connectionError.type);
+        console.error('Message:', connectionError.message);
+        console.error('Suggestions:');
+        connectionError.suggestions.forEach((suggestion, index) => {
+          console.error(`  ${index + 1}. ${suggestion}`);
+        });
+      }
+
       console.error('└─────────────────────────────────────────┘\n');
 
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           return {
             success: false,
-            error: 'Request timeout'
+            error: 'Request timeout - Backend server may be slow or unresponsive'
           };
         }
+
+        // Provide better error messages for connection issues
+        if (isConnectionError(error)) {
+          const connectionError = parseConnectionError(error);
+          return {
+            success: false,
+            error: `${connectionError.message}. ${connectionError.suggestions[0] || ''}`
+          };
+        }
+
         return {
           success: false,
           error: error.message
@@ -196,8 +292,11 @@ class ApiClient {
   }
 
   // DELETE request
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.makeRequest<T>(endpoint, { method: 'DELETE' });
+  async delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    return this.makeRequest<T>(endpoint, {
+      method: 'DELETE',
+      body: data
+    });
   }
 
   // Upload file

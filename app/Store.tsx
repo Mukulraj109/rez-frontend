@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   FlatList,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
@@ -22,6 +23,9 @@ import { Image } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { LocationDisplay } from '@/components/location';
+import { storeSearchService, StoreCategory } from '@/services/storeSearchService';
+import walletApi from '@/services/walletApi';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 const CARD_GAP = 14;
@@ -33,110 +37,159 @@ type Store = {
   title: string;
   accent?: string;
   icon?: string;
-  gradient?: string[];
+  gradient?: readonly string[];
   badge?: string;
   description?: string;
+  count?: number;
 };
 
-const STORES: Store[] = [
-  { 
-    id: 's1', 
-    title: '30 min delivery', 
+// Fallback categories in case API fails
+const FALLBACK_STORES: Store[] = [
+  {
+    id: 'fastDelivery',
+    title: '30 min delivery',
     accent: '#7B61FF',
     icon: 'flash',
-    gradient: ['#7B61FF', '#A855F7'],
+    gradient: ['#7B61FF', '#A855F7'] as const,
     badge: '30 min',
     description: 'Lightning fast delivery'
   },
-  { 
-    id: 's2', 
-    title: '1 rupees store', 
+  {
+    id: 'budgetFriendly',
+    title: '1 rupees store',
     accent: '#6E56CF',
     icon: 'cash',
-    gradient: ['#6E56CF', '#8B5CF6'],
+    gradient: ['#6E56CF', '#8B5CF6'] as const,
     badge: '₹1',
     description: 'Everything at ₹1'
   },
-  { 
-    id: 's3', 
-    title: '99 Rupees store', 
+  {
+    id: 'ninetyNineStore',
+    title: '99 Rupees store',
     accent: '#6A5ACD',
     icon: 'wallet',
-    gradient: ['#6A5ACD', '#7C3AED'],
+    gradient: ['#6A5ACD', '#7C3AED'] as const,
     badge: '₹99',
     description: 'Budget friendly shopping'
   },
-  { 
-    id: 's4', 
-    title: 'Luxury store', 
+  {
+    id: 'premium',
+    title: 'Luxury store',
     accent: '#A78BFA',
     icon: 'diamond',
-    gradient: ['#A78BFA', '#C084FC'],
+    gradient: ['#A78BFA', '#C084FC'] as const,
     badge: 'Premium',
     description: 'Luxury & premium brands'
   },
-  { 
-    id: 's6', 
-    title: 'Alliance Store', 
+  {
+    id: 'alliance',
+    title: 'Alliance Store',
     accent: '#9F7AEA',
     icon: 'people',
-    gradient: ['#9F7AEA', '#A855F7'],
+    gradient: ['#9F7AEA', '#A855F7'] as const,
     badge: 'Partner',
     description: 'Partner stores network'
   },
-  { 
-    id: 's8', 
-    title: 'Organic Store', 
+  {
+    id: 'organic',
+    title: 'Organic Store',
     accent: '#34D399',
     icon: 'leaf',
-    gradient: ['#34D399', '#10B981'],
+    gradient: ['#34D399', '#10B981'] as const,
     badge: 'Organic',
     description: 'Natural & organic products'
   },
-  { 
-    id: 's9', 
-    title: 'Lowest Price', 
+  {
+    id: 'lowestPrice',
+    title: 'Lowest Price',
     accent: '#22D3EE',
     icon: 'trending-down',
-    gradient: ['#22D3EE', '#06B6D4'],
+    gradient: ['#22D3EE', '#06B6D4'] as const,
     badge: 'Best Price',
     description: 'Guaranteed lowest prices'
   },
-  { 
-    id: 's11', 
-    title: 'Rez Mall', 
+  {
+    id: 'mall',
+    title: 'Rez Mall',
     accent: '#60A5FA',
     icon: 'storefront',
-    gradient: ['#60A5FA', '#3B82F6'],
+    gradient: ['#60A5FA', '#3B82F6'] as const,
     badge: 'Mall',
     description: 'Complete shopping experience'
   },
-  { 
-    id: 's12', 
-    title: 'Cash Store', 
+  {
+    id: 'cashStore',
+    title: 'Cash Store',
     accent: '#8B5CF6',
     icon: 'card',
-    gradient: ['#8B5CF6', '#7C3AED'],
+    gradient: ['#8B5CF6', '#7C3AED'] as const,
     badge: 'Cash',
     description: 'Cashback & rewards'
   },
 ];
 
+// Helper function to map backend categories to UI properties
+const mapCategoryToStore = (category: StoreCategory): Store => {
+  // Get the display info from the service
+  const displayInfo = storeSearchService.getCategoryDisplayInfo(category.id);
+
+  // Map icon string to Ionicons name
+  const iconMap: { [key: string]: string } = {
+    '🚀': 'flash',
+    '💰': 'cash',
+    '💳': 'wallet',
+    '👑': 'diamond',
+    '🤝': 'people',
+    '🌱': 'leaf',
+    '💸': 'trending-down',
+    '🏬': 'storefront',
+    '💵': 'card',
+  };
+
+  // Get gradient colors based on the category color
+  const baseColor = displayInfo.color;
+  const gradient: readonly string[] = [baseColor, baseColor] as const;
+
+  // Extract badge from category name
+  const badgeMap: { [key: string]: string } = {
+    'fastDelivery': '30 min',
+    'budgetFriendly': '₹1',
+    'ninetyNineStore': '₹99',
+    'premium': 'Premium',
+    'alliance': 'Partner',
+    'organic': 'Organic',
+    'lowestPrice': 'Best Price',
+    'mall': 'Mall',
+    'cashStore': 'Cash',
+  };
+
+  return {
+    id: category.id,
+    title: displayInfo.name,
+    accent: displayInfo.color,
+    icon: iconMap[displayInfo.icon] || 'storefront',
+    gradient,
+    badge: badgeMap[category.id] || '',
+    description: category.description,
+    count: category.count,
+  };
+};
+
 
 function ModernCardIllustration({ 
   icon, 
-  gradient = ['#8B5CF6', '#A855F7'],
+  gradient = ['#8B5CF6', '#A855F7'] as const,
   badge 
 }: { 
   icon?: string;
-  gradient?: string[];
+  gradient?: readonly string[];
   badge?: string;
 }) {
   return (
     <View style={styles.illustrationContainer}>
       {/* Gradient Background */}
       <LinearGradient
-        colors={gradient}
+        colors={gradient as any}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradientBackground}
@@ -166,27 +219,16 @@ function ModernCardIllustration({
 
 function StoreCard({ item }: { item: Store }) {
   const router = useRouter();
-  
-  // Map store IDs to delivery category names
-  const getCategoryFromId = (id: string): string => {
-    const categoryMap: { [key: string]: string } = {
-      's1': 'fastDelivery',      // 30 min delivery
-      's2': 'budgetFriendly',    // 1 rupees store (matches database)
-      's3': 'ninetyNineStore',   // 99 Rupees store
-      's4': 'premium',           // Luxury store
-      's6': 'alliance',          // Alliance Store
-      's8': 'organic',           // Organic Store
-      's9': 'lowestPrice',       // Lowest Price
-      's11': 'mall',             // Rez Mall
-      's12': 'cashStore',        // Cash Store
-    };
-    return categoryMap[id] || 'fastDelivery';
-  };
 
-  const handleStorePress = () => {
-    const category = getCategoryFromId(item.id);
+  const handleStorePress = async () => {
+    const category = item.id; // Use the category ID directly from the backend
+
+    // Note: Skip analytics tracking for category pages since they don't relate to a specific store
+    // Category-level analytics should be tracked separately through a dedicated endpoint
+    // or when user interacts with actual stores within the category
+
     router.push({
-      pathname: '/StoreSearch' as any,
+      pathname: '/StoreListPage' as any,
       params: {
         category,
         title: item.title,
@@ -226,140 +268,231 @@ export default function App() {
   const router = useRouter();
   const { user, isModalVisible, showModal, hideModal } = useProfile();
   const { handleMenuItemPress } = useProfileMenu();
+  const { state: authState } = useAuth();
   const [showLocationDropdown, setShowLocationDropdown] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [categories, setCategories] = useState<Store[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [userPoints, setUserPoints] = useState(0);
+  const [isLoadingPoints, setIsLoadingPoints] = useState(true);
+
+  // Load wallet balance - matching Homepage approach
+  useEffect(() => {
+    const loadWalletBalance = async () => {
+      if (!authState.isAuthenticated) {
+        setIsLoadingPoints(false);
+        return;
+      }
+
+      try {
+        setIsLoadingPoints(true);
+        const walletResponse = await walletApi.getBalance();
+
+        if (walletResponse.success && walletResponse.data) {
+          const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
+          const actualWalletCoins = wasilCoin?.amount || 0;
+          console.log('✅ [STORE] Loaded wallet balance:', actualWalletCoins);
+          setUserPoints(actualWalletCoins);
+        } else {
+          console.warn('⚠️ [STORE] Could not get wallet balance');
+          setUserPoints(0);
+        }
+      } catch (error) {
+        console.error('❌ [STORE] Error loading wallet balance:', error);
+        setUserPoints(0);
+      } finally {
+        setIsLoadingPoints(false);
+      }
+    };
+
+    loadWalletBalance();
+  }, [authState.isAuthenticated]);
+
+  // Fetch categories from backend on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        setCategoriesError(null);
+        const response = await storeSearchService.getStoreCategories();
+
+        if (response.success && response.data.categories) {
+          // Map backend categories to UI store format
+          const mappedCategories = response.data.categories.map(mapCategoryToStore);
+          setCategories(mappedCategories);
+          console.log('✅ [STORE CATEGORIES] Fetched', mappedCategories.length, 'categories from backend');
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } catch (error) {
+        console.error('❌ [STORE CATEGORIES] Failed to fetch categories:', error);
+        setCategoriesError('Failed to load categories');
+        // Use fallback categories if API fails
+        setCategories(FALLBACK_STORES);
+        console.log('⚠️ [STORE CATEGORIES] Using fallback categories');
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleLocationDropdownToggle = () => {
     setShowLocationDropdown(!showLocationDropdown);
   };
 
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim()) {
+      router.push({
+        pathname: '/StoreListPage' as any,
+        params: {
+          search: searchQuery.trim(),
+        },
+      });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces
+      {/* Header with gradient - Fixed at top */}
+      <LinearGradient
+        colors={['#8B5CF6', '#A855F7'] as const}
+        style={styles.header}
       >
-        {/* Header with gradient */}
-        <LinearGradient
-          colors={['#8B5CF6', '#A855F7']}
-          style={styles.header}
-        >
-          {/* Top section */}
-          <View style={styles.headerTop}>
-            <TouchableOpacity 
-              style={styles.locationContainer}
-              onPress={handleLocationDropdownToggle}
-              activeOpacity={0.7}
+        {/* Top section */}
+        <View style={styles.headerTop}>
+          <TouchableOpacity
+            style={styles.locationContainer}
+            onPress={handleLocationDropdownToggle}
+            activeOpacity={0.7}
+          >
+            <LocationDisplay
+              compact={!showLocationDropdown}
+              showCoordinates={false}
+              showLastUpdated={false}
+              showRefreshButton={false}
+              style={styles.locationDisplay}
+              textStyle={styles.locationText}
+            />
+            <Ionicons
+              name={showLocationDropdown ? "chevron-up" : "chevron-down"}
+              size={16}
+              color="white"
+            />
+          </TouchableOpacity>
+
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.coinsContainer}
+              onPress={() => {
+                if (Platform.OS === 'ios') {
+                  setTimeout(() => router.push('/CoinPage'), 50);
+                } else {
+                  router.push('/CoinPage');
+                }
+              }}
+              activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
+              delayPressIn={Platform.OS === 'ios' ? 50 : 0}
             >
-              <LocationDisplay
-                compact={!showLocationDropdown}
-                showCoordinates={false}
-                showLastUpdated={false}
-                showRefreshButton={false}
-                style={styles.locationDisplay}
-                textStyle={styles.locationText}
-              />
-              <Ionicons 
-                name={showLocationDropdown ? "chevron-up" : "chevron-down"} 
-                size={16} 
-                color="white" 
-              />
+              <Ionicons name="star" size={16} color="#FFD700" />
+              <ThemedText allowFontScaling={false} style={styles.coinsText}>
+                {isLoadingPoints ? '...' : userPoints.toLocaleString()}
+              </ThemedText>
             </TouchableOpacity>
 
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                style={styles.coinsContainer}
-                onPress={() => {
-                  if (Platform.OS === 'ios') {
-                    setTimeout(() => router.push('/CoinPage'), 50);
-                  } else {
-                    router.push('/CoinPage');
-                  }
-                }}
-                activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
-                delayPressIn={Platform.OS === 'ios' ? 50 : 0}
-              >
-                <Ionicons name="star" size={16} color="#FFD700" />
-                <ThemedText allowFontScaling={false} style={styles.coinsText}>382</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  if (Platform.OS === 'ios') {
-                    setTimeout(() => router.push('/CartPage'), 50);
-                  } else {
-                    router.push('/CartPage');
-                  }
-                }}
-                activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
-                delayPressIn={Platform.OS === 'ios' ? 50 : 0}
-              >
-                <Ionicons name="cart-outline" size={24} color="white" />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                          style={styles.profileAvatar} 
-                          onPress={() => {
-                            if (Platform.OS === 'ios') {
-                              setTimeout(() => showModal(), 50);
-                            } else {
-                              showModal();
-                            }
-                          }}
-                          activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
-                          delayPressIn={Platform.OS === 'ios' ? 50 : 0}
-                        >
-                          <ThemedText style={styles.profileText}>
-                            {user?.initials || 'R'}
-                          </ThemedText>
-                        </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Search Row */}
-          <View style={styles.searchRow}>
-            <TouchableOpacity style={styles.backBtn} 
-             onPress={() => router.back()}
-            activeOpacity={0.8}>
-              <Ionicons name="chevron-back" size={18} color="#7C3AED" />
+            <TouchableOpacity
+              onPress={() => {
+                if (Platform.OS === 'ios') {
+                  setTimeout(() => router.push('/CartPage'), 50);
+                } else {
+                  router.push('/CartPage');
+                }
+              }}
+              activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
+              delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+            >
+              <Ionicons name="cart-outline" size={24} color="white" />
             </TouchableOpacity>
 
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={18} color="#8B8B97" style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search for the service"
-                placeholderTextColor="#9CA3AF"
-                returnKeyType="search"
-                allowFontScaling={false}
-              />
-              <Ionicons name="mic-outline" size={18} color="#8B8B97" />
-            </View>
-            
+            <TouchableOpacity
+                        style={styles.profileAvatar}
+                        onPress={() => {
+                          if (Platform.OS === 'ios') {
+                            setTimeout(() => showModal(), 50);
+                          } else {
+                            showModal();
+                          }
+                        }}
+                        activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
+                        delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+                      >
+                        <ThemedText style={styles.profileText}>
+                          {user?.initials || 'R'}
+                        </ThemedText>
+                      </TouchableOpacity>
           </View>
-          
-        </LinearGradient>
-        
-        {/* Grid */}
-        <View style={styles.gridWrap}>
-          <FlatList
-            data={STORES}
-            keyExtractor={(it) => it.id}
-            numColumns={2}
-            columnWrapperStyle={{ gap: CARD_GAP }}
-            renderItem={({ item }) => <StoreCard item={item} />}
-            scrollEnabled={false}
-            contentContainerStyle={{ gap: CARD_GAP }}
-          />
         </View>
-      </ScrollView>
+
+        {/* Search Row */}
+        <View style={styles.searchRow}>
+          <TouchableOpacity style={styles.backBtn}
+           onPress={() => router.back()}
+          activeOpacity={0.8}>
+            <Ionicons name="chevron-back" size={18} color="#7C3AED" />
+          </TouchableOpacity>
+
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={18} color="#8B8B97" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search for the service"
+              placeholderTextColor="#9CA3AF"
+              returnKeyType="search"
+              allowFontScaling={false}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearchSubmit}
+            />
+            <Ionicons name="mic-outline" size={18} color="#8B8B97" />
+          </View>
+
+        </View>
+
+      </LinearGradient>
+
+      {/* Scrollable Grid */}
+      <FlatList
+        data={categories}
+        keyExtractor={(it) => it.id}
+        numColumns={2}
+        columnWrapperStyle={{ gap: CARD_GAP }}
+        renderItem={({ item }) => <StoreCard item={item} />}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.flatListContent}
+        ListHeaderComponent={
+          <>
+            {isLoadingCategories ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#8B5CF6" />
+                <Text style={styles.loadingText}>Loading categories...</Text>
+              </View>
+            ) : categoriesError ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>⚠️ {categoriesError}</Text>
+                <Text style={styles.errorSubtext}>Showing default categories</Text>
+              </View>
+            ) : null}
+          </>
+        }
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scrollContent: { paddingBottom: 24 },
 
   header: {
     paddingTop: 50,
@@ -476,6 +609,13 @@ const styles = StyleSheet.create({
   },
 
   // Grid & cards
+  flatListContent: {
+    paddingHorizontal: H_PADDING,
+    paddingTop: 16,
+    paddingBottom: 100, // Add bottom padding to prevent content being hidden by navigation bar
+    gap: CARD_GAP,
+  },
+
   gridWrap: {
     paddingHorizontal: H_PADDING,
     paddingTop: 16,
@@ -598,6 +738,38 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: '#7C3AED',
+  },
+
+  // Loading and error states
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  errorContainer: {
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  errorSubtext: {
+    fontSize: 12,
+    color: '#78350F',
+    fontWeight: '400',
   },
 
 

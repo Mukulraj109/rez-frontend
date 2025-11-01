@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -14,69 +14,107 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
-import { useOffersData } from '@/hooks/useOffersData';
+import { useOffersPage } from '@/hooks/useOffersPage';
 import { shareOffersPage } from '@/utils/shareUtils';
-import { Offer, OfferSection } from '@/types/offers.types';
+import { Offer, OfferSection } from '@/services/realOffersApi';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 60) / 2; // 2 cards per row with padding
 
 export default function OffersScreen() {
   const router = useRouter();
+  const { state: authState } = useAuth();
   const { 
-    offersData, 
-    sections, 
-    loading, 
-    error 
-  } = useOffersData();
+    state,
+    actions,
+    handlers
+  } = useOffersPage();
+  
+  const [isFavorited, setIsFavorited] = useState(false);
+
+  // Get user points - prioritize API response over auth state (API is more up-to-date)
+  const userPoints = React.useMemo(() => {
+    // Priority 1: Use API response (most up-to-date from Wallet model)
+    if (state.pageData?.userEngagement?.userPoints !== undefined) {
+      console.log('💰 [OFFERS PAGE] Using API response:', state.pageData.userEngagement.userPoints);
+      return state.pageData.userEngagement.userPoints;
+    }
+    
+    // Priority 2: Fallback to auth state
+    const walletBalance = authState.user?.wallet?.balance || 0;
+    console.log('💰 [OFFERS PAGE] Fallback to auth state:', walletBalance);
+    return walletBalance;
+  }, [state.pageData?.userEngagement?.userPoints, authState.user?.wallet?.balance]);
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)');
-    }
+    handlers.handleBack();
   };
 
   const handleShare = async () => {
-    await shareOffersPage();
+    await handlers.handleShare();
   };
 
   const handleFavorite = () => {
-    // Implement favorite functionality
-    console.log('Toggle favorite');
+    setIsFavorited(!isFavorited);
+    handlers.handleFavorite();
   };
 
+  const ProductCard = ({ offer }: { offer: Offer }) => {
+    const [imageError, setImageError] = React.useState(false);
 
-  const ProductCard = ({ offer }: { offer: Offer }) => (
-    <TouchableOpacity style={styles.productCard}>
-      <Image 
-        source={{ uri: offer.image }} 
-        style={styles.productImage}
-        resizeMode="cover"
-      />
-      
-      
-      <View style={styles.productInfo}>
-        <ThemedText style={styles.productTitle} numberOfLines={2}>
-          {offer.title}
-        </ThemedText>
-        <ThemedText style={styles.cashBack}>
-          Upto {offer.cashBackPercentage}% cash back
-        </ThemedText>
-        <View style={styles.distanceContainer}>
-          <Ionicons name="location-outline" size={12} color="#666" />
-          <ThemedText style={styles.distance}>{offer.distance}</ThemedText>
+    return (
+      <TouchableOpacity 
+        style={styles.productCard}
+        onPress={() => handlers.handleOfferPress(offer)}
+      >
+        {imageError || !offer.image ? (
+          <View style={styles.productImagePlaceholder}>
+            <Ionicons name="image-outline" size={32} color="#ccc" />
+          </View>
+        ) : (
+          <Image 
+            source={{ uri: offer.image }} 
+            style={styles.productImage}
+            resizeMode="cover"
+            onError={() => {
+              console.log('❌ [OFFER CARD] Failed to load image:', offer.image);
+              setImageError(true);
+            }}
+            onLoad={() => {
+              setImageError(false);
+            }}
+          />
+        )}
+        
+        <View style={styles.productInfo}>
+          <ThemedText style={styles.productTitle} numberOfLines={2}>
+            {offer.title}
+          </ThemedText>
+          <ThemedText style={styles.cashBack}>
+            Upto {offer.cashbackPercentage}% cash back
+          </ThemedText>
+          {offer.store?.name && (
+            <ThemedText style={styles.storeName} numberOfLines={1}>
+              {offer.store.name}
+            </ThemedText>
+          )}
+          {offer.distance && (
+            <View style={styles.distanceContainer}>
+              <Ionicons name="location-outline" size={12} color="#666" />
+              <ThemedText style={styles.distance}>{offer.distance} km away</ThemedText>
+            </View>
+          )}
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const SectionHeader = ({ section }: { section: OfferSection }) => (
     <View style={styles.sectionHeader}>
       <ThemedText style={styles.sectionTitle}>{section.title}</ThemedText>
       {section.viewAllEnabled && (
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => handlers.handleViewAll(section.title)}>
           <ThemedText style={styles.viewAll}>View all</ThemedText>
         </TouchableOpacity>
       )}
@@ -88,7 +126,7 @@ export default function OffersScreen() {
       <SectionHeader section={section} />
       <View style={styles.productsGrid}>
         {section.offers.map((offer, index) => (
-          <ProductCard key={offer.id} offer={offer} />
+          <ProductCard key={offer._id} offer={offer} />
         ))}
       </View>
     </View>
@@ -112,7 +150,7 @@ export default function OffersScreen() {
               onPress={() => router.push('/CoinPage')}
             >
               <Ionicons name="star" size={16} color="#FFD700" />
-              <ThemedText style={styles.pointsText}>{offersData.userPoints}</ThemedText>
+              <ThemedText style={styles.pointsText}>{userPoints}</ThemedText>
             </TouchableOpacity>
           </View>
           
@@ -121,7 +159,11 @@ export default function OffersScreen() {
               <Ionicons name="share-outline" size={20} color="white" />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleFavorite} style={styles.headerButton}>
-              <Ionicons name="heart-outline" size={20} color="white" />
+              <Ionicons 
+                name={isFavorited ? "heart" : "heart-outline"} 
+                size={20} 
+                color={isFavorited ? "#EF4444" : "white"} 
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -149,7 +191,7 @@ export default function OffersScreen() {
         contentContainerStyle={styles.contentContainer}
       >
         {/* Hero Banner */}
-        <View style={styles.heroBanner}>
+        <View style={styles.heroBannerCard}>
           <View style={styles.heroContent}>
             <Image 
               source={require('@/assets/images/bag.png')} 
@@ -167,7 +209,7 @@ export default function OffersScreen() {
         </View>
 
         {/* Loading State */}
-        {loading && (
+        {state.loading && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#8B5CF6" />
             <ThemedText style={styles.loadingText}>Loading offers...</ThemedText>
@@ -175,20 +217,104 @@ export default function OffersScreen() {
         )}
 
         {/* Error State */}
-        {error && (
+        {state.error && (
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
-            <ThemedText style={styles.errorText}>{error}</ThemedText>
-            <TouchableOpacity style={styles.retryButton}>
+            <ThemedText style={styles.errorText}>{state.error}</ThemedText>
+            <TouchableOpacity style={styles.retryButton} onPress={actions.loadOffersPageData}>
               <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
             </TouchableOpacity>
           </View>
         )}
 
+        {/* Hero Banner */}
+        {!state.loading && !state.error && state.pageData?.heroBanner && (
+          <View style={styles.heroBanner}>
+            <Image 
+              source={{ uri: state.pageData.heroBanner.image }} 
+              style={styles.heroBannerImage}
+              resizeMode="cover"
+            />
+            <View style={styles.heroBannerOverlay}>
+              <ThemedText style={styles.heroBannerTitle}>
+                {state.pageData.heroBanner.title}
+              </ThemedText>
+              {state.pageData.heroBanner.subtitle && (
+                <ThemedText style={styles.heroBannerSubtitle}>
+                  {state.pageData.heroBanner.subtitle}
+                </ThemedText>
+              )}
+              <TouchableOpacity 
+                style={styles.heroBannerButton}
+                onPress={() => router.push('/offers/view-all' as any)}
+              >
+                <ThemedText style={styles.heroBannerButtonText}>
+                  {state.pageData.heroBanner.ctaText}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Offer Sections */}
-        {!loading && !error && sections.map((section) => (
-          <OfferSectionComponent key={section.id} section={section} />
-        ))}
+        {!state.loading && !state.error && state.pageData && (
+          <>
+            {/* Debug Info */}
+            {}
+            
+            {/* Mega Offers Section */}
+            {state.pageData.sections.mega.offers.length > 0 && (
+              <OfferSectionComponent 
+                key="mega" 
+                section={{
+                  id: 'mega',
+                  title: state.pageData.sections.mega.title,
+                  offers: state.pageData.sections.mega.offers.slice(0, 2), // Show only 2 offers
+                  viewAllEnabled: true
+                }} 
+              />
+            )}
+
+            {/* Student Offers Section */}
+            {state.pageData.sections.students.offers.length > 0 && (
+              <OfferSectionComponent 
+                key="students" 
+                section={{
+                  id: 'students',
+                  title: state.pageData.sections.students.title,
+                  offers: state.pageData.sections.students.offers.slice(0, 2), // Show only 2 offers
+                  viewAllEnabled: true
+                }} 
+              />
+            )}
+
+            {/* New Arrivals Section */}
+            {state.pageData.sections.newArrivals.offers.length > 0 && (
+              <OfferSectionComponent 
+                key="newArrivals" 
+                section={{
+                  id: 'newArrivals',
+                  title: state.pageData.sections.newArrivals.title,
+                  offers: state.pageData.sections.newArrivals.offers.slice(0, 2), // Show only 2 offers
+                  viewAllEnabled: true
+                }} 
+              />
+            )}
+
+            {/* Trending Section */}
+            {state.pageData.sections.trending.offers.length > 0 && (
+              <OfferSectionComponent 
+                key="trending" 
+                section={{
+                  id: 'trending',
+                  title: state.pageData.sections.trending.title,
+                  offers: state.pageData.sections.trending.offers.slice(0, 2), // Show only 2 offers
+                  viewAllEnabled: true
+                }} 
+              />
+            )}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -199,21 +325,67 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  heroBanner: {
+    margin: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  heroBannerImage: {
+    width: '100%',
+    height: 200,
+  },
+  heroBannerOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: 20,
+  },
+  heroBannerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 8,
+  },
+  heroBannerSubtitle: {
+    fontSize: 16,
+    color: 'white',
+    marginBottom: 16,
+    opacity: 0.9,
+  },
+  heroBannerButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  heroBannerButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   header: {
-    paddingTop: 20,
-    paddingHorizontal: 20,
+    paddingTop: 10,
     paddingBottom: 20,
+    paddingHorizontal: 16,
   },
   headerTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -225,59 +397,58 @@ const styles = StyleSheet.create({
   pointsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 15,
-    gap: 5,
+    borderRadius: 20,
+    gap: 4,
   },
   pointsText: {
-    color: '#333',
-    fontSize: 14,
+    color: 'white',
+    fontSize: 16,
     fontWeight: '600',
   },
   headerRight: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   bannerContainer: {
     alignItems: 'center',
-    marginBottom: 10,
   },
   megaOffersBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   megaOffersText: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '900',
     color: 'white',
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
     transform: [{ rotate: '-5deg' }],
   },
   offersTextContainer: {
     backgroundColor: '#FFD700',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
     transform: [{ rotate: '5deg' }],
   },
   offersText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#1F2937',
   },
   scalloped: {
     height: 20,
@@ -285,6 +456,10 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   scallopedInner: {
+    position: 'absolute',
+    bottom: -1,
+    left: 0,
+    right: 0,
     height: 20,
     backgroundColor: '#f5f5f5',
     borderTopLeftRadius: 20,
@@ -297,7 +472,7 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 20,
   },
-  heroBanner: {
+  heroBannerCard: {
     backgroundColor: 'white',
     borderRadius: 15,
     padding: 20,
@@ -373,6 +548,13 @@ const styles = StyleSheet.create({
     height: 120,
     backgroundColor: '#f0f0f0',
   },
+  productImagePlaceholder: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   productInfo: {
     padding: 12,
     gap: 4,
@@ -382,6 +564,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
+  },
+  storeName: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
   },
   cashBack: {
     fontSize: 12,

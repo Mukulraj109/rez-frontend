@@ -176,7 +176,7 @@ class CouponService {
   async getAvailableCoupons(
     filters?: GetCouponsFilters
   ): Promise<ApiResponse<GetCouponsResponse>> {
-    console.log('🎫 [COUPON API] Getting available coupons', filters);
+
     return apiClient.get('/coupons', filters);
   }
 
@@ -184,7 +184,7 @@ class CouponService {
    * Get featured coupons
    */
   async getFeaturedCoupons(): Promise<ApiResponse<GetCouponsResponse>> {
-    console.log('⭐ [COUPON API] Getting featured coupons');
+
     return apiClient.get('/coupons/featured');
   }
 
@@ -194,31 +194,13 @@ class CouponService {
   async getMyCoupons(
     filters?: GetMyCouponsFilters
   ): Promise<ApiResponse<GetMyCouponsResponse>> {
-    console.log('\n╔════════════════════════════════════════╗');
-    console.log('║  COUPON API - GET MY COUPONS           ║');
-    console.log('╚════════════════════════════════════════╝');
-    console.log('📞 Method: getMyCoupons');
-    console.log('📝 Filters:', JSON.stringify(filters, null, 2));
-    console.log('🌐 Endpoint: /coupons/my-coupons');
-    console.log('🔑 Auth token present:', !!apiClient.getAuthToken());
-    console.log('----------------------------------------');
-
     try {
-      const response = await apiClient.get('/coupons/my-coupons', filters);
-
-      console.log('\n✅ [COUPON API] API Client Response:');
-      console.log('Success:', response.success);
-      console.log('Has data:', !!response.data);
-      console.log('Error:', response.error || 'none');
+      const response = await apiClient.get<GetMyCouponsResponse>('/coupons/my-coupons', filters);
 
       if (response.data) {
-        console.log('\n📊 [COUPON API] Data received:');
-        console.log('Coupons array:', Array.isArray(response.data.coupons));
-        console.log('Coupons count:', response.data.coupons?.length || 0);
-        console.log('Summary:', response.data.summary);
+        // Process response data if needed
       }
 
-      console.log('╚════════════════════════════════════════╝\n');
       return response;
     } catch (error) {
       console.error('\n❌ [COUPON API] EXCEPTION IN getMyCoupons');
@@ -232,7 +214,7 @@ class CouponService {
    * Claim a coupon
    */
   async claimCoupon(couponId: string): Promise<ApiResponse<{ userCoupon: UserCoupon }>> {
-    console.log('✋ [COUPON API] Claiming coupon:', couponId);
+
     return apiClient.post(`/coupons/${couponId}/claim`);
   }
 
@@ -240,10 +222,26 @@ class CouponService {
    * Validate coupon for cart
    */
   async validateCoupon(
-    data: ValidateCouponRequest
+    couponCode: string,
+    cartData: CartData
   ): Promise<ApiResponse<ValidateCouponResponse>> {
-    console.log('✔️ [COUPON API] Validating coupon:', data.couponCode);
-    return apiClient.post('/coupons/validate', data);
+
+    return apiClient.post('/coupons/validate', { couponCode, cartData });
+  }
+
+  /**
+   * Validate voucher code (for unified voucher/coupon system)
+   */
+  async validateVoucherCode(
+    voucherCode: string,
+    cartData: CartData
+  ): Promise<ApiResponse<ValidateCouponResponse>> {
+
+    // Vouchers are treated as fixed-amount coupons
+    return apiClient.post('/coupons/validate', {
+      couponCode: voucherCode,
+      cartData
+    });
   }
 
   /**
@@ -252,7 +250,7 @@ class CouponService {
   async getBestOffer(
     cartData: CartData
   ): Promise<ApiResponse<BestOfferResponse | null>> {
-    console.log('🎁 [COUPON API] Getting best offer for cart');
+
     return apiClient.post('/coupons/best-offer', { cartData });
   }
 
@@ -260,7 +258,7 @@ class CouponService {
    * Remove claimed coupon
    */
   async removeCoupon(couponId: string): Promise<ApiResponse<{ message: string }>> {
-    console.log('🗑️ [COUPON API] Removing coupon:', couponId);
+
     return apiClient.delete(`/coupons/${couponId}`);
   }
 
@@ -270,7 +268,7 @@ class CouponService {
   async searchCoupons(
     filters: SearchCouponsFilters
   ): Promise<ApiResponse<SearchCouponsResponse>> {
-    console.log('🔍 [COUPON API] Searching coupons:', filters.q);
+
     return apiClient.get('/coupons/search', filters);
   }
 
@@ -278,7 +276,7 @@ class CouponService {
    * Get coupon details
    */
   async getCouponDetails(couponId: string): Promise<ApiResponse<Coupon>> {
-    console.log('📄 [COUPON API] Getting coupon details:', couponId);
+
     return apiClient.get(`/coupons/${couponId}`);
   }
 }

@@ -51,7 +51,7 @@ export default function CategoryGrid({
       {renderCategoriesInRows()}
     </View>
   );
-
+  
   if (!scrollable) {
     return content;
   }

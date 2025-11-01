@@ -90,7 +90,7 @@ export function OffersProvider({ children }: OffersProviderProps) {
     try {
       // Using mock API since offers backend is not implemented yet
       const offersResponse = await offersApi.getOffers({ page: 1, pageSize: 50 });
-      const categoriesResponse = await offersApi.getCategories();
+      const categoriesResponse = await (offersApi as any).getCategories();
       
       if (!categoriesResponse.data || !offersResponse.data) {
         throw new Error('Failed to fetch offers data');
@@ -98,20 +98,26 @@ export function OffersProvider({ children }: OffersProviderProps) {
       
       // Transform API response to match OffersPageData structure
       const offersPageData: OffersPageData = {
-        title: 'Special Offers',
-        subtitle: 'Exclusive deals and cashback offers',
+        heroBanner: {
+          id: 'hero-banner-1',
+          title: 'Special Offers',
+          subtitle: 'Exclusive deals and cashback offers',
+          image: '',
+          ctaText: 'View All',
+          ctaAction: '/offers',
+          backgroundColor: '#FF6B6B'
+        },
         categories: categoriesResponse.data,
         sections: [
           {
             id: 'featured-offers',
             title: 'Featured Offers', 
             subtitle: 'Best deals available now',
-            offers: offersResponse.data.items
+            offers: offersResponse.data.items as any,
+            viewAllEnabled: true
           }
         ],
-        trending: offersResponse.data.items.filter(offer => offer.isTrending).slice(0, 5),
-        featured: offersResponse.data.items.slice(0, 3), // Remove isFeatured filter since property doesn't exist
-        banners: []
+        userPoints: 0
       };
       
       dispatch({ type: 'SET_OFFERS', payload: offersPageData });

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { storeSearchService, Store, StoreSearchParams, StoreCategory } from '@/services/storeSearchService';
-import { useLocation } from '@/hooks/useLocation';
+import { useCurrentLocation } from '@/hooks/useLocation';
 
 export interface UseStoreSearchOptions {
-  category: string;
+  category?: string;
+  searchQuery?: string;
   autoFetch?: boolean;
   initialPage?: number;
   pageSize?: number;
@@ -30,14 +31,15 @@ export interface UseStoreSearchReturn {
 export const useStoreSearch = (options: UseStoreSearchOptions): UseStoreSearchReturn => {
   const {
     category,
+    searchQuery,
     autoFetch = true,
     initialPage = 1,
     pageSize = 20,
     sortBy: initialSortBy = 'rating'
   } = options;
 
-  const { currentLocation } = useLocation();
-  
+  const { currentLocation } = useCurrentLocation();
+
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,32 +60,49 @@ export const useStoreSearch = (options: UseStoreSearchOptions): UseStoreSearchRe
 
       setError(null);
 
-      const locationParam = currentLocation?.coordinates 
+      const locationParam = currentLocation?.coordinates
         ? storeSearchService.formatLocationForAPI(currentLocation)
         : undefined;
 
-      const searchParams: StoreSearchParams = {
-        category,
-        page,
-        limit: pageSize,
-        sortBy,
-        ...(locationParam && { 
-          location: locationParam, 
-          radius: 10 
-        }),
-      };
+      let response;
 
-      const response = await storeSearchService.searchStoresByCategory(searchParams);
+      // Use advanced search if searchQuery exists
+      if (searchQuery && searchQuery.trim()) {
+        response = await storeSearchService.advancedStoreSearch({
+          search: searchQuery.trim(),
+          category,
+          page,
+          limit: pageSize,
+          sortBy,
+          ...(locationParam && {
+            location: locationParam,
+            radius: 10
+          }),
+        });
+      } else {
+        // Use category search otherwise
+        const searchParams: StoreSearchParams = {
+          category: category || 'all',
+          page,
+          limit: pageSize,
+          sortBy,
+          ...(locationParam && {
+            location: locationParam,
+            radius: 10
+          }),
+        };
+        response = await storeSearchService.searchStoresByCategory(searchParams);
+      }
 
       if (response.success) {
         const newStores = response.data.stores;
-        
+
         if (page === 1 || refresh) {
           setStores(newStores);
         } else {
           setStores(prev => [...prev, ...newStores]);
         }
-        
+
         setHasMore(response.data.pagination.hasNext);
         setCurrentPage(page);
         setTotalStores(response.data.pagination.total);
@@ -95,7 +114,7 @@ export const useStoreSearch = (options: UseStoreSearchOptions): UseStoreSearchRe
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(errorMessage);
       console.error('Error fetching stores:', err);
-      
+
       // Only show alert for initial load, not for pagination
       if (page === 1) {
         Alert.alert('Error', 'Failed to load stores. Please try again.');
@@ -104,7 +123,7 @@ export const useStoreSearch = (options: UseStoreSearchOptions): UseStoreSearchRe
       setLoading(false);
       setRefreshing(false);
     }
-  }, [category, currentLocation, pageSize, sortBy]);
+  }, [category, searchQuery, currentLocation, pageSize, sortBy]);
 
   const refreshStores = useCallback(async () => {
     await fetchStores(1, true);
@@ -126,17 +145,17 @@ export const useStoreSearch = (options: UseStoreSearchOptions): UseStoreSearchRe
 
   // Auto-fetch on mount and when dependencies change
   useEffect(() => {
-    if (autoFetch && category) {
+    if (autoFetch && (category || searchQuery)) {
       fetchStores(1);
     }
-  }, [autoFetch, category, fetchStores]);
+  }, [autoFetch, category, searchQuery, fetchStores]);
 
   // Refetch when sortBy changes
   useEffect(() => {
-    if (autoFetch && category && sortBy !== initialSortBy) {
+    if (autoFetch && (category || searchQuery) && sortBy !== initialSortBy) {
       fetchStores(1);
     }
-  }, [sortBy, autoFetch, category, fetchStores, initialSortBy]);
+  }, [sortBy, autoFetch, category, searchQuery, fetchStores, initialSortBy]);
 
   return {
     stores,

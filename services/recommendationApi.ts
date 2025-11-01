@@ -52,14 +52,14 @@ class RecommendationService {
     limit: number = 6
   ): Promise<ApiResponse<SimilarProductsResponse>> {
     try {
-      console.log('🔍 [RECOMMENDATION API] Fetching similar products for:', productId);
+
       const response = await apiClient.get(`/recommendations/products/similar/${productId}`, {
         limit
       });
 
       if (response.success && response.data) {
-        console.log('✅ [RECOMMENDATION API] Similar products retrieved:', response.data.total);
-        return response;
+
+        return response as ApiResponse<SimilarProductsResponse>;
       }
 
       throw new Error(response.message || 'Failed to fetch similar products');
@@ -77,14 +77,14 @@ class RecommendationService {
     limit: number = 4
   ): Promise<ApiResponse<FrequentlyBoughtResponse>> {
     try {
-      console.log('🔍 [RECOMMENDATION API] Fetching frequently bought together for:', productId);
+
       const response = await apiClient.get(`/recommendations/products/frequently-bought/${productId}`, {
         limit
       });
 
       if (response.success && response.data) {
-        console.log('✅ [RECOMMENDATION API] Frequently bought together retrieved:', response.data.total);
-        return response;
+
+        return response as ApiResponse<FrequentlyBoughtResponse>;
       }
 
       throw new Error(response.message || 'Failed to fetch frequently bought together');
@@ -102,14 +102,14 @@ class RecommendationService {
     limit: number = 3
   ): Promise<ApiResponse<BundleDealsResponse>> {
     try {
-      console.log('🔍 [RECOMMENDATION API] Fetching bundle deals for:', productId);
+
       const response = await apiClient.get(`/recommendations/products/bundle/${productId}`, {
         limit
       });
 
       if (response.success && response.data) {
-        console.log('✅ [RECOMMENDATION API] Bundle deals retrieved:', response.data.total);
-        return response;
+
+        return response as ApiResponse<BundleDealsResponse>;
       }
 
       throw new Error(response.message || 'Failed to fetch bundle deals');
@@ -127,15 +127,15 @@ class RecommendationService {
     excludeProducts: string[] = []
   ): Promise<ApiResponse<PersonalizedRecommendationsResponse>> {
     try {
-      console.log('🔍 [RECOMMENDATION API] Fetching personalized recommendations');
+
       const response = await apiClient.get('/recommendations/products/personalized', {
         limit,
         excludeProducts: excludeProducts.join(',')
       });
 
       if (response.success && response.data) {
-        console.log('✅ [RECOMMENDATION API] Personalized recommendations retrieved:', response.data.total);
-        return response;
+
+        return response as ApiResponse<PersonalizedRecommendationsResponse>;
       }
 
       throw new Error(response.message || 'Failed to fetch personalized recommendations');
@@ -150,12 +150,12 @@ class RecommendationService {
    */
   async trackProductView(productId: string): Promise<ApiResponse<{ productId: string; tracked: boolean }>> {
     try {
-      console.log('📊 [RECOMMENDATION API] Tracking product view:', productId);
+
       const response = await apiClient.post(`/recommendations/products/${productId}/view`);
 
       if (response.success) {
-        console.log('✅ [RECOMMENDATION API] Product view tracked successfully');
-        return response;
+
+        return response as ApiResponse<{ productId: string; tracked: boolean }>;
       }
 
       throw new Error(response.message || 'Failed to track product view');
@@ -179,7 +179,6 @@ class RecommendationService {
     bundles: BundleItem[];
   }> {
     try {
-      console.log('🔍 [RECOMMENDATION API] Fetching all recommendations for:', productId);
 
       // Fetch all recommendation types in parallel
       const [similarResponse, frequentlyBoughtResponse, bundlesResponse] = await Promise.allSettled([
@@ -199,12 +198,6 @@ class RecommendationService {
           ? bundlesResponse.value.data?.bundles || []
           : []
       };
-
-      console.log('✅ [RECOMMENDATION API] All recommendations retrieved:', {
-        similar: result.similar.length,
-        frequentlyBought: result.frequentlyBought.length,
-        bundles: result.bundles.length
-      });
 
       return result;
     } catch (error) {
@@ -240,7 +233,7 @@ class RecommendationService {
     const originalPrice = bundle.products.reduce((sum, p) =>
       sum + (p.price?.original || p.price?.current || 0), 0
     );
-
+    
     return {
       products: bundle.products,
       combinedPrice: bundle.combinedPrice,

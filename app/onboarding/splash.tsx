@@ -26,7 +26,7 @@ export default function SplashScreen() {
         <Text style={styles.tagline}>Search & Find Best Deals</Text>
       </View>
     </LinearGradient>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -22,16 +22,16 @@ import { Activity, ActivityType } from '@/services/activityApi';
 
 const ACTIVITY_TYPE_FILTERS: { label: string; value: ActivityType | 'all' }[] = [
   { label: 'All', value: 'all' },
-  { label: 'Orders', value: 'ORDER' },
-  { label: 'Cashback', value: 'CASHBACK' },
-  { label: 'Reviews', value: 'REVIEW' },
-  { label: 'Videos', value: 'VIDEO' },
-  { label: 'Projects', value: 'PROJECT' },
-  { label: 'Vouchers', value: 'VOUCHER' },
-  { label: 'Offers', value: 'OFFER' },
-  { label: 'Referrals', value: 'REFERRAL' },
-  { label: 'Wallet', value: 'WALLET' },
-  { label: 'Achievements', value: 'ACHIEVEMENT' },
+  { label: 'Orders', value: ActivityType.ORDER },
+  { label: 'Cashback', value: ActivityType.CASHBACK },
+  { label: 'Reviews', value: ActivityType.REVIEW },
+  { label: 'Videos', value: ActivityType.VIDEO },
+  { label: 'Projects', value: ActivityType.PROJECT },
+  { label: 'Vouchers', value: ActivityType.VOUCHER },
+  { label: 'Offers', value: ActivityType.OFFER },
+  { label: 'Referrals', value: ActivityType.REFERRAL },
+  { label: 'Wallet', value: ActivityType.WALLET },
+  { label: 'Achievements', value: ActivityType.ACHIEVEMENT },
 ];
 
 export default function ActivityFeedPage() {
@@ -140,7 +140,17 @@ export default function ActivityFeedPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => {
+              // Check if we can go back, otherwise navigate to profile
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.push('/profile');
+              }
+            }}
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 

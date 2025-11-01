@@ -68,7 +68,7 @@ class ApiClient {
         0, 
         'Network error', 
         error instanceof Error ? error.message : 'Unknown network error'
-      );
+        );
     }
   }
 
@@ -279,7 +279,6 @@ export class HomepageApiService {
         }
       })
     );
-
     return results;
   }
 }

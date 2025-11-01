@@ -33,6 +33,15 @@ export const useAchievements = (autoFetch: boolean = true): UseAchievementsRetur
 
       if (response.success && response.data) {
         setAchievements(response.data);
+      } else if (response.message === 'Achievements already initialized' || response.data?.length === 0) {
+        // If no achievements exist, initialize them
+
+        const initResponse = await achievementApi.initializeUserAchievements();
+        if (initResponse.success && initResponse.data) {
+          setAchievements(initResponse.data);
+        } else {
+          throw new Error(initResponse.message || 'Failed to initialize achievements');
+        }
       } else {
         throw new Error(response.message || 'Failed to fetch achievements');
       }

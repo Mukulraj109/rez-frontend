@@ -17,6 +17,7 @@ export const VoucherData = {
     selectedCategory: null,
     selectedBrand: null,
     brands: [],
+    allBrands: [], // Store all brands for local filtering
     categories: [],
     featuredOffers: [],
     loading: false,

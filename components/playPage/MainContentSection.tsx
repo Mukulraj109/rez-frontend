@@ -49,7 +49,7 @@ export default function MainContentSection({
         </TouchableOpacity>
       )}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

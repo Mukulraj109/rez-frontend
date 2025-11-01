@@ -14,6 +14,7 @@ import EarningsCard from '@/components/earnPage/EarningsCard';
 import RecentProjectsSection from '@/components/earnPage/RecentProjectsSection';
 import CategoryGrid from '@/components/earnPage/CategoryGrid';
 import ReferralSection from '@/components/earnPage/ReferralSection';
+import EarningOpportunities from '@/components/earnPage/EarningOpportunities';
 
 import { Notification, Project, Category } from '@/types/earnPage.types';
 
@@ -59,7 +60,7 @@ export default function EarnScreen() {
   }, [handleStartProject]);
 
   const handleStatusPress = React.useCallback((status: string) => {
-    console.log(`Navigate to ${status} projects`);
+
   }, []);
 
   const handleSeeWallet = React.useCallback(() => {
@@ -98,7 +99,7 @@ export default function EarnScreen() {
   }, []);
 
   const handleSeeAllProjects = React.useCallback(() => {
-    console.log('Navigate to all projects');
+
   }, []);
 
   return (
@@ -149,6 +150,8 @@ export default function EarnScreen() {
           onNotificationPress={handleNotificationPress}
         />
 
+        <EarningOpportunities />
+
         <ProjectDashboard
           projectStatus={state.projectStatus}
           onStatusPress={handleStatusPress}
@@ -182,7 +185,7 @@ export default function EarnScreen() {
         />
       </View>
     </ScrollView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

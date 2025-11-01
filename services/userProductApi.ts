@@ -255,7 +255,7 @@ class UserProductService {
    * Get user's products
    */
   async getUserProducts(filters?: ProductFilters): Promise<ApiResponse<UserProduct[]>> {
-    console.log('📦 [USER PRODUCT API] Getting user products', filters);
+
     return apiClient.get('/user-products', filters);
   }
 
@@ -263,7 +263,7 @@ class UserProductService {
    * Get product details
    */
   async getProductDetails(productId: string): Promise<ApiResponse<UserProduct>> {
-    console.log('📦 [USER PRODUCT API] Getting product details:', productId);
+
     return apiClient.get(`/user-products/${productId}`);
   }
 
@@ -274,7 +274,7 @@ class UserProductService {
     products: UserProduct[];
     count: number;
   }>> {
-    console.log('⚠️ [USER PRODUCT API] Getting expiring warranties');
+
     return apiClient.get('/user-products/expiring-warranties', { days });
   }
 
@@ -285,7 +285,7 @@ class UserProductService {
     products: UserProduct[];
     count: number;
   }>> {
-    console.log('⚠️ [USER PRODUCT API] Getting expiring AMC');
+
     return apiClient.get('/user-products/expiring-amc', { days });
   }
 
@@ -296,7 +296,7 @@ class UserProductService {
     productId: string,
     data: RegisterProductData
   ): Promise<ApiResponse<UserProduct>> {
-    console.log('📝 [USER PRODUCT API] Registering product:', productId);
+
     return apiClient.post(`/user-products/${productId}/register`, data);
   }
 
@@ -307,7 +307,7 @@ class UserProductService {
     productId: string,
     data: ScheduleInstallationData
   ): Promise<ApiResponse<UserProduct>> {
-    console.log('🔧 [USER PRODUCT API] Scheduling installation:', productId);
+
     return apiClient.post(`/user-products/${productId}/schedule-installation`, data);
   }
 
@@ -318,7 +318,7 @@ class UserProductService {
     productId: string,
     data: RenewAMCData
   ): Promise<ApiResponse<UserProduct>> {
-    console.log('🔄 [USER PRODUCT API] Renewing AMC:', productId);
+
     return apiClient.post(`/user-products/${productId}/renew-amc`, data);
   }
 
@@ -331,7 +331,7 @@ class UserProductService {
     warrantyStatus?: string;
     isWarrantyExpiringSoon?: boolean;
   }>> {
-    console.log('🛡️ [USER PRODUCT API] Getting warranty details:', productId);
+
     return apiClient.get(`/user-products/${productId}/warranty`);
   }
 
@@ -343,7 +343,7 @@ class UserProductService {
     amcDaysRemaining?: number;
     isAMCExpiringSoon?: boolean;
   }>> {
-    console.log('🛡️ [USER PRODUCT API] Getting AMC details:', productId);
+
     return apiClient.get(`/user-products/${productId}/amc`);
   }
 
@@ -357,7 +357,7 @@ class UserProductService {
   async createServiceRequest(
     data: CreateServiceRequestData
   ): Promise<ApiResponse<ServiceRequest>> {
-    console.log('🔧 [USER PRODUCT API] Creating service request');
+
     return apiClient.post('/user-products/service-requests', data);
   }
 
@@ -367,7 +367,7 @@ class UserProductService {
   async getServiceRequests(
     filters?: ServiceRequestFilters
   ): Promise<ApiResponse<ServiceRequestsResponse>> {
-    console.log('🔧 [USER PRODUCT API] Getting service requests', filters);
+
     return apiClient.get('/user-products/service-requests', filters);
   }
 
@@ -378,7 +378,7 @@ class UserProductService {
     requests: ServiceRequest[];
     count: number;
   }>> {
-    console.log('🔧 [USER PRODUCT API] Getting active service requests');
+
     return apiClient.get('/user-products/service-requests/active');
   }
 
@@ -388,7 +388,7 @@ class UserProductService {
   async getServiceRequestDetails(
     requestId: string
   ): Promise<ApiResponse<ServiceRequest>> {
-    console.log('🔧 [USER PRODUCT API] Getting service request details:', requestId);
+
     return apiClient.get(`/user-products/service-requests/${requestId}`);
   }
 
@@ -399,7 +399,7 @@ class UserProductService {
     requestId: string,
     reason: string
   ): Promise<ApiResponse<ServiceRequest>> {
-    console.log('❌ [USER PRODUCT API] Cancelling service request:', requestId);
+
     return apiClient.post(`/user-products/service-requests/${requestId}/cancel`, { reason });
   }
 
@@ -410,7 +410,7 @@ class UserProductService {
     requestId: string,
     data: RescheduleServiceData
   ): Promise<ApiResponse<ServiceRequest>> {
-    console.log('📅 [USER PRODUCT API] Rescheduling service request:', requestId);
+
     return apiClient.post(`/user-products/service-requests/${requestId}/reschedule`, data);
   }
 
@@ -421,7 +421,7 @@ class UserProductService {
     requestId: string,
     data: RateServiceData
   ): Promise<ApiResponse<ServiceRequest>> {
-    console.log('⭐ [USER PRODUCT API] Rating service request:', requestId);
+
     return apiClient.post(`/user-products/service-requests/${requestId}/rate`, data);
   }
 }

@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 
 /**
  * AsyncStorage Service
@@ -35,7 +34,7 @@ class AsyncStorageService {
     try {
       const jsonValue = JSON.stringify(data);
       await AsyncStorage.setItem(key, jsonValue);
-      console.log('💾 [STORAGE] Saved data to:', key);
+
     } catch (error) {
       console.error('💾 [STORAGE] Failed to save data:', key, error);
       throw new Error(`Failed to save data to ${key}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -56,7 +55,7 @@ class AsyncStorageService {
         return null;
       }
       const data = JSON.parse(jsonValue) as T;
-      console.log('💾 [STORAGE] Retrieved data from:', key);
+
       return data;
     } catch (error) {
       console.error('💾 [STORAGE] Failed to get data:', key, error);
@@ -74,7 +73,7 @@ class AsyncStorageService {
     }
     try {
       await AsyncStorage.removeItem(key);
-      console.log('💾 [STORAGE] Removed data from:', key);
+
     } catch (error) {
       console.error('💾 [STORAGE] Failed to remove data:', key, error);
       throw new Error(`Failed to remove data from ${key}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -91,7 +90,7 @@ class AsyncStorageService {
     }
     try {
       await AsyncStorage.clear();
-      console.log('💾 [STORAGE] Cleared all storage');
+
     } catch (error) {
       console.error('💾 [STORAGE] Failed to clear storage:', error);
       throw new Error(`Failed to clear storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -104,7 +103,8 @@ class AsyncStorageService {
   async getAllKeys(): Promise<string[]> {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      return keys;
+      // Ensure we return a mutable array (AsyncStorage types may be readonly)
+      return [...keys];
     } catch (error) {
       console.error('💾 [STORAGE] Failed to get all keys:', error);
       return [];
@@ -336,7 +336,7 @@ class AsyncStorageService {
         [STORAGE_KEYS.USER_DATA, null],
         [STORAGE_KEYS.AUTH_TOKEN, null],
       ]);
-      console.log('💾 [STORAGE] Cleared user data');
+
     } catch (error) {
       console.error('💾 [STORAGE] Failed to clear user data:', error);
     }

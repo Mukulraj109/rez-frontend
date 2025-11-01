@@ -21,8 +21,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import vouchersService from '@/services/realVouchersApi';
+import realOffersApi from '@/services/realOffersApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
+import { HeaderBackButton } from '@/components/navigation';
+import QRCodeModal from '@/components/vouchers/QRCodeModal';
+import OnlineRedemptionModal from '@/components/voucher/OnlineRedemptionModal';
 
 type VoucherStatus = 'all' | 'active' | 'used' | 'expired';
 
@@ -37,6 +42,11 @@ interface UserVoucher {
   status: 'active' | 'used' | 'expired';
   usedAt?: string;
   category: string;
+  restrictions?: {
+    minOrderValue?: number;
+    maxDiscountAmount?: number;
+    usageLimitPerUser?: number;
+  };
 }
 
 const MyVouchersPage = () => {
@@ -44,32 +54,28 @@ const MyVouchersPage = () => {
   const navigation = useNavigation();
   const { state: authState } = useAuth();
   const { state: cartState, actions } = useCart();
+  const { goBack } = useSafeNavigation();
   const [vouchers, setVouchers] = useState<UserVoucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<VoucherStatus>('active');
   const [selectedVoucher, setSelectedVoucher] = useState<UserVoucher | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showRedemptionModal, setShowRedemptionModal] = useState(false);
 
   const handleBackPress = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push('/account' as any);
-    }
-  }, [router]);
+    goBack('/account' as any);
+  }, [goBack]);
 
   const fetchVouchers = useCallback(async () => {
     try {
       setLoading(true);
 
       if (authState.isLoading) {
-        console.log('⏳ Auth still loading, waiting...');
         return;
       }
 
       if (!authState.isAuthenticated || !authState.token) {
-        console.log('❌ Not authenticated, cannot fetch vouchers');
         setVouchers([]);
         setLoading(false);
         return;
@@ -84,18 +90,20 @@ const MyVouchersPage = () => {
         params.status = activeTab;
       }
 
-      // Fetch user vouchers from API
-      const response = await vouchersService.getUserVouchers(params);
+      // Fetch BOTH gift card vouchers AND offer redemptions
+      const [vouchersResponse, redemptionsResponse] = await Promise.all([
+        vouchersService.getUserVouchers(params).catch(() => ({ data: [] })),
+        realOffersApi.getUserRedemptions(params).catch(() => ({ data: [] }))
+      ]);
 
-      console.log('📦 Vouchers API response:', response);
+      console.log('[MY VOUCHERS] Vouchers response:', vouchersResponse);
+      console.log('[MY VOUCHERS] Redemptions response:', redemptionsResponse);
 
-      // Handle both data structures: response.data (array) or response.data.vouchers (object with array)
-      const vouchersArray = Array.isArray(response.data)
-        ? response.data
-        : response.data?.vouchers || [];
+      const allVouchers: UserVoucher[] = [];
 
+      // 1. Map gift card vouchers
+      const vouchersArray = vouchersResponse.data || [];
       if (vouchersArray.length > 0) {
-        // Map backend voucher format to frontend UserVoucher format
         const mappedVouchers: UserVoucher[] = vouchersArray.map((voucher: any) => ({
           id: voucher._id || voucher.id,
           code: voucher.voucherCode,
@@ -108,13 +116,63 @@ const MyVouchersPage = () => {
           usedAt: voucher.usedAt,
           category: voucher.brand?.category || 'General'
         }));
-
-        console.log('✅ Mapped vouchers:', mappedVouchers.length);
-        setVouchers(mappedVouchers);
-      } else {
-        console.log('❌ No vouchers found in response');
-        setVouchers([]);
+        allVouchers.push(...mappedVouchers);
       }
+
+      // 2. Map offer redemptions (cashback vouchers)
+      const redemptionsArray = redemptionsResponse.data || [];
+      console.log('[MY VOUCHERS] Redemptions array:', redemptionsArray);
+      
+      if (redemptionsArray.length > 0) {
+        const mappedRedemptions: UserVoucher[] = redemptionsArray.map((redemption: any) => {
+          const offerTitle = redemption.offer?.title || 'Cashback Offer';
+          
+          // Get cashback info - prefer percentage over fixed amount
+          const cashbackPercentage = redemption.cashbackPercentage || 
+                                    redemption.offer?.cashbackPercentage || 0;
+          
+          const usedAmount = redemption.usedAmount;
+          
+          // If used, show actual amount saved, otherwise show percentage
+          let displayValue: number;
+          let displayDescription: string;
+          
+          if (usedAmount) {
+            displayValue = usedAmount;
+            displayDescription = `Cashback saved - Used on order`;
+          } else if (cashbackPercentage) {
+            displayValue = cashbackPercentage;
+            displayDescription = `Get ${cashbackPercentage}% cashback - Use during checkout`;
+          } else {
+            displayValue = 0;
+            displayDescription = `Cashback voucher - Use during checkout`;
+          }
+          
+          // Map redemption status to voucher status
+          let voucherStatus: 'active' | 'used' | 'expired' = 'active';
+          if (redemption.status === 'used') voucherStatus = 'used';
+          else if (redemption.status === 'expired') voucherStatus = 'expired';
+          
+          return {
+            id: redemption._id || redemption.id,
+            code: redemption.redemptionCode,
+            brandName: offerTitle,
+            brandLogo: redemption.offer?.image,
+            value: displayValue,
+            description: displayDescription,
+            expiryDate: redemption.expiryDate,
+            status: voucherStatus,
+            usedAt: redemption.usedAt,
+            category: usedAmount ? 'Used' : `${cashbackPercentage}% Cashback`,
+            restrictions: redemption.restrictions || redemption.offer?.restrictions
+          };
+        });
+        console.log('[MY VOUCHERS] Mapped redemptions:', mappedRedemptions);
+        allVouchers.push(...mappedRedemptions);
+      }
+
+      console.log('[MY VOUCHERS] Total vouchers:', allVouchers.length);
+      setVouchers(allVouchers);
     } catch (error) {
       console.error('Error fetching vouchers:', error);
       setVouchers([]);
@@ -200,30 +258,40 @@ const MyVouchersPage = () => {
     setShowQRModal(true);
   };
 
+  const handleUseOnline = (voucher: UserVoucher) => {
+    // Show online redemption modal
+    setSelectedVoucher(voucher);
+    setShowRedemptionModal(true);
+  };
+
+  const handleMarkAsUsed = async (voucherId: string) => {
+    try {
+      // Call API to mark voucher as used
+      await vouchersService.useVoucher(voucherId, {
+        usageLocation: 'online'
+      });
+
+      // Refresh vouchers list
+      await fetchVouchers();
+    } catch (error) {
+      console.error('Error marking voucher as used:', error);
+      throw error; // Re-throw to let modal handle error display
+    }
+  };
+
   const confirmUseVoucher = async () => {
     if (!selectedVoucher) return;
 
-    Alert.alert(
-      'Confirm Usage',
-      `Are you sure you want to use this ${selectedVoucher.brandName} voucher worth ₹${selectedVoucher.value}? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Use Now',
-          onPress: async () => {
-            try {
-              await vouchersService.useVoucher(selectedVoucher.id, {});
-              Alert.alert('Success!', 'Voucher has been redeemed successfully');
-              setShowQRModal(false);
-              setSelectedVoucher(null);
-              fetchVouchers(); // Refresh vouchers list
-            } catch (error) {
-              Alert.alert('Error', 'Failed to redeem voucher');
-            }
-          },
-        },
-      ]
-    );
+    try {
+      await vouchersService.useVoucher(selectedVoucher.id, {});
+      Alert.alert('Success!', 'Voucher has been redeemed successfully');
+      setShowQRModal(false);
+      setSelectedVoucher(null);
+      fetchVouchers(); // Refresh vouchers list
+    } catch (error) {
+      console.error('Error marking voucher as used:', error);
+      Alert.alert('Error', 'Failed to redeem voucher. Please try again.');
+    }
   };
 
   const renderVoucher = ({ item }: { item: UserVoucher }) => {
@@ -258,7 +326,9 @@ const MyVouchersPage = () => {
 
           {/* Value Section */}
           <View style={styles.valueSection}>
-            <Text style={styles.valueAmount}>₹{item.value}</Text>
+            <Text style={styles.valueAmount}>
+              {item.category?.includes('Cashback') && !item.usedAt ? `${item.value}%` : `₹${item.value}`}
+            </Text>
             {isExpired && (
               <View style={styles.expiredBadge}>
                 <Text style={styles.expiredText}>EXPIRED</Text>
@@ -288,6 +358,37 @@ const MyVouchersPage = () => {
           {/* Description */}
           <Text style={styles.description}>{item.description}</Text>
 
+          {/* Terms & Conditions - Only for cashback offers */}
+          {item.restrictions && (item.restrictions.minOrderValue || item.restrictions.maxDiscountAmount) && (
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsTitle}>Terms & Conditions:</Text>
+              {item.restrictions.minOrderValue && (
+                <View style={styles.termItem}>
+                  <Ionicons name="checkmark-circle" size={14} color="rgba(255, 255, 255, 0.9)" />
+                  <Text style={styles.termText}>
+                    Min. order: ₹{item.restrictions.minOrderValue}
+                  </Text>
+                </View>
+              )}
+              {item.restrictions.maxDiscountAmount && (
+                <View style={styles.termItem}>
+                  <Ionicons name="checkmark-circle" size={14} color="rgba(255, 255, 255, 0.9)" />
+                  <Text style={styles.termText}>
+                    Max. discount: ₹{item.restrictions.maxDiscountAmount}
+                  </Text>
+                </View>
+              )}
+              {item.restrictions.usageLimitPerUser && (
+                <View style={styles.termItem}>
+                  <Ionicons name="checkmark-circle" size={14} color="rgba(255, 255, 255, 0.9)" />
+                  <Text style={styles.termText}>
+                    Can be used {item.restrictions.usageLimitPerUser} time{item.restrictions.usageLimitPerUser > 1 ? 's' : ''} per user
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Expiry Date */}
           <Text style={styles.expiryDate}>
             Valid till: {new Date(item.expiryDate).toLocaleDateString()}
@@ -313,13 +414,23 @@ const MyVouchersPage = () => {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity
-                style={styles.useVoucherButton}
-                onPress={() => handleUseVoucher(item)}
-              >
-                <Ionicons name="qr-code-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.useVoucherButtonText}>Use at Store</Text>
-              </TouchableOpacity>
+              <View style={styles.actionButtonsRow}>
+                <TouchableOpacity
+                  style={[styles.useVoucherButton, styles.useOnlineButton]}
+                  onPress={() => handleUseOnline(item)}
+                >
+                  <Ionicons name="globe-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.useVoucherButtonText}>Use Online</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.useVoucherButton}
+                  onPress={() => handleUseVoucher(item)}
+                >
+                  <Ionicons name="qr-code-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.useVoucherButtonText}>Use at Store</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </LinearGradient>
@@ -356,9 +467,11 @@ const MyVouchersPage = () => {
         <StatusBar barStyle="light-content" backgroundColor="#F59E0B" />
         <LinearGradient colors={['#F59E0B', '#F97316']} style={styles.header}>
           <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
+            <HeaderBackButton
+              onPress={handleBackPress}
+              iconColor="#FFFFFF"
+              style={styles.backButton}
+            />
             <Text style={styles.headerTitle}>My Vouchers</Text>
             <View style={styles.headerRight} />
           </View>
@@ -378,9 +491,11 @@ const MyVouchersPage = () => {
       {/* Header */}
       <LinearGradient colors={['#F59E0B', '#F97316']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+          <HeaderBackButton
+            onPress={handleBackPress}
+            iconColor="#FFFFFF"
+            style={styles.backButton}
+          />
           <Text style={styles.headerTitle}>My Vouchers</Text>
           <TouchableOpacity
             style={styles.addButton}
@@ -424,64 +539,55 @@ const MyVouchersPage = () => {
       />
 
       {/* QR Code Modal */}
-      <Modal
+      <QRCodeModal
         visible={showQRModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowQRModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowQRModal(false)}
-            >
-              <Ionicons name="close" size={24} color="#6B7280" />
-            </TouchableOpacity>
+        voucher={
+          selectedVoucher
+            ? {
+                id: selectedVoucher.id,
+                code: selectedVoucher.code,
+                brandName: selectedVoucher.brandName,
+                brandLogo: selectedVoucher.brandLogo,
+                value: selectedVoucher.value,
+                description: selectedVoucher.description,
+                expiryDate: selectedVoucher.expiryDate,
+                userId: authState.user?.id || '',
+              }
+            : null
+        }
+        onClose={() => {
+          setShowQRModal(false);
+          setSelectedVoucher(null);
+        }}
+        onMarkAsUsed={confirmUseVoucher}
+      />
 
-            {selectedVoucher && (
-              <>
-                <Text style={styles.modalTitle}>Use Voucher at Store</Text>
-                <Text style={styles.modalBrandName}>{selectedVoucher.brandName}</Text>
-
-                <View style={styles.qrCodePlaceholder}>
-                  {/* TODO: Replace with actual QR code component */}
-                  <Ionicons name="qr-code-outline" size={120} color="#F59E0B" />
-                  <Text style={styles.qrPlaceholderText}>QR Code</Text>
-                </View>
-
-                <View style={styles.modalCodeSection}>
-                  <Text style={styles.modalCodeLabel}>Voucher Code</Text>
-                  <Text style={styles.modalCodeText}>{selectedVoucher.code}</Text>
-                  <TouchableOpacity
-                    style={styles.modalCopyButton}
-                    onPress={() => handleCopyCode(selectedVoucher.code)}
-                  >
-                    <Ionicons name="copy-outline" size={20} color="#F59E0B" />
-                    <Text style={styles.modalCopyText}>Copy Code</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.modalValueSection}>
-                  <Text style={styles.modalValueLabel}>Value</Text>
-                  <Text style={styles.modalValue}>₹{selectedVoucher.value}</Text>
-                </View>
-
-                <Text style={styles.modalInstructions}>
-                  Show this QR code or code to the cashier at the store to redeem your voucher
-                </Text>
-
-                <TouchableOpacity
-                  style={styles.confirmUseButton}
-                  onPress={confirmUseVoucher}
-                >
-                  <Text style={styles.confirmUseButtonText}>Mark as Used</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
+      {/* Online Redemption Modal */}
+      <OnlineRedemptionModal
+        visible={showRedemptionModal}
+        voucher={
+          selectedVoucher
+            ? {
+                _id: selectedVoucher.id,
+                voucherCode: selectedVoucher.code,
+                denomination: selectedVoucher.value,
+                expiryDate: selectedVoucher.expiryDate,
+                brand: {
+                  name: selectedVoucher.brandName,
+                  logo: selectedVoucher.brandLogo || '',
+                  backgroundColor: '#F3F4F6',
+                  logoColor: '#000000',
+                  websiteUrl: undefined, // TODO: Add website URL from brand data
+                },
+              }
+            : null
+        }
+        onClose={() => {
+          setShowRedemptionModal(false);
+          setSelectedVoucher(null);
+        }}
+        onMarkAsUsed={handleMarkAsUsed}
+      />
     </View>
   );
 };
@@ -664,6 +770,28 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 8,
   },
+  termsContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  termsTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.95)',
+    marginBottom: 6,
+  },
+  termItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  termText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
   expiryDate: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
@@ -700,19 +828,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   useVoucherButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F59E0B',
     paddingVertical: 12,
     borderRadius: 8,
+  },
+  useOnlineButton: {
+    backgroundColor: '#3B82F6',
   },
   useVoucherButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
@@ -755,117 +891,6 @@ const styles = StyleSheet.create({
   buyButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  modalCloseButton: {
-    alignSelf: 'flex-end',
-    padding: 8,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  modalBrandName: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  qrCodePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 16,
-    padding: 32,
-    marginBottom: 24,
-  },
-  qrPlaceholderText: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 8,
-  },
-  modalCodeSection: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  modalCodeLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  modalCodeText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F2937',
-    letterSpacing: 2,
-    marginBottom: 12,
-  },
-  modalCopyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-  },
-  modalCopyText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#F59E0B',
-  },
-  modalValueSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  modalValueLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  modalValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#F59E0B',
-  },
-  modalInstructions: {
-    fontSize: 13,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 20,
-  },
-  confirmUseButton: {
-    backgroundColor: '#F59E0B',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  confirmUseButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
     color: '#FFFFFF',
   },
 });

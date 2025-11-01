@@ -31,7 +31,7 @@ import {
 
 const ReferralPage = () => {
   const router = useRouter();
-  const { user } = useAuth();
+  const { state } = useAuth();
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,7 +73,7 @@ const ReferralPage = () => {
     fetchReferralData();
   };
 
-  const referralCode = codeInfo?.referralCode || user?.referral?.referralCode || 'LOADING...';
+  const referralCode = codeInfo?.referralCode || 'LOADING...';
   const referralLink = codeInfo?.referralLink || `https://rezapp.com/invite/${referralCode}`;
 
   const handleCopyCode = async () => {
@@ -93,8 +93,8 @@ const ReferralPage = () => {
         title: 'Join REZ App',
       });
 
-      // Track share event
-      await trackShare('native_share');
+      // Track share event (using whatsapp as default since native share doesn't specify platform)
+      await trackShare('whatsapp');
     } catch (error) {
       console.error('Error sharing:', error);
     }
@@ -231,7 +231,7 @@ const ReferralPage = () => {
             <View style={styles.stepContent}>
               <ThemedText style={styles.stepTitle}>Both get rewards</ThemedText>
               <Text style={styles.stepDescription}>
-                You earn ₹{stats?.referralBonus || 50} and your friend gets ₹30 off their first order
+                You earn ₹50 and your friend gets ₹30 off their first order
               </Text>
             </View>
           </View>
@@ -253,7 +253,7 @@ const ReferralPage = () => {
 
             <View style={styles.statItem}>
               <ThemedText style={styles.statValue}>
-                ₹{stats?.totalEarnings || 0}
+                ₹{stats?.totalEarned || 0}
               </ThemedText>
               <Text style={styles.statLabel}>Total Earned</Text>
             </View>
@@ -286,11 +286,13 @@ const ReferralPage = () => {
           <View style={styles.section}>
             <ThemedText style={styles.sectionTitle}>Referral History</ThemedText>
             {history.slice(0, 5).map((item) => (
-              <View key={item._id} style={styles.historyCard}>
+              <View key={item.id} style={styles.historyCard}>
                 <View style={styles.historyHeader}>
                   <View>
-                    <ThemedText style={styles.historyName}>{item.referee.name}</ThemedText>
-                    <Text style={styles.historyPhone}>{item.referee.phone}</Text>
+                    <ThemedText style={styles.historyName}>{item.referredUser.name}</ThemedText>
+                    <Text style={styles.historyPhone}>
+                      {item.referredUser.email || 'No email'}
+                    </Text>
                   </View>
                   <View style={[styles.statusBadge, getStatusStyle(item.status)]}>
                     <Text style={styles.statusText}>{item.status}</Text>
@@ -299,13 +301,10 @@ const ReferralPage = () => {
                 <View style={styles.historyReward}>
                   <Ionicons name="cash-outline" size={16} color="#8B5CF6" />
                   <Text style={styles.rewardText}>
-                    {item.referrerRewarded
-                      ? `Earned ₹${item.rewards.referrerAmount}`
-                      : `Pending ₹${item.rewards.referrerAmount}`}
+                    {item.rewardStatus === 'credited'
+                      ? `Earned ₹${item.rewardAmount}`
+                      : `${item.rewardStatus === 'pending' ? 'Pending' : 'Cancelled'} ₹${item.rewardAmount}`}
                   </Text>
-                  {item.milestoneRewarded && (
-                    <Text style={styles.bonusText}> + ₹{item.rewards.milestoneBonus} bonus</Text>
-                  )}
                 </View>
                 <Text style={styles.historyDate}>
                   {new Date(item.createdAt).toLocaleDateString('en-IN', {

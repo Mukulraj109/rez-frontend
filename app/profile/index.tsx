@@ -1,7 +1,7 @@
 // Profile Page
 // User profile page with icon grid and menu list
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -21,6 +21,8 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
+import { HeaderBackButton } from '@/components/navigation/SafeBackButton';
 import {
   PROFILE_COLORS,
   PROFILE_SPACING,
@@ -41,23 +43,67 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { goBack } = useSafeNavigation();
   const { user } = useProfile();
   const { state: authState, actions: authActions } = useAuth();
   const { statistics, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useUserStatistics(true);
   const [refreshing, setRefreshing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [userPoints, setUserPoints] = useState(0);
 
-  const handleBackPress = () => {
-    // Check if we can go back, otherwise navigate to home
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push('/(tabs)');
+  // Load user points from actual wallet API
+  useEffect(() => {
+    const loadWalletBalance = async () => {
+      try {
+        const walletApi = (await import('@/services/walletApi')).default;
+        const walletResponse = await walletApi.getBalance();
+        
+        if (walletResponse.success && walletResponse.data) {
+          const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
+          const walletBalance = wasilCoin?.amount || 0;
+
+          setUserPoints(walletBalance);
+        } else {
+          // Fallback to auth context
+          setUserPoints(authState.user?.wallet?.balance || 0);
+        }
+      } catch (error) {
+        console.error('❌ [PROFILE] Error loading wallet balance:', error);
+        // Fallback to auth context
+        setUserPoints(authState.user?.wallet?.balance || 0);
+      }
+    };
+
+    if (authState.user) {
+      loadWalletBalance();
     }
-  };
+  }, [authState.user]);
+
+  // Also update when statistics load (in case wallet wasn't available initially)
+  useEffect(() => {
+    const syncWithWallet = async () => {
+      if (statistics?.wallet?.balance !== undefined) {
+        try {
+          const walletApi = (await import('@/services/walletApi')).default;
+          const walletResponse = await walletApi.getBalance();
+          
+          if (walletResponse.success && walletResponse.data) {
+            const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
+            const walletBalance = wasilCoin?.amount || 0;
+            setUserPoints(walletBalance);
+          }
+        } catch (error) {
+          console.error('❌ [PROFILE] Error syncing with wallet:', error);
+        }
+      }
+    };
+
+    syncWithWallet();
+  }, [statistics?.wallet?.balance]);
+
+  // Removed - using SafeBackButton component instead
 
   const handleIconGridItemPress = (item: ProfileIconGridItem) => {
-    console.log('Icon grid item pressed:', item.title);
 
     // Handle icon grid navigation
     switch (item.id) {
@@ -84,8 +130,7 @@ export default function ProfilePage() {
   };
 
   const handleMenuItemPress = (item: ProfileMenuListItem) => {
-    console.log('Menu item pressed:', item.title);
-    
+
     // Enhanced navigation logic for profile menu items
     switch (item.id) {
       case 'order_transaction_history':
@@ -120,6 +165,10 @@ export default function ProfilePage() {
         // Navigate to Social Media earnings page
         router.push('/social-media');
         break;
+      case 'achievements':
+        // Navigate to Achievements page
+        router.push('/profile/achievements');
+        break;
       default:
         if (item.route) {
           router.push(item.route as any);
@@ -141,15 +190,26 @@ export default function ProfilePage() {
     setRefreshing(true);
     try {
       // Clear statistics cache first
-      console.log('🔄 [PROFILE] Clearing statistics cache and fetching fresh data');
+
       await AsyncStorage.removeItem('user_statistics_cache');
+
+      // Refresh wallet balance
+      const walletApi = (await import('@/services/walletApi')).default;
+      const walletResponse = await walletApi.getBalance();
+      
+      if (walletResponse.success && walletResponse.data) {
+        const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
+        const walletBalance = wasilCoin?.amount || 0;
+
+        setUserPoints(walletBalance);
+      }
 
       // Refresh both user profile and statistics (force bypass cache)
       await Promise.all([
         authActions.checkAuthStatus(),
-        refetchStats(true), // Force refresh to bypass cache
+        refetchStats(), // Force refresh to bypass cache
       ]);
-      console.log('✅ [PROFILE] Statistics refreshed successfully');
+
     } catch (error) {
       console.error('❌ [PROFILE] Error refreshing profile:', error);
     } finally {
@@ -159,14 +219,10 @@ export default function ProfilePage() {
 
   // Handle profile image upload
   const handleImageUpload = async () => {
-    console.log('🖼️ [PROFILE] Profile image upload triggered');
-    console.log('🖼️ [PROFILE] Platform:', Platform.OS);
 
     try {
       // Get auth token from auth context state
       const token = authState.token;
-      console.log('🔑 [PROFILE] Token from auth state:', token ? 'Token found' : 'No token');
-      console.log('🔑 [PROFILE] Auth state:', { isAuthenticated: authState.isAuthenticated, user: authState.user?.id });
 
       if (!token) {
         if (Platform.OS === 'web') {
@@ -179,11 +235,11 @@ export default function ProfilePage() {
 
       // Request permission (not needed on web)
       if (Platform.OS !== 'web') {
-        console.log('📱 [PROFILE] Requesting media library permission...');
+
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (status !== 'granted') {
-          console.log('❌ [PROFILE] Permission denied');
+
           Alert.alert(
             'Permission Required',
             'Please allow access to your photo library to upload a profile picture.',
@@ -191,31 +247,26 @@ export default function ProfilePage() {
           );
           return;
         }
-        console.log('✅ [PROFILE] Permission granted');
+
       }
 
       // Pick image
-      console.log('🖼️ [PROFILE] Launching image picker...');
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
-
-      console.log('🖼️ [PROFILE] Image picker result:', JSON.stringify(result, null, 2));
-
       if (!result.canceled && result.assets[0]) {
-        console.log('✅ [PROFILE] Image selected:', result.assets[0].uri);
+
         setUploadingImage(true);
 
-        console.log('📤 [PROFILE] Uploading image with token...');
         // Pass the token directly to the upload function
         const uploadResult = await uploadProfileImage(result.assets[0].uri, token);
-        console.log('📤 [PROFILE] Upload result:', uploadResult);
 
         if (uploadResult.success) {
-          console.log('✅ [PROFILE] Upload successful, refreshing user data...');
+
           // Refresh user data to show new avatar
           await authActions.checkAuthStatus();
 
@@ -233,7 +284,7 @@ export default function ProfilePage() {
           }
         }
       } else {
-        console.log('❌ [PROFILE] Image selection cancelled or no image selected');
+
       }
     } catch (error) {
       console.error('❌ [PROFILE] Error uploading image:', error);
@@ -389,6 +440,11 @@ export default function ProfilePage() {
         const balance = Math.round(statistics.wallet?.balance || 0);
         return balance > 0 ? balance.toString() : undefined;
 
+      case 'achievements':
+        // Achievement count
+        const unlockedCount = statistics.achievements?.unlocked || 0;
+        return unlockedCount > 0 ? unlockedCount.toString() : undefined;
+
       default:
         return undefined;
     }
@@ -466,12 +522,12 @@ export default function ProfilePage() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-            <View style={styles.backButtonInner}>
-              <Ionicons name="arrow-back" size={22} color="white" />
-            </View>
-          </TouchableOpacity>
-          
+          <HeaderBackButton
+            fallbackRoute="/(tabs)"
+            light={true}
+            iconSize={22}
+          />
+
           <View style={styles.headerTitleSection}>
             <ThemedText style={styles.headerTitle}>My Profile</ThemedText>
             <ThemedText style={styles.headerSubtitle}>
@@ -650,7 +706,7 @@ export default function ProfilePage() {
           {/* Loyalty Points Card */}
           <TouchableOpacity
             style={styles.loyaltyCard}
-            onPress={() => router.push('/loyalty' as any)}
+            onPress={() => router.push('/profile/achievements' as any)}
             activeOpacity={0.7}
           >
             <View style={styles.loyaltyContent}>
@@ -660,7 +716,7 @@ export default function ProfilePage() {
                 </View>
                 <View style={styles.loyaltyText}>
                   <ThemedText style={styles.loyaltyPoints}>
-                    {Math.round(statistics?.wallet?.balance || 0)} Points
+                    {userPoints} Points
                   </ThemedText>
                   <ThemedText style={styles.loyaltyLabel}>Loyalty Rewards</ThemedText>
                 </View>
@@ -673,6 +729,43 @@ export default function ProfilePage() {
                 <Ionicons name="chevron-forward" size={20} color="#8B5CF6" />
               </View>
             </View>
+          </TouchableOpacity>
+
+          {/* Partner Program Card */}
+          <TouchableOpacity
+            style={styles.partnerCard}
+            onPress={() => router.push('/profile/partner' as any)}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={['#8B5CF6', '#A78BFA']}
+              style={styles.partnerGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.partnerContent}>
+                <View style={styles.partnerLeft}>
+                  <View style={styles.partnerIconContainer}>
+                    <Ionicons name="trophy" size={28} color="white" />
+                  </View>
+                  <View style={styles.partnerText}>
+                    <ThemedText style={styles.partnerTitle}>
+                      Partner Program
+                    </ThemedText>
+                    <ThemedText style={styles.partnerSubtitle}>
+                      Unlock exclusive rewards & benefits
+                    </ThemedText>
+                  </View>
+                </View>
+                <View style={styles.partnerRight}>
+                  <View style={styles.partnerLevelBadge}>
+                    <Ionicons name="star" size={12} color="#8B5CF6" />
+                    <ThemedText style={styles.partnerLevelText}>Level 1</ThemedText>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="white" />
+                </View>
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -764,7 +857,7 @@ export default function ProfilePage() {
         <View style={styles.footer} />
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -1062,6 +1155,73 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#92400E',
   },
+
+  // Partner Program Card
+  partnerCard: {
+    marginTop: 12,
+    borderRadius: PROFILE_RADIUS.large,
+    overflow: 'hidden',
+    shadowColor: PROFILE_COLORS.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  partnerGradient: {
+    padding: PROFILE_SPACING.md,
+  },
+  partnerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  partnerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  partnerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  partnerText: {
+    flex: 1,
+  },
+  partnerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 4,
+  },
+  partnerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  partnerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  partnerLevelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 4,
+  },
+  partnerLevelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B5CF6',
+  },
+
   completionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

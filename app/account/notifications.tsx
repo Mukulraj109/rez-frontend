@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import apiClient from '../../services/apiClient';
+import notificationService from '../../services/notificationService';
 
 interface PushNotifications {
   enabled: boolean;
@@ -64,6 +64,45 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  const getDefaultSettings = (): NotificationSettings => ({
+    push: {
+      enabled: true,
+      orderUpdates: true,
+      promotions: false,
+      recommendations: true,
+      priceAlerts: true,
+      deliveryUpdates: true,
+      paymentUpdates: true,
+      securityAlerts: true,
+      chatMessages: true,
+    },
+    email: {
+      enabled: true,
+      newsletters: false,
+      orderReceipts: true,
+      weeklyDigest: true,
+      promotions: false,
+      securityAlerts: true,
+      accountUpdates: true,
+    },
+    sms: {
+      enabled: true,
+      orderUpdates: true,
+      deliveryAlerts: true,
+      paymentConfirmations: true,
+      securityAlerts: true,
+      otpMessages: true,
+    },
+    inApp: {
+      enabled: true,
+      showBadges: true,
+      soundEnabled: true,
+      vibrationEnabled: true,
+      bannerStyle: 'BANNER',
+    },
+  });
 
   useEffect(() => {
     loadSettings();
@@ -72,14 +111,19 @@ export default function NotificationsScreen() {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/user-settings/notifications/all');
+      const response = await notificationService.getNotificationSettings();
 
       if (response.success && response.data) {
-        setSettings(response.data);
+        setSettings(response.data as NotificationSettings);
+      } else {
+        console.warn('Failed to load notification settings:', response.error);
+        // Set default settings if none exist
+        setSettings(getDefaultSettings());
       }
     } catch (error) {
       console.error('Error loading notification settings:', error);
-      Alert.alert('Error', 'Failed to load notification settings');
+      // Set default settings on error
+      setSettings(getDefaultSettings());
     } finally {
       setLoading(false);
     }
@@ -93,16 +137,23 @@ export default function NotificationsScreen() {
 
     try {
       setSaving(true);
-      const response = await apiClient.put('/user-settings/notifications/push', newPushSettings);
+      const response = await notificationService.updatePushSettings(newPushSettings);
 
       if (!response.success) {
-        Alert.alert('Error', 'Failed to update push notification settings');
-        await loadSettings(); // Reload on error
+        console.warn('Failed to save push notification settings:', response.error);
+        Alert.alert('Error', 'Failed to update push notification settings. Please try again.');
+        // Revert to previous state
+        setSettings(settings);
+      } else {
+        // Show success message
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
       }
     } catch (error) {
       console.error('Error updating push notifications:', error);
-      Alert.alert('Error', 'Failed to update push notification settings');
-      await loadSettings();
+      Alert.alert('Error', 'Failed to update push notification settings. Please check your connection and try again.');
+      // Revert to previous state
+      setSettings(settings);
     } finally {
       setSaving(false);
     }
@@ -116,16 +167,20 @@ export default function NotificationsScreen() {
 
     try {
       setSaving(true);
-      const response = await apiClient.put('/user-settings/notifications/email', newEmailSettings);
+      const response = await notificationService.updateEmailSettings(newEmailSettings);
 
       if (!response.success) {
-        Alert.alert('Error', 'Failed to update email notification settings');
-        await loadSettings();
+        console.warn('Failed to save email notification settings:', response.error);
+        Alert.alert('Error', 'Failed to update email notification settings. Please try again.');
+        setSettings(settings);
+      } else {
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
       }
     } catch (error) {
       console.error('Error updating email notifications:', error);
-      Alert.alert('Error', 'Failed to update email notification settings');
-      await loadSettings();
+      Alert.alert('Error', 'Failed to update email notification settings. Please check your connection and try again.');
+      setSettings(settings);
     } finally {
       setSaving(false);
     }
@@ -139,16 +194,20 @@ export default function NotificationsScreen() {
 
     try {
       setSaving(true);
-      const response = await apiClient.put('/user-settings/notifications/sms', newSMSSettings);
+      const response = await notificationService.updateSMSSettings(newSMSSettings);
 
       if (!response.success) {
-        Alert.alert('Error', 'Failed to update SMS notification settings');
-        await loadSettings();
+        console.warn('Failed to save SMS notification settings:', response.error);
+        Alert.alert('Error', 'Failed to update SMS notification settings. Please try again.');
+        setSettings(settings);
+      } else {
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
       }
     } catch (error) {
       console.error('Error updating SMS notifications:', error);
-      Alert.alert('Error', 'Failed to update SMS notification settings');
-      await loadSettings();
+      Alert.alert('Error', 'Failed to update SMS notification settings. Please check your connection and try again.');
+      setSettings(settings);
     } finally {
       setSaving(false);
     }
@@ -162,16 +221,20 @@ export default function NotificationsScreen() {
 
     try {
       setSaving(true);
-      const response = await apiClient.put('/user-settings/notifications/inapp', newInAppSettings);
+      const response = await notificationService.updateInAppSettings(newInAppSettings);
 
       if (!response.success) {
-        Alert.alert('Error', 'Failed to update in-app notification settings');
-        await loadSettings();
+        console.warn('Failed to save in-app notification settings:', response.error);
+        Alert.alert('Error', 'Failed to update in-app notification settings. Please try again.');
+        setSettings(settings);
+      } else {
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
       }
     } catch (error) {
       console.error('Error updating in-app notifications:', error);
-      Alert.alert('Error', 'Failed to update in-app notification settings');
-      await loadSettings();
+      Alert.alert('Error', 'Failed to update in-app notification settings. Please check your connection and try again.');
+      setSettings(settings);
     } finally {
       setSaving(false);
     }
@@ -240,180 +303,64 @@ export default function NotificationsScreen() {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Push Notifications */}
-        {renderSection('Push Notifications', 'notifications', (
-          <>
-            {renderSettingItem(
-              'Enable Push Notifications',
-              settings.push.enabled,
-              (value) => updatePushSettings({ enabled: value })
-            )}
-            {renderSettingItem(
-              'Order Updates',
-              settings.push.orderUpdates,
-              (value) => updatePushSettings({ orderUpdates: value }),
-              !settings.push.enabled
-            )}
-            {renderSettingItem(
-              'Delivery Updates',
-              settings.push.deliveryUpdates,
-              (value) => updatePushSettings({ deliveryUpdates: value }),
-              !settings.push.enabled
-            )}
-            {renderSettingItem(
-              'Payment Updates',
-              settings.push.paymentUpdates,
-              (value) => updatePushSettings({ paymentUpdates: value }),
-              !settings.push.enabled
-            )}
-            {renderSettingItem(
-              'Promotions & Offers',
-              settings.push.promotions,
-              (value) => updatePushSettings({ promotions: value }),
-              !settings.push.enabled
-            )}
-            {renderSettingItem(
-              'Price Alerts',
-              settings.push.priceAlerts,
-              (value) => updatePushSettings({ priceAlerts: value }),
-              !settings.push.enabled
-            )}
-            {renderSettingItem(
-              'Recommendations',
-              settings.push.recommendations,
-              (value) => updatePushSettings({ recommendations: value }),
-              !settings.push.enabled
-            )}
-            {renderSettingItem(
-              'Security Alerts',
-              settings.push.securityAlerts,
-              (value) => updatePushSettings({ securityAlerts: value }),
-              !settings.push.enabled
-            )}
-            {renderSettingItem(
-              'Chat Messages',
-              settings.push.chatMessages,
-              (value) => updatePushSettings({ chatMessages: value }),
-              !settings.push.enabled
-            )}
-          </>
-        ))}
+        <TouchableOpacity 
+          style={styles.notificationSection}
+          onPress={() => router.push('/account/push-notifications')}
+        >
+          <View style={styles.sectionIcon}>
+            <Ionicons name="notifications" size={24} color="#3B82F6" />
+          </View>
+          <View style={styles.sectionContent}>
+            <Text style={styles.notificationSectionTitle}>Push Notifications</Text>
+            <Text style={styles.sectionDescription}>Manage push notification preferences</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
 
         {/* Email Notifications */}
-        {renderSection('Email Notifications', 'mail', (
-          <>
-            {renderSettingItem(
-              'Enable Email Notifications',
-              settings.email.enabled,
-              (value) => updateEmailSettings({ enabled: value })
-            )}
-            {renderSettingItem(
-              'Order Receipts',
-              settings.email.orderReceipts,
-              (value) => updateEmailSettings({ orderReceipts: value }),
-              !settings.email.enabled
-            )}
-            {renderSettingItem(
-              'Newsletters',
-              settings.email.newsletters,
-              (value) => updateEmailSettings({ newsletters: value }),
-              !settings.email.enabled
-            )}
-            {renderSettingItem(
-              'Weekly Digest',
-              settings.email.weeklyDigest,
-              (value) => updateEmailSettings({ weeklyDigest: value }),
-              !settings.email.enabled
-            )}
-            {renderSettingItem(
-              'Promotional Emails',
-              settings.email.promotions,
-              (value) => updateEmailSettings({ promotions: value }),
-              !settings.email.enabled
-            )}
-            {renderSettingItem(
-              'Account Updates',
-              settings.email.accountUpdates,
-              (value) => updateEmailSettings({ accountUpdates: value }),
-              !settings.email.enabled
-            )}
-            {renderSettingItem(
-              'Security Alerts',
-              settings.email.securityAlerts,
-              (value) => updateEmailSettings({ securityAlerts: value }),
-              !settings.email.enabled
-            )}
-          </>
-        ))}
+        <TouchableOpacity 
+          style={styles.notificationSection}
+          onPress={() => router.push('/account/email-notifications')}
+        >
+          <View style={styles.sectionIcon}>
+            <Ionicons name="mail" size={24} color="#3B82F6" />
+          </View>
+          <View style={styles.sectionContent}>
+            <Text style={styles.notificationSectionTitle}>Email Notifications</Text>
+            <Text style={styles.sectionDescription}>Manage email notification settings</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
 
         {/* SMS Notifications */}
-        {renderSection('SMS Notifications', 'chatbox', (
-          <>
-            {renderSettingItem(
-              'Enable SMS Notifications',
-              settings.sms.enabled,
-              (value) => updateSMSSettings({ enabled: value })
-            )}
-            {renderSettingItem(
-              'Order Updates',
-              settings.sms.orderUpdates,
-              (value) => updateSMSSettings({ orderUpdates: value }),
-              !settings.sms.enabled
-            )}
-            {renderSettingItem(
-              'Delivery Alerts',
-              settings.sms.deliveryAlerts,
-              (value) => updateSMSSettings({ deliveryAlerts: value }),
-              !settings.sms.enabled
-            )}
-            {renderSettingItem(
-              'Payment Confirmations',
-              settings.sms.paymentConfirmations,
-              (value) => updateSMSSettings({ paymentConfirmations: value }),
-              !settings.sms.enabled
-            )}
-            {renderSettingItem(
-              'Security Alerts',
-              settings.sms.securityAlerts,
-              (value) => updateSMSSettings({ securityAlerts: value }),
-              !settings.sms.enabled
-            )}
-            {renderSettingItem(
-              'OTP Messages',
-              settings.sms.otpMessages,
-              (value) => updateSMSSettings({ otpMessages: value }),
-              !settings.sms.enabled
-            )}
-          </>
-        ))}
+        <TouchableOpacity 
+          style={styles.notificationSection}
+          onPress={() => router.push('/account/sms-notifications')}
+        >
+          <View style={styles.sectionIcon}>
+            <Ionicons name="chatbox" size={24} color="#3B82F6" />
+          </View>
+          <View style={styles.sectionContent}>
+            <Text style={styles.notificationSectionTitle}>SMS Notifications</Text>
+            <Text style={styles.sectionDescription}>Manage SMS notification preferences</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
 
-        {/* In-App Notifications */}
-        {renderSection('In-App Notifications', 'phone-portrait', (
-          <>
-            {renderSettingItem(
-              'Enable In-App Notifications',
-              settings.inApp.enabled,
-              (value) => updateInAppSettings({ enabled: value })
-            )}
-            {renderSettingItem(
-              'Show Badges',
-              settings.inApp.showBadges,
-              (value) => updateInAppSettings({ showBadges: value }),
-              !settings.inApp.enabled
-            )}
-            {renderSettingItem(
-              'Sound',
-              settings.inApp.soundEnabled,
-              (value) => updateInAppSettings({ soundEnabled: value }),
-              !settings.inApp.enabled
-            )}
-            {renderSettingItem(
-              'Vibration',
-              settings.inApp.vibrationEnabled,
-              (value) => updateInAppSettings({ vibrationEnabled: value }),
-              !settings.inApp.enabled
-            )}
-          </>
-        ))}
+        {/* Notification History */}
+        <TouchableOpacity 
+          style={styles.notificationSection}
+          onPress={() => router.push('/account/notification-history')}
+        >
+          <View style={styles.sectionIcon}>
+            <Ionicons name="time" size={24} color="#3B82F6" />
+          </View>
+          <View style={styles.sectionContent}>
+            <Text style={styles.notificationSectionTitle}>Notification History</Text>
+            <Text style={styles.sectionDescription}>View all past notifications</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Saving Indicator */}
@@ -423,8 +370,16 @@ export default function NotificationsScreen() {
           <Text style={styles.savingText}>Saving...</Text>
         </View>
       )}
+
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <View style={styles.successIndicator}>
+          <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+          <Text style={styles.successText}>Settings saved!</Text>
+        </View>
+      )}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -551,5 +506,62 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  successIndicator: {
+    position: 'absolute',
+    bottom: 16,
+    alignSelf: 'center',
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  successText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  notificationSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  sectionContent: {
+    flex: 1,
+  },
+  notificationSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: '#6B7280',
   },
 });

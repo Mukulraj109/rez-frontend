@@ -386,7 +386,7 @@ export default function DeliverySettingsScreen() {
         onSave={handleSaveInstructions}
       />
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

@@ -145,25 +145,24 @@ export interface SearchSuggestion {
 class SearchService {
   // Search products
   async searchProducts(params: ProductSearchParams): Promise<ApiResponse<ProductSearchResponse>> {
-    console.log('🔍 [SEARCH API] Searching products:', params);
+
     return apiClient.get('/products/search', params);
   }
 
   // Search stores
   async searchStores(params: StoreSearchParams): Promise<ApiResponse<StoreSearchResponse>> {
-    console.log('🔍 [SEARCH API] Searching stores:', params);
+
     return apiClient.get('/stores/search', params);
   }
 
   // Advanced store search with filters
   async advancedStoreSearch(params: AdvancedStoreSearchParams): Promise<ApiResponse<StoreSearchResponse>> {
-    console.log('🔍 [SEARCH API] Advanced store search:', params);
+
     return apiClient.get('/stores/search/advanced', params);
   }
 
   // Get search suggestions (not yet implemented in backend, returns empty)
   async getSearchSuggestions(query: string): Promise<ApiResponse<SearchSuggestion[]>> {
-    console.log('🔍 [SEARCH API] Getting search suggestions for:', query);
 
     // TODO: Implement backend endpoint for search suggestions
     // For now, return empty suggestions
@@ -186,7 +185,7 @@ class SearchService {
       limit?: number;
     }
   ): Promise<ApiResponse<ProductSearchResponse>> {
-    console.log('🔍 [SEARCH API] Searching by category:', categorySlug, params);
+
     return apiClient.get(`/products/category/${categorySlug}`, params);
   }
 
@@ -201,7 +200,7 @@ class SearchService {
       sortBy?: 'rating' | 'distance' | 'name' | 'newest';
     }
   ): Promise<ApiResponse<StoreSearchResponse>> {
-    console.log('🔍 [SEARCH API] Searching stores by category:', category, params);
+
     return apiClient.get(`/stores/search-by-category/${category}`, params);
   }
 
@@ -216,7 +215,7 @@ class SearchService {
       limit?: number;
     }
   ): Promise<ApiResponse<StoreSearchResponse>> {
-    console.log('🔍 [SEARCH API] Searching stores by delivery time:', params);
+
     return apiClient.get('/stores/search-by-delivery-time', params);
   }
 
@@ -229,7 +228,7 @@ class SearchService {
       limit?: number;
     }
   ): Promise<ApiResponse<StoreSearchResponse>> {
-    console.log('🔍 [SEARCH API] Getting nearby stores:', params);
+
     return apiClient.get('/stores/nearby', params);
   }
 
@@ -244,25 +243,25 @@ class SearchService {
       limit?: number;
     }
   ): Promise<ApiResponse<ProductSearchResponse>> {
-    console.log('🔍 [SEARCH API] Searching products by store:', storeId, params);
+
     return apiClient.get(`/stores/${storeId}/products`, params);
   }
 
   // Get featured products (useful for search homepage)
   async getFeaturedProducts(limit: number = 10): Promise<ApiResponse<{ data: ProductSearchResult[] }>> {
-    console.log('🔍 [SEARCH API] Getting featured products');
+
     return apiClient.get('/products/featured', { limit });
   }
 
   // Get new arrivals (useful for search homepage)
   async getNewArrivals(limit: number = 10): Promise<ApiResponse<{ data: ProductSearchResult[] }>> {
-    console.log('🔍 [SEARCH API] Getting new arrivals');
+
     return apiClient.get('/products/new-arrivals', { limit });
   }
 
   // Get featured stores (useful for search homepage)
   async getFeaturedStores(limit: number = 10): Promise<ApiResponse<{ stores: StoreSearchResult[] }>> {
-    console.log('🔍 [SEARCH API] Getting featured stores');
+
     return apiClient.get('/stores/featured', { limit });
   }
 }

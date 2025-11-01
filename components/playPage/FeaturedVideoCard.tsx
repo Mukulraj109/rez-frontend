@@ -206,7 +206,7 @@ export default function FeaturedVideoCard({
         )}
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

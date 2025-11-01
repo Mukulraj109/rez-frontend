@@ -45,7 +45,7 @@ export const generateDealRecommendations = (
   const unselectedDeals = availableDeals.filter(
     deal => !context.selectedDeals.includes(deal.id)
   );
-
+  
   for (const deal of unselectedDeals) {
     const recommendation = generateSingleDealRecommendation(deal, userProfile, context);
     if (recommendation) {
@@ -244,7 +244,7 @@ export const getOptimalDealMix = (
     userProfile,
     { selectedDeals: [], currentBillAmount: billAmount }
   );
-
+  
   if (recommendations.length === 0) {
     return {
       primaryDeal: null,

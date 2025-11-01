@@ -48,10 +48,12 @@ export default function AccountPage() {
   };
 
   const handleCategoryPress = (category: AccountSettingsCategory) => {
-    console.log('Category pressed:', category.title);
-    
+
     // Handle navigation to specific settings screens
     switch (category.id) {
+      case 'subscription':
+        router.push('/subscription/manage');
+        break;
       case 'delivery':
         router.push('/account/delivery');
         break;
@@ -68,6 +70,12 @@ export default function AccountPage() {
       case 'coupon':
         // Navigate to coupons page for coupon management
         router.push('/account/coupons');
+        break;
+      case 'bill_upload':
+        router.push('/bill-upload');
+        break;
+      case 'achievements':
+        router.push('/profile/achievements');
         break;
       default:
         if (category.route) {
@@ -119,11 +127,17 @@ export default function AccountPage() {
           </View>
           
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => router.push('/account/notifications')}
+            >
               <Ionicons name="notifications-outline" size={22} color="white" />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => router.push('/account/settings')}
+            >
               <Ionicons name="settings-outline" size={22} color="white" />
             </TouchableOpacity>
           </View>
@@ -205,7 +219,7 @@ export default function AccountPage() {
         <View style={styles.footer} />
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

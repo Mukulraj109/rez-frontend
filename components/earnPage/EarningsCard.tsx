@@ -59,7 +59,7 @@ export default function EarningsCard({
         ))}
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

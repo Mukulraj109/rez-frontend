@@ -50,7 +50,7 @@ const EarningCard: React.FC<EarningCardProps> = ({ card }) => {
         return (
           <View style={[styles.iconPlaceholder, { backgroundColor: theme.iconColor }]}>
             <Text style={styles.iconText}>🎥</Text>
-          </View>
+          </View> 
         );
       default:
         return null;

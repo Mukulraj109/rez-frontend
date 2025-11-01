@@ -141,7 +141,6 @@ export default function SendMoneyModal({
         `₹${amountNum.toLocaleString()} has been sent successfully`,
         [{ text: 'OK' }]
       );
-
       onSuccess(amountNum, recipient);
     } catch (error) {
       setLoading(false);
@@ -422,7 +421,7 @@ export default function SendMoneyModal({
         </View>
       </KeyboardAvoidingView>
     </Modal>
-  );
+);
 }
 
 const styles = StyleSheet.create({

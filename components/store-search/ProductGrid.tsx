@@ -52,7 +52,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           {rowProducts.length < columns && (
             <View style={[styles.productContainer, { opacity: 0 }]} />
           )}
-        </View>
+        </View> 
       );
     }
     return rows;

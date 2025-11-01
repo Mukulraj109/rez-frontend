@@ -52,29 +52,28 @@ export default function LocationDisplay({
   }, []);
 
   const initializeWebLocation = async () => {
-    console.log('[LocationDisplay] Initializing web location...');
+
     setWebLoading(true);
     setWebError(null);
 
     try {
       // Check if permission is already granted
       const permissionStatus = await webLocationService.checkLocationPermission();
-      console.log('[LocationDisplay] Web permission status:', permissionStatus);
 
       if (permissionStatus === 'granted') {
         // Get current location
-        console.log('[LocationDisplay] Permission granted, getting location...');
+
         const location = await webLocationService.getCurrentLocation();
         if (location) {
           setWebLocation(location);
-          console.log('[LocationDisplay] Web location set successfully:', location);
+
         } else {
           console.warn('[LocationDisplay] getCurrentLocation returned null');
           setWebError('Failed to get location data');
         }
       } else {
         // Permission not granted, don't set error - just wait for user action
-        console.log('[LocationDisplay] Permission not granted, showing default state');
+
         // Don't set error, just leave location empty for user to click refresh
       }
     } catch (error) {
@@ -86,14 +85,7 @@ export default function LocationDisplay({
   };
 
   // Debug logging (commented out for production)
-  // console.log('📍 LocationDisplay: Render state:', {
-  //   currentLocation,
-  //   isLoading,
-  //   error,
-  //   permissionStatus,
-  //   isRefreshing,
-  //   compact
-  // });
+  // 
 
   const handleRefresh = async () => {
     if (onRefresh) {
@@ -207,12 +199,7 @@ export default function LocationDisplay({
   };
 
   const getLocationText = (location: UserLocation) => {
-    // console.log('📍 LocationDisplay: getLocationText called with:', {
-    //   location,
-    //   compact,
-    //   addressType: typeof location.address,
-    //   addressValue: location.address
-    // });
+    // 
 
     if (typeof location.address === 'string') {
       if (compact) {
@@ -245,11 +232,11 @@ export default function LocationDisplay({
         }
 
         const result = locality && city ? `${locality}, ${city}` : locality || city || 'Unknown Location';
-        // console.log('📍 LocationDisplay: Extracted locality result:', result);
+        // 
         return result;
       } else {
         // Show full address when not in compact mode
-        // console.log('📍 LocationDisplay: Full address result:', location.address);
+        // 
         return location.address;
       }
     }
@@ -260,7 +247,7 @@ export default function LocationDisplay({
     if (location.address.state) parts.push(location.address.state);
 
     const result = parts.join(', ') || location.address.formattedAddress || 'Unknown Location';
-    // console.log('📍 LocationDisplay: Object address result:', result);
+    // 
     return result;
   };
 
@@ -324,7 +311,7 @@ export default function LocationDisplay({
   }
 
   if (effectiveError) {
-    console.log('[LocationDisplay] Error state:', effectiveError);
+
     return (
       <View style={[styles.container, compact && styles.compactContainer, style]}>
         <Text style={[styles.errorText, textStyle]}>Location unavailable</Text>

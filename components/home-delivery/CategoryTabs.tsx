@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -23,6 +24,8 @@ export function CategoryTabs({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         style={styles.scrollView}
+        decelerationRate="fast"
+        snapToInterval={120}
       >
         {categories.map((category) => {
           const isActive = category.id === activeCategory;
@@ -30,48 +33,68 @@ export function CategoryTabs({
           return (
             <TouchableOpacity
               key={category.id}
-              style={[
-                styles.categoryTab,
-                isActive && styles.categoryTabActive,
-              ]}
+              style={styles.categoryTabWrapper}
               onPress={() => onCategoryChange(category.id)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <View style={styles.categoryContent}>
-                <View style={[
-                  styles.iconContainer,
-                  isActive && styles.iconContainerActive,
-                ]}>
-                  <Ionicons
-                    name={category.icon as any}
-                    size={20}
-                    color={isActive ? '#8B5CF6' : '#6B7280'}
-                  />
-                </View>
-                
-                <ThemedText style={[
-                  styles.categoryText,
-                  isActive && styles.categoryTextActive,
-                ]}>
-                  {category.name}
-                </ThemedText>
-                
-                {category.productCount > 0 && (
-                  <View style={[
-                    styles.countBadge,
-                    isActive && styles.countBadgeActive,
-                  ]}>
-                    <ThemedText style={[
-                      styles.countText,
-                      isActive && styles.countTextActive,
-                    ]}>
-                      {category.productCount}
+              {isActive ? (
+                <LinearGradient
+                  colors={['#8B5CF6', '#7C3AED']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.categoryTab, styles.categoryTabActive]}
+                >
+                  {/* Count Badge - Top Right Corner */}
+                  {category.productCount > 0 && (
+                    <View style={styles.countBadgeActive}>
+                      <ThemedText style={styles.countTextActive}>
+                        {category.productCount}
+                      </ThemedText>
+                    </View>
+                  )}
+                  
+                  <View style={styles.categoryContent}>
+                    {/* Icon with gradient background */}
+                    <View style={styles.iconContainerActive}>
+                      <Ionicons
+                        name={category.icon as any || 'cube-outline'}
+                        size={23}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                    
+                    <ThemedText style={styles.categoryTextActive}>
+                      {category.name}
                     </ThemedText>
                   </View>
-                )}
-              </View>
-              
-              {isActive && <View style={styles.activeIndicator} />}
+                </LinearGradient>
+              ) : (
+                <View style={styles.categoryTab}>
+                  {/* Count Badge - Top Right Corner */}
+                  {category.productCount > 0 && (
+                    <View style={styles.countBadge}>
+                      <ThemedText style={styles.countText}>
+                        {category.productCount}
+                      </ThemedText>
+                    </View>
+                  )}
+                  
+                  <View style={styles.categoryContent}>
+                    {/* Icon with subtle background */}
+                    <View style={styles.iconContainer}>
+                      <Ionicons
+                        name={category.icon as any || 'cube-outline'}
+                        size={23}
+                        color="#8B5CF6"
+                      />
+                    </View>
+                    
+                    <ThemedText style={styles.categoryText}>
+                      {category.name}
+                    </ThemedText>
+                  </View>
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -82,110 +105,164 @@ export function CategoryTabs({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 4,
   },
   scrollView: {
     flexGrow: 0,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 16,
+    paddingVertical: 20,
+    gap: 12,
+  },
+  categoryTabWrapper: {
+    marginHorizontal: 4,
   },
   categoryTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-    minWidth: 80,
-    position: 'relative',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    minWidth: 110,
+    position: 'relative', // For absolute positioning of badge
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
       web: {
-        boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.05)',
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
       },
     }),
   },
   categoryTabActive: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#8B5CF6',
     ...Platform.select({
       ios: {
         shadowColor: '#8B5CF6',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 4,
+        elevation: 8,
       },
       web: {
-        boxShadow: '0px 2px 8px rgba(139, 92, 246, 0.15)',
+        boxShadow: '0px 8px 20px rgba(139, 92, 246, 0.3)',
       },
     }),
   },
   categoryContent: {
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E5E7EB',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
   },
   iconContainerActive: {
-    backgroundColor: '#EDE9FE',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   categoryText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#374151',
     textAlign: 'center',
+    lineHeight: 16,
   },
   categoryTextActive: {
-    color: '#8B5CF6',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 16,
   },
   countBadge: {
-    paddingHorizontal: 8,
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
-    backgroundColor: '#E5E7EB',
-    minWidth: 20,
+    backgroundColor: '#8B5CF6',
+    minWidth: 22,
+    minHeight: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(139, 92, 246, 0.3)',
+      },
+    }),
   },
   countBadgeActive: {
-    backgroundColor: '#8B5CF6',
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    minWidth: 22,
+    minHeight: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.15)',
+      },
+    }),
   },
   countText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '800',
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   countTextActive: {
-    color: '#FFFFFF',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: -2,
-    left: '50%',
-    marginLeft: -12,
-    width: 24,
-    height: 3,
-    backgroundColor: '#8B5CF6',
-    borderRadius: 2,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8B5CF6',
+    textAlign: 'center',
   },
 });

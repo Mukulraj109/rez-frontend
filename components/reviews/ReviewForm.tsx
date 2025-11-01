@@ -299,7 +299,7 @@ export default function ReviewForm({
         </TouchableOpacity>
       </View>
     </ThemedView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

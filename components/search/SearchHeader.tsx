@@ -139,7 +139,7 @@ export default function SearchHeader({
         </View>
       )}
     </View>
-  );
+);
 }
 
 const getSuggestionIcon = (type: SearchSuggestion['type']): string => {

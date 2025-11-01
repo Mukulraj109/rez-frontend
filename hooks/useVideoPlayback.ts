@@ -15,7 +15,7 @@ export function useVideoPlayback(): UseVideoPlayback {
         nextAppState === 'active'
       ) {
         // App has come to the foreground - resume videos that were playing
-        console.log('App resumed - videos can continue playing');
+
       } else if (
         appState.current === 'active' &&
         nextAppState.match(/inactive|background/)

@@ -32,7 +32,7 @@ export default function FashionPage() {
       {/* Brand List */}
       <BrandList />
     </ScrollView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

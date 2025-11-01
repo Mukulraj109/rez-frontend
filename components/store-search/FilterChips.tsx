@@ -103,10 +103,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
                 ]}
                 onPress={() => handleGenderSelect(item.id)}
               >
-                <Ionicons 
-                  name={item.icon as any} 
-                  size={20} 
-                  color={filters.gender.includes(item.id as any) ? COLORS.WHITE : item.color} 
+                <Ionicons
+                  name={item.icon as any}
+                  size={22}
+                  color={filters.gender.includes(item.id as any) ? COLORS.WHITE : item.color}
                 />
                 <ThemedText style={[
                   styles.genderOptionText,
@@ -115,10 +115,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
                   {item.label}
                 </ThemedText>
                 {filters.gender.includes(item.id as any) && (
-                  <Ionicons 
-                    name="checkmark" 
-                    size={20} 
-                    color={COLORS.WHITE} 
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={22}
+                    color={COLORS.WHITE}
                   />
                 )}
               </TouchableOpacity>
@@ -152,7 +152,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
           <Ionicons
             name={FILTER_CATEGORIES.FASHION.icon as any}
             size={16}
-            color={isFashionActive ? FILTER_CATEGORIES.FASHION.activeColor : FILTER_CATEGORIES.FASHION.color}
+            color={isFashionActive ? '#FFFFFF' : FILTER_CATEGORIES.FASHION.color}
             style={styles.chipIcon}
           />
           <ThemedText style={[
@@ -177,14 +177,14 @@ const FilterChips: React.FC<FilterChipsProps> = ({
           <Ionicons
             name={FILTER_CATEGORIES.GENDER.icon as any}
             size={16}
-            color={isGenderActive ? FILTER_CATEGORIES.GENDER.activeColor : FILTER_CATEGORIES.GENDER.color}
+            color={isGenderActive ? '#FFFFFF' : FILTER_CATEGORIES.GENDER.color}
             style={styles.chipIcon}
           />
           <ThemedText style={[
             styles.chipText,
             isGenderActive && styles.chipTextActive
           ]}>
-            {filters.gender.length > 0 
+            {filters.gender.length > 0
               ? `Gender (${filters.gender.length})`
               : FILTER_CATEGORIES.GENDER.label
             }
@@ -192,7 +192,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
           <Ionicons
             name="chevron-down"
             size={14}
-            color={isGenderActive ? FILTER_CATEGORIES.GENDER.activeColor : FILTER_CATEGORIES.GENDER.color}
+            color={isGenderActive ? '#FFFFFF' : FILTER_CATEGORIES.GENDER.color}
             style={styles.chevronIcon}
           />
         </TouchableOpacity>
@@ -212,7 +212,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
           <Ionicons
             name={FILTER_CATEGORIES.REZ_PAY.icon as any}
             size={16}
-            color={isRezPayActive ? FILTER_CATEGORIES.REZ_PAY.activeColor : FILTER_CATEGORIES.REZ_PAY.color}
+            color={isRezPayActive ? '#FFFFFF' : FILTER_CATEGORIES.REZ_PAY.color}
             style={styles.chipIcon}
           />
           <ThemedText style={[
@@ -242,7 +242,7 @@ const FilterChips: React.FC<FilterChipsProps> = ({
             <Ionicons
               name="close-circle"
               size={16}
-              color={COLORS.GRAY_600}
+              color="#DC2626"
               style={styles.chipIcon}
             />
             <ThemedText style={styles.clearFiltersText}>
@@ -264,130 +264,162 @@ const createStyles = (screenWidth: number) => {
 
   return StyleSheet.create({
     container: {
-      backgroundColor: COLORS.WHITE,
-      borderBottomWidth: 1,
-      borderBottomColor: COLORS.BORDER_DEFAULT,
-      paddingVertical: SPACING.SM,
+      flex: 1,
+      backgroundColor: '#F8F9FA',
+      paddingVertical: 10,
     },
     scrollContent: {
       paddingHorizontal: horizontalPadding,
-      paddingVertical: SPACING.XS,
+      gap: 6,
     },
     filterChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: FILTER_CATEGORIES.FASHION.backgroundColor,
-      borderRadius: BORDER_RADIUS.XL,
-      paddingHorizontal: SPACING.MD,
-      paddingVertical: SPACING.SM,
-      marginRight: SPACING.SM,
-      borderWidth: 1,
-      borderColor: COLORS.BORDER_LIGHT,
+      backgroundColor: COLORS.WHITE,
+      borderRadius: 20,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginRight: 8,
+      borderWidth: 1.5,
+      borderColor: '#E8E8E8',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
     },
     filterChipActive: {
-      backgroundColor: FILTER_CATEGORIES.FASHION.activeBackgroundColor,
-      borderColor: FILTER_CATEGORIES.FASHION.activeBackgroundColor,
+      backgroundColor: '#7C3AED',
+      borderColor: '#7C3AED',
+      shadowColor: '#7C3AED',
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 4,
     },
     filterChipDisabled: {
-      opacity: 0.6,
+      opacity: 0.5,
     },
     rezPayChip: {
-      backgroundColor: FILTER_CATEGORIES.REZ_PAY.backgroundColor,
+      backgroundColor: '#FFF7ED',
+      borderColor: '#FDBA74',
     },
     rezPayChipActive: {
-      backgroundColor: FILTER_CATEGORIES.REZ_PAY.activeBackgroundColor,
-      borderColor: FILTER_CATEGORIES.REZ_PAY.activeBackgroundColor,
+      backgroundColor: '#F97316',
+      borderColor: '#F97316',
+      shadowColor: '#F97316',
+      shadowOpacity: 0.25,
     },
     clearFiltersChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: COLORS.GRAY_100,
-      borderRadius: BORDER_RADIUS.XL,
-      paddingHorizontal: SPACING.MD,
-      paddingVertical: SPACING.SM,
-      marginRight: SPACING.SM,
-      borderWidth: 1,
-      borderColor: COLORS.BORDER_DEFAULT,
+      backgroundColor: '#FEE2E2',
+      borderRadius: 20,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginRight: 8,
+      borderWidth: 1.5,
+      borderColor: '#FCA5A5',
     },
     chipIcon: {
-      marginRight: SPACING.XS,
+      marginRight: 4,
     },
     chevronIcon: {
-      marginLeft: SPACING.XS,
+      marginLeft: 2,
     },
     chipText: {
-      fontSize: TYPOGRAPHY.FONT_SIZE_SM,
-      fontWeight: TYPOGRAPHY.FONT_WEIGHT_MEDIUM,
-      color: COLORS.TEXT_PRIMARY,
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#1F2937',
+      letterSpacing: 0.1,
     },
     chipTextActive: {
       color: COLORS.WHITE,
+      fontWeight: '700',
     },
     rezPayText: {
-      color: FILTER_CATEGORIES.REZ_PAY.color,
-      fontWeight: TYPOGRAPHY.FONT_WEIGHT_SEMIBOLD,
+      color: '#EA580C',
+      fontWeight: '700',
     },
     rezPayTextActive: {
-      color: FILTER_CATEGORIES.REZ_PAY.activeColor,
+      color: COLORS.WHITE,
+      fontWeight: '700',
     },
     clearFiltersText: {
-      fontSize: TYPOGRAPHY.FONT_SIZE_SM,
-      fontWeight: TYPOGRAPHY.FONT_WEIGHT_MEDIUM,
-      color: COLORS.GRAY_600,
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#DC2626',
     },
     modalOverlay: {
       flex: 1,
-      backgroundColor: COLORS.OVERLAY,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'center',
       alignItems: 'center',
+      padding: SPACING.LG,
     },
     modalContent: {
       backgroundColor: COLORS.WHITE,
-      borderRadius: BORDER_RADIUS.XL,
+      borderRadius: 24,
       padding: SPACING.XL,
-      width: '80%',
-      maxHeight: '60%',
-      shadowColor: COLORS.BLACK,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 8,
-      elevation: 8,
+      width: '90%',
+      maxWidth: 400,
+      maxHeight: '70%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.3,
+      shadowRadius: 20,
+      elevation: 15,
     },
     modalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: SPACING.LG,
+      marginBottom: SPACING.XL,
+      paddingBottom: SPACING.MD,
+      borderBottomWidth: 2,
+      borderBottomColor: '#F3F4F6',
     },
     modalTitle: {
-      fontSize: TYPOGRAPHY.FONT_SIZE_XL,
-      fontWeight: TYPOGRAPHY.FONT_WEIGHT_BOLD,
-      color: COLORS.TEXT_PRIMARY,
+      fontSize: 20,
+      fontWeight: '700',
+      color: '#111827',
+      letterSpacing: 0.3,
     },
     modalCloseButton: {
-      padding: SPACING.XS,
+      padding: 8,
+      backgroundColor: '#F3F4F6',
+      borderRadius: 20,
     },
     genderOption: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: SPACING.MD,
+      paddingVertical: 14,
       paddingHorizontal: SPACING.LG,
-      borderRadius: BORDER_RADIUS.LG,
-      marginBottom: SPACING.SM,
-      backgroundColor: COLORS.GRAY_50,
+      borderRadius: 16,
+      marginBottom: 10,
+      backgroundColor: '#F9FAFB',
+      borderWidth: 2,
+      borderColor: 'transparent',
     },
     genderOptionSelected: {
-      backgroundColor: COLORS.PRIMARY,
+      backgroundColor: '#7C3AED',
+      borderColor: '#7C3AED',
+      shadowColor: '#7C3AED',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 4,
     },
     genderOptionText: {
       flex: 1,
-      marginLeft: SPACING.SM,
-      fontSize: TYPOGRAPHY.FONT_SIZE_BASE,
-      fontWeight: TYPOGRAPHY.FONT_WEIGHT_MEDIUM,
-      color: COLORS.TEXT_PRIMARY,
+      marginLeft: 12,
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#374151',
+      letterSpacing: 0.2,
     },
     genderOptionTextSelected: {
       color: COLORS.WHITE,
+      fontWeight: '700',
     },
   });
 };

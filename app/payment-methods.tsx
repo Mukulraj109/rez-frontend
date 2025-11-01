@@ -56,7 +56,7 @@ export default function PaymentMethodsPage() {
           <TouchableOpacity 
             style={styles.backButton} 
             onPress={() => {
-              console.log('🔴 Payment methods back arrow clicked!');
+
               handlers.handleBackNavigation();
             }}
             activeOpacity={0.8}
@@ -69,7 +69,9 @@ export default function PaymentMethodsPage() {
           
           <View style={styles.paymentAmount}>
             <ThemedText style={styles.amountLabel}>To Pay</ThemedText>
-            <ThemedText style={styles.amountValue}>₹2,199</ThemedText>
+            <ThemedText style={styles.amountValue}>
+              ₹{(state.billSummary?.totalPayable || 0).toLocaleString()}
+            </ThemedText>
           </View>
         </View>
       </LinearGradient>
@@ -90,40 +92,64 @@ export default function PaymentMethodsPage() {
           </View>
         </View>
 
+        {/* Quick Pay Button */}
+        <TouchableOpacity 
+          style={styles.quickPayButton}
+          onPress={() => handlers.handleRazorpayPayment()}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#8B5CF6', '#7C3AED']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.quickPayGradient}
+          >
+            <View style={styles.quickPayContent}>
+              <View style={styles.quickPayLeft}>
+                <Ionicons name="flash" size={24} color="#FFD700" />
+                <View>
+                  <ThemedText style={styles.quickPayTitle}>Pay Instantly</ThemedText>
+                  <ThemedText style={styles.quickPaySubtitle}>
+                    UPI • Cards • Net Banking • Wallets
+                  </ThemedText>
+                </View>
+              </View>
+              <ThemedText style={styles.quickPayAmount}>
+                ₹{(state.billSummary?.totalPayable || 0).toLocaleString()}
+              </ThemedText>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* UPI Section */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>UPI</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Supported Payment Methods</ThemedText>
           
-          <TouchableOpacity 
-            style={styles.paymentOption}
-            onPress={() => setShowUPIInput(!showUPIInput)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.paymentOptionLeft}>
-              <View style={styles.upiIcon}>
-                <ThemedText style={styles.upiIconText}>UPI</ThemedText>
-              </View>
-              <ThemedText style={styles.paymentOptionTitle}>Add New UPI ID</ThemedText>
+          <View style={styles.paymentMethodsGrid}>
+            <View style={styles.methodCard}>
+              <Ionicons name="card-outline" size={24} color="#8B5CF6" />
+              <ThemedText style={styles.methodLabel}>UPI</ThemedText>
             </View>
-            <Ionicons 
-              name={showUPIInput ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color="#6B7280" 
-            />
-          </TouchableOpacity>
-          
-          {showUPIInput && (
-            <View style={styles.upiInputContainer}>
-              <TextInput
-                style={styles.upiInput}
-                placeholder="UPI ID"
-                value={upiId}
-                onChangeText={setUpiId}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+            <View style={styles.methodCard}>
+              <Ionicons name="card" size={24} color="#10B981" />
+              <ThemedText style={styles.methodLabel}>Cards</ThemedText>
             </View>
-          )}
+            <View style={styles.methodCard}>
+              <Ionicons name="business" size={24} color="#3B82F6" />
+              <ThemedText style={styles.methodLabel}>Net Banking</ThemedText>
+            </View>
+            <View style={styles.methodCard}>
+              <Ionicons name="wallet" size={24} color="#F59E0B" />
+              <ThemedText style={styles.methodLabel}>Wallets</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.infoBox}>
+            <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+            <ThemedText style={styles.infoText}>
+              Secure payments powered by Razorpay
+            </ThemedText>
+          </View>
         </View>
 
         {/* Credit & Debit Cards */}
@@ -202,7 +228,7 @@ export default function PaymentMethodsPage() {
         <View style={styles.bottomSpace} />
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -282,6 +308,86 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginTop: 20,
     marginBottom: 16,
+  },
+
+  // Quick Pay Button
+  quickPayButton: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  quickPayGradient: {
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+  },
+  quickPayContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  quickPayLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  quickPayTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 4,
+  },
+  quickPaySubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  quickPayAmount: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: 'white',
+  },
+
+  // Payment Methods Grid
+  paymentMethodsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
+  methodCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+  },
+  methodLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+
+  // Info Box
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  infoText: {
+    fontSize: 12,
+    color: '#065F46',
+    flex: 1,
   },
   
   // Recent Methods Grid

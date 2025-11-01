@@ -304,7 +304,7 @@ export function useEarnData() {
 
     try {
       // In a real app, this would navigate to the opportunity page or start the task
-      console.log(`Starting opportunity: ${opportunity.title}`);
+
       return true;
     } catch (error) {
       console.error('Failed to start opportunity:', error);
@@ -319,7 +319,7 @@ export function useEarnData() {
 
     try {
       // In a real app, this would navigate to the merchant or start the shopping flow
-      console.log(`Using cashback offer: ${offer.title}`);
+
       return true;
     } catch (error) {
       console.error('Failed to use cashback offer:', error);

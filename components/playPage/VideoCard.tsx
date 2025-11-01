@@ -80,8 +80,7 @@ export default function VideoCard({
     const handleAutoPlay = async () => {
       if (autoPlay && isVideoReady && !isPlaying) {
         const status = getManagerStatus();
-        console.log(`Attempting auto-play for ${item.id}`, status);
-        
+
         const success = await startPlayback();
         if (success) {
           onPlay?.();
@@ -95,15 +94,13 @@ export default function VideoCard({
     };
     
     handleAutoPlay();
-  }, [autoPlay, isVideoReady, item.id]);
+  }, [autoPlay, isVideoReady, item.id, startPlayback, stopPlayback, onPlay, onPause, getManagerStatus]);
 
   const handleVideoLoad = (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
       setIsLoading(false);
       setLoaded(true); // Notify video manager that video is loaded
-      
-      console.log(`Video loaded successfully: ${item.id}`);
-      
+
       // Fade in animation
       Animated.timing(opacityAnim, {
         toValue: 1,
@@ -288,7 +285,7 @@ export default function VideoCard({
       </View>
       </TouchableOpacity>
     </Animated.View>
-  );
+    );
 }
 
 const styles = StyleSheet.create({

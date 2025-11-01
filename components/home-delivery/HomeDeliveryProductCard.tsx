@@ -18,6 +18,7 @@ export function HomeDeliveryProductCard({
   showDeliveryTime = true,
   compact = false,
 }: HomeDeliveryProductCardProps) {
+  const [imageError, setImageError] = React.useState(false);
   const discountPercentage = product.price.discount || 0;
   const hasDiscount = discountPercentage > 0;
 
@@ -32,11 +33,18 @@ export function HomeDeliveryProductCard({
     >
       {/* Product Image */}
       <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: product.image }}
-          style={styles.productImage}
-          resizeMode="cover"
-        />
+        {product.image && !imageError ? (
+          <Image
+            source={{ uri: product.image }}
+            style={styles.productImage}
+            resizeMode="cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <View style={[styles.productImage, styles.placeholderImage]}>
+            <Ionicons name="image-outline" size={40} color="#9CA3AF" />
+          </View>
+        )}
         
         {/* Discount Badge */}
         {hasDiscount && (
@@ -130,43 +138,50 @@ export function HomeDeliveryProductCard({
         </View>
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 12,
-    marginVertical: 6,
-    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    height: 380, // Fixed height for all cards
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 3,
+        elevation: 4,
       },
       web: {
-        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
       },
     }),
   },
   containerCompact: {
     padding: 8,
+    height: 340,
   },
   imageContainer: {
     position: 'relative',
     marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   productImage: {
     width: '100%',
-    height: 140,
-    borderRadius: 8,
+    height: 150,
     backgroundColor: '#F3F4F6',
+  },
+  placeholderImage: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   discountBadge: {
     position: 'absolute',
@@ -214,23 +229,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   productInfo: {
-    gap: 6,
+    flex: 1,
+    justifyContent: 'space-between',
   },
   productName: {
     fontSize: 14,
     fontWeight: '600',
     color: '#111827',
     lineHeight: 18,
+    minHeight: 36, // Fixed height for 2 lines
   },
   brandText: {
     fontSize: 12,
     color: '#6B7280',
     fontWeight: '400',
+    minHeight: 16,
+    marginTop: 4,
   },
   priceSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 8,
   },
   priceContainer: {
     flexDirection: 'row',
@@ -265,6 +286,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
   },
   cashbackText: {
     fontSize: 11,
@@ -275,6 +298,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginBottom: 6,
   },
   deliveryText: {
     fontSize: 11,
@@ -285,7 +309,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 2,
   },
   storeText: {
     fontSize: 10,

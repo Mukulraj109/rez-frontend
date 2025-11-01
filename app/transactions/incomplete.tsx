@@ -44,7 +44,7 @@ const IncompleteTransactionsPage = () => {
       if (response.success && response.data) {
         // Filter for incomplete orders
         const incompleteOrders = response.data.orders.filter((order: Order) =>
-          INCOMPLETE_STATUSES.includes(order.status)
+          INCOMPLETE_STATUSES.includes(order.status as any)
         );
         setOrders(incompleteOrders);
       } else {
@@ -110,7 +110,7 @@ const IncompleteTransactionsPage = () => {
   };
 
   const handleAction = (order: Order) => {
-    switch (order.status) {
+    switch (order.status as any) {
       case 'payment_pending':
       case 'payment_failed':
         // Navigate to checkout to retry payment
@@ -132,9 +132,9 @@ const IncompleteTransactionsPage = () => {
       <View style={styles.orderHeader}>
         <View style={styles.orderHeaderLeft}>
           <Ionicons
-            name={getStatusIcon(item.status) as any}
+            name={getStatusIcon(item.status as any) as any}
             size={24}
-            color={getStatusColor(item.status)}
+            color={getStatusColor(item.status as any)}
           />
           <View style={styles.orderInfo}>
             <ThemedText style={styles.orderId}>Order #{item.orderNumber || item._id.substring(0, 8)}</ThemedText>
@@ -147,9 +147,9 @@ const IncompleteTransactionsPage = () => {
             </ThemedText>
           </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}20` }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status.replace('_', ' ').toUpperCase()}
+        <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status as any)}20` }]}>
+          <Text style={[styles.statusText, { color: getStatusColor(item.status as any) }]}>
+            {(item.status as any).replace('_', ' ').toUpperCase()}
           </Text>
         </View>
       </View>
@@ -158,7 +158,7 @@ const IncompleteTransactionsPage = () => {
         <View style={styles.orderDetail}>
           <ThemedText style={styles.orderLabel}>Total Amount</ThemedText>
           <ThemedText style={styles.orderValue}>
-            ₹{(item.totals?.total || item.summary?.total || item.totalPrice || 0).toFixed(2)}
+            ₹{(item.totals?.total || item.summary?.total || 0).toFixed(2)}
           </ThemedText>
         </View>
         <View style={styles.orderDetail}>
@@ -168,13 +168,13 @@ const IncompleteTransactionsPage = () => {
       </View>
 
       <TouchableOpacity
-        style={[styles.actionButton, { borderColor: getStatusColor(item.status) }]}
+        style={[styles.actionButton, { borderColor: getStatusColor(item.status as any) }]}
         onPress={() => handleAction(item)}
       >
-        <Text style={[styles.actionButtonText, { color: getStatusColor(item.status) }]}>
-          {getActionLabel(item.status)}
+        <Text style={[styles.actionButtonText, { color: getStatusColor(item.status as any) }]}>
+          {getActionLabel(item.status as any)}
         </Text>
-        <Ionicons name="arrow-forward" size={16} color={getStatusColor(item.status)} />
+        <Ionicons name="arrow-forward" size={16} color={getStatusColor(item.status as any)} />
       </TouchableOpacity>
     </View>
   );
@@ -240,7 +240,7 @@ const IncompleteTransactionsPage = () => {
       )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

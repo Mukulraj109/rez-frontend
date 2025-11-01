@@ -35,13 +35,13 @@ export const shareAppPage = async (options: SharePageOptions) => {
     
     if (result.action === Share.sharedAction) {
       if (result.activityType) {
-        console.log('Shared via:', result.activityType);
+
       } else {
-        console.log('Page shared successfully');
+
       }
       return { success: true, action: 'shared' };
     } else if (result.action === Share.dismissedAction) {
-      console.log('Share was dismissed');
+
       return { success: true, action: 'dismissed' };
     }
     
@@ -105,7 +105,7 @@ export const shareAppDownload = async () => {
     });
 
     if (result.action === Share.sharedAction) {
-      console.log('App download link shared successfully');
+
       return { success: true };
     }
     

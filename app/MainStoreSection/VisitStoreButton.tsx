@@ -112,7 +112,7 @@ export default function VisitStoreButton({
         </TouchableOpacity>
       </Animated.View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

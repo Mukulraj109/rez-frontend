@@ -127,40 +127,19 @@ export default function SettingsPage() {
 
           {expandedSection === 'general' && (
             <View style={styles.sectionContent}>
-              <View style={styles.settingRow}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => router.push('/account/language')}
+                activeOpacity={0.7}
+              >
                 <View style={styles.settingInfo}>
-                  <ThemedText style={styles.settingLabel}>Theme</ThemedText>
-                  <ThemedText style={styles.settingValue}>{settings.general.theme}</ThemedText>
+                  <ThemedText style={styles.settingLabel}>Language & Region</ThemedText>
+                  <ThemedText style={styles.settingValue}>
+                    {settings.general.language.toUpperCase()} • {settings.general.currency}
+                  </ThemedText>
                 </View>
-                <View style={styles.themeSelector}>
-                  {(['light', 'dark', 'auto'] as const).map((theme) => (
-                    <TouchableOpacity
-                      key={theme}
-                      style={[
-                        styles.themeButton,
-                        settings.general.theme === theme && styles.themeButtonActive,
-                      ]}
-                      onPress={() => updateGeneralSettings({ theme })}
-                    >
-                      <ThemedText
-                        style={[
-                          styles.themeButtonText,
-                          settings.general.theme === theme && styles.themeButtonTextActive,
-                        ]}
-                      >
-                        {theme.charAt(0).toUpperCase() + theme.slice(1)}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.settingRow}>
-                <View style={styles.settingInfo}>
-                  <ThemedText style={styles.settingLabel}>Language</ThemedText>
-                  <ThemedText style={styles.settingValue}>{settings.general.language.toUpperCase()}</ThemedText>
-                </View>
-              </View>
+                <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+              </TouchableOpacity>
 
               <View style={styles.settingRow}>
                 <View style={styles.settingInfo}>
@@ -179,7 +158,7 @@ export default function SettingsPage() {
                       styles.toggleButton,
                       settings.general.timeFormat === '12h' && styles.toggleButtonActive,
                     ]}
-                    onPress={() => updateGeneralSettings({ timeFormat: '12h' })}
+                    onPress={() => { updateGeneralSettings({ timeFormat: '12h' }); }}
                   >
                     <ThemedText
                       style={[
@@ -195,7 +174,7 @@ export default function SettingsPage() {
                       styles.toggleButton,
                       settings.general.timeFormat === '24h' && styles.toggleButtonActive,
                     ]}
-                    onPress={() => updateGeneralSettings({ timeFormat: '24h' })}
+                    onPress={() => { updateGeneralSettings({ timeFormat: '24h' }); }}
                   >
                     <ThemedText
                       style={[
@@ -240,9 +219,9 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Enable Push</ThemedText>
                 <Switch
                   value={settings.notifications.push.enabled}
-                  onValueChange={(value) =>
-                    updateNotifications({ push: { ...settings.notifications.push, enabled: value } })
-                  }
+                  onValueChange={(value) => {
+                    updateNotifications({ push: { ...settings.notifications.push, enabled: value } });
+                  }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -253,11 +232,11 @@ export default function SettingsPage() {
                     <ThemedText style={styles.settingLabel}>Order Updates</ThemedText>
                     <Switch
                       value={settings.notifications.push.orderUpdates}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
                         updateNotifications({
                           push: { ...settings.notifications.push, orderUpdates: value },
-                        })
-                      }
+                        });
+                      }}
                       trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                     />
                   </View>
@@ -266,11 +245,11 @@ export default function SettingsPage() {
                     <ThemedText style={styles.settingLabel}>Promotions</ThemedText>
                     <Switch
                       value={settings.notifications.push.promotions}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
                         updateNotifications({
                           push: { ...settings.notifications.push, promotions: value },
-                        })
-                      }
+                        });
+                      }}
                       trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                     />
                   </View>
@@ -279,11 +258,11 @@ export default function SettingsPage() {
                     <ThemedText style={styles.settingLabel}>Recommendations</ThemedText>
                     <Switch
                       value={settings.notifications.push.recommendations}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
                         updateNotifications({
                           push: { ...settings.notifications.push, recommendations: value },
-                        })
-                      }
+                        });
+                      }}
                       trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                     />
                   </View>
@@ -298,9 +277,9 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Enable Email</ThemedText>
                 <Switch
                   value={settings.notifications.email.enabled}
-                  onValueChange={(value) =>
-                    updateNotifications({ email: { ...settings.notifications.email, enabled: value } })
-                  }
+                  onValueChange={(value) => {
+                    updateNotifications({ email: { ...settings.notifications.email, enabled: value } });
+                  }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -311,11 +290,11 @@ export default function SettingsPage() {
                     <ThemedText style={styles.settingLabel}>Order Receipts</ThemedText>
                     <Switch
                       value={settings.notifications.email.orderReceipts}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
                         updateNotifications({
                           email: { ...settings.notifications.email, orderReceipts: value },
-                        })
-                      }
+                        });
+                      }}
                       trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                     />
                   </View>
@@ -324,11 +303,11 @@ export default function SettingsPage() {
                     <ThemedText style={styles.settingLabel}>Weekly Digest</ThemedText>
                     <Switch
                       value={settings.notifications.email.weeklyDigest}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
                         updateNotifications({
                           email: { ...settings.notifications.email, weeklyDigest: value },
-                        })
-                      }
+                        });
+                      }}
                       trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                     />
                   </View>
@@ -367,7 +346,7 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Show Activity</ThemedText>
                 <Switch
                   value={settings.privacy.showActivity}
-                  onValueChange={(value) => updatePrivacy({ showActivity: value })}
+                  onValueChange={(value) => { updatePrivacy({ showActivity: value }); }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -376,7 +355,7 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Allow Messaging</ThemedText>
                 <Switch
                   value={settings.privacy.allowMessaging}
-                  onValueChange={(value) => updatePrivacy({ allowMessaging: value })}
+                  onValueChange={(value) => { updatePrivacy({ allowMessaging: value }); }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -389,11 +368,11 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Analytics Tracking</ThemedText>
                 <Switch
                   value={settings.privacy.analytics.allowUsageTracking}
-                  onValueChange={(value) =>
+                  onValueChange={(value) => {
                     updatePrivacy({
                       analytics: { ...settings.privacy.analytics, allowUsageTracking: value },
-                    })
-                  }
+                    });
+                  }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -402,11 +381,11 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Crash Reporting</ThemedText>
                 <Switch
                   value={settings.privacy.analytics.allowCrashReporting}
-                  onValueChange={(value) =>
+                  onValueChange={(value) => {
                     updatePrivacy({
                       analytics: { ...settings.privacy.analytics, allowCrashReporting: value },
-                    })
-                  }
+                    });
+                  }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -438,11 +417,11 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Two-Factor Authentication</ThemedText>
                 <Switch
                   value={settings.security.twoFactorAuth.enabled}
-                  onValueChange={(value) =>
+                  onValueChange={(value) => {
                     updateSecurity({
                       twoFactorAuth: { ...settings.security.twoFactorAuth, enabled: value },
-                    })
-                  }
+                    });
+                  }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -451,7 +430,7 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Login Alerts</ThemedText>
                 <Switch
                   value={settings.security.loginAlerts}
-                  onValueChange={(value) => updateSecurity({ loginAlerts: value })}
+                  onValueChange={(value) => { updateSecurity({ loginAlerts: value }); }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -460,14 +439,14 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Allow Multiple Sessions</ThemedText>
                 <Switch
                   value={settings.security.sessionManagement.allowMultipleSessions}
-                  onValueChange={(value) =>
+                  onValueChange={(value) => {
                     updateSecurity({
                       sessionManagement: {
                         ...settings.security.sessionManagement,
                         allowMultipleSessions: value,
                       },
-                    })
-                  }
+                    });
+                  }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -499,7 +478,7 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Animations</ThemedText>
                 <Switch
                   value={settings.preferences.animations}
-                  onValueChange={(value) => updateAppPreferences({ animations: value })}
+                  onValueChange={(value) => { updateAppPreferences({ animations: value }); }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -508,7 +487,7 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Sounds</ThemedText>
                 <Switch
                   value={settings.preferences.sounds}
-                  onValueChange={(value) => updateAppPreferences({ sounds: value })}
+                  onValueChange={(value) => { updateAppPreferences({ sounds: value }); }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -517,7 +496,7 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Haptic Feedback</ThemedText>
                 <Switch
                   value={settings.preferences.hapticFeedback}
-                  onValueChange={(value) => updateAppPreferences({ hapticFeedback: value })}
+                  onValueChange={(value) => { updateAppPreferences({ hapticFeedback: value }); }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -526,7 +505,7 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>Data Saver</ThemedText>
                 <Switch
                   value={settings.preferences.dataSaver}
-                  onValueChange={(value) => updateAppPreferences({ dataSaver: value })}
+                  onValueChange={(value) => { updateAppPreferences({ dataSaver: value }); }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -535,7 +514,7 @@ export default function SettingsPage() {
                 <ThemedText style={styles.settingLabel}>High Quality Images</ThemedText>
                 <Switch
                   value={settings.preferences.highQualityImages}
-                  onValueChange={(value) => updateAppPreferences({ highQualityImages: value })}
+                  onValueChange={(value) => { updateAppPreferences({ highQualityImages: value }); }}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -664,27 +643,6 @@ const styles = StyleSheet.create({
     color: '#8B5CF6',
     marginTop: 2,
     fontWeight: '600',
-  },
-  themeSelector: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  themeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  themeButtonActive: {
-    backgroundColor: '#8B5CF6',
-  },
-  themeButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  themeButtonTextActive: {
-    color: 'white',
   },
   toggleGroup: {
     flexDirection: 'row',

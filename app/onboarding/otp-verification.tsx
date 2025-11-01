@@ -76,76 +76,60 @@ export default function OTPVerificationScreen() {
     }
 
     try {
-      console.log('[OTP Verification] Attempting to verify OTP:', { phoneNumber, otp: otpString });
 
-      // DEV MODE: Skip actual OTP verification for development
-      // TODO: UNCOMMENT BELOW LINE FOR PRODUCTION DEPLOYMENT
+      // DEV MODE: Accept any 6-digit code for testing
+
+      // For development: any 6-digit code works
+      if (otpString.length === 6 && /^\d{6}$/.test(otpString)) {
+        await actions.verifyOTP(phoneNumber, otpString);
+      } else {
+        Alert.alert('Error', 'Please enter a valid 6-digit code');
+        return;
+      }
+
+      // TODO: FOR PRODUCTION - Use actual OTP verification:
       // await actions.verifyOTP(phoneNumber, otpString);
-
-      // DEV MODE: Simulate successful OTP verification
-      console.log('[DEV MODE] Skipping OTP verification - accepting any 6-digit code');
-      await actions.verifyOTP(phoneNumber, otpString);
-
-      console.log('[OTP Verification] OTP verified successfully, checking user state...', {
-        isAuthenticated: state.isAuthenticated,
-        hasUser: !!state.user,
-        isOnboarded: state.user?.isOnboarded,
-        isVerified: state.user?.isVerified,
-        userId: state.user?.id
-      });
 
       // Add a small delay to ensure user state is properly updated
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      console.log('[OTP Verification] After delay, user state:', {
-        isOnboarded: state.user?.isOnboarded,
-        userExists: !!state.user
-      });
-
       // Handle location permission based on platform
-      console.log('[OTP Verification] Checking platform and location permission...', {
-        platform: Platform.OS,
-        isWeb: Platform.OS === 'web'
-      });
 
       if (Platform.OS === 'web') {
         // Web platform: Skip location permission for now, go directly based on onboarding status
-        console.log('[OTP Verification] Web platform detected - skipping location check');
 
         if (state.user?.isOnboarded) {
-          console.log('[OTP Verification] Web + onboarded user → Main app');
+
           router.replace('/(tabs)');
         } else {
-          console.log('[OTP Verification] Web + new user → Continue onboarding');
+
           router.push('/onboarding/loading');
         }
       } else {
         // Mobile platform: Check location permission
-        console.log('[OTP Verification] Mobile platform - checking location permission...');
 
         try {
           // Check location permission status
           const { status } = await Location.getForegroundPermissionsAsync();
-          console.log('[OTP Verification] Location permission status:', status);
 
           if (status === 'granted') {
             // Location is already granted
             if (state.user?.isOnboarded) {
-              console.log('[OTP Verification] User is onboarded + location granted → Main app');
+
               router.replace('/(tabs)');
             } else {
-              console.log('[OTP Verification] User is new + location granted → Continue onboarding');
+
               router.push('/onboarding/loading');
             }
           } else {
             // Location permission needed
-            console.log('[OTP Verification] Location permission needed → Location permission screen');
+
             router.push('/onboarding/location-permission');
           }
         } catch (locationError) {
           console.error('[OTP Verification] Error checking location permission:', locationError);
           // If location check fails, redirect to location permission screen
-          console.log('[OTP Verification] Location check failed → Location permission screen');
+
           router.push('/onboarding/location-permission');
         }
       }
@@ -244,7 +228,7 @@ export default function OTPVerificationScreen() {
         </TouchableOpacity>
       </View>
     </OnboardingContainer>
-  );
+);
 }
 
 const styles = StyleSheet.create({

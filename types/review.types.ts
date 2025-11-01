@@ -83,13 +83,14 @@ export interface UserReview {
     location?: {
       address: string;
     };
-  };
+  } | string;
   rating: number;
   title?: string;
   comment: string;
   images?: string[];
   helpful: number;
   verified: boolean;
+  merchantReply?: string;
   createdAt: string;
   updatedAt: string;
 }

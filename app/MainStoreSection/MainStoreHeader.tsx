@@ -98,7 +98,7 @@ export default function MainStoreHeader({
         <View style={styles.decorCircleSmall} />
       </View>
     </LinearGradient>
-  );
+);
 }
 
 const styles = StyleSheet.create({

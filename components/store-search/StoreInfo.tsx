@@ -154,7 +154,6 @@ const StoreInfo: React.FC<StoreInfoProps> = ({
       )}
     </View>
   );
-
   // If onStorePress is provided, make the entire component touchable
   if (onStorePress) {
     return (

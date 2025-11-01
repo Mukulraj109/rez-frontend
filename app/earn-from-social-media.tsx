@@ -10,10 +10,11 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Text,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useEarnFromSocialMedia } from '@/hooks/useEarnFromSocialMedia';
 import EarnSocialData from '@/data/earnSocialData';
@@ -21,13 +22,28 @@ import EarnSocialData from '@/data/earnSocialData';
 const { width } = Dimensions.get('window');
 
 export default function EarnFromSocialMediaPage() {
-  console.log('🎯 EarnFromSocialMediaPage: Component rendering');
+
   const router = useRouter();
-  const { state, handlers } = useEarnFromSocialMedia();
+  const params = useLocalSearchParams();
+
+  // Extract product context from params
+  const productContext = {
+    productId: params.productId as string | undefined,
+    productName: params.productName as string | undefined,
+    productPrice: params.productPrice ? parseFloat(params.productPrice as string) : undefined,
+    productImage: params.productImage as string | undefined,
+    storeId: params.storeId as string | undefined,
+    storeName: params.storeName as string | undefined,
+  };
+
+  const { state, handlers } = useEarnFromSocialMedia(productContext.productId);
   const [urlInput, setUrlInput] = useState('');
-  
+
   React.useEffect(() => {
-    console.log('✅ EarnFromSocialMediaPage: Component mounted successfully');
+
+    if (productContext.productId) {
+
+    }
   }, []);
 
   const handleSubmitUrl = async () => {
@@ -35,9 +51,27 @@ export default function EarnFromSocialMediaPage() {
       Alert.alert('Error', 'Please enter an Instagram post URL');
       return;
     }
-    
-    handlers.handleUrlChange(urlInput);
-    await handlers.handleSubmit();
+
+    // Import validators
+    try {
+      const { validators } = await import('@/services/socialMediaApi');
+
+      // Validate URL format before submitting
+      const validation = validators.validatePostUrl('instagram', urlInput.trim());
+      if (!validation.isValid) {
+
+        Alert.alert('Invalid URL', validation.error || 'Please enter a valid Instagram post URL');
+        return; // ✅ Stop execution here
+      }
+
+      handlers.handleUrlChange(urlInput);
+      await handlers.handleSubmit();
+
+    } catch (error) {
+      console.error('❌ [EARN SOCIAL] Validation error:', error);
+      Alert.alert('Error', 'Failed to validate URL. Please try again.');
+      return; // ✅ Stop execution on error
+    }
   };
 
   const renderStepIndicator = (stepNumber: number, isActive: boolean, isCompleted: boolean) => (
@@ -61,6 +95,25 @@ export default function EarnFromSocialMediaPage() {
 
   const renderOverviewStep = () => (
     <>
+      {/* Product Context (if available) */}
+      {productContext.productName && (
+        <View style={styles.productContextCard}>
+          <View style={styles.productContextHeader}>
+            <Ionicons name="cube-outline" size={20} color="#8B5CF6" />
+            <ThemedText style={styles.productContextTitle}>Earning for:</ThemedText>
+          </View>
+          <ThemedText style={styles.productName}>{productContext.productName}</ThemedText>
+          {productContext.storeName && (
+            <ThemedText style={styles.storeName}>from {productContext.storeName}</ThemedText>
+          )}
+          {productContext.productPrice && (
+            <ThemedText style={styles.productPrice}>
+              ₹{productContext.productPrice} • 5% cashback = ₹{(productContext.productPrice * 0.05).toFixed(2)}
+            </ThemedText>
+          )}
+        </View>
+      )}
+
       {/* Cashback Information Cards */}
       <View style={styles.cardsContainer}>
         {/* Main Cashback Card */}
@@ -70,8 +123,8 @@ export default function EarnFromSocialMediaPage() {
             <ThemedText style={styles.cashbackPercentage}>5%</ThemedText>
           </View>
           <View style={styles.coinIcons}>
-            <View style={styles.coin}>💰</View>
-            <View style={styles.coin}>🪙</View>
+            <Text style={styles.coin}>💰</Text>
+            <Text style={styles.coin}>🪙</Text>
           </View>
           <ThemedText style={styles.cardDescription}>
             Buy anything and share it on Instagram. We'll give you 5% cash back in the form of coins.
@@ -81,11 +134,11 @@ export default function EarnFromSocialMediaPage() {
         {/* Share to Get Coins Card */}
         <View style={styles.shareCard}>
           <View style={styles.shareIllustration}>
-            <View style={styles.phoneIcon}>📱</View>
+            <Text style={styles.phoneIcon}>📱</Text>
             <View style={styles.socialIcons}>
-              <View style={styles.heartIcon}>💜</View>
-              <View style={styles.heartIcon}>💜</View>
-              <View style={styles.heartIcon}>💜</View>
+              <Text style={styles.heartIcon}>💜</Text>
+              <Text style={styles.heartIcon}>💜</Text>
+              <Text style={styles.heartIcon}>💜</Text>
             </View>
           </View>
           <ThemedText style={styles.shareTitle}>Share to get coins</ThemedText>
@@ -96,13 +149,13 @@ export default function EarnFromSocialMediaPage() {
       </View>
 
       {/* Upload Button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.uploadButton}
-        onPress={() => setUrlInput('')}
+        onPress={handlers.handleStartUpload}
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={EarnSocialData.ui.gradients.primary}
+          colors={EarnSocialData.ui.gradients.primary as any}
           style={styles.uploadButtonGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -127,9 +180,9 @@ export default function EarnFromSocialMediaPage() {
             <View style={styles.phoneIllustration}>
               <View style={styles.phoneScreen}>
                 <View style={styles.instagramPost}>
-                  <View style={styles.instagramIcon}>💜</View>
+                  <Text style={styles.instagramIcon}>💜</Text>
                   <View style={styles.postContent}>
-                    <View style={styles.postImage}>📱</View>
+                    <Text style={styles.postImage}>📱</Text>
                     <ThemedText style={styles.percentageText}>%</ThemedText>
                   </View>
                 </View>
@@ -170,7 +223,7 @@ export default function EarnFromSocialMediaPage() {
         disabled={state.loading}
       >
         <LinearGradient
-          colors={EarnSocialData.ui.gradients.primary}
+          colors={EarnSocialData.ui.gradients.primary as any}
           style={styles.uploadButtonGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -221,13 +274,23 @@ export default function EarnFromSocialMediaPage() {
       </View>
       <ThemedText style={styles.errorTitle}>Upload Failed</ThemedText>
       <ThemedText style={styles.errorDescription}>{state.error}</ThemedText>
-      <TouchableOpacity 
-        style={styles.retryButton}
-        onPress={handlers.handleRetry}
-        activeOpacity={0.8}
-      >
-        <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
-      </TouchableOpacity>
+      <View style={styles.errorActions}>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={handlers.handleRetry}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="refresh-outline" size={20} color="#fff" />
+          <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={handlers.handleGoBack}
+          activeOpacity={0.8}
+        >
+          <ThemedText style={styles.cancelButtonText}>Go Back</ThemedText>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -252,7 +315,7 @@ export default function EarnFromSocialMediaPage() {
       
       {/* Header */}
       <LinearGradient 
-        colors={EarnSocialData.ui.gradients.primary} 
+        colors={EarnSocialData.ui.gradients.primary as any} 
         style={styles.header}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -284,7 +347,7 @@ export default function EarnFromSocialMediaPage() {
         <View style={styles.bottomSpace} />
       </ScrollView>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -638,16 +701,36 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 32,
   },
+  errorActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    justifyContent: 'center',
+  },
   retryButton: {
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
+    gap: 8,
   },
   retryButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  cancelButton: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
   },
   
   // Bottom Text
@@ -664,5 +747,45 @@ const styles = StyleSheet.create({
   // Bottom Space
   bottomSpace: {
     height: 40,
+  },
+
+  // Product Context Card
+  productContextCard: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#8B5CF6',
+  },
+  productContextHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  productContextTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  productName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  storeName: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  productPrice: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#10B981',
   },
 });

@@ -122,6 +122,12 @@ export const coinSystem: CoinSystem = {
     maxUsagePercentage: 20,
     promoCode: 'PROMOCOIN20',
   },
+  storePromoCoin: {
+    available: 0, // Will be fetched from API based on store
+    used: 0,
+    conversionRate: 1, // 1 coin = 1 rupee
+    maxUsagePercentage: 30, // Can use up to 30% of order value
+  },
 };
 
 // Calculate Bill Summary
@@ -129,7 +135,7 @@ export const calculateBillSummary = (
   items: CheckoutItem[],
   store: CheckoutStore,
   appliedPromoCode?: PromoCode,
-  coinUsage?: { wasil: number; promo: number }
+  coinUsage?: { wasil: number; promo: number; storePromo?: number }
 ): BillSummary => {
   const itemTotal = items.reduce((total, item) => total + (item.price * item.quantity), 0);
   const getAndItemTotal = Math.round(itemTotal * 0.05); // 5% get & item charge
@@ -139,9 +145,10 @@ export const calculateBillSummary = (
   
   let promoDiscount = 0;
   if (appliedPromoCode) {
-    if (appliedPromoCode.discountType === 'fixed') {
+    const discountType = appliedPromoCode.discountType.toUpperCase();
+    if (discountType === 'FIXED') {
       promoDiscount = appliedPromoCode.discountValue;
-    } else if (appliedPromoCode.discountType === 'percentage') {
+    } else if (discountType === 'PERCENTAGE') {
       promoDiscount = Math.min(
         Math.round((itemTotal * appliedPromoCode.discountValue) / 100),
         appliedPromoCode.maxDiscount || Infinity
@@ -149,7 +156,7 @@ export const calculateBillSummary = (
     }
   }
   
-  const coinDiscount = (coinUsage?.wasil || 0) + (coinUsage?.promo || 0);
+  const coinDiscount = (coinUsage?.wasil || 0) + (coinUsage?.promo || 0) + (coinUsage?.storePromo || 0);
   
   // Calculate subtotal before discounts
   const subtotalBeforeDiscounts = itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes;

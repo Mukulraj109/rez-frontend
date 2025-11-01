@@ -21,36 +21,76 @@ export default function BenefitsTable({
   currentLevel = 1,
   onUpgradePress 
 }: BenefitsTableProps) {
-  // Create a comprehensive benefits matrix
+  // Define benefit types with clear, accurate names
   const allBenefitTypes = [
-    { key: 'cashback', name: 'We come as cashback', icon: 'cash-outline' },
-    { key: 'birthday', name: 'Birthday Flat Off on your referring', icon: 'gift-outline' },
-    { key: 'freeDelivery', name: 'Free MASSAGE TB MERCHANDISE', icon: 'bicycle-outline' },
-    { key: 'priority', name: 'After every 11 transactions', icon: 'time-outline' },
+    { 
+      key: 'cashback', 
+      name: 'Cashback on All Orders', 
+      icon: 'cash-outline',
+      description: 'Earn cashback on every purchase'
+    },
+    { 
+      key: 'birthday', 
+      name: 'Birthday Month Discount', 
+      icon: 'gift-outline',
+      description: 'Special discount during your birthday month'
+    },
+    { 
+      key: 'freeDelivery', 
+      name: 'Free Delivery', 
+      icon: 'bicycle-outline',
+      description: 'No delivery charges'
+    },
+    { 
+      key: 'transactionBonus', 
+      name: 'Transaction Bonus', 
+      icon: 'gift',
+      description: 'Bonus every 11 orders'
+    },
   ];
 
   const getBenefitValue = (level: PartnerLevel, benefitKey: string): string => {
+    // Get actual benefits from level data (backend)
+    const benefits = (level as any).benefits;
+    
+    if (!benefits) {
+      return '-';
+    }
+    
     switch (benefitKey) {
       case 'cashback':
-        return level.level === 1 ? '10%' : level.level === 2 ? '15%' : '20%';
+        return `${benefits.cashbackRate || 0}%`;
       case 'birthday':
-        return level.level === 1 ? '15%' : level.level === 2 ? '20%' : '25%';
+        return `${benefits.birthdayDiscount || 0}%`;
       case 'freeDelivery':
-        return level.level >= 2 ? '15%' : '15%';
-      case 'priority':
-        return level.level >= 3 ? '15%' : '15%';
+        if (benefits.freeDeliveryThreshold === 0) {
+          return 'Always Free';
+        } else {
+          return `Above ₹${benefits.freeDeliveryThreshold}`;
+        }
+      case 'transactionBonus':
+        if (benefits.transactionBonus) {
+          return `₹${benefits.transactionBonus.reward}`;
+        }
+        return '-';
       default:
-        return '15%';
+        return '-';
     }
   };
 
   const isBenefitActive = (level: PartnerLevel, benefitKey: string): boolean => {
+    const benefits = (level as any).benefits;
+    if (!benefits) return false;
+    
     switch (benefitKey) {
       case 'cashback':
+        return benefits.cashbackRate > 0;
       case 'birthday':
+        return benefits.birthdayDiscount > 0;
       case 'freeDelivery':
-      case 'priority':
-        return true; // All levels have all benefits in the design
+        return benefits.freeDeliveryThreshold !== undefined;
+      case 'transactionBonus':
+        return !!benefits.transactionBonus;
       default:
         return false;
     }
@@ -120,7 +160,7 @@ export default function BenefitsTable({
             {levels.map((level) => (
               <View key={level.id} style={styles.levelColumn}>
                 <LinearGradient
-                  colors={getLevelColor(level.level)}
+                  colors={getLevelColor(level.level) as any}
                   style={[
                     styles.levelHeader,
                     level.level === currentLevel && styles.currentLevelHeader
@@ -128,7 +168,7 @@ export default function BenefitsTable({
                 >
                   <View style={styles.levelIconContainer}>
                     <Ionicons 
-                      name={getLevelIcon(level.level)} 
+                      name={getLevelIcon(level.level) as any} 
                       size={16} 
                       color="white" 
                     />
@@ -221,7 +261,7 @@ export default function BenefitsTable({
                     onPress={() => onUpgradePress?.(level)}
                   >
                     <LinearGradient
-                      colors={getLevelColor(level.level)}
+                      colors={getLevelColor(level.level) as any}
                       style={styles.upgradeButtonGradient}
                     >
                       <Text style={styles.upgradeButtonText}>Upgrade</Text>
@@ -245,12 +285,12 @@ export default function BenefitsTable({
               level.level === currentLevel && styles.currentRequirementCard
             ]}>
               <LinearGradient
-                colors={level.level === currentLevel ? getLevelColor(level.level) : ['#F9FAFB', '#F3F4F6']}
+                colors={(level.level === currentLevel ? getLevelColor(level.level) : ['#F9FAFB', '#F3F4F6']) as any}
                 style={styles.requirementCardGradient}
               >
                 <View style={styles.requirementHeader}>
                   <Ionicons 
-                    name={getLevelIcon(level.level)} 
+                    name={getLevelIcon(level.level) as any} 
                     size={16} 
                     color={level.level === currentLevel ? 'white' : '#6B7280'} 
                   />
@@ -273,7 +313,7 @@ export default function BenefitsTable({
         </View>
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

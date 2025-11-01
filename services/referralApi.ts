@@ -1,133 +1,197 @@
 // Referral API Service
-// Handles all referral-related API calls
+// Handles referral and earning functionality
 
-import apiClient from './apiClient';
+import apiClient, { ApiResponse } from './apiClient';
 
-export interface ReferralStats {
-  totalReferrals: number;
-  activeReferrals: number;
-  completedReferrals: number;
-  pendingReferrals: number;
-  totalEarnings: number;
-  pendingEarnings: number;
-  milestoneEarnings: number;
-  referralBonus: number;
+/**
+ * Referral Data Interface
+ */
+export interface ReferralData {
+  title: string;
+  subtitle: string;
+  inviteButtonText: string;
+  inviteLink: string;
   referralCode: string;
+  earnedRewards: number;
+  totalReferrals: number;
+  pendingRewards: number;
+  completedReferrals: number;
+  isActive: boolean;
+  rewardPerReferral: number;
+  maxReferrals: number;
 }
 
+/**
+ * Referral History Item
+ */
 export interface ReferralHistoryItem {
-  _id: string;
-  referee: {
-    _id: string;
+  id: string;
+  referredUser: {
+    id: string;
     name: string;
-    phone: string;
+    email: string;
+    joinedAt: string;
   };
-  status: 'pending' | 'active' | 'completed' | 'expired';
-  rewards: {
-    referrerAmount: number;
-    milestoneBonus?: number;
-  };
-  referrerRewarded: boolean;
-  milestoneRewarded: boolean;
+  status: 'pending' | 'completed' | 'cancelled';
+  rewardAmount: number;
+  rewardStatus: 'pending' | 'credited' | 'cancelled';
   createdAt: string;
   completedAt?: string;
-  metadata: {
-    shareMethod?: string;
-    signupSource?: string;
-    refereeFirstOrder?: {
-      orderId: string;
-      amount: number;
-      completedAt: string;
-    };
-    milestoneOrders?: {
-      count: number;
-      totalAmount: number;
-      lastOrderAt?: string;
-    };
-  };
-}
-
-export interface ReferralCodeInfo {
-  referralCode: string;
-  referralLink: string;
-  shareMessage: string;
 }
 
 /**
- * Get user's referral statistics
+ * Referral Statistics
  */
-export const getReferralStats = async (): Promise<ReferralStats> => {
+export interface ReferralStatistics {
+  totalReferrals: number;
+  completedReferrals: number;
+  pendingReferrals: number;
+  totalEarned: number;
+  pendingEarnings: number;
+  averageRewardPerReferral: number;
+  conversionRate: number;
+}
+
+// Type alias for backward compatibility
+export type ReferralStats = ReferralStatistics;
+
+/**
+ * Referral API Service Class
+ */
+class ReferralService {
+  /**
+   * Get referral data
+   */
+  async getReferralData(): Promise<ApiResponse<ReferralData>> {
+
+    return apiClient.get('/referral/data');
+  }
+
+  /**
+   * Get referral history
+   */
+  async getReferralHistory(page = 1, limit = 20): Promise<ApiResponse<{
+    referrals: ReferralHistoryItem[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>> {
+
+    return apiClient.get('/referral/history', { page, limit });
+  }
+
+  /**
+   * Get referral statistics
+   */
+  async getReferralStatistics(): Promise<ApiResponse<ReferralStatistics>> {
+
+    return apiClient.get('/referral/statistics');
+  }
+
+  /**
+   * Generate referral link
+   */
+  async generateReferralLink(): Promise<ApiResponse<{ referralLink: string; referralCode: string }>> {
+
+    return apiClient.post('/referral/generate-link');
+  }
+
+  /**
+   * Share referral link
+   */
+  async shareReferralLink(platform: 'whatsapp' | 'telegram' | 'email' | 'sms'): Promise<ApiResponse<{ success: boolean }>> {
+
+    return apiClient.post('/referral/share', { platform });
+  }
+
+  /**
+   * Claim referral rewards
+   */
+  async claimReferralRewards(): Promise<ApiResponse<{ 
+    success: boolean; 
+    totalClaimed: number; 
+    transactionId: string;
+  }>> {
+
+    return apiClient.post('/referral/claim-rewards');
+  }
+
+  /**
+   * Get referral leaderboard
+   */
+  async getReferralLeaderboard(period: 'week' | 'month' | 'year' = 'month'): Promise<ApiResponse<{
+    leaderboard: Array<{
+      rank: number;
+      userId: string;
+      userName: string;
+      totalReferrals: number;
+      totalEarned: number;
+    }>;
+    userRank?: {
+      rank: number;
+      totalReferrals: number;
+      totalEarned: number;
+    };
+  }>> {
+
+    return apiClient.get('/referral/leaderboard', { period });
+  }
+}
+
+// Export singleton instance
+const referralService = new ReferralService();
+export default referralService;
+
+// Export individual functions for backward compatibility
+export const getReferralStats = async (): Promise<ReferralStats | null> => {
   try {
-    const response = await apiClient.get('/referral/stats');
-    console.log('✅ [REFERRAL API] Stats fetched:', response.data.data);
-    return response.data.data;
-  } catch (error: any) {
-    console.error('❌ [REFERRAL API] Error fetching stats:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch referral stats');
+    const response = await referralService.getReferralStatistics();
+    return response.data || null;
+  } catch (error) {
+    console.error('Error fetching referral stats:', error);
+    return null;
   }
 };
 
-/**
- * Get user's referral history
- */
-export const getReferralHistory = async (): Promise<ReferralHistoryItem[]> => {
+export const getReferralHistory = async (page?: number, limit?: number): Promise<ReferralHistoryItem[]> => {
   try {
-    const response = await apiClient.get('/referral/history');
-    console.log('✅ [REFERRAL API] History fetched:', response.data.data.referrals.length, 'referrals');
-    return response.data.data.referrals;
-  } catch (error: any) {
-    console.error('❌ [REFERRAL API] Error fetching history:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch referral history');
+    const response = await referralService.getReferralHistory(page, limit);
+    return response.data?.referrals || [];
+  } catch (error) {
+    console.error('Error fetching referral history:', error);
+    return [];
   }
 };
 
-/**
- * Validate a referral code
- */
-export const validateReferralCode = async (code: string): Promise<{
-  valid: boolean;
-  referrer?: {
-    _id: string;
-    name: string;
-    referralCode: string;
-  };
-}> => {
+export const getReferralCode = async () => {
   try {
-    const response = await apiClient.post('/referral/validate-code', { code });
-    console.log('✅ [REFERRAL API] Code validated:', response.data);
+    const response = await referralService.generateReferralLink();
     return {
-      valid: response.data.success,
-      referrer: response.data.data,
+      referralCode: response.data?.referralCode || '',
+      referralLink: response.data?.referralLink || '',
+      shareMessage: `Join REZ App using my referral code: ${response.data?.referralCode || ''}`
     };
-  } catch (error: any) {
-    console.error('❌ [REFERRAL API] Invalid code:', error);
-    return { valid: false };
+  } catch (error) {
+    console.error('Error fetching referral code:', error);
+    return {
+      referralCode: '',
+      referralLink: '',
+      shareMessage: ''
+    };
   }
 };
 
-/**
- * Track referral share event
- */
-export const trackShare = async (shareMethod: string): Promise<void> => {
+export const trackShare = async (platform: 'whatsapp' | 'telegram' | 'email' | 'sms') => {
   try {
-    await apiClient.post('/referral/track-share', { shareMethod });
-    console.log('✅ [REFERRAL API] Share tracked:', shareMethod);
-  } catch (error: any) {
-    console.error('❌ [REFERRAL API] Error tracking share:', error);
-    // Don't throw - share tracking is not critical
-  }
-};
-
-/**
- * Get user's referral code and share info
- */
-export const getReferralCode = async (): Promise<ReferralCodeInfo> => {
-  try {
-    const response = await apiClient.get('/referral/code');
-    console.log('✅ [REFERRAL API] Referral code fetched:', response.data.data);
-    return response.data.data;
-  } catch (error: any) {
-    console.error('❌ [REFERRAL API] Error fetching referral code:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch referral code');
+    const response = await referralService.shareReferralLink(platform);
+    return response.data;
+  } catch (error) {
+    console.error('Error tracking share:', error);
+    return null;
   }
 };

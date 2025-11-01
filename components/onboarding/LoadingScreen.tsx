@@ -20,7 +20,6 @@ export default function LoadingScreen({ duration = 5000, onComplete }: LoadingSc
         useNativeDriver: true,
       })
     );
-
     spinAnimation.start();
 
     // Complete after specified duration

@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import apiClient from './apiClient';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -9,6 +10,9 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    // For platforms that support banners/lists
+    shouldShowBanner: true as any,
+    shouldShowList: true as any,
   }),
 });
 
@@ -24,11 +28,19 @@ class PushNotificationService {
   private expoPushToken: string | null = null;
   private notificationListener: any = null;
   private responseListener: any = null;
+  private navigationHandler: ((data: any) => void) | null = null;
+
+  /**
+   * Set navigation handler for deep linking
+   */
+  setNavigationHandler(handler: (data: any) => void): void {
+    this.navigationHandler = handler;
+  }
 
   /**
    * Initialize push notifications
    */
-  async initialize(): Promise<string | null> {
+  async initialize(userId?: string): Promise<string | null> {
     try {
       // Check if running on a physical device
       if (!Device.isDevice) {
@@ -56,25 +68,15 @@ class PushNotificationService {
       });
 
       this.expoPushToken = token.data;
-      console.log('Push token:', this.expoPushToken);
 
-      // Configure Android channel
+      // Register token with backend
+      if (userId) {
+        await this.registerTokenWithBackend(this.expoPushToken, userId);
+      }
+
+      // Configure Android channels
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'default',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#6366f1',
-        });
-
-        // Create order-specific channel
-        await Notifications.setNotificationChannelAsync('orders', {
-          name: 'Order Updates',
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#10b981',
-          sound: 'default',
-        });
+        await this.setupAndroidChannels();
       }
 
       // Setup notification listeners
@@ -88,18 +90,110 @@ class PushNotificationService {
   }
 
   /**
+   * Setup Android notification channels
+   */
+  private async setupAndroidChannels(): Promise<void> {
+    // Default channel
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'Default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#6366f1',
+    });
+
+    // Order updates channel
+    await Notifications.setNotificationChannelAsync('orders', {
+      name: 'Order Updates',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#10b981',
+      sound: 'default',
+    });
+
+    // Promotional channel
+    await Notifications.setNotificationChannelAsync('promotions', {
+      name: 'Promotions & Offers',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 250],
+      lightColor: '#f59e0b',
+      sound: 'default',
+    });
+
+    // Security alerts channel
+    await Notifications.setNotificationChannelAsync('security', {
+      name: 'Security Alerts',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250, 250, 250],
+      lightColor: '#ef4444',
+      sound: 'default',
+    });
+  }
+
+  /**
+   * Register push token with backend
+   */
+  private async registerTokenWithBackend(token: string, userId: string): Promise<void> {
+    try {
+      const response = await apiClient.post('/notifications/register-token', {
+        token,
+        userId,
+        platform: Platform.OS,
+        deviceInfo: {
+          brand: Device.brand,
+          modelName: Device.modelName,
+          osName: Device.osName,
+          osVersion: Device.osVersion,
+        },
+      });
+
+      if (response.success) {
+
+      } else {
+        console.warn('Failed to register push token with backend:', response.error);
+      }
+    } catch (error) {
+      console.error('Error registering push token with backend:', error);
+    }
+  }
+
+  /**
+   * Update push token for user
+   */
+  async updateToken(userId: string): Promise<void> {
+    if (this.expoPushToken) {
+      await this.registerTokenWithBackend(this.expoPushToken, userId);
+    }
+  }
+
+  /**
+   * Unregister push token from backend
+   */
+  async unregisterToken(): Promise<void> {
+    try {
+      if (this.expoPushToken) {
+        await apiClient.post('/notifications/unregister-token', {
+          token: this.expoPushToken,
+        });
+
+      }
+    } catch (error) {
+      console.error('Error unregistering push token:', error);
+    }
+  }
+
+  /**
    * Setup notification listeners
    */
   private setupListeners(): void {
     // Listener for when a notification is received while app is foregrounded
     this.notificationListener = Notifications.addNotificationReceivedListener((notification) => {
-      console.log('Notification received:', notification);
+
       // You can handle foreground notifications here
     });
 
     // Listener for when user taps on a notification
     this.responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
-      console.log('Notification tapped:', response);
+
       const data = response.notification.request.content.data;
 
       // Handle navigation based on notification data
@@ -111,11 +205,22 @@ class PushNotificationService {
    * Handle notification tap
    */
   private handleNotificationTap(data: any): void {
-    if (data?.type === 'order_update' && data?.orderId) {
-      // Navigate to order tracking page
-      // Note: You'll need to implement navigation using your router
-      console.log('Navigate to order:', data.orderId);
-      // router.push(`/orders/${data.orderId}/tracking`);
+
+    // Use custom navigation handler if set
+    if (this.navigationHandler) {
+      this.navigationHandler(data);
+      return;
+    }
+
+    // Default navigation handling
+    if (data?.deepLink) {
+
+    } else if (data?.type === 'order_update' && data?.orderId) {
+
+    } else if (data?.storeId) {
+
+    } else if (data?.productId) {
+
     }
   }
 
@@ -282,11 +387,13 @@ class PushNotificationService {
    * Cleanup listeners
    */
   cleanup(): void {
-    if (this.notificationListener) {
-      Notifications.removeNotificationSubscription(this.notificationListener);
+    if (this.notificationListener?.remove) {
+      this.notificationListener.remove();
+      this.notificationListener = null;
     }
-    if (this.responseListener) {
-      Notifications.removeNotificationSubscription(this.responseListener);
+    if (this.responseListener?.remove) {
+      this.responseListener.remove();
+      this.responseListener = null;
     }
   }
 }

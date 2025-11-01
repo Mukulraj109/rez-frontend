@@ -23,18 +23,33 @@ const mapBackendUserToProfileUser = (backendUser: BackendUser): User => {
     if (backendUser.profile?.firstName && backendUser.profile?.lastName) {
       return (backendUser.profile.firstName.charAt(0) + backendUser.profile.lastName.charAt(0)).toUpperCase();
     }
+    if (backendUser.profile?.firstName) {
+      return backendUser.profile.firstName.charAt(0).toUpperCase();
+    }
     if (backendUser.email) {
       return backendUser.email.charAt(0).toUpperCase();
     }
-    return 'G'; // Guest
+    if (backendUser.phoneNumber) {
+      return backendUser.phoneNumber.charAt(1).toUpperCase(); // Skip the + sign
+    }
+    return 'U'; // User
   };
 
-  // Get display name - use "Guest" until user updates profile
+  // Get display name - use email or phone if no name available
   const getDisplayName = (): string => {
     if (backendUser.profile?.firstName && backendUser.profile?.lastName) {
       return `${backendUser.profile.firstName} ${backendUser.profile.lastName}`;
     }
-    return 'Guest';
+    if (backendUser.profile?.firstName) {
+      return backendUser.profile.firstName;
+    }
+    if (backendUser.email) {
+      return backendUser.email.split('@')[0]; // Use email username part
+    }
+    if (backendUser.phoneNumber) {
+      return backendUser.phoneNumber;
+    }
+    return 'User';
   };
 
   return {
@@ -42,7 +57,11 @@ const mapBackendUserToProfileUser = (backendUser: BackendUser): User => {
     name: getDisplayName(),
     email: backendUser.email || '',
     avatar: backendUser.profile?.avatar,
-    bio: backendUser.profile?.bio,
+    bio: backendUser.profile?.bio || '',
+    location: backendUser.profile?.location?.address || '',
+    website: '',
+    dateOfBirth: backendUser.profile?.dateOfBirth ? new Date(backendUser.profile.dateOfBirth).toLocaleDateString() : '',
+    gender: backendUser.profile?.gender || '',
     initials: getInitials(),
     phone: backendUser.phoneNumber,
     joinDate: backendUser.createdAt,
@@ -96,10 +115,11 @@ export const ProfileProvider = ({ children }: ProfileProviderProps) => {
   // Convert backend user to profile user format
   const user = useMemo(() => {
     if (authState.user) {
-      return mapBackendUserToProfileUser(authState.user);
+      const mappedUser = mapBackendUserToProfileUser(authState.user);
+      return mappedUser;
     }
     return null;
-  }, [authState.user]);
+  }, [authState.user, authState.isAuthenticated]);
 
   // User data functions - delegate to AuthContext
   const updateUser = async (userData: Partial<User>) => {
@@ -115,6 +135,14 @@ export const ProfileProvider = ({ children }: ProfileProviderProps) => {
           lastName: userData.name?.split(' ').slice(1).join(' ') || undefined,
           avatar: userData.avatar,
           bio: userData.bio,
+          website: userData.website,
+          dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : undefined,
+          gender: userData.gender && ['male', 'female', 'other'].includes(userData.gender.toLowerCase()) 
+            ? userData.gender.toLowerCase() as 'male' | 'female' | 'other' 
+            : undefined,
+          location: userData.location ? {
+            address: userData.location,
+          } : undefined,
         },
         preferences: {
           theme: userData.preferences?.display?.theme === 'auto' ? undefined : userData.preferences?.display?.theme as 'light' | 'dark',
@@ -176,10 +204,12 @@ export const ProfileProvider = ({ children }: ProfileProviderProps) => {
 
   // Modal functions - memoized for performance
   const showModal = useCallback(() => {
+
     setIsModalVisible(true);
   }, []);
 
   const hideModal = useCallback(() => {
+
     setIsModalVisible(false);
   }, []);
 
@@ -203,7 +233,6 @@ export const ProfileProvider = ({ children }: ProfileProviderProps) => {
 
   // Menu item handler - memoized for performance
   const handleMenuItemPress = useCallback((item: ProfileMenuItem) => {
-    console.log('Menu item pressed:', item.title);
 
     // Close the modal first
     hideModal();
@@ -286,7 +315,6 @@ export const useProfileMenu = () => {
   const context = useProfile();
   
   const handleMenuItemPress = (item: ProfileMenuItem) => {
-    console.log('Menu item pressed:', item.title);
 
     // Close the modal first
     context.hideModal();

@@ -1,7 +1,9 @@
 // hooks/useOnlineVoucher.ts - State management hook for Online Voucher system
 
-import { useState, useEffect, useCallback } from 'react';
-import { router } from 'expo-router';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Platform } from 'react-native';
+import { useRouter } from 'expo-router';
+import NetInfo from '@react-native-community/netinfo';
 import {
   VoucherState,
   UseVoucherReturn,
@@ -11,36 +13,163 @@ import {
 } from '@/types/voucher.types';
 import VoucherData from '@/data/voucherData';
 import realVouchersApi from '@/services/realVouchersApi';
+import logger from '@/utils/logger';
 
-// Use real API or fall back to mock
-const USE_REAL_API = process.env.EXPO_PUBLIC_MOCK_API !== 'true';
+// PRODUCTION: Always use real API - no mock fallback
+const USE_REAL_API = true; // Force production mode - always use backend API
+
+// Category icon mapping
+const CATEGORY_ICONS: { [key: string]: string } = {
+  beauty: '💄',
+  electronics: '📱',
+  entertainment: '🎬',
+  fashion: '👗',
+  food: '🍔',
+  grocery: '🛒',
+  groceries: '🛒',
+  shopping: '🛍️',
+  travel: '✈️',
+  sports: '⚽',
+};
+
+// Category color mapping
+const CATEGORY_COLORS: { [key: string]: { color: string; backgroundColor: string } } = {
+  beauty: { color: '#EC4899', backgroundColor: '#FCE7F3' },
+  electronics: { color: '#3B82F6', backgroundColor: '#DBEAFE' },
+  entertainment: { color: '#8B5CF6', backgroundColor: '#EDE9FE' },
+  fashion: { color: '#EC4899', backgroundColor: '#FCE7F3' },
+  food: { color: '#10B981', backgroundColor: '#D1FAE5' },
+  grocery: { color: '#F59E0B', backgroundColor: '#FEF3C7' },
+  groceries: { color: '#F59E0B', backgroundColor: '#FEF3C7' },
+  shopping: { color: '#EF4444', backgroundColor: '#FEE2E2' },
+  travel: { color: '#06B6D4', backgroundColor: '#CFFAFE' },
+  sports: { color: '#14B8A6', backgroundColor: '#CCFBF1' },
+};
 
 export const useOnlineVoucher = (): UseVoucherReturn => {
+  const router = useRouter();
   const [state, setState] = useState<VoucherState>(VoucherData.initialState);
+  const searchAbortControllerRef = useRef<AbortController | null>(null);
+
+  const [heroCarousel, setHeroCarousel] = useState<any[]>([]);
+
+  // Load user coins from wallet API
+  const loadUserCoins = useCallback(async () => {
+    try {
+      const walletApi = (await import('@/services/walletApi')).default;
+      const walletResponse = await walletApi.getBalance();
+      
+      if (walletResponse.success && walletResponse.data) {
+        const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
+        const userCoins = wasilCoin?.amount || 0;
+        
+        setState(prev => ({ ...prev, userCoins }));
+      }
+    } catch (error) {
+      logger.error('❌ [ONLINE VOUCHER] Error loading user coins:', error);
+      // Keep default value (382) on error
+    }
+  }, []);
 
   // Initialize data on mount
   useEffect(() => {
+    loadUserCoins();
     initializeVoucherData();
+    initializeHeroCarousel();
+  }, [loadUserCoins]);
+
+  const initializeHeroCarousel = useCallback(async () => {
+    try {
+      // PRODUCTION: Always use real API
+      const carouselRes = await realVouchersApi.getHeroCarousel(5);
+      if (carouselRes.success && carouselRes.data) {
+        setHeroCarousel(carouselRes.data);
+      } else {
+        logger.warn('⚠️ [ONLINE VOUCHER] Hero carousel API returned empty data');
+        setHeroCarousel([]);
+      }
+    } catch (error) {
+      logger.error('❌ [ONLINE VOUCHER] Failed to load hero carousel:', error);
+      // Production: Don't fall back to mock data - show empty state
+      setHeroCarousel([]);
+    }
   }, []);
 
   const initializeVoucherData = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true }));
 
     try {
-      if (USE_REAL_API) {
-        // Load from real backend API
-        const [categoriesRes, brandsRes] = await Promise.all([
-          realVouchersApi.getVoucherCategories(),
-          realVouchersApi.getVoucherBrands({ page: 1, limit: 50 })
-        ]);
+      // PRODUCTION: Always use real backend API
+      const [categoriesRes, brandsRes] = await Promise.all([
+        realVouchersApi.getVoucherCategories(),
+        realVouchersApi.getVoucherBrands({ page: 1, limit: 50 })
+      ]);
+
+      // Validate API responses
+      if (!categoriesRes.success || !categoriesRes.data) {
+        logger.error('❌ [ONLINE VOUCHER] Failed to load categories:', categoriesRes);
+        setState(prev => ({ ...prev, loading: false, error: 'Failed to load categories' }));
+        return;
+      }
+
+      if (!brandsRes.success || !brandsRes.data) {
+        logger.error('❌ [ONLINE VOUCHER] Failed to load brands:', brandsRes);
+        setState(prev => ({ ...prev, loading: false, error: 'Failed to load brands' }));
+        return;
+      }
 
         // Transform backend data to match frontend types
-        const categories: Category[] = categoriesRes.data.map((cat: string) => ({
-          id: cat,
-          name: cat.charAt(0).toUpperCase() + cat.slice(1),
-          icon: '🏷️',
-          color: '#FF6B6B'
-        }));
+        const categoriesMap: { [key: string]: Category } = {};
+        
+        categoriesRes.data.forEach((cat: string) => {
+          const normalizedCat = cat.toLowerCase();
+          const categoryColors = CATEGORY_COLORS[normalizedCat] || { color: '#6B7280', backgroundColor: '#FFFFFF' };
+          
+          categoriesMap[normalizedCat] = {
+            id: cat,
+            name: cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, ' '),
+            icon: CATEGORY_ICONS[normalizedCat] || '🏷️',
+            color: categoryColors.color,
+            backgroundColor: categoryColors.backgroundColor,
+            brandCount: 0, // Will be updated below
+            featuredBrands: [],
+            slug: normalizedCat
+          };
+        });
+
+        // Count brands per category
+        brandsRes.data.forEach((brand: any) => {
+          const cat = brand.category?.toLowerCase() || 'other';
+          if (categoriesMap[cat]) {
+            categoriesMap[cat].brandCount = (categoriesMap[cat].brandCount || 0) + 1;
+          }
+        });
+
+        // Order categories to match image: Beauty, Electronics, Entertainment, Fashion, Food, Groceries
+        // Remove duplicates - prefer 'groceries' over 'grocery'
+        if (categoriesMap['groceries'] && categoriesMap['grocery']) {
+          // Merge grocery into groceries
+          categoriesMap['groceries'].brandCount += categoriesMap['grocery'].brandCount || 0;
+          delete categoriesMap['grocery'];
+        }
+
+        const categoryOrder = ['beauty', 'electronics', 'entertainment', 'fashion', 'food', 'groceries', 'shopping', 'travel', 'sports'];
+        const orderedCategories: Category[] = [];
+        
+        // First add categories in the specified order (matching image)
+        categoryOrder.forEach(catKey => {
+          if (categoriesMap[catKey]) {
+            orderedCategories.push(categoriesMap[catKey]);
+            delete categoriesMap[catKey];
+          }
+        });
+        
+        // Then add any remaining categories
+        Object.values(categoriesMap).forEach(cat => {
+          orderedCategories.push(cat);
+        });
+        
+        const categories = orderedCategories;
 
         const brands: Brand[] = brandsRes.data.map((brand: any) => ({
           id: brand._id,
@@ -48,12 +177,14 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
           logo: brand.logo,
           backgroundColor: brand.backgroundColor || '#F3F4F6',
           logoColor: brand.logoColor,
-          cashBackPercentage: brand.cashbackRate,
+          cashbackRate: brand.cashbackRate || 0,
           rating: brand.rating || 0,
-          ratingCount: brand.ratingCount || 0,
-          category: brand.category,
-          isNewlyAdded: brand.isNewlyAdded,
-          isFeatured: brand.isFeatured
+          reviewCount: brand.ratingCount ? `${(brand.ratingCount / 1000).toFixed(1)}k+ users` : '0 users',
+          description: brand.description || '',
+          categories: [brand.category || ''],
+          featured: brand.isFeatured || false,
+          newlyAdded: brand.isNewlyAdded || false,
+          offers: [],
         }));
 
         setState(prev => ({
@@ -61,25 +192,11 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
           loading: false,
           categories,
           brands,
+          allBrands: brands, // Store all brands for local filtering
           error: null
         }));
-      } else {
-        // Load from mock data
-        const [categories, brands] = await Promise.all([
-          VoucherData.api.getCategories(),
-          VoucherData.api.getBrands()
-        ]);
-
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          categories,
-          brands,
-          error: null
-        }));
-      }
     } catch (error) {
-      console.error('Failed to load voucher data:', error);
+      logger.error('Failed to load voucher data:', error);
       setState(prev => ({
         ...prev,
         loading: false,
@@ -89,93 +206,129 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
   }, []);
 
   const searchBrands = useCallback(async (query: string) => {
+    // Cancel previous search request if it exists
+    if (searchAbortControllerRef.current) {
+      searchAbortControllerRef.current.abort();
+    }
+
+    // Input validation and sanitization
+    let trimmedQuery = query.trim();
+
+    // Validate query length
+    if (trimmedQuery.length > 100) {
+      logger.warn('Search query too long, truncating to 100 characters');
+      trimmedQuery = trimmedQuery.substring(0, 100);
+    }
+
+    // Remove potentially dangerous characters
+    const sanitizedQuery = trimmedQuery.replace(/[<>\"']/g, '');
+
+    // If query is empty after sanitization, show all brands
+    if (!sanitizedQuery) {
+      setState(prev => ({
+        ...prev,
+        searchQuery: query,
+        brands: prev.allBrands || [],
+        currentView: 'main',
+        loading: false,
+        error: null
+      }));
+      return;
+    }
+
+    // Create new AbortController for this request
+    const controller = new AbortController();
+    searchAbortControllerRef.current = controller;
+
+    // Show loading state
     setState(prev => ({
       ...prev,
       searchQuery: query,
       loading: true,
-      currentView: query ? 'search' : 'main'
+      error: null
     }));
 
     try {
-      if (USE_REAL_API) {
-        if (query.trim()) {
-          // Search brands from real API
-          const brandsRes = await realVouchersApi.getVoucherBrands({
-            search: query,
-            page: 1,
-            limit: 50
-          });
+      // Call backend API for comprehensive search with sanitized query
+      const searchRes = await realVouchersApi.getVoucherBrands({
+        search: sanitizedQuery,
+        page: 1,
+        limit: 50
+      });
 
-          const brands: Brand[] = brandsRes.data.map((brand: any) => ({
-            id: brand._id,
-            name: brand.name,
-            logo: brand.logo,
-            backgroundColor: brand.backgroundColor || '#F3F4F6',
-            logoColor: brand.logoColor,
-            cashBackPercentage: brand.cashbackRate,
-            rating: brand.rating || 0,
-            ratingCount: brand.ratingCount || 0,
-            category: brand.category,
-            isNewlyAdded: brand.isNewlyAdded,
-            isFeatured: brand.isFeatured
-          }));
+      if (searchRes.success && searchRes.data) {
+        // Transform backend data to match frontend types
+        const brands: Brand[] = searchRes.data.map((brand: any) => ({
+          id: brand._id,
+          name: brand.name,
+          logo: brand.logo,
+          backgroundColor: brand.backgroundColor || '#F3F4F6',
+          logoColor: brand.logoColor,
+          cashbackRate: brand.cashbackRate || 0,
+          rating: brand.rating || 0,
+          reviewCount: brand.ratingCount ? `${(brand.ratingCount / 1000).toFixed(1)}k+ users` : '0 users',
+          description: brand.description || '',
+          categories: [brand.category || ''],
+          featured: brand.isFeatured || false,
+          newlyAdded: brand.isNewlyAdded || false,
+          offers: [],
+        }));
 
-          setState(prev => ({
-            ...prev,
-            brands,
-            loading: false,
-            error: null
-          }));
-        } else {
-          // Clear search, load all brands
-          const brandsRes = await realVouchersApi.getVoucherBrands({ page: 1, limit: 50 });
-          const brands: Brand[] = brandsRes.data.map((brand: any) => ({
-            id: brand._id,
-            name: brand.name,
-            logo: brand.logo,
-            backgroundColor: brand.backgroundColor || '#F3F4F6',
-            logoColor: brand.logoColor,
-            cashBackPercentage: brand.cashbackRate,
-            rating: brand.rating || 0,
-            ratingCount: brand.ratingCount || 0,
-            category: brand.category,
-            isNewlyAdded: brand.isNewlyAdded,
-            isFeatured: brand.isFeatured
-          }));
-
-          setState(prev => ({
-            ...prev,
-            brands,
-            loading: false,
-            error: null
-          }));
-        }
+        setState(prev => ({
+          ...prev,
+          brands,
+          currentView: 'search',
+          loading: false,
+          error: null
+        }));
       } else {
-        // Mock data fallback
-        if (query.trim()) {
-          const searchResults = await VoucherData.api.searchBrands(query);
-          setState(prev => ({
-            ...prev,
-            brands: searchResults,
-            loading: false,
-            error: null
-          }));
-        } else {
-          const allBrands = await VoucherData.api.getBrands();
-          setState(prev => ({
-            ...prev,
-            brands: allBrands,
-            loading: false,
-            error: null
-          }));
-        }
+        setState(prev => ({
+          ...prev,
+          brands: [],
+          loading: false,
+          error: null // Show empty state instead of error
+        }));
       }
     } catch (error) {
-      console.error('Search failed:', error);
+      // If request was aborted, don't show error
+      if ((error as any).name === 'AbortError') {
+        logger.log('Search request cancelled');
+        return;
+      }
+
+      logger.error('❌ [ONLINE VOUCHER] Search error:', error);
+
+      // Get user-friendly error message
+      let errorMsg = 'Search failed. Please try again.';
+
+      // Check network connectivity in platform-specific way
+      if (Platform.OS === 'web') {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          errorMsg = 'No internet connection. Please check your network.';
+        } else if ((error as any)?.response?.status >= 500) {
+          errorMsg = 'Server error. Please try again later.';
+        }
+      } else {
+        // For React Native, check NetInfo
+        try {
+          const netState = await NetInfo.fetch();
+          if (!netState.isConnected) {
+            errorMsg = 'No internet connection. Please check your network.';
+          } else if ((error as any)?.response?.status >= 500) {
+            errorMsg = 'Server error. Please try again later.';
+          }
+        } catch {
+          if ((error as any)?.response?.status >= 500) {
+            errorMsg = 'Server error. Please try again later.';
+          }
+        }
+      }
+
       setState(prev => ({
         ...prev,
+        brands: [],
         loading: false,
-        error: 'Search failed. Please try again.'
+        error: errorMsg
       }));
     }
   }, []);
@@ -190,12 +343,23 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
     }));
 
     try {
-      if (USE_REAL_API) {
-        const brandsRes = await realVouchersApi.getVoucherBrands({
-          category: categoryId || undefined,
-          page: 1,
-          limit: 50
-        });
+      // PRODUCTION: Always use real API
+      const brandsRes = await realVouchersApi.getVoucherBrands({
+        category: categoryId || undefined,
+        page: 1,
+        limit: 50
+      });
+
+      if (!brandsRes.success || !brandsRes.data) {
+        logger.error('❌ [ONLINE VOUCHER] Failed to load category brands:', brandsRes);
+        setState(prev => ({
+          ...prev,
+          brands: [],
+          loading: false,
+          error: 'Failed to load category brands'
+        }));
+        return;
+      }
 
         const brands: Brand[] = brandsRes.data.map((brand: any) => ({
           id: brand._id,
@@ -203,12 +367,14 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
           logo: brand.logo,
           backgroundColor: brand.backgroundColor || '#F3F4F6',
           logoColor: brand.logoColor,
-          cashBackPercentage: brand.cashbackRate,
+          cashbackRate: brand.cashbackRate || 0,
           rating: brand.rating || 0,
-          ratingCount: brand.ratingCount || 0,
-          category: brand.category,
-          isNewlyAdded: brand.isNewlyAdded,
-          isFeatured: brand.isFeatured
+          reviewCount: brand.ratingCount ? `${(brand.ratingCount / 1000).toFixed(1)}k+ users` : '0 users',
+          description: brand.description || '',
+          categories: [brand.category || ''],
+          featured: brand.isFeatured || false,
+          newlyAdded: brand.isNewlyAdded || false,
+          offers: [],
         }));
 
         setState(prev => ({
@@ -217,17 +383,8 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
           loading: false,
           error: null
         }));
-      } else {
-        const brands = await VoucherData.api.getBrands({ categoryId });
-        setState(prev => ({
-          ...prev,
-          brands,
-          loading: false,
-          error: null
-        }));
-      }
     } catch (error) {
-      console.error('Failed to load category brands:', error);
+      logger.error('Failed to load category brands:', error);
       setState(prev => ({
         ...prev,
         loading: false,
@@ -248,15 +405,19 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
     setState(prev => ({
       ...prev,
       searchQuery: '',
+      brands: prev.allBrands || [], // Restore all brands
       currentView: 'main',
       selectedCategory: null
     }));
-    initializeVoucherData();
-  }, [initializeVoucherData]);
+  }, []);
 
   const refreshData = useCallback(async () => {
-    await initializeVoucherData();
-  }, [initializeVoucherData]);
+    await Promise.all([
+      loadUserCoins(),
+      initializeVoucherData(),
+      initializeHeroCarousel()
+    ]);
+  }, [loadUserCoins, initializeVoucherData, initializeHeroCarousel]);
 
   const updateFilters = useCallback(async (newFilters: Partial<FilterOptions>) => {
     setState(prev => ({
@@ -266,14 +427,23 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
     }));
 
     try {
-      if (USE_REAL_API) {
-        // Fetch brands with filters from real API
-        const brandsRes = await realVouchersApi.getVoucherBrands({
-          category: state.selectedCategory || undefined,
-          search: state.searchQuery || undefined,
-          page: 1,
-          limit: 50
-        });
+      // PRODUCTION: Always use real API
+      const brandsRes = await realVouchersApi.getVoucherBrands({
+        category: state.selectedCategory || undefined,
+        search: state.searchQuery || undefined,
+        page: 1,
+        limit: 50
+      });
+
+      if (!brandsRes.success || !brandsRes.data) {
+        logger.error('❌ [ONLINE VOUCHER] Failed to apply filters:', brandsRes);
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Failed to apply filters'
+        }));
+        return;
+      }
 
         let brands: Brand[] = brandsRes.data.map((brand: any) => ({
           id: brand._id,
@@ -281,22 +451,26 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
           logo: brand.logo,
           backgroundColor: brand.backgroundColor || '#F3F4F6',
           logoColor: brand.logoColor,
-          cashBackPercentage: brand.cashbackRate,
+          cashbackRate: brand.cashbackRate || 0,
           rating: brand.rating || 0,
-          ratingCount: brand.ratingCount || 0,
-          category: brand.category,
-          isNewlyAdded: brand.isNewlyAdded,
-          isFeatured: brand.isFeatured
+          reviewCount: brand.ratingCount ? `${(brand.ratingCount / 1000).toFixed(1)}k+ users` : '0 users',
+          description: brand.description || '',
+          categories: [brand.category || ''],
+          featured: brand.isFeatured || false,
+          newlyAdded: brand.isNewlyAdded || false,
+          offers: [],
         }));
 
         // Apply client-side sorting based on sortBy filter
         const sortBy = newFilters.sortBy || state.filters.sortBy;
         if (sortBy === 'cashback') {
-          brands.sort((a, b) => b.cashBackPercentage - a.cashBackPercentage);
+          brands.sort((a, b) => b.cashbackRate - a.cashbackRate);
         } else if (sortBy === 'rating') {
           brands.sort((a, b) => b.rating - a.rating);
-        } else if (sortBy === 'name') {
-          brands.sort((a, b) => a.name.localeCompare(b.name));
+        } else if (sortBy === 'popularity') {
+          brands.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+        } else if (sortBy === 'newest') {
+          brands.sort((a, b) => (b.newlyAdded ? 1 : 0) - (a.newlyAdded ? 1 : 0));
         }
 
         setState(prev => ({
@@ -305,28 +479,8 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
           loading: false,
           error: null
         }));
-      } else {
-        // Mock data fallback
-        const brands = await VoucherData.api.getBrands({
-          categoryId: state.selectedCategory,
-          query: state.searchQuery,
-          filters: { ...state.filters, ...newFilters }
-        });
-
-        // Apply sorting
-        const sortedBrands = VoucherData.helpers.sortBrands(
-          brands,
-          newFilters.sortBy || state.filters.sortBy
-        );
-
-        setState(prev => ({
-          ...prev,
-          brands: sortedBrands,
-          loading: false
-        }));
-      }
     } catch (error) {
-      console.error('Failed to apply filters:', error);
+      logger.error('Failed to apply filters:', error);
       setState(prev => ({
         ...prev,
         loading: false,
@@ -341,11 +495,12 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
   }, [searchBrands]);
 
   const handleCategorySelect = useCallback((category: Category) => {
-    selectCategory(category.id);
-  }, [selectCategory]);
+    // Navigate to voucher category page instead of filtering in same page
+    router.push(`/voucher/category/${category.slug || category.id.toLowerCase()}`);
+  }, []);
 
   const handleBrandSelect = useCallback((brand: Brand) => {
-    console.log('🎯 VoucherHook: Navigating to brand detail:', brand.name);
+
     router.push(`/voucher/${brand.id}`);
   }, []);
 
@@ -367,17 +522,41 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
     }
   }, [state.currentView, clearSearch, initializeVoucherData]);
 
-  const handleShare = useCallback((brand?: Brand) => {
+  const handleShare = useCallback(async (brand?: Brand) => {
     const shareText = brand
-      ? `Check out ${brand.name} - Get up to ${brand.cashBackPercentage}% cashback!`
-      : 'Discover amazing cashback offers on your favorite brands!';
+      ? `Check out ${brand.name} - Get up to ${brand.cashbackRate}% cashback! Download REZ app to purchase vouchers.`
+      : 'Discover amazing cashback offers on your favorite brands! Download REZ app.';
 
-    console.log('📱 Share:', shareText);
-    // TODO: Implement actual sharing functionality
+    try {
+      // Use platform-specific sharing
+      if (Platform.OS === 'web') {
+        if (typeof navigator !== 'undefined' && navigator.share) {
+          // Web sharing (if supported)
+          await navigator.share({
+            title: brand ? brand.name : 'REZ Vouchers',
+            text: shareText,
+          });
+        } else {
+          // Fallback: Copy to clipboard for browsers without share API
+          const Clipboard = (await import('expo-clipboard')).default;
+          await Clipboard.setStringAsync(shareText);
+          alert('Link copied to clipboard! Share it with your friends.');
+        }
+      } else {
+        // Native sharing
+        const Share = (await import('react-native')).Share;
+        await Share.share({
+          message: shareText,
+          title: brand ? brand.name : 'REZ Vouchers'
+        });
+      }
+    } catch (error) {
+      logger.error('Share error:', error);
+    }
   }, []);
 
   const handleFavorite = useCallback((brand: Brand) => {
-    console.log('❤️ Favorite:', brand.name);
+
     // TODO: Implement favorite functionality
   }, []);
 
@@ -393,6 +572,7 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
 
   return {
     state,
+    heroCarousel,
     actions: {
       searchBrands,
       selectCategory,

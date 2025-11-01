@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SearchSectionProps } from '@/types/search.types';
@@ -84,7 +85,7 @@ export default function SearchSection({
         </View>
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -96,44 +97,60 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   headerLeft: {
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 14,
     color: '#6B7280',
+    fontWeight: '500',
+    marginTop: 2,
     lineHeight: 20,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 12,
     paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#F5F3FF',
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(139, 92, 246, 0.15)',
+      },
+    }),
   },
   viewAllText: {
     fontSize: 14,
-    color: '#8B5CF6',
-    fontWeight: '600',
+    color: '#7C3AED',
+    fontWeight: '700',
     marginRight: 4,
   },
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
     justifyContent: 'space-between',
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   sectionStats: {
     flexDirection: 'row',
@@ -142,9 +159,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   statItem: {
     flexDirection: 'row',
@@ -155,8 +183,9 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 12,
     color: '#6B7280',
-    fontWeight: '500',
+    fontWeight: '600',
     marginLeft: 4,
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
 });

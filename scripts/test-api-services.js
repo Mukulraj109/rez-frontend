@@ -61,7 +61,7 @@ async function testApiServices() {
       console.log('\n4. Testing Basic API Endpoints...');
       
       // Test health endpoint
-      const healthResponse = await fetch('http://localhost:5000/health');
+      const healthResponse = await fetch('http://localhost:5001/health');
       if (healthResponse.ok) {
         const healthData = await healthResponse.json();
         console.log('✅ Health endpoint accessible');
@@ -71,7 +71,7 @@ async function testApiServices() {
       }
 
       // Test API info endpoint
-      const apiInfoResponse = await fetch('http://localhost:5000/api-info');
+      const apiInfoResponse = await fetch('http://localhost:5001/api-info');
       if (apiInfoResponse.ok) {
         const apiInfoData = await apiInfoResponse.json();
         console.log('✅ API info endpoint accessible');

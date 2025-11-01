@@ -24,7 +24,11 @@ export interface User {
   };
   preferences: {
     language?: string;
-    notifications?: boolean;
+    notifications?: {
+      push?: boolean;
+      email?: boolean;
+      sms?: boolean;
+    };
     categories?: string[];
     theme?: 'light' | 'dark';
     emailNotifications?: boolean;
@@ -70,6 +74,7 @@ export interface ProfileUpdate {
     lastName?: string;
     avatar?: string;
     bio?: string;
+    website?: string;
     dateOfBirth?: Date;
     gender?: 'male' | 'female' | 'other';
     location?: {
@@ -83,7 +88,11 @@ export interface ProfileUpdate {
   preferences?: {
     language?: string;
     theme?: 'light' | 'dark';
-    notifications?: boolean;
+    notifications?: {
+      push?: boolean;
+      email?: boolean;
+      sms?: boolean;
+    };
     emailNotifications?: boolean;
     pushNotifications?: boolean;
     smsNotifications?: boolean;
@@ -118,7 +127,7 @@ class AuthService {
 
   // Update user profile
   async updateProfile(data: ProfileUpdate): Promise<ApiResponse<User>> {
-    return apiClient.put('/user/auth/profile', data);
+    return apiClient.put('/user/profile', data);
   }
 
   // Complete onboarding

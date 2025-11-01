@@ -53,7 +53,7 @@ export default function ReorderSuggestions({ onAddToCart }: ReorderSuggestionsPr
 
   const handleProductPress = (productId: string, storeId: string) => {
     router.push({
-      pathname: '/StorePage',
+      pathname: '/ProductPage',
       params: { id: storeId, highlightProduct: productId }
     });
   };
@@ -63,7 +63,7 @@ export default function ReorderSuggestions({ onAddToCart }: ReorderSuggestionsPr
       onAddToCart(productId, quantity);
     } else {
       // Navigate to product page
-      router.push(`/StorePage?highlightProduct=${productId}`);
+      router.push(`/ProductPage?highlightProduct=${productId}`);
     }
   };
 
@@ -195,7 +195,7 @@ export default function ReorderSuggestions({ onAddToCart }: ReorderSuggestionsPr
         contentContainerStyle={styles.listContent}
       />
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

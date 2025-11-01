@@ -1,5 +1,5 @@
 // Real Vouchers API - Connects to actual backend
-import apiClient from './apiClient';
+import apiClient, { ApiResponse } from './apiClient';
 
 interface VoucherBrand {
   _id: string;
@@ -46,20 +46,7 @@ interface UserVoucher {
   updatedAt: string;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-  meta?: {
-    pagination?: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
-    };
-    timestamp: string;
-  };
-}
+// Using ApiResponse from apiClient to keep response typing consistent across services
 
 export const realVouchersApi = {
   /**
@@ -179,6 +166,13 @@ export const realVouchersApi = {
     }
   ): Promise<ApiResponse<UserVoucher>> {
     return apiClient.post(`/vouchers/${id}/use`, data);
+  },
+
+  /**
+   * Get hero carousel items for online voucher page
+   */
+  async getHeroCarousel(limit: number = 5): Promise<ApiResponse<any[]>> {
+    return apiClient.get(`/vouchers/hero-carousel?limit=${limit}`);
   },
 };
 

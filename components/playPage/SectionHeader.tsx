@@ -28,7 +28,7 @@ export default function SectionHeader({
         </TouchableOpacity>
       )}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

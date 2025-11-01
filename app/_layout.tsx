@@ -16,7 +16,13 @@ import { WishlistProvider } from '@/contexts/WishlistContext';
 import { LocationProvider } from '@/contexts/LocationContext';
 import { GreetingProvider } from '@/contexts/GreetingContext';
 import { SocketProvider } from '@/contexts/SocketContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
+import { SecurityProvider } from '@/contexts/SecurityContext';
+import { AppPreferencesProvider } from '@/contexts/AppPreferencesContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
+import { GamificationProvider } from '@/contexts/GamificationContext';
 import ToastManager from '@/components/common/ToastManager';
+import BottomNavigation from '@/components/navigation/BottomNavigation';
 // import AuthDebugger from '@/components/common/AuthDebugger';
 
 export default function RootLayout() {
@@ -34,15 +40,20 @@ export default function RootLayout() {
     <ErrorBoundary>
       <AppProvider>
         <AuthProvider>
-          <SocketProvider>
-            <LocationProvider>
-              <GreetingProvider>
-                <CartProvider>
-                  <OffersProvider>
-                    <CategoryProvider>
-                      <ProfileProvider>
-                        <WishlistProvider>
-                          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <SubscriptionProvider>
+            <GamificationProvider>
+              <SocketProvider>
+                <LocationProvider>
+                  <GreetingProvider>
+                    <CartProvider>
+                      <OffersProvider>
+                        <CategoryProvider>
+                          <ProfileProvider>
+                            <WishlistProvider>
+                              <NotificationProvider>
+                                <SecurityProvider>
+                                  <AppPreferencesProvider>
+                                    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
                   {/* App Entry Point */}
                   <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -63,7 +74,7 @@ export default function RootLayout() {
                   {/* Main App Screens */}
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                   <Stack.Screen name="FashionPage" options={{ headerShown: false }} />
-                   <Stack.Screen name="StorePage" options={{ headerShown: false }} />
+                   <Stack.Screen name="ProductPage" options={{ headerShown: false }} />
                   <Stack.Screen name="CartPage" options={{ headerShown: false }} />
                   <Stack.Screen name="MainStorePage" options={{ headerShown: false }} />
                    <Stack.Screen name="Store" options={{ headerShown: false }} />
@@ -75,6 +86,8 @@ export default function RootLayout() {
                     <Stack.Screen name="StoreSearch" options={{ headerShown: false }} />
                     <Stack.Screen name="ReviewPage" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/index" options={{ headerShown: false }} />
+                    <Stack.Screen name="offers/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="offers/view-all" options={{ headerShown: false }} />
                     
                     {/* Profile System Screens */}
                     <Stack.Screen name="wallet/index" options={{ headerShown: false }} />
@@ -82,6 +95,8 @@ export default function RootLayout() {
                     <Stack.Screen name="profile/index" options={{ headerShown: false }} />
                     <Stack.Screen name="profile/partner" options={{ headerShown: false }} />
                     <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
+                    <Stack.Screen name="profile/achievements" options={{ headerShown: false }} />
+                    <Stack.Screen name="profile/activity" options={{ headerShown: false }} />
 
                     {/* Profile Icon Grid Pages */}
                     <Stack.Screen name="my-products" options={{ headerShown: false }} />
@@ -92,6 +107,9 @@ export default function RootLayout() {
                     <Stack.Screen name="going-out" options={{ headerShown: false }} />
                     <Stack.Screen name="home-delivery" options={{ headerShown: false }} />
                     <Stack.Screen name="home-delivery/section/[sectionId]" options={{ headerShown: false }} />
+                    <Stack.Screen name="paybill-transactions" options={{ headerShown: false }} />
+                    <Stack.Screen name="paybill-add-money" options={{ headerShown: false }} />
+                    <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="transactions/index" options={{ headerShown: false }} />
                     <Stack.Screen name="transactions/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="transactions/incomplete" options={{ headerShown: false }} />
@@ -99,7 +117,29 @@ export default function RootLayout() {
                     <Stack.Screen name="account/payment-methods" options={{ headerShown: false }} />
                     <Stack.Screen name="account/payment" options={{ headerShown: false }} />
                     <Stack.Screen name="account/wasilpay" options={{ headerShown: false }} />
+                    <Stack.Screen name="payment" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/settings" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/language" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/notifications" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/push-notifications" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/email-notifications" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/sms-notifications" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/notification-history" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/profile-visibility" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/two-factor-auth" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/change-password" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/delete-account" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/addresses" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/cashback" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/coupons" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/courier-preferences" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/products" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/product-detail" options={{ headerShown: false }} />
+                    <Stack.Screen name="coin-detail" options={{ headerShown: false }} />
                     <Stack.Screen name="tracking" options={{ headerShown: false }} />
+                    <Stack.Screen name="order-history" options={{ headerShown: false }} />
+                    <Stack.Screen name="ring-sizer" options={{ headerShown: false }} />
+                    <Stack.Screen name="scratch-card" options={{ headerShown: false }} />
                     
                     {/* Checkout System Screens */}
                     <Stack.Screen name="checkout" options={{ headerShown: false }} />
@@ -112,11 +152,26 @@ export default function RootLayout() {
                     {/* Online Voucher System */}
                     <Stack.Screen name="online-voucher" options={{ headerShown: false }} />
                     <Stack.Screen name="voucher/[brandId]" options={{ headerShown: false }} />
+                    <Stack.Screen name="voucher/category/[slug]" options={{ headerShown: false }} />
                     
                     {/* Location System Screens */}
                     <Stack.Screen name="location/history" options={{ headerShown: false }} />
                     <Stack.Screen name="location/settings" options={{ headerShown: false }} />
                     
+                    {/* Root Settings Screen */}
+                    <Stack.Screen name="settings" options={{ headerShown: false }} />
+
+                    {/* Subscription System Screens */}
+                    <Stack.Screen name="subscription/plans" options={{ headerShown: false }} />
+                    <Stack.Screen name="subscription/manage" options={{ headerShown: false }} />
+                    <Stack.Screen name="subscription/billing" options={{ headerShown: false }} />
+                    <Stack.Screen name="subscription/payment-confirmation" options={{ headerShown: false }} />
+                    <Stack.Screen name="subscription/upgrade-confirmation" options={{ headerShown: false }} />
+                    <Stack.Screen name="subscription/cancel-feedback" options={{ headerShown: false }} />
+                    <Stack.Screen name="subscription/trial" options={{ headerShown: false }} />
+                    <Stack.Screen name="subscription/benefits" options={{ headerShown: false }} />
+                    <Stack.Screen name="subscription/downgrade-confirmation" options={{ headerShown: false }} />
+
                   {/* Dynamic Category Pages */}
                   <Stack.Screen name="category/[slug]" options={{ headerShown: false }} />
                   <Stack.Screen name="+not-found" />
@@ -126,18 +181,26 @@ export default function RootLayout() {
                 {/* Toast Manager for notifications */}
                 <ToastManager />
 
+                {/* Global Bottom Navigation - appears on all pages */}
+                <BottomNavigation />
+
                 {/* Debug component for development */}
                 {/* {process.env.NODE_ENV === 'development' && <AuthDebugger />} */}
 
-                        </ThemeProvider>
-                      </WishlistProvider>
-                    </ProfileProvider>
-                  </CategoryProvider>
-                </OffersProvider>
-              </CartProvider>
-            </GreetingProvider>
-          </LocationProvider>
+                                </ThemeProvider>
+                              </AppPreferencesProvider>
+                            </SecurityProvider>
+                          </NotificationProvider>
+                        </WishlistProvider>
+                      </ProfileProvider>
+                    </CategoryProvider>
+                  </OffersProvider>
+                </CartProvider>
+              </GreetingProvider>
+            </LocationProvider>
           </SocketProvider>
+        </GamificationProvider>
+        </SubscriptionProvider>
         </AuthProvider>
       </AppProvider>
     </ErrorBoundary>

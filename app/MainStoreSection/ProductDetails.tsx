@@ -57,7 +57,7 @@ export default function ProductDetails({
         </View>
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

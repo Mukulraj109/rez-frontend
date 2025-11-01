@@ -195,7 +195,7 @@ export default function ProductCard({
         {/* Product Image */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: product.image }}
+            source={{ uri: product.image || 'https://via.placeholder.com/200x200?text=No+Image' }}
             style={styles.image}
             resizeMode="cover"
             fadeDuration={0}
@@ -221,11 +221,11 @@ export default function ProductCard({
         {/* Product Details */}
         <View style={styles.content}>
           <ThemedText style={styles.brand} numberOfLines={1}>
-            {product.brand}
+            {product.brand || 'Brand'}
           </ThemedText>
           
           <ThemedText style={styles.name} numberOfLines={2}>
-            {product.name}
+            {product.name || 'Product Name'}
           </ThemedText>
 
           {/* Rating - Using RatingStars component for consistency */}
@@ -263,7 +263,7 @@ export default function ProductCard({
           {product.cashback && (
             <View style={styles.cashbackContainer}>
               <ThemedText style={styles.cashbackText}>
-                {product.cashback.percentage}% cashback
+                {product.cashback.percentage || 0}% cashback
               </ThemedText>
             </View>
           )}

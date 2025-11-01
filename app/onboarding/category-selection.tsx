@@ -99,7 +99,7 @@ export default function CategorySelectionScreen() {
         </TouchableOpacity>
       </View>
     </OnboardingContainer>
-  );
+);
 }
 
 const styles = StyleSheet.create({

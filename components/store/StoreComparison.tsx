@@ -256,11 +256,11 @@ const StoreComparison: React.FC<StoreComparisonProps> = ({
             </View>
 
             {/* Comparison Rows */}
-            {renderComparisonRow('Rating', (store) => `${(store.rating || store.ratings?.average || 0).toFixed(1)} ⭐`)}
-            {renderComparisonRow('Reviews', (store) => store.reviewCount || store.ratings?.count || 0)}
-            {renderComparisonRow('Delivery Time', (store) => store.deliveryTime || store.operationalInfo?.deliveryTime || 'N/A')}
-            {renderComparisonRow('Min Order', (store) => `₹${store.minimumOrder || store.operationalInfo?.minimumOrder || 'N/A'}`)}
-            {renderComparisonRow('Delivery Fee', (store) => `₹${store.deliveryFee || store.operationalInfo?.deliveryFee || 'Free'}`)}
+            {renderComparisonRow('Rating', (store) => `${(store.ratings?.average || 0).toFixed(1)} ⭐`)}
+            {renderComparisonRow('Reviews', (store) => store.ratings?.count || 0)}
+            {renderComparisonRow('Delivery Time', (store) => store.operationalInfo?.deliveryTime || 'N/A')}
+            {renderComparisonRow('Min Order', (store) => `₹${store.operationalInfo?.minimumOrder || 'N/A'}`)}
+            {renderComparisonRow('Delivery Fee', (store) => `₹${store.operationalInfo?.deliveryFee || 'Free'}`)}
             {renderComparisonRow('Free Delivery', (store) => store.operationalInfo?.freeDeliveryAbove ? `Above ₹${store.operationalInfo.freeDeliveryAbove}` : 'Not available')}
             {renderComparisonRow('Wallet Payment', (store) => store.operationalInfo?.acceptsWalletPayment ? 'Yes' : 'No')}
             {renderComparisonRow('Verified', (store) => store.isVerified ? 'Yes' : 'No')}

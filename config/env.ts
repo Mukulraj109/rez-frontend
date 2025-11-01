@@ -12,9 +12,9 @@ export const APP_CONFIG = {
 
 // API Configuration
 export const API_CONFIG = {
-  baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5000/api',
+  baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5001/api',
   timeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000'),
-  devUrl: process.env.EXPO_PUBLIC_DEV_API_URL || 'http://localhost:5000/api',
+  devUrl: process.env.EXPO_PUBLIC_DEV_API_URL || 'http://localhost:5001/api',
   prodUrl: process.env.EXPO_PUBLIC_PROD_API_URL || 'https://api.rezapp.com/api',
 } as const;
 

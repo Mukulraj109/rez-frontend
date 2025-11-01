@@ -218,7 +218,7 @@ export function HomepageSkeleton() {
       <HorizontalSectionSkeleton cardType="store" />
       <HorizontalSectionSkeleton cardType="branded" />
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

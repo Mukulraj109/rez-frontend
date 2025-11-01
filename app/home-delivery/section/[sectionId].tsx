@@ -148,21 +148,12 @@ export default function SectionDetailPage() {
         let sectionProducts = mappedProducts;
         if (sectionConfig.filterKey === 'isFeatured') {
           sectionProducts = mappedProducts.filter(p => p.isFeatured);
-          console.log('🎯 [SECTION] Featured products:', {
-            total: mappedProducts.length,
-            featured: sectionProducts.length,
-            sample: sectionProducts[0]
-          });
+
         } else if (sectionConfig.filterKey === 'isNew') {
           sectionProducts = mappedProducts.filter(p => p.isNew);
-          console.log('🎯 [SECTION] New products:', {
-            total: mappedProducts.length,
-            new: sectionProducts.length,
-            sample: sectionProducts[0]
-          });
+
         }
 
-        console.log('✅ [SECTION] Loaded section products:', sectionProducts.length);
         setProducts(sectionProducts);
         setFilteredProducts(sectionProducts);
       }
@@ -296,7 +287,7 @@ export default function SectionDetailPage() {
         />
       </ScrollView>
     </SafeAreaView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

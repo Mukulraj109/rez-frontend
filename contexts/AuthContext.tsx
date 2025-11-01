@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter, useSegments } from 'expo-router';
 import authService, { User, AuthResponse } from '@/services/authApi';
+import apiClient from '@/services/apiClient';
 
 // Use types from backend service
 // interface User is imported from dummyBackend
@@ -44,7 +46,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       return { ...state, isLoading: action.payload, error: null };
     
     case 'AUTH_SUCCESS':
-      console.log('[AuthReducer] AUTH_SUCCESS:', { user: action.payload.user.id, isAuthenticated: true });
+
       return {
         ...state,
         user: action.payload.user,
@@ -112,6 +114,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const [hasExplicitlyLoggedOut, setHasExplicitlyLoggedOut] = React.useState(false);
   const [lastNavigationTime, setLastNavigationTime] = React.useState(0);
+  const [shouldRedirectToSignIn, setShouldRedirectToSignIn] = React.useState(false);
+  const router = useRouter();
+  const segments = useSegments();
+
+  // Set up API client callbacks
+  useEffect(() => {
+    // Set refresh token callback
+    apiClient.setRefreshTokenCallback(async () => {
+      try {
+        await tryRefreshToken();
+        return true;
+      } catch (error) {
+        console.error('❌ [AUTH PROVIDER] Refresh callback failed:', error);
+        return false;
+      }
+    });
+
+    // Set logout callback - called when token expires
+    apiClient.setLogoutCallback(async () => {
+      console.log('🔐 [AUTH PROVIDER] Token expired, logging out');
+      
+      try {
+        // Clear all stored auth data
+        await AsyncStorage.multiRemove([
+          STORAGE_KEYS.ACCESS_TOKEN,
+          STORAGE_KEYS.REFRESH_TOKEN,
+          STORAGE_KEYS.USER
+        ]);
+        
+        // Clear API client tokens
+        apiClient.setAuthToken(null);
+        authService.setAuthToken(null);
+        
+        // Dispatch logout
+        dispatch({ type: 'AUTH_LOGOUT' });
+        
+        // Set explicit logout flag to prevent auto-restoration
+        setHasExplicitlyLoggedOut(true);
+
+        // Navigate to sign-in
+        router.replace('/sign-in');
+      } catch (error) {
+        console.error('❌ [AUTH PROVIDER] Error during token expiration logout:', error);
+        // Still try to navigate even if cleanup fails
+        router.replace('/sign-in');
+      }
+    });
+  }, []);
 
   // Check auth status on app start (but not after explicit logout)
   useEffect(() => {
@@ -119,6 +169,45 @@ export function AuthProvider({ children }: AuthProviderProps) {
       checkAuthStatus();
     }
   }, [hasExplicitlyLoggedOut]);
+
+  // Navigation guard: Redirect to sign-in when user is logged out
+  useEffect(() => {
+    // Don't navigate during initial loading
+    if (state.isLoading) {
+      return;
+    }
+
+    const currentRoute = segments.join('/');
+    const isSignInRoute = currentRoute === 'sign-in';
+    const isOnboardingRoute = currentRoute.startsWith('onboarding/');
+
+    // Force redirect if flag is set (from token expiration)
+    if (shouldRedirectToSignIn && !isSignInRoute) {
+
+      router.replace('/sign-in');
+      setShouldRedirectToSignIn(false);
+      return;
+    }
+
+    // If user is not authenticated
+    if (!state.isAuthenticated) {
+      // Don't redirect if already on sign-in
+      if (isSignInRoute) {
+        return;
+      }
+
+      // Allow onboarding ONLY if user explicitly logged out or never logged in
+      // If they had a session that expired/invalidated, redirect to sign-in
+      if (isOnboardingRoute && !hasExplicitlyLoggedOut && !state.error) {
+        // This is likely a new user going through initial onboarding
+        // Let them continue
+        return;
+      }
+
+      // Use replace to prevent back navigation
+      router.replace('/sign-in');
+    }
+  }, [state.isAuthenticated, state.isLoading, state.error, segments, hasExplicitlyLoggedOut, shouldRedirectToSignIn]);
 
   // Backend service integration (dummy + real API ready)
 
@@ -140,7 +229,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(errorMessage);
       }
 
-      console.log('[AuthContext] OTP sent successfully:', response.data || response);
       dispatch({ type: 'AUTH_LOADING', payload: false });
     } catch (error: any) {
       dispatch({
@@ -154,7 +242,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
   const login = async (phoneNumber: string, otp: string) => {
     try {
-      console.log('[AuthContext] Starting login for:', phoneNumber);
+
       dispatch({ type: 'AUTH_LOADING', payload: true });
 
       const response = await authService.verifyOtp({ phoneNumber, otp });
@@ -166,14 +254,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(errorMessage);
       }
 
-      console.log('[AuthContext] Backend response:', { user: response.data.user.id, token: response.data.tokens.accessToken ? 'exists' : 'missing' });
-
       // Store in AsyncStorage
-      console.log('[AuthContext] Storing auth data...', {
-        token: response.data.tokens.accessToken ? 'exists' : 'missing',
-        refreshToken: response.data.tokens.refreshToken ? 'exists' : 'missing',
-        user: response.data.user?.id || 'no-id'
-      });
+      if (!response.data || !response.data.tokens || !response.data.user) {
+        throw new Error('Invalid response data from server');
+      }
 
       await AsyncStorage.multiSet([
         [STORAGE_KEYS.ACCESS_TOKEN, response.data.tokens.accessToken],
@@ -184,26 +268,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Verify storage (debug)
       const storedToken = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
       const storedUser = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-      console.log('[AuthContext] Verification - stored data:', {
-        tokenStored: !!storedToken,
-        userStored: !!storedUser
-      });
 
       // Set auth token in API client (authService sets it in apiClient)
-      console.log('[AuthContext] Setting token in authService and apiClient...');
+
       authService.setAuthToken(response.data.tokens.accessToken);
 
       // Double-check: Also set directly in apiClient to be safe
       const apiClient = require('@/services/apiClient').default;
       apiClient.setAuthToken(response.data.tokens.accessToken);
 
-      console.log('[AuthContext] Token set successfully:', {
-        authServiceHasToken: !!authService.getAuthToken(),
+      console.log('🔐 [AUTH PROVIDER] Token set verification', {
         apiClientHasToken: !!apiClient.getAuthToken(),
         tokenPreview: response.data.tokens.accessToken.substring(0, 30) + '...'
       });
 
-      console.log('[AuthContext] Stored in AsyncStorage, dispatching AUTH_SUCCESS');
       dispatch({ type: 'AUTH_SUCCESS', payload: { user: response.data.user, token: response.data.tokens.accessToken } });
 
       // Reset explicit logout flag since user is logging in again
@@ -248,11 +326,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = async () => {
     try {
-      console.log('🔓 [AUTH] Starting logout process...');
 
-      // Call backend logout (invalidate token)
+      // Call backend logout (invalidate token) - but don't fail if it errors
       try {
-        console.log('🔓 [AUTH] Calling backend logout...');
+
         const response = await authService.logout();
 
         // Check if logout request failed
@@ -260,49 +337,59 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.warn('⚠️ [AUTH] Backend logout failed:', response.error);
           // Continue with local logout even if backend fails
         } else {
-          console.log('✅ [AUTH] Backend logout successful');
+
         }
-      } catch (error) {
-        console.warn('⚠️ [AUTH] Backend logout failed:', error);
+      } catch (error: any) {
+        console.warn('⚠️ [AUTH] Backend logout failed (continuing with local logout):', error?.message || error);
         // Continue with local logout even if backend fails
+        // This is especially important for cases where the token is already invalid
       }
 
+      // Always proceed with local cleanup regardless of backend response
+      await performLocalLogout();
+      
+    } catch (error) {
+      console.error('❌ [AUTH] Logout error:', error);
+      // Even if there's an error, try to perform local logout
+      try {
+        await performLocalLogout();
+      } catch (localError) {
+        console.error('❌ [AUTH] Local logout also failed:', localError);
+      }
+      // Don't re-throw - logout should always succeed from user perspective
+    }
+  };
+
+  const performLocalLogout = async () => {
+    try {
       // Remove from AsyncStorage
-      console.log('🔓 [AUTH] Clearing AsyncStorage...');
+
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.ACCESS_TOKEN,
         STORAGE_KEYS.REFRESH_TOKEN,
         STORAGE_KEYS.USER
       ]);
-      console.log('✅ [AUTH] AsyncStorage cleared');
 
       // Clear auth token from API client
-      console.log('🔓 [AUTH] Clearing API client token...');
-      authService.setAuthToken(null);
-      console.log('✅ [AUTH] API client token cleared');
 
-      console.log('🔓 [AUTH] Dispatching AUTH_LOGOUT...');
+      authService.setAuthToken(null);
+      apiClient.setAuthToken(null);
+
       dispatch({ type: 'AUTH_LOGOUT' });
 
       // Set explicit logout flag to prevent auto-restoration
       setHasExplicitlyLoggedOut(true);
 
       // Double-check that state is properly cleared
-      console.log('✅ [AUTH] Logout complete - Auth state should be:', {
-        user: null,
-        isLoading: false,
-        isAuthenticated: false,
-        error: null,
-        token: null
-      });
+
     } catch (error) {
-      console.error('❌ [AUTH] Logout error:', error);
-      throw error; // Re-throw so calling component knows it failed
+      console.error('❌ [AUTH] Local logout error:', error);
+      throw error;
     }
   };
 
   const forceLogout = () => {
-    console.log('💥 [FORCE LOGOUT] Forcing immediate logout...');
+
     try {
       // Clear AsyncStorage synchronously if possible
       AsyncStorage.multiRemove([
@@ -313,18 +400,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Clear API client token
       authService.setAuthToken(null);
+      apiClient.setAuthToken(null);
       
       // Force state update
       dispatch({ type: 'AUTH_LOGOUT' });
       
       // Set explicit logout flag to prevent auto-restoration
       setHasExplicitlyLoggedOut(true);
-      
-      console.log('✅ [FORCE LOGOUT] Forced logout complete');
+
     } catch (error) {
       console.error('❌ [FORCE LOGOUT] Error:', error);
       // Still dispatch logout even if clearing fails
       dispatch({ type: 'AUTH_LOGOUT' });
+      setHasExplicitlyLoggedOut(true);
     }
   };
 
@@ -366,10 +454,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const completeOnboarding = async (data: Partial<User>) => {
     try {
-      console.log('🎯 [COMPLETE ONBOARDING] Starting onboarding completion...', {
-        userId: state.user?.id,
-        currentOnboardedStatus: state.user?.isOnboarded
-      });
 
       if (!state.user?.id) {
         throw new Error('User not authenticated');
@@ -387,11 +471,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(errorMessage);
       }
 
-      console.log('🎯 [COMPLETE ONBOARDING] Backend response:', {
-        userId: response.data.id,
-        isOnboarded: response.data.isOnboarded
-      });
-
       // Update AsyncStorage with new user data
       if (response.data) {
         await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data));
@@ -402,14 +481,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Verify the storage update
       const storedUserData = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       const parsedUser = storedUserData ? JSON.parse(storedUserData) : null;
-      console.log('🎯 [COMPLETE ONBOARDING] Verified stored user:', {
-        isOnboarded: parsedUser?.isOnboarded,
-        userId: parsedUser?.id
-      });
 
       dispatch({ type: 'UPDATE_USER', payload: response.data });
 
-      console.log('✅ [COMPLETE ONBOARDING] Onboarding completion successful');
     } catch (error: any) {
       console.error('❌ [COMPLETE ONBOARDING] Error:', error);
       dispatch({
@@ -428,7 +502,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkAuthStatus = async () => {
     try {
-      console.log('🔍 [AUTH CHECK] Starting auth status check...');
+
       dispatch({ type: 'AUTH_LOADING', payload: true });
       
       const [token, userJson] = await AsyncStorage.multiGet([
@@ -451,27 +525,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       }
 
-      console.log('🔍 [AUTH CHECK] Stored data:', { 
-        hasToken: !!storedToken, 
-        hasUser: !!storedUser,
-        userId: storedUser?.id,
-        isOnboarded: storedUser?.isOnboarded
-      });
-
       if (storedToken && storedUser) {
         // Set auth token in API client FIRST (critical for transaction page)
-        console.log('🔑 [AUTH CHECK] Setting token in authService...');
         authService.setAuthToken(storedToken);
-        console.log('✅ [AUTH CHECK] Token set in authService:', authService.getAuthToken()?.substring(0, 30) + '...');
+        console.log('🔐 [AUTH PROVIDER] Token restored:', storedToken?.substring(0, 30) + '...');
 
         // Also ensure apiClient has the token (import and set directly)
-        console.log('🔑 [AUTH CHECK] Verifying token in apiClient...');
         const apiClient = require('@/services/apiClient').default;
         apiClient.setAuthToken(storedToken);
-        console.log('✅ [AUTH CHECK] Token verified in apiClient:', apiClient.getAuthToken()?.substring(0, 30) + '...');
+        console.log('🔐 [AUTH PROVIDER] ApiClient token set:', storedToken?.substring(0, 30) + '...');
 
         // For better UX, restore auth state immediately and validate in background
-        console.log('✅ [AUTH CHECK] Restoring auth state from storage');
+
         dispatch({
           type: 'AUTH_SUCCESS',
           payload: { user: storedUser, token: storedToken }
@@ -484,15 +549,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Use a more immediate validation to prevent race conditions
         Promise.resolve().then(async () => {
           try {
-            console.log('🔍 [AUTH CHECK] Validating token with backend...');
+
             const response = await authService.getProfile();
 
             // Check if API returned an error
             if (!response.success) {
               console.warn('⚠️ [AUTH CHECK] Token validation failed, trying refresh...', response.error);
-              await tryRefreshToken();
+              // Only try refresh if it's a 401/403 error, not other errors
+              if (response.error?.includes('401') || response.error?.includes('403') || response.error?.includes('Access token') || response.error?.includes('expired') || response.error?.includes('invalid')) {
+                const refreshSuccess = await tryRefreshToken();
+                // If refresh fails, logout callback will be triggered automatically
+                if (!refreshSuccess) {
+
+                }
+              } else {
+
+              }
             } else if (response.data) {
-              console.log('✅ [AUTH CHECK] Token validation successful');
+
               // Update stored user data if changed
               if (JSON.stringify(response.data) !== JSON.stringify(storedUser)) {
                 await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data));
@@ -500,16 +574,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
               }
             } else {
               console.warn('⚠️ [AUTH CHECK] Token validation returned no data, trying refresh...');
-              await tryRefreshToken();
+              const refreshSuccess = await tryRefreshToken();
+              if (!refreshSuccess) {
+
+              }
             }
-          } catch (error) {
+          } catch (error: any) {
             console.warn('⚠️ [AUTH CHECK] Token validation failed, trying refresh...', error);
-            await tryRefreshToken();
+            // Only try refresh if it's a 401/403 error, not other errors
+            if (error?.message?.includes('401') || error?.message?.includes('403') || error?.message?.includes('Access token') || error?.message?.includes('expired') || error?.message?.includes('invalid')) {
+              const refreshSuccess = await tryRefreshToken();
+              if (!refreshSuccess) {
+
+              }
+            } else {
+
+            }
           }
         });
 
       } else {
-        console.log('❌ [AUTH CHECK] No stored auth data found');
+
         dispatch({ type: 'AUTH_LOGOUT' });
       }
     } catch (error) {
@@ -518,13 +603,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const tryRefreshToken = async () => {
+  const tryRefreshToken = async (): Promise<boolean> => {
     try {
-      console.log('🔄 [REFRESH TOKEN] Attempting token refresh...');
+
       const refreshToken = await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
       
       if (refreshToken) {
-        console.log('🔄 [REFRESH TOKEN] Refresh token found, calling backend...');
+
         const response = await authService.refreshToken(refreshToken);
 
         // Check if API returned an error
@@ -533,9 +618,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw new Error(response.error || 'Token refresh failed');
         }
 
-        console.log('✅ [REFRESH TOKEN] Token refresh successful');
-
         // Update stored tokens
+        if (!response.data || !response.data.tokens) {
+          throw new Error('Invalid response data from server');
+        }
+        
         await AsyncStorage.multiSet([
           [STORAGE_KEYS.ACCESS_TOKEN, response.data.tokens.accessToken],
           [STORAGE_KEYS.REFRESH_TOKEN, response.data.tokens.refreshToken],
@@ -543,6 +630,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         // Set auth token in API client
         authService.setAuthToken(response.data.tokens.accessToken);
+        apiClient.setAuthToken(response.data.tokens.accessToken);
 
         // Get user data safely
         const userJson = await AsyncStorage.getItem(STORAGE_KEYS.USER);
@@ -564,25 +652,62 @@ export function AuthProvider({ children }: AuthProviderProps) {
             type: 'AUTH_SUCCESS', 
             payload: { user: storedUser, token: response.data.tokens.accessToken } 
           });
+          return true; // Success
         } else {
           console.warn('⚠️ [REFRESH TOKEN] No stored user data after refresh');
           dispatch({ type: 'AUTH_LOGOUT' });
+          return false; // Failed - no user data
         }
       } else {
         console.warn('⚠️ [REFRESH TOKEN] No refresh token available');
         // Don't immediately logout - maybe the user is still valid
         // Just log the warning and let the current state persist
-        console.log('🔄 [REFRESH TOKEN] Keeping current auth state since no refresh token');
+
+        return false; // No refresh token available
       }
-    } catch (error) {
+    } catch (error: any) {
       console.warn('❌ [REFRESH TOKEN] Token refresh failed:', error);
       // Don't immediately logout on refresh failure - could be network issue
       // Only logout if it's a 401/403 (invalid refresh token)
-      if (error?.response?.status === 401 || error?.response?.status === 403) {
-        console.log('❌ [REFRESH TOKEN] Refresh token invalid, logging out');
-        dispatch({ type: 'AUTH_LOGOUT' });
+      const errorMessage = error?.message?.toLowerCase() || '';
+      const isInvalidToken = error?.response?.status === 401 ||
+                            error?.response?.status === 403 ||
+                            errorMessage.includes('401') ||
+                            errorMessage.includes('403') ||
+                            errorMessage.includes('invalid') ||
+                            errorMessage.includes('expired');
+
+      if (isInvalidToken) {
+
+        // Clear all stored auth data
+        await AsyncStorage.multiRemove([
+          STORAGE_KEYS.ACCESS_TOKEN,
+          STORAGE_KEYS.REFRESH_TOKEN,
+          STORAGE_KEYS.USER
+        ]).catch(console.error);
+
+        // Clear API client token
+        apiClient.setAuthToken(null);
+        authService.setAuthToken(null);
+
+        // Dispatch logout with error so navigation guard knows to redirect
+        dispatch({ type: 'AUTH_FAILURE', payload: 'Session expired. Please sign in again.' });
+
+        // Set redirect flag to trigger navigation guard
+        setShouldRedirectToSignIn(true);
+
+        // Also try immediate redirect (in case it works)
+
+        try {
+          router.replace('/sign-in');
+        } catch (navError) {
+          console.error('⚠️ [REFRESH TOKEN] Immediate navigation failed, will use guard:', navError);
+        }
+        
+        return false; // Failed - invalid token
       } else {
-        console.log('🔄 [REFRESH TOKEN] Network/temporary error, keeping current state');
+
+        return false; // Failed - network error
       }
     }
   };

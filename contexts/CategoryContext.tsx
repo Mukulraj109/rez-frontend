@@ -136,14 +136,14 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
       try {
         const categoryData = await import('@/data/categoryData');
         // Use the default export which contains categories
-        console.log('🔍 CategoryData loaded, categories count:', categoryData.default.categories?.length);
+
         localCategory = categoryData.default.categories.find((cat: any) => cat.slug === slug) || null;
-        console.log('🔍 Local category found for', slug, ':', localCategory ? 'Yes' : 'No');
+
         if (localCategory) {
-          console.log('🔍 Local category items count:', localCategory.items?.length);
+
         }
       } catch (e) {
-        console.log('No local category data available:', e);
+
       }
       
       // Try backend API
@@ -152,15 +152,71 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
         const response = await categoriesApi.getCategoryBySlug(slug);
         
         if (response.data) {
-          // Get items from local data if available, otherwise use empty array
-          let items = [];
-          let filters = [];
-          let carouselItems = [];
+          // Get items from local data if available, otherwise fetch from backend
+          let items: CategoryItem[] = [];
+          let filters: any[] = [];
+          let carouselItems: any[] = [];
           
           if (localCategory) {
-            items = localCategory.items || [];
             filters = localCategory.filters || [];
             carouselItems = localCategory.carouselItems || [];
+          }
+          
+          // Fetch products for this category from backend
+          try {
+            const productsApi = (await import('@/services/productsApi')).default;
+            const productsResponse = await productsApi.getProducts({
+              category: response.data._id,
+              page: 1,
+              limit: 20
+            });
+
+            if (productsResponse.success && productsResponse.data) {
+              const products = Array.isArray(productsResponse.data) 
+                ? productsResponse.data 
+                : (productsResponse.data.products || []);
+              
+              // Map backend products to CategoryItem format
+              items = products.map((product: any) => ({
+                id: product._id || product.id,
+                name: product.name || product.title,
+                description: product.description || product.shortDescription || '',
+                image: Array.isArray(product.images) && product.images.length > 0 
+                  ? product.images[0] 
+                  : product.image,
+                price: {
+                  current: product.pricing?.selling || product.price?.current || 0,
+                  original: product.pricing?.compare || product.price?.original || 0,
+                  currency: '₹',
+                  discount: product.pricing?.discount || product.price?.discount || 0
+                },
+                cashback: {
+                  percentage: product.cashback?.percentage || 5,
+                  maxAmount: product.cashback?.maxAmount
+                },
+                rating: {
+                  value: product.ratings?.average || product.rating?.value || 0,
+                  count: product.ratings?.count || product.rating?.count || 0,
+                  maxValue: 5
+                },
+                stock: product.inventory?.stock || 0,
+                isInStock: product.inventory?.isAvailable || product.availabilityStatus === 'in_stock',
+                tags: product.tags || [],
+                metadata: {
+                  brand: product.brand,
+                  category: product.category?.name || '',
+                  isFeatured: product.isFeatured || false,
+                  isNew: product.isNewArrival || false
+                }
+              }));
+
+            }
+          } catch (productError) {
+            console.error('Failed to fetch products:', productError);
+            // If products API fails, try to use local data as fallback
+            if (localCategory) {
+              items = localCategory.items || [];
+            }
           }
           
           // Map backend category to frontend format  
@@ -174,8 +230,8 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
             bannerImage: response.data.bannerImage,
             color: response.data.metadata?.color,
             icon: response.data.icon,
-            items: items, // Use local items if available
-            carouselItems: carouselItems,
+            items: items as CategoryItem[], // Use fetched products
+            carouselItems: carouselItems as any[],
             totalCount: Math.max(response.data.productCount || 0, items.length),
             headerConfig: {
               title: response.data.name,
@@ -186,11 +242,15 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
               showCoinBalance: true,
               searchPlaceholder: `Search ${response.data.name.toLowerCase()}...`
             },
-            layoutConfig: { displayStyle: 'grid' },
-            seo: { title: response.data.name, description: response.data.description },
-            filters: filters,
+            layoutConfig: { displayStyle: 'grid', type: 'grid' },
+            seo: { title: response.data.name, description: response.data.description, keywords: [] },
+            filters: filters as any[],
             features: [],
-            analytics: { totalViews: 0, conversionRate: 0 }
+            analytics: { totalViews: 0, conversionRate: 0 },
+            banners: [],
+            isActive: true,
+            sortOrder: 0,
+            lastUpdated: new Date().toISOString()
           } as Category;
           
           dispatch({ type: 'SET_CURRENT_CATEGORY', payload: category });
@@ -207,12 +267,12 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
           return;
         }
       } catch (apiError) {
-        console.log('Backend API failed, falling back to local data or mock');
+
       }
       
       // Use local category if available
       if (localCategory) {
-        console.log(`CategoryContext: Using local category data for ${slug}`);
+
         dispatch({ type: 'SET_CURRENT_CATEGORY', payload: localCategory });
         dispatch({ 
           type: 'SET_PAGINATION', 
@@ -241,13 +301,19 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
             name: `${slug.charAt(0).toUpperCase() + slug.slice(1).replace(/[-_]/g, ' ')} Item 1`,
             metadata: {
               description: `Sample ${slug.replace(/[-_]/g, ' ')} item`,
-              tags: [slug]
+              tags: [slug],
+              brand: '',
+              category: '',
+              isFeatured: false,
+              isNew: false
             },
-            price: { current: 29.99, original: 35.99, currency: '₹' },
+            price: { current: 29.99, original: 35.99, currency: '₹', discount: 0 },
+            cashback: { percentage: 5, maxAmount: undefined },
             image: '',
-            category: slug,
-            rating: { value: 4.5, count: 12 },
-            isAvailable: true,
+            rating: { value: 4.5, count: 12, maxValue: 5 },
+            stock: 10,
+            isInStock: true,
+            tags: [slug],
             type: 'product',
             timing: { availability: 'always' },
             isFeatured: false
@@ -257,18 +323,24 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
             name: `${slug.charAt(0).toUpperCase() + slug.slice(1).replace(/[-_]/g, ' ')} Item 2`,
             metadata: {
               description: `Another sample ${slug.replace(/[-_]/g, ' ')} item`,
-              tags: [slug]
+              tags: [slug],
+              brand: '',
+              category: '',
+              isFeatured: false,
+              isNew: false
             },
-            price: { current: 39.99, original: 45.99, currency: '₹' },
+            price: { current: 39.99, original: 45.99, currency: '₹', discount: 0 },
+            cashback: { percentage: 5, maxAmount: undefined },
             image: '',
-            category: slug,
-            rating: { value: 4.2, count: 8 },
-            isAvailable: true,
+            rating: { value: 4.2, count: 8, maxValue: 5 },
+            stock: 10,
+            isInStock: true,
+            tags: [slug],
             type: 'product',
             timing: { availability: 'always' },
             isFeatured: false
           }
-        ],
+        ] as unknown as CategoryItem[],
         totalCount: 2,
         headerConfig: {
           title: slug.charAt(0).toUpperCase() + slug.slice(1).replace(/[-_]/g, ' '),
@@ -279,14 +351,17 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
           showCoinBalance: true,
           searchPlaceholder: `Search ${slug.replace(/[-_]/g, ' ')}...`
         },
-        layoutConfig: { displayStyle: 'grid' as const },
-        seo: { title: slug, description: `${slug.replace(/[-_]/g, ' ')} category` },
+        layoutConfig: { displayStyle: 'grid' as const, type: 'grid' },
+        seo: { title: slug, description: `${slug.replace(/[-_]/g, ' ')} category`, keywords: [] },
         filters: [],
         features: [],
-        analytics: { totalViews: 0, conversionRate: 0 }
+        analytics: { totalViews: 0, conversionRate: 0 },
+        banners: [],
+        isActive: true,
+        sortOrder: 0,
+        lastUpdated: new Date().toISOString()
       } as Category;
-      
-      console.log(`CategoryContext: Using mock category for ${slug}`);
+
       dispatch({ type: 'SET_CURRENT_CATEGORY', payload: mockCategory });
       dispatch({ 
         type: 'SET_PAGINATION', 
@@ -341,11 +416,15 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
           showCoinBalance: true,
           searchPlaceholder: `Search ${cat.name.toLowerCase()}...`
         },
-        layoutConfig: { displayStyle: 'grid' },
-        seo: { title: cat.name, description: cat.description },
+        layoutConfig: { displayStyle: 'grid', type: 'grid' },
+        seo: { title: cat.name, description: cat.description, keywords: [] },
         filters: [],
         features: [],
-        analytics: { totalViews: 0, conversionRate: 0 }
+        analytics: { totalViews: 0, conversionRate: 0 },
+        banners: [],
+        isActive: cat.isActive !== undefined ? cat.isActive : true,
+        sortOrder: cat.sortOrder || 0,
+        lastUpdated: cat.updatedAt || new Date().toISOString()
       } as Category));
       
       dispatch({ type: 'SET_CATEGORIES', payload: categories });
@@ -410,27 +489,18 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
     }
   }, [state.currentCategory, state.pagination, state.loading]);
 
-  // Add to cart
+  // Add to cart - Now handled by CartContext in the component
   const addToCart = useCallback(async (item: CategoryItem) => {
-    try {
-      // Import cart context
-      // This would integrate with existing cart functionality
-      console.log('Adding to cart:', item.name);
-      
-      // You could dispatch a cart action here or call cart context methods
-      // Example: cartContext.addItem(item);
-      
-    } catch (error) {
-      console.error('Failed to add item to cart:', error);
-    }
+
+    // This function is kept for compatibility but the actual implementation
+    // is now in the component using CartContext directly
   }, []);
 
   // Toggle favorite
   const toggleFavorite = useCallback(async (item: CategoryItem) => {
     try {
       // This would integrate with user favorites functionality
-      console.log('Toggling favorite:', item.name);
-      
+
       // You could dispatch a favorites action here
       // Example: favoritesContext.toggleItem(item);
       
@@ -460,7 +530,7 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
       {children}
     </CategoryContext.Provider>
   );
-}
+};
 
 // Hook to use category context
 export function useCategory(): CategoryContextType {

@@ -281,7 +281,7 @@ export class ErrorHandler {
           { text: 'Cancel', style: 'cancel' },
           { text: 'Sign In', onPress: onSignIn }
         ]
-      );
+        );
     } else {
       this.handle(error, { showAlert: true });
     }
@@ -396,7 +396,7 @@ InterceptorManager.addRequestInterceptor((config) => {
   config.timestamp = Date.now();
   
   if (__DEV__) {
-    console.log('[API Request]', config);
+
   }
   
   return config;
@@ -404,7 +404,7 @@ InterceptorManager.addRequestInterceptor((config) => {
 
 InterceptorManager.addResponseInterceptor((response) => {
   if (__DEV__) {
-    console.log('[API Response]', response);
+
   }
   
   return response;
@@ -417,5 +417,5 @@ InterceptorManager.addErrorInterceptor((error) => {
 });
 
 // Export everything
-export { ErrorLogger, InterceptorManager };
+export { ErrorLogger };
 export default ErrorHandler;

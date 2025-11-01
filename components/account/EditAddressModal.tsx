@@ -340,7 +340,7 @@ export default function EditAddressModal({ visible, address, onClose, onUpdate }
         </View>
       </KeyboardAvoidingView>
     </Modal>
-  );
+);
 }
 
 const styles = StyleSheet.create({

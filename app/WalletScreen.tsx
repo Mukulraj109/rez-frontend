@@ -3,7 +3,7 @@ import { CoinInfoCard } from '../components/CoinInfoCard';
 import  RechargeWalletCard from "../components/RechargeWalletCard";
 import ProfileCompletionCard from "@/components/ProfileCompletionCard";
 import ScratchCardOffer from "@/components/ScratchCardOffer";
-import scratchImage from "@/assets/images/scratch-offer.png"; 
+import scratchImage from "@/assets/images/scratch-offer.png";
 import ProfileOptionsList from "../components/ProfileOptionsList";
 import ReferAndEarnCard from "@/components/ReferAndEarnCard";
 import {
@@ -25,9 +25,13 @@ import { useRouter } from 'expo-router';
 import { WalletBalanceCard } from '../components/WalletBalanceCard';
 import { CoinBalance, WalletScreenProps } from '@/types/wallet';
 import { useWallet } from '@/hooks/useWallet';
-import { mockProfileData, mockReferData, mockRechargeOptions } from '@/utils/mock-profile-data';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
+import { useProfile } from '@/hooks/useProfile';
+import { useReferral } from '@/hooks/useReferral';
+import { useWalletAnalytics } from '@/hooks/useWalletAnalytics';
 import walletApi from '@/services/walletApi';
-
+import { paybillApi } from '@/services/paybillApi';
+import WalletErrorBoundary from '@/components/WalletErrorBoundary';
 
 const WalletScreen: React.FC<WalletScreenProps> = ({
   userId = 'user-12345',
@@ -35,6 +39,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   onCoinPress,
 }) => {
   const router = useRouter();
+  const { goBack } = useSafeNavigation();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
 
   const { walletState, refreshWallet, retryLastOperation, clearError } = useWallet({
@@ -43,6 +48,25 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
     refreshInterval: 5 * 60 * 1000,
   });
 
+  const { profile, completionStatus, isLoading: profileLoading, error: profileError } = useProfile({
+    autoFetch: true,
+    refreshInterval: 10 * 60 * 1000, // Refresh every 10 minutes
+  });
+
+  const { referralData, isLoading: referralLoading, error: referralError } = useReferral({
+    autoFetch: true,
+    refreshInterval: 15 * 60 * 1000, // Refresh every 15 minutes
+  });
+
+  const {
+    trackWalletViewed,
+    trackTopupInitiated,
+    trackTopupCompleted,
+    trackTopupFailed,
+    trackTransactionViewed,
+    trackError
+  } = useWalletAnalytics();
+
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setScreenData(window);
@@ -50,9 +74,46 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
     return () => subscription?.remove();
   }, []);
 
+  // Track wallet view
+  useEffect(() => {
+    trackWalletViewed();
+  }, [trackWalletViewed]);
+
+  // Fetch PayBill balance on mount
+  useEffect(() => {
+    const fetchPayBillBalance = async () => {
+
+      setPaybillLoading(true);
+      try {
+        const response = await paybillApi.getBalance();
+        if (response.success && response.data) {
+          setPaybillBalance(response.data.paybillBalance || 0);
+          // Calculate savings (20% of balance was bonus)
+          const savings = Math.round((response.data.paybillBalance || 0) * 0.2);
+          setTotalSavings(savings);
+
+        }
+      } catch (error) {
+        console.error('🎟️ [Wallet] Failed to fetch PayBill balance:', error);
+      } finally {
+        setPaybillLoading(false);
+      }
+    };
+
+    fetchPayBillBalance();
+  }, []);
+
   const handleRefresh = useCallback(async () => {
     try {
       await refreshWallet(true);
+
+      // Also refresh PayBill balance
+      const response = await paybillApi.getBalance();
+      if (response.success && response.data) {
+        setPaybillBalance(response.data.paybillBalance || 0);
+        const savings = Math.round((response.data.paybillBalance || 0) * 0.2);
+        setTotalSavings(savings);
+      }
     } catch (error) {
       Alert.alert('Refresh Failed', error instanceof Error ? error.message : 'Unable to refresh wallet data');
     }
@@ -62,17 +123,21 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
     if (onNavigateBack) {
       onNavigateBack();
     } else {
-      router.back();
+      goBack('/' as any); // Fallback to home
     }
-  }, [onNavigateBack, router]);
+  }, [onNavigateBack, goBack]);
 
   const handleCoinPress = useCallback((coin: CoinBalance) => {
     if (onCoinPress) {
       onCoinPress(coin);
     } else {
-      Alert.alert(coin.name, `Balance: ${coin.formattedAmount}`);
+      // Navigate to coin detail page
+      router.push({
+        pathname: '/coin-detail',
+        params: { coinId: coin.id }
+      });
     }
-  }, [onCoinPress]);
+  }, [onCoinPress, router]);
 
   const handleRetry = useCallback(() => {
     retryLastOperation();
@@ -83,6 +148,11 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   const [selectedTopupAmount, setSelectedTopupAmount] = useState<number | null>(null);
   const [showTopupConfirm, setShowTopupConfirm] = useState(false);
 
+  // PayBill state management
+  const [paybillBalance, setPaybillBalance] = useState<number>(0);
+  const [paybillLoading, setPaybillLoading] = useState(false);
+  const [totalSavings, setTotalSavings] = useState<number>(0);
+
   const handleAmountSelect = useCallback((amount: number | "other") => {
     if (amount !== "other") {
       setSelectedTopupAmount(amount);
@@ -90,15 +160,23 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   }, []);
 
   const handleTopupSubmit = useCallback((amount: number) => {
-    console.log('💰 [Wallet] Topup requested:', amount);
-    setSelectedTopupAmount(amount);
-    setShowTopupConfirm(true);
-  }, []);
+
+    trackTopupInitiated(amount);
+    
+    // Force navigation to new payment page
+    router.replace({
+      pathname: '/payment',
+      params: {
+        amount: amount.toString(),
+        currency: 'RC',
+        timestamp: Date.now().toString() // Force refresh
+      }
+    });
+  }, [trackTopupInitiated, router]);
 
   const handleTopupConfirm = useCallback(async () => {
     if (!selectedTopupAmount) return;
 
-    console.log('💰 [Wallet] Processing topup:', selectedTopupAmount);
     setShowTopupConfirm(false);
     setTopupLoading(true);
 
@@ -110,10 +188,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
       });
 
       if (response.success && response.data) {
-        console.log('💰 [Wallet] Topup successful:', {
-          transactionId: response.data.transaction.transactionId,
-          newBalance: response.data.wallet.balance.total
-        });
+
+        // Track successful topup
+        trackTopupCompleted(selectedTopupAmount);
 
         // Show success message
         Alert.alert(
@@ -121,12 +198,12 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
           `${selectedTopupAmount} RC has been added to your wallet.\n\nNew Balance: ${response.data.wallet.balance.total} RC`,
           [{ text: 'OK' }]
         );
-
         // Refresh wallet data
         await refreshWallet(true);
         setSelectedTopupAmount(null);
       } else {
         console.error('💰 [Wallet] Topup failed:', response.error);
+        trackTopupFailed(selectedTopupAmount, response.error || 'Unknown error');
         Alert.alert(
           'Topup Failed',
           response.error || 'Unable to process topup. Please try again.',
@@ -135,6 +212,8 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
       }
     } catch (error) {
       console.error('💰 [Wallet] Topup error:', error);
+      trackTopupFailed(selectedTopupAmount, error instanceof Error ? error.message : 'Unknown error');
+      trackError(error instanceof Error ? error : new Error('Topup error'), 'topup');
       Alert.alert(
         'Topup Error',
         error instanceof Error ? error.message : 'An unexpected error occurred',
@@ -143,7 +222,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
     } finally {
       setTopupLoading(false);
     }
-  }, [selectedTopupAmount, refreshWallet]);
+  }, [selectedTopupAmount, refreshWallet, trackTopupCompleted, trackTopupFailed, trackError]);
 
   const handleTopupCancel = useCallback(() => {
     setShowTopupConfirm(false);
@@ -156,7 +235,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
     return (
       <View style={styles.root}>
         <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-        <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
+        <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
           <View style={styles.headerContainer}>
             <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -176,7 +255,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
     return (
       <View style={styles.root}>
         <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-        <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
+        <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
           <View style={styles.headerContainer}>
             <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -203,10 +282,17 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
 
   const walletData = walletState.data;
 
+  // Calculate total wallet balance including PayBill
+  const totalWalletBalance = (walletData.totalBalance || 0) + paybillBalance;
+  const formattedTotalBalance = walletData.currency === 'RC'
+    ? `RC ${totalWalletBalance}`
+    : `${walletData.currency} ${totalWalletBalance}`;
+
   return (
-    <View style={styles.root}>
+    <WalletErrorBoundary>
+      <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-      <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
+      <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
         <View style={styles.headerContainer}>
           <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -217,7 +303,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
       </LinearGradient>
 
       <View style={styles.amountCard}>
-        <Text style={styles.currency}>{walletData.formattedTotalBalance}</Text>
+        <Text style={styles.currency}>{formattedTotalBalance}</Text>
         <Text style={styles.subtitle}>Total Wallet Balance</Text>
       </View>
 
@@ -240,13 +326,16 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
 
         {/* View Transactions Button */}
         <View style={styles.transactionButtonContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.viewTransactionsButton}
-            onPress={() => router.push('/transactions')}
+            onPress={() => {
+              trackTransactionViewed();
+              router.push('/transactions');
+            }}
             activeOpacity={0.7}
           >
             <LinearGradient
-              colors={['#8B5CF6', '#7C3AED']}
+              colors={['#8B5CF6', '#7C3AED'] as const}
               style={styles.transactionButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -267,9 +356,65 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
           </TouchableOpacity>
         </View>
 
+        {/* PayBill Balance Card */}
+        <View style={styles.paybillCardContainer}>
+          <TouchableOpacity
+            style={styles.paybillCard}
+            activeOpacity={0.9}
+          >
+            <LinearGradient
+              colors={['#10B981', '#059669'] as const}
+              style={styles.paybillCardGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.paybillCardHeader}>
+                <View style={styles.paybillIconContainer}>
+                  <Ionicons name="wallet" size={28} color="white" />
+                </View>
+                <View style={styles.paybillHeaderText}>
+                  <Text style={styles.paybillTitle}>PayBill Balance</Text>
+                  <Text style={styles.paybillSubtitle}>Prepaid wallet with 20% bonus</Text>
+                </View>
+              </View>
+
+              <View style={styles.paybillBalanceContainer}>
+                {paybillLoading ? (
+                  <Text style={styles.paybillBalanceText}>Loading...</Text>
+                ) : (
+                  <>
+                    <Text style={styles.paybillBalanceText}>₹{paybillBalance}</Text>
+                    {totalSavings > 0 && (
+                      <View style={styles.savingsBadge}>
+                        <Ionicons name="gift" size={14} color="#10B981" />
+                        <Text style={styles.savingsBadgeText}>
+                          Saved ₹{totalSavings} with bonus
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+
+              <View style={styles.paybillActions}>
+                <TouchableOpacity
+                  style={styles.paybillActionButton}
+                  onPress={() => {
+
+                    router.push('/paybill-transactions');
+                  }}
+                >
+                  <Text style={styles.paybillActionText}>View Transactions</Text>
+                  <Ionicons name="chevron-forward" size={16} color="rgba(255, 255, 255, 0.9)" />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
          <RechargeWalletCard
   cashbackText="Upto 10% cashback on wallet recharge"
-  amountOptions={mockRechargeOptions}
+  amountOptions={[120, 500, 1000, 5000, 10000]}
   onAmountSelect={handleAmountSelect}
   onSubmit={handleTopupSubmit}
   isLoading={topupLoading}
@@ -279,41 +424,94 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
         {/* Only Image Coin Info Cards */}
         <CoinInfoCard 
           image={require('../assets/images/wallet1.png')} 
-          onPress={() => console.log("Coin info 1 pressed")}
+          onPress={() => {}}
         />
         <CoinInfoCard 
           image={require('../assets/images/wallet2.png')} 
-          onPress={() => console.log("Coin info 2 pressed")}
+          onPress={() => {}}
         />
         <CoinInfoCard 
           image={require('../assets/images/wallet3.png')} 
-          onPress={() => console.log("Coin info 3 pressed")}
+          onPress={() => {}}
         />
 
          <ProfileCompletionCard
-        name={mockProfileData.name}
-        completionPercentage={mockProfileData.completionPercentage}
+        name={profile?.name || 'User'}
+        completionPercentage={completionStatus?.completionPercentage || 0}
         onCompleteProfile={() => {
-          console.log("Navigate to Complete Profile Page");
+          router.push('/profile/edit');
         }}
         onViewDetails={() => {
-          console.log("Navigate to View Profile Details");
+          router.push('/profile');
         }}
-        isLoading={false}
+        isLoading={profileLoading}
       />
       <ScratchCardOffer 
         imageSource={scratchImage} 
-        onPress={() => console.log("Scratch card tapped")} 
+        onPress={() => router.push('/scratch-card')} 
         isActive={true}
       />
        <ProfileOptionsList 
-         onOptionPress={(option) => console.log("Option pressed:", option.title)}
+         options={[
+           {
+             id: "2",
+             icon: "receipt-outline",
+             title: "Order History",
+             subtitle: "View order details",
+           },
+           {
+             id: "3",
+             icon: "heart-outline",
+             title: "Wishlist",
+             subtitle: "All your Favorites",
+           },
+           {
+             id: "4",
+             icon: "location-outline",
+             title: "Saved address",
+             subtitle: "Edit, add, delete your address",
+           },
+           {
+             id: "5",
+             icon: "resize-outline",
+             title: "Ring Sizer",
+             subtitle: "Check your ring size",
+           },
+         ]}
+         onOptionPress={(option) => {
+
+           // Handle navigation based on option
+           switch (option.id) {
+             case "2": // Order History
+               router.push('/order-history');
+               break;
+             case "3": // Wishlist
+               router.push('/wishlist');
+               break;
+             case "4": // Saved Address
+               router.push('/account/addresses');
+               break;
+             case "5": // Ring Sizer
+               router.push('/ring-sizer');
+               break;
+             default:
+
+           }
+         }}
          isLoading={false}
        />
         <ReferAndEarnCard 
-         data={mockReferData}
-         onInvite={(link) => console.log("Invite with link:", link)}
-         isLoading={false}
+         data={{
+           title: referralData?.title || "Refer and Earn",
+           subtitle: referralData?.subtitle || "Invite your friends and get free jewellery",
+           inviteButtonText: referralData?.inviteButtonText || "Invite",
+           inviteLink: referralData?.inviteLink || "",
+         }}
+         onInvite={(link) => {
+           // In a real app, this would open the share dialog
+
+         }}
+         isLoading={referralLoading}
        />
         <View style={{ height: 24 }} />
       </ScrollView>
@@ -366,7 +564,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
           </View>
         </View>
       </Modal>
-    </View>
+
+      </View>
+    </WalletErrorBoundary>
   );
 };
 
@@ -497,6 +697,100 @@ const createStyles = (screenData: { width: number; height: number }) => {
     container: {
       flex: 1,
       backgroundColor: "#f8f8f8",
+    },
+
+    // PayBill Card Styles
+    paybillCardContainer: {
+      marginHorizontal: 16,
+      marginTop: 8,
+      marginBottom: 16,
+    },
+    paybillCard: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      shadowColor: '#10B981',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.25,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    paybillCardGradient: {
+      padding: 20,
+    },
+    paybillCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    paybillIconContainer: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: 'rgba(255, 255, 255, 0.25)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 16,
+    },
+    paybillHeaderText: {
+      flex: 1,
+    },
+    paybillTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: 'white',
+      marginBottom: 4,
+      letterSpacing: 0.3,
+    },
+    paybillSubtitle: {
+      fontSize: 13,
+      color: 'rgba(255, 255, 255, 0.85)',
+      fontWeight: '500',
+    },
+    paybillBalanceContainer: {
+      alignItems: 'center',
+      paddingVertical: 16,
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+      marginBottom: 16,
+    },
+    paybillBalanceText: {
+      fontSize: 42,
+      fontWeight: '800',
+      color: 'white',
+      marginBottom: 8,
+    },
+    savingsBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      gap: 6,
+    },
+    savingsBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#10B981',
+    },
+    paybillActions: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+    },
+    paybillActionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 12,
+      gap: 8,
+    },
+    paybillActionText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: 'white',
     },
 
     // Modal styles

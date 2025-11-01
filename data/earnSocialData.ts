@@ -1,12 +1,13 @@
-// data/earnSocialData.ts - Mock data and configurations for Earn From Social Media feature
+// data/earnSocialData.ts - Production-ready data and configurations for Earn From Social Media feature
 
-import { 
-  EarnSocialState, 
-  CashbackCard, 
-  StepCard, 
+import {
+  EarnSocialState,
+  CashbackCard,
+  StepCard,
   EarningsInfo,
-  SocialMediaPost 
+  SocialMediaPost
 } from '@/types/earn-social.types';
+import socialMediaApi from '@/services/socialMediaApi';
 
 export const EarnSocialData = {
   // Initial state for the earn social media page
@@ -92,63 +93,114 @@ export const EarnSocialData = {
     }
   ] as SocialMediaPost[],
 
-  // API endpoints and configurations
+  // API endpoints connected to real backend
   api: {
-    // Simulate API calls with promises
+    // Validate Instagram URL (client-side validation only, backend validates too)
     validateInstagramUrl: async (url: string): Promise<{ isValid: boolean; error?: string }> => {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Basic Instagram URL validation
-      const instagramUrlPattern = /^https?:\/\/(www\.)?instagram\.com\/p\/[a-zA-Z0-9_-]+\/?/;
-      const isValid = instagramUrlPattern.test(url);
-      
-      return {
-        isValid,
-        error: isValid ? undefined : 'Please enter a valid Instagram post URL'
-      };
-    },
+      try {
+        // Instagram URL validation - supports posts and reels with optional username
+        const instagramUrlPattern = /^https?:\/\/(www\.)?instagram\.com\/([\w.]+\/)?(p|reel|instagramreel)\/[a-zA-Z0-9_-]+\/?(\?.*)?$/;
+        const isValid = instagramUrlPattern.test(url);
 
-    submitPost: async (url: string): Promise<{ success: boolean; data?: any; error?: string }> => {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate 90% success rate
-      const success = Math.random() > 0.1;
-      
-      if (success) {
+        if (!isValid) {
+          return {
+            isValid: false,
+            error: 'Please enter a valid Instagram URL (e.g., https://instagram.com/p/ABC123 or https://instagram.com/username/p/ABC123)'
+          };
+        }
+
+        return { isValid: true };
+      } catch (error) {
         return {
-          success: true,
-          data: {
-            postId: `post_${Date.now()}`,
-            cashbackAmount: 25,
-            status: 'pending',
-            estimatedCrediting: '48 hours'
-          }
-        };
-      } else {
-        return {
-          success: false,
-          error: 'Failed to process your post. Please try again.'
+          isValid: false,
+          error: 'Failed to validate URL. Please try again.'
         };
       }
     },
 
-    getEarnings: async (): Promise<EarningsInfo> => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      return {
-        pendingAmount: 85,
-        totalEarned: 420,
-        cashbackRate: 5,
-        currentBalance: 1660,
-        estimatedCrediting: '48 hours'
-      };
+    // Submit post to backend
+    submitPost: async (url: string, orderId?: string): Promise<{ success: boolean; data?: any; error?: string }> => {
+      try {
+        console.log('📤 [EarnSocialData] Submitting post to backend:', { url, orderId });
+
+        const response = await socialMediaApi.submitPost({
+          platform: 'instagram',
+          postUrl: url,
+          orderId
+        });
+
+        console.log('✅ [EarnSocialData] Post submitted successfully:', response);
+
+        return {
+          success: true,
+          data: {
+            postId: response.post.id,
+            cashbackAmount: response.post.cashbackAmount,
+            status: response.post.status,
+            estimatedCrediting: response.post.estimatedReview
+          }
+        };
+      } catch (error: any) {
+        console.error('❌ [EarnSocialData] Failed to submit post:', error);
+        return {
+          success: false,
+          error: error.response?.data?.message || error.message || 'Failed to submit post. Please try again.'
+        };
+      }
     },
 
+    // Get earnings from backend
+    getEarnings: async (): Promise<EarningsInfo> => {
+      try {
+        console.log('📤 [EarnSocialData] Fetching earnings from backend...');
+        const data = await socialMediaApi.getUserEarnings();
+
+        console.log('✅ [EarnSocialData] Earnings fetched:', data);
+
+        return {
+          pendingAmount: data.pendingAmount || 0,
+          totalEarned: data.totalEarned || 0,
+          cashbackRate: 5, // Fixed rate
+          currentBalance: data.creditedAmount || 0,
+          estimatedCrediting: '48 hours'
+        };
+      } catch (error: any) {
+        console.error('❌ [EarnSocialData] Failed to fetch earnings:', error);
+        // Return default values on error
+        return {
+          pendingAmount: 0,
+          totalEarned: 0,
+          cashbackRate: 5,
+          currentBalance: 0,
+          estimatedCrediting: '48 hours'
+        };
+      }
+    },
+
+    // Get user posts from backend
     getUserPosts: async (): Promise<SocialMediaPost[]> => {
-      await new Promise(resolve => setTimeout(resolve, 600));
-      return EarnSocialData.mockPosts;
+      try {
+        console.log('📤 [EarnSocialData] Fetching user posts from backend...');
+        const response = await socialMediaApi.getUserPosts({ limit: 20 });
+
+        console.log('✅ [EarnSocialData] Posts fetched:', response.posts?.length || 0);
+
+        // Transform backend posts to frontend format
+        const posts: SocialMediaPost[] = response.posts.map(post => ({
+          id: post._id,
+          url: post.postUrl,
+          status: post.status,
+          submittedAt: new Date(post.submittedAt),
+          cashbackAmount: post.cashbackAmount,
+          platform: post.platform,
+          thumbnailUrl: post.metadata?.thumbnailUrl
+        }));
+
+        return posts;
+      } catch (error: any) {
+        console.error('❌ [EarnSocialData] Failed to fetch posts:', error);
+        return []; // Return empty array on error
+      }
     }
   },
 
@@ -156,7 +208,7 @@ export const EarnSocialData = {
   helpers: {
     validateInstagramUrl: (url: string): boolean => {
       if (!url || typeof url !== 'string') return false;
-      const pattern = /^https?:\/\/(www\.)?instagram\.com\/p\/[a-zA-Z0-9_-]+\/?$/;
+      const pattern = /^https?:\/\/(www\.)?instagram\.com\/([\w.]+\/)?(p|reel|instagramreel)\/[a-zA-Z0-9_-]+\/?(\?.*)?$/;
       return pattern.test(url.trim());
     },
 

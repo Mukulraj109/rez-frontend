@@ -100,7 +100,7 @@ export default function PriceSection({
         </Animated.View>
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

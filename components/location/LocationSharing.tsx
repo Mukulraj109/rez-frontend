@@ -144,7 +144,6 @@ export default function LocationSharing({
       />
     </TouchableOpacity>
   );
-
   if (!currentLocation) {
     return (
       <View style={[styles.container, style]}>
@@ -224,7 +223,7 @@ export default function LocationSharing({
         </Text>
       </View>
     </View>
-  );
+    );
 }
 
 const styles = StyleSheet.create({
@@ -375,5 +374,5 @@ export function CompactLocationSharing(props: LocationSharingProps) {
       {...props}
       style={[props.style, { padding: 12 }]}
     />
-  );
+    );
 }

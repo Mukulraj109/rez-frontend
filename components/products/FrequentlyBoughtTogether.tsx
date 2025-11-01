@@ -176,7 +176,7 @@ function BundleProductCard({ product, onPress }: BundleProductCardProps) {
         )}
       </View>
     </TouchableOpacity>
-  );
+);
 }
 
 const styles = StyleSheet.create({

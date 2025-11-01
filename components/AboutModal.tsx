@@ -192,7 +192,7 @@ export default function AboutModal({ visible, onClose, storeData }: AboutModalPr
         </View>
       </TouchableWithoutFeedback>
     </Modal>
-  );
+);
 }
 
 const createStyles = (screenData: { width: number; height: number }) => {

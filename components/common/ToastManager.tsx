@@ -57,7 +57,7 @@ export default function ToastManager() {
         />
       ))}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

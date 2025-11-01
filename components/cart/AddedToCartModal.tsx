@@ -1,0 +1,377 @@
+import React from 'react';
+import {
+  Modal,
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Animated,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+interface AddedToCartModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onViewCart: () => void;
+  product: {
+    id: string;
+    name: string;
+    image: string;
+    price: number;
+    quantity?: number;
+  };
+  cartItemCount?: number;
+  cartTotal?: number;
+}
+
+export default function AddedToCartModal({
+  visible,
+  onClose,
+  onViewCart,
+  product,
+  cartItemCount = 1,
+  cartTotal,
+}: AddedToCartModalProps) {
+  const slideAnim = React.useRef(new Animated.Value(300)).current;
+
+  React.useEffect(() => {
+    if (visible) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
+
+  const displayTotal = cartTotal || product.price * (product.quantity || 1);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <TouchableOpacity
+        style={styles.overlay}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <Animated.View
+          style={[
+            styles.modalContainer,
+            {
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+          onStartShouldSetResponder={() => true}
+        >
+          {/* Success Header */}
+          <View style={styles.header}>
+            <View style={styles.successIconContainer}>
+              <LinearGradient
+                colors={['#10B981', '#059669']}
+                style={styles.successIconGradient}
+              >
+                <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
+              </LinearGradient>
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Added to Cart</Text>
+              <Text style={styles.headerSubtitle}>
+                {cartItemCount} {cartItemCount === 1 ? 'item' : 'items'} in cart
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={onClose}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Product Info */}
+          <View style={styles.productContainer}>
+            <View style={styles.productImageContainer}>
+              <Image
+                source={{ uri: product.image }}
+                style={styles.productImage}
+                resizeMode="cover"
+              />
+            </View>
+            <View style={styles.productDetails}>
+              <Text style={styles.productName} numberOfLines={2}>
+                {product.name}
+              </Text>
+              <Text style={styles.productPrice}>₹{product.price.toFixed(2)}</Text>
+              {product.quantity && product.quantity > 1 && (
+                <Text style={styles.productQuantity}>Qty: {product.quantity}</Text>
+              )}
+            </View>
+          </View>
+
+          {/* Cart Summary */}
+          <View style={styles.summaryContainer}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Subtotal:</Text>
+              <Text style={styles.summaryValue}>₹{displayTotal.toFixed(2)}</Text>
+            </View>
+            <View style={styles.deliveryInfo}>
+              <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+              <Text style={styles.deliveryText}>
+                Eligible for FREE delivery
+              </Text>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity
+              style={styles.viewCartButton}
+              onPress={() => {
+                onClose();
+                onViewCart();
+              }}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#8B5CF6', '#7C3AED']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.viewCartGradient}
+              >
+                <Ionicons name="cart" size={20} color="#FFFFFF" />
+                <Text style={styles.viewCartText}>View Cart</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.continueButton}
+              onPress={onClose}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.continueText}>Continue Shopping</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Related Products Suggestion */}
+          <View style={styles.suggestionContainer}>
+            <Ionicons name="gift-outline" size={18} color="#8B5CF6" />
+            <Text style={styles.suggestionText}>
+              Frequently bought together items available
+            </Text>
+          </View>
+        </Animated.View>
+      </TouchableOpacity>
+    </Modal>
+);
+}
+
+const { width } = Dimensions.get('window');
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 34,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  successIconContainer: {
+    marginRight: 12,
+  },
+  successIconGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  productContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  productImageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    overflow: 'hidden',
+    marginRight: 16,
+  },
+  productImage: {
+    width: '100%',
+    height: '100%',
+  },
+  productDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  productName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  productPrice: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#8B5CF6',
+    marginBottom: 4,
+  },
+  productQuantity: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  summaryContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#F9FAFB',
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 12,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  summaryLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  summaryValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  deliveryInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  deliveryText: {
+    fontSize: 13,
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  actionsContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: 12,
+  },
+  viewCartButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#8B5CF6',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  viewCartGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  viewCartText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  continueButton: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  continueText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4B5563',
+    letterSpacing: 0.2,
+  },
+  suggestionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    gap: 8,
+  },
+  suggestionText: {
+    fontSize: 13,
+    color: '#8B5CF6',
+    fontWeight: '500',
+  },
+});

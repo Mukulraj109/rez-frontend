@@ -8,7 +8,7 @@ export default function OnboardingLoadingScreen() {
 
   const handleLoadingComplete = () => {
     navigationDebugger.logNavigation('loading', 'category-selection', 'loading-completed');
-    router.push('/onboarding/category-selection');
+    router.push('/onboarding/category-selection' as any);
   };
 
   return (

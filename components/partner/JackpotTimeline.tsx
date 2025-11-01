@@ -21,11 +21,17 @@ const { width } = Dimensions.get('window');
 
 export default function JackpotTimeline({ 
   milestones, 
-  currentSpent = 18500,
+  currentSpent = 0, // Fixed: Don't hardcode to 18500, use actual value from props
   onMilestonePress 
 }: JackpotTimelineProps) {
-  const sortedMilestones = milestones.sort((a, b) => a.amount - b.amount);
-  const maxAmount = Math.max(...milestones.map(m => m.amount));
+  // Normalize milestone data (backend sends spendAmount, frontend expects amount)
+  const normalizedMilestones = milestones.map(m => ({
+    ...m,
+    amount: m.amount || m.spendAmount || 0
+  }));
+
+  const sortedMilestones = normalizedMilestones.sort((a, b) => a.amount - b.amount);
+  const maxAmount = Math.max(...normalizedMilestones.map(m => m.amount));
   const progressPercentage = (currentSpent / maxAmount) * 100;
 
   const renderMilestone = (milestone: JackpotMilestone, index: number) => {
@@ -174,7 +180,7 @@ export default function JackpotTimeline({
         </View>
       </View>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

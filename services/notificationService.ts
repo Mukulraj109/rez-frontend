@@ -1,381 +1,235 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiClient } from '@/utils/apiClient';
+import apiClient from './apiClient';
 
-// Types
-interface NotificationData {
+export interface NotificationData {
   title: string;
-  body: string;
-  data?: any;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error' | 'promotional';
+  category: 'order' | 'earning' | 'general' | 'promotional' | 'social' | 'security' | 'system' | 'reminder';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  data?: {
+    orderId?: string;
+    transactionId?: string;
+    storeId?: string;
+    productId?: string;
+    amount?: number;
+    imageUrl?: string;
+    deepLink?: string;
+    externalLink?: string;
+    actionButton?: {
+      text: string;
+      action: 'navigate' | 'api_call' | 'external_link';
+      target: string;
+    };
+    metadata?: { [key: string]: any };
+  };
+  deliveryChannels?: ('push' | 'email' | 'sms' | 'in_app')[];
+  scheduledAt?: string;
+  expiresAt?: string;
 }
 
-interface PushToken {
-  token: string;
-  type: 'expo' | 'apns' | 'fcm';
+export interface NotificationHistoryResponse {
+  notifications: Array<{
+    _id: string;
+    title: string;
+    message: string;
+    type: string;
+    category: string;
+    priority: string;
+    deliveryChannels: string[];
+    isRead: boolean;
+    readAt?: string;
+    createdAt: string;
+    updatedAt: string;
+    data?: any;
+  }>;
+  unreadCount: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
-
-interface NotificationPermissions {
-  status: Notifications.PermissionStatus;
-  canAskAgain: boolean;
-  granted: boolean;
-}
-
-// Storage keys
-const STORAGE_KEYS = {
-  PUSH_TOKEN: 'push_notification_token',
-  NOTIFICATION_SETTINGS: 'notification_settings',
-  LAST_TOKEN_SYNC: 'last_token_sync',
-};
-
-// Default notification settings
-const defaultSettings = {
-  enabled: true,
-  sound: true,
-  badge: true,
-  alert: true,
-  offers: true,
-  orders: true,
-  promotions: true,
-  reminders: true,
-};
-
-// Configure notifications
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 class NotificationService {
-  private pushToken: string | null = null;
-  private isInitialized = false;
-
-  // Initialize the notification service
-  async initialize(): Promise<void> {
-    if (this.isInitialized) return;
-
+  /**
+   * Get user notifications with optional filtering
+   */
+  async getNotifications(params?: {
+    type?: string;
+    isRead?: boolean;
+    page?: number;
+    limit?: number;
+  }): Promise<{ success: boolean; data?: NotificationHistoryResponse; error?: string }> {
     try {
-      // Request permissions
-      const permissions = await this.requestPermissions();
+      const queryParams = new URLSearchParams();
       
-      if (permissions.granted) {
-        // Get push token
-        await this.registerForPushNotifications();
-        
-        // Set up notification listeners
-        this.setupNotificationListeners();
-      }
+      if (params?.type) queryParams.append('type', params.type);
+      if (params?.isRead !== undefined) queryParams.append('isRead', params.isRead.toString());
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
 
-      this.isInitialized = true;
-    } catch (error) {
-      console.error('Failed to initialize notifications:', error);
-    }
-  }
-
-  // Request notification permissions
-  async requestPermissions(): Promise<NotificationPermissions> {
-    try {
-      if (!Device.isDevice) {
-        console.warn('Notifications require a physical device');
-        return {
-          status: Notifications.PermissionStatus.DENIED,
-          canAskAgain: false,
-          granted: false,
-        };
-      }
-
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== Notifications.PermissionStatus.GRANTED) {
-        const { status } = await Notifications.requestPermissionsAsync({
-          ios: {
-            allowAlert: true,
-            allowBadge: true,
-            allowSound: true,
-          },
-        });
-        finalStatus = status;
-      }
-
-      // For Android, configure the notification channel
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'Default',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#8B5CF6',
-        });
-
-        // Create additional channels for different notification types
-        await this.createNotificationChannels();
-      }
-
-      const granted = finalStatus === Notifications.PermissionStatus.GRANTED;
-
+      const response: any = await apiClient.get(`/notifications?${queryParams.toString()}`);
       return {
-        status: finalStatus,
-        canAskAgain: finalStatus !== Notifications.PermissionStatus.DENIED,
-        granted,
+        success: Boolean(response?.success),
+        data: response?.data as NotificationHistoryResponse | undefined,
+        error: response?.error as string | undefined,
       };
     } catch (error) {
-      console.error('Error requesting notification permissions:', error);
+      console.error('Error fetching notifications:', error);
       return {
-        status: Notifications.PermissionStatus.DENIED,
-        canAskAgain: false,
-        granted: false,
+        success: false,
+        error: 'Failed to fetch notifications'
       };
     }
   }
 
-  // Create notification channels for Android
-  private async createNotificationChannels(): Promise<void> {
-    if (Platform.OS !== 'android') return;
-
-    const channels = [
-      {
-        id: 'offers',
-        name: 'Offers & Deals',
-        importance: Notifications.AndroidImportance.HIGH,
-        description: 'Notifications about new offers and deals',
-      },
-      {
-        id: 'orders',
-        name: 'Order Updates',
-        importance: Notifications.AndroidImportance.MAX,
-        description: 'Updates about your orders',
-      },
-      {
-        id: 'promotions',
-        name: 'Promotions',
-        importance: Notifications.AndroidImportance.DEFAULT,
-        description: 'Promotional notifications',
-      },
-      {
-        id: 'reminders',
-        name: 'Reminders',
-        importance: Notifications.AndroidImportance.HIGH,
-        description: 'App reminders and alerts',
-      },
-    ];
-
-    for (const channel of channels) {
-      await Notifications.setNotificationChannelAsync(channel.id, {
-        name: channel.name,
-        importance: channel.importance,
-        description: channel.description,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#8B5CF6',
+  /**
+   * Mark notifications as read
+   */
+  async markAsRead(notificationIds?: string[]): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const response = await apiClient.patch('/notifications/read', {
+        notificationIds: notificationIds || []
       });
-    }
-  }
-
-  // Register for push notifications
-  async registerForPushNotifications(): Promise<string | null> {
-    try {
-      if (!Device.isDevice) {
-        console.warn('Push notifications require a physical device');
-        return null;
-      }
-
-      // Get the token
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
-      });
-
-      this.pushToken = tokenData.data;
-
-      // Store token locally
-      await AsyncStorage.setItem(STORAGE_KEYS.PUSH_TOKEN, this.pushToken);
-
-      // Send token to backend
-      await this.syncTokenWithBackend();
-
-      return this.pushToken;
+      return response;
     } catch (error) {
-      console.error('Error registering for push notifications:', error);
-      return null;
+      console.error('Error marking notifications as read:', error);
+      return {
+        success: false,
+        error: 'Failed to mark notifications as read'
+      };
     }
   }
 
-  // Sync token with backend
-  private async syncTokenWithBackend(): Promise<void> {
+  /**
+   * Delete a notification
+   */
+  async deleteNotification(notificationId: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      if (!this.pushToken) return;
-
-      const lastSync = await AsyncStorage.getItem(STORAGE_KEYS.LAST_TOKEN_SYNC);
-      const now = new Date().toISOString();
-
-      // Only sync if token hasn't been synced recently (within 24 hours)
-      if (lastSync) {
-        const lastSyncDate = new Date(lastSync);
-        const hoursSinceSync = (Date.now() - lastSyncDate.getTime()) / (1000 * 60 * 60);
-        if (hoursSinceSync < 24) return;
-      }
-
-      await apiClient.post('/notifications/register', {
-        token: this.pushToken,
-        platform: Platform.OS,
-        deviceId: Device.osInternalBuildId,
-      });
-
-      await AsyncStorage.setItem(STORAGE_KEYS.LAST_TOKEN_SYNC, now);
+      const response = await apiClient.delete(`/notifications/${notificationId}`);
+      return response;
     } catch (error) {
-      console.error('Failed to sync token with backend:', error);
+      console.error('Error deleting notification:', error);
+      return {
+        success: false,
+        error: 'Failed to delete notification'
+      };
     }
   }
 
-  // Set up notification listeners
-  private setupNotificationListeners(): void {
-    // Handle notification received while app is in foreground
-    Notifications.addNotificationReceivedListener((notification) => {
-      console.log('Notification received:', notification);
-      this.handleNotificationReceived(notification);
-    });
-
-    // Handle notification tapped
-    Notifications.addNotificationResponseReceivedListener((response) => {
-      console.log('Notification tapped:', response);
-      this.handleNotificationTapped(response);
-    });
-  }
-
-  // Handle notification received
-  private handleNotificationReceived(notification: Notifications.Notification): void {
-    // Update badge count
-    this.updateBadgeCount();
-    
-    // You can add custom logic here based on notification type
-    const { data } = notification.request.content;
-    
-    if (data?.type === 'order_update') {
-      // Handle order update notification
-      console.log('Order update received:', data);
-    } else if (data?.type === 'new_offer') {
-      // Handle new offer notification
-      console.log('New offer received:', data);
-    }
-  }
-
-  // Handle notification tapped
-  private handleNotificationTapped(response: Notifications.NotificationResponse): void {
-    const { data } = response.notification.request.content;
-    
-    // Navigate based on notification data
-    if (data?.screen) {
-      // You can integrate this with your navigation system
-      console.log('Navigate to screen:', data.screen);
-    }
-  }
-
-  // Schedule local notification
-  async scheduleLocalNotification(
-    notification: NotificationData,
-    trigger?: Notifications.NotificationTriggerInput
-  ): Promise<string | null> {
+  /**
+   * Get notification settings
+   */
+  async getNotificationSettings(): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const identifier = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: notification.title,
-          body: notification.body,
-          data: notification.data,
-          sound: 'default',
-        },
-        trigger: trigger || null,
-      });
-
-      return identifier;
+      const response = await apiClient.get('/user-settings/notifications/all');
+      return response;
     } catch (error) {
-      console.error('Error scheduling local notification:', error);
-      return null;
+      console.error('Error fetching notification settings:', error);
+      return {
+        success: false,
+        error: 'Failed to fetch notification settings'
+      };
     }
   }
 
-  // Cancel scheduled notification
-  async cancelNotification(identifier: string): Promise<void> {
+  /**
+   * Update push notification settings
+   */
+  async updatePushSettings(settings: any): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      await Notifications.cancelScheduledNotificationAsync(identifier);
+      const response = await apiClient.put('/user-settings/notifications/push', settings);
+      return response;
     } catch (error) {
-      console.error('Error canceling notification:', error);
+      console.error('Error updating push settings:', error);
+      return {
+        success: false,
+        error: 'Failed to update push notification settings'
+      };
     }
   }
 
-  // Cancel all notifications
-  async cancelAllNotifications(): Promise<void> {
+  /**
+   * Update email notification settings
+   */
+  async updateEmailSettings(settings: any): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      await Notifications.cancelAllScheduledNotificationsAsync();
+      const response = await apiClient.put('/user-settings/notifications/email', settings);
+      return response;
     } catch (error) {
-      console.error('Error canceling all notifications:', error);
+      console.error('Error updating email settings:', error);
+      return {
+        success: false,
+        error: 'Failed to update email notification settings'
+      };
     }
   }
 
-  // Update badge count
-  async updateBadgeCount(count?: number): Promise<void> {
+  /**
+   * Update SMS notification settings
+   */
+  async updateSMSSettings(settings: any): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      if (count !== undefined) {
-        await Notifications.setBadgeCountAsync(count);
-      } else {
-        // Get current badge count and increment
-        const currentCount = await Notifications.getBadgeCountAsync();
-        await Notifications.setBadgeCountAsync(currentCount + 1);
-      }
+      const response = await apiClient.put('/user-settings/notifications/sms', settings);
+      return response;
     } catch (error) {
-      console.error('Error updating badge count:', error);
+      console.error('Error updating SMS settings:', error);
+      return {
+        success: false,
+        error: 'Failed to update SMS notification settings'
+      };
     }
   }
 
-  // Clear badge count
-  async clearBadgeCount(): Promise<void> {
+  /**
+   * Update in-app notification settings
+   */
+  async updateInAppSettings(settings: any): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      await Notifications.setBadgeCountAsync(0);
+      const response = await apiClient.put('/user-settings/notifications/inapp', settings);
+      return response;
     } catch (error) {
-      console.error('Error clearing badge count:', error);
+      console.error('Error updating in-app settings:', error);
+      return {
+        success: false,
+        error: 'Failed to update in-app notification settings'
+      };
     }
   }
 
-  // Get notification settings
-  async getNotificationSettings(): Promise<any> {
+  /**
+   * Create a test notification (for development/testing)
+   */
+  async createTestNotification(data: NotificationData): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      const settings = await AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATION_SETTINGS);
-      return settings ? JSON.parse(settings) : defaultSettings;
+      // This would typically be an admin endpoint
+      const response = await apiClient.post('/notifications/test', data);
+      return response;
     } catch (error) {
-      console.error('Error getting notification settings:', error);
-      return defaultSettings;
+      console.error('Error creating test notification:', error);
+      return {
+        success: false,
+        error: 'Failed to create test notification'
+      };
     }
   }
 
-  // Update notification settings
-  async updateNotificationSettings(settings: any): Promise<void> {
+  /**
+   * Get notification statistics
+   */
+  async getNotificationStats(): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATION_SETTINGS, JSON.stringify(settings));
+      const response = await apiClient.get('/notifications/stats');
+      return response;
     } catch (error) {
-      console.error('Error updating notification settings:', error);
-    }
-  }
-
-  // Get push token
-  getPushToken(): string | null {
-    return this.pushToken;
-  }
-
-  // Check if notifications are enabled
-  async areNotificationsEnabled(): Promise<boolean> {
-    try {
-      const { status } = await Notifications.getPermissionsAsync();
-      return status === Notifications.PermissionStatus.GRANTED;
-    } catch (error) {
-      console.error('Error checking notification status:', error);
-      return false;
+      console.error('Error fetching notification stats:', error);
+      return {
+        success: false,
+        error: 'Failed to fetch notification statistics'
+      };
     }
   }
 }
 
-// Create and export singleton instance
-export const notificationService = new NotificationService();
-export default notificationService;
+export default new NotificationService();

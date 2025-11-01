@@ -21,14 +21,17 @@ import { useCheckout } from '@/hooks/useCheckout';
 import { useCartValidation } from '@/hooks/useCartValidation';
 import StockWarningBanner from '@/components/cart/StockWarningBanner';
 import CartValidation from '@/components/cart/CartValidation';
+import { showToast } from '@/components/common/ToastManager';
 
 const { width } = Dimensions.get('window');
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { state, handlers } = useCheckout();
+  // Destructure checkout hook return values
+  const { state, handlers, paybillBalance } = useCheckout();
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoCode, setPromoCode] = useState('');
+  const [customCoinAmount, setCustomCoinAmount] = useState('');
 
   // Cart validation state
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -56,31 +59,97 @@ export default function CheckoutPage() {
 
   // Validate cart on page load
   useEffect(() => {
-    console.log('✅ [CHECKOUT] Page loaded, validating cart...');
+
     validateCart();
   }, []);
 
   // Show validation modal if critical issues found
   useEffect(() => {
     if (validationState.validationResult && errorCount > 0) {
-      console.log('⚠️ [CHECKOUT] Critical validation issues found, showing modal');
+
       setShowValidationModal(true);
     }
   }, [errorCount, validationState.validationResult]);
 
+  // Add slider thumb styling for web (client-side only)
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const styleId = 'slider-thumb-styles';
+      
+      // Check if styles already exist
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+          input[type="range"] {
+            cursor: pointer;
+            touch-action: none;
+            user-select: none;
+          }
+          input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%);
+            cursor: grab;
+            box-shadow: 0 3px 12px rgba(139, 92, 246, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.5);
+            transition: all 0.2s ease;
+            border: 3px solid rgba(255, 255, 255, 0.95);
+            position: relative;
+            z-index: 10;
+          }
+          input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.6);
+            cursor: grab;
+          }
+          input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5), 0 0 0 3px rgba(255, 255, 255, 0.7);
+            cursor: grabbing;
+          }
+          input[type="range"]::-moz-range-thumb {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FFFFFF 0%, #F9FAFB 100%);
+            cursor: grab;
+            border: 3px solid rgba(255, 255, 255, 0.95);
+            box-shadow: 0 3px 12px rgba(139, 92, 246, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.5);
+            transition: all 0.2s ease;
+            z-index: 10;
+          }
+          input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: 0 4px 16px rgba(139, 92, 246, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.6);
+            cursor: grab;
+          }
+          input[type="range"]::-moz-range-thumb:active {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5), 0 0 0 3px rgba(255, 255, 255, 0.7);
+            cursor: grabbing;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }
+  }, []);
+
   const handleContinueToCheckout = () => {
-    console.log('✅ [CHECKOUT] Continue after validation');
+
     setShowValidationModal(false);
   };
 
   const handleRemoveInvalidItems = async () => {
-    console.log('🗑️ [CHECKOUT] Removing invalid items');
+
     await removeInvalidItems();
     setShowValidationModal(false);
   };
 
   const handleRefreshValidation = async () => {
-    console.log('🔄 [CHECKOUT] Refreshing validation');
+
     await validateCart();
   };
 
@@ -98,12 +167,20 @@ export default function CheckoutPage() {
     // Show success or error after API call
     setTimeout(() => {
       if (state.error) {
-        Alert.alert('Error', state.error);
+        showToast({
+          message: state.error,
+          type: 'error',
+          duration: 4000,
+        });
       } else if (state.appliedPromoCode) {
         const message = previousPromo 
           ? `${previousPromo.code} replaced with ${state.appliedPromoCode.code}!`
           : `${state.appliedPromoCode.code} applied successfully!`;
-        Alert.alert('Success!', message);
+        showToast({
+          message: message,
+          type: 'success',
+          duration: 3000,
+        });
       }
     }, 500);
   };
@@ -115,18 +192,23 @@ export default function CheckoutPage() {
     
     setTimeout(() => {
       if (state.error) {
-        Alert.alert('Error', state.error);
+        showToast({
+          message: state.error,
+          type: 'error',
+          duration: 4000,
+        });
       } else if (state.appliedPromoCode) {
         const message = previousPromo 
           ? `${previousPromo.code} replaced with ${selectedPromoCode}!`
           : `${selectedPromoCode} applied successfully!`;
-        Alert.alert('Success!', message);
+        showToast({
+          message: message,
+          type: 'success',
+          duration: 3000,
+        });
       }
     }, 500);
   };
-
-
-
 
   return (
     <View style={styles.container}>
@@ -143,7 +225,7 @@ export default function CheckoutPage() {
           <TouchableOpacity 
             style={styles.backButton} 
             onPress={() => {
-              console.log('🔵 Checkout back arrow clicked!');
+
               handlers.handleBackNavigation();
             }}
             activeOpacity={0.8}
@@ -162,7 +244,7 @@ export default function CheckoutPage() {
         
         {/* Amount Display */}
         <View style={styles.amountContainer}>
-          <ThemedText style={styles.amountText}>₹100</ThemedText>
+          <ThemedText style={styles.amountText}>₹{(state.billSummary?.totalPayable || 0).toFixed(0)}</ThemedText>
           <View style={styles.cashbackBadge}>
             <ThemedText style={styles.cashbackText}>Cash back 10 %</ThemedText>
           </View>
@@ -200,7 +282,7 @@ export default function CheckoutPage() {
                     {state.appliedPromoCode.code} Applied
                   </ThemedText>
                   <ThemedText style={styles.appliedPromoSubtitle}>
-                    You saved ₹{state.billSummary.promoDiscount}
+                    You saved ₹{(state.billSummary?.promoDiscount || 0).toFixed(0)}
                   </ThemedText>
                 </View>
               </View>
@@ -249,30 +331,98 @@ export default function CheckoutPage() {
 
           {/* Coin Toggles */}
           <View style={styles.coinToggles}>
-            {/* REZ Coin */}
-            <View style={styles.coinToggleCard}>
-              <View style={styles.coinToggleContent}>
-                <View>
-                  <ThemedText style={styles.coinToggleTitle}>REZ coins</ThemedText>
-                  <ThemedText style={styles.coinToggleSubtitle}>
-                    1 Rupee is equal to 1 REZ Coin
+            {/* REZ Coin with Slider */}
+            <View style={styles.coinSliderCard}>
+              <LinearGradient
+                colors={['#8B5CF6', '#7C3AED']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.coinSliderGradient}
+              >
+                <View style={styles.coinSliderHeader}>
+                  <View style={styles.coinHeaderLeft}>
+                    <View style={styles.coinTitleRow}>
+                      <Ionicons name="diamond" size={20} color="#FFD700" />
+                      <ThemedText style={styles.coinTitleWhite}>REZ Coins</ThemedText>
+                    </View>
+                    <View style={styles.coinAvailableRow}>
+                      <ThemedText style={styles.coinAvailableTextWhite}>
+                        {state.coinSystem.wasilCoin.available} available
+                      </ThemedText>
+                    </View>
+                  </View>
+                  {state.coinSystem.wasilCoin.used > 0 && (
+                    <View style={styles.coinUsedBadgeWhite}>
+                      <ThemedText style={styles.coinUsedTextPurple}>
+                        {state.coinSystem.wasilCoin.used}
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.sliderContainerEnhanced}>
+                  <input
+                    type="range"
+                    min="0"
+                    max={Math.max(1, Math.min(
+                      state.coinSystem.wasilCoin.available,
+                      Math.floor(state.billSummary?.totalPayable || 0)
+                    ))}
+                    value={state.coinSystem.wasilCoin.used}
+                    onChange={(e) => {
+                      const amount = parseInt(e.target.value);
+                      if (amount === 0) {
+                        handlers.handleCoinToggle('wasil', false);
+                      } else {
+                        handlers.handleCustomCoinAmount('wasil', amount);
+                      }
+                    }}
+                    onInput={(e: any) => {
+                      const amount = parseInt(e.target.value);
+                      if (amount === 0) {
+                        handlers.handleCoinToggle('wasil', false);
+                      } else {
+                        handlers.handleCustomCoinAmount('wasil', amount);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      height: '12px',
+                      borderRadius: '6px',
+                      outline: 'none',
+                      WebkitAppearance: 'none',
+                      MozAppearance: 'none',
+                      appearance: 'none',
+                      cursor: 'pointer',
+                      touchAction: 'none',
+                      pointerEvents: 'auto',
+                      background: `linear-gradient(to right, #FFFFFF 0%, #FFFFFF ${(state.coinSystem.wasilCoin.used / Math.max(1, Math.min(state.coinSystem.wasilCoin.available, Math.floor(state.billSummary?.totalPayable || 0)))) * 100}%, rgba(255,255,255,0.3) ${(state.coinSystem.wasilCoin.used / Math.max(1, Math.min(state.coinSystem.wasilCoin.available, Math.floor(state.billSummary?.totalPayable || 0)))) * 100}%, rgba(255,255,255,0.3) 100%)`,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                    }}
+                  />
+                </View>
+
+                <View style={styles.sliderLabels}>
+                  <ThemedText style={styles.sliderLabelTextWhite}>₹0</ThemedText>
+                  <ThemedText style={styles.sliderLabelTextWhite}>
+                    ₹{Math.min(
+                      state.coinSystem.wasilCoin.available,
+                      Math.floor(state.billSummary?.totalPayable || 0)
+                    )}
                   </ThemedText>
                 </View>
-                <View style={styles.coinToggleRight}>
-                  <Switch
-                    value={state.coinSystem.wasilCoin.used > 0}
-                    onValueChange={(value) => handlers.handleCoinToggle('wasil', value)}
-                    trackColor={{ false: '#E5E7EB', true: '#8B5CF6' }}
-                    thumbColor={'white'}
-                  />
-                  <View style={styles.coinValue}>
-                    <Ionicons name="diamond" size={12} color="#FFD700" />
-                    <ThemedText style={styles.coinValueText}>
-                      {state.coinSystem.wasilCoin.available}
-                    </ThemedText>
+
+                {state.coinSystem.wasilCoin.used > 0 && (
+                  <View style={styles.coinSavingContainerEnhanced}>
+                    <View style={styles.savingBadge}>
+                      <Ionicons name="gift" size={16} color="#10B981" />
+                      <ThemedText style={styles.coinSavingTextEnhanced}>
+                        You'll save ₹{state.coinSystem.wasilCoin.used} on this order!
+                      </ThemedText>
+                    </View>
                   </View>
-                </View>
-              </View>
+                )}
+              </LinearGradient>
             </View>
 
             {/* Promo Coin */}
@@ -297,6 +447,102 @@ export default function CheckoutPage() {
                 </View>
               </View>
             </View>
+
+            {/* Store Promo Coin with Slider - Only show if user has coins from this store */}
+            {state.coinSystem.storePromoCoin.available > 0 && (
+              <View style={styles.coinSliderCard}>
+                <LinearGradient
+                  colors={['#10B981', '#059669']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.coinSliderGradient}
+                >
+                  <View style={styles.coinSliderHeader}>
+                    <View style={styles.coinHeaderLeft}>
+                      <View style={styles.coinTitleRow}>
+                        <Ionicons name="storefront" size={20} color="#FFD700" />
+                        <ThemedText style={styles.coinTitleWhite}>Store Promo Coins</ThemedText>
+                      </View>
+                      <View style={styles.coinAvailableRow}>
+                        <ThemedText style={styles.coinAvailableTextWhite}>
+                          {state.coinSystem.storePromoCoin.available} available • Up to 30%
+                        </ThemedText>
+                      </View>
+                    </View>
+                    {state.coinSystem.storePromoCoin.used > 0 && (
+                      <View style={styles.coinUsedBadgeWhite}>
+                        <ThemedText style={styles.coinUsedTextGreen}>
+                          {state.coinSystem.storePromoCoin.used}
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.sliderContainerEnhanced}>
+                    <input
+                      type="range"
+                      min="0"
+                      max={Math.max(1, Math.min(
+                        state.coinSystem.storePromoCoin.available,
+                        Math.floor((state.billSummary?.totalPayable || 0) * 0.3) // Max 30% of order
+                      ))}
+                      value={state.coinSystem.storePromoCoin.used}
+                      onChange={(e) => {
+                        const amount = parseInt(e.target.value);
+                        if (amount === 0) {
+                          handlers.handleCoinToggle('storePromo', false);
+                        } else {
+                          handlers.handleCustomCoinAmount('storePromo', amount);
+                        }
+                      }}
+                      onInput={(e: any) => {
+                        const amount = parseInt(e.target.value);
+                        if (amount === 0) {
+                          handlers.handleCoinToggle('storePromo', false);
+                        } else {
+                          handlers.handleCustomCoinAmount('storePromo', amount);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        height: '12px',
+                        borderRadius: '6px',
+                        outline: 'none',
+                        WebkitAppearance: 'none',
+                        MozAppearance: 'none',
+                        appearance: 'none',
+                        cursor: 'pointer',
+                        touchAction: 'none',
+                        pointerEvents: 'auto',
+                        background: `linear-gradient(to right, #FFFFFF 0%, #FFFFFF ${(state.coinSystem.storePromoCoin.used / Math.max(1, Math.min(state.coinSystem.storePromoCoin.available, Math.floor((state.billSummary?.totalPayable || 0) * 0.3)))) * 100}%, rgba(255,255,255,0.3) ${(state.coinSystem.storePromoCoin.used / Math.max(1, Math.min(state.coinSystem.storePromoCoin.available, Math.floor((state.billSummary?.totalPayable || 0) * 0.3)))) * 100}%, rgba(255,255,255,0.3) 100%)`,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                      }}
+                    />
+                  </View>
+
+                  <View style={styles.sliderLabels}>
+                    <ThemedText style={styles.sliderLabelTextWhite}>₹0</ThemedText>
+                    <ThemedText style={styles.sliderLabelTextWhite}>
+                      ₹{Math.min(
+                        state.coinSystem.storePromoCoin.available,
+                        Math.floor((state.billSummary?.totalPayable || 0) * 0.3)
+                      )}
+                    </ThemedText>
+                  </View>
+
+                  {state.coinSystem.storePromoCoin.used > 0 && (
+                    <View style={styles.coinSavingContainerEnhanced}>
+                      <View style={styles.savingBadge}>
+                        <Ionicons name="gift" size={16} color="#10B981" />
+                        <ThemedText style={styles.coinSavingTextEnhanced}>
+                          Store exclusive: You'll save ₹{state.coinSystem.storePromoCoin.used}!
+                        </ThemedText>
+                      </View>
+                    </View>
+                  )}
+                </LinearGradient>
+              </View>
+            )}
           </View>
         </View>
 
@@ -308,53 +554,53 @@ export default function CheckoutPage() {
             <View style={styles.summaryRow}>
               <ThemedText style={styles.summaryLabel}>Item Total</ThemedText>
               <ThemedText style={styles.summaryValue}>
-                ₹{state.billSummary.itemTotal.toFixed(0)}
+                ₹{(state.billSummary?.itemTotal || 0).toFixed(0)}
               </ThemedText>
             </View>
             
             <View style={styles.summaryRow}>
               <ThemedText style={styles.summaryLabel}>Get & item Total</ThemedText>
               <ThemedText style={styles.summaryValue}>
-                ₹{state.billSummary.getAndItemTotal.toFixed(0)}
+                ₹{(state.billSummary?.getAndItemTotal || 0).toFixed(0)}
               </ThemedText>
             </View>
 
-            {state.billSummary.platformFee > 0 && (
+            {(state.billSummary?.platformFee || 0) > 0 && (
               <View style={styles.summaryRow}>
                 <ThemedText style={styles.summaryLabel}>Platform Fee</ThemedText>
                 <ThemedText style={styles.summaryValue}>
-                  ₹{state.billSummary.platformFee.toFixed(0)}
+                  ₹{(state.billSummary?.platformFee || 0).toFixed(0)}
                 </ThemedText>
               </View>
             )}
 
-            {state.billSummary.taxes > 0 && (
+            {(state.billSummary?.taxes || 0) > 0 && (
               <View style={styles.summaryRow}>
                 <ThemedText style={styles.summaryLabel}>Taxes</ThemedText>
                 <ThemedText style={styles.summaryValue}>
-                  ₹{state.billSummary.taxes.toFixed(0)}
+                  ₹{(state.billSummary?.taxes || 0).toFixed(0)}
                 </ThemedText>
               </View>
             )}
 
-            {state.billSummary.promoDiscount > 0 && (
+            {(state.billSummary?.promoDiscount || 0) > 0 && (
               <View style={styles.summaryRow}>
                 <ThemedText style={[styles.summaryLabel, { color: '#22C55E' }]}>
                   Promo Discount
                 </ThemedText>
                 <ThemedText style={[styles.summaryValue, { color: '#22C55E' }]}>
-                  -₹{state.billSummary.promoDiscount.toFixed(0)}
+                  -₹{(state.billSummary?.promoDiscount || 0).toFixed(0)}
                 </ThemedText>
               </View>
             )}
 
-            {state.billSummary.coinDiscount > 0 && (
+            {(state.billSummary?.coinDiscount || 0) > 0 && (
               <View style={styles.summaryRow}>
                 <ThemedText style={[styles.summaryLabel, { color: '#8B5CF6' }]}>
                   REZ Coin Discount
                 </ThemedText>
                 <ThemedText style={[styles.summaryValue, { color: '#8B5CF6' }]}>
-                  -₹{state.billSummary.coinDiscount.toFixed(0)}
+                  -₹{(state.billSummary?.coinDiscount || 0).toFixed(0)}
                 </ThemedText>
               </View>
             )}
@@ -362,7 +608,7 @@ export default function CheckoutPage() {
             <View style={styles.summaryRow}>
               <ThemedText style={styles.summaryLabel}>Round off</ThemedText>
               <ThemedText style={styles.summaryValue}>
-                ₹{Math.abs(state.billSummary.roundOff).toFixed(2)}
+                ₹{Math.abs(state.billSummary?.roundOff || 0).toFixed(2)}
               </ThemedText>
             </View>
           </View>
@@ -370,14 +616,14 @@ export default function CheckoutPage() {
           <View style={styles.totalPayableCard}>
             <ThemedText style={styles.totalPayableLabel}>Total payable</ThemedText>
             <ThemedText style={styles.totalPayableValue}>
-              ₹{state.billSummary.totalPayable.toFixed(0)}
+              ₹{(state.billSummary?.totalPayable || 0).toFixed(0)}
             </ThemedText>
           </View>
 
-          {state.billSummary.savings > 0 && (
+          {(state.billSummary?.savings || 0) > 0 && (
             <View style={styles.savingsCard}>
               <ThemedText style={styles.savingsText}>
-                🎉 You saved ₹{state.billSummary.savings} on this order!
+                🎉 You saved ₹{(state.billSummary?.savings || 0).toFixed(0)} on this order!
               </ThemedText>
             </View>
           )}
@@ -388,22 +634,49 @@ export default function CheckoutPage() {
 
       {/* Bottom Payment Buttons */}
       <View style={styles.bottomButtonsContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.otherPaymentButton}
           onPress={handlers.navigateToOtherPaymentMethods}
           activeOpacity={0.7}
         >
           <ThemedText style={styles.otherPaymentText}>Other payment mode</ThemedText>
         </TouchableOpacity>
-        
+
+        {/* PayBill Payment Button */}
+        <TouchableOpacity
+          style={[
+            styles.paybillButton,
+            (state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout) && styles.disabledButton
+          ]}
+          onPress={handlers.handlePayBillPayment}
+          activeOpacity={0.7}
+          disabled={state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
+        >
+          <View style={styles.paybillButtonContent}>
+            <Ionicons name="wallet" size={20} color="white" />
+            <ThemedText style={styles.paybillButtonText}>
+              {state.loading
+                ? 'Processing...'
+                : !canCheckout
+                  ? 'Cart has issues'
+                  : paybillBalance < (state.billSummary?.totalPayable || 0)
+                    ? 'Insufficient PayBill balance'
+                    : 'Pay with PayBill'}
+            </ThemedText>
+          </View>
+          <View style={styles.paybillBalanceChip}>
+            <ThemedText style={styles.paybillBalanceText}>₹{paybillBalance}</ThemedText>
+          </View>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[
             styles.loadWalletButton,
-            (state.loading || totalWalletBalance < state.billSummary.totalPayable || !canCheckout) && styles.disabledButton
+            (state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout) && styles.disabledButton
           ]}
           onPress={handlers.handleWalletPayment}
           activeOpacity={0.7}
-          disabled={state.loading || totalWalletBalance < state.billSummary.totalPayable || !canCheckout}
+          disabled={state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
         >
           <ThemedText style={styles.loadWalletText}>
             {state.loading ? 'Processing...' : !canCheckout ? 'Cart has issues' : 'Load wallet & pay'}
@@ -411,6 +684,27 @@ export default function CheckoutPage() {
           <View style={styles.walletBalanceChip}>
             <Ionicons name="diamond" size={12} color="#FFD700" />
             <ThemedText style={styles.walletBalanceText}>Bal RC {totalWalletBalance}</ThemedText>
+          </View>
+        </TouchableOpacity>
+
+        {/* Cash on Delivery (COD) Button */}
+        <TouchableOpacity
+          style={[
+            styles.codButton,
+            (state.loading || !canCheckout) && styles.disabledButton
+          ]}
+          onPress={handlers.handleCODPayment}
+          activeOpacity={0.7}
+          disabled={state.loading || !canCheckout}
+        >
+          <View style={styles.codButtonContent}>
+            <Ionicons name="cash-outline" size={20} color="#10B981" />
+            <ThemedText style={styles.codButtonText}>
+              {state.loading ? 'Processing...' : !canCheckout ? 'Cart has issues' : 'Cash on Delivery'}
+            </ThemedText>
+          </View>
+          <View style={styles.codBadge}>
+            <ThemedText style={styles.codBadgeText}>Pay at home</ThemedText>
           </View>
         </TouchableOpacity>
       </View>
@@ -454,7 +748,7 @@ export default function CheckoutPage() {
               
               <View style={styles.availablePromos}>
                 <View style={styles.promoHeaderRow}>
-                  <ThemedText style={styles.availablePromosTitle}>My Coupons:</ThemedText>
+                  <ThemedText style={styles.availablePromosTitle}>Available Coupons:</ThemedText>
                   <TouchableOpacity onPress={() => {
                     setShowPromoModal(false);
                     router.push('/account/coupons');
@@ -477,15 +771,28 @@ export default function CheckoutPage() {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  state.availablePromoCodes.slice(0, 4).map((promo) => {
+                  <ScrollView 
+                    style={styles.promoScrollView}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                  >
+                    {state.availablePromoCodes.map((promo) => {
                     const isCurrentlyApplied = state.appliedPromoCode?.code === promo.code;
                     const itemTotal = state.items.reduce((total, item) => total + (item.price * item.quantity), 0);
-                    const isEligible = itemTotal >= promo.minOrderValue;
+                    const minOrderEligible = itemTotal >= promo.minOrderValue;
+                    
+                    // Check tier restrictions
+                    const requiresTier = promo.title?.toLowerCase().includes('gold') || 
+                                        promo.title?.toLowerCase().includes('silver') ||
+                                        promo.title?.toLowerCase().includes('platinum');
+                    const tierName = promo.title?.match(/(gold|silver|platinum)/i)?.[0] || 'premium';
+                    
+                    const isEligible = minOrderEligible && !requiresTier; // For now, tier-restricted coupons are not eligible
 
                     // Calculate discount display
                     const discountDisplay = promo.discountType === 'PERCENTAGE'
-                      ? `${promo.discount}% OFF`
-                      : `₹${promo.discount} OFF`;
+                      ? `${promo.discountValue}% OFF`
+                      : `₹${promo.discountValue} OFF`;
 
                     return (
                       <TouchableOpacity
@@ -495,9 +802,24 @@ export default function CheckoutPage() {
                           isCurrentlyApplied && styles.currentPromoOption,
                           !isEligible && styles.ineligiblePromoOption
                         ]}
-                        onPress={() => isEligible ? handleQuickPromoSelect(promo.code) : null}
-                        disabled={!isEligible}
-                        activeOpacity={isEligible ? 0.7 : 1}
+                        onPress={() => {
+                          if (isEligible) {
+                            handleQuickPromoSelect(promo.code);
+                          } else if (requiresTier) {
+                            showToast({
+                              message: `🔒 ${tierName.toUpperCase()} MEMBERS ONLY - Upgrade your membership to unlock this ${promo.discountValue}${promo.discountType === 'PERCENTAGE' ? '%' : '₹'} discount!`,
+                              type: 'warning',
+                              duration: 4000,
+                            });
+                          } else {
+                            showToast({
+                              message: `⚠️ Minimum order value of ₹${promo.minOrderValue} required for this coupon`,
+                              type: 'warning',
+                              duration: 3000,
+                            });
+                          }
+                        }}
+                        activeOpacity={0.7}
                       >
                         <View style={styles.promoOptionContent}>
                           <View style={styles.promoDiscountBadge}>
@@ -517,8 +839,16 @@ export default function CheckoutPage() {
                             ]}>
                               {promo.description}
                             </ThemedText>
+                            {requiresTier && (
+                              <View style={styles.tierBadge}>
+                                <Ionicons name="lock-closed" size={10} color="#F59E0B" />
+                                <ThemedText style={styles.tierBadgeText}>
+                                  {tierName.toUpperCase()} MEMBERS ONLY
+                                </ThemedText>
+                              </View>
+                            )}
                             {promo.minOrderValue > 0 && (
-                              <ThemedText style={[styles.minOrderText, isEligible && styles.eligibleMinOrder]}>
+                              <ThemedText style={[styles.minOrderText, minOrderEligible && styles.eligibleMinOrder]}>
                                 Min order: ₹{promo.minOrderValue}
                               </ThemedText>
                             )}
@@ -531,7 +861,8 @@ export default function CheckoutPage() {
                         </View>
                       </TouchableOpacity>
                     );
-                  })
+                  })}
+                  </ScrollView>
                 )}
               </View>
             </View>
@@ -549,7 +880,7 @@ export default function CheckoutPage() {
         </View>
       </Modal>
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({
@@ -710,6 +1041,39 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 4,
   },
+  customCoinInput: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  coinAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  coinInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  changeAmountButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  changeAmountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
+  },
+  coinSavingText: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '500',
+  },
   coinToggleSubtitle: {
     fontSize: 12,
     color: '#6B7280',
@@ -735,6 +1099,142 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     marginTop: 8,
+  },
+  // Enhanced Slider Styles
+  coinSliderCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  coinSliderGradient: {
+    padding: 16,
+    borderRadius: 12,
+  },
+  coinSliderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  coinHeaderLeft: {
+    flex: 1,
+  },
+  coinTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  coinTitleWhite: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  coinAvailableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  coinAvailableText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  coinAvailableTextWhite: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
+  },
+  coinUsedBadge: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  coinUsedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+  },
+  coinUsedBadgeWhite: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  coinUsedTextPurple: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#8B5CF6',
+  },
+  coinUsedTextGreen: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  sliderContainer: {
+    marginBottom: 8,
+  },
+  sliderContainerEnhanced: {
+    marginBottom: 10,
+    paddingVertical: 6,
+  },
+  sliderLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+  },
+  sliderLabelText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  sliderLabelTextWhite: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+  },
+  coinSavingContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  coinSavingContainerEnhanced: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.25)',
+  },
+  savingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  coinSavingTextEnhanced: {
+    fontSize: 13,
+    color: '#10B981',
+    fontWeight: '600',
+    flex: 1,
   },
   
   // Bill Summary
@@ -835,8 +1335,79 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: 'white',
   },
+  
+  // COD Button
+  codButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 2,
+    borderColor: '#10B981',
+    marginTop: 12,
+  },
+  codButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  codButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  codBadge: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  codBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#10B981',
+  },
+  
   disabledButton: {
     opacity: 0.5,
+  },
+
+  // PayBill Button
+  paybillButton: {
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  paybillButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  paybillButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+    flexShrink: 1,
+  },
+  paybillBalanceChip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginLeft: 8,
+  },
+  paybillBalanceText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
   },
 
   // Applied Promo Code
@@ -935,6 +1506,10 @@ const styles = StyleSheet.create({
   },
   availablePromos: {
     marginTop: 10,
+  },
+  promoScrollView: {
+    maxHeight: 400,
+    marginTop: 12,
   },
   promoHeaderRow: {
     flexDirection: 'row',
@@ -1035,6 +1610,23 @@ const styles = StyleSheet.create({
   },
   eligibleMinOrder: {
     color: '#22C55E',
+  },
+  tierBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  tierBadgeText: {
+    fontSize: 10,
+    color: '#F59E0B',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   appliedBadge: {
     backgroundColor: '#22C55E',

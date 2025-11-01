@@ -52,16 +52,11 @@ class CartValidationService {
    */
   async validateCart(): Promise<ApiResponse<ValidateCartResponse>> {
     try {
-      console.log('✅ [VALIDATION API] Validating cart...');
+
       const response = await apiClient.get<ValidateCartResponse>('/cart/validate');
 
       if (response.success) {
-        console.log('✅ [VALIDATION API] Cart validation successful:', {
-          valid: response.data?.valid,
-          canCheckout: response.data?.canCheckout,
-          issueCount: response.data?.issues?.length || 0,
-          invalidItemCount: response.data?.invalidItems?.length || 0,
-        });
+
       } else {
         console.error('❌ [VALIDATION API] Cart validation failed:', response.error);
       }
@@ -83,7 +78,6 @@ class CartValidationService {
     variant?: { type: string; value: string }
   ): Promise<ApiResponse<StockCheckResponse>> {
     try {
-      console.log('✅ [VALIDATION API] Checking product stock:', { productId, quantity, variant });
 
       const response = await apiClient.post<StockCheckResponse>('/cart/check-stock', {
         productId,
@@ -92,11 +86,7 @@ class CartValidationService {
       });
 
       if (response.success) {
-        console.log('✅ [VALIDATION API] Stock check successful:', {
-          available: response.data?.available,
-          currentStock: response.data?.currentStock,
-          canFulfill: response.data?.canFulfill,
-        });
+
       }
 
       return response;
@@ -114,14 +104,13 @@ class CartValidationService {
     requests: StockCheckRequest[]
   ): Promise<ApiResponse<StockCheckResponse[]>> {
     try {
-      console.log('✅ [VALIDATION API] Batch checking stock for', requests.length, 'products');
 
       const response = await apiClient.post<StockCheckResponse[]>('/cart/check-stock/batch', {
         products: requests,
       });
 
       if (response.success) {
-        console.log('✅ [VALIDATION API] Batch stock check successful');
+
       }
 
       return response;
@@ -144,12 +133,11 @@ class CartValidationService {
     totalAffectedItems: number;
   }>> {
     try {
-      console.log('✅ [VALIDATION API] Getting validation summary...');
 
       const response = await apiClient.get('/cart/validate/summary');
 
       if (response.success) {
-        console.log('✅ [VALIDATION API] Validation summary retrieved:', response.data);
+
       }
 
       return response;
@@ -173,12 +161,11 @@ class CartValidationService {
     message: string;
   }>> {
     try {
-      console.log('✅ [VALIDATION API] Auto-fixing cart...');
 
       const response = await apiClient.post('/cart/validate/auto-fix');
 
       if (response.success) {
-        console.log('✅ [VALIDATION API] Auto-fix completed:', response.data);
+
       }
 
       return response;
@@ -198,14 +185,13 @@ class CartValidationService {
     currentStock: number;
     timestamp: string;
   }) => void): () => void {
-    console.log('✅ [VALIDATION API] Subscribing to stock updates...');
 
     // TODO: Implement Socket.IO integration
     // This is a placeholder for future real-time functionality
 
     // Return unsubscribe function
     return () => {
-      console.log('✅ [VALIDATION API] Unsubscribed from stock updates');
+
     };
   }
 

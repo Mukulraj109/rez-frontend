@@ -8,9 +8,9 @@
 
 import { activityTriggers } from './activityTriggers';
 import { achievementTriggers } from './achievementTriggers';
-import { ordersApi } from '@/services/ordersApi';
-import { cartApi } from '@/services/cartApi';
-import { walletApi } from '@/services/walletApi';
+import ordersApi from '@/services/ordersApi';
+import cartApi from '@/services/cartApi';
+import walletApi from '@/services/walletApi';
 
 /**
  * Enhanced order service with automatic activity logging
@@ -22,7 +22,7 @@ export const enhancedOrderService = {
   placeOrder: async (cartId: string, addressId: string, paymentMethodId: string) => {
     try {
       // Place the order
-      const response = await ordersApi.placeOrder({
+      const response = await (ordersApi as any).placeOrder({
         cartId,
         addressId,
         paymentMethodId,
@@ -37,7 +37,6 @@ export const enhancedOrderService = {
           order.store?.name || 'Store',
           order.totalAmount
         );
-
         // Trigger achievement check
         await achievementTriggers.order.onOrderPlaced();
         await achievementTriggers.spending.onPaymentMade(order.totalAmount);
@@ -80,7 +79,7 @@ export const enhancedWalletService = {
    */
   rechargeWallet: async (amount: number, method: string) => {
     try {
-      const response = await walletApi.addMoney(amount, method);
+      const response = await (walletApi as any).addMoney(amount, method);
 
       if (response.success) {
         await activityTriggers.wallet.onWalletRecharge(amount, method);
@@ -101,7 +100,7 @@ export const enhancedWalletService = {
    */
   withdrawFromWallet: async (amount: number, method: string) => {
     try {
-      const response = await walletApi.withdraw(amount, method);
+      const response = await (walletApi as any).withdraw(amount, method);
 
       if (response.success) {
         await activityTriggers.wallet.onWalletWithdrawal(amount, method);

@@ -127,8 +127,8 @@ export interface AppPreferences {
 
 // General Settings
 export interface GeneralSettings {
-  language: string;
-  currency: string;
+  language: 'en' | 'hi' | 'te' | 'ta' | 'bn' | 'es' | 'fr' | 'de' | 'zh' | 'ja';
+  currency: 'INR' | 'USD' | 'GBP' | 'CAD' | 'AUD' | 'EUR' | 'BRL' | 'CNY' | 'JPY';
   timezone: string;
   dateFormat: string;
   timeFormat: '12h' | '24h';
@@ -209,6 +209,36 @@ class UserSettingsApiService {
   // Update security settings
   async updateSecuritySettings(data: Partial<SecuritySettings>): Promise<ApiResponse<UserSettings>> {
     return apiClient.put(`${this.baseUrl}/security`, data);
+  }
+
+  // Security-specific methods
+  async getSecurityStatus(): Promise<ApiResponse<any>> {
+    return apiClient.get(`${this.baseUrl}/security/status`);
+  }
+
+  async enableTwoFactorAuth(method: '2FA_SMS' | '2FA_EMAIL' | '2FA_APP'): Promise<ApiResponse<any>> {
+    return apiClient.post(`${this.baseUrl}/security/2fa/enable`, { method });
+  }
+
+  async disableTwoFactorAuth(): Promise<ApiResponse<any>> {
+    return apiClient.post(`${this.baseUrl}/security/2fa/disable`);
+  }
+
+  async verifyTwoFactorCode(code: string, method: string): Promise<ApiResponse<any>> {
+    return apiClient.post(`${this.baseUrl}/security/2fa/verify`, { code, method });
+  }
+
+  async generateBackupCodes(): Promise<ApiResponse<{ backupCodes: string[] }>> {
+    return apiClient.post(`${this.baseUrl}/security/2fa/backup-codes`);
+  }
+
+  async updateBiometricSettings(settings: {
+    fingerprintEnabled: boolean;
+    faceIdEnabled: boolean;
+    voiceEnabled: boolean;
+    availableMethods: ('FINGERPRINT' | 'FACE_ID' | 'VOICE')[];
+  }): Promise<ApiResponse<any>> {
+    return apiClient.put(`${this.baseUrl}/security/biometric`, settings);
   }
 
   // Update delivery preferences

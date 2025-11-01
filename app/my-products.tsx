@@ -12,6 +12,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   StatusBar,
+  Alert,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +21,10 @@ import { useRouter, useNavigation } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import ordersService from '@/services/ordersApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSafeNavigation } from '@/hooks/useSafeNavigation';
+import { HeaderBackButton } from '@/components/navigation';
+import { useReorder } from '@/hooks/useReorder';
+import { useCart } from '@/contexts/CartContext';
 
 type ProductStatus = 'all' | 'delivered' | 'in_transit' | 'cancelled';
 
@@ -44,15 +50,25 @@ const MyProductsPage = () => {
   const router = useRouter();
   const navigation = useNavigation();
   const { state: authState } = useAuth();
+  const { goBack } = useSafeNavigation();
   const [products, setProducts] = useState<PurchasedProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ProductStatus>('all');
+  const [reorderingProductId, setReorderingProductId] = useState<string | null>(null);
+  const [showReorderModal, setShowReorderModal] = useState(false);
+  const [reorderModalData, setReorderModalData] = useState<{
+    addedCount: number;
+    skippedCount: number;
+    skippedItems: Array<{ productId: string; reason: string }>;
+  } | null>(null);
+
+  const { reorderFull, reordering, validation, error: reorderError } = useReorder();
+  const { refreshCart } = useCart();
 
   const handleBackPress = useCallback(() => {
-    // Always go to profile page to avoid "no page exists" error
-    router.push('/profile' as any);
-  }, [router]);
+    goBack('/profile' as any);
+  }, [goBack]);
 
   const mapOrderStatusToDelivery = (status: string): 'delivered' | 'in_transit' | 'cancelled' | 'pending' => {
     const statusMap: Record<string, 'delivered' | 'in_transit' | 'cancelled' | 'pending'> = {
@@ -74,12 +90,12 @@ const MyProductsPage = () => {
 
       // Wait for auth to be ready
       if (authState.isLoading) {
-        console.log('⏳ Auth still loading, waiting...');
+
         return;
       }
 
       if (!authState.isAuthenticated || !authState.token) {
-        console.log('❌ Not authenticated, cannot fetch orders');
+
         setProducts([]);
         setLoading(false);
         return;
@@ -119,7 +135,6 @@ const MyProductsPage = () => {
             canReview: order.status === 'delivered'
           }))
         );
-
         setProducts(mappedProducts);
       }
     } catch (error: any) {
@@ -182,14 +197,85 @@ const MyProductsPage = () => {
     }
   };
 
-  const handleReorder = (product: PurchasedProduct) => {
-    // TODO: Add to cart and navigate
-    console.log('Reorder product:', product.id);
-  };
+  const handleReorder = useCallback(async (product: PurchasedProduct) => {
+    if (reordering) {
+
+      return;
+    }
+
+    try {
+      setReorderingProductId(product.orderId);
+
+      // Show confirmation dialog
+      Alert.alert(
+        'Reorder Confirmation',
+        `Would you like to reorder all items from order #${product.orderId}?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => setReorderingProductId(null)
+          },
+          {
+            text: 'Reorder',
+            onPress: async () => {
+              try {
+
+                const success = await reorderFull(product.orderId);
+
+                if (success && validation) {
+                  // Refresh cart to show new items
+                  await refreshCart();
+
+                  // Show result modal with details
+                  setReorderModalData({
+                    addedCount: validation.items.filter(item => item.isAvailable).length,
+                    skippedCount: validation.unavailableItems.length,
+                    skippedItems: validation.unavailableItems.map(item => ({
+                      productId: item.productId,
+                      reason: item.reason
+                    }))
+                  });
+                  setShowReorderModal(true);
+
+                  // If all items were added, navigate to cart
+                  if (validation.unavailableItems.length === 0) {
+                    setTimeout(() => {
+                      setShowReorderModal(false);
+                      router.push('/CartPage' as any);
+                    }, 2000);
+                  }
+                } else {
+                  // Show error
+                  Alert.alert(
+                    'Reorder Failed',
+                    reorderError || 'Unable to reorder this order. Please try again.',
+                    [{ text: 'OK' }]
+                  );
+                }
+              } catch (error) {
+                console.error('Reorder error:', error);
+                Alert.alert(
+                  'Error',
+                  'An unexpected error occurred while reordering.',
+                  [{ text: 'OK' }]
+                );
+              } finally {
+                setReorderingProductId(null);
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error in handleReorder:', error);
+      setReorderingProductId(null);
+    }
+  }, [reordering, reorderFull, validation, reorderError, refreshCart, router]);
 
   const handleReview = (product: PurchasedProduct) => {
     // TODO: Navigate to review page
-    console.log('Review product:', product.id);
+
     router.push('/ReviewPage' as any);
   };
 
@@ -242,11 +328,21 @@ const MyProductsPage = () => {
       <View style={styles.actionsContainer}>
         {item.canReorder && (
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[
+              styles.actionButton,
+              reorderingProductId === item.orderId && styles.actionButtonDisabled
+            ]}
             onPress={() => handleReorder(item)}
+            disabled={reorderingProductId === item.orderId}
           >
-            <Ionicons name="repeat-outline" size={20} color="#8B5CF6" />
-            <Text style={styles.actionText}>Reorder</Text>
+            {reorderingProductId === item.orderId ? (
+              <ActivityIndicator size="small" color="#8B5CF6" />
+            ) : (
+              <>
+                <Ionicons name="repeat-outline" size={20} color="#8B5CF6" />
+                <Text style={styles.actionText}>Reorder</Text>
+              </>
+            )}
           </TouchableOpacity>
         )}
 
@@ -292,9 +388,11 @@ const MyProductsPage = () => {
         <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
         <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
           <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
+            <HeaderBackButton
+              onPress={handleBackPress}
+              iconColor="#FFFFFF"
+              style={styles.backButton}
+            />
             <Text style={styles.headerTitle}>My Products</Text>
             <View style={styles.headerRight} />
           </View>
@@ -314,9 +412,11 @@ const MyProductsPage = () => {
       {/* Header */}
       <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+          <HeaderBackButton
+            onPress={handleBackPress}
+            iconColor="#FFFFFF"
+            style={styles.backButton}
+          />
           <Text style={styles.headerTitle}>My Products</Text>
           <View style={styles.headerRight} />
         </View>
@@ -356,6 +456,90 @@ const MyProductsPage = () => {
         }
         ListEmptyComponent={renderEmptyState}
       />
+
+      {/* Reorder Result Modal */}
+      <Modal
+        visible={showReorderModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowReorderModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              {reorderModalData?.skippedCount === 0 ? (
+                <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+              ) : (
+                <Ionicons name="alert-circle" size={48} color="#F59E0B" />
+              )}
+              <Text style={styles.modalTitle}>
+                {reorderModalData?.skippedCount === 0
+                  ? 'Reorder Successful!'
+                  : 'Reorder Completed'}
+              </Text>
+            </View>
+
+            <View style={styles.modalBody}>
+              {reorderModalData && reorderModalData.addedCount > 0 && (
+                <View style={styles.modalRow}>
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#10B981" />
+                  <Text style={styles.modalSuccessText}>
+                    {reorderModalData.addedCount} item(s) added to cart
+                  </Text>
+                </View>
+              )}
+
+              {reorderModalData && reorderModalData.skippedCount > 0 && (
+                <>
+                  <View style={styles.modalRow}>
+                    <Ionicons name="close-circle-outline" size={20} color="#EF4444" />
+                    <Text style={styles.modalErrorText}>
+                      {reorderModalData.skippedCount} item(s) unavailable
+                    </Text>
+                  </View>
+
+                  <View style={styles.skippedItemsList}>
+                    {reorderModalData.skippedItems.map((item, index) => (
+                      <Text key={index} style={styles.skippedItemText}>
+                        {item.reason}
+                      </Text>
+                    ))}
+                  </View>
+                </>
+              )}
+            </View>
+
+            <View style={styles.modalActions}>
+              {reorderModalData?.addedCount && reorderModalData.addedCount > 0 ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonSecondary]}
+                    onPress={() => setShowReorderModal(false)}
+                  >
+                    <Text style={styles.modalButtonTextSecondary}>Continue Shopping</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonPrimary]}
+                    onPress={() => {
+                      setShowReorderModal(false);
+                      router.push('/CartPage' as any);
+                    }}
+                  >
+                    <Text style={styles.modalButtonTextPrimary}>View Cart</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonPrimary]}
+                  onPress={() => setShowReorderModal(false)}
+                >
+                  <Text style={styles.modalButtonTextPrimary}>Close</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -495,6 +679,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 6,
     backgroundColor: '#F3F4F6',
+    minWidth: 70,
+    justifyContent: 'center',
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
   },
   actionText: {
     fontSize: 12,
@@ -540,6 +729,92 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  modalBody: {
+    marginBottom: 24,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  modalSuccessText: {
+    fontSize: 16,
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  modalErrorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+  skippedItemsList: {
+    marginTop: 8,
+    paddingLeft: 28,
+  },
+  skippedItemText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonPrimary: {
+    backgroundColor: '#8B5CF6',
+  },
+  modalButtonSecondary: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalButtonTextPrimary: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  modalButtonTextSecondary: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
   },
 });
 

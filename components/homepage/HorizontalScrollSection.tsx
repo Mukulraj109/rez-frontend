@@ -99,7 +99,7 @@ export default function HorizontalScrollSection({
         <View style={[styles.fakeIndicator, { backgroundColor: primaryColor }]} />
       )}
     </ThemedView>
-  );
+);
 }
 
 const styles = StyleSheet.create({

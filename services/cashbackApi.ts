@@ -144,30 +144,9 @@ class CashbackService {
    * Get cashback summary
    */
   async getCashbackSummary(): Promise<ApiResponse<CashbackSummary>> {
-    console.log('\n╔════════════════════════════════════════╗');
-    console.log('║  CASHBACK API - GET SUMMARY            ║');
-    console.log('╚════════════════════════════════════════╝');
-    console.log('📞 Method: getCashbackSummary');
-    console.log('🌐 Endpoint: /cashback/summary');
-    console.log('🔑 Auth token present:', !!apiClient.getAuthToken());
-    console.log('----------------------------------------');
-
     try {
-      const response = await apiClient.get('/cashback/summary');
+      const response = await apiClient.get<CashbackSummary>('/cashback/summary');
 
-      console.log('\n✅ [CASHBACK API] API Client Response:');
-      console.log('Success:', response.success);
-      console.log('Has data:', !!response.data);
-      console.log('Error:', response.error || 'none');
-
-      if (response.data) {
-        console.log('\n📊 [CASHBACK API] Summary data:');
-        console.log('Total Earned:', response.data.totalEarned);
-        console.log('Pending:', response.data.pending);
-        console.log('Credited:', response.data.credited);
-      }
-
-      console.log('╚════════════════════════════════════════╝\n');
       return response;
     } catch (error) {
       console.error('\n❌ [CASHBACK API] EXCEPTION IN getCashbackSummary');
@@ -183,7 +162,7 @@ class CashbackService {
   async getCashbackHistory(
     filters?: CashbackHistoryFilters
   ): Promise<ApiResponse<CashbackHistoryResponse>> {
-    console.log('📜 [CASHBACK API] Getting cashback history', filters);
+
     return apiClient.get('/cashback/history', filters);
   }
 
@@ -191,7 +170,7 @@ class CashbackService {
    * Get pending cashback
    */
   async getPendingCashback(): Promise<ApiResponse<PendingCashbackResponse>> {
-    console.log('⏳ [CASHBACK API] Getting pending cashback');
+
     return apiClient.get('/cashback/pending');
   }
 
@@ -199,7 +178,7 @@ class CashbackService {
    * Get expiring soon cashback
    */
   async getExpiringSoon(days: number = 7): Promise<ApiResponse<PendingCashbackResponse>> {
-    console.log('⚠️ [CASHBACK API] Getting expiring soon cashback');
+
     return apiClient.get('/cashback/expiring-soon', { days });
   }
 
@@ -207,7 +186,7 @@ class CashbackService {
    * Redeem pending cashback
    */
   async redeemCashback(): Promise<ApiResponse<RedeemCashbackResponse>> {
-    console.log('💰 [CASHBACK API] Redeeming pending cashback');
+
     return apiClient.post('/cashback/redeem');
   }
 
@@ -215,7 +194,7 @@ class CashbackService {
    * Get active campaigns
    */
   async getActiveCampaigns(): Promise<ApiResponse<{ campaigns: CashbackCampaign[] }>> {
-    console.log('🎯 [CASHBACK API] Getting active campaigns');
+
     return apiClient.get('/cashback/campaigns');
   }
 
@@ -230,7 +209,7 @@ class CashbackService {
     }>;
     subtotal: number;
   }): Promise<ApiResponse<ForecastCashbackResponse>> {
-    console.log('🔮 [CASHBACK API] Forecasting cashback for cart');
+
     return apiClient.post('/cashback/forecast', { cartData });
   }
 
@@ -240,7 +219,7 @@ class CashbackService {
   async getStatistics(
     period: 'day' | 'week' | 'month' | 'year' = 'month'
   ): Promise<ApiResponse<CashbackStatistics>> {
-    console.log('📊 [CASHBACK API] Getting cashback statistics', period);
+
     return apiClient.get('/cashback/statistics', { period });
   }
 }

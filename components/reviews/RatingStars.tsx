@@ -67,7 +67,7 @@ export default function RatingStars({
         </ThemedText>
       )}
     </View>
-  );
+);
 }
 
 const styles = StyleSheet.create({

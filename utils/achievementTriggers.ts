@@ -5,7 +5,7 @@
  * when users perform actions that may unlock new badges.
  */
 
-import { achievementApi } from '@/services/achievementApi';
+import { achievementApi, Achievement } from '@/services/achievementApi';
 import { activityTriggers } from './activityTriggers';
 
 /**
@@ -26,16 +26,16 @@ const recalculateAchievements = async (): Promise<void> => {
  */
 const checkNewAchievements = async (): Promise<void> => {
   try {
-    const response = await achievementApi.getAchievements();
+    const response = await achievementApi.getUserAchievements();
 
     if (response.success && response.data) {
       const achievements = response.data;
 
       // Find recently unlocked achievements (within last 5 minutes)
-      const recentlyUnlocked = achievements.filter((achievement) => {
-        if (!achievement.unlocked || !achievement.unlockedAt) return false;
+      const recentlyUnlocked = achievements.filter((achievement: Achievement) => {
+        if (!achievement.unlocked || !achievement.unlockedDate) return false;
 
-        const unlockedTime = new Date(achievement.unlockedAt).getTime();
+        const unlockedTime = new Date(achievement.unlockedDate).getTime();
         const now = Date.now();
         const fiveMinutesAgo = now - 5 * 60 * 1000;
 
