@@ -25,6 +25,7 @@ import RazorpayPaymentForm from '@/components/subscription/RazorpayPaymentForm';
 import PaymentSuccessModal from '@/components/subscription/PaymentSuccessModal';
 import { useAuth } from '@/contexts/AuthContext';
 import type { RazorpayPaymentData } from '@/types/payment.types';
+import { showToast } from '@/components/common/ToastManager';
 
 export default function SubscriptionPlansPage() {
   const router = useRouter();
@@ -96,11 +97,10 @@ export default function SubscriptionPlansPage() {
 
       // Check if Razorpay is configured
       if (!razorpayService.isConfigured()) {
-        Alert.alert(
-          'Payment Not Available',
-          'Razorpay is not configured. Please contact support or try again later.',
-          [{ text: 'OK' }]
-        );
+        showToast({
+          message: 'Razorpay is not configured. Please contact support or try again later.',
+          type: 'error',
+        });
         setIsSubscribing(false);
         setSelectedTier(null);
         return;
@@ -158,10 +158,10 @@ export default function SubscriptionPlansPage() {
                 }
               } catch (error: any) {
                 console.error('[SUBSCRIPTION] Error:', error);
-                Alert.alert(
-                  'Subscription Failed',
-                  error.message || 'Failed to initiate payment. Please try again.'
-                );
+                showToast({
+                  message: error.message || 'Failed to initiate payment. Please try again.',
+                  type: 'error',
+                });
                 setIsSubscribing(false);
                 setSelectedTier(null);
               }
@@ -170,7 +170,10 @@ export default function SubscriptionPlansPage() {
         ]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'An error occurred. Please try again.');
+      showToast({
+        message: error.message || 'An error occurred. Please try again.',
+        type: 'error',
+      });
       setIsSubscribing(false);
       setSelectedTier(null);
     }
@@ -231,11 +234,10 @@ export default function SubscriptionPlansPage() {
     setShowPaymentModal(false);
     setSelectedTier(null);
 
-    Alert.alert(
-      'Payment Failed',
-      error.message || 'Payment could not be completed. Please try again.',
-      [{ text: 'OK' }]
-    );
+    showToast({
+      message: error.message || 'Payment could not be completed. Please try again.',
+      type: 'error',
+    });
   };
 
   // Handle payment modal close
@@ -254,7 +256,10 @@ export default function SubscriptionPlansPage() {
   // Handle promo code application
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) {
-      Alert.alert('Error', 'Please enter a promo code');
+      showToast({
+        message: 'Please enter a promo code',
+        type: 'warning',
+      });
       return;
     }
 
@@ -273,18 +278,27 @@ export default function SubscriptionPlansPage() {
         setPromoValid(true);
         setPromoDiscount(response.data.discount);
         setFinalPrice(response.data.finalPrice);
-        Alert.alert('Success!', response.data.message || `Promo code applied! You saved ₹${response.data.discount}`);
+        showToast({
+          message: response.data.message || `Promo code applied! You saved ₹${response.data.discount}`,
+          type: 'success',
+        });
       } else {
         setPromoValid(false);
         setPromoDiscount(0);
         setFinalPrice(null);
-        Alert.alert('Invalid Code', response.message || 'This promo code is not valid');
+        showToast({
+          message: response.message || 'This promo code is not valid',
+          type: 'error',
+        });
       }
     } catch (error: any) {
       setPromoValid(false);
       setPromoDiscount(0);
       setFinalPrice(null);
-      Alert.alert('Error', 'Failed to validate promo code. Please try again.');
+      showToast({
+        message: 'Failed to validate promo code. Please try again.',
+        type: 'error',
+      });
     } finally {
       setValidatingPromo(false);
     }
@@ -311,10 +325,16 @@ export default function SubscriptionPlansPage() {
                   onPress: async () => {
                     try {
                       await subscriptionAPI.cancelSubscription();
-                      Alert.alert('Cancelled', 'Your subscription has been cancelled');
+                      showToast({
+                        message: 'Your subscription has been cancelled',
+                        type: 'success',
+                      });
                       await actions.loadSubscription(true);
                     } catch (error: any) {
-                      Alert.alert('Error', error.message || 'Failed to cancel subscription');
+                      showToast({
+                        message: error.message || 'Failed to cancel subscription',
+                        type: 'error',
+                      });
                     }
                   },
                 },
