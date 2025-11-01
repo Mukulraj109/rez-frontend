@@ -2,7 +2,6 @@
 // Handle image/video uploads with expo-image-picker and file management
 
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { Alert, Platform } from 'react-native';
 
 export interface UploadOptions {
@@ -143,9 +142,18 @@ class FileUploadService {
 
     for (const asset of assets) {
       try {
-        // Get file info
-        const fileInfo = await FileSystem.getInfoAsync(asset.uri);
-        
+        // Get file info (native platforms only)
+        let fileSize: number | undefined;
+        if (Platform.OS !== 'web') {
+          try {
+            const FileSystem = require('expo-file-system');
+            const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+            fileSize = fileInfo.exists && typeof fileInfo.size === 'number' ? fileInfo.size : undefined;
+          } catch (err) {
+            console.warn('Could not get file info:', err);
+          }
+        }
+
         const result: UploadResult = {
           uri: asset.uri,
           type: asset.type === 'video' ? 'video' : 'image',
@@ -154,7 +162,7 @@ class FileUploadService {
           duration: asset.duration ?? undefined,
           fileName: asset.fileName || `${asset.type}_${Date.now()}.${asset.type === 'video' ? 'mp4' : 'jpg'}`,
           mimeType: asset.mimeType,
-          fileSize: fileInfo.exists && typeof fileInfo.size === 'number' ? fileInfo.size : undefined,
+          fileSize,
         };
 
         results.push(result);

@@ -17,8 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import * as Brightness from 'expo-brightness';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 
 const { width } = Dimensions.get('window');
 

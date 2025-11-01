@@ -2,7 +2,6 @@
 // Handles OCR, verification, fraud detection, and cashback calculation
 
 import apiClient, { ApiResponse } from './apiClient';
-import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import {
   OCRExtractedData,
@@ -560,6 +559,7 @@ class BillVerificationService {
     }
 
     try {
+      const FileSystem = require('expo-file-system');
       const info = await FileSystem.getInfoAsync(imageUri);
       return info;
     } catch (error) {
