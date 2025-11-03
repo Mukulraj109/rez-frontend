@@ -1,0 +1,513 @@
+/**
+ * Offline Queue Context
+ *
+ * Provides offline queue functionality throughout the app.
+ * Manages bill upload queue state and synchronization.
+ *
+ * @module OfflineQueueContext
+ */
+
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  ReactNode,
+} from 'react';
+import {
+  billUploadQueueService,
+  QueuedBill,
+  QueueStatus,
+  SyncResult,
+  QueueEvent,
+} from '../services/billUploadQueueService';
+import type { BillUploadData } from '../types/billVerification.types';
+import NetInfo from '@react-native-community/netinfo';
+
+// ============================================================================
+// Types & Interfaces
+// ============================================================================
+
+export interface OfflineQueueContextValue {
+  // State
+  queue: QueuedBill[];
+  status: QueueStatus | null;
+  isSyncing: boolean;
+  isOnline: boolean;
+  lastSyncResult: SyncResult | null;
+  error: string | null;
+
+  // Actions
+  addToQueue: (formData: BillUploadData, imageUri: string) => Promise<string>;
+  removeFromQueue: (billId: string) => Promise<void>;
+  syncQueue: () => Promise<SyncResult>;
+  retryFailed: () => Promise<void>;
+  clearCompleted: () => Promise<void>;
+  clearAll: () => Promise<void>;
+  getBill: (billId: string) => Promise<QueuedBill | null>;
+  refreshQueue: () => Promise<void>;
+
+  // Utils
+  isPending: (billId: string) => boolean;
+  isUploading: (billId: string) => boolean;
+  hasFailed: (billId: string) => boolean;
+  hasSucceeded: (billId: string) => boolean;
+  getPendingCount: () => number;
+  getFailedCount: () => number;
+}
+
+export interface OfflineQueueProviderProps {
+  children: ReactNode;
+  autoSync?: boolean;
+  onSyncComplete?: (result: SyncResult) => void;
+  onSyncError?: (error: Error) => void;
+  onQueueChange?: (status: QueueStatus) => void;
+}
+
+// ============================================================================
+// Context
+// ============================================================================
+
+const OfflineQueueContext = createContext<OfflineQueueContextValue | undefined>(
+  undefined
+);
+
+// ============================================================================
+// Provider Component
+// ============================================================================
+
+export const OfflineQueueProvider: React.FC<OfflineQueueProviderProps> = ({
+  children,
+  autoSync = true,
+  onSyncComplete,
+  onSyncError,
+  onQueueChange,
+}) => {
+  // State
+  const [queue, setQueue] = useState<QueuedBill[]>([]);
+  const [status, setStatus] = useState<QueueStatus | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [lastSyncResult, setLastSyncResult] = useState<SyncResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Refs
+  const isInitialized = useRef(false);
+  const networkUnsubscribe = useRef<(() => void) | null>(null);
+
+  // ==========================================================================
+  // Effects
+  // ==========================================================================
+
+  /**
+   * Initialize queue service and setup listeners
+   */
+  useEffect(() => {
+    let mounted = true;
+
+    const initialize = async () => {
+      try {
+        console.log('[OfflineQueueContext] Initializing...');
+
+        // Initialize service
+        await billUploadQueueService.initialize({ autoSync });
+
+        // Load initial data
+        if (mounted) {
+          await refreshQueue();
+        }
+
+        // Setup event listeners
+        setupEventListeners();
+
+        // Setup network monitoring
+        setupNetworkMonitoring();
+
+        isInitialized.current = true;
+        console.log('[OfflineQueueContext] Initialized successfully');
+      } catch (err: any) {
+        console.error('[OfflineQueueContext] Initialization error:', err);
+        if (mounted) {
+          setError(err.message);
+        }
+      }
+    };
+
+    initialize();
+
+    return () => {
+      mounted = false;
+      cleanup();
+    };
+  }, []);
+
+  /**
+   * Call onQueueChange callback when status changes
+   */
+  useEffect(() => {
+    if (status && onQueueChange) {
+      onQueueChange(status);
+    }
+  }, [status, onQueueChange]);
+
+  // ==========================================================================
+  // Actions
+  // ==========================================================================
+
+  /**
+   * Add bill to upload queue
+   */
+  const addToQueue = useCallback(
+    async (formData: BillUploadData, imageUri: string): Promise<string> => {
+      try {
+        setError(null);
+
+        const billId = await billUploadQueueService.addToQueue(
+          formData,
+          imageUri
+        );
+
+        // Refresh queue
+        await refreshQueue();
+
+        return billId;
+      } catch (err: any) {
+        console.error('[OfflineQueueContext] Add to queue error:', err);
+        setError(err.message);
+        throw err;
+      }
+    },
+    []
+  );
+
+  /**
+   * Remove bill from queue
+   */
+  const removeFromQueue = useCallback(async (billId: string): Promise<void> => {
+    try {
+      setError(null);
+
+      await billUploadQueueService.removeFromQueue(billId);
+
+      // Refresh queue
+      await refreshQueue();
+    } catch (err: any) {
+      console.error('[OfflineQueueContext] Remove from queue error:', err);
+      setError(err.message);
+      throw err;
+    }
+  }, []);
+
+  /**
+   * Sync queue - upload all pending bills
+   */
+  const syncQueue = useCallback(async (): Promise<SyncResult> => {
+    try {
+      setError(null);
+      setIsSyncing(true);
+
+      const result = await billUploadQueueService.syncQueue();
+
+      setLastSyncResult(result);
+
+      // Refresh queue
+      await refreshQueue();
+
+      // Call success callback
+      if (onSyncComplete) {
+        onSyncComplete(result);
+      }
+
+      return result;
+    } catch (err: any) {
+      console.error('[OfflineQueueContext] Sync error:', err);
+      setError(err.message);
+
+      // Call error callback
+      if (onSyncError) {
+        onSyncError(err);
+      }
+
+      throw err;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [onSyncComplete, onSyncError]);
+
+  /**
+   * Retry all failed uploads
+   */
+  const retryFailed = useCallback(async (): Promise<void> => {
+    try {
+      setError(null);
+
+      await billUploadQueueService.retryFailed();
+
+      // Refresh queue
+      await refreshQueue();
+    } catch (err: any) {
+      console.error('[OfflineQueueContext] Retry failed error:', err);
+      setError(err.message);
+      throw err;
+    }
+  }, []);
+
+  /**
+   * Clear completed bills
+   */
+  const clearCompleted = useCallback(async (): Promise<void> => {
+    try {
+      setError(null);
+
+      await billUploadQueueService.clearCompleted();
+
+      // Refresh queue
+      await refreshQueue();
+    } catch (err: any) {
+      console.error('[OfflineQueueContext] Clear completed error:', err);
+      setError(err.message);
+      throw err;
+    }
+  }, []);
+
+  /**
+   * Clear all bills
+   */
+  const clearAll = useCallback(async (): Promise<void> => {
+    try {
+      setError(null);
+
+      await billUploadQueueService.clearAll();
+
+      // Refresh queue
+      await refreshQueue();
+    } catch (err: any) {
+      console.error('[OfflineQueueContext] Clear all error:', err);
+      setError(err.message);
+      throw err;
+    }
+  }, []);
+
+  /**
+   * Get specific bill
+   */
+  const getBill = useCallback(
+    async (billId: string): Promise<QueuedBill | null> => {
+      try {
+        return await billUploadQueueService.getBill(billId);
+      } catch (err: any) {
+        console.error('[OfflineQueueContext] Get bill error:', err);
+        return null;
+      }
+    },
+    []
+  );
+
+  /**
+   * Refresh queue data
+   */
+  const refreshQueue = useCallback(async (): Promise<void> => {
+    try {
+      const [queueData, statusData] = await Promise.all([
+        billUploadQueueService.getQueue(),
+        billUploadQueueService.getStatus(),
+      ]);
+
+      setQueue(queueData);
+      setStatus(statusData);
+    } catch (err: any) {
+      console.error('[OfflineQueueContext] Refresh queue error:', err);
+      setError(err.message);
+    }
+  }, []);
+
+  // ==========================================================================
+  // Utils
+  // ==========================================================================
+
+  /**
+   * Check if bill is pending
+   */
+  const isPending = useCallback(
+    (billId: string): boolean => {
+      const bill = queue.find(b => b.id === billId);
+      return bill?.status === 'pending';
+    },
+    [queue]
+  );
+
+  /**
+   * Check if bill is uploading
+   */
+  const isUploading = useCallback(
+    (billId: string): boolean => {
+      const bill = queue.find(b => b.id === billId);
+      return bill?.status === 'uploading';
+    },
+    [queue]
+  );
+
+  /**
+   * Check if bill has failed
+   */
+  const hasFailed = useCallback(
+    (billId: string): boolean => {
+      const bill = queue.find(b => b.id === billId);
+      return bill?.status === 'failed';
+    },
+    [queue]
+  );
+
+  /**
+   * Check if bill has succeeded
+   */
+  const hasSucceeded = useCallback(
+    (billId: string): boolean => {
+      const bill = queue.find(b => b.id === billId);
+      return bill?.status === 'success';
+    },
+    [queue]
+  );
+
+  /**
+   * Get pending count
+   */
+  const getPendingCount = useCallback((): number => {
+    return status?.pending || 0;
+  }, [status]);
+
+  /**
+   * Get failed count
+   */
+  const getFailedCount = useCallback((): number => {
+    return status?.failed || 0;
+  }, [status]);
+
+  // ==========================================================================
+  // Private Methods
+  // ==========================================================================
+
+  /**
+   * Setup event listeners for queue service
+   */
+  const setupEventListeners = () => {
+    // Queue change event
+    billUploadQueueService.on('queue:change', (event: QueueEvent) => {
+      console.log('[OfflineQueueContext] Queue changed:', event.type);
+      refreshQueue();
+    });
+
+    // Sync complete event
+    billUploadQueueService.on('queue:synced', (event: QueueEvent) => {
+      console.log('[OfflineQueueContext] Queue synced');
+      refreshQueue();
+    });
+
+    // Error event
+    billUploadQueueService.on('queue:error', (event: QueueEvent) => {
+      console.error('[OfflineQueueContext] Queue error:', event.error);
+      setError(event.error || 'Unknown error');
+    });
+  };
+
+  /**
+   * Setup network monitoring
+   */
+  const setupNetworkMonitoring = () => {
+    networkUnsubscribe.current = NetInfo.addEventListener(state => {
+      const wasOnline = isOnline;
+      const nowOnline = state.isConnected ?? false;
+
+      setIsOnline(nowOnline);
+
+      // Network reconnected
+      if (!wasOnline && nowOnline) {
+        console.log('[OfflineQueueContext] Network reconnected');
+
+        // Auto-sync if enabled and has pending items
+        if (autoSync && (status?.pending || 0) > 0) {
+          console.log('[OfflineQueueContext] Auto-syncing on reconnection...');
+          syncQueue().catch(err => {
+            console.error('[OfflineQueueContext] Auto-sync error:', err);
+          });
+        }
+      }
+    });
+  };
+
+  /**
+   * Cleanup listeners
+   */
+  const cleanup = () => {
+    console.log('[OfflineQueueContext] Cleaning up...');
+
+    // Remove network listener
+    if (networkUnsubscribe.current) {
+      networkUnsubscribe.current();
+      networkUnsubscribe.current = null;
+    }
+
+    // Remove service listeners
+    billUploadQueueService.removeAllListeners();
+  };
+
+  // ==========================================================================
+  // Context Value
+  // ==========================================================================
+
+  const value: OfflineQueueContextValue = {
+    // State
+    queue,
+    status,
+    isSyncing,
+    isOnline,
+    lastSyncResult,
+    error,
+
+    // Actions
+    addToQueue,
+    removeFromQueue,
+    syncQueue,
+    retryFailed,
+    clearCompleted,
+    clearAll,
+    getBill,
+    refreshQueue,
+
+    // Utils
+    isPending,
+    isUploading,
+    hasFailed,
+    hasSucceeded,
+    getPendingCount,
+    getFailedCount,
+  };
+
+  return (
+    <OfflineQueueContext.Provider value={value}>
+      {children}
+    </OfflineQueueContext.Provider>
+  );
+};
+
+// ============================================================================
+// Hook
+// ============================================================================
+
+/**
+ * Use offline queue context
+ * Must be used within OfflineQueueProvider
+ */
+export const useOfflineQueueContext = (): OfflineQueueContextValue => {
+  const context = useContext(OfflineQueueContext);
+
+  if (!context) {
+    throw new Error(
+      'useOfflineQueueContext must be used within OfflineQueueProvider'
+    );
+  }
+
+  return context;
+};
