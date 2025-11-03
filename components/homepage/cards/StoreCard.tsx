@@ -140,7 +140,7 @@ export default function StoreCard({
         </View>
       </ThemedView>
     </TouchableOpacity>
-);
+  );
 }
 
 const styles = StyleSheet.create({

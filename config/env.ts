@@ -82,11 +82,13 @@ export const FEATURE_FLAGS = {
 } as const;
 
 // Media Configuration
+// NOTE: For file upload limits and validation, use utils/fileUploadConstants.ts
+// These values are kept for backward compatibility and can be overridden via env vars
 export const MEDIA_CONFIG = {
-  maxImageSize: parseInt(process.env.EXPO_PUBLIC_MAX_IMAGE_SIZE || '5242880'), // 5MB
-  maxVideoSize: parseInt(process.env.EXPO_PUBLIC_MAX_VIDEO_SIZE || '52428800'), // 50MB
-  allowedImageTypes: (process.env.EXPO_PUBLIC_ALLOWED_IMAGE_TYPES || 'jpg,jpeg,png,gif,webp').split(','),
-  allowedVideoTypes: (process.env.EXPO_PUBLIC_ALLOWED_VIDEO_TYPES || 'mp4,mov,avi,webm').split(','),
+  maxImageSize: parseInt(process.env.EXPO_PUBLIC_MAX_IMAGE_SIZE || '5242880'), // 5MB (matches fileUploadConstants)
+  maxVideoSize: parseInt(process.env.EXPO_PUBLIC_MAX_VIDEO_SIZE || '52428800'), // 50MB (matches fileUploadConstants)
+  allowedImageTypes: (process.env.EXPO_PUBLIC_ALLOWED_IMAGE_TYPES || 'jpg,jpeg,png,heic,heif').split(','), // Updated to match fileUploadConstants
+  allowedVideoTypes: (process.env.EXPO_PUBLIC_ALLOWED_VIDEO_TYPES || 'mp4,mov,webm').split(','), // Updated to match fileUploadConstants
 } as const;
 
 // Development Settings

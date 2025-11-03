@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FILE_SIZE_LIMITS } from '@/utils/fileUploadConstants';
 
 // Types
 export interface StorageOptions {
@@ -467,7 +468,7 @@ export const StorageUtils = {
 
   // Check if storage is near capacity
   isNearCapacity: (stats: StorageStats, threshold: number = 0.8): boolean => {
-    const maxSize = 10 * 1024 * 1024; // Assume 10MB limit for mobile
+    const maxSize = FILE_SIZE_LIMITS.MAX_DOCUMENT_SIZE; // Assume 10MB limit for mobile
     return stats.totalSize > (maxSize * threshold);
   },
 };

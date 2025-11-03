@@ -25,6 +25,7 @@ import BillPreviewModal from '@/components/bills/BillPreviewModal';
 import CashbackCalculator from '@/components/bills/CashbackCalculator';
 import BillRequirements from '@/components/bills/BillRequirements';
 import ManualCorrectionForm from '@/components/bills/ManualCorrectionForm';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 const CameraType = {
   back: 'back' as const,
@@ -258,8 +259,9 @@ export default function EnhancedBillUploadPage() {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <ErrorBoundary>
+      <View style={styles.container}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleGoBack}>
@@ -450,6 +452,7 @@ export default function EnhancedBillUploadPage() {
         />
       )}
     </View>
+    </ErrorBoundary>
   );
 }
 

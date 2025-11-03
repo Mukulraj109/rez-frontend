@@ -123,6 +123,8 @@ export default function RedemptionFlow({
         </View>
       ))}
     </View>
+  );
+
   // Step 1: Select Voucher
   const renderSelectVoucherStep = () => (
     <View style={styles.stepContainer}>
@@ -184,6 +186,8 @@ export default function RedemptionFlow({
         </TouchableOpacity>
       </View>
     </View>
+  );
+
   // Step 2: Select Method
   const renderMethodSelectionStep = () => (
     <View style={styles.stepContainer}>
@@ -264,6 +268,8 @@ export default function RedemptionFlow({
         </TouchableOpacity>
       </View>
     </View>
+  );
+
   // Step 3: Terms & Conditions
   const renderTermsStep = () => (
     <View style={styles.stepContainer}>
@@ -341,6 +347,8 @@ export default function RedemptionFlow({
         </TouchableOpacity>
       </View>
     </View>
+  );
+
   // Step 4: Confirmation
   const renderConfirmationStep = () => (
     <View style={styles.stepContainer}>
@@ -409,6 +417,8 @@ export default function RedemptionFlow({
         </TouchableOpacity>
       </View>
     </View>
+  );
+
   // Step 5: Success
   const renderSuccessStep = () => (
     <View style={styles.stepContainer}>
@@ -463,6 +473,8 @@ export default function RedemptionFlow({
         </TouchableOpacity>
       </View>
     </View>
+  );
+
   const renderStep = () => {
     switch (currentStep) {
       case 0:
@@ -513,7 +525,7 @@ export default function RedemptionFlow({
         </View>
       </View>
     </Modal>
-);
+  );
 }
 
 const styles = StyleSheet.create({

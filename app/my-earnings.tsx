@@ -14,7 +14,6 @@ import {
   Dimensions,
   Alert,
   Share,
-  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +25,8 @@ import { HeaderBackButton } from '@/components/navigation';
 import earningsCalculationService, { EarningsStats } from '@/services/earningsCalculationService';
 import EarningsPieChart from '@/components/earnings/EarningsPieChart';
 import EarningsStatsCard from '@/components/earnings/EarningsStatsCard';
+import { Paths, File } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 const { width } = Dimensions.get('window');
 
@@ -172,54 +173,32 @@ Total Transactions: ${earnings.transactionCount}
 ${earnings.recentTransactions.map((t, i) => `${i + 1}. ${new Date(t.date).toLocaleDateString()} - ${t.description} - ₹${t.amount} [${t.status}]`).join('\n')}
       `.trim();
 
-      // Platform-specific sharing
-      if (Platform.OS === 'web') {
-        // Web: Use download approach
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `earnings_report_${Date.now()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        Alert.alert('Success', 'Earnings report downloaded successfully!');
+      // Check if file sharing is available
+      const isAvailable = await Sharing.isAvailableAsync();
+
+      if (isAvailable) {
+        // Save CSV file using new expo-file-system API
+        const file = new File(Paths.document, `earnings_report_${Date.now()}.csv`);
+        await file.text().then(() => {}).catch(() => {}); // Ensure file exists
+        const writer = file.writableStream();
+        const encoder = new TextEncoder();
+        const writerObj = writer.getWriter();
+        await writerObj.write(encoder.encode(csvContent));
+        await writerObj.close();
+
+        // Share the file
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Export Earnings Report',
+        });
+
+        Alert.alert('Success', 'Earnings report exported successfully!');
       } else {
-        // Native: Use expo-sharing and expo-file-system
-        try {
-          const Sharing = require('expo-sharing');
-          const FileSystem = require('expo-file-system');
-
-          const isAvailable = await Sharing.isAvailableAsync();
-
-          if (isAvailable) {
-            // Save CSV file
-            const fileUri = `${FileSystem.documentDirectory}earnings_report_${Date.now()}.csv`;
-            await FileSystem.writeAsStringAsync(fileUri, csvContent);
-
-            // Share the file
-            await Sharing.shareAsync(fileUri, {
-              mimeType: 'text/csv',
-              dialogTitle: 'Export Earnings Report',
-            });
-
-            Alert.alert('Success', 'Earnings report exported successfully!');
-          } else {
-            // Fallback to text sharing
-            await Share.share({
-              message: reportText,
-              title: 'My Earnings Report',
-            });
-          }
-        } catch (error) {
-          console.error('Native sharing error:', error);
-          // Final fallback
-          await Share.share({
-            message: reportText,
-            title: 'My Earnings Report',
-          });
-        }
+        // Fallback to text sharing
+        await Share.share({
+          message: reportText,
+          title: 'My Earnings Report',
+        });
       }
     } catch (error) {
       console.error('Error exporting report:', error);

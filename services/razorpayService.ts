@@ -36,12 +36,19 @@ class RazorpayService {
     this.keyId = RAZORPAY_KEY_ID;
     this.isNativeAvailable = !!RazorpayCheckout;
 
+    console.log('🔧 [RAZORPAY] Initializing Razorpay Service');
+    console.log('🔧 [RAZORPAY] Platform:', Platform.OS);
+    console.log('🔧 [RAZORPAY] Enabled:', RAZORPAY_ENABLED);
+    console.log('🔧 [RAZORPAY] Key ID:', this.keyId ? (this.keyId.substring(0, 15) + '...') : 'NOT SET');
+    console.log('🔧 [RAZORPAY] Native Available:', this.isNativeAvailable);
+
     if (!RAZORPAY_ENABLED) {
       console.warn('⚠️ [RAZORPAY] Razorpay is disabled in environment config');
     }
 
     if (!this.keyId || this.keyId.includes('your_razorpay_key_id')) {
       console.warn('⚠️ [RAZORPAY] Razorpay key not configured properly');
+      console.warn('⚠️ [RAZORPAY] Please set EXPO_PUBLIC_RAZORPAY_KEY_ID in your .env file');
     }
   }
 
@@ -193,22 +200,34 @@ class RazorpayService {
     },
     metadata?: Record<string, any>
   ): Promise<RazorpayPaymentData> {
+    console.log('🌐 [RAZORPAY] Opening web checkout');
+    console.log('🌐 [RAZORPAY] Order ID:', order.id);
+    console.log('🌐 [RAZORPAY] Amount:', order.amount);
 
     // For web or Expo Go, we need to use expo-web-browser or create a webview
     // For now, we'll show instructions to the user
 
     return new Promise((resolve, reject) => {
       if (Platform.OS === 'web') {
+        console.log('🌐 [RAZORPAY] Platform is web, loading Razorpay script...');
         // On web, load Razorpay script and open checkout
         this.loadRazorpayWebScript()
           .then(() => {
+            console.log('✅ [RAZORPAY] Razorpay script loaded successfully');
             const Razorpay = (window as any).Razorpay;
+
+            if (!Razorpay) {
+              console.error('❌ [RAZORPAY] Razorpay object not found on window');
+              reject(new Error('Razorpay script failed to load'));
+              return;
+            }
+
             const options = {
               key: order.key,
               amount: order.amount,
               currency: order.currency,
               name: 'REZ App',
-              description: 'Order Payment',
+              description: 'Subscription Payment',
               order_id: order.id,
               prefill: {
                 name: userDetails?.name || 'User',
@@ -217,16 +236,21 @@ class RazorpayService {
               },
               theme: { color: '#8B5CF6' },
               handler: (response: RazorpayPaymentData) => {
-
+                console.log('✅ [RAZORPAY] Payment successful:', response);
                 resolve(response);
               },
               modal: {
                 ondismiss: () => {
-
+                  console.log('⚠️ [RAZORPAY] Payment modal dismissed');
                   reject(new Error('Payment cancelled by user'));
                 },
               },
             };
+
+            console.log('🚀 [RAZORPAY] Opening Razorpay checkout with options:', {
+              ...options,
+              key: options.key.substring(0, 15) + '...'
+            });
 
             const rzp = new Razorpay(options);
             rzp.open();

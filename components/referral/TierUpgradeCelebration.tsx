@@ -144,6 +144,7 @@ export default function TierUpgradeCelebration({
                   },
                 ]}
               />
+            );
           })}
         </View>
 
@@ -252,7 +253,7 @@ export default function TierUpgradeCelebration({
         </Animated.View>
       </Animated.View>
     </Modal>
-);
+  );
 }
 
 const styles = StyleSheet.create({

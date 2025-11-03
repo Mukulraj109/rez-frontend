@@ -1,4 +1,4 @@
-// Subscription Plans Page
+// Subscription Plans Page - Production Ready with Toast Notifications
 // Display all subscription tiers with pricing, features, and upgrade options
 
 import React, { useState, useEffect, useLayoutEffect } from 'react';
@@ -19,13 +19,13 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import subscriptionAPI from '@/services/subscriptionApi';
-import razorpayService from '@/services/razorpayService';
+import stripeApi from '@/services/stripeApi';
 import type { SubscriptionTier as TierType, BillingCycle } from '@/types/subscription.types';
-import RazorpayPaymentForm from '@/components/subscription/RazorpayPaymentForm';
 import PaymentSuccessModal from '@/components/subscription/PaymentSuccessModal';
+import StripePaymentModal from '@/components/subscription/StripePaymentModal';
 import { useAuth } from '@/contexts/AuthContext';
-import type { RazorpayPaymentData } from '@/types/payment.types';
-import { showToast } from '@/components/common/ToastManager';
+import { Platform } from 'react-native';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function SubscriptionPlansPage() {
   const router = useRouter();
@@ -37,16 +37,16 @@ export default function SubscriptionPlansPage() {
   const [selectedTier, setSelectedTier] = useState<'premium' | 'vip' | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
 
-  // Razorpay payment states
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  // Stripe payment states
+  const [showStripeModal, setShowStripeModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [paymentData, setPaymentData] = useState<{
-    paymentUrl: string;
-    orderId: string;
+    subscriptionId: string;
     amount: number;
     tier: 'premium' | 'vip';
     billingCycle: BillingCycle;
   } | null>(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   // Hide the default navigation header
   useLayoutEffect(() => {
@@ -89,18 +89,24 @@ export default function SubscriptionPlansPage() {
   const [validatingPromo, setValidatingPromo] = useState(false);
   const [finalPrice, setFinalPrice] = useState<number | null>(null);
 
-  // Handle subscription purchase with payment flow
+  // Handle subscription purchase with Stripe payment flow
   const handleSubscribe = async (tier: 'premium' | 'vip') => {
     try {
       setIsSubscribing(true);
       setSelectedTier(tier);
 
-      // Check if Razorpay is configured
-      if (!razorpayService.isConfigured()) {
-        showToast({
-          message: 'Razorpay is not configured. Please contact support or try again later.',
-          type: 'error',
-        });
+      console.log('[SUBSCRIPTION] Starting subscription flow for tier:', tier);
+      console.log('[SUBSCRIPTION] Platform:', Platform.OS);
+      console.log('[SUBSCRIPTION] Stripe configured:', stripeApi.isConfigured());
+
+      // Check if Stripe is configured
+      if (!stripeApi.isConfigured()) {
+        console.error('[SUBSCRIPTION] Stripe not configured');
+        if (Platform.OS === 'web') {
+          toast.error('Payment not available. Stripe is not configured properly.');
+        } else {
+          Alert.alert('Payment Not Available', 'Stripe is not configured properly.\n\nPlease ensure EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY is set in your .env file.', [{ text: 'OK' }]);
+        }
         setIsSubscribing(false);
         setSelectedTier(null);
         return;
@@ -115,137 +121,143 @@ export default function SubscriptionPlansPage() {
         ? prices[tier].monthly
         : prices[tier].yearly;
 
-      // Show confirmation dialog with terms
-      Alert.alert(
-        'Confirm Subscription',
-        `Subscribe to ${tier === 'vip' ? 'VIP' : 'Premium'} plan for ${selectedBilling === 'monthly' ? 'monthly' : 'yearly'} billing?\n\nAmount: ₹${amount}\n\nYou will be redirected to Razorpay for secure payment.`,
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-            onPress: () => {
-              setIsSubscribing(false);
-              setSelectedTier(null);
-            },
-          },
-          {
-            text: 'Proceed to Payment',
-            onPress: async () => {
-              try {
-                // Call backend to create subscription and get payment URL
-                const result = await subscriptionAPI.subscribeToPlan(
-                  tier,
-                  selectedBilling,
-                  'razorpay',
-                  promoCode || undefined
-                );
+      console.log('[SUBSCRIPTION] Amount:', amount, 'INR');
 
-                if (result && result.paymentUrl) {
-                  // Store payment data
-                  setPaymentData({
-                    paymentUrl: result.paymentUrl,
-                    orderId: result.subscription._id,
-                    amount: amount,
-                    tier: tier,
-                    billingCycle: selectedBilling,
-                  });
+      // Show confirmation dialog - Web-compatible version
+      const confirmMessage = `Subscribe to ${tier === 'vip' ? 'VIP' : 'Premium'} plan for ${selectedBilling === 'monthly' ? 'monthly' : 'yearly'} billing?\n\nAmount: ₹${amount}\n\nYou will be redirected to Stripe for secure payment.`;
 
-                  // Show payment modal
-                  setShowPaymentModal(true);
-                  setIsSubscribing(false);
-                } else {
-                  throw new Error('Failed to initiate payment');
-                }
-              } catch (error: any) {
-                console.error('[SUBSCRIPTION] Error:', error);
-                showToast({
-                  message: error.message || 'Failed to initiate payment. Please try again.',
-                  type: 'error',
-                });
+      console.log('[SUBSCRIPTION] Showing confirmation dialog...');
+
+      // Use window.confirm for web, Alert.alert for native
+      if (Platform.OS === 'web') {
+        const confirmed = window.confirm(confirmMessage);
+        console.log('[SUBSCRIPTION] User confirmed (web):', confirmed);
+
+        if (!confirmed) {
+          console.log('[SUBSCRIPTION] User cancelled');
+          setIsSubscribing(false);
+          setSelectedTier(null);
+          return;
+        }
+
+        // User confirmed, proceed with payment
+        try {
+          console.log('[SUBSCRIPTION] User confirmed, creating subscription...');
+          setProcessingPayment(true);
+
+          toast.loading('Creating your subscription...', { id: 'create-subscription' });
+
+          // Call backend to create subscription
+          console.log('[SUBSCRIPTION] Calling API to create subscription...');
+          const result = await subscriptionAPI.subscribeToPlan(
+            tier,
+            selectedBilling,
+            'stripe',
+            promoCode || undefined
+          );
+
+          console.log('[SUBSCRIPTION] Backend response:', result);
+          console.log('[SUBSCRIPTION] Result success:', result?.subscription ? 'YES' : 'NO');
+
+          if (result && result.subscription) {
+            toast.success('Subscription created! Opening payment...', { id: 'create-subscription' });
+
+            // Show payment modal
+            setPaymentData({
+              subscriptionId: result.subscription._id,
+              amount,
+              tier,
+              billingCycle: selectedBilling,
+            });
+            setShowStripeModal(true);
+            setIsSubscribing(false);
+            setProcessingPayment(false);
+          } else {
+            throw new Error('Failed to create subscription');
+          }
+        } catch (error: any) {
+          console.error('[SUBSCRIPTION] Error:', error);
+          toast.error(error.message || 'Failed to create subscription. Please try again.', { id: 'create-subscription' });
+          setIsSubscribing(false);
+          setSelectedTier(null);
+          setProcessingPayment(false);
+        }
+      } else {
+        // Native platform - use Alert.alert
+        Alert.alert(
+          'Confirm Subscription',
+          confirmMessage,
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => {
                 setIsSubscribing(false);
                 setSelectedTier(null);
-              }
+              },
             },
-          },
-        ]
-      );
+            {
+              text: 'Proceed to Payment',
+              onPress: async () => {
+                try {
+                  console.log('[SUBSCRIPTION] User confirmed, creating subscription...');
+                  setProcessingPayment(true);
+
+                  // Call backend to create subscription
+                  console.log('[SUBSCRIPTION] Calling API to create subscription...');
+                  const result = await subscriptionAPI.subscribeToPlan(
+                    tier,
+                    selectedBilling,
+                    'stripe',
+                    promoCode || undefined
+                  );
+
+                  console.log('[SUBSCRIPTION] Backend response:', result);
+                  console.log('[SUBSCRIPTION] Result success:', result?.subscription ? 'YES' : 'NO');
+
+                  if (result && result.subscription) {
+                    // Show payment modal
+                    setPaymentData({
+                      subscriptionId: result.subscription._id,
+                      amount,
+                      tier,
+                      billingCycle: selectedBilling,
+                    });
+                    setShowStripeModal(true);
+                    setIsSubscribing(false);
+                    setProcessingPayment(false);
+                  } else {
+                    throw new Error('Failed to create subscription');
+                  }
+                } catch (error: any) {
+                  console.error('[SUBSCRIPTION] Error:', error);
+                  Alert.alert(
+                    'Subscription Failed',
+                    error.message || 'Failed to initiate payment. Please try again.'
+                  );
+                  setIsSubscribing(false);
+                  setSelectedTier(null);
+                  setProcessingPayment(false);
+                }
+              },
+            },
+          ]
+        );
+      }
     } catch (error: any) {
-      showToast({
-        message: error.message || 'An error occurred. Please try again.',
-        type: 'error',
-      });
+      console.error('[SUBSCRIPTION] Error:', error);
+      const errorMessage = error.message || 'An error occurred. Please try again.';
+      if (Platform.OS === 'web') {
+        toast.error(errorMessage);
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
       setIsSubscribing(false);
       setSelectedTier(null);
+      setProcessingPayment(false);
     }
   };
 
-  // Handle payment success
-  const handlePaymentSuccess = async (razorpayData: RazorpayPaymentData) => {
-    try {
-      console.log('[SUBSCRIPTION] Payment successful:', razorpayData);
-
-      // Verify payment with backend
-      await razorpayService.verifyPayment(
-        paymentData?.orderId || '',
-        razorpayData
-      );
-
-      // Close payment modal
-      setShowPaymentModal(false);
-
-      // Refresh subscription data
-      await actions.loadSubscription(true);
-
-      // Navigate to payment confirmation page with details
-      router.push({
-        pathname: '/subscription/payment-confirmation',
-        params: {
-          tier: paymentData?.tier || 'premium',
-          amount: paymentData?.amount || 0,
-          billingCycle: paymentData?.billingCycle || 'monthly',
-          transactionId: razorpayData.razorpay_payment_id || paymentData?.orderId || '',
-          status: 'success',
-        },
-      });
-
-      setSelectedTier(null);
-    } catch (error: any) {
-      console.error('[SUBSCRIPTION] Payment verification failed:', error);
-
-      // Navigate to payment confirmation with failure status
-      router.push({
-        pathname: '/subscription/payment-confirmation',
-        params: {
-          tier: paymentData?.tier || 'premium',
-          amount: paymentData?.amount || 0,
-          billingCycle: paymentData?.billingCycle || 'monthly',
-          status: 'failed',
-        },
-      });
-
-      setShowPaymentModal(false);
-      setSelectedTier(null);
-    }
-  };
-
-  // Handle payment failure
-  const handlePaymentFailure = (error: Error) => {
-    console.error('[SUBSCRIPTION] Payment failed:', error);
-    setShowPaymentModal(false);
-    setSelectedTier(null);
-
-    showToast({
-      message: error.message || 'Payment could not be completed. Please try again.',
-      type: 'error',
-    });
-  };
-
-  // Handle payment modal close
-  const handlePaymentClose = () => {
-    setShowPaymentModal(false);
-    setSelectedTier(null);
-    setIsSubscribing(false);
-  };
 
   // Handle success modal close
   const handleSuccessClose = () => {
@@ -253,13 +265,56 @@ export default function SubscriptionPlansPage() {
     setPaymentData(null);
   };
 
+  // Handle Stripe payment modal callbacks
+  const handlePaymentSuccess = () => {
+    console.log('[PAYMENT] Payment successful');
+    setShowStripeModal(false);
+    setSelectedTier(null);
+    setPaymentData(null);
+
+    if (Platform.OS === 'web') {
+      toast.success('Payment successful! Your subscription is now active.', { duration: 5000 });
+    }
+
+    // Reload subscription data
+    actions.loadSubscription(true);
+
+    // Show success modal
+    if (paymentData) {
+      setShowSuccessModal(true);
+    }
+  };
+
+  const handlePaymentClose = () => {
+    console.log('[PAYMENT] Payment modal closed');
+    setShowStripeModal(false);
+    setSelectedTier(null);
+    setIsSubscribing(false);
+    setProcessingPayment(false);
+  };
+
+  const handlePaymentError = (error: Error) => {
+    console.error('[PAYMENT] Payment error:', error);
+    setShowStripeModal(false);
+    setSelectedTier(null);
+    setIsSubscribing(false);
+    setProcessingPayment(false);
+
+    if (Platform.OS === 'web') {
+      toast.error(`Payment failed: ${error.message}`, { duration: 5000 });
+    } else {
+      Alert.alert('Payment Failed', error.message);
+    }
+  };
+
   // Handle promo code application
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) {
-      showToast({
-        message: 'Please enter a promo code',
-        type: 'warning',
-      });
+      if (Platform.OS === 'web') {
+        toast.error('Please enter a promo code');
+      } else {
+        Alert.alert('Error', 'Please enter a promo code');
+      }
       return;
     }
 
@@ -267,6 +322,11 @@ export default function SubscriptionPlansPage() {
     const tierToValidate: 'premium' | 'vip' = selectedTier || 'premium';
 
     setValidatingPromo(true);
+
+    if (Platform.OS === 'web') {
+      toast.loading('Validating promo code...', { id: 'validate-promo' });
+    }
+
     try {
       const response = await subscriptionAPI.validatePromoCode(
         promoCode,
@@ -278,27 +338,32 @@ export default function SubscriptionPlansPage() {
         setPromoValid(true);
         setPromoDiscount(response.data.discount);
         setFinalPrice(response.data.finalPrice);
-        showToast({
-          message: response.data.message || `Promo code applied! You saved ₹${response.data.discount}`,
-          type: 'success',
-        });
+        const successMsg = response.data.message || `Promo code applied! You saved ₹${response.data.discount}`;
+        if (Platform.OS === 'web') {
+          toast.success(successMsg, { id: 'validate-promo' });
+        } else {
+          Alert.alert('Success!', successMsg);
+        }
       } else {
         setPromoValid(false);
         setPromoDiscount(0);
         setFinalPrice(null);
-        showToast({
-          message: response.message || 'This promo code is not valid',
-          type: 'error',
-        });
+        const errorMsg = response.message || 'This promo code is not valid';
+        if (Platform.OS === 'web') {
+          toast.error(errorMsg, { id: 'validate-promo' });
+        } else {
+          Alert.alert('Invalid Code', errorMsg);
+        }
       }
     } catch (error: any) {
       setPromoValid(false);
       setPromoDiscount(0);
       setFinalPrice(null);
-      showToast({
-        message: 'Failed to validate promo code. Please try again.',
-        type: 'error',
-      });
+      if (Platform.OS === 'web') {
+        toast.error('Failed to validate promo code. Please try again.', { id: 'validate-promo' });
+      } else {
+        Alert.alert('Error', 'Failed to validate promo code. Please try again.');
+      }
     } finally {
       setValidatingPromo(false);
     }
@@ -325,16 +390,10 @@ export default function SubscriptionPlansPage() {
                   onPress: async () => {
                     try {
                       await subscriptionAPI.cancelSubscription();
-                      showToast({
-                        message: 'Your subscription has been cancelled',
-                        type: 'success',
-                      });
+                      Alert.alert('Cancelled', 'Your subscription has been cancelled');
                       await actions.loadSubscription(true);
                     } catch (error: any) {
-                      showToast({
-                        message: error.message || 'Failed to cancel subscription',
-                        type: 'error',
-                      });
+                      Alert.alert('Error', error.message || 'Failed to cancel subscription');
                     }
                   },
                 },
@@ -637,23 +696,17 @@ export default function SubscriptionPlansPage() {
         </View>
       </ScrollView>
 
-      {/* Razorpay Payment Modal */}
-      {showPaymentModal && paymentData && (
-        <RazorpayPaymentForm
-          visible={showPaymentModal}
-          paymentUrl={paymentData.paymentUrl}
-          orderId={paymentData.orderId}
-          amount={paymentData.amount}
+      {/* Stripe Payment Modal */}
+      {showStripeModal && paymentData && (
+        <StripePaymentModal
+          visible={showStripeModal}
           tier={paymentData.tier}
+          amount={paymentData.amount}
           billingCycle={paymentData.billingCycle}
-          userDetails={{
-            name: authState.user?.name,
-            email: authState.user?.email,
-            contact: authState.user?.phone,
-          }}
+          subscriptionId={paymentData.subscriptionId}
           onSuccess={handlePaymentSuccess}
-          onFailure={handlePaymentFailure}
           onClose={handlePaymentClose}
+          onError={handlePaymentError}
         />
       )}
 
@@ -667,6 +720,9 @@ export default function SubscriptionPlansPage() {
           onClose={handleSuccessClose}
         />
       )}
+
+      {/* Toast Notifications (Web Only) */}
+      {Platform.OS === 'web' && <Toaster position="top-center" />}
     </ThemedView>
   );
 }

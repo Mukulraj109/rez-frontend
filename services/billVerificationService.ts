@@ -2,7 +2,9 @@
 // Handles OCR, verification, fraud detection, and cashback calculation
 
 import apiClient, { ApiResponse } from './apiClient';
+import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
+import { FILE_SIZE_LIMITS } from '@/utils/fileUploadConstants';
 import {
   OCRExtractedData,
   BillVerificationResult,
@@ -108,14 +110,39 @@ class BillVerificationService {
     location?: string
   ): Promise<ApiResponse<MerchantMatch[]>> {
     try {
+      console.log('🔍 [BILL VERIFICATION] Searching for merchants:', merchantName);
 
-      const response = await apiClient.post<{ matches: MerchantMatch[] }>(
-        '/bills/match-merchant',
-        { merchantName, location }
+      // Validate input
+      if (!merchantName || merchantName.trim().length < 2) {
+        return {
+          success: false,
+          error: 'Merchant name must be at least 2 characters',
+        };
+      }
+
+      // Create timeout promise (30 seconds)
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Merchant search timed out')), 30000)
       );
+
+      // Create search promise
+      const searchPromise = apiClient.post<{ matches: MerchantMatch[] }>(
+        '/bills/match-merchant',
+        {
+          merchantName: merchantName.trim(),
+          location: location?.trim(),
+        }
+      );
+
+      // Race between timeout and search
+      const response = await Promise.race([searchPromise, timeoutPromise]);
 
       if (response.success && response.data) {
         const matches = response.data.matches || [];
+        console.log('✅ [BILL VERIFICATION] Found', matches.length, 'merchant matches');
+
+        // Sort by match score (highest first)
+        matches.sort((a, b) => b.matchScore - a.matchScore);
 
         return {
           success: true,
@@ -123,15 +150,44 @@ class BillVerificationService {
         };
       }
 
+      // No matches found - suggest adding merchant
+      console.log('⚠️ [BILL VERIFICATION] No merchant matches found');
       return {
-        success: false,
-        error: 'No merchant matches found',
+        success: true, // Success but empty results
+        data: [],
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [BILL VERIFICATION] Merchant matching failed:', error);
+
+      // Check if it's a timeout error
+      if (error.message === 'Merchant search timed out') {
+        return {
+          success: false,
+          error: 'Merchant search is taking too long. Please try again or enter merchant details manually.',
+        };
+      }
+
+      // Check if it's a network error
+      if (!error.response && error.message.includes('Network')) {
+        return {
+          success: false,
+          error: 'Unable to search merchants. Please check your internet connection and try again.',
+        };
+      }
+
+      // Backend API not available - provide fallback
+      if (error.response?.status === 404 || error.response?.status === 501) {
+        console.log('⚠️ [BILL VERIFICATION] Merchant search API not available, using fallback');
+        return {
+          success: true,
+          data: [],
+          message: 'Merchant search is temporarily unavailable. Please enter merchant details manually.',
+        };
+      }
+
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to find merchant matches',
+        error: error instanceof Error ? error.message : 'Failed to find merchant matches. Please try entering merchant details manually.',
       };
     }
   }
@@ -480,7 +536,7 @@ class BillVerificationService {
   getBillRequirements() {
     return {
       imageFormats: ['jpg', 'jpeg', 'png', 'heic'],
-      maxFileSize: 10 * 1024 * 1024, // 10MB
+      maxFileSize: FILE_SIZE_LIMITS.MAX_DOCUMENT_SIZE, // 10MB - for bill documents
       minResolution: { width: 800, height: 600 },
       maxBillAge: 30, // days
       minAmount: 50,
@@ -559,7 +615,6 @@ class BillVerificationService {
     }
 
     try {
-      const FileSystem = require('expo-file-system');
       const info = await FileSystem.getInfoAsync(imageUri);
       return info;
     } catch (error) {

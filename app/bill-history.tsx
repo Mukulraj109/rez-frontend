@@ -34,6 +34,7 @@ interface Bill {
   billNumber?: string;
   verificationStatus: 'pending' | 'processing' | 'approved' | 'rejected';
   rejectionReason?: string;
+  resubmissionCount?: number;
   cashbackAmount?: number;
   cashbackStatus?: 'pending' | 'credited' | 'failed';
   createdAt: string;
@@ -310,6 +311,12 @@ export default function BillHistoryPage() {
         {bill.verificationStatus === 'rejected' && bill.rejectionReason && (
           <View style={styles.rejectionContainer}>
             <Text style={styles.rejectionReason}>{bill.rejectionReason}</Text>
+            {bill.resubmissionCount !== undefined && bill.resubmissionCount > 0 && (
+              <Text style={styles.resubmissionCounter}>
+                Resubmitted: {bill.resubmissionCount}/3 times
+                {bill.resubmissionCount < 3 && ` • ${3 - bill.resubmissionCount} attempt${3 - bill.resubmissionCount === 1 ? '' : 's'} remaining`}
+              </Text>
+            )}
           </View>
         )}
       </View>
@@ -425,6 +432,22 @@ export default function BillHistoryPage() {
                       {selectedBill.rejectionReason}
                     </Text>
                   </View>
+                  {selectedBill.resubmissionCount !== undefined && selectedBill.resubmissionCount > 0 && (
+                    <View style={styles.resubmissionDetailContainer}>
+                      <Text style={styles.resubmissionDetailText}>
+                        Resubmitted: {selectedBill.resubmissionCount}/3 times
+                      </Text>
+                      {selectedBill.resubmissionCount < 3 ? (
+                        <Text style={styles.resubmissionDetailSubtext}>
+                          You have {3 - selectedBill.resubmissionCount} attempt{3 - selectedBill.resubmissionCount === 1 ? '' : 's'} remaining
+                        </Text>
+                      ) : (
+                        <Text style={styles.resubmissionLimitText}>
+                          Maximum resubmission limit reached
+                        </Text>
+                      )}
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -724,6 +747,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#EF4444',
   },
+  resubmissionCounter: {
+    fontSize: 11,
+    color: '#DC2626',
+    marginTop: 4,
+    fontWeight: '500',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -875,6 +904,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#EF4444',
     lineHeight: 20,
+  },
+  resubmissionDetailContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#FEF9F2',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+  },
+  resubmissionDetailText: {
+    fontSize: 13,
+    color: '#D97706',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  resubmissionDetailSubtext: {
+    fontSize: 12,
+    color: '#92400E',
+  },
+  resubmissionLimitText: {
+    fontSize: 12,
+    color: '#DC2626',
+    fontWeight: '600',
   },
   resubmitButton: {
     flexDirection: 'row',

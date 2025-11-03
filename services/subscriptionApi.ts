@@ -67,10 +67,18 @@ class SubscriptionAPI {
    */
   async getCurrentSubscription(): Promise<CurrentSubscription> {
     try {
+      console.log('[SUBSCRIPTION API] Fetching current subscription...');
       const response = await apiClient.get<{ data: CurrentSubscription }>('/subscriptions/current');
-      return response.data?.data as CurrentSubscription;
+      console.log('[SUBSCRIPTION API] Raw response:', response);
+      console.log('[SUBSCRIPTION API] Response.data:', response.data);
+
+      // apiClient already extracts the data, so response.data IS the subscription
+      const subscription = response.data as any;
+      console.log('[SUBSCRIPTION API] Extracted subscription:', subscription);
+
+      return subscription as CurrentSubscription;
     } catch (error: any) {
-      console.error('Error fetching current subscription:', error);
+      console.error('[SUBSCRIPTION API] Error fetching current subscription:', error);
       throw error;
     }
   }
@@ -86,6 +94,9 @@ class SubscriptionAPI {
     source?: string
   ): Promise<{ subscription: CurrentSubscription; paymentUrl: string }> {
     try {
+      console.log('[SUBSCRIPTION API] Making request to /subscriptions/subscribe');
+      console.log('[SUBSCRIPTION API] Payload:', { tier, billingCycle, paymentMethod, promoCode });
+
       const response = await apiClient.post<{ data: { subscription: CurrentSubscription; paymentUrl: string } }>('/subscriptions/subscribe', {
         tier,
         billingCycle,
@@ -93,9 +104,23 @@ class SubscriptionAPI {
         promoCode,
         source
       });
-      return response.data?.data as { subscription: CurrentSubscription; paymentUrl: string };
+
+      console.log('[SUBSCRIPTION API] Response received:', response);
+      console.log('[SUBSCRIPTION API] Returning data:', response.data);
+      return response.data as { subscription: CurrentSubscription; paymentUrl: string };
     } catch (error: any) {
-      console.error('Error subscribing to plan:', error);
+      console.error('[SUBSCRIPTION API] Error subscribing to plan:', error);
+      console.error('[SUBSCRIPTION API] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+
+      // Check if it's an authentication error
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        throw new Error('Please log in to subscribe to a plan. You must be authenticated to purchase a subscription.');
+      }
+
       throw error;
     }
   }

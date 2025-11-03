@@ -152,10 +152,18 @@ class ApiClient {
         if (response.status === 401 && this.authToken) {
           // Check if the error is due to expired token
           const errorMessage = responseData.message?.toLowerCase() || '';
-          const isTokenExpired = errorMessage.includes('expired') || errorMessage.includes('invalid') || errorMessage.includes('jwt');
+          const isTokenExpired = errorMessage.includes('expired') || errorMessage.includes('invalid') || errorMessage.includes('jwt') || errorMessage.includes('token');
 
+          console.log('⚠️ [API CLIENT] 401 Unauthorized detected', {
+            hasToken: !!this.authToken,
+            errorMessage: responseData.message,
+            isTokenExpired,
+            hasRefreshCallback: !!this.refreshTokenCallback,
+          });
+
+          // Only try to refresh if we have a refresh callback and token appears expired
           if (isTokenExpired && this.refreshTokenCallback) {
-            console.log('🔄 [API CLIENT] 401 error detected (token expired), attempting token refresh...');
+            console.log('🔄 [API CLIENT] Attempting token refresh...');
 
             const refreshSuccess = await this.handleTokenRefresh();
             if (refreshSuccess) {
@@ -163,22 +171,19 @@ class ApiClient {
               // Retry the original request with new token
               return this.makeRequest<T>(endpoint, options);
             } else {
-              console.error('❌ [API CLIENT] Token refresh failed, clearing auth token and logging out');
-              // Clear the auth token and trigger logout
-              this.setAuthToken(null);
+              console.error('❌ [API CLIENT] Token refresh failed');
+              // Only logout if refresh explicitly failed
               if (this.logoutCallback) {
-                console.log('🚪 [API CLIENT] Triggering logout callback');
+                console.log('🚪 [API CLIENT] Triggering logout callback (refresh failed)');
                 this.logoutCallback();
               }
             }
           } else {
-            console.error('❌ [API CLIENT] 401 error but not token-related, clearing auth token and logging out');
-            // Clear the auth token and trigger logout
-            this.setAuthToken(null);
-            if (this.logoutCallback) {
-              console.log('🚪 [API CLIENT] Triggering logout callback');
-              this.logoutCallback();
-            }
+            // Don't automatically logout on 401 - just return the error
+            // Let the calling code decide what to do
+            console.warn('⚠️ [API CLIENT] 401 error but NOT logging out automatically');
+            console.warn('Reason: Either no refresh callback or error is not token-related');
+            console.warn('Error message:', responseData.message);
           }
         }
 

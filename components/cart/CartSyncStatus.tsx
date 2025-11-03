@@ -107,6 +107,7 @@ export function CartSyncStatus({ showDetails = false, compact = false }: CartSyn
           {getSyncMessage()}
         </Text>
       </TouchableOpacity>
+    );
   }
 
   return (

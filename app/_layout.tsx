@@ -2,10 +2,12 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import NetInfo from '@react-native-community/netinfo';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { AppProvider } from '@/contexts/AppContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
@@ -21,15 +23,125 @@ import { SecurityProvider } from '@/contexts/SecurityContext';
 import { AppPreferencesProvider } from '@/contexts/AppPreferencesContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { GamificationProvider } from '@/contexts/GamificationContext';
+import { OfflineQueueProvider } from '@/contexts/OfflineQueueContext';
 import ToastManager from '@/components/common/ToastManager';
 import BottomNavigation from '@/components/navigation/BottomNavigation';
+import { billUploadAnalytics } from '@/services/billUploadAnalytics';
+import { errorReporter } from '@/utils/errorReporter';
+import apiClient from '@/services/apiClient';
+import { API_CONFIG, APP_CONFIG } from '@/config/env';
 // import AuthDebugger from '@/components/common/AuthDebugger';
 
+/**
+ * Root Layout Component
+ *
+ * Initializes all app-wide providers, contexts, and services.
+ * Sets up proper error handling, analytics, and network monitoring.
+ */
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+
+  // Initialize app services on mount
+  useEffect(() => {
+    initializeApp();
+  }, []);
+
+  /**
+   * Initialize app-level services and monitoring
+   */
+  const initializeApp = async () => {
+    try {
+      console.log('🚀 [APP] Initializing application services...');
+
+      // 1. Configure API Client
+      apiClient.setBaseURL(API_CONFIG.baseUrl);
+      console.log('✅ [APP] API Client configured:', API_CONFIG.baseUrl);
+
+      // 2. Initialize Error Reporter
+      errorReporter.setAppVersion(APP_CONFIG.version);
+      errorReporter.setEnabled(true);
+      console.log('✅ [APP] Error Reporter initialized');
+
+      // 3. Initialize Analytics
+      // Note: Analytics flush interval is already configured in billUploadAnalytics constructor (30s)
+      console.log('✅ [APP] Analytics initialized');
+
+      // 4. Setup Network Monitoring
+      const unsubscribe = NetInfo.addEventListener(state => {
+        const isConnected = state.isConnected ?? false;
+        console.log(`📡 [APP] Network status changed: ${isConnected ? 'ONLINE' : 'OFFLINE'}`);
+
+        // Log network events to analytics
+        billUploadAnalytics.trackUserAction('network_status_changed', {
+          isConnected,
+          type: state.type,
+          isInternetReachable: state.isInternetReachable,
+        });
+
+        // Add breadcrumb for error tracking
+        errorReporter.addBreadcrumb({
+          type: 'network',
+          message: `Network ${isConnected ? 'connected' : 'disconnected'}`,
+          data: {
+            type: state.type,
+            isInternetReachable: state.isInternetReachable,
+          },
+        });
+      });
+
+      console.log('✅ [APP] Network monitoring initialized');
+      console.log('🎉 [APP] Application initialization complete!');
+
+      // Return cleanup function
+      return () => {
+        console.log('🧹 [APP] Cleaning up network listener');
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error('❌ [APP] Failed to initialize app:', error);
+      errorReporter.captureError(
+        error instanceof Error ? error : new Error('App initialization failed'),
+        { context: 'RootLayout.initializeApp' }
+      );
+    }
+  };
+
+  /**
+   * Handle offline queue sync errors
+   */
+  const handleQueueSyncError = (error: Error) => {
+    console.error('❌ [APP] Offline queue sync failed:', error);
+    errorReporter.captureError(error, {
+      context: 'OfflineQueue.syncError',
+      component: 'RootLayout',
+    });
+    // Don't show user error for sync failures - they will retry automatically
+  };
+
+  /**
+   * Handle offline queue sync completion
+   */
+  const handleQueueSyncComplete = (result: any) => {
+    console.log('✅ [APP] Offline queue synced:', result);
+    billUploadAnalytics.trackSyncCompleted(result.processed || 0);
+  };
+
+  /**
+   * Handle error boundary errors
+   */
+  const handleErrorBoundaryError = (error: Error, errorInfo: React.ErrorInfo) => {
+    console.error('❌ [APP] Error Boundary caught error:', error);
+    errorReporter.captureError(error, {
+      context: 'ErrorBoundary',
+      component: 'RootLayout',
+      metadata: {
+        componentStack: errorInfo.componentStack,
+      },
+    });
+  };
 
   if (!loaded) {
     // Async font loading only occurs in development.
@@ -37,23 +149,28 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary>
-      <AppProvider>
-        <AuthProvider>
-          <SubscriptionProvider>
-            <GamificationProvider>
-              <SocketProvider>
-                <LocationProvider>
-                  <GreetingProvider>
-                    <CartProvider>
-                      <OffersProvider>
-                        <CategoryProvider>
-                          <ProfileProvider>
-                            <WishlistProvider>
-                              <NotificationProvider>
-                                <SecurityProvider>
-                                  <AppPreferencesProvider>
-                                    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ErrorBoundary onError={handleErrorBoundaryError}>
+      <OfflineQueueProvider
+        autoSync={true}
+        onSyncComplete={handleQueueSyncComplete}
+        onSyncError={handleQueueSyncError}
+      >
+        <AppProvider>
+          <AuthProvider>
+            <SubscriptionProvider>
+              <GamificationProvider>
+                <SocketProvider>
+                  <LocationProvider>
+                    <GreetingProvider>
+                      <CartProvider>
+                        <OffersProvider>
+                          <CategoryProvider>
+                            <ProfileProvider>
+                              <WishlistProvider>
+                                <NotificationProvider>
+                                  <SecurityProvider>
+                                    <AppPreferencesProvider>
+                                      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
                   {/* App Entry Point */}
                   <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -187,22 +304,23 @@ export default function RootLayout() {
                 {/* Debug component for development */}
                 {/* {process.env.NODE_ENV === 'development' && <AuthDebugger />} */}
 
-                                </ThemeProvider>
-                              </AppPreferencesProvider>
-                            </SecurityProvider>
-                          </NotificationProvider>
-                        </WishlistProvider>
-                      </ProfileProvider>
-                    </CategoryProvider>
-                  </OffersProvider>
-                </CartProvider>
-              </GreetingProvider>
-            </LocationProvider>
-          </SocketProvider>
-        </GamificationProvider>
-        </SubscriptionProvider>
-        </AuthProvider>
-      </AppProvider>
+                                      </ThemeProvider>
+                                    </AppPreferencesProvider>
+                                  </SecurityProvider>
+                                </NotificationProvider>
+                              </WishlistProvider>
+                            </ProfileProvider>
+                          </CategoryProvider>
+                        </OffersProvider>
+                      </CartProvider>
+                    </GreetingProvider>
+                  </LocationProvider>
+                </SocketProvider>
+              </GamificationProvider>
+            </SubscriptionProvider>
+          </AuthProvider>
+        </AppProvider>
+      </OfflineQueueProvider>
     </ErrorBoundary>
   );
 }

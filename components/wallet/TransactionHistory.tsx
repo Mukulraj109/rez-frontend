@@ -86,6 +86,7 @@ export default function TransactionHistory({
             isActive: tab.id === activeTab,
           };
         })
+      );
       setTabs(updatedTabs);
     } catch (error) {
       console.error('Error updating tab counts:', error);
@@ -106,11 +107,12 @@ export default function TransactionHistory({
       setHasMore(true);
       
       // Update active state in tabs
-      setTabs(prev => 
-        prev.map(tab => ({ 
-          ...tab, 
-          isActive: tab.id === tabId 
+      setTabs(prev =>
+        prev.map(tab => ({
+          ...tab,
+          isActive: tab.id === tabId
         }))
+      );
     }
   };
 
@@ -132,11 +134,13 @@ export default function TransactionHistory({
 
   // Render transaction item
   const renderTransaction = ({ item }: { item: Transaction }) => (
-    <TransactionCard 
-      transaction={item} 
+    <TransactionCard
+      transaction={item}
       onPress={onTransactionPress}
       showDate={true}
     />
+  );
+
   // Render footer with loading indicator
   const renderFooter = () => {
     if (!isLoadingMore) return null;
@@ -146,6 +150,7 @@ export default function TransactionHistory({
         <ActivityIndicator size="small" color="#8B5CF6" />
         <ThemedText style={styles.loadingText}>Loading more transactions...</ThemedText>
       </View>
+    );
   };
 
   // Empty state
@@ -156,6 +161,8 @@ export default function TransactionHistory({
         No transactions available for the selected category.
       </ThemedText>
     </View>
+  );
+
   // Loading state
   if (isLoading && transactions.length === 0) {
     return (
@@ -170,6 +177,7 @@ export default function TransactionHistory({
           <ThemedText style={styles.loadingText}>Loading transactions...</ThemedText>
         </View>
       </View>
+    );
   }
 
   return (
@@ -215,7 +223,7 @@ export default function TransactionHistory({
         ]}
       />
     </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({

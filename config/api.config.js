@@ -1,6 +1,10 @@
 // API Configuration for REZ App
 // This file centralizes all API configuration
 
+// Import file size limits from centralized constants
+// Note: Using require for compatibility with .js file
+const { FILE_SIZE_LIMITS } = require('../utils/fileUploadConstants');
+
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 // Backend API configuration
@@ -207,7 +211,7 @@ const API_CONFIG = {
 
   // File upload configuration
   UPLOAD: {
-    MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
+    MAX_FILE_SIZE: FILE_SIZE_LIMITS.MAX_DOCUMENT_SIZE, // 10MB - for documents and general uploads
     ALLOWED_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
     IMAGE_QUALITY: 0.8,
     MAX_DIMENSIONS: {

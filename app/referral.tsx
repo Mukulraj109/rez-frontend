@@ -1,7 +1,7 @@
 // Referral Program Page
 // Invite friends and earn rewards
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,7 @@ import {
   type ReferralStats,
   type ReferralHistoryItem,
 } from '@/services/referralApi';
+import { anonymizeEmail } from '@/utils/privacy';
 
 const ReferralPage = () => {
   const router = useRouter();
@@ -43,62 +45,192 @@ const ReferralPage = () => {
     shareMessage: string;
   } | null>(null);
 
-  // Fetch referral data
-  const fetchReferralData = async () => {
-    try {
-      const [statsData, historyData, codeData] = await Promise.all([
-        getReferralStats(),
-        getReferralHistory(),
-        getReferralCode(),
-      ]);
+  // Refs for cleanup
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
-      setStats(statsData);
-      setHistory(historyData);
-      setCodeInfo(codeData);
+  // ✅ FIX #1: Authentication verification
+  useEffect(() => {
+    // Check if user is authenticated before loading data
+    if (!state.isAuthenticated) {
+      Alert.alert(
+        'Authentication Required',
+        'Please sign in to view your referral information',
+        [{ text: 'Sign In', onPress: () => router.replace('/sign-in') }]
+      );
+      return;
+    }
+
+    fetchReferralData();
+
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [state.isAuthenticated]);
+
+  // ✅ FIX #2: Individual try-catch for each API (fix race condition)
+  const fetchReferralData = async () => {
+    // Check auth again before API calls
+    if (!state.isAuthenticated) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    let hasError = false;
+
+    // Fetch stats (independent)
+    try {
+      const statsData = await getReferralStats();
+      if (isMountedRef.current) {
+        setStats(statsData);
+      }
     } catch (error) {
-      console.error('Error fetching referral data:', error);
-      Alert.alert('Error', 'Failed to load referral data');
-    } finally {
+      console.error('Error fetching referral stats:', error);
+      hasError = true;
+      // Don't fail entire page, just show empty stats
+      if (isMountedRef.current) {
+        setStats(null);
+      }
+    }
+
+    // Fetch history (independent)
+    try {
+      const historyData = await getReferralHistory();
+      if (isMountedRef.current) {
+        setHistory(historyData || []);
+      }
+    } catch (error) {
+      console.error('Error fetching referral history:', error);
+      hasError = true;
+      // Don't fail entire page, just show empty history
+      if (isMountedRef.current) {
+        setHistory([]);
+      }
+    }
+
+    // Fetch code (independent)
+    try {
+      const codeData = await getReferralCode();
+      if (isMountedRef.current) {
+        setCodeInfo(codeData);
+      }
+    } catch (error) {
+      console.error('Error fetching referral code:', error);
+      hasError = true;
+      // Show error for code since it's critical
+      if (isMountedRef.current) {
+        Alert.alert('Error', 'Failed to load referral code. Please try again.');
+      }
+    }
+
+    // Only show error if ALL API calls failed
+    if (hasError && isMountedRef.current) {
+      // Don't show alert if at least one API succeeded
+      const hasData = stats !== null || history.length > 0 || codeInfo !== null;
+      if (!hasData) {
+        Alert.alert('Error', 'Failed to load referral data. Please check your connection.');
+      }
+    }
+
+    if (isMountedRef.current) {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchReferralData();
-  }, []);
-
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
+    if (!state.isAuthenticated) {
+      Alert.alert('Error', 'Please sign in to refresh data');
+      return;
+    }
     setRefreshing(true);
     fetchReferralData();
-  };
+  }, [state.isAuthenticated]);
 
   const referralCode = codeInfo?.referralCode || 'LOADING...';
   const referralLink = codeInfo?.referralLink || `https://rezapp.com/invite/${referralCode}`;
 
-  const handleCopyCode = async () => {
-    await Clipboard.setStringAsync(referralCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    Alert.alert('Copied!', 'Referral code copied to clipboard');
-  };
-
-  const handleShareReferral = async () => {
+  // ✅ FIX #3: Fix memory leak from setTimeout (add cleanup)
+  const handleCopyCode = useCallback(async () => {
     try {
+      if (!referralCode || referralCode === 'LOADING...') {
+        Alert.alert('Error', 'Referral code not loaded yet');
+        return;
+      }
+
+      await Clipboard.setStringAsync(referralCode);
+
+      if (isMountedRef.current) {
+        setCopied(true);
+      }
+
+      // Clear existing timeout
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+
+      // Set new timeout with cleanup
+      copyTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          setCopied(false);
+        }
+      }, 2000);
+
+      Alert.alert('Copied!', 'Referral code copied to clipboard');
+    } catch (error) {
+      console.error('Error copying code:', error);
+      Alert.alert('Error', 'Failed to copy referral code');
+    }
+  }, [referralCode]);
+
+  // ✅ FIX #4: Fix unhandled share rejection (add error handling)
+  const handleShareReferral = useCallback(async () => {
+    try {
+      if (!referralCode || referralCode === 'LOADING...') {
+        Alert.alert('Error', 'Referral code not loaded yet');
+        return;
+      }
+
       const shareMessage = codeInfo?.shareMessage ||
         `Join me on REZ App and get ₹30 off on your first order! Use my referral code: ${referralCode}\n\nDownload now: ${referralLink}`;
 
-      await Share.share({
+      const result = await Share.share({
         message: shareMessage,
         title: 'Join REZ App',
       });
 
-      // Track share event (using whatsapp as default since native share doesn't specify platform)
-      await trackShare('whatsapp');
-    } catch (error) {
-      console.error('Error sharing:', error);
+      // Track share event only if user actually shared
+      if (result.action === Share.sharedAction) {
+        try {
+          // Track share event (using whatsapp as default since native share doesn't specify platform)
+          await trackShare('whatsapp');
+        } catch (trackError) {
+          // Don't show error to user for tracking failure
+          console.error('Error tracking share:', trackError);
+        }
+      }
+    } catch (error: any) {
+      // Handle specific share errors
+      if (error?.message?.includes('User did not share')) {
+        // User cancelled share, don't show error
+        console.log('User cancelled share');
+      } else {
+        console.error('Error sharing:', error);
+        Alert.alert('Error', 'Failed to share referral. Please try again.');
+      }
     }
-  };
+  }, [referralCode, referralLink, codeInfo?.shareMessage]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -114,6 +246,10 @@ const ReferralPage = () => {
         return { backgroundColor: '#8B5CF6' };
     }
   };
+
+  // Performance optimization: Memoize calculated values
+  const totalReferrals = useMemo(() => stats?.totalReferrals || 0, [stats?.totalReferrals]);
+  const totalEarned = useMemo(() => stats?.totalEarned || 0, [stats?.totalEarned]);
 
   if (loading) {
     return (
@@ -151,6 +287,8 @@ const ReferralPage = () => {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to previous screen"
           >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
@@ -178,6 +316,8 @@ const ReferralPage = () => {
             <TouchableOpacity
               style={styles.copyButton}
               onPress={handleCopyCode}
+              accessibilityLabel="Copy referral code"
+              accessibilityHint="Copies your referral code to clipboard"
             >
               <Ionicons
                 name={copied ? 'checkmark' : 'copy-outline'}
@@ -190,6 +330,8 @@ const ReferralPage = () => {
           <TouchableOpacity
             style={styles.shareButton}
             onPress={handleShareReferral}
+            accessibilityLabel="Share referral"
+            accessibilityHint="Opens share menu to invite friends"
           >
             <Ionicons name="share-social" size={20} color="white" />
             <Text style={styles.shareButtonText}>Share with Friends</Text>
@@ -244,7 +386,7 @@ const ReferralPage = () => {
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <ThemedText style={styles.statValue}>
-                {stats?.totalReferrals || 0}
+                {totalReferrals}
               </ThemedText>
               <Text style={styles.statLabel}>Total Referrals</Text>
             </View>
@@ -253,7 +395,7 @@ const ReferralPage = () => {
 
             <View style={styles.statItem}>
               <ThemedText style={styles.statValue}>
-                ₹{stats?.totalEarned || 0}
+                ₹{totalEarned}
               </ThemedText>
               <Text style={styles.statLabel}>Total Earned</Text>
             </View>
@@ -281,40 +423,65 @@ const ReferralPage = () => {
           )}
         </View>
 
+        {/* View Dashboard Button */}
+        <TouchableOpacity
+          style={styles.dashboardButton}
+          onPress={() => router.push('/referral/dashboard' as any)}
+          accessibilityLabel="View full dashboard"
+          accessibilityHint="Opens the full referral dashboard with tier progression and leaderboard"
+        >
+          <LinearGradient
+            colors={['#8B5CF6', '#7C3AED']}
+            style={styles.dashboardButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Ionicons name="trophy" size={24} color="white" />
+            <Text style={styles.dashboardButtonText}>View Full Dashboard</Text>
+            <Ionicons name="chevron-forward" size={24} color="white" />
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* Referral History */}
         {history.length > 0 && (
           <View style={styles.section}>
             <ThemedText style={styles.sectionTitle}>Referral History</ThemedText>
-            {history.slice(0, 5).map((item) => (
-              <View key={item.id} style={styles.historyCard}>
-                <View style={styles.historyHeader}>
-                  <View>
-                    <ThemedText style={styles.historyName}>{item.referredUser.name}</ThemedText>
-                    <Text style={styles.historyPhone}>
-                      {item.referredUser.email || 'No email'}
+            <FlatList
+              data={history.slice(0, 5)}
+              scrollEnabled={false}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.historyCard}>
+                  <View style={styles.historyHeader}>
+                    <View>
+                      <ThemedText style={styles.historyName}>{item.referredUser?.name || 'User'}</ThemedText>
+                      <Text style={styles.historyPhone}>
+                        {/* ✅ FIX #5: Anonymize PII (GDPR compliance) */}
+                        {item.referredUser?.email ? anonymizeEmail(item.referredUser.email) : 'No email'}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBadge, getStatusStyle(item.status)]}>
+                      <Text style={styles.statusText}>{item.status}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.historyReward}>
+                    <Ionicons name="cash-outline" size={16} color="#8B5CF6" />
+                    <Text style={styles.rewardText}>
+                      {item.rewardStatus === 'credited'
+                        ? `Earned ₹${item.rewardAmount}`
+                        : `${item.rewardStatus === 'pending' ? 'Pending' : 'Cancelled'} ₹${item.rewardAmount}`}
                     </Text>
                   </View>
-                  <View style={[styles.statusBadge, getStatusStyle(item.status)]}>
-                    <Text style={styles.statusText}>{item.status}</Text>
-                  </View>
-                </View>
-                <View style={styles.historyReward}>
-                  <Ionicons name="cash-outline" size={16} color="#8B5CF6" />
-                  <Text style={styles.rewardText}>
-                    {item.rewardStatus === 'credited'
-                      ? `Earned ₹${item.rewardAmount}`
-                      : `${item.rewardStatus === 'pending' ? 'Pending' : 'Cancelled'} ₹${item.rewardAmount}`}
+                  <Text style={styles.historyDate}>
+                    {new Date(item.createdAt).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
                   </Text>
                 </View>
-                <Text style={styles.historyDate}>
-                  {new Date(item.createdAt).toLocaleDateString('en-IN', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric'
-                  })}
-                </Text>
-              </View>
-            ))}
+              )}
+            />
           </View>
         )}
 
@@ -607,6 +774,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
   },
+  dashboardButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  dashboardButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  dashboardButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
+    flex: 1,
+    textAlign: 'center',
+  },
 });
 
-export default ReferralPage;
+export default React.memo(ReferralPage);

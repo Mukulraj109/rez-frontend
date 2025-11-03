@@ -79,6 +79,8 @@ export default function QuickReorder({ limit = 5, onViewAll }: QuickReorderProps
         )}
       </View>
     </TouchableOpacity>
+  );
+
   const renderEmpty = () => (
     <View style={styles.emptyState}>
       <Text style={styles.emptyIcon}>📦</Text>
@@ -90,6 +92,8 @@ export default function QuickReorder({ limit = 5, onViewAll }: QuickReorderProps
         <Text style={styles.shopButtonText}>Start Shopping</Text>
       </TouchableOpacity>
     </View>
+  );
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -100,6 +104,7 @@ export default function QuickReorder({ limit = 5, onViewAll }: QuickReorderProps
           <ActivityIndicator size="small" color="#6366f1" />
         </View>
       </View>
+    );
   }
 
   if (error || items.length === 0) {
@@ -128,7 +133,7 @@ export default function QuickReorder({ limit = 5, onViewAll }: QuickReorderProps
         ListEmptyComponent={renderEmpty}
       />
     </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({

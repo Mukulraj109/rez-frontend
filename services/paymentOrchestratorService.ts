@@ -510,6 +510,7 @@ class PaymentOrchestratorService {
     if (preferences?.preferredMethod) {
       const preferredMethod = methods.find(
         (m) => m.type === preferences.preferredMethod && m.isAvailable
+      );
       if (preferredMethod) {
         return preferredMethod;
       }
@@ -519,6 +520,7 @@ class PaymentOrchestratorService {
     if (preferences?.lastUsedMethod) {
       const lastUsedMethod = methods.find(
         (m) => m.type === preferences.lastUsedMethod && m.isAvailable
+      );
       if (lastUsedMethod) {
         return lastUsedMethod;
       }

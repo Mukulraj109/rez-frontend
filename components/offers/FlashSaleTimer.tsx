@@ -69,6 +69,7 @@ const FlashSaleTimer: React.FC<FlashSaleTimerProps> = ({
       <View style={[styles.container, compact && styles.containerCompact]}>
         <Text style={styles.expiredText}>Sale Ended</Text>
       </View>
+    );
   }
 
   const formatNumber = (num: number): string => {
@@ -138,7 +139,8 @@ const FlashSaleTimer: React.FC<FlashSaleTimerProps> = ({
         </View>
       )}
     </View>
-};
+  );
+}
 
 const styles = StyleSheet.create({
   container: {

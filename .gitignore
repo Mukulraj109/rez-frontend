@@ -33,15 +33,9 @@ yarn-error.*
 # local env files
 .env
 .env*.local
-.env.production
-.env.development
 
-# Sensitive documentation files
-contexts/*STRIPE*.md
-contexts/*KEYS*.md
-contexts/*SECRET*.md
-contexts/*PASSWORD*.md
-contexts/*API*.md
+# Sensitive context files
+contexts/
 
 # typescript
 *.tsbuildinfo

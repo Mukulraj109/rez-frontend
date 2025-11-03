@@ -3,9 +3,10 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { FILE_SIZE_LIMITS, UPLOAD_TIMEOUTS, formatFileSize } from '@/utils/fileUploadConstants';
 
 const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5001/api';
-const UPLOAD_TIMEOUT = 120000; // 120 seconds timeout for image upload (increased)
+const UPLOAD_TIMEOUT = UPLOAD_TIMEOUTS.IMAGE; // Use centralized timeout
 
 interface UploadResult {
   success: boolean;
@@ -44,13 +45,13 @@ export const uploadProfileImage = async (imageUri: string, token?: string): Prom
       // On web, imageUri is a blob URL, we need to fetch it first
       console.log('🌐 [IMAGE UPLOAD] Converting blob for web...');
       const blob = await fetch(imageUri).then(r => r.blob());
-      console.log(`📦 [IMAGE UPLOAD] Blob size: ${(blob.size / 1024 / 1024).toFixed(2)}MB`);
-      
-      // Check file size (max 5MB)
-      if (blob.size > 5 * 1024 * 1024) {
+      console.log(`📦 [IMAGE UPLOAD] Blob size: ${formatFileSize(blob.size)}`);
+
+      // Check file size using centralized limit
+      if (blob.size > FILE_SIZE_LIMITS.MAX_IMAGE_SIZE) {
         return {
           success: false,
-          error: 'Image too large. Please select an image smaller than 5MB.'
+          error: `Image too large. Please select an image smaller than ${formatFileSize(FILE_SIZE_LIMITS.MAX_IMAGE_SIZE)}.`
         };
       }
       

@@ -348,7 +348,9 @@ export default function EventFilters({
           </TouchableOpacity>
         </View>
       </ThemedView>
-    </Modal>}
+    </Modal>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {

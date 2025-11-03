@@ -1,19 +1,29 @@
-// components/common/ErrorBoundary.tsx - Error boundary for catching component errors
+/**
+ * ErrorBoundary Component
+ * Catches React errors and displays fallback UI
+ */
 
-import React, { Component, ReactNode } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import logger from '@/utils/logger';
 
 interface Props {
   children: ReactNode;
-  fallback?: (error: Error, resetError: () => void) => ReactNode;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  onReset?: () => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
+  errorInfo: ErrorInfo | null;
 }
 
 class ErrorBoundary extends Component<Props, State> {
@@ -22,6 +32,7 @@ class ErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
+      errorInfo: null,
     };
   }
 
@@ -29,45 +40,64 @@ class ErrorBoundary extends Component<Props, State> {
     return {
       hasError: true,
       error,
+      errorInfo: null,
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log error to error tracking service
-    logger.error('Error Boundary caught an error:', error, errorInfo);
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
 
-    // Call custom error handler if provided
+    this.setState({
+      error,
+      errorInfo,
+    });
+
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
   }
 
-  resetError = () => {
+  handleReset = () => {
     this.setState({
       hasError: false,
       error: null,
+      errorInfo: null,
     });
+
+    if (this.props.onReset) {
+      this.props.onReset();
+    }
   };
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback if provided
       if (this.props.fallback) {
-        return this.props.fallback(this.state.error!, this.resetError);
+        return this.props.fallback;
       }
 
-      // Default fallback UI
       return (
         <View style={styles.container}>
-          <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle" size={64} color="#EF4444" />
-            <Text style={styles.title}>Something went wrong</Text>
+          <View style={styles.content}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="alert-circle" size={64} color="#EF4444" />
+            </View>
+
+            <Text style={styles.title}>Oops! Something went wrong</Text>
+
             <Text style={styles.message}>
-              {this.state.error?.message || 'An unexpected error occurred'}
+              We encountered an unexpected error. Don't worry, your data is safe.
             </Text>
-            <TouchableOpacity style={styles.button} onPress={this.resetError}>
-              <Text style={styles.buttonText}>Try Again</Text>
-            </TouchableOpacity>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={this.handleReset}
+                accessibilityLabel="Try again"
+              >
+                <Ionicons name="refresh" size={20} color="white" />
+                <Text style={styles.primaryButtonText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       );
@@ -80,42 +110,51 @@ class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  errorContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    maxWidth: 400,
+  content: {
     width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  message: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
+  iconContainer: {
     marginBottom: 24,
   },
-  button: {
-    backgroundColor: '#9333EA',
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 12,
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  buttonText: {
-    color: '#fff',
+  message: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  buttonContainer: {
+    width: '100%',
+    gap: 12,
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
+  primaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: 'white',
   },
 });
 

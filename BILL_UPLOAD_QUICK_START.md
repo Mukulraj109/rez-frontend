@@ -1,537 +1,404 @@
-# Bill Upload - Quick Start Guide
+# Bill Upload Quick Start Guide
 
-## 🚀 Quick Setup (5 minutes)
+## Quick Usage
 
-### 1. Use the Enhanced Upload Page
-
-Replace your existing bill upload with the new enhanced version:
+### 1. Basic Upload (Simplest)
 
 ```typescript
-// In your navigation or routing
-import EnhancedBillUpload from '@/app/bill-upload-enhanced';
+import { useBillUpload } from '@/hooks/useBillUpload';
 
-// Use it as your bill upload page
-<EnhancedBillUpload />
-```
+function MyComponent() {
+  const { startUpload, isUploading, percentComplete } = useBillUpload();
 
-Or rename the file:
-```bash
-mv app/bill-upload.tsx app/bill-upload-old.tsx
-mv app/bill-upload-enhanced.tsx app/bill-upload.tsx
-```
-
-### 2. That's It!
-
-The new system works out of the box with:
-- ✅ Automatic OCR extraction
-- ✅ Real-time verification
-- ✅ Fraud detection
-- ✅ Cashback calculation
-- ✅ Manual correction
-- ✅ Error handling
-
----
-
-## 📝 Basic Usage
-
-### Simple Implementation
-
-```typescript
-import { useBillVerification } from '@/hooks/useBillVerification';
-
-function MyBillUpload() {
-  const {
-    workflow,
-    startVerification,
-    submitBill,
-    estimatedCashback,
-    canProceed
-  } = useBillVerification();
-
-  const handleUpload = async (imageUri: string) => {
-    // Start automatic verification
-    await startVerification(imageUri);
-
-    // System will automatically:
-    // - Analyze image quality
-    // - Extract text with OCR
-    // - Match merchant
-    // - Verify bill
-    // - Check for fraud
-    // - Calculate cashback
-
-    // When ready, submit
-    if (canProceed) {
-      await submitBill();
-      alert(`Success! Earn ₹${estimatedCashback}`);
-    }
+  const handleUpload = async () => {
+    await startUpload({
+      billImage: 'file://path/to/bill.jpg',
+      merchantId: 'merchant_123',
+      amount: 1500,
+      billDate: new Date(),
+    });
   };
 
   return (
     <View>
-      <Button onPress={() => handleUpload(imageUri)} />
-      {workflow && <Text>{workflow.currentState.message}</Text>}
+      <Button onPress={handleUpload} disabled={isUploading}>
+        Upload
+      </Button>
+      {isUploading && <Text>{percentComplete}% uploaded</Text>}
     </View>
   );
 }
 ```
 
----
-
-## 🎯 Key Features
-
-### 1. Automatic Verification (No Code Needed!)
-
-Just upload an image and the system handles everything:
-
-```typescript
-await startVerification(imageUri);
-// ✅ Image analysis
-// ✅ OCR extraction
-// ✅ Merchant matching
-// ✅ Verification
-// ✅ Fraud check
-// ✅ Cashback calculation
-```
-
-### 2. Real-Time Progress
-
-```typescript
-{workflow?.currentState && (
-  <BillVerificationStatus state={workflow.currentState} />
-)}
-```
-
-Shows: "Analyzing image... 15% → Extracting text... 30% → etc."
-
-### 3. Manual Corrections (Built-in!)
-
-```typescript
-<ManualCorrectionForm
-  ocrData={workflow.ocrData}
-  onSubmit={applyManualCorrections}
-/>
-```
-
-Users can fix OCR errors easily.
-
-### 4. Cashback Preview
-
-```typescript
-{workflow?.cashbackCalculation && (
-  <CashbackCalculator calculation={workflow.cashbackCalculation} />
-)}
-```
-
-Shows detailed breakdown before submission.
-
----
-
-## 🔌 Backend Integration
-
-### Required Endpoints
-
-Your backend needs these endpoints (or mock them):
-
-```typescript
-// 1. Image Analysis
-POST /api/bills/analyze-image
-Input: FormData with image
-Output: { quality, score, hash }
-
-// 2. OCR Extraction
-POST /api/bills/extract-data
-Input: FormData with image
-Output: { merchantName, amount, date, confidence }
-
-// 3. Merchant Matching
-POST /api/bills/match-merchant
-Input: { merchantName }
-Output: { matches: [{ merchantId, name, cashbackRate }] }
-
-// 4. Cashback Calculation
-POST /api/bills/calculate-cashback
-Input: { merchantId, amount }
-Output: { baseCashback, bonuses, finalCashback }
-
-// 5. Final Upload
-POST /api/bills/upload
-Input: FormData + verification metadata
-Output: { billId, status, cashbackAmount }
-```
-
-### Mock Backend (For Testing)
-
-Create `services/mockBillApi.ts`:
-
-```typescript
-export const mockBillApi = {
-  analyzeImage: async () => ({
-    quality: 'good',
-    qualityScore: 85,
-    hash: 'abc123'
-  }),
-
-  extractData: async () => ({
-    merchantName: 'Test Store',
-    amount: 1234.56,
-    date: '2025-01-15',
-    confidence: 88
-  }),
-
-  matchMerchant: async () => ({
-    matches: [{
-      merchantId: 'store1',
-      merchantName: 'Test Store',
-      cashbackPercentage: 5,
-      matchScore: 95
-    }]
-  }),
-
-  calculateCashback: async () => ({
-    baseAmount: 1234.56,
-    baseCashbackRate: 5,
-    baseCashback: 61.73,
-    finalCashback: 61.73
-  })
-};
-```
-
----
-
-## 🎨 UI Components
-
-### Use Pre-built Components
-
-```typescript
-// 1. Verification Status
-import BillVerificationStatus from '@/components/bills/BillVerificationStatus';
-
-<BillVerificationStatus state={workflow.currentState} />
-```
-
-```typescript
-// 2. Preview Modal
-import BillPreviewModal from '@/components/bills/BillPreviewModal';
-
-<BillPreviewModal
-  visible={showPreview}
-  imageUri={imageUri}
-  ocrData={workflow.ocrData}
-  onConfirm={handleConfirm}
-/>
-```
-
-```typescript
-// 3. Cashback Display
-import CashbackCalculator from '@/components/bills/CashbackCalculator';
-
-<CashbackCalculator calculation={workflow.cashbackCalculation} />
-```
-
-```typescript
-// 4. Requirements Guide
-import BillRequirements from '@/components/bills/BillRequirements';
-
-<BillRequirements />
-```
-
----
-
-## ⚙️ Configuration
-
-### Customize Rules
-
-Edit `services/billVerificationService.ts`:
-
-```typescript
-// Change bill age limit
-maxBillAge: 30, // days
-
-// Change amount limits
-minAmount: 50,   // ₹50
-maxAmount: 100000, // ₹1,00,000
-
-// Change image requirements
-maxFileSize: 10 * 1024 * 1024, // 10MB
-minResolution: { width: 800, height: 600 }
-```
-
-### Customize Cashback
-
-```typescript
-// In your backend or config
-const cashbackRules = [
-  {
-    category: 'groceries',
-    rate: 2,
-    dailyLimit: 500
-  },
-  {
-    category: 'electronics',
-    rate: 5,
-    dailyLimit: 1000
-  }
-];
-```
-
----
-
-## 🐛 Error Handling
-
-### Automatic Error Recovery
-
-The system handles errors automatically:
-
-```typescript
-// Low OCR confidence → Manual correction form
-// No merchant match → User can select manually
-// Fraud detected → Clear message with reason
-// Network error → Retry option
-```
-
-### Custom Error Handling
-
-```typescript
-const { error } = useBillVerification();
-
-if (error) {
-  Alert.alert('Error', error);
-}
-```
-
----
-
-## 📊 Monitoring
-
-### Track Metrics
+### 2. With Progress Bar
 
 ```typescript
 const {
-  workflow,
-  progressPercentage,
-  hasErrors,
-  requiresUserInput
-} = useBillVerification();
+  startUpload,
+  isUploading,
+  percentComplete,
+  uploadSpeed,
+  timeRemaining
+} = useBillUpload();
 
-// Log metrics
-console.log('Progress:', progressPercentage);
-console.log('Errors:', hasErrors);
-console.log('Needs input:', requiresUserInput);
+return (
+  <View>
+    {isUploading && (
+      <View>
+        <ProgressBar progress={percentComplete / 100} />
+        <Text>{percentComplete}%</Text>
+        <Text>{uploadSpeed}</Text>
+        <Text>{timeRemaining} remaining</Text>
+      </View>
+    )}
+  </View>
+);
 ```
 
----
-
-## 🧪 Testing
-
-### Test with Sample Bills
+### 3. With Error Handling & Retry
 
 ```typescript
-// Test image URLs
-const testBills = [
-  'https://example.com/clear-bill.jpg',    // Good quality
-  'https://example.com/blurry-bill.jpg',   // Poor quality
-  'https://example.com/handwritten.jpg'    // Handwritten
-];
+const {
+  startUpload,
+  retryUpload,
+  error,
+  canRetry,
+  currentAttempt,
+  maxAttempts,
+} = useBillUpload();
 
-// Test each
-for (const bill of testBills) {
-  await startVerification(bill);
-}
+return (
+  <View>
+    {error && (
+      <View>
+        <Text style={{ color: 'red' }}>{error.message}</Text>
+        {canRetry && (
+          <Button onPress={retryUpload}>
+            Retry ({currentAttempt}/{maxAttempts})
+          </Button>
+        )}
+      </View>
+    )}
+  </View>
+);
 ```
 
-### Mock Scenarios
+### 4. With Image Quality Check
 
 ```typescript
-// Mock OCR failure
-mockOCRService.setConfidence(30); // Low confidence
+import { useImageQuality } from '@/hooks/useImageQuality';
+import { useBillUpload } from '@/hooks/useBillUpload';
 
-// Mock fraud detection
-mockFraudService.simulateDuplicate();
+function MyComponent() {
+  const { checkQuality, result } = useImageQuality();
+  const { startUpload } = useBillUpload();
 
-// Mock network error
-mockApiClient.simulateError();
-```
+  const handleImageSelect = async (imageUri: string) => {
+    // Check quality first
+    const quality = await checkQuality(imageUri);
 
----
-
-## 🎯 Common Scenarios
-
-### Scenario 1: Perfect Bill
-```
-User uploads → OCR 95% confident → Auto-matched merchant
-→ No fraud flags → Cashback calculated → User confirms → Done!
-Time: ~10 seconds
-```
-
-### Scenario 2: Low Confidence OCR
-```
-User uploads → OCR 65% confident → Shows extracted data
-→ User confirms/edits → Re-verification → Done!
-Time: ~30 seconds
-```
-
-### Scenario 3: Multiple Merchant Matches
-```
-User uploads → OCR good → 3 merchants found
-→ User selects correct one → Verification continues → Done!
-Time: ~20 seconds
-```
-
-### Scenario 4: Fraud Detection
-```
-User uploads → Duplicate detected → Clear error message
-→ "This bill was already uploaded" → Upload blocked
-Time: ~5 seconds
-```
-
----
-
-## 💡 Pro Tips
-
-1. **Always show progress**
-   ```typescript
-   <BillVerificationStatus state={workflow.currentState} />
-   ```
-
-2. **Preview before submit**
-   ```typescript
-   <BillPreviewModal ... />
-   ```
-
-3. **Show cashback early**
-   ```typescript
-   if (estimatedCashback > 0) {
-     alert(`You'll earn ₹${estimatedCashback}!`);
-   }
-   ```
-
-4. **Handle errors gracefully**
-   ```typescript
-   if (hasErrors) {
-     <ErrorMessage errors={workflow.errors} />
-   }
-   ```
-
-5. **Guide users**
-   ```typescript
-   <BillRequirements /> // Show before upload
-   ```
-
----
-
-## 🚦 Status Reference
-
-### Verification States
-
-- `uploading` → Uploading image
-- `ocr_processing` → Extracting text
-- `merchant_matching` → Finding merchant
-- `amount_verification` → Checking amount
-- `fraud_check` → Security checks
-- `cashback_calculation` → Calculating rewards
-- `user_verification` → Needs confirmation
-- `approved` → Success!
-- `rejected` → Failed (with reason)
-
----
-
-## 📱 Full Example
-
-```typescript
-import React, { useState } from 'react';
-import { View, Button, Text } from 'react-native';
-import { useBillVerification } from '@/hooks/useBillVerification';
-import BillVerificationStatus from '@/components/bills/BillVerificationStatus';
-
-export default function QuickBillUpload() {
-  const [imageUri, setImageUri] = useState(null);
-  const {
-    workflow,
-    startVerification,
-    submitBill,
-    estimatedCashback,
-    canProceed
-  } = useBillVerification();
-
-  const handleUpload = async () => {
-    // 1. Get image (camera/gallery)
-    const uri = await pickImage();
-    setImageUri(uri);
-
-    // 2. Start verification (automatic!)
-    await startVerification(uri);
-
-    // 3. Wait for completion
-    // System handles: OCR, matching, verification, fraud check, cashback
-  };
-
-  const handleSubmit = async () => {
-    // 4. Submit when ready
-    const success = await submitBill();
-
-    if (success) {
-      alert(`Success! Earn ₹${estimatedCashback.toFixed(2)}`);
+    if (!quality.isValid) {
+      alert('Image quality is too low');
+      return;
     }
+
+    // Quality OK, upload
+    await startUpload({
+      billImage: imageUri,
+      merchantId: 'merchant_123',
+      amount: 1500,
+      billDate: new Date(),
+    });
   };
 
   return (
     <View>
-      {!imageUri ? (
-        <Button title="Upload Bill" onPress={handleUpload} />
-      ) : (
-        <>
-          {/* Show progress */}
-          {workflow && (
-            <BillVerificationStatus state={workflow.currentState} />
-          )}
-
-          {/* Show cashback */}
-          {estimatedCashback > 0 && (
-            <Text>You'll earn: ₹{estimatedCashback}</Text>
-          )}
-
-          {/* Submit when ready */}
-          <Button
-            title="Submit"
-            onPress={handleSubmit}
-            disabled={!canProceed}
-          />
-        </>
+      {result && (
+        <Text>Quality Score: {result.score}/100</Text>
       )}
     </View>
   );
 }
 ```
 
-**That's it! 🎉**
+### 5. With Form Persistence
 
----
+```typescript
+const {
+  formData,
+  saveFormData,
+  startUpload,
+} = useBillUpload();
 
-## 🆘 Troubleshooting
+// Auto-saves form data
+const handleChange = (field: string, value: any) => {
+  saveFormData({
+    ...formData,
+    [field]: value,
+  });
+};
 
-### Issue: OCR not working
-**Solution:** Check backend endpoint `/api/bills/extract-data`
+// Form data persists across app restarts
+```
 
-### Issue: Cashback always 0
-**Solution:** Configure cashback rules in backend
+## Configuration Options
 
-### Issue: All bills rejected
-**Solution:** Check fraud detection thresholds
+### Retry Configuration
 
-### Issue: Slow verification
-**Solution:** Optimize image size, check network
+```typescript
+const upload = useBillUpload({
+  maxAttempts: 5,              // Default: 3
+  initialDelay: 2000,          // Default: 1000ms
+  maxDelay: 60000,             // Default: 30000ms
+  backoffMultiplier: 2,        // Default: 2
+  retryableErrors: [           // Default: network, timeout, server errors
+    'NETWORK_ERROR',
+    'TIMEOUT',
+    'SERVER_ERROR',
+  ],
+});
+```
 
----
+### Image Quality Options
 
-## 📚 Resources
+```typescript
+const quality = useImageQuality({
+  minWidth: 1200,              // Default: 800
+  minHeight: 900,              // Default: 600
+  maxFileSize: 5 * 1024 * 1024, // Default: 10MB
+  checkBlur: true,             // Default: true
+  checkAspectRatio: true,      // Default: true
+  allowedAspectRatios: [1, 1.33, 1.5, 1.77], // Default
+});
+```
 
-- Full docs: `BILL_VERIFICATION_SYSTEM.md`
-- Types: `types/billVerification.types.ts`
-- Service: `services/billVerificationService.ts`
-- Hook: `hooks/useBillVerification.ts`
-- Components: `components/bills/`
+## Common Patterns
 
----
+### Pattern 1: Full Upload Flow
 
-**Need help? Check the full documentation or contact the team!** 🚀
+```typescript
+function BillUploadScreen() {
+  const { checkQuality } = useImageQuality();
+  const {
+    startUpload,
+    isUploading,
+    percentComplete,
+    uploadSpeed,
+    timeRemaining,
+    error,
+    canRetry,
+    retryUpload,
+  } = useBillUpload();
+
+  const handleUpload = async (imageUri: string) => {
+    // 1. Check quality
+    const quality = await checkQuality(imageUri);
+    if (!quality.isValid) {
+      alert('Image quality too low');
+      return;
+    }
+
+    // 2. Upload with automatic retry
+    const success = await startUpload({
+      billImage: imageUri,
+      merchantId: 'merchant_123',
+      amount: 1500,
+      billDate: new Date(),
+    });
+
+    // 3. Handle result
+    if (success) {
+      navigation.navigate('Success');
+    }
+  };
+
+  return (
+    <View>
+      {/* Upload button */}
+      <Button onPress={() => handleUpload(imageUri)}>
+        Upload Bill
+      </Button>
+
+      {/* Progress indicator */}
+      {isUploading && (
+        <View>
+          <ProgressBar progress={percentComplete / 100} />
+          <Text>{percentComplete}%</Text>
+          <Text>{uploadSpeed}</Text>
+          <Text>{timeRemaining} left</Text>
+        </View>
+      )}
+
+      {/* Error with retry */}
+      {error && (
+        <View>
+          <Text>{error.message}</Text>
+          {canRetry && (
+            <Button onPress={retryUpload}>Retry</Button>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+```
+
+### Pattern 2: Cancel Upload
+
+```typescript
+const { startUpload, cancelUpload, isUploading } = useBillUpload();
+
+return (
+  <View>
+    {isUploading && (
+      <Button onPress={cancelUpload}>Cancel Upload</Button>
+    )}
+  </View>
+);
+```
+
+### Pattern 3: Manual Retry Control
+
+```typescript
+const {
+  startUpload,
+  error,
+  retryUpload,
+  currentAttempt,
+  maxAttempts,
+} = useBillUpload({ maxAttempts: 5 });
+
+const handleManualRetry = async () => {
+  if (currentAttempt >= maxAttempts) {
+    // Max attempts reached, ask user
+    const shouldContinue = await confirm('Max attempts reached. Try again?');
+    if (shouldContinue) {
+      // Reset and start fresh
+      reset();
+      await startUpload(lastData);
+    }
+  } else {
+    // Normal retry
+    await retryUpload();
+  }
+};
+```
+
+## Upload States
+
+```typescript
+type UploadState =
+  | 'idle'        // Not started
+  | 'preparing'   // Creating FormData
+  | 'uploading'   // Upload in progress
+  | 'paused'      // Upload paused (future)
+  | 'completed'   // Successfully completed
+  | 'failed'      // Failed after all retries
+  | 'cancelled';  // Cancelled by user
+
+const { uploadState } = useBillUpload();
+```
+
+## Error Codes
+
+```typescript
+// Retryable errors (will auto-retry)
+'NETWORK_ERROR'    // Network connection failed
+'TIMEOUT'          // Request timed out
+'SERVER_ERROR'     // Server error (500, 502, etc.)
+
+// Non-retryable errors (won't retry)
+'FILE_TOO_LARGE'      // File exceeds size limit
+'INVALID_FILE_TYPE'   // Wrong file type
+'FILE_NOT_FOUND'      // File doesn't exist
+'PERMISSION_DENIED'   // No file access permission
+'CANCELLED'           // User cancelled
+'VALIDATION_ERROR'    // Validation failed
+```
+
+## Direct Service Usage
+
+If you don't want to use the hook:
+
+```typescript
+import { billUploadService } from '@/services/billUploadService';
+
+// With progress
+const result = await billUploadService.uploadBillWithProgress(
+  data,
+  (progress) => {
+    console.log(`${progress.percentage}% - ${progress.speed} bytes/sec`);
+  }
+);
+
+// With retry
+const result = await billUploadService.uploadBillWithRetry(
+  data,
+  (progress) => console.log(progress),
+  { maxAttempts: 5 }
+);
+
+// Cancel
+billUploadService.cancelUpload(uploadId);
+```
+
+## Tips
+
+1. **Always check image quality before upload** - Saves bandwidth and time
+2. **Use retry for unreliable networks** - Increases success rate
+3. **Save form data frequently** - Prevents data loss
+4. **Show progress indicators** - Better UX
+5. **Handle errors gracefully** - Provide clear feedback
+6. **Clear form data on success** - Prevents duplicate uploads
+
+## Troubleshooting
+
+### Upload Fails Immediately
+- Check network connectivity
+- Verify backend API is running
+- Check auth token is valid
+- Verify file exists and is accessible
+
+### Progress Not Updating
+- Check if `onProgress` callback is provided
+- Verify XMLHttpRequest is supported
+- Check console for errors
+
+### Retry Not Working
+- Check if error is retryable
+- Verify maxAttempts > currentAttempt
+- Check retry config
+
+### Form Data Not Persisting
+- Check AsyncStorage permissions
+- Verify saveFormData is called
+- Check console for storage errors
+
+### Image Quality Check Fails
+- Check file permissions
+- Verify image URI is valid
+- Ensure Image.getSize works
+- Check FileSystem access
+
+## File Locations
+
+```
+frontend/
+├── services/
+│   └── billUploadService.ts      # Enhanced service
+├── hooks/
+│   ├── useBillUpload.ts          # Upload hook
+│   └── useImageQuality.ts        # Quality check hook
+└── types/
+    └── upload.types.ts           # Type definitions
+```
+
+## Next Steps
+
+1. Integrate with your bill upload form
+2. Add progress bar component
+3. Implement error boundary
+4. Add analytics tracking
+5. Test with real backend
+6. Add offline queue (future)
+7. Implement chunked uploads (future)

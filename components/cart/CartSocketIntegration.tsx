@@ -34,6 +34,7 @@ export function CartSocketIntegration() {
       // Find cart item with this product ID
       const cartItem = cartState.items.find(
         item => (item.productId || item.id) === payload.productId
+      );
       if (!cartItem) return;
 
       // If cart quantity exceeds available stock, adjust it
@@ -45,12 +46,14 @@ export function CartSocketIntegration() {
           Alert.alert(
             'Stock Update',
             `${cartItem.name} is now out of stock and has been removed from your cart.`
+          );
         } else {
           // Update quantity to match available stock
           cartActions.updateQuantity(cartItem.id, payload.quantity);
           Alert.alert(
             'Stock Update',
             `${cartItem.name} stock is now ${payload.quantity}. Your cart has been updated.`
+          );
         }
       }
 
@@ -66,6 +69,7 @@ export function CartSocketIntegration() {
 
       const cartItem = cartState.items.find(
         item => (item.productId || item.id) === payload.productId
+      );
       if (!cartItem) return;
 
       // Remove item from cart
@@ -73,6 +77,7 @@ export function CartSocketIntegration() {
       Alert.alert(
         'Out of Stock',
         `${payload.productName} is now out of stock and has been removed from your cart.`
+      );
     });
 
     // Listen for price updates
@@ -80,6 +85,7 @@ export function CartSocketIntegration() {
 
       const cartItem = cartState.items.find(
         item => (item.productId || item.id) === payload.productId
+      );
       if (!cartItem) return;
 
       // Reload cart to get updated prices
@@ -94,6 +100,7 @@ export function CartSocketIntegration() {
       Alert.alert(
         'Price Update',
         `The price of ${cartItem.name} has ${priceChangeText}. Your cart has been updated.`
+      );
     });
 
     // Cleanup

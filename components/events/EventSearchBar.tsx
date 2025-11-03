@@ -164,7 +164,9 @@ export default function EventSearchBar({
           ))}
         </ThemedView>
       )}
-    </ThemedView>}
+    </ThemedView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {

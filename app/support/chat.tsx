@@ -27,6 +27,7 @@ import FAQSuggestions from '@/components/support/FAQSuggestions';
 import TransferNotice from '@/components/support/TransferNotice';
 import ChatHeader from '@/components/support/ChatHeader';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import type { IssueCategory } from '@/types/supportChat.types';
 
 export default function SupportChatPage() {
@@ -184,55 +185,27 @@ export default function SupportChatPage() {
   };
 
   const handleFilePick = async () => {
-    if (Platform.OS === 'web') {
-      // Web: Use HTML file input
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '*/*';
-      input.onchange = async (e: any) => {
-        const file = e.target.files?.[0];
-        if (file) {
-          const uri = URL.createObjectURL(file);
-          const attachment = await uploadAttachment(
-            {
-              uri,
-              name: file.name,
-              type: file.type || 'application/octet-stream',
-            } as any,
-            'file'
-          );
-          if (attachment) {
-            addAttachment(attachment);
-          }
-        }
-        setShowOptions(false);
-      };
-      input.click();
-    } else {
-      // Native: Use expo-document-picker
-      const DocumentPicker = require('expo-document-picker');
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
-        copyToCacheDirectory: true,
-      });
+    const result = await DocumentPicker.getDocumentAsync({
+      type: '*/*',
+      copyToCacheDirectory: true,
+    });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const file = result.assets[0];
-        const attachment = await uploadAttachment(
-          {
-            uri: file.uri,
-            name: file.name,
-            type: file.mimeType || 'application/octet-stream',
-          } as any,
-          'file'
-        );
-        if (attachment) {
-          addAttachment(attachment);
-        }
+    if (!result.canceled && result.assets && result.assets[0]) {
+      const file = result.assets[0];
+      const attachment = await uploadAttachment(
+        {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType || 'application/octet-stream',
+        } as any,
+        'file'
+      );
+      if (attachment) {
+        addAttachment(attachment);
       }
-
-      setShowOptions(false);
     }
+
+    setShowOptions(false);
   };
 
   const handleCallRequest = () => {

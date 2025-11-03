@@ -24,10 +24,10 @@ export default function PreferencesDemo() {
   const handleButtonPress = () => {
     // Trigger haptic feedback
     haptics.mediumHaptic();
-    
+
     // Play sound
     sounds.playClickSound();
-    
+
     // Trigger animation
     if (preferences?.animations) {
       animations.bounce(scaleAnim, 400);
@@ -37,7 +37,7 @@ export default function PreferencesDemo() {
   const handleSuccessDemo = () => {
     haptics.successHaptic();
     sounds.playSuccessSound();
-    
+
     if (preferences?.animations) {
       animations.bounce(scaleAnim, 600);
     }
@@ -46,7 +46,7 @@ export default function PreferencesDemo() {
   const handleErrorDemo = () => {
     haptics.errorHaptic();
     sounds.playErrorSound();
-    
+
     if (preferences?.animations) {
       animations.bounce(scaleAnim, 600);
     }
@@ -56,10 +56,12 @@ export default function PreferencesDemo() {
     return (
       <View style={styles.container}>
         <Text style={styles.loadingText}>Loading preferences...</Text>
-      </View>  }
+      </View>
+    );
+  }
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.container,
         {
@@ -69,7 +71,7 @@ export default function PreferencesDemo() {
       ]}
     >
       <Text style={styles.title}>App Preferences Demo</Text>
-      
+
       <View style={styles.statusContainer}>
         <Text style={styles.statusTitle}>Current Settings:</Text>
         <Text style={styles.statusText}>
@@ -127,7 +129,9 @@ export default function PreferencesDemo() {
           • Works offline with local storage fallback
         </Text>
       </View>
-    </Animated.View>}
+    </Animated.View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {

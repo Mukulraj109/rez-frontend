@@ -161,6 +161,8 @@ export default function ShareModal({
         {platform.type.charAt(0).toUpperCase() + platform.type.slice(1)}
       </ThemedText>
     </TouchableOpacity>
+  );
+
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>

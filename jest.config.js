@@ -1,55 +1,107 @@
+/** @type {import('jest').Config} */
 module.exports = {
-  preset: 'ts-jest',
-  testMatch: ['**/__tests__/**/*.(js|ts|tsx)', '**/*.(test|spec).(js|ts|tsx)'],
-  testPathIgnorePatterns: ['/node_modules/', '/e2e/'],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  testEnvironment: 'node',
-  verbose: true,
-  collectCoverage: false, // Enable with --coverage flag
+  // Use jest-expo preset for React Native + Expo
+  preset: 'jest-expo',
+
+  // Setup files
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+
+  // Transform files with ts-jest
+  transform: {
+    '^.+\\.(ts|tsx)$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          jsx: 'react',
+          esModuleInterop: true,
+          allowSyntheticDefaultImports: true,
+        },
+      },
+    ],
+  },
+
+  // Module file extensions
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+
+  // Transform ignore patterns - critical for React Native + Expo
+  transformIgnorePatterns: [
+    'node_modules/(?!(' +
+      '@react-native|' +
+      'react-native|' +
+      '@expo|' +
+      'expo|' +
+      'expo-.*|' +
+      '@expo/.*|' +
+      '@react-navigation|' +
+      'react-native-.*|' +
+      '@stripe/.*|' +
+      'socket.io-client|' +
+      'use-debounce|' +
+      '@testing-library' +
+    ')/)',
+  ],
+
+  // Path aliases matching tsconfig.json
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
+
+  // Coverage configuration
   collectCoverageFrom: [
+    'app/**/*.{ts,tsx}',
+    'components/**/*.{ts,tsx}',
     'services/**/*.{ts,tsx}',
     'hooks/**/*.{ts,tsx}',
-    'contexts/**/*.{tsx}',
+    'contexts/**/*.{ts,tsx}',
     'utils/**/*.{ts,tsx}',
-    'components/**/*.{tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
     '!**/__tests__/**',
     '!**/__mocks__/**',
   ],
-  coverageThresholds: {
+
+  // Coverage thresholds
+  coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
+      statements: 50,
+      branches: 40,
+      functions: 40,
+      lines: 50,
     },
   },
+
+  // Coverage reporters
   coverageReporters: ['text', 'lcov', 'html'],
-  transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      tsconfig: {
-        jsx: 'react',
-        esModuleInterop: true,
-        allowSyntheticDefaultImports: true,
-      },
-    }],
-    '^.+\\.jsx?$': ['ts-jest', {
-      tsconfig: {
-        jsx: 'react',
-        esModuleInterop: true,
-        allowSyntheticDefaultImports: true,
-      },
-    }],
-  },
-  transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|@react-navigation|@expo|expo|@react-native-community|use-debounce|@testing-library)/)',
+
+  // Test match patterns
+  testMatch: [
+    '**/__tests__/**/*.(test|spec).(ts|tsx|js)',
+    '**/*.(test|spec).(ts|tsx|js)',
   ],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
-    '^react-native$': '<rootDir>/__mocks__/react-native.js',
-  },
-  setupFiles: ['<rootDir>/jest.setup.js'],
+
+  // Test environment
+  testEnvironment: 'node',
+
+  // Ignore patterns
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/android/',
+    '/ios/',
+    '/e2e/',
+  ],
+
+  // Clear mocks between tests
+  clearMocks: true,
+
+  // Restore mocks between tests
+  restoreMocks: true,
+
+  // Verbose output
+  verbose: true,
+
+  // Test timeout
   testTimeout: 10000,
+
+  // Max workers
   maxWorkers: '50%',
 };

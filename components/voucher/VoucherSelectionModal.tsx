@@ -140,6 +140,7 @@ export default function VoucherSelectionModal({
   const findBestOffer = (options: VoucherOption[]): VoucherOption | null => {
     const eligible = options.filter(v =>
       v.isActive && cartTotal >= v.minOrderValue
+    );
     if (eligible.length === 0) return null;
 
     // Calculate actual discount for each voucher
@@ -182,6 +183,7 @@ export default function VoucherSelectionModal({
           Alert.alert(
             'Minimum Order Not Met',
             `Add ₹${voucher.minOrderValue - cartTotal} more to use this ${voucher.type}`
+          );
         }
       } else {
         Alert.alert('Invalid Code', 'The code you entered is not valid or has already been used');
@@ -201,6 +203,7 @@ export default function VoucherSelectionModal({
       Alert.alert(
         'Minimum Order Not Met',
         `Add ₹${voucher.minOrderValue - cartTotal} more to use this ${voucher.type}`
+      );
       return;
     }
 
@@ -315,6 +318,7 @@ export default function VoucherSelectionModal({
           </ThemedText>
         </LinearGradient>
       </TouchableOpacity>
+    );
   };
 
   return (
@@ -452,7 +456,7 @@ export default function VoucherSelectionModal({
         </View>
       </View>
     </Modal>
-);
+  );
 }
 
 const styles = StyleSheet.create({

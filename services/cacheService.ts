@@ -1,5 +1,6 @@
 import asyncStorageService from './asyncStorageService';
 import pako from 'pako';
+import { FILE_SIZE_LIMITS } from '@/utils/fileUploadConstants';
 
 /**
  * Cache Service
@@ -38,7 +39,7 @@ export interface CacheStats {
 const CACHE_PREFIX = 'cache_';
 const CACHE_INDEX_KEY = 'cache_index';
 const DEFAULT_TTL = 60 * 60 * 1000; // 1 hour
-const MAX_CACHE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_CACHE_SIZE = FILE_SIZE_LIMITS.MAX_DOCUMENT_SIZE; // 10MB - cache size limit
 const COMPRESSION_THRESHOLD = 10 * 1024; // 10KB
 const CURRENT_CACHE_VERSION = '1.0.0';
 
