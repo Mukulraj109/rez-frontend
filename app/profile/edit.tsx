@@ -96,7 +96,7 @@ export default function ProfileEditPage() {
       dateOfBirth: user?.dateOfBirth || '',
       gender: user?.gender || '',
     };
-    
+
     const currentData = {
       name: formData.name,
       email: formData.email,
@@ -107,8 +107,16 @@ export default function ProfileEditPage() {
       dateOfBirth: formData.dateOfBirth,
       gender: formData.gender,
     };
-    
-    setHasChanges(JSON.stringify(originalData) !== JSON.stringify(currentData));
+
+    const hasChangesDetected = JSON.stringify(originalData) !== JSON.stringify(currentData);
+
+    // Debug logging
+    console.log('🔍 [PROFILE_EDIT] Change Detection:');
+    console.log('  Original:', originalData);
+    console.log('  Current:', currentData);
+    console.log('  Has Changes:', hasChangesDetected);
+
+    setHasChanges(hasChangesDetected);
   }, [formData, user]);
 
   const handleBackPress = () => {
@@ -245,26 +253,39 @@ export default function ProfileEditPage() {
   };
 
   const handleSave = async () => {
+    console.log('💾 [PROFILE_EDIT] Save button clicked!');
+    console.log('📝 [PROFILE_EDIT] Form Data:', formData);
+
     if (!formData.name.trim()) {
-      Alert.alert('Validation Error', 'Name is required');
+      console.log('❌ [PROFILE_EDIT] Validation failed: Name is required');
+      if (Platform.OS === 'web') {
+        alert('Name is required');
+      } else {
+        Alert.alert('Validation Error', 'Name is required');
+      }
       return;
     }
 
-    if (!formData.email.trim()) {
-      Alert.alert('Validation Error', 'Email is required');
-      return;
+    // Email validation - only validate if email is provided
+    if (formData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        console.log('❌ [PROFILE_EDIT] Validation failed: Invalid email format');
+        if (Platform.OS === 'web') {
+          alert('Please enter a valid email address');
+        } else {
+          Alert.alert('Validation Error', 'Please enter a valid email address');
+        }
+        return;
+      }
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      Alert.alert('Validation Error', 'Please enter a valid email address');
-      return;
-    }
-
+    console.log('✅ [PROFILE_EDIT] Validation passed, starting save...');
     setIsSaving(true);
-    
+
     try {
       // Use ProfileContext to update user with real backend API
+      console.log('🔄 [PROFILE_EDIT] Calling updateUser...');
       await updateUser({
         name: formData.name,
         email: formData.email,
@@ -276,11 +297,16 @@ export default function ProfileEditPage() {
         gender: formData.gender,
       });
 
+      console.log('✅ [PROFILE_EDIT] Profile updated successfully!');
       // Automatically navigate back after successful save
       goBack('/profile' as any);
     } catch (error) {
-      console.error('Profile update error:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      console.error('❌ [PROFILE_EDIT] Profile update error:', error);
+      if (Platform.OS === 'web') {
+        alert(`Failed to update profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } else {
+        Alert.alert('Error', 'Failed to update profile. Please try again.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -339,15 +365,15 @@ export default function ProfileEditPage() {
           <ThemedText style={styles.headerTitle}>Edit Profile</ThemedText>
           
           <TouchableOpacity
-            style={[styles.saveButton, (!hasChanges || isSaving) && styles.saveButtonDisabled]}
+            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
             onPress={handleSave}
-            disabled={!hasChanges || isSaving}
+            disabled={isSaving}
           >
             <ThemedText style={[
               styles.saveButtonText,
-              (!hasChanges || isSaving) && styles.saveButtonTextDisabled
+              isSaving && styles.saveButtonTextDisabled
             ]}>
-              {isSaving ? 'Saving...' : 'Save'}
+              {isSaving ? 'Saving...' : hasChanges ? 'Save' : 'Save'}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -412,7 +438,7 @@ export default function ProfileEditPage() {
           <ThemedText style={styles.sectionTitle}>Personal Information</ThemedText>
           
           {renderFormField('Full Name', 'name', 'Enter your full name')}
-          {renderFormField('Email Address', 'email', 'Enter your email', false, 'email-address', true)}
+          {renderFormField('Email Address', 'email', 'Enter your email', false, 'email-address', false)}
           {renderFormField('Phone Number', 'phone', 'Enter your phone number', false, 'phone-pad', true)}
           {renderFormField('Date of Birth', 'dateOfBirth', 'YYYY-MM-DD', false, 'default')}
           

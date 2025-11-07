@@ -19,6 +19,9 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useProfile } from '@/hooks/useProfile';
 import { useScratchCard } from '@/hooks/useScratchCard';
+import GameErrorBoundary from '@/components/common/GameErrorBoundary';
+import { useAuth } from '@/contexts/AuthContext';
+import gameRateLimiter from '@/utils/gameRateLimiter';
 
 const { width, height } = Dimensions.get('window');
 
@@ -73,32 +76,43 @@ const SCRATCH_PRIZES: ScratchCardPrize[] = [
 
 export default function ScratchCardPage() {
   const router = useRouter();
+  const { state: authState } = useAuth();
   const { profile, completionStatus, isLoading: profileLoading, refreshProfile } = useProfile();
-  const { 
-    eligibility, 
-    isLoading, 
-    error, 
-    checkEligibility, 
-    createScratchCard, 
-    scratchCard, 
-    claimPrize 
+  const {
+    eligibility,
+    isLoading,
+    error,
+    checkEligibility,
+    createScratchCard,
+    scratchCard,
+    claimPrize
   } = useScratchCard();
-  
+
   const [isScratched, setIsScratched] = useState(false);
   const [prize, setPrize] = useState<ScratchCardPrize | null>(null);
   const [showPrize, setShowPrize] = useState(false);
   const [canScratch, setCanScratch] = useState(false);
   const [currentCardId, setCurrentCardId] = useState<string | null>(null);
-  
+
   const fadeAnim = new Animated.Value(0);
   const scaleAnim = new Animated.Value(0.8);
   const scratchAnim = new Animated.Value(1);
 
   useEffect(() => {
-    // Refresh profile data and check eligibility
-    refreshProfile();
-    checkEligibility();
-  }, [refreshProfile, checkEligibility]);
+    // Check authentication and redirect if not authenticated
+    if (!authState.isLoading) {
+      if (authState.isAuthenticated && authState.user) {
+        refreshProfile();
+        checkEligibility();
+      } else {
+        console.log('[SCRATCH-CARD] User not authenticated, redirecting...');
+        router.replace({
+          pathname: '/sign-in',
+          params: { returnTo: '/scratch-card' },
+        } as any);
+      }
+    }
+  }, [authState.isAuthenticated, authState.isLoading, authState.user, refreshProfile, checkEligibility]);
 
   // Add a focus listener to refresh data when page comes into focus
   useFocusEffect(
@@ -139,9 +153,27 @@ export default function ScratchCardPage() {
     if (!canScratch || isScratched) return;
 
     try {
+      // Check rate limit
+      const userId = authState.user?.id || authState.user?._id;
+      if (userId) {
+        const rateLimitResult = await gameRateLimiter.checkRateLimit(userId, 'SCRATCH_CARD');
+        if (!rateLimitResult.allowed) {
+          Alert.alert(
+            'Cooldown Active',
+            `Please wait ${gameRateLimiter.formatRemainingTime(rateLimitResult.cooldownRemaining)} before scratching another card.`
+          );
+          return;
+        }
+      }
+
       // Create scratch card first
       const newCard = await createScratchCard();
       if (!newCard) return;
+
+      // Record attempt for rate limiting
+      if (userId) {
+        await gameRateLimiter.recordAttempt(userId, 'SCRATCH_CARD');
+      }
 
       setCurrentCardId(newCard.id);
       setPrize(newCard.prize);
@@ -159,7 +191,7 @@ export default function ScratchCardPage() {
       console.error('Error creating scratch card:', error);
       Alert.alert('Error', 'Failed to create scratch card. Please try again.');
     }
-  }, [canScratch, isScratched, scratchAnim, createScratchCard]);
+  }, [canScratch, isScratched, scratchAnim, createScratchCard, authState.user]);
 
   const handleClaimPrize = useCallback(async () => {
     if (!prize || !currentCardId) return;
@@ -205,7 +237,11 @@ export default function ScratchCardPage() {
 
   if (!canScratch) {
     return (
-      <ThemedView style={styles.container}>
+      <GameErrorBoundary
+        gameName="Scratch Card"
+        onReturnToGames={() => router.push('/games' as any)}
+      >
+        <ThemedView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
         <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
           <View style={styles.headerContainer}>
@@ -240,11 +276,21 @@ export default function ScratchCardPage() {
           </TouchableOpacity>
         </View>
       </ThemedView>
+      </GameErrorBoundary>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <GameErrorBoundary
+      gameName="Scratch Card"
+      onReturnToGames={() => router.push('/games' as any)}
+      onReset={() => {
+        setIsScratched(false);
+        setShowPrize(false);
+        refreshProfile();
+      }}
+    >
+      <ThemedView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
       
       {/* Header */}
@@ -322,6 +368,7 @@ export default function ScratchCardPage() {
         )}
       </View>
     </ThemedView>
+    </GameErrorBoundary>
   );
 }
 

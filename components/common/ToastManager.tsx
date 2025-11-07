@@ -26,9 +26,11 @@ export function showToast(config: Omit<ToastConfig, 'id'>) {
 
 export default function ToastManager() {
   const [toasts, setToasts] = useState<ToastConfig[]>([]);
+  const toastIdCounter = React.useRef(0);
 
   const addToast = useCallback((config: Omit<ToastConfig, 'id'>) => {
-    const id = Date.now().toString();
+    // Generate unique ID using timestamp + counter to avoid duplicate keys
+    const id = `${Date.now()}_${++toastIdCounter.current}_${Math.random().toString(36).substring(2, 9)}`;
     setToasts((prev) => [...prev, { ...config, id }]);
   }, []);
 

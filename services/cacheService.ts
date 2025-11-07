@@ -562,6 +562,101 @@ class CacheService {
   }
 
   /**
+   * Redis-style caching pattern for leaderboards
+   * Automatically invalidates and refreshes data
+   */
+  async getLeaderboard<T>(
+    period: string,
+    fetchFn: () => Promise<T>,
+    options: { ttl?: number; forceRefresh?: boolean } = {}
+  ): Promise<T> {
+    const key = `leaderboard_${period}`;
+    const ttl = options.ttl || 5 * 60 * 1000; // 5 minutes default
+
+    // Force refresh if requested
+    if (options.forceRefresh) {
+      const freshData = await fetchFn();
+      await this.set(key, freshData, { ttl, priority: 'high' });
+      return freshData;
+    }
+
+    // Try cache first with stale-while-revalidate
+    return this.getWithRevalidation(key, fetchFn, { ttl, priority: 'high' });
+  }
+
+  /**
+   * Cache invalidation for leaderboard on new game completion
+   */
+  async invalidateLeaderboard(period?: string): Promise<void> {
+    if (period) {
+      await this.remove(`leaderboard_${period}`);
+    } else {
+      // Invalidate all leaderboard caches
+      const keys = await this.getKeys();
+      const leaderboardKeys = keys.filter(k => k.startsWith('leaderboard_'));
+      for (const key of leaderboardKeys) {
+        await this.remove(key);
+      }
+    }
+    console.log('💾 [CACHE] Leaderboard cache invalidated');
+  }
+
+  /**
+   * Cache achievements with 10-minute TTL
+   */
+  async getAchievements<T>(
+    userId: string,
+    fetchFn: () => Promise<T>,
+    forceRefresh?: boolean
+  ): Promise<T> {
+    const key = `achievements_${userId}`;
+    const ttl = 10 * 60 * 1000; // 10 minutes
+
+    if (forceRefresh) {
+      const freshData = await fetchFn();
+      await this.set(key, freshData, { ttl, priority: 'medium' });
+      return freshData;
+    }
+
+    return this.getWithRevalidation(key, fetchFn, { ttl, priority: 'medium' });
+  }
+
+  /**
+   * Cache challenges with 5-minute TTL
+   */
+  async getChallenges<T>(
+    fetchFn: () => Promise<T>,
+    forceRefresh?: boolean
+  ): Promise<T> {
+    const key = 'challenges_active';
+    const ttl = 5 * 60 * 1000; // 5 minutes
+
+    if (forceRefresh) {
+      const freshData = await fetchFn();
+      await this.set(key, freshData, { ttl, priority: 'medium' });
+      return freshData;
+    }
+
+    return this.getWithRevalidation(key, fetchFn, { ttl, priority: 'medium' });
+  }
+
+  /**
+   * Invalidate achievement cache when new achievement is unlocked
+   */
+  async invalidateAchievements(userId: string): Promise<void> {
+    await this.remove(`achievements_${userId}`);
+    console.log(`💾 [CACHE] Achievement cache invalidated for user: ${userId}`);
+  }
+
+  /**
+   * Invalidate challenge cache when challenge is completed
+   */
+  async invalidateChallenges(): Promise<void> {
+    await this.remove('challenges_active');
+    console.log('💾 [CACHE] Challenge cache invalidated');
+  }
+
+  /**
    * Batch set multiple entries
    */
   async setMany(entries: Array<{ key: string; data: any; options?: CacheOptions }>): Promise<void> {

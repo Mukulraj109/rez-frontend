@@ -74,7 +74,7 @@ export interface ProductItem extends HomepageSectionItem {
   category: string;
   subcategory?: string;
   rating?: {
-    value: number;
+    value: number | string; // API can return string (e.g., "5.0") or number
     count: number;
   };
   cashback?: {

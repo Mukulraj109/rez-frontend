@@ -124,7 +124,9 @@ export default function Toast({
                 action.style === 'cancel' && styles.cancelButton,
               ]}
               onPress={() => {
-                action.onPress();
+                if (action.onPress && typeof action.onPress === 'function') {
+                  action.onPress();
+                }
                 dismiss();
               }}
             >

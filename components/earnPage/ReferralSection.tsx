@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
@@ -11,130 +11,346 @@ export default function ReferralSection({
   onShare, 
   onLearnMore 
 }: ReferralSectionProps) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText style={styles.title}>
-          Refer to different apps and services
-        </ThemedText>
-      </View>
+    <Animated.View 
+      style={[
+        styles.container,
+        {
+          opacity: fadeAnim,
+          transform: [
+            { translateY: slideAnim },
+            { scale: scaleAnim },
+          ],
+        },
+      ]}
+    >
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [10, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <View style={styles.titleContainer}>
+          <ThemedText style={styles.title}>
+            Refer to different apps and services
+          </ThemedText>
+          <View style={styles.titleUnderline} />
+        </View>
+      </Animated.View>
       
-      <View style={styles.card}>
+      <Animated.View 
+        style={[
+          styles.card,
+          {
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <LinearGradient
-          colors={['#F8FAFC', '#E2E8F0']}
+          colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
           style={styles.cardBackground}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
+          {/* Decorative background elements */}
+          <View style={styles.decorativeCircle1} />
+          <View style={styles.decorativeCircle2} />
           {/* Illustration Area */}
           <View style={styles.illustrationContainer}>
             <View style={styles.illustration}>
-              {/* Coins */}
-              <View style={[styles.coin, styles.coin1]}>
-                <Ionicons name="star" size={12} color="#FFD700" />
-              </View>
-              <View style={[styles.coin, styles.coin2]}>
-                <Ionicons name="star" size={10} color="#FFD700" />
-              </View>
-              <View style={[styles.coin, styles.coin3]}>
-                <Ionicons name="star" size={14} color="#FFD700" />
-              </View>
-              <View style={[styles.coin, styles.coin4]}>
-                <Ionicons name="star" size={11} color="#FFD700" />
-              </View>
-              <View style={[styles.coin, styles.coin5]}>
-                <Ionicons name="star" size={13} color="#FFD700" />
-              </View>
+              {/* Animated Stars/Coins */}
+              {[1, 2, 3, 4, 5].map((idx) => (
+                <Animated.View
+                  key={idx}
+                  style={[
+                    styles.coin,
+                    styles[`coin${idx}` as keyof typeof styles],
+                    {
+                      opacity: fadeAnim,
+                      transform: [
+                        {
+                          scale: fadeAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, 1],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <LinearGradient
+                    colors={['#FFD700', '#FFA500']}
+                    style={styles.coinGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Ionicons name="star" size={idx === 3 ? 14 : idx === 1 ? 12 : idx === 5 ? 13 : 10} color="#FFFFFF" />
+                  </LinearGradient>
+                </Animated.View>
+              ))}
               
               {/* Central Elements */}
               <View style={styles.centralElements}>
                 {/* Left Phone */}
-                <View style={[styles.phone, styles.phoneLeft]}>
-                  <Ionicons name="phone-portrait" size={32} color="#6366F1" />
-                  <View style={styles.phoneScreen}>
-                    <View style={styles.screenLine} />
-                    <View style={styles.screenLine} />
-                    <View style={styles.screenLine} />
-                  </View>
-                </View>
+                <Animated.View 
+                  style={[
+                    styles.phone,
+                    styles.phoneLeft,
+                    {
+                      opacity: fadeAnim,
+                      transform: [
+                        {
+                          translateX: fadeAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-20, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <LinearGradient
+                    colors={['#6366F1', '#4F46E5']}
+                    style={styles.phoneGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Ionicons name="phone-portrait" size={28} color="#FFFFFF" />
+                    <View style={styles.phoneScreen}>
+                      <View style={styles.screenLine} />
+                      <View style={styles.screenLine} />
+                      <View style={styles.screenLine} />
+                    </View>
+                  </LinearGradient>
+                </Animated.View>
                 
                 {/* Right Phone/Download */}
-                <View style={[styles.phone, styles.phoneRight]}>
-                  <Ionicons name="download" size={32} color="#10B981" />
-                  <View style={styles.phoneScreen}>
-                    <Ionicons name="arrow-down" size={16} color="#10B981" />
-                  </View>
-                </View>
+                <Animated.View 
+                  style={[
+                    styles.phone,
+                    styles.phoneRight,
+                    {
+                      opacity: fadeAnim,
+                      transform: [
+                        {
+                          translateX: fadeAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [20, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <LinearGradient
+                    colors={['#10B981', '#059669']}
+                    style={styles.phoneGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Ionicons name="download" size={28} color="#FFFFFF" />
+                    <View style={styles.phoneScreen}>
+                      <Ionicons name="arrow-down" size={16} color="#FFFFFF" />
+                    </View>
+                  </LinearGradient>
+                </Animated.View>
               </View>
               
               {/* People */}
-              <View style={[styles.person, styles.personLeft]}>
-                <View style={styles.personAvatar}>
-                  <Ionicons name="person" size={16} color="#EC4899" />
-                </View>
-              </View>
+              <Animated.View 
+                style={[
+                  styles.person,
+                  styles.personLeft,
+                  {
+                    opacity: fadeAnim,
+                    transform: [
+                      {
+                        scale: fadeAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={['#EC4899', '#DB2777']}
+                  style={styles.personAvatar}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Ionicons name="person" size={16} color="#FFFFFF" />
+                </LinearGradient>
+              </Animated.View>
               
-              <View style={[styles.person, styles.personRight]}>
-                <View style={styles.personAvatar}>
-                  <Ionicons name="person" size={16} color="#8B5CF6" />
-                </View>
-              </View>
+              <Animated.View 
+                style={[
+                  styles.person,
+                  styles.personRight,
+                  {
+                    opacity: fadeAnim,
+                    transform: [
+                      {
+                        scale: fadeAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={['#8B5CF6', '#7C3AED']}
+                  style={styles.personAvatar}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Ionicons name="person" size={16} color="#FFFFFF" />
+                </LinearGradient>
+              </Animated.View>
             </View>
           </View>
           
           {/* Stats */}
-    <View style={styles.stats}>
-  <View style={styles.statItem}>
-    <View style={styles.statNumberWrapper}>
-      <ThemedText style={styles.statNumber}>
-        {referralData.totalReferrals}
-      </ThemedText>
-    </View>
-    <ThemedText style={styles.statLabel}>Total Referrals</ThemedText>
-  </View>
-
-  <View style={styles.statItem}>
-    <View style={styles.statNumberWrapper}>
-      <ThemedText style={styles.statNumber}>
-        ₹{referralData.totalEarningsFromReferrals}
-      </ThemedText>
-    </View>
-    <ThemedText style={styles.statLabel}>Earned</ThemedText>
-  </View>
-
-  <View style={styles.statItem}>
-    <View style={styles.statNumberWrapper}>
-      <ThemedText style={styles.statNumber}>
-        ₹{referralData.referralBonus}
-      </ThemedText>
-    </View>
-    <ThemedText style={styles.statLabel}>Per Referral</ThemedText>
-  </View>
-</View>
+          <Animated.View 
+            style={[
+              styles.stats,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  {
+                    translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [15, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {[
+              { value: referralData.totalReferrals, label: 'Total Referrals', icon: 'people', gradient: ['#8B5CF6', '#7C3AED'] },
+              { value: `₹${referralData.totalEarningsFromReferrals}`, label: 'Earned', icon: 'wallet', gradient: ['#10B981', '#059669'] },
+              { value: `₹${referralData.referralBonus}`, label: 'Per Referral', icon: 'gift', gradient: ['#F59E0B', '#D97706'] },
+            ].map((stat, idx) => (
+              <View key={idx} style={styles.statItem}>
+                <LinearGradient
+                  colors={stat.gradient as any}
+                  style={styles.statIconGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Ionicons name={stat.icon as any} size={18} color="#FFFFFF" />
+                </LinearGradient>
+                <View style={styles.statNumberWrapper}>
+                  <ThemedText style={styles.statNumber}>
+                    {stat.value}
+                  </ThemedText>
+                </View>
+                <ThemedText style={styles.statLabel}>{stat.label}</ThemedText>
+              </View>
+            ))}
+          </Animated.View>
 
           
           {/* Action Buttons */}
-          <View style={styles.actions}>
+          <Animated.View 
+            style={[
+              styles.actions,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  {
+                    translateY: fadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [15, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
             <TouchableOpacity 
-              style={[styles.actionButton, styles.shareButton]}
+              style={styles.actionButton}
               onPress={onShare}
               activeOpacity={0.8}
             >
-              <Ionicons name="share-social" size={16} color="#FFFFFF" />
-              <ThemedText style={styles.shareButtonText}>Share Link</ThemedText>
+              <LinearGradient
+                colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
+                style={styles.shareButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="share-social" size={18} color="#FFFFFF" />
+                <ThemedText style={styles.shareButtonText}>Share Link</ThemedText>
+              </LinearGradient>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.actionButton, styles.learnButton]}
+              style={styles.learnButton}
               onPress={onLearnMore}
               activeOpacity={0.8}
             >
-              <ThemedText style={styles.learnButtonText}>Learn More</ThemedText>
-              <Ionicons name="arrow-forward" size={16} color={EARN_COLORS.primary} />
+              <LinearGradient
+                colors={['rgba(139, 92, 246, 0.1)', 'rgba(139, 92, 246, 0.05)']}
+                style={styles.learnButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <ThemedText style={styles.learnButtonText}>Learn More</ThemedText>
+                <Ionicons name="chevron-forward" size={16} color={EARN_COLORS.primary} />
+              </LinearGradient>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </LinearGradient>
-      </View>
-    </View>
-);
+      </Animated.View>
+    </Animated.View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -145,24 +361,59 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
+  titleContainer: {
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '800',
     color: EARN_COLORS.textPrimary,
     textAlign: 'center',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  titleUnderline: {
+    width: 60,
+    height: 3,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 2,
+    marginTop: 2,
   },
   card: {
     marginHorizontal: 20,
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   cardBackground: {
     padding: 24,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  decorativeCircle1: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(139, 92, 246, 0.06)',
+    top: -40,
+    right: -40,
+  },
+  decorativeCircle2: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    bottom: -20,
+    left: -20,
   },
   illustrationContainer: {
     height: 120,
@@ -177,10 +428,21 @@ const styles = StyleSheet.create({
   },
   coin: {
     position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#FEF3C7',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  coinGradient: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -188,7 +450,7 @@ const styles = StyleSheet.create({
   coin2: { top: 20, right: 40 },
   coin3: { bottom: 30, left: 20 },
   coin4: { bottom: 20, right: 30 },
-  coin5: { top: 30, left: '50%', marginLeft: -10 },
+  coin5: { top: 30, left: '50%', marginLeft: -12 },
   
   centralElements: {
     flexDirection: 'row',
@@ -197,26 +459,31 @@ const styles = StyleSheet.create({
   },
   phone: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 16,
+    padding: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  phoneGradient: {
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   phoneLeft: {},
   phoneRight: {},
   phoneScreen: {
-    marginTop: 4,
+    marginTop: 6,
     alignItems: 'center',
   },
   screenLine: {
-    width: 20,
+    width: 24,
     height: 2,
-    backgroundColor: '#E5E7EB',
-    marginVertical: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginVertical: 2,
     borderRadius: 1,
   },
   
@@ -226,48 +493,71 @@ const styles = StyleSheet.create({
   personLeft: { left: 60, bottom: 10 },
   personRight: { right: 60, bottom: 10 },
   personAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   
  stats: {
   flexDirection: 'row',
-  justifyContent: 'space-between', // or 'space-around'
+  justifyContent: 'space-between',
   alignItems: 'center',
-  backgroundColor: 'rgba(255, 255, 255, 0.85)',
-  borderRadius: 16,
-  paddingVertical: 16,
-  paddingHorizontal: 16,
+  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  borderRadius: 18,
+  paddingVertical: 18,
+  paddingHorizontal: 12,
   marginBottom: 20,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+  elevation: 4,
+  borderWidth: 1,
+  borderColor: 'rgba(0, 0, 0, 0.05)',
 },
 statItem: {
   alignItems: 'center',
   flex: 1,
+  gap: 8,
+},
+statIconGradient: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: 6,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 4,
+  elevation: 3,
 },
 statNumberWrapper: {
-  width: 80, // fixed width for all numbers
+  width: '100%',
   alignItems: 'center',
 },
 statNumber: {
-  fontSize: 18,
-  fontWeight: 'bold',
-  color: EARN_COLORS.primary,
-  marginBottom: 4,
+  fontSize: 20,
+  fontWeight: '800',
+  color: '#1F2937',
+  marginBottom: 2,
+  letterSpacing: -0.3,
+  textAlign: 'center',
 },
 statLabel: {
-  fontSize: 10,
-  color: EARN_COLORS.textSecondary,
-  fontWeight: '500',
+  fontSize: 11,
+  color: '#6B7280',
+  fontWeight: '600',
   textAlign: 'center',
+  letterSpacing: 0.2,
 },
 
   statDivider: {
@@ -280,32 +570,49 @@ statLabel: {
   actions: {
     flexDirection: 'row',
     gap: 12,
+    zIndex: 5,
   },
   actionButton: {
     flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  shareButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 16,
     gap: 8,
   },
-  shareButton: {
-    backgroundColor: EARN_COLORS.primary,
-  },
   shareButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   learnButton: {
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    borderWidth: 1,
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1.5,
     borderColor: EARN_COLORS.primary,
   },
+  learnButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 6,
+  },
   learnButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: EARN_COLORS.primary,
+    letterSpacing: 0.2,
   },
 });

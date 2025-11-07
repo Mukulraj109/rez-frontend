@@ -11,8 +11,8 @@ export default function CategoryTile({
   onPress, 
   size = 'medium' 
 }: CategoryTileProps) {
-  const gradient = CATEGORY_GRADIENTS[category.color];
-  const solidColor = CATEGORY_SOLID_COLORS[category.color];
+  const gradient = CATEGORY_GRADIENTS[category.color] || ['#8B5CF6', '#7C3AED', '#6D28D9'];
+  const solidColor = CATEGORY_SOLID_COLORS[category.color] || '#8B5CF6';
   
   const getSizeStyles = (size: string) => {
     switch (size) {
@@ -49,7 +49,7 @@ export default function CategoryTile({
       activeOpacity={0.8}
     >
       <LinearGradient
-        colors={gradient}
+        colors={Array.isArray(gradient) && gradient.length > 0 ? gradient : ['#8B5CF6', '#7C3AED', '#6D28D9']}
         style={[styles.gradient, { padding: sizeStyles.padding }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}

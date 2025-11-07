@@ -64,6 +64,10 @@ export default function CartPage() {
   // Use real cart items from CartContext
   const productItems = useMemo(() => {
     return cartState.items.map(item => {
+      // Preserve metadata for event items
+      const metadata = (item as any).metadata || {};
+      const isEvent = metadata.eventType === 'event';
+      
       return {
         id: item.id,
         productId: (item as any).productId || item.id,
@@ -71,12 +75,15 @@ export default function CartPage() {
         image: item.image || '',
         price: item.discountedPrice || item.originalPrice || 0,
         originalPrice: item.originalPrice,
-        cashback: `Upto 12% cash back`,
+        cashback: isEvent ? '0' : `Upto 12% cash back`, // Events don't have cashback
         quantity: item.quantity,
         discount: (item as any).discount,
         variant: (item as any).variant,
         store: (item as any).store,
         category: 'products' as const,
+        // Preserve event metadata
+        metadata: isEvent ? metadata : undefined,
+        isEvent: isEvent,
       };
     });
   }, [cartState.items, cartState.isLoading, cartState.error]);

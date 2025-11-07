@@ -7,10 +7,14 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '@/services/apiClient';
+import walletApi from '@/services/walletApi';
+import coinSyncService from '@/services/coinSyncService';
 
 export default function GamificationDashboard() {
   const [loading, setLoading] = useState(true);
@@ -21,6 +25,8 @@ export default function GamificationDashboard() {
   const [achievements, setAchievements] = useState<any[]>([]);
   const [streaks, setStreaks] = useState<any>({});
   const [stats, setStats] = useState<any>({});
+  // ✅ NEW: Store coin balance from wallet API (single source of truth)
+  const [coinBalance, setCoinBalance] = useState<number>(0);
 
   useEffect(() => {
     loadGamificationData();
@@ -30,17 +36,29 @@ export default function GamificationDashboard() {
     try {
       setLoading(true);
 
-      const [challengesRes, achievementsRes, streaksRes, statsRes] = await Promise.all([
+      // ✅ UPDATED: Fetch coin balance from wallet API (single source of truth)
+      const [challengesRes, achievementsRes, streaksRes, statsRes, walletRes] = await Promise.all([
         apiClient.get('/challenges/my-progress'),
         apiClient.get('/achievements'),
         apiClient.get('/streaks'),
         apiClient.get('/gamification/stats'),
+        walletApi.getBalance(),
       ]);
 
       setChallenges((challengesRes.data as any)?.data || []);
       setAchievements((achievementsRes.data as any)?.data || []);
       setStreaks((streaksRes.data as any)?.data || {});
       setStats((statsRes.data as any)?.data || {});
+
+      // ✅ Extract coin balance from wallet
+      if (walletRes.success && walletRes.data) {
+        const wasilCoin = walletRes.data.coins.find((c: any) => c.type === 'wasil');
+        const walletCoins = wasilCoin?.amount || 0;
+        setCoinBalance(walletCoins);
+        console.log(`✅ [GAMIFICATION] Wallet balance loaded: ${walletCoins}`);
+      } else {
+        console.warn('⚠️ [GAMIFICATION] Could not load wallet balance');
+      }
     } catch (error) {
       console.error('Error loading gamification data:', error);
     } finally {
@@ -59,8 +77,24 @@ export default function GamificationDashboard() {
       const response = await apiClient.post(`/challenges/${challengeId}/claim`);
 
       if ((response.data as any).success) {
-        // Show success message
-        alert(`Claimed ${(response.data as any).data.rewards.coins} coins!`);
+        const coinsEarned = (response.data as any).data.rewards.coins;
+
+        // ✅ UPDATED: Sync claimed coins to wallet
+        console.log(`🏆 [GAMIFICATION] Challenge claimed, syncing ${coinsEarned} coins to wallet...`);
+
+        const syncResult = await coinSyncService.handleChallengeReward(
+          challengeId,
+          (response.data as any).data.challenge?.title || 'Challenge',
+          coinsEarned
+        );
+
+        if (syncResult.success) {
+          alert(`Claimed ${coinsEarned} coins! New balance: ${syncResult.newWalletBalance}`);
+          setCoinBalance(syncResult.newWalletBalance);
+        } else {
+          alert(`Claimed ${coinsEarned} coins!`);
+        }
+
         loadGamificationData();
       }
     } catch (error: any) {
@@ -71,43 +105,100 @@ export default function GamificationDashboard() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color="#8B5CF6" />
       </View>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Gamification Hub</Text>
-        <Text style={styles.subtitle}>Complete challenges, earn rewards!</Text>
-      </View>
-
-      {/* Streak Section */}
-      <View style={styles.streakContainer}>
-        <Text style={styles.sectionTitle}>Your Streaks 🔥</Text>
-        <View style={styles.streakRow}>
-          {Object.entries(streaks).map(([type, data]: [string, any]) => (
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#8B5CF6"
+          />
+        }
+      >
+        {/* Modern Gradient Header */}
+        <LinearGradient
+          colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
+          style={styles.header}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.title}>Gamification Hub</Text>
+              <Text style={styles.subtitle}>Complete challenges, earn rewards!</Text>
+            </View>
             <TouchableOpacity
-              key={type}
-              style={styles.streakCard}
-              onPress={() => router.push('/gamification/streaks' as any)}
+              style={styles.coinsBadge}
+              onPress={() => router.push('/WalletScreen' as any)}
+              activeOpacity={0.8}
             >
-              <Text style={styles.streakIcon}>
-                {type === 'login' ? '📅' : type === 'order' ? '🛒' : '⭐'}
-              </Text>
-              <Text style={styles.streakCount}>{data.current}</Text>
-              <Text style={styles.streakLabel}>{type}</Text>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)']}
+                style={styles.coinsBadgeGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="star" size={24} color="#FFD700" />
+                <Text style={styles.coinsText}>{coinBalance.toLocaleString()}</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          ))}
+          </View>
+        </LinearGradient>
+
+        {/* Modern Streak Section */}
+        <View style={styles.streakContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Your Streaks</Text>
+            <Ionicons name="flame" size={24} color="#FF6B6B" />
+          </View>
+          <View style={styles.streakRow}>
+            {Object.entries(streaks).map(([type, data]: [string, any]) => (
+              <TouchableOpacity
+                key={type}
+                style={styles.streakCard}
+                onPress={() => router.push('/gamification/streaks' as any)}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={
+                    type === 'login'
+                      ? ['#667EEA', '#764BA2']
+                      : type === 'order'
+                      ? ['#F093FB', '#F5576C']
+                      : ['#4FACFE', '#00F2FE']
+                  }
+                  style={styles.streakGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={styles.streakIconContainer}>
+                    <Text style={styles.streakIcon}>
+                      {type === 'login' ? '📅' : type === 'order' ? '🛒' : '⭐'}
+                    </Text>
+                  </View>
+                  <Text style={styles.streakCount}>{data.current}</Text>
+                  <Text style={styles.streakLabel}>{type}</Text>
+                  <View style={styles.streakBadge}>
+                    <Text style={styles.streakBadgeText}>+{data.current} days</Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
 
       {/* Tabs */}
       <View style={styles.tabs}>
@@ -184,36 +275,70 @@ export default function GamificationDashboard() {
         </View>
       )}
 
-      {/* Quick Access */}
-      <View style={styles.quickAccess}>
-        <Text style={styles.sectionTitle}>Mini Games</Text>
-        <View style={styles.gameRow}>
-          <TouchableOpacity
-            style={styles.gameCard}
-            onPress={() => router.push('/games/spin-wheel' as any)}
-          >
-            <Text style={styles.gameIcon}>🎡</Text>
-            <Text style={styles.gameTitle}>Spin Wheel</Text>
-          </TouchableOpacity>
+        {/* Modern Mini Games Section */}
+        <View style={styles.quickAccess}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Mini Games</Text>
+            <Ionicons name="game-controller" size={24} color="#8B5CF6" />
+          </View>
+          <View style={styles.gameRow}>
+            <TouchableOpacity
+              style={styles.gameCard}
+              onPress={() => router.push('/games/spin-wheel' as any)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#FF6B6B', '#EE5A6F']}
+                style={styles.gameGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.gameIconBg}>
+                  <Text style={styles.gameIcon}>🎡</Text>
+                </View>
+                <Text style={styles.gameTitle}>Spin Wheel</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.gameCard}
-            onPress={() => router.push('/games/scratch-card' as any)}
-          >
-            <Text style={styles.gameIcon}>🎫</Text>
-            <Text style={styles.gameTitle}>Scratch Card</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.gameCard}
+              onPress={() => router.push('/scratch-card' as any)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#4ECDC4', '#44A08D']}
+                style={styles.gameGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.gameIconBg}>
+                  <Text style={styles.gameIcon}>🎫</Text>
+                </View>
+                <Text style={styles.gameTitle}>Scratch Card</Text>
+              </LinearGradient>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.gameCard}
-            onPress={() => router.push('/games/quiz' as any)}
-          >
-            <Text style={styles.gameIcon}>🧠</Text>
-            <Text style={styles.gameTitle}>Quiz</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.gameCard}
+              onPress={() => router.push('/games/quiz' as any)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#A8E6CF', '#88D4AB']}
+                style={styles.gameGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.gameIconBg}>
+                  <Text style={styles.gameIcon}>🧠</Text>
+                </View>
+                <Text style={styles.gameTitle}>Quiz</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 
@@ -301,96 +426,177 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
+  contentContainer: {
+    paddingBottom: 100,
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F5F5F5',
   },
   header: {
-    padding: 20,
-    backgroundColor: '#4F46E5',
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 32,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flex: 1,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 4,
+  },
+  coinsBadge: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  coinsBadgeGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  coinsText: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#FFF',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#E0E0E0',
-    marginTop: 4,
-  },
   streakContainer: {
-    padding: 16,
+    padding: 20,
     backgroundColor: '#FFF',
     marginTop: 8,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 12,
+    color: '#1F2937',
   },
   streakRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   streakCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  streakGradient: {
+    padding: 16,
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    width: 100,
+    minHeight: 140,
+    justifyContent: 'center',
+  },
+  streakIconContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 50,
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   streakIcon: {
     fontSize: 32,
   },
   streakCount: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: '#FFF',
+    marginBottom: 4,
   },
   streakLabel: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
     textTransform: 'capitalize',
+    fontWeight: '600',
+  },
+  streakBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  streakBadgeText: {
+    fontSize: 11,
+    color: '#FFF',
+    fontWeight: 'bold',
   },
   tabs: {
     flexDirection: 'row',
     backgroundColor: '#FFF',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   tab: {
     flex: 1,
     paddingVertical: 16,
     alignItems: 'center',
-    borderBottomWidth: 2,
+    borderBottomWidth: 3,
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#4F46E5',
+    borderBottomColor: '#8B5CF6',
   },
   tabText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    fontSize: 15,
+    color: '#6B7280',
+    fontWeight: '600',
   },
   activeTabText: {
-    color: '#4F46E5',
+    color: '#8B5CF6',
     fontWeight: 'bold',
   },
   content: {
-    padding: 16,
+    padding: 20,
   },
   challengeCard: {
     backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    elevation: 2,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   challengeHeader: {
     flexDirection: 'row',
@@ -426,7 +632,8 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#8B5CF6',
+    borderRadius: 4,
   },
   progressText: {
     fontSize: 12,
@@ -445,10 +652,15 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   claimButton: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   claimButtonText: {
     color: '#FFF',
@@ -460,14 +672,14 @@ const styles = StyleSheet.create({
   },
   achievementCard: {
     backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    elevation: 2,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   achievementHeader: {
     flexDirection: 'row',
@@ -498,21 +710,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tierBadge: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#FFF',
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   leaderboardCard: {
     backgroundColor: '#FFF',
-    padding: 20,
-    borderRadius: 12,
+    padding: 24,
+    borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   leaderboardTitle: {
     fontSize: 16,
@@ -521,32 +738,49 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   quickAccess: {
-    padding: 16,
+    padding: 20,
+    backgroundColor: '#FFF',
+    marginTop: 8,
+    marginBottom: 16,
   },
   gameRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   gameCard: {
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    width: 100,
-    elevation: 2,
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  gameGradient: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 140,
+  },
+  gameIconBg: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 50,
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   gameIcon: {
-    fontSize: 40,
-    marginBottom: 8,
+    fontSize: 36,
   },
   gameTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
     textAlign: 'center',
+    color: '#FFF',
   },
   emptyText: {
     textAlign: 'center',
@@ -554,14 +788,20 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   viewAllButton: {
-    backgroundColor: '#4F46E5',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#8B5CF6',
+    padding: 18,
+    borderRadius: 14,
     alignItems: 'center',
     marginTop: 16,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   viewAllText: {
     color: '#FFF',
     fontWeight: 'bold',
+    fontSize: 16,
   },
 });

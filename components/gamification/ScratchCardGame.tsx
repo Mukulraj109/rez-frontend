@@ -1,7 +1,7 @@
 // Scratch Card Game Component
 // Reusable scratch card component with scratch-to-reveal mechanic
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -9,11 +9,14 @@ import {
   TouchableOpacity,
   Animated,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
 import gamificationAPI from '@/services/gamificationApi';
+import { useGamification } from '@/contexts/GamificationContext';
 import type { ScratchCardPrize } from '@/types/gamification.types';
 
 const { width } = Dimensions.get('window');
@@ -22,43 +25,84 @@ const CARD_HEIGHT = CARD_WIDTH * 0.6;
 
 interface ScratchCardGameProps {
   onReveal?: (prize: ScratchCardPrize) => void;
+  onCoinsEarned?: (coins: number) => void;
+  onError?: (error: string) => void;
 }
 
-export default function ScratchCardGame({ onReveal }: ScratchCardGameProps) {
+export default function ScratchCardGame({
+  onReveal,
+  onCoinsEarned,
+  onError,
+}: ScratchCardGameProps) {
   const [isScratched, setIsScratched] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [canCreate, setCanCreate] = useState(false);
+  const [eligibilityLoading, setEligibilityLoading] = useState(true);
+  const [nextAvailableTime, setNextAvailableTime] = useState<string | null>(null);
   const [prize, setPrize] = useState<ScratchCardPrize | null>(null);
   const [cardId, setCardId] = useState<string | null>(null);
   const scratchOpacity = useRef(new Animated.Value(1)).current;
   const prizeScale = useRef(new Animated.Value(0.5)).current;
+  const { actions: gamificationActions } = useGamification();
+
+  // Check eligibility on mount
+  useEffect(() => {
+    checkEligibility();
+  }, []);
+
+  const checkEligibility = async () => {
+    try {
+      setEligibilityLoading(true);
+      const response = await gamificationAPI.canCreateScratchCard();
+
+      if (response.success && response.data) {
+        setCanCreate(response.data.canCreate);
+        setNextAvailableTime(response.data.nextAvailableAt || null);
+      }
+    } catch (error: any) {
+      console.error('Error checking eligibility:', error);
+      setCanCreate(true); // Allow on error as fallback
+    } finally {
+      setEligibilityLoading(false);
+    }
+  };
 
   // Create new scratch card
   const createCard = async () => {
+    if (!canCreate) {
+      Alert.alert('Not Available', 'Scratch card is not available yet. Please try again later.');
+      return false;
+    }
+
     try {
+      setIsLoading(true);
       const response = await gamificationAPI.createScratchCard();
+
       if (response.success && response.data) {
         setCardId(response.data.id);
         setPrize(response.data.prize);
+        setIsLoading(false);
         return true;
       }
       return false;
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create scratch card');
+      setIsLoading(false);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create scratch card';
+      Alert.alert('Error', errorMessage);
+      onError?.(errorMessage);
       return false;
     }
   };
 
   // Handle scratch action
   const handleScratch = async () => {
-    if (isScratched || !cardId) {
-      // If no card exists, create one
-      if (!cardId) {
-        const created = await createCard();
-        if (!created) return;
-      }
+    if (isScratched || !cardId || isLoading) {
       return;
     }
 
     try {
+      setIsLoading(true);
+
       // Animate scratch effect
       Animated.parallel([
         Animated.timing(scratchOpacity, {
@@ -77,34 +121,49 @@ export default function ScratchCardGame({ onReveal }: ScratchCardGameProps) {
       setIsScratched(true);
 
       // Scratch card on backend
-      if (cardId) {
-        const response = await gamificationAPI.scratchCard(cardId);
-        if (response.success && response.data) {
-          // Trigger callback
-          if (prize && onReveal) {
-            onReveal(prize);
-          }
+      const response = await gamificationAPI.scratchCard(cardId);
 
-          // Show success alert
-          setTimeout(() => {
-            Alert.alert(
-              'Prize Revealed! 🎉',
-              `You won: ${prize?.description || 'A mystery prize!'}`,
-              [
-                {
-                  text: 'Claim Prize',
-                  onPress: () => {
-                    // Reset for next card
-                    resetCard();
-                  },
-                },
-              ]
-            );
-          }, 600);
+      if (response.success && response.data) {
+        const { coinsAdded } = response.data;
+
+        // Update wallet balance in context
+        if (coinsAdded > 0) {
+          await gamificationActions.loadGamificationData(true);
+          onCoinsEarned?.(coinsAdded);
         }
+
+        // Trigger callback
+        if (prize && onReveal) {
+          onReveal(prize);
+        }
+
+        // Show success alert
+        setTimeout(() => {
+          Alert.alert(
+            'Prize Revealed! 🎉',
+            `You won: ${prize?.description || 'A mystery prize!'}${coinsAdded > 0 ? `\n\n+${coinsAdded} coins added to your wallet!` : ''}`,
+            [
+              {
+                text: 'Great!',
+                onPress: async () => {
+                  // Reset for next card
+                  resetCard();
+                  // Check eligibility for next card
+                  await checkEligibility();
+                },
+              },
+            ]
+          );
+        }, 600);
       }
+
+      setIsLoading(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to scratch card');
+      setIsLoading(false);
+      console.error('Error scratching card:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to scratch card';
+      Alert.alert('Error', errorMessage);
+      onError?.(errorMessage);
     }
   };
 
@@ -117,8 +176,46 @@ export default function ScratchCardGame({ onReveal }: ScratchCardGameProps) {
     prizeScale.setValue(0.5);
   };
 
+  // Loading state
+  if (eligibilityLoading) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ThemedText style={styles.loadingText}>Checking availability...</ThemedText>
+        </View>
+      </ThemedView>
+    );
+  }
+
+  // Not eligible state
+  if (!canCreate && !cardId) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.notAvailableContainer}>
+          <Ionicons name="time-outline" size={80} color="#E5E7EB" />
+          <ThemedText style={styles.notAvailableTitle}>Scratch Card Not Available</ThemedText>
+          <ThemedText style={styles.notAvailableDescription}>
+            {nextAvailableTime
+              ? `Come back at ${new Date(nextAvailableTime).toLocaleTimeString()} for your next scratch card!`
+              : 'Complete more challenges to unlock scratch cards!'}
+          </ThemedText>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={checkEligibility}
+            disabled={isLoading}
+          >
+            <ThemedText style={styles.refreshButtonText}>
+              {isLoading ? 'Checking...' : 'Check Again'}
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ThemedView>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <ThemedView style={styles.container}>
       <View style={styles.cardContainer}>
         {/* Prize Content (hidden behind scratch layer) */}
         {prize && (
@@ -161,6 +258,7 @@ export default function ScratchCardGame({ onReveal }: ScratchCardGameProps) {
             style={styles.scratchTouchable}
             onPress={handleScratch}
             activeOpacity={0.8}
+            disabled={isLoading || !cardId}
           >
             <LinearGradient
               colors={['#C0C0C0', '#A0A0A0', '#C0C0C0']}
@@ -168,29 +266,51 @@ export default function ScratchCardGame({ onReveal }: ScratchCardGameProps) {
               end={{ x: 1, y: 1 }}
               style={styles.scratchGradient}
             >
-              <Ionicons name="hand-left" size={60} color="#FFFFFF" style={styles.scratchIcon} />
-              <ThemedText style={styles.scratchText}>SCRATCH HERE</ThemedText>
-              <ThemedText style={styles.scratchSubtext}>
-                Tap to reveal your prize!
-              </ThemedText>
+              {isLoading ? (
+                <>
+                  <ActivityIndicator size={60} color="#FFFFFF" />
+                  <ThemedText style={styles.scratchText}>SCRATCHING...</ThemedText>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="hand-left" size={60} color="#FFFFFF" style={styles.scratchIcon} />
+                  <ThemedText style={styles.scratchText}>SCRATCH HERE</ThemedText>
+                  <ThemedText style={styles.scratchSubtext}>
+                    Tap to reveal your prize!
+                  </ThemedText>
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
       </View>
 
-      {/* Instructions */}
-      {!isScratched && !cardId && (
-        <TouchableOpacity style={styles.createButton} onPress={createCard}>
+      {/* Create Button */}
+      {!isScratched && !cardId && canCreate && (
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={createCard}
+          disabled={isLoading}
+        >
           <LinearGradient
-            colors={['#8B5CF6', '#7C3AED']}
+            colors={isLoading ? ['#9CA3AF', '#6B7280'] : ['#8B5CF6', '#7C3AED']}
             style={styles.createButtonGradient}
           >
-            <ThemedText style={styles.createButtonText}>Create Scratch Card</ThemedText>
-            <Ionicons name="add-circle" size={24} color="#FFFFFF" />
+            {isLoading ? (
+              <>
+                <ActivityIndicator size={24} color="#FFFFFF" />
+                <ThemedText style={styles.createButtonText}>Creating...</ThemedText>
+              </>
+            ) : (
+              <>
+                <ThemedText style={styles.createButtonText}>Create Scratch Card</ThemedText>
+                <Ionicons name="add-circle" size={24} color="#FFFFFF" />
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       )}
-    </View>
+    </ThemedView>
   );
 }
 
@@ -198,6 +318,49 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     paddingVertical: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 80,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  notAvailableContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 80,
+    gap: 16,
+  },
+  notAvailableTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    textAlign: 'center',
+  },
+  notAvailableDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  refreshButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  refreshButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   cardContainer: {
     width: CARD_WIDTH,

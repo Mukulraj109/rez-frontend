@@ -171,7 +171,11 @@ function BundleProductCard({ product, onPress }: BundleProductCardProps) {
         {product.rating && (
           <View style={styles.productRating}>
             <Ionicons name="star" size={10} color="#FBBF24" />
-            <Text style={styles.ratingText}>{product.rating.value.toFixed(1)}</Text>
+            <Text style={styles.ratingText}>
+              {typeof product.rating.value === 'string' 
+                ? parseFloat(product.rating.value).toFixed(1) 
+                : product.rating.value.toFixed(1)}
+            </Text>
           </View>
         )}
       </View>

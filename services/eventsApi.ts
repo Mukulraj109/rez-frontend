@@ -33,6 +33,11 @@ export interface BookingRequest {
 export interface BookingResult {
   success: boolean;
   booking?: any;
+  payment?: {
+    paymentIntentId?: string;
+    clientSecret?: string;
+    sessionId?: string;
+  } | null;
   message: string;
   error?: string;
 }
@@ -63,38 +68,60 @@ class EventsApiService {
 
   /**
    * Check if backend is available
+   * Only cache successful checks, not failures
    */
   async isBackendAvailable(): Promise<boolean> {
     const now = Date.now();
 
-    // Use cached result if recent
-    if (this.backendAvailable !== null && 
+    // Use cached result if recent AND it was successful
+    // Don't cache failures - always retry if last check failed
+    if (this.backendAvailable === true && 
         (now - this.lastBackendCheck) < this.BACKEND_CHECK_INTERVAL) {
-      return this.backendAvailable;
+      return true;
     }
 
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    
     try {
-      const response = await fetch(`${this.baseUrl}/events/featured?limit=1`, {
+      // Try a simple health check endpoint or the events endpoint
+      // Use a timeout to prevent hanging (5 seconds)
+      const controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(`${this.baseUrl}/events?limit=1`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
       });
-
-      this.backendAvailable = response.ok;
-      this.lastBackendCheck = now;
       
-      if (this.backendAvailable) {
-        console.log('✅ Events API is available');
-      } else {
-        console.log('⚠️ Events API is not available');
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
 
-      return this.backendAvailable;
+      const isAvailable = response.ok;
+      
+      // Only cache successful checks
+      if (isAvailable) {
+        this.backendAvailable = true;
+        this.lastBackendCheck = now;
+        console.log('✅ Events API is available');
+      } else {
+        // Don't cache failures - allow retry on next request
+        console.log('⚠️ Events API returned non-OK status:', response.status);
+      }
+
+      return isAvailable;
     } catch (error) {
+      // Clear timeout if it was set
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
+      // Don't cache failures - allow retry on next request
       console.warn('❌ Events API availability check failed:', error);
-      this.backendAvailable = false;
-      this.lastBackendCheck = now;
+      this.backendAvailable = null; // Reset to null so we retry
       return false;
     }
   }
@@ -104,11 +131,6 @@ class EventsApiService {
    */
   async getEvents(filters: EventFilters = {}, limit = 20, offset = 0): Promise<EventSearchResult> {
     try {
-      const isAvailable = await this.isBackendAvailable();
-      if (!isAvailable) {
-        throw new Error('Backend not available');
-      }
-
       const queryParams = new URLSearchParams();
       
       // Add filters to query params
@@ -158,11 +180,6 @@ class EventsApiService {
    */
   async getEventById(id: string): Promise<EventItem | null> {
     try {
-      const isAvailable = await this.isBackendAvailable();
-      if (!isAvailable) {
-        throw new Error('Backend not available');
-      }
-
       const response = await fetch(`${this.baseUrl}/events/${id}`, {
         method: 'GET',
         headers: {
@@ -195,10 +212,6 @@ class EventsApiService {
    */
   async getEventsByCategory(category: string, limit = 20, offset = 0): Promise<EventSearchResult> {
     try {
-      const isAvailable = await this.isBackendAvailable();
-      if (!isAvailable) {
-        throw new Error('Backend not available');
-      }
 
       const queryParams = new URLSearchParams();
       queryParams.append('limit', limit.toString());
@@ -239,10 +252,6 @@ class EventsApiService {
    */
   async searchEvents(query: string, filters: EventFilters = {}, limit = 20, offset = 0): Promise<EventSearchResult> {
     try {
-      const isAvailable = await this.isBackendAvailable();
-      if (!isAvailable) {
-        throw new Error('Backend not available');
-      }
 
       const queryParams = new URLSearchParams();
       queryParams.append('q', query);
@@ -293,10 +302,6 @@ class EventsApiService {
    */
   async getFeaturedEvents(limit = 10): Promise<EventItem[]> {
     try {
-      const isAvailable = await this.isBackendAvailable();
-      if (!isAvailable) {
-        throw new Error('Backend not available');
-      }
 
       const response = await fetch(`${this.baseUrl}/events/featured?limit=${limit}`, {
         method: 'GET',
@@ -327,10 +332,6 @@ class EventsApiService {
    */
   async bookEventSlot(eventId: string, bookingData: BookingRequest): Promise<BookingResult> {
     try {
-      const isAvailable = await this.isBackendAvailable();
-      if (!isAvailable) {
-        throw new Error('Backend not available');
-      }
 
       // Get auth token from storage (you'll need to implement this)
       const token = await this.getAuthToken();
@@ -356,7 +357,8 @@ class EventsApiService {
       
       return {
         success: data.success,
-        booking: data.data,
+        booking: data.data?.booking || data.data, // Handle both old and new response format
+        payment: data.data?.payment || null, // Payment data from backend
         message: data.message
       };
     } catch (error) {
@@ -369,14 +371,66 @@ class EventsApiService {
   }
 
   /**
+   * Get related events (similar events based on category, location, or date)
+   */
+  async getRelatedEvents(eventId: string, limit = 6): Promise<EventItem[]> {
+    try {
+
+      const response = await fetch(`${this.baseUrl}/events/${eventId}/related?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        // If endpoint doesn't exist yet, fall back to same category
+        if (response.status === 404) {
+          console.warn('⚠️ [RELATED EVENTS] Related events endpoint not found, using category fallback');
+          // Get event first to find category
+          const event = await this.getEventById(eventId);
+          if (event) {
+            return this.getEventsByCategory(event.category, limit, 0).then(result => result.events.filter(e => e.id !== eventId));
+          }
+          return [];
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        return Array.isArray(data.data) 
+          ? data.data.map(this.transformEventToFrontend)
+          : (data.data.events || []).map(this.transformEventToFrontend);
+      } else {
+        // Fallback to category-based events
+        const event = await this.getEventById(eventId);
+        if (event) {
+          return this.getEventsByCategory(event.category, limit, 0).then(result => result.events.filter(e => e.id !== eventId));
+        }
+        return [];
+      }
+    } catch (error) {
+      console.error('❌ Error fetching related events:', error);
+      // Fallback to category-based events
+      try {
+        const event = await this.getEventById(eventId);
+        if (event) {
+          return this.getEventsByCategory(event.category, limit, 0).then(result => result.events.filter(e => e.id !== eventId));
+        }
+      } catch (fallbackError) {
+        console.error('❌ Error in related events fallback:', fallbackError);
+      }
+      return [];
+    }
+  }
+
+  /**
    * Get user's event bookings
    */
   async getUserBookings(status?: string, limit = 20, offset = 0): Promise<{ bookings: UserBooking[], total: number, hasMore: boolean }> {
     try {
-      const isAvailable = await this.isBackendAvailable();
-      if (!isAvailable) {
-        throw new Error('Backend not available');
-      }
 
       const token = await this.getAuthToken();
       if (!token) {
@@ -418,14 +472,49 @@ class EventsApiService {
   }
 
   /**
+   * Confirm booking after payment
+   */
+  async confirmBooking(bookingId: string, paymentIntentId?: string): Promise<{ success: boolean, message: string }> {
+    try {
+      const token = await this.getAuthToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      const response = await fetch(`${this.baseUrl}/events/bookings/${bookingId}/confirm`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ paymentIntentId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to confirm booking');
+      }
+
+      const data = await response.json();
+      
+      return {
+        success: data.success,
+        message: data.message || 'Booking confirmed successfully'
+      };
+    } catch (error) {
+      console.error('❌ Error confirming booking:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to confirm booking'
+      };
+    }
+  }
+
+  /**
    * Cancel event booking
    */
   async cancelBooking(bookingId: string): Promise<{ success: boolean, message: string }> {
     try {
-      const isAvailable = await this.isBackendAvailable();
-      if (!isAvailable) {
-        throw new Error('Backend not available');
-      }
 
       const token = await this.getAuthToken();
       if (!token) {
@@ -465,10 +554,6 @@ class EventsApiService {
    */
   async toggleEventFavorite(eventId: string): Promise<{ success: boolean, message: string }> {
     try {
-      const isAvailable = await this.isBackendAvailable();
-      if (!isAvailable) {
-        throw new Error('Backend not available');
-      }
 
       const token = await this.getAuthToken();
       if (!token) {
@@ -508,10 +593,6 @@ class EventsApiService {
    */
   async shareEvent(eventId: string): Promise<{ success: boolean, message: string }> {
     try {
-      const isAvailable = await this.isBackendAvailable();
-      if (!isAvailable) {
-        throw new Error('Backend not available');
-      }
 
       const response = await fetch(`${this.baseUrl}/events/${eventId}/share`, {
         method: 'POST',
@@ -569,21 +650,27 @@ class EventsApiService {
   };
 
   /**
-   * Get authentication token (implement based on your auth system)
+   * Get authentication token from auth storage
    */
   private async getAuthToken(): Promise<string | null> {
-    // This should be implemented based on your authentication system
-    // For now, return null to indicate no auth
-    return null;
+    try {
+      // Use authStorage utility which handles both web (localStorage) and native (AsyncStorage)
+      const { getAuthToken } = await import('@/utils/authStorage');
+      const token = await getAuthToken();
+      return token;
+    } catch (error) {
+      console.error('❌ [EVENTS API] Error getting auth token:', error);
+      return null;
+    }
   }
 
   /**
    * Force refresh backend availability check
    */
   async refreshBackendStatus(): Promise<boolean> {
-    this.backendAvailable = null;
-    this.lastBackendCheck = 0;
-    return await this.isBackendAvailable();
+    // Availability check removed - always return true
+    // The actual fetch requests will handle errors
+    return true;
   }
 
   /**

@@ -67,6 +67,14 @@ export const profileMenuSections: ProfileMenuSection[] = [
         showArrow: true,
       },
       {
+        id: 'bookings',
+        title: 'My Bookings',
+        icon: 'calendar-outline',
+        route: '/BookingsPage',
+        isEnabled: true,
+        showArrow: true,
+      },
+      {
         id: 'account',
         title: 'Account',
         icon: 'person-outline',
@@ -170,6 +178,14 @@ export const profileMenuListItems: ProfileMenuListItem[] = [
     icon: 'time-outline',
     route: '/history',
     description: 'View all your past orders and transactions',
+    showArrow: true,
+  },
+  {
+    id: 'bookings',
+    title: 'My Bookings',
+    icon: 'calendar-outline',
+    route: '/BookingsPage',
+    description: 'View all your event bookings',
     showArrow: true,
   },
   {

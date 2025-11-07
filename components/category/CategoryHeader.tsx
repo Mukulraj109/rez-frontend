@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { Category } from '@/types/category.types';
 import { useProfile, useProfileMenu } from '@/contexts/ProfileContext';
+import { useAuth } from '@/contexts/AuthContext';
 import ProfileMenuModal from '@/components/profile/ProfileMenuModal';
 import { profileMenuSections } from '@/data/profileData';
 
@@ -38,12 +39,38 @@ export default function CategoryHeader({
   const router = useRouter();
   const { user, isModalVisible, showModal, hideModal } = useProfile();
   const { handleMenuItemPress } = useProfileMenu();
+  const { state: authState } = useAuth();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [userPoints, setUserPoints] = useState(0);
   const { width, height } = Dimensions.get('window');
   
   const statusBarHeight = Platform.OS === 'ios' 
     ? (height >= 812 ? 44 : 20) 
     : StatusBar.currentHeight ?? 24;
+
+  // Load wallet balance on mount
+  useEffect(() => {
+    if (authState.user) {
+      loadWalletBalance();
+    }
+  }, [authState.user]);
+
+  const loadWalletBalance = async () => {
+    try {
+      const walletApi = (await import('@/services/walletApi')).default;
+      const response = await walletApi.getBalance();
+      
+      if (response.success && response.data) {
+        // Get wasil coin balance (same as FashionHeader)
+        const wasilCoin = response.data.coins.find((c: any) => c.type === 'wasil');
+        const actualWalletCoins = wasilCoin?.amount || 0;
+        setUserPoints(actualWalletCoins);
+      }
+    } catch (error) {
+      console.error('❌ [Category Header] Failed to load wallet balance:', error);
+      setUserPoints(0);
+    }
+  };
 
   const handleClearSearch = () => {
     onSearch('');
@@ -98,7 +125,7 @@ export default function CategoryHeader({
             >
               <Ionicons name="star" size={16} color="#FFD700" />
               <ThemedText style={[styles.coinText, { color: category.headerConfig.textColor }]}>
-                382
+                {userPoints}
               </ThemedText>
             </TouchableOpacity>
           )}

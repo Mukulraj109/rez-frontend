@@ -117,6 +117,37 @@ export default function CartItem({
             >
               {item.name}
             </ThemedText>
+            
+            {/* Event Details - Show slot time, location, date for events */}
+            {(item as any).isEvent && (item as any).metadata && (
+              <View style={styles.eventDetails}>
+                {(item as any).metadata.slotTime && (
+                  <View style={styles.eventDetailRow}>
+                    <Ionicons name="time-outline" size={12} color="#6B7280" />
+                    <ThemedText style={styles.eventDetailText}>
+                      {(item as any).metadata.slotTime}
+                    </ThemedText>
+                  </View>
+                )}
+                {(item as any).metadata.location && (
+                  <View style={styles.eventDetailRow}>
+                    <Ionicons name="location-outline" size={12} color="#6B7280" />
+                    <ThemedText style={styles.eventDetailText}>
+                      {(item as any).metadata.location}
+                    </ThemedText>
+                  </View>
+                )}
+                {(item as any).metadata.date && (
+                  <View style={styles.eventDetailRow}>
+                    <Ionicons name="calendar-outline" size={12} color="#6B7280" />
+                    <ThemedText style={styles.eventDetailText}>
+                      {(item as any).metadata.date}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+            )}
+            
             <ThemedText
               style={[
                 styles.productPrice,
@@ -267,6 +298,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 4,
+  },
+  eventDetails: {
+    marginTop: 4,
+    marginBottom: 6,
+    gap: 4,
+  },
+  eventDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  eventDetailText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '400',
   },
   productPrice: {
     fontWeight: '700',

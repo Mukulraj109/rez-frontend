@@ -30,6 +30,7 @@ import { billUploadAnalytics } from '@/services/billUploadAnalytics';
 import { errorReporter } from '@/utils/errorReporter';
 import apiClient from '@/services/apiClient';
 import { API_CONFIG, APP_CONFIG } from '@/config/env';
+import { CrossPlatformAlertProvider } from '@/components/common/CrossPlatformAlert';
 // import AuthDebugger from '@/components/common/AuthDebugger';
 
 /**
@@ -150,12 +151,13 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary onError={handleErrorBoundaryError}>
-      <OfflineQueueProvider
-        autoSync={true}
-        onSyncComplete={handleQueueSyncComplete}
-        onSyncError={handleQueueSyncError}
-      >
-        <AppProvider>
+      <CrossPlatformAlertProvider>
+        <OfflineQueueProvider
+          autoSync={true}
+          onSyncComplete={handleQueueSyncComplete}
+          onSyncError={handleQueueSyncError}
+        >
+          <AppProvider>
           <AuthProvider>
             <SubscriptionProvider>
               <GamificationProvider>
@@ -319,8 +321,9 @@ export default function RootLayout() {
               </GamificationProvider>
             </SubscriptionProvider>
           </AuthProvider>
-        </AppProvider>
-      </OfflineQueueProvider>
+          </AppProvider>
+        </OfflineQueueProvider>
+      </CrossPlatformAlertProvider>
     </ErrorBoundary>
   );
 }

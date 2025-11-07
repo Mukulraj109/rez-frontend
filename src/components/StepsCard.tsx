@@ -7,7 +7,7 @@ const StepsCard = () => {
     {
       id: 1,
       icon: <MaterialCommunityIcons name="ticket-percent" size={24} color="#6B21A8" />,
-      text: "Buy a voucher on Wasil",
+      text: "Buy a voucher on rez app",
     },
     {
       id: 2,
