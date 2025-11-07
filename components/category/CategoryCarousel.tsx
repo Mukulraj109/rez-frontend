@@ -7,15 +7,22 @@ import {
   StyleSheet,
   ImageBackground,
   Dimensions,
-  Animated,
   Platform,
   Pressable
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedScrollHandler,
+  interpolate,
+  Extrapolate,
+} from 'react-native-reanimated';
 import { CategoryCarouselItem } from '@/types/category.types';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.75;
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 
 interface CategoryCarouselProps {
   items: CategoryCarouselItem[];
@@ -23,97 +30,162 @@ interface CategoryCarouselProps {
   title?: string;
 }
 
+// Separate component for carousel card to use hooks properly
+interface CarouselCardProps {
+  item: CategoryCarouselItem;
+  index: number;
+  scrollX: Animated.SharedValue<number>;
+  onPress: (item: CategoryCarouselItem) => void;
+}
+
+const CarouselCard: React.FC<CarouselCardProps> = ({ item, index, scrollX, onPress }) => {
+  const inputRange = [
+    (index - 1) * CARD_WIDTH,
+    index * CARD_WIDTH,
+    (index + 1) * CARD_WIDTH,
+  ];
+
+  // Safely extract cashback value (can be number or object with percentage)
+  const getCashbackValue = () => {
+    if (typeof item.cashback === 'number') {
+      return item.cashback;
+    }
+    if (typeof item.cashback === 'object' && item.cashback !== null) {
+      return item.cashback.percentage || 0;
+    }
+    return 0;
+  };
+
+  const cashbackValue = getCashbackValue();
+
+  const animatedStyle = useAnimatedStyle(() => {
+    // Scale based on scroll position
+    const scale = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.85, 1.0, 0.85],
+      Extrapolate.CLAMP
+    );
+
+    // 3D rotation based on scroll position
+    const rotateY = interpolate(
+      scrollX.value,
+      inputRange,
+      [15, 0, -15],
+      Extrapolate.CLAMP
+    );
+
+    // Opacity based on scroll position
+    const opacity = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.6, 1, 0.6],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      transform: [
+        { perspective: 1000 },
+        { scale },
+        { rotateY: `${rotateY}deg` },
+      ],
+      opacity,
+    };
+  });
+
+  const shadowStyle = useAnimatedStyle(() => {
+    const shadowOpacity = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.1, 0.3, 0.1],
+      Extrapolate.CLAMP
+    );
+
+    const shadowRadius = interpolate(
+      scrollX.value,
+      inputRange,
+      [8, 20, 8],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      shadowOpacity,
+      shadowRadius,
+      elevation: interpolate(
+        scrollX.value,
+        inputRange,
+        [5, 15, 5],
+        Extrapolate.CLAMP
+      ),
+    };
+  });
+
+  const CardWrapper = Platform.OS === 'web' ? Pressable : TouchableOpacity;
+
+  return (
+    <CardWrapper
+      style={{ width: CARD_WIDTH }}
+      activeOpacity={0.95}
+      onPress={() => onPress(item)}
+    >
+      <Animated.View style={[styles.productCard, animatedStyle, shadowStyle]}>
+        <ImageBackground
+          source={{ uri: item.image || 'https://via.placeholder.com/300x200?text=No+Image' }}
+          style={styles.productImage}
+          imageStyle={styles.imageStyle}
+        >
+          <LinearGradient
+            colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
+            style={styles.overlay}
+          >
+            <Text style={styles.brandText}>{item.brand || 'Brand'}</Text>
+
+            <View style={styles.ribbon}>
+              <Text style={styles.ribbonText}>CASHBACK {cashbackValue}%</Text>
+            </View>
+
+            <View style={styles.textContainer}>
+              <Text style={styles.title}>{item.title || 'Title'}</Text>
+              <Text style={styles.subtitle}>{item.subtitle || 'Subtitle'}</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.bottomButton} 
+              activeOpacity={0.7}
+              onPress={() => onPress(item)}
+            >
+              <Text style={styles.cashbackInfo}>
+                Cashback upto {cashbackValue}%
+              </Text>
+              <Text style={styles.arrow}>›</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </ImageBackground>
+      </Animated.View>
+    </CardWrapper>
+  );
+};
+
 const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ 
   items, 
   onItemPress, 
   title = "Featured" 
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const scrollX = useSharedValue(0);
 
-  const handleScroll = (event: any) => {
-    const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / CARD_WIDTH);
-    setActiveIndex(index);
-  };
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollX.value = event.contentOffset.x;
+      const index = Math.round(event.contentOffset.x / CARD_WIDTH);
+      setActiveIndex(index);
+    },
+  });
 
   const handleItemPress = (item: CategoryCarouselItem) => {
     if (onItemPress) {
       onItemPress(item);
     }
-  };
-
-  const renderProduct = (item: CategoryCarouselItem) => {
-    // Create a local animated value for each product item
-    const scaleAnim = new Animated.Value(1);
-
-    const popIn = () => {
-      Animated.spring(scaleAnim, {
-        toValue: 1.05, // scale up
-        friction: 6,
-        tension: 100,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const popOut = () => {
-      Animated.spring(scaleAnim, {
-        toValue: 1, // back to normal
-        friction: 6,
-        tension: 100,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const CardWrapper = Platform.OS === 'web' ? Pressable : TouchableOpacity;
-
-    return (
-      <CardWrapper
-        key={item.id}
-        style={{ width: CARD_WIDTH }}
-        android_ripple={{ color: 'transparent' }} // No ripple
-        onHoverIn={Platform.OS === 'web' ? popIn : undefined}
-        onHoverOut={Platform.OS === 'web' ? popOut : undefined}
-        activeOpacity={0.95}
-        onPressIn={Platform.OS !== 'web' ? popIn : undefined}
-        onPressOut={Platform.OS !== 'web' ? popOut : undefined}
-        onPress={() => handleItemPress(item)}
-      >
-        <Animated.View style={[styles.productCard, { transform: [{ scale: scaleAnim }] }]}>
-          <ImageBackground
-            source={{ uri: item.image || 'https://via.placeholder.com/300x200?text=No+Image' }}
-            style={styles.productImage}
-            imageStyle={styles.imageStyle}
-          >
-            <LinearGradient
-              colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
-              style={styles.overlay}
-            >
-              <Text style={styles.brandText}>{item.brand || 'Brand'}</Text>
-
-              <View style={styles.ribbon}>
-                <Text style={styles.ribbonText}>CASHBACK {item.cashback || 0}%</Text>
-              </View>
-
-              <View style={styles.textContainer}>
-                <Text style={styles.title}>{item.title || 'Title'}</Text>
-                <Text style={styles.subtitle}>{item.subtitle || 'Subtitle'}</Text>
-              </View>
-
-              <TouchableOpacity 
-                style={styles.bottomButton} 
-                activeOpacity={0.7}
-                onPress={() => handleItemPress(item)}
-              >
-                <Text style={styles.cashbackInfo}>
-                  Cashback upto {item.cashback || 0}%
-                </Text>
-                <Text style={styles.arrow}>›</Text>
-              </TouchableOpacity>
-            </LinearGradient>
-          </ImageBackground>
-        </Animated.View>
-      </CardWrapper>
-    );
   };
 
   const renderDots = () => (
@@ -144,7 +216,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
           <Text style={styles.sectionTitle}>{title || 'Section Title'}</Text>
         </View>
       )}
-      <ScrollView
+      <AnimatedScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         pagingEnabled
@@ -152,11 +224,19 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
         snapToAlignment="start"
         decelerationRate="fast"
         contentContainerStyle={styles.scrollContent}
-        onScroll={handleScroll}
+        onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
-        {items.map(renderProduct)}
-      </ScrollView>
+        {items.map((item, index) => (
+          <CarouselCard
+            key={item.id}
+            item={item}
+            index={index}
+            scrollX={scrollX}
+            onPress={handleItemPress}
+          />
+        ))}
+      </AnimatedScrollView>
       {renderDots()}
     </View>
   );
@@ -184,11 +264,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
   },
   productImage: {
     flex: 1,

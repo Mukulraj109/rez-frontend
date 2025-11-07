@@ -59,7 +59,7 @@ const mapBackendUserToProfileUser = (backendUser: BackendUser): User => {
     avatar: backendUser.profile?.avatar,
     bio: backendUser.profile?.bio || '',
     location: backendUser.profile?.location?.address || '',
-    website: '',
+    website: backendUser.profile?.website || '',
     dateOfBirth: backendUser.profile?.dateOfBirth ? new Date(backendUser.profile.dateOfBirth).toLocaleDateString() : '',
     gender: backendUser.profile?.gender || '',
     initials: getInitials(),
@@ -128,8 +128,12 @@ export const ProfileProvider = ({ children }: ProfileProviderProps) => {
     try {
       setError(null);
 
+      console.log('🔄 [PROFILE_CONTEXT] Starting profile update...');
+      console.log('📥 [PROFILE_CONTEXT] Input userData:', userData);
+
       // Map profile user data to ProfileUpdate format for API call
-      const profileUpdateData: ProfileUpdate = {
+      const profileUpdateData: any = {
+        email: userData.email || undefined, // Add email at top level
         profile: {
           firstName: userData.name?.split(' ')[0] || undefined,
           lastName: userData.name?.split(' ').slice(1).join(' ') || undefined,
@@ -137,8 +141,8 @@ export const ProfileProvider = ({ children }: ProfileProviderProps) => {
           bio: userData.bio,
           website: userData.website,
           dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : undefined,
-          gender: userData.gender && ['male', 'female', 'other'].includes(userData.gender.toLowerCase()) 
-            ? userData.gender.toLowerCase() as 'male' | 'female' | 'other' 
+          gender: userData.gender && ['male', 'female', 'other'].includes(userData.gender.toLowerCase())
+            ? userData.gender.toLowerCase() as 'male' | 'female' | 'other'
             : undefined,
           location: userData.location ? {
             address: userData.location,
@@ -153,16 +157,22 @@ export const ProfileProvider = ({ children }: ProfileProviderProps) => {
         },
       };
 
+      console.log('📤 [PROFILE_CONTEXT] Sending to API:', profileUpdateData);
+
       // Call the correct authService method directly instead of going through AuthContext
       const response = await authService.updateProfile(profileUpdateData);
-      
+
+      console.log('✅ [PROFILE_CONTEXT] API response:', response);
+
       // Update user state manually since we're bypassing AuthContext
       if (response.data) {
+        console.log('🔄 [PROFILE_CONTEXT] Refreshing auth status...');
         await authActions.checkAuthStatus(); // Refresh the auth state
+        console.log('✅ [PROFILE_CONTEXT] Profile update complete!');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update user profile');
-      console.error('Error updating user profile:', err);
+      console.error('❌ [PROFILE_CONTEXT] Error updating user profile:', err);
       throw err;
     }
   };
@@ -245,6 +255,9 @@ export const ProfileProvider = ({ children }: ProfileProviderProps) => {
       case 'order_trx':
         navigateToScreen('/transactions'); // Navigate to dedicated transactions page
         break;
+      case 'bookings':
+        navigateToScreen('/BookingsPage'); // Navigate to bookings page
+        break;
       case 'account':
         navigateToScreen('/account/');
         break;
@@ -326,6 +339,9 @@ export const useProfileMenu = () => {
         break;
       case 'order_trx':
         context.navigateToScreen('/transactions'); // Navigate to dedicated transactions page
+        break;
+      case 'bookings':
+        context.navigateToScreen('/BookingsPage'); // Navigate to bookings page
         break;
       case 'account':
         context.navigateToScreen('/account/');

@@ -34,7 +34,7 @@ class GamificationAPI {
         result: SpinWheelResult;
         coinsAdded: number;
         newBalance: number;
-      }>('/gamification/spin-wheel');
+      }>('/gamification/spin-wheel/spin');
       return response;
     } catch (error: any) {
       console.error('Error spinning wheel:', error);
@@ -59,6 +59,57 @@ class GamificationAPI {
       return response;
     } catch (error: any) {
       console.error('Error checking spin eligibility:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get spin wheel configuration and user data
+   */
+  async getSpinWheelData(): Promise<ApiResponse<{
+    segments: any[];
+    spinsRemaining: number;
+    spinHistory?: any[];
+  }>> {
+    try {
+      const response = await apiClient.get<{
+        segments: any[];
+        spinsRemaining: number;
+        spinHistory?: any[];
+      }>('/gamification/spin-wheel/data');
+      return response;
+    } catch (error: any) {
+      console.error('Error getting spin wheel data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get spin wheel history
+   */
+  async getSpinWheelHistory(limit: number = 20): Promise<ApiResponse<{
+    history: Array<{
+      id: string;
+      completedAt: string;
+      prize: string;
+      segment: number;
+      reward: {
+        coins?: number;
+        cashback?: number;
+        discount?: number;
+        voucher?: any;
+      };
+    }>;
+    total: number;
+  }>> {
+    try {
+      const response = await apiClient.get<{
+        history: any[];
+        total: number;
+      }>('/gamification/spin-wheel/history', { limit });
+      return response;
+    } catch (error: any) {
+      console.error('Error getting spin wheel history:', error);
       throw error;
     }
   }

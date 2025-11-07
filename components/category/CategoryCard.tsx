@@ -156,14 +156,30 @@ export default function CategoryCard({
   const renderPrice = () => {
     if (!item.price) return null;
 
+    // Safely convert prices to numbers
+    const currentPrice = typeof item.price.current === 'number' 
+      ? item.price.current 
+      : (typeof item.price.current === 'string' 
+        ? parseFloat(item.price.current) || 0 
+        : 0);
+    
+    const originalPrice = typeof item.price.original === 'number'
+      ? item.price.original
+      : (typeof item.price.original === 'string'
+        ? parseFloat(item.price.original) || 0
+        : 0);
+    
+    const hasDiscount = originalPrice > 0 && originalPrice > currentPrice;
+    const currency = typeof item.price.currency === 'string' ? item.price.currency : '₹';
+
     return (
       <View style={styles.priceContainer}>
         <ThemedText style={styles.currentPrice}>
-          {item.price.currency || '₹'}{item.price.current || 0}
+          {currency}{currentPrice.toFixed(0)}
         </ThemedText>
-        {item.price.original && item.price.original > item.price.current && (
+        {hasDiscount && (
           <ThemedText style={styles.originalPrice}>
-            {item.price.currency || '₹'}{item.price.original}
+            {currency}{originalPrice.toFixed(0)}
           </ThemedText>
         )}
       </View>
@@ -174,20 +190,31 @@ export default function CategoryCard({
   const renderRating = () => {
     if (!item.rating) return null;
 
+    // Safely convert rating value to number
+    const ratingValue = typeof item.rating.value === 'number' 
+      ? item.rating.value 
+      : (typeof item.rating.value === 'string' 
+        ? parseFloat(item.rating.value) || 0 
+        : 0);
+    
+    const formattedRating = ratingValue > 0 ? ratingValue.toFixed(1) : '0.0';
+    const maxValue = typeof item.rating.maxValue === 'number' ? item.rating.maxValue : 5;
+    const count = typeof item.rating.count === 'number' ? item.rating.count : 0;
+
     return (
       <View style={styles.ratingContainer}>
         <Ionicons name="star" size={12} color="#FFD700" />
         <ThemedText style={styles.ratingText}>
-          {item.rating.value || 0}
+          {formattedRating}
         </ThemedText>
-        {item.rating.maxValue && item.rating.maxValue !== 5 && (
+        {maxValue && maxValue !== 5 && (
           <ThemedText style={styles.ratingMaxText}>
-            /{item.rating.maxValue || 5}
+            /{maxValue}
           </ThemedText>
         )}
-        {item.rating.count && (
+        {count > 0 && (
           <ThemedText style={styles.ratingCount}>
-            ({item.rating.count || 0})
+            ({count})
           </ThemedText>
         )}
       </View>
@@ -198,11 +225,18 @@ export default function CategoryCard({
   const renderTiming = () => {
     if (!item.timing?.deliveryTime) return null;
 
+    // Safely convert delivery time to string
+    const deliveryTime = typeof item.timing.deliveryTime === 'string' 
+      ? item.timing.deliveryTime 
+      : (typeof item.timing.deliveryTime === 'number' 
+        ? String(item.timing.deliveryTime) 
+        : 'N/A');
+
     return (
       <View style={styles.timingContainer}>
         <Ionicons name="time-outline" size={12} color="#6B7280" />
         <ThemedText style={styles.timingText}>
-          {item.timing?.deliveryTime || 'N/A'}
+          {deliveryTime}
         </ThemedText>
       </View>
     );
@@ -212,10 +246,23 @@ export default function CategoryCard({
   const renderCashback = () => {
     if (!item.cashback) return null;
 
+    // Safely extract cashback percentage
+    let cashbackPercentage = 0;
+    if (typeof item.cashback === 'number') {
+      cashbackPercentage = item.cashback;
+    } else if (typeof item.cashback === 'object' && item.cashback !== null) {
+      const percentage = item.cashback.percentage;
+      cashbackPercentage = typeof percentage === 'number' 
+        ? percentage 
+        : (typeof percentage === 'string' 
+          ? parseFloat(percentage) || 0 
+          : 0);
+    }
+
     return (
       <View style={styles.cashbackContainer}>
         <ThemedText style={styles.cashbackText}>
-          Upto {item.cashback?.percentage || 0}% cash back
+          Upto {cashbackPercentage.toFixed(0)}% cash back
         </ThemedText>
       </View>
     );
@@ -225,11 +272,18 @@ export default function CategoryCard({
   const renderLocation = () => {
     if (!item.location) return null;
 
+    // Safely convert address to string
+    const address = typeof item.location.address === 'string' 
+      ? item.location.address 
+      : (typeof item.location.address === 'number' 
+        ? String(item.location.address) 
+        : 'Location not available');
+
     return (
       <View style={styles.locationContainer}>
         <Ionicons name="location-outline" size={12} color="#6B7280" />
         <ThemedText style={styles.locationText} numberOfLines={1}>
-          {item.location?.address || 'Location not available'}
+          {address}
         </ThemedText>
       </View>
     );

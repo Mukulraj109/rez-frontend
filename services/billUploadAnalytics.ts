@@ -890,6 +890,12 @@ class BillUploadAnalytics {
    */
   private addEvent(event: AnalyticsEvent): void {
     this.events.push(event);
+    
+    // Limit in-memory events to prevent memory issues
+    if (this.events.length > MAX_EVENTS_IN_MEMORY) {
+      // Keep only last MAX_EVENTS_IN_MEMORY events
+      this.events = this.events.slice(-MAX_EVENTS_IN_MEMORY);
+    }
 
     // Flush if we've reached the limit
     if (this.events.length >= MAX_EVENTS_IN_MEMORY) {
@@ -960,12 +966,48 @@ class BillUploadAnalytics {
         await telemetryService.sendBatch('bill_upload', batch);
       }
 
-      // Store events locally
-      const storedEvents = await AsyncStorage.getItem(STORAGE_KEYS.EVENTS);
-      const stored = storedEvents ? JSON.parse(storedEvents) : [];
-      const allEvents = [...stored, ...this.events];
-
-      await AsyncStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(allEvents));
+      // Store events locally with size limits
+      try {
+        const storedEvents = await AsyncStorage.getItem(STORAGE_KEYS.EVENTS);
+        const stored = storedEvents ? JSON.parse(storedEvents) : [];
+        const allEvents = [...stored, ...this.events];
+        
+        // Limit stored events to prevent storage quota issues
+        // Keep only last 500 events (approximately 100KB)
+        const MAX_STORED_EVENTS = 500;
+        const limitedEvents = allEvents.slice(-MAX_STORED_EVENTS);
+        
+        // Check size before saving
+        const eventsData = JSON.stringify(limitedEvents);
+        const sizeInMB = new Blob([eventsData]).size / (1024 * 1024);
+        
+        if (sizeInMB > 0.5) { // If larger than 500KB, keep only last 200 events
+          const veryLimitedEvents = allEvents.slice(-200);
+          await AsyncStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(veryLimitedEvents));
+          console.warn('🔄 [Analytics] Limited stored events to 200 due to size');
+        } else {
+          await AsyncStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(limitedEvents));
+        }
+      } catch (error: any) {
+        // Handle quota exceeded error
+        if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
+          console.warn('🔄 [Analytics] Storage quota exceeded, clearing old events');
+          // Clear all stored events and keep only current batch
+          try {
+            await AsyncStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(this.events.slice(-50)));
+            console.warn('🔄 [Analytics] Cleared old events, kept only last 50');
+          } catch (clearError) {
+            // If still fails, just clear everything
+            try {
+              await AsyncStorage.removeItem(STORAGE_KEYS.EVENTS);
+            } catch (removeError) {
+              // Ignore - storage is full
+            }
+          }
+        } else {
+          throw error; // Re-throw non-quota errors
+        }
+      }
 
       // Clear in-memory events
       this.events = [];
@@ -974,6 +1016,35 @@ class BillUploadAnalytics {
         errorReporter.captureError(error as Error, {
           context: 'BillUploadAnalytics.flushEvents',
         });
+      }
+    }
+  }
+
+  /**
+   * Clean up old stored events to free storage space
+   */
+  public async cleanupOldEvents(maxEvents: number = 200): Promise<void> {
+    try {
+      if (typeof window === 'undefined') {
+        return;
+      }
+      
+      const storedEvents = await AsyncStorage.getItem(STORAGE_KEYS.EVENTS);
+      if (!storedEvents) {
+        return;
+      }
+      
+      const stored = JSON.parse(storedEvents);
+      if (Array.isArray(stored) && stored.length > maxEvents) {
+        // Keep only last maxEvents events
+        const limitedEvents = stored.slice(-maxEvents);
+        await AsyncStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(limitedEvents));
+        console.warn(`🔄 [Analytics] Cleaned up old events, kept only last ${maxEvents}`);
+      }
+    } catch (error) {
+      // Silently fail - cleanup is best effort
+      if (typeof window !== 'undefined') {
+        console.warn('🔄 [Analytics] Failed to cleanup old events:', error);
       }
     }
   }

@@ -137,6 +137,10 @@ export default function ProfilePage() {
         // Navigate to order tracking page to show all orders
         router.push('/tracking');
         break;
+      case 'bookings':
+        // Navigate to bookings page
+        router.push('/BookingsPage' as any);
+        break;
       case 'incomplete_transaction':
         // Navigate to incomplete transactions page
         router.push('/transactions/incomplete');

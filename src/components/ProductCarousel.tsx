@@ -7,14 +7,23 @@ import {
   StyleSheet,
   ImageBackground,
   Dimensions,
-  Animated,
   Platform,
-  Pressable
+  Pressable,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  interpolate,
+  Extrapolate,
+  withSpring,
+} from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.75;
+const SPACING = 16;
 
 interface Product {
   id: string;
@@ -55,94 +64,158 @@ const products: Product[] = [
   },
 ];
 
+interface ProductCardProps {
+  product: Product;
+  index: number;
+  scrollX: Animated.SharedValue<number>;
+}
+
+const ProductCard = ({ product, index, scrollX }: ProductCardProps) => {
+  const inputRange = [
+    (index - 1) * CARD_WIDTH,
+    index * CARD_WIDTH,
+    (index + 1) * CARD_WIDTH,
+  ];
+
+  // 3D Carousel Animation Styles
+  const animatedStyle = useAnimatedStyle(() => {
+    // Scale: Center card is larger (1.0), side cards are smaller (0.85)
+    const scale = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.85, 1.0, 0.85],
+      Extrapolate.CLAMP
+    );
+
+    // Opacity: Center card is opaque, side cards fade
+    const opacity = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.6, 1, 0.6],
+      Extrapolate.CLAMP
+    );
+
+    // 3D Perspective Rotation
+    const rotateY = interpolate(
+      scrollX.value,
+      inputRange,
+      [15, 0, -15], // Rotate side cards for 3D effect
+      Extrapolate.CLAMP
+    );
+
+    // Translate for depth effect
+    const translateY = interpolate(
+      scrollX.value,
+      inputRange,
+      [20, 0, 20], // Center card pops up
+      Extrapolate.CLAMP
+    );
+
+    return {
+      transform: [
+        { perspective: 1000 },
+        { scale },
+        { rotateY: `${rotateY}deg` },
+        { translateY },
+      ],
+      opacity,
+    };
+  });
+
+  // Enhanced shadow for center card
+  const shadowStyle = useAnimatedStyle(() => {
+    const shadowOpacity = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.1, 0.3, 0.1],
+      Extrapolate.CLAMP
+    );
+
+    const shadowRadius = interpolate(
+      scrollX.value,
+      inputRange,
+      [8, 20, 8],
+      Extrapolate.CLAMP
+    );
+
+    const elevation = interpolate(
+      scrollX.value,
+      inputRange,
+      [5, 15, 5],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      shadowOpacity,
+      shadowRadius,
+      elevation,
+    };
+  });
+
+  const CardWrapper = Platform.OS === 'web' ? Pressable : TouchableOpacity;
+
+  return (
+    <CardWrapper
+      key={product.id}
+      style={{ width: CARD_WIDTH }}
+      activeOpacity={0.95}
+    >
+      <Animated.View style={[styles.productCard, animatedStyle, shadowStyle]}>
+        <ImageBackground
+          source={{ uri: product.image }}
+          style={styles.productImage}
+          imageStyle={styles.imageStyle}
+        >
+          <LinearGradient
+            colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
+            style={styles.overlay}
+          >
+            <Text style={styles.brandText}>{product.brand}</Text>
+
+            <View style={styles.ribbon}>
+              <Text style={styles.ribbonText}>CASHBACK {product.cashback}%</Text>
+            </View>
+
+            <View style={styles.textContainer}>
+              <Text style={styles.title}>{product.title}</Text>
+              <Text style={styles.subtitle}>{product.subtitle}</Text>
+            </View>
+
+            <TouchableOpacity style={styles.bottomButton} activeOpacity={0.7}>
+              <Text style={styles.cashbackInfo}>
+                Cashback upto {product.cashback} %
+              </Text>
+              <Text style={styles.arrow}>›</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </ImageBackground>
+      </Animated.View>
+    </CardWrapper>
+  );
+};
+
 const ProductCarousel = () => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const scrollX = useSharedValue(0);
 
-  const handleScroll = (event: any) => {
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
+    scrollX.value = scrollPosition;
     const index = Math.round(scrollPosition / CARD_WIDTH);
     setActiveIndex(index);
-  };
-
-  const renderProduct = (product: Product) => {
-    // Create a local animated value for each product item
-    const scaleAnim = new Animated.Value(1);
-
-    const popIn = () => {
-      Animated.spring(scaleAnim, {
-        toValue: 1.07, // scale up
-        friction: 6,
-        tension: 100,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const popOut = () => {
-      Animated.spring(scaleAnim, {
-        toValue: 1, // back to normal
-        friction: 6,
-        tension: 100,
-        useNativeDriver: true,
-      }).start();
-    };
-
-    const CardWrapper = Platform.OS === 'web' ? Pressable : TouchableOpacity;
-
-    return (
-      <CardWrapper
-        key={product.id}
-        style={{ width: CARD_WIDTH }}
-        android_ripple={{ color: 'transparent' }} // No ripple
-        onHoverIn={Platform.OS === 'web' ? popIn : undefined}
-        onHoverOut={Platform.OS === 'web' ? popOut : undefined}
-        activeOpacity={0.95}
-        onPressIn={Platform.OS !== 'web' ? popIn : undefined}
-        onPressOut={Platform.OS !== 'web' ? popOut : undefined}
-      >
-        <Animated.View style={[styles.productCard, { transform: [{ scale: scaleAnim }] }]}>
-          <ImageBackground
-            source={{ uri: product.image }}
-            style={styles.productImage}
-            imageStyle={styles.imageStyle}
-          >
-            <LinearGradient
-              colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
-              style={styles.overlay}
-            >
-              <Text style={styles.brandText}>{product.brand}</Text>
-
-              <View style={styles.ribbon}>
-                <Text style={styles.ribbonText}>CASHBACK {product.cashback}%</Text>
-              </View>
-
-              <View style={styles.textContainer}>
-                <Text style={styles.title}>{product.title}</Text>
-                <Text style={styles.subtitle}>{product.subtitle}</Text>
-              </View>
-
-              <TouchableOpacity style={styles.bottomButton} activeOpacity={0.7}>
-                <Text style={styles.cashbackInfo}>
-                  Cashback upto {product.cashback} %
-                </Text>
-                <Text style={styles.arrow}>›</Text>
-              </TouchableOpacity>
-            </LinearGradient>
-          </ImageBackground>
-        </Animated.View>
-      </CardWrapper>
-    );
   };
 
   const renderDots = () => (
     <View style={styles.dotsContainer}>
       {products.map((_, index) => (
-        <View
+        <Animated.View
           key={index}
           style={[
             styles.dot,
             {
               backgroundColor: activeIndex === index ? '#8B5CF6' : '#E5E7EB',
-              width: activeIndex === index ? 20 : 8,
+              width: activeIndex === index ? 24 : 8,
+              transform: [{ scale: activeIndex === index ? 1 : 0.8 }],
             },
           ]}
         />
@@ -163,7 +236,14 @@ const ProductCarousel = () => {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        {products.map(renderProduct)}
+        {products.map((product, index) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            index={index}
+            scrollX={scrollX}
+          />
+        ))}
       </ScrollView>
       {renderDots()}
     </View>
@@ -172,22 +252,23 @@ const ProductCarousel = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 30, // More padding for 3D effect
   },
   scrollContent: {
     paddingHorizontal: (width - CARD_WIDTH) / 2,
+    paddingVertical: 20, // Prevent clipping
   },
   productCard: {
     height: 320,
     marginHorizontal: 8,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2, // Will be animated
+    shadowRadius: 12, // Will be animated
+    elevation: 8, // Will be animated
   },
   productImage: {
     flex: 1,
@@ -265,12 +346,14 @@ const styles = StyleSheet.create({
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 12,
+    alignItems: 'center',
+    marginTop: 16,
     gap: 8,
   },
   dot: {
     height: 8,
     borderRadius: 4,
+    transition: 'all 0.3s ease',
   },
 });
 

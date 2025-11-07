@@ -26,7 +26,6 @@ export default function ProductCard({
   const { state: cartState, actions: cartActions } = useCart();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const { subscribe, subscribing } = useStockNotifications();
-  const [, forceUpdate] = useState({});
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
 
   // Stock status
@@ -37,26 +36,14 @@ export default function ProductCard({
     lowStockThreshold,
   });
 
-  // Force re-render when cart changes
-  useEffect(() => {
-    forceUpdate({});
-  }, [cartState.items.length, cartState.items]);
-
-  // Check if product is in cart and get quantity - memoized to ensure proper re-renders
+  // Check if product is in cart and get quantity - memoized to reduce re-renders
+  // Use cartState.items.length as dependency to only recalculate when items count changes
   const { productId, cartItem, quantityInCart, isInCart } = useMemo(() => {
     const id = product._id || product.id;
+    // Access cartState.items from closure - it will be current when length changes
     const item = cartState.items.find(i => i.productId === id);
     const qty = item?.quantity || 0;
     const inCart = qty > 0;
-
-    console.log('🛒 [ProductCard] Cart check for', product.name, ':', {
-      lookingForId: id,
-      cartItemsCount: cartState.items.length,
-      allCartProductIds: cartState.items.map(i => ({ productId: i.productId, id: i.id, name: i.name })),
-      foundInCart: !!item,
-      quantityInCart: qty,
-      isInCart: inCart
-    });
 
     return {
       productId: id,
@@ -64,7 +51,7 @@ export default function ProductCard({
       quantityInCart: qty,
       isInCart: inCart
     };
-  }, [product._id, product.id, product.name, cartState.items, cartState.items.length]);
+  }, [product._id, product.id, cartState.items.length, cartState.items]);
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',

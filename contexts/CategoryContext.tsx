@@ -159,7 +159,6 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
           
           if (localCategory) {
             filters = localCategory.filters || [];
-            carouselItems = localCategory.carouselItems || [];
           }
           
           // Fetch products for this category from backend
@@ -210,12 +209,186 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
                 }
               }));
 
+              // Create carousel items - special handling for Fleet Market
+              if (slug === 'fleet') {
+                // For Fleet Market, create category-based carousel items
+                try {
+                  const storesApi = (await import('@/services/storesApi')).default;
+                  const storesResponse = await storesApi.getStores({
+                    tags: 'fleet',
+                    isFeatured: true,
+                    limit: 10
+                  });
+
+                  if (storesResponse.success && storesResponse.data && Array.isArray(storesResponse.data)) {
+                    const featuredStores = storesResponse.data.slice(0, 5);
+                    
+                    // Group products by vehicle type for Fleet Market
+                    const vehicleTypes: { [key: string]: any[] } = {};
+                    products.forEach((product: any) => {
+                      const name = (product.name || '').toLowerCase();
+                      let type = 'Premium Cars';
+                      let subtitle = 'Comfort & Style';
+                      
+                      if (name.includes('suv') || name.includes('fortuner') || name.includes('xuv') || name.includes('adventure')) {
+                        type = 'Adventure';
+                        subtitle = 'Family Trips';
+                      } else if (name.includes('sedan') || name.includes('city') || name.includes('camry')) {
+                        type = 'Premium Cars';
+                        subtitle = 'Sedan Rentals';
+                      } else if (name.includes('hatchback') || name.includes('swift')) {
+                        type = 'Compact';
+                        subtitle = 'City Commute';
+                      }
+                      
+                      if (!vehicleTypes[type]) {
+                        vehicleTypes[type] = [];
+                      }
+                      vehicleTypes[type].push(product);
+                    });
+
+                    // Create carousel items from vehicle types
+                    carouselItems = Object.entries(vehicleTypes).slice(0, 5).map(([type, typeProducts], idx) => {
+                      const firstProduct = typeProducts[0];
+                      const store = featuredStores[idx] || featuredStores[0];
+                      const subtitle = type === 'Premium Cars' ? 'Sedan Rentals' : 
+                                     type === 'Adventure' ? 'Family Trips' : 
+                                     type === 'Compact' ? 'City Commute' : 'Comfort & Style';
+                      
+                      return {
+                        id: `fleet-${type.toLowerCase().replace(/\s+/g, '-')}`,
+                        title: type,
+                        subtitle: subtitle,
+                        image: firstProduct?.images?.[0] || store?.banner || 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=500',
+                        brand: store?.name || 'Fleet Market',
+                        cashback: store?.offers?.cashback || 8,
+                        action: {
+                          type: 'filter',
+                          target: 'vehicleType',
+                          params: { vehicleType: type }
+                        }
+                      };
+                    });
+
+                    // If no vehicle types, use stores
+                    if (carouselItems.length === 0 && featuredStores.length > 0) {
+                      carouselItems = featuredStores.map((store: any) => ({
+                        id: store._id || store.id,
+                        title: store.name || 'Store',
+                        subtitle: store.description?.substring(0, 50) || 'Premium Rentals',
+                        image: store.banner || store.logo || 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=500',
+                        brand: store.name || 'Brand',
+                        cashback: store.offers?.cashback || 8,
+                        action: {
+                          type: 'navigate',
+                          target: `/MainStorePage?storeId=${store._id || store.id}`
+                        }
+                      }));
+                    }
+                  }
+                } catch (storeError) {
+                  console.error('Failed to fetch stores for fleet carousel:', storeError);
+                }
+              }
+
+              // For other categories, use featured products or stores
+              if (carouselItems.length === 0) {
+                // Try to get featured stores for carousel first (better UX)
+                try {
+                  const storesApi = (await import('@/services/storesApi')).default;
+                  
+                  // Try multiple tag queries to find stores
+                  const tagQueries = [
+                    response.data.metadata?.tags?.[0],
+                    slug,
+                    ...(response.data.metadata?.tags || []).slice(0, 3)
+                  ].filter(Boolean);
+
+                  let storesFound = false;
+                  for (const tag of tagQueries) {
+                    const storesResponse = await storesApi.getStores({
+                      tags: tag,
+                      isFeatured: true,
+                      limit: 10
+                    });
+
+                    if (storesResponse.success && storesResponse.data && Array.isArray(storesResponse.data) && storesResponse.data.length > 0) {
+                      const featuredStores = storesResponse.data.slice(0, 5);
+                      carouselItems = featuredStores.map((store: any) => ({
+                        id: store._id || store.id,
+                        title: store.name || 'Store',
+                        subtitle: store.description?.substring(0, 50) || store.location?.address || '',
+                        image: store.banner || store.logo || 'https://via.placeholder.com/300x200?text=No+Image',
+                        brand: store.name || 'Brand',
+                        cashback: store.offers?.cashback || 8,
+                        action: {
+                          type: 'navigate',
+                          target: `/MainStorePage?storeId=${store._id || store.id}`
+                        }
+                      }));
+                      storesFound = true;
+                      break;
+                    }
+                  }
+                  
+                  if (!storesFound) {
+                    // Try without featured filter
+                    for (const tag of tagQueries) {
+                      const storesResponse = await storesApi.getStores({
+                        tags: tag,
+                        limit: 10
+                      });
+
+                      if (storesResponse.success && storesResponse.data && Array.isArray(storesResponse.data) && storesResponse.data.length > 0) {
+                        const allStores = storesResponse.data.slice(0, 5);
+                        carouselItems = allStores.map((store: any) => ({
+                          id: store._id || store.id,
+                          title: store.name || 'Store',
+                          subtitle: store.description?.substring(0, 50) || store.location?.address || '',
+                          image: store.banner || store.logo || 'https://via.placeholder.com/300x200?text=No+Image',
+                          brand: store.name || 'Brand',
+                          cashback: store.offers?.cashback || 8,
+                          action: {
+                            type: 'navigate',
+                            target: `/MainStorePage?storeId=${store._id || store.id}`
+                          }
+                        }));
+                        break;
+                      }
+                    }
+                  }
+                } catch (storeError) {
+                  console.error('Failed to fetch stores for carousel:', storeError);
+                }
+
+                // Fallback to ALL products (not just featured) to ensure multiple items
+                if (carouselItems.length === 0 && products.length > 0) {
+                  // Use first 5 products (or all if less than 5)
+                  const productsToShow = products.slice(0, 5);
+                  carouselItems = productsToShow.map((product: any) => ({
+                    id: product._id || product.id,
+                    title: product.name || product.title,
+                    subtitle: product.description?.substring(0, 50) || '',
+                    image: Array.isArray(product.images) && product.images.length > 0 
+                      ? product.images[0] 
+                      : product.image || 'https://via.placeholder.com/300x200?text=No+Image',
+                    brand: product.brand || product.store?.name || 'Brand',
+                    cashback: product.offers?.cashback || product.cashback?.percentage || 8,
+                    action: {
+                      type: 'navigate',
+                      target: `/ProductPage?cardId=${product._id || product.id}&cardType=category&category=${response.data._id}`
+                    }
+                  }));
+                }
+              }
+
             }
           } catch (productError) {
             console.error('Failed to fetch products:', productError);
             // If products API fails, try to use local data as fallback
             if (localCategory) {
               items = localCategory.items || [];
+              carouselItems = localCategory.carouselItems || [];
             }
           }
           

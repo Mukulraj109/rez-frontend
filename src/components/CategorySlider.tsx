@@ -5,48 +5,130 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Image,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 
 interface Category {
   id: string;
   name: string;
-  image: string; // category photo or discount graphic
+  icon: keyof typeof Ionicons.glyphMap;
+  gradientColors: string[];
+  iconColor: string;
 }
 
 const categories: Category[] = [
   {
     id: "1",
     name: "Upto 50% Off",
-    image: "https://via.placeholder.com/70x90.png?text=50%25",
+    icon: "pricetag-outline",
+    gradientColors: ["#FF6B6B", "#FF8E53"],
+    iconColor: "#FFFFFF",
   },
   {
     id: "2",
     name: "Men",
-    image: "https://via.placeholder.com/70x90.png?text=Men",
+    icon: "shirt-outline",
+    gradientColors: ["#4E65FF", "#92EFFD"],
+    iconColor: "#FFFFFF",
   },
   {
     id: "3",
     name: "Women",
-    image: "https://via.placeholder.com/70x90.png?text=Women",
+    icon: "rose-outline",
+    gradientColors: ["#FF6B9D", "#FFA8D8"],
+    iconColor: "#FFFFFF",
   },
   {
     id: "4",
     name: "Footwear",
-    image: "https://via.placeholder.com/70x90.png?text=Shoes",
+    icon: "footsteps-outline",
+    gradientColors: ["#A770EF", "#CF8BF3"],
+    iconColor: "#FFFFFF",
   },
   {
     id: "5",
     name: "Accessories",
-    image: "https://via.placeholder.com/70x90.png?text=Bag",
+    icon: "watch-outline",
+    gradientColors: ["#FFA800", "#FFD60A"],
+    iconColor: "#FFFFFF",
   },
 ];
 
-const CategorySlider = () => {
-  const handleCategoryPress = (category: Category) => {
+const CategoryCard = ({ category }: { category: Category }) => {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, {
+      damping: 10,
+      stiffness: 400,
+    });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, {
+      damping: 10,
+      stiffness: 400,
+    });
+  };
+
+  const handlePress = () => {
     console.log("Category pressed:", category.name);
   };
 
+  return (
+    <TouchableOpacity
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
+      activeOpacity={1}
+    >
+      <Animated.View style={[styles.categoryCard, animatedStyle]}>
+        <LinearGradient
+          colors={category.gradientColors}
+          style={styles.gradientCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* Decorative circles */}
+          <View style={styles.decorativeCircle1} />
+          <View style={styles.decorativeCircle2} />
+
+          {/* Icon Container */}
+          <View style={styles.iconContainer}>
+            <Ionicons
+              name={category.icon}
+              size={28}
+              color={category.iconColor}
+            />
+          </View>
+
+          {/* Special badge for discount */}
+          {category.id === "1" && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.badgeText}>HOT</Text>
+            </View>
+          )}
+        </LinearGradient>
+
+        <Text style={styles.categoryName} numberOfLines={1}>
+          {category.name}
+        </Text>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
+
+const CategorySlider = () => {
   return (
     <View style={styles.container}>
       <ScrollView
@@ -55,26 +137,7 @@ const CategorySlider = () => {
         contentContainerStyle={styles.scrollContent}
       >
         {categories.map((category) => (
-          <TouchableOpacity
-            key={category.id}
-            style={styles.categoryContainer}
-            onPress={() => handleCategoryPress(category)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.flameWrapper}>
-              <Image
-                source={require("./flame-bg.png")} // flame PNG with transparent background
-                style={styles.flameImage}
-                resizeMode="contain"
-              />
-              <Image
-                source={{ uri: category.image }}
-                style={styles.categoryImage}
-                resizeMode="cover"
-              />
-            </View>
-            <Text style={styles.categoryName}>{category.name}</Text>
-          </TouchableOpacity>
+          <CategoryCard key={category.id} category={category} />
         ))}
       </ScrollView>
     </View>
@@ -83,38 +146,94 @@ const CategorySlider = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 20,
+    backgroundColor: "#F8F9FA",
   },
   scrollContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
-  categoryContainer: {
+  categoryCard: {
     alignItems: "center",
-    marginRight: 20,
+    marginRight: 14,
+    width: 85,
   },
-  flameWrapper: {
-    width: 80,
-    height: 100,
+  gradientCard: {
+    width: 85,
+    height: 85,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 6,
   },
-  flameImage: {
-    width: "100%",
-    height: "100%",
+  decorativeCircle1: {
     position: "absolute",
-  },
-  categoryImage: {
     width: 50,
     height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    top: -15,
+    right: -15,
+  },
+  decorativeCircle2: {
+    position: "absolute",
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    bottom: -8,
+    left: -8,
+  },
+  iconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.4)",
+  },
+  discountBadge: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    backgroundColor: "#FFD700",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 8,
+    shadowColor: "#FFD700",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  badgeText: {
+    fontSize: 8,
+    fontWeight: "900",
+    color: "#FF6B6B",
+    letterSpacing: 0.3,
   },
   categoryName: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#4B0082",
-    marginTop: 6,
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2D3748",
+    marginTop: 8,
     textAlign: "center",
+    letterSpacing: 0.2,
   },
 });
 

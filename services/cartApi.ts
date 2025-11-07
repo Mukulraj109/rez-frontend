@@ -120,6 +120,16 @@ export interface AddToCartRequest {
     type: string;
     value: string;
   };
+  metadata?: {
+    eventId?: string;
+    slotId?: string;
+    slotTime?: string;
+    eventType?: string;
+    location?: string;
+    date?: string;
+    time?: string;
+    [key: string]: any; // Allow additional metadata fields
+  };
 }
 
 export interface UpdateCartItemRequest {

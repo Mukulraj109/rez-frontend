@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import achievementApi, { Achievement, AchievementProgress } from '@/services/achievementApi';
 import pointsApi, { PointsBalance, PointTransaction } from '@/services/pointsApi';
 import gamificationAPI from '@/services/gamificationApi';
+import walletApi from '@/services/walletApi';
+import coinSyncService from '@/services/coinSyncService';
 import { useAuth } from './AuthContext';
 
 // Feature flags for gradual rollout
@@ -14,7 +16,7 @@ const GAMIFICATION_FLAGS = {
   ENABLE_NOTIFICATIONS: true,
 };
 
-// Types - Use PointsBalance from API
+// Types - Use PointsBalance from API but SOURCE from Wallet API
 export type CoinBalance = PointsBalance;
 
 export interface Challenge {
@@ -197,6 +199,7 @@ interface GamificationContextType {
   state: GamificationState;
   actions: {
     loadGamificationData: (forceRefresh?: boolean) => Promise<void>;
+    syncCoinsFromWallet: () => Promise<void>;
     triggerAchievementCheck: (eventType: string, data?: any) => Promise<Achievement[]>;
     awardCoins: (amount: number, reason: string) => Promise<void>;
     spendCoins: (amount: number, reason: string) => Promise<void>;
@@ -255,6 +258,46 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
     }
   }, [state.achievements, state.coinBalance, state.challenges, state.dailyStreak, state.lastLoginDate]);
 
+  // NEW: Sync coins from wallet (SINGLE SOURCE OF TRUTH)
+  const syncCoinsFromWallet = useCallback(async () => {
+    try {
+      console.log('🔄 [GAMIFICATION] Syncing coins from wallet (source of truth)...');
+
+      // Fetch wallet balance
+      const walletResponse = await walletApi.getBalance();
+
+      if (walletResponse.success && walletResponse.data) {
+        // Extract wasil coin from wallet
+        const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
+        const walletCoins = wasilCoin?.amount || 0;
+
+        // Update coin balance with wallet data
+        const coinBalance: CoinBalance = {
+          total: walletCoins,
+          earned: walletResponse.data.statistics?.totalEarned || 0,
+          spent: walletResponse.data.statistics?.totalSpent || 0,
+          pending: walletResponse.data.balance.pending || 0,
+          lifetimeEarned: walletResponse.data.statistics?.totalEarned || 0,
+          lifetimeSpent: walletResponse.data.statistics?.totalSpent || 0,
+        };
+
+        dispatch({ type: 'COINS_LOADED', payload: coinBalance });
+        console.log(`✅ [GAMIFICATION] Coins synced from wallet: ${walletCoins}`);
+      }
+    } catch (error) {
+      console.error('❌ [GAMIFICATION] Error syncing coins from wallet:', error);
+      // Fallback to points API if wallet fails
+      try {
+        const coinsResponse = await pointsApi.getBalance();
+        if (coinsResponse.success && coinsResponse.data) {
+          dispatch({ type: 'COINS_LOADED', payload: coinsResponse.data });
+        }
+      } catch (fallbackError) {
+        console.error('[GAMIFICATION] Fallback to points API also failed:', fallbackError);
+      }
+    }
+  }, []);
+
   // Load gamification data
   const loadGamificationData = useCallback(async (forceRefresh = false) => {
     if (!authState.isAuthenticated) {
@@ -301,16 +344,9 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
         }
       }
 
-      // Fetch coins/points balance
+      // ✅ UPDATED: Fetch coins from WALLET API (single source of truth)
       if (state.featureFlags.ENABLE_COINS) {
-        try {
-          const coinsResponse = await pointsApi.getBalance();
-          if (coinsResponse.success && coinsResponse.data) {
-            dispatch({ type: 'COINS_LOADED', payload: coinsResponse.data });
-          }
-        } catch (error) {
-          console.error('[GAMIFICATION] Error fetching coins:', error);
-        }
+        await syncCoinsFromWallet();
       }
 
       // Fetch active challenges
@@ -391,69 +427,71 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
     }
   }, [state.featureFlags.ENABLE_ACHIEVEMENTS, state.achievements]);
 
-  // Award coins
+  // ✅ UPDATED: Award coins via coin sync service (syncs to wallet)
   const awardCoins = useCallback(async (amount: number, reason: string) => {
     if (!state.featureFlags.ENABLE_COINS) return;
 
     try {
+      console.log(`💰 [GAMIFICATION] Awarding ${amount} coins: ${reason}`);
 
-      // Call API to record coin transaction
-      const earnResponse = await pointsApi.earnPoints({
+      // Use coin sync service to award coins (syncs to wallet automatically)
+      const syncResult = await coinSyncService.syncGamificationReward(
         amount,
-        source: 'bonus',
-        description: reason,
-      });
+        'bonus',
+        { reason, timestamp: new Date().toISOString() }
+      );
 
-      if (earnResponse.success && earnResponse.data) {
+      if (syncResult.success) {
         // Update local state optimistically
         dispatch({ type: 'COINS_EARNED', payload: amount });
 
-        // Refresh balance from API
-        const balanceResponse = await pointsApi.getBalance();
-        if (balanceResponse.success && balanceResponse.data) {
-          dispatch({ type: 'COINS_LOADED', payload: balanceResponse.data });
-        }
+        // Refresh from wallet (single source of truth)
+        await syncCoinsFromWallet();
 
         // Also check for coin-related achievements
         await triggerAchievementCheck('COINS_EARNED', { amount, reason });
+
+        console.log(`✅ [GAMIFICATION] Coins awarded and synced to wallet: ${syncResult.newWalletBalance}`);
+      } else {
+        throw new Error(syncResult.error || 'Failed to sync coins to wallet');
       }
     } catch (error) {
       console.error('[GAMIFICATION] Error awarding coins:', error);
     }
-  }, [state.featureFlags.ENABLE_COINS, triggerAchievementCheck]);
+  }, [state.featureFlags.ENABLE_COINS, syncCoinsFromWallet, triggerAchievementCheck]);
 
-  // Spend coins
+  // ✅ UPDATED: Spend coins via coin sync service (syncs to wallet)
   const spendCoins = useCallback(async (amount: number, reason: string) => {
     if (!state.featureFlags.ENABLE_COINS) return;
 
     try {
+      console.log(`💸 [GAMIFICATION] Spending ${amount} coins: ${reason}`);
 
       if (state.coinBalance.total < amount) {
         throw new Error('Insufficient coin balance');
       }
 
-      // Call API to record coin transaction
-      const spendResponse = await pointsApi.spendPoints({
-        amount,
-        purpose: reason,
-        description: reason,
+      // Use coin sync service to spend coins (syncs to wallet automatically)
+      const syncResult = await coinSyncService.spendCoins(amount, reason, {
+        timestamp: new Date().toISOString(),
       });
 
-      if (spendResponse.success && spendResponse.data) {
+      if (syncResult.success) {
         // Update local state
         dispatch({ type: 'COINS_SPENT', payload: amount });
 
-        // Refresh balance from API
-        const balanceResponse = await pointsApi.getBalance();
-        if (balanceResponse.success && balanceResponse.data) {
-          dispatch({ type: 'COINS_LOADED', payload: balanceResponse.data });
-        }
+        // Refresh from wallet (single source of truth)
+        await syncCoinsFromWallet();
+
+        console.log(`✅ [GAMIFICATION] Coins spent and synced to wallet: ${syncResult.newWalletBalance}`);
+      } else {
+        throw new Error(syncResult.error || 'Failed to sync coin spending to wallet');
       }
     } catch (error) {
       console.error('[GAMIFICATION] Error spending coins:', error);
       throw error;
     }
-  }, [state.featureFlags.ENABLE_COINS, state.coinBalance.total]);
+  }, [state.featureFlags.ENABLE_COINS, state.coinBalance.total, syncCoinsFromWallet]);
 
   // Update daily streak
   const updateDailyStreak = useCallback(async () => {
@@ -467,39 +505,41 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
       }
 
       // Check daily check-in status from API
-      const checkInStatusResponse = await pointsApi.getDailyCheckIn();
+      try {
+        const checkInStatusResponse = await pointsApi.getDailyCheckIn();
 
-      if (checkInStatusResponse.success && checkInStatusResponse.data?.canCheckIn) {
-        // Perform daily check-in
-        const checkInResponse = await pointsApi.performDailyCheckIn();
+        if (checkInStatusResponse.success && checkInStatusResponse.data?.canCheckIn) {
+          // Perform daily check-in
+          const checkInResponse = await pointsApi.performDailyCheckIn();
 
-        if (checkInResponse.success && checkInResponse.data) {
-          const { pointsEarned, streak } = checkInResponse.data;
+          if (checkInResponse.success && checkInResponse.data) {
+            const { pointsEarned, streak } = checkInResponse.data;
 
+            dispatch({
+              type: 'STREAK_UPDATED',
+              payload: { streak, loginDate: new Date().toISOString() },
+            });
+
+            // ✅ UPDATED: Update coin balance from wallet (single source of truth)
+            await syncCoinsFromWallet();
+
+            // Check for streak achievements
+            await triggerAchievementCheck('DAILY_LOGIN', { streak, pointsEarned });
+
+          }
+        } else if (checkInStatusResponse.data) {
+          // Already checked in, just update local state
           dispatch({
             type: 'STREAK_UPDATED',
-            payload: { streak, loginDate: new Date().toISOString() },
+            payload: {
+              streak: checkInStatusResponse.data.currentStreak,
+              loginDate: checkInStatusResponse.data.lastCheckInDate || new Date().toISOString(),
+            },
           });
-
-          // Update coin balance
-          const balanceResponse = await pointsApi.getBalance();
-          if (balanceResponse.success && balanceResponse.data) {
-            dispatch({ type: 'COINS_LOADED', payload: balanceResponse.data });
-          }
-
-          // Check for streak achievements
-          await triggerAchievementCheck('DAILY_LOGIN', { streak, pointsEarned });
-
         }
-      } else if (checkInStatusResponse.data) {
-        // Already checked in, just update local state
-        dispatch({
-          type: 'STREAK_UPDATED',
-          payload: {
-            streak: checkInStatusResponse.data.currentStreak,
-            loginDate: checkInStatusResponse.data.lastCheckInDate || new Date().toISOString(),
-          },
-        });
+      } catch (checkInError) {
+        // Silently handle check-in API errors (endpoint may not exist yet)
+        console.debug('[GAMIFICATION] Daily check-in endpoint not available:', checkInError);
       }
     } catch (error) {
       console.error('[GAMIFICATION] Error updating daily streak:', error);
@@ -550,6 +590,7 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
     state,
     actions: {
       loadGamificationData,
+      syncCoinsFromWallet,
       triggerAchievementCheck,
       awardCoins,
       spendCoins,

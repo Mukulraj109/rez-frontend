@@ -7,6 +7,7 @@ import { mapBackendCartToFrontend } from '@/utils/dataMappers';
 import offlineQueueService from '@/services/offlineQueueService';
 import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from './AuthContext';
+import { billUploadAnalytics } from '@/services/billUploadAnalytics';
 
 // Extended cart item with quantity and selected state
 interface CartItemWithQuantity extends CartItemType {
@@ -94,11 +95,14 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       const existingItem = state.items.find(item => item.id === action.payload.id);
       let newItems: CartItemWithQuantity[];
       
+      // Preserve metadata from payload
+      const payloadMetadata = (action.payload as any).metadata;
+      
       if (existingItem) {
         // Increase quantity if item already exists
         newItems = state.items.map(item =>
           item.id === action.payload.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + 1, metadata: payloadMetadata || item.metadata }
             : item
         );
       } else {
@@ -108,6 +112,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           quantity: 1,
           selected: true,
           addedAt: new Date().toISOString(),
+          metadata: payloadMetadata, // Preserve metadata
         };
         newItems = [...state.items, newItem];
       }
@@ -289,8 +294,19 @@ export function CartProvider({ children }: CartProviderProps) {
             };
           });
 
-          // Save to AsyncStorage as cache
-          await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+          // Save to AsyncStorage as cache (optimized)
+          // Note: optimizeCartForStorage is defined later, but we'll save directly here
+          // The optimization will happen on next save
+          try {
+            await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+          } catch (error: any) {
+            if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
+              console.warn('🛒 [CartContext] Storage quota exceeded when loading cart');
+              // Save only last 30 items
+              const limitedItems = cartItems.slice(-30);
+              await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(limitedItems));
+            }
+          }
 
           dispatch({ type: 'CART_LOADED', payload: cartItems });
           return;
@@ -313,37 +329,291 @@ export function CartProvider({ children }: CartProviderProps) {
     }
   }, []);
 
+  // Optimize cart items for storage - remove unnecessary fields
+  const optimizeCartForStorage = useCallback((items: CartItemWithQuantity[]) => {
+    return items.map(item => ({
+      id: item.id,
+      productId: item.productId,
+      name: item.name,
+      // Store only essential image data (URL only, no full image objects)
+      image: typeof item.image === 'string' ? item.image : (item.image as any)?.uri || '',
+      originalPrice: item.originalPrice,
+      discountedPrice: item.discountedPrice,
+      quantity: item.quantity,
+      selected: item.selected,
+      addedAt: item.addedAt,
+      // Only store essential metadata (eventId, slotId) - remove large objects
+      metadata: item.metadata ? {
+        eventId: item.metadata.eventId,
+        slotId: item.metadata.slotId,
+        slotTime: item.metadata.slotTime,
+        eventType: item.metadata.eventType,
+        location: item.metadata.location,
+        date: item.metadata.date,
+        time: item.metadata.time,
+      } : undefined,
+      // Remove large fields like full store objects, variant objects, etc.
+      store: item.store ? (typeof item.store === 'string' ? item.store : item.store.id || item.store.name) : undefined,
+      variant: item.variant ? (typeof item.variant === 'string' ? item.variant : item.variant.id || item.variant.name) : undefined,
+    }));
+  }, []);
+
   const saveCartToStorage = useCallback(async () => {
-    try {
-      await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
-    } catch (error) {
-      console.error('Failed to save cart to storage:', error);
+    // Skip if no items to save
+    if (!state.items || state.items.length === 0) {
+      return;
     }
-  }, [state.items]);
+
+    try {
+      // Optimize cart data before saving
+      const optimizedItems = optimizeCartForStorage(state.items);
+      const cartData = JSON.stringify(optimizedItems);
+      
+      // Check size (localStorage limit is typically 5-10MB)
+      const sizeInMB = new Blob([cartData]).size / (1024 * 1024);
+      if (sizeInMB > 3) { // Lower threshold to 3MB
+        console.warn('🛒 [CartContext] Cart data is large:', sizeInMB.toFixed(2), 'MB');
+        // If too large, keep only last 20 items
+        if (optimizedItems.length > 20) {
+          const limitedItems = optimizedItems.slice(-20);
+          await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(limitedItems));
+          console.warn('🛒 [CartContext] Limited cart to 20 items to save storage space');
+          return;
+        }
+      }
+      
+      await AsyncStorage.setItem(CART_STORAGE_KEY, cartData);
+    } catch (error: any) {
+      // Handle quota exceeded error - don't throw, just log
+      if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
+        console.warn('🛒 [CartContext] Storage quota exceeded, attempting to clean up...');
+        
+        try {
+          // Aggressively clean up storage first
+          const storageKeysToClean = [
+            '@errorReporter:errors',
+            '@billUpload:analytics:events',
+            '@billUpload:queue',
+            '@billUpload:state',
+          ];
+          
+          for (const key of storageKeysToClean) {
+            try {
+              await AsyncStorage.removeItem(key);
+            } catch (cleanupError) {
+              // Ignore cleanup errors for individual keys
+            }
+          }
+          
+          // Try to save only essential items (last 15 items - very aggressive)
+          const optimizedItems = optimizeCartForStorage(state.items);
+          const limitedItems = optimizedItems.slice(-15);
+          await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(limitedItems));
+          console.warn('🛒 [CartContext] Saved only last 15 items after cleanup');
+        } catch (retryError) {
+          // If still fails, just log - don't throw
+          // Cart is still in memory, will sync with backend
+          console.warn('🛒 [CartContext] Storage completely full, cart kept in memory only');
+          // Try to clear cart storage to free space
+          try {
+            await AsyncStorage.removeItem(CART_STORAGE_KEY);
+          } catch (clearError) {
+            // Ignore - storage is full, can't do anything
+          }
+        }
+      } else {
+        // For non-quota errors, just log - don't throw
+        console.warn('🛒 [CartContext] Failed to save cart to storage (non-quota):', error);
+      }
+    }
+  }, [state.items, optimizeCartForStorage]);
 
   const addItem = async (item: CartItemType) => {
     try {
-
-      // Update UI optimistically
-      dispatch({ type: 'ADD_ITEM', payload: item });
+      // Debug: Log the item being added
+      const itemMetadata = (item as any).metadata;
+      console.log('🛒 [CartContext] addItem called with:', {
+        id: item.id,
+        metadata: itemMetadata,
+        hasMetadata: !!itemMetadata,
+        metadataEventId: itemMetadata?.eventId,
+        fullItem: item,
+      });
+      
+      // Update UI optimistically - reducer will handle the state update
+      // Make sure metadata is preserved - explicitly spread metadata
+      const itemWithMetadata = {
+        ...item,
+        metadata: itemMetadata, // Explicitly preserve metadata
+      };
+      dispatch({ type: 'ADD_ITEM', payload: itemWithMetadata });
+      
+      // Calculate new items (same logic as reducer)
+      const currentItems = state.items;
+      const existingItem = currentItems.find(i => i.id === item.id);
+      let newItems: CartItemWithQuantity[];
+      
+      if (existingItem) {
+        newItems = currentItems.map(i =>
+          i.id === item.id
+            ? { ...i, quantity: i.quantity + 1, metadata: itemMetadata || i.metadata }
+            : i
+        );
+      } else {
+        const newItem: CartItemWithQuantity = {
+          ...item,
+          quantity: 1,
+          selected: true,
+          addedAt: new Date().toISOString(),
+          metadata: itemMetadata, // Preserve metadata
+        };
+        newItems = [...currentItems, newItem];
+      }
+      
+      // Save to AsyncStorage immediately to persist (with optimization)
+      // Don't let storage errors break the addItem flow - wrap in separate async function
+      // Use .catch() to ensure errors never propagate
+      (async () => {
+        try {
+          const optimizedItems = optimizeCartForStorage(newItems);
+          const cartData = JSON.stringify(optimizedItems);
+          
+          // Check size before saving
+          const sizeInMB = new Blob([cartData]).size / (1024 * 1024);
+          if (sizeInMB > 3) { // Lower threshold to 3MB
+            console.warn('🛒 [CartContext] Cart data too large, limiting to last 20 items');
+            const limitedItems = optimizedItems.slice(-20);
+            await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(limitedItems));
+          } else {
+            await AsyncStorage.setItem(CART_STORAGE_KEY, cartData);
+          }
+        } catch (error: any) {
+          // Handle quota exceeded error - don't throw, just log
+          if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
+            console.warn('🛒 [CartContext] Storage quota exceeded when adding item (handled gracefully)');
+            
+            // Aggressively clean up storage
+            try {
+              const storageKeysToClean = [
+                '@errorReporter:errors',
+                '@billUpload:analytics:events',
+                '@billUpload:queue',
+                '@billUpload:state',
+              ];
+              
+              for (const key of storageKeysToClean) {
+                try {
+                  await AsyncStorage.removeItem(key);
+                } catch (cleanupError) {
+                  // Ignore cleanup errors
+                }
+              }
+              
+              // Also cleanup analytics events to free more space
+              try {
+                await billUploadAnalytics.cleanupOldEvents(100);
+              } catch (analyticsError) {
+                // Ignore analytics cleanup errors
+              }
+              
+              // Try to save only last 15 items (very aggressive)
+              const optimizedItems = optimizeCartForStorage(newItems);
+              const limitedItems = optimizedItems.slice(-15);
+              await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(limitedItems));
+              console.warn('🛒 [CartContext] Saved only last 15 items after cleanup');
+            } catch (retryError) {
+              // If still fails, just log - don't throw
+              // Item is already in state, will sync with backend
+              console.warn('🛒 [CartContext] Storage completely full, item added to memory only');
+            }
+          } else {
+            // For non-quota errors, just log - don't throw
+            console.warn('🛒 [CartContext] Failed to save to storage (non-quota):', error);
+          }
+        }
+      })().catch(() => {
+        // Final safety net - ensure no errors propagate
+        // This should never be reached, but just in case
+      });
 
       // Check if online
       if (state.isOnline) {
-        // Sync with backend
+        // Sync with backend (but don't reload if it fails - keep local state)
         try {
-          const response = await cartService.addToCart({
-            productId: item.id, // Use id since CartItem type doesn't have productId
-            quantity: 1,
-            // Don't include variant since CartItem type doesn't have it
+          // For events, extract the actual eventId from metadata
+          // The item.id might be "eventId_slotId" format, but backend needs just eventId
+          const itemMetadata = (item as any).metadata;
+          let productIdForBackend = item.id;
+          
+          console.log('🛒 [CartContext] BEFORE extraction:', {
+            itemId: item.id,
+            itemIdType: typeof item.id,
+            hasMetadata: !!itemMetadata,
+            metadata: itemMetadata,
+            metadataEventId: itemMetadata?.eventId,
+            metadataEventIdType: typeof itemMetadata?.eventId,
           });
+          
+          // ALWAYS extract from composite ID if it contains underscore
+          // This is the most reliable way since metadata might not be preserved
+          if (item.id && String(item.id).includes('_')) {
+            // Extract eventId from composite ID (before underscore)
+            // Format: "eventId_slotId" -> "eventId"
+            const parts = String(item.id).split('_');
+            productIdForBackend = parts[0]; // Take first part (eventId)
+            console.log('✅ [CartContext] Extracted from composite ID:', productIdForBackend, 'from', item.id);
+          } else if (itemMetadata?.eventId) {
+            // Use eventId from metadata if available (fallback)
+            productIdForBackend = String(itemMetadata.eventId);
+            console.log('✅ [CartContext] Using metadata.eventId:', productIdForBackend);
+          }
+          
+          // Validate productId is hexadecimal (backend requirement)
+          const isValidHex = /^[0-9a-fA-F]+$/.test(String(productIdForBackend));
+          if (!isValidHex) {
+            // If not valid hex, try extracting from composite ID again
+            if (item.id && String(item.id).includes('_')) {
+              const parts = String(item.id).split('_');
+              productIdForBackend = parts[0];
+              console.log('✅ [CartContext] Re-extracted from composite ID:', productIdForBackend);
+            }
+            // If still not valid, log warning
+            if (!/^[0-9a-fA-F]+$/.test(String(productIdForBackend))) {
+              console.error('❌ [CartContext] Invalid productId format:', productIdForBackend);
+            }
+          }
+          
+          // Final validation - ensure productId is valid hex
+          const finalProductId = String(productIdForBackend).trim();
+          if (!/^[0-9a-fA-F]+$/.test(finalProductId)) {
+            console.error('❌ [CartContext] Invalid productId, cannot send to backend:', finalProductId);
+            throw new Error(`Invalid productId format: ${finalProductId}. Must be hexadecimal.`);
+          }
+          
+          console.log('✅ [CartContext] FINAL productId:', {
+            originalItemId: item.id,
+            extractedProductId: finalProductId,
+            isValidHex: /^[0-9a-fA-F]+$/.test(finalProductId),
+          });
+          
+          // Backend doesn't accept metadata field, so only send productId and quantity
+          // Metadata is preserved in local cart state for UI display
+          const requestData = {
+            productId: finalProductId,
+            quantity: 1,
+          };
+          
+          console.log('📤 [CartContext] Sending to backend:', JSON.stringify(requestData, null, 2));
+          
+          const response = await cartService.addToCart(requestData);
 
           if (response.success && response.data) {
-
+            // Only reload if backend sync succeeds
             await loadCart();
           }
         } catch (apiError) {
           console.error('🛒 [CartContext] API add failed, queuing for later:', apiError);
-          // Queue for offline sync
+          // Queue for offline sync but keep local state
           await offlineQueueService.addToQueue('add', {
             productId: item.id,
             quantity: 1,
@@ -352,19 +622,24 @@ export function CartProvider({ children }: CartProviderProps) {
         }
       } else {
         // Queue for offline sync
-
         await offlineQueueService.addToQueue('add', {
           productId: item.id,
           quantity: 1,
           // Don't include variant since CartItem type doesn't have it
         });
       }
-    } catch (error) {
-      console.error('🛒 [CartContext] Failed to add item:', error);
-      dispatch({
-        type: 'CART_ERROR',
-        payload: error instanceof Error ? error.message : 'Failed to add item'
-      });
+    } catch (error: any) {
+      // Don't log quota errors as failures - they're handled gracefully
+      if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
+        console.warn('🛒 [CartContext] Storage quota issue (item still added to state)');
+        // Item is already in state, so don't dispatch error
+      } else {
+        console.error('🛒 [CartContext] Failed to add item:', error);
+        dispatch({
+          type: 'CART_ERROR',
+          payload: error instanceof Error ? error.message : 'Failed to add item'
+        });
+      }
     }
   };
 
@@ -617,9 +892,16 @@ export function CartProvider({ children }: CartProviderProps) {
   }, [syncWithServer]);
 
   // Save cart to storage whenever it changes
+  // Wrap in try-catch to prevent errors from breaking the app
   useEffect(() => {
     if (state.lastUpdated) {
-      saveCartToStorage();
+      // Don't await - let it run in background, errors won't propagate
+      saveCartToStorage().catch((error: any) => {
+        // Silently handle storage errors - they're already handled in saveCartToStorage
+        if (error?.name !== 'QuotaExceededError' && !error?.message?.includes('quota')) {
+          console.warn('🛒 [CartContext] Storage save failed in useEffect:', error);
+        }
+      });
     }
   }, [state.items, state.lastUpdated, saveCartToStorage]);
 

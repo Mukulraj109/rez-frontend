@@ -152,7 +152,11 @@ function ProductCard({ recommendation, onPress }: ProductCardProps) {
         {product.rating && (
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={12} color="#FBBF24" />
-            <Text style={styles.rating}>{product.rating.value.toFixed(1)}</Text>
+            <Text style={styles.rating}>
+              {typeof product.rating.value === 'string' 
+                ? parseFloat(product.rating.value).toFixed(1) 
+                : product.rating.value.toFixed(1)}
+            </Text>
             <Text style={styles.ratingCount}>({product.rating.count})</Text>
           </View>
         )}

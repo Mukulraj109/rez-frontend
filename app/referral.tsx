@@ -30,14 +30,18 @@ import {
   type ReferralHistoryItem,
 } from '@/services/referralApi';
 import { anonymizeEmail } from '@/utils/privacy';
+import ShareModal from '@/components/referral/ShareModal';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
 
-const ReferralPage = () => {
+const ReferralPageContent = () => {
   const router = useRouter();
   const { state } = useAuth();
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   const [stats, setStats] = useState<ReferralStats | null>(null);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
   const [history, setHistory] = useState<ReferralHistoryItem[]>([]);
   const [codeInfo, setCodeInfo] = useState<{
     referralCode: string;
@@ -45,8 +49,9 @@ const ReferralPage = () => {
     shareMessage: string;
   } | null>(null);
 
-  // Refs for cleanup
+  // Refs for cleanup and timeout
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
   // ✅ FIX #1: Authentication verification
@@ -61,16 +66,34 @@ const ReferralPage = () => {
       return;
     }
 
+    // ✅ Analytics: Track referral page view
+    console.log('[ANALYTICS] Referral page viewed');
+
     fetchReferralData();
+
+    // ✅ FIX #4: Loading timeout - prevent infinite loading (max 15 seconds)
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current && loading) {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingError('Request timed out. Please check your connection and try again.');
+      }
+    }, 15000);
 
     // Cleanup on unmount
     return () => {
       isMountedRef.current = false;
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
     };
   }, [state.isAuthenticated]);
 
   // ✅ FIX #2: Individual try-catch for each API (fix race condition)
   const fetchReferralData = async () => {
+    // Clear any previous errors
+    setLoadingError(null);
+
     // Check auth again before API calls
     if (!state.isAuthenticated) {
       setLoading(false);
@@ -134,6 +157,11 @@ const ReferralPage = () => {
       }
     }
 
+    // Clear loading timeout if data loaded successfully
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+    }
+
     if (isMountedRef.current) {
       setLoading(false);
       setRefreshing(false);
@@ -178,6 +206,9 @@ const ReferralPage = () => {
         }
       }, 2000);
 
+      // ✅ Analytics: Track copy action
+      console.log('[ANALYTICS] Referral code copied', { method: 'clipboard' });
+
       Alert.alert('Copied!', 'Referral code copied to clipboard');
     } catch (error) {
       console.error('Error copying code:', error);
@@ -185,43 +216,18 @@ const ReferralPage = () => {
     }
   }, [referralCode]);
 
-  // ✅ FIX #4: Fix unhandled share rejection (add error handling)
-  const handleShareReferral = useCallback(async () => {
-    try {
-      if (!referralCode || referralCode === 'LOADING...') {
-        Alert.alert('Error', 'Referral code not loaded yet');
-        return;
-      }
-
-      const shareMessage = codeInfo?.shareMessage ||
-        `Join me on REZ App and get ₹30 off on your first order! Use my referral code: ${referralCode}\n\nDownload now: ${referralLink}`;
-
-      const result = await Share.share({
-        message: shareMessage,
-        title: 'Join REZ App',
-      });
-
-      // Track share event only if user actually shared
-      if (result.action === Share.sharedAction) {
-        try {
-          // Track share event (using whatsapp as default since native share doesn't specify platform)
-          await trackShare('whatsapp');
-        } catch (trackError) {
-          // Don't show error to user for tracking failure
-          console.error('Error tracking share:', trackError);
-        }
-      }
-    } catch (error: any) {
-      // Handle specific share errors
-      if (error?.message?.includes('User did not share')) {
-        // User cancelled share, don't show error
-        console.log('User cancelled share');
-      } else {
-        console.error('Error sharing:', error);
-        Alert.alert('Error', 'Failed to share referral. Please try again.');
-      }
+  // ✅ UPDATED: Open ShareModal instead of native share
+  const handleShareReferral = useCallback(() => {
+    if (!referralCode || referralCode === 'LOADING...') {
+      Alert.alert('Error', 'Referral code not loaded yet');
+      return;
     }
-  }, [referralCode, referralLink, codeInfo?.shareMessage]);
+
+    // ✅ Analytics: Track share modal open
+    console.log('[ANALYTICS] Share modal opened', { referralCode });
+
+    setShareModalVisible(true);
+  }, [referralCode]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -251,6 +257,7 @@ const ReferralPage = () => {
   const totalReferrals = useMemo(() => stats?.totalReferrals || 0, [stats?.totalReferrals]);
   const totalEarned = useMemo(() => stats?.totalEarned || 0, [stats?.totalEarned]);
 
+  // ✅ FIX #4: Loading state with timeout and error handling
   if (loading) {
     return (
       <View style={styles.container}>
@@ -269,8 +276,28 @@ const ReferralPage = () => {
           </View>
         </LinearGradient>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
-          <Text style={styles.loadingText}>Loading referral data...</Text>
+          {loadingError ? (
+            <>
+              <Ionicons name="alert-circle" size={48} color="#EF4444" />
+              <Text style={styles.errorText}>{loadingError}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => {
+                  setLoading(true);
+                  setLoadingError(null);
+                  fetchReferralData();
+                }}
+              >
+                <Ionicons name="refresh" size={20} color="white" />
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <ActivityIndicator size="large" color="#8B5CF6" />
+              <Text style={styles.loadingText}>Loading referral data...</Text>
+            </>
+          )}
         </View>
       </View>
     );
@@ -497,7 +524,44 @@ const ReferralPage = () => {
           </Text>
         </View>
       </ScrollView>
+
+      {/* ✅ ShareModal - Advanced sharing with QR code */}
+      <ShareModal
+        visible={shareModalVisible}
+        referralCode={referralCode}
+        referralLink={referralLink}
+        onClose={() => setShareModalVisible(false)}
+        currentTierProgress={
+          stats
+            ? {
+                current: stats.totalReferrals || 0,
+                target: 5, // Next tier target (can be dynamic based on current tier)
+                nextTier: 'PRO',
+              }
+            : undefined
+        }
+      />
     </View>
+  );
+};
+
+// Wrap the page in an ErrorBoundary
+const ReferralPage = () => {
+  const router = useRouter();
+
+  return (
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // Log error to error tracking service (e.g., Sentry)
+        console.error('Referral Page Error:', error, errorInfo);
+      }}
+      onReset={() => {
+        // Optionally navigate back or refresh
+        router.back();
+      }}
+    >
+      <ReferralPageContent />
+    </ErrorBoundary>
   );
 };
 
@@ -716,6 +780,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
+  errorText: {
+    marginTop: 12,
+    marginBottom: 20,
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
   historyCard: {
     backgroundColor: 'white',
     borderRadius: 12,
@@ -801,4 +888,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(ReferralPage);
+export default ReferralPage;

@@ -18,7 +18,7 @@ export interface UseEventBookingReturn {
   isBooking: boolean;
   bookingError: string | null;
   bookingSuccess: boolean;
-  bookEvent: (event: EventItem, formData: BookingFormData) => Promise<boolean>;
+  bookEvent: (event: EventItem, formData: BookingFormData) => Promise<string | null>;
   cancelBooking: (bookingId: string) => Promise<boolean>;
   getUserBookings: () => Promise<any[]>;
   clearBookingState: () => void;
@@ -29,7 +29,7 @@ export function useEventBooking(): UseEventBookingReturn {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
-  const bookEvent = useCallback(async (event: EventItem, formData: BookingFormData): Promise<boolean> => {
+  const bookEvent = useCallback(async (event: EventItem, formData: BookingFormData): Promise<string | null> => {
     try {
       setIsBooking(true);
       setBookingError(null);
@@ -47,14 +47,20 @@ export function useEventBooking(): UseEventBookingReturn {
       // Call API to book event
       const result = await eventsApiService.bookEventSlot(event.id, formData);
 
-      if (result.success) {
+      if (result.success && result.booking) {
         setBookingSuccess(true);
-        Alert.alert(
-          'Booking Confirmed!',
-          `You have successfully booked "${event.title}". Your booking reference is ${result.booking?.bookingReference || 'N/A'}.`,
-          [{ text: 'OK', style: 'default' }]
-        );
-        return true;
+        const bookingId = result.booking.id || result.booking._id || result.booking.bookingReference || null;
+        
+        // Only show alert if it's a free event (paid events handle their own alerts)
+        if (event.price.isFree) {
+          Alert.alert(
+            'Booking Confirmed!',
+            `You have successfully booked "${event.title}". Your booking reference is ${result.booking.bookingReference || 'N/A'}.`,
+            [{ text: 'OK', style: 'default' }]
+          );
+        }
+        
+        return bookingId;
       } else {
         throw new Error(result.message || 'Failed to book event');
       }
@@ -68,7 +74,7 @@ export function useEventBooking(): UseEventBookingReturn {
         errorMessage,
         [{ text: 'OK', style: 'default' }]
       );
-      return false;
+      return null;
     } finally {
       setIsBooking(false);
     }

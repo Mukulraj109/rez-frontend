@@ -132,7 +132,7 @@ class ReviewService {
       const response = await apiClient.get(
         `/reviews/user/my-reviews?page=${page}&limit=${limit}`
       );
-      return response.data as ApiResponse<{ reviews: UserReview[]; pagination: { currentPage: number; totalPages: number; totalReviews: number; hasNextPage: boolean; hasPrevPage: boolean; } }>;
+      return response;
     } catch (error) {
       console.error('L [REVIEW API] Error fetching user reviews:', error);
       throw error;

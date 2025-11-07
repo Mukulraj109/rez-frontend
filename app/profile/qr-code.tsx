@@ -17,9 +17,7 @@ import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth } from '@/contexts/AuthContext';
 import * as Clipboard from 'expo-clipboard';
-
-// Note: QR code generation can be added when react-native-qrcode-svg is installed
-// For now, showing placeholder with manual data
+import QRCode from 'react-native-qrcode-svg';
 
 const QRCodePage = () => {
   const router = useRouter();
@@ -118,41 +116,12 @@ const QRCodePage = () => {
         {/* QR Code Card */}
         <View style={styles.qrCard}>
           <View style={styles.qrContainer}>
-            {/* QR Code Placeholder - Replace with actual QRCode component when package is installed */}
-            <View style={styles.qrPlaceholder}>
-              <View style={styles.qrPattern}>
-                {/* Simple QR-like pattern */}
-                {[...Array(8)].map((_, row) => (
-                  <View key={row} style={styles.qrRow}>
-                    {[...Array(8)].map((_, col) => (
-                      <View
-                        key={col}
-                        style={[
-                          styles.qrDot,
-                          (row + col) % 2 === 0 && styles.qrDotFilled,
-                        ]}
-                      />
-                    ))}
-                  </View>
-                ))}
-              </View>
-              <ThemedText style={styles.qrNote}>Scan with REZ App</ThemedText>
-            </View>
-
-            {/*
-            When react-native-qrcode-svg is available, replace above with:
-
-            import QRCode from 'react-native-qrcode-svg';
-
             <QRCode
               value={activeTab === 'profile' ? profileLink : walletId}
               size={220}
               color="#111827"
               backgroundColor="white"
-              logo={require('@/assets/images/logo.png')}
-              logoSize={40}
             />
-            */}
           </View>
 
           {/* Info Section */}

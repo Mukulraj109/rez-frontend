@@ -31,6 +31,16 @@ import OnlineRedemptionModal from '@/components/voucher/OnlineRedemptionModal';
 
 type VoucherStatus = 'all' | 'active' | 'used' | 'expired';
 
+interface CouponMetadata {
+  source?: string;
+  isProductSpecific?: boolean;
+  storeName?: string;
+  storeId?: string;
+  productName?: string | null;
+  productId?: string | null;
+  productImage?: string | null;
+}
+
 interface UserVoucher {
   id: string;
   code: string;
@@ -47,6 +57,7 @@ interface UserVoucher {
     maxDiscountAmount?: number;
     usageLimitPerUser?: number;
   };
+  metadata?: CouponMetadata;
 }
 
 const MyVouchersPage = () => {
@@ -357,6 +368,27 @@ const MyVouchersPage = () => {
 
           {/* Description */}
           <Text style={styles.description}>{item.description}</Text>
+
+          {/* Coupon Applicability - Only for spin wheel coupons with metadata */}
+          {item.metadata && item.metadata.storeName && (
+            <View style={styles.applicabilityContainer}>
+              <View style={styles.applicabilityHeader}>
+                <Ionicons
+                  name={item.metadata.isProductSpecific ? "cube-outline" : "storefront-outline"}
+                  size={16}
+                  color="rgba(255, 255, 255, 0.9)"
+                />
+                <Text style={styles.applicabilityTitle}>
+                  {item.metadata.isProductSpecific ? 'Product-Specific Coupon' : 'Store-Wide Coupon'}
+                </Text>
+              </View>
+              <Text style={styles.applicabilityText}>
+                {item.metadata.isProductSpecific
+                  ? `Valid only on ${item.metadata.productName} from ${item.metadata.storeName}`
+                  : `Valid on any product from ${item.metadata.storeName}`}
+              </Text>
+            </View>
+          )}
 
           {/* Terms & Conditions - Only for cashback offers */}
           {item.restrictions && (item.restrictions.minOrderValue || item.restrictions.maxDiscountAmount) && (
@@ -769,6 +801,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 8,
+  },
+  applicabilityContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  applicabilityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  applicabilityTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.95)',
+  },
+  applicabilityText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
+    lineHeight: 16,
   },
   termsContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',

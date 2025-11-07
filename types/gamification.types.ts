@@ -10,12 +10,23 @@ export interface SpinWheelSegment {
   type: 'coins' | 'discount' | 'cashback' | 'voucher' | 'nothing';
 }
 
+export interface CouponDetails {
+  storeName: string;
+  storeId: string;
+  productName?: string | null;
+  productId?: string | null;
+  productImage?: string | null;
+  isProductSpecific: boolean;
+  applicableOn: string;
+}
+
 export interface SpinWheelResult {
   segment: SpinWheelSegment;
   prize: {
     type: 'coins' | 'discount' | 'cashback' | 'voucher' | 'nothing';
     value: number;
     description: string;
+    couponDetails?: CouponDetails | null;
   };
   rotation: number;
 }

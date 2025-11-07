@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import {
-  Alert,
   Dimensions,
   Platform,
   ScrollView,
@@ -13,15 +12,34 @@ import {
   Linking,
   ImageBackground,
   SafeAreaView,
+  ActivityIndicator,
+  Animated,
+  Image,
 } from "react-native";
+import { showAlert, alertOk, confirmAlert } from "@/utils/alert";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import Constants from "expo-constants";
 import { ThemedView } from "@/components/ThemedView";
 import { EventItem } from "@/types/homepage.types";
 import { Ionicons } from "@expo/vector-icons";
 import EventBookingModal from "@/components/events/EventBookingModal";
+import RelatedEventsSection from "@/components/events/RelatedEventsSection";
 import { useEventBooking } from "@/hooks/useEventBooking";
 import eventsApiService from "@/services/eventsApi";
+import { useAuth } from "@/contexts/AuthContext";
+import { BUSINESS_CONFIG } from "@/config/env";
+import stripeApi from "@/services/stripeApi";
+import eventAnalytics from "@/services/eventAnalytics";
+// Conditional import for native Stripe service
+let stripeReactNativeService: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    stripeReactNativeService = require('@/services/stripeReactNativeService').default;
+  } catch (e) {
+    console.warn('⚠️ [EVENT PAGE] Native Stripe service not available');
+  }
+}
 
 interface EventPageProps {
   eventId?: string;
@@ -60,6 +78,9 @@ interface DynamicEventData {
 export default function EventPage({ eventId, initialEvent }: EventPageProps = {}) {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const auth = useAuth();
+  const user = auth.state.user;
+  const isAuthenticated = auth.state.isAuthenticated;
   const [screenData, setScreenData] = useState(Dimensions.get("window"));
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -69,38 +90,131 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [realEventData, setRealEventData] = useState<EventItem | null>(null);
+  const [isLoadingEvent, setIsLoadingEvent] = useState(true);
+  const [isLoadingFavorite, setIsLoadingFavorite] = useState(false);
+  const [relatedEvents, setRelatedEvents] = useState<EventItem[]>([]);
+  const [isLoadingRelated, setIsLoadingRelated] = useState(false);
+
+  // Track page view time and scroll depth for analytics
+  const pageViewStartTime = useRef<number>(Date.now());
+  const scrollDepthRef = useRef<number>(0);
+
+  // Animation values for UX improvements
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const imageOpacity = useRef(new Animated.Value(0)).current;
+  const [imageError, setImageError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
+
+  // Extract specific params to avoid infinite loop from params object reference changes
+  const eventIdParam = params.eventId as string | undefined;
+  const eventDataParam = params.eventData as string | undefined;
+  const eventTypeParam = params.eventType as string | undefined;
 
   // Parse dynamic event data from navigation params and fetch real data
   useEffect(() => {
     const loadEventData = async () => {
-      if (params.eventData && params.eventId && params.eventType) {
-        try {
-          const parsedData = JSON.parse(params.eventData as string);
-          setEventData(parsedData);
-          setIsDynamic(true);
-
-          // Try to fetch real event data from backend
+      setIsLoadingEvent(true);
+      setError(null);
+      
+      try {
+        if (eventDataParam && eventIdParam && eventTypeParam) {
           try {
-            const realData = await eventsApiService.getEventById(params.eventId as string);
-            if (realData) {
-              setRealEventData(realData);
+            const parsedData = JSON.parse(eventDataParam);
+            setEventData(parsedData);
+            setIsDynamic(true);
 
+            // Try to fetch real event data from backend
+            try {
+              const realData = await eventsApiService.getEventById(eventIdParam);
+              if (realData) {
+                setRealEventData(realData);
+              }
+            } catch (error) {
+              console.error("❌ [EVENT PAGE] Failed to fetch event from backend:", error);
+              // Continue with dynamic data if backend fetch fails
             }
           } catch (error) {
-
+            console.error("❌ [DYNAMIC EVENT] Failed to parse event data:", error);
+            setIsDynamic(false);
           }
-        } catch (error) {
-          console.error("❌ [DYNAMIC EVENT] Failed to parse event data:", error);
+        } else if (eventIdParam) {
+          // Direct event ID from params - fetch from backend
+          try {
+            const realData = await eventsApiService.getEventById(eventIdParam);
+            if (realData) {
+              setRealEventData(realData);
+              setIsDynamic(false);
+            } else {
+              setError("Event not found");
+            }
+          } catch (error) {
+            console.error("❌ [EVENT PAGE] Failed to fetch event:", error);
+            setError("Failed to load event. Please try again.");
+          }
+        } else {
           setIsDynamic(false);
         }
-      } else {
-
-        setIsDynamic(false);
+      } catch (error) {
+        console.error("❌ [EVENT PAGE] Error loading event data:", error);
+        setError("Failed to load event. Please try again.");
+      } finally {
+        setIsLoadingEvent(false);
       }
     };
 
     loadEventData();
-  }, [params]);
+  }, [eventIdParam, eventDataParam, eventTypeParam]);
+
+  // Animate content on load
+  useEffect(() => {
+    if (!isLoadingEvent && realEventData) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isLoadingEvent, realEventData, fadeAnim, slideAnim]);
+
+  // Animate image on load
+  const handleImageLoad = useCallback(() => {
+    Animated.timing(imageOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [imageOpacity]);
+
+  const handleImageError = useCallback(() => {
+    setImageError(true);
+    imageOpacity.setValue(1); // Show placeholder immediately
+  }, [imageOpacity]);
+
+  // Enhanced retry mechanism with exponential backoff
+  const retryWithBackoff = useCallback(async (retryFn: () => Promise<void>, retries = 0) => {
+    if (retries >= MAX_RETRIES) {
+      setError("Failed to load event after multiple attempts. Please check your connection.");
+      return;
+    }
+
+    try {
+      await retryFn();
+    } catch (error) {
+      const delay = Math.min(1000 * Math.pow(2, retries), 10000); // Exponential backoff, max 10s
+      setTimeout(() => {
+        retryWithBackoff(retryFn, retries + 1);
+      }, delay);
+    }
+  }, []);
 
   const HORIZONTAL_PADDING = screenData.width < 375 ? 16 : screenData.width > 768 ? 32 : 20;
 
@@ -118,9 +232,77 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
     };
   }, []);
 
+  // Deep link support for event pages
+  useEffect(() => {
+    const handleDeepLink = (url: string) => {
+      try {
+        // Parse URL - handle both web and native formats
+        let eventId: string | null = null;
+        
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          // Web: Use URL API
+          const urlObj = new URL(url);
+          eventId = urlObj.searchParams.get('eventId');
+        } else {
+          // Native: Parse manually
+          const match = url.match(/[?&]eventId=([^&]+)/);
+          if (match) {
+            eventId = decodeURIComponent(match[1]);
+          }
+        }
+        
+        if (eventId && eventId !== eventIdParam) {
+          // Load event from deep link
+          setIsLoadingEvent(true);
+          setError(null);
+          
+          eventsApiService.getEventById(eventId)
+            .then((data) => {
+              if (data) {
+                setRealEventData(data);
+                setIsDynamic(false);
+              } else {
+                setError("Event not found");
+              }
+            })
+            .catch((error) => {
+              console.error("❌ [EVENT PAGE] Deep link error:", error);
+              setError("Failed to load event from link");
+            })
+            .finally(() => {
+              setIsLoadingEvent(false);
+            });
+        }
+      } catch (error) {
+        console.error("❌ [EVENT PAGE] Invalid deep link:", error);
+      }
+    };
+
+    // Listen for deep links
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+    
+    // Check if app was opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
+      }
+    }).catch((error) => {
+      console.error("❌ [EVENT PAGE] Error getting initial URL:", error);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [eventIdParam]);
+
   const [isFavorited, setIsFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Load initial favorite status - will be implemented after UserFavorites model is created
+  // For now, favorite status is managed through optimistic updates
 
   const eventDetails: EventItem = useMemo(() => {
     // Use real event data if available, otherwise fall back to dynamic or static data
@@ -169,32 +351,120 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
     );
   }, [initialEvent, eventId, isDynamic, eventData, realEventData]);
 
+  // Determine if event is truly offline (has slots or location is not "Online")
+  const isOfflineEvent = useMemo(() => {
+    // If event has availableSlots defined, it's an offline event
+    if (realEventData?.availableSlots !== undefined || eventData?.availableSlots !== undefined) {
+      return true;
+    }
+    // If location is not "Online", it's an offline event
+    if (eventDetails.location && eventDetails.location.toLowerCase() !== 'online') {
+      return true;
+    }
+    // Otherwise, use isOnline flag
+    return !eventDetails.isOnline;
+  }, [eventDetails.isOnline, eventDetails.location, eventData, realEventData]);
+
+
+  // Get available slots for offline events - prioritize realEventData, then eventData, then mock
+  const availableSlots = useMemo(() => {
+    if (!isOfflineEvent) {
+      return [];
+    }
+    
+    // Priority: realEventData > eventData > mock data
+    if (realEventData?.availableSlots && Array.isArray(realEventData.availableSlots) && realEventData.availableSlots.length > 0) {
+      return realEventData.availableSlots;
+    }
+    
+    if (eventData?.availableSlots && Array.isArray(eventData.availableSlots) && eventData.availableSlots.length > 0) {
+      return eventData.availableSlots;
+    }
+    
+    // Use mock data as fallback for offline events
+    return [
+      { id: "slot1", time: "10:00 AM", available: true, maxCapacity: 50, bookedCount: 12 },
+      { id: "slot2", time: "2:00 PM", available: true, maxCapacity: 50, bookedCount: 28 },
+      { id: "slot3", time: "6:00 PM", available: false, maxCapacity: 50, bookedCount: 50 },
+    ];
+  }, [isOfflineEvent, eventData?.availableSlots, realEventData?.availableSlots]);
+
   const handleSharePress = useCallback(async () => {
     try {
       setIsLoading(true);
+      
+      // Construct share URL - use app URL if available, otherwise use deep link
+      const appUrl = BUSINESS_CONFIG.app.website || "https://rezapp.com";
+      const shareUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}/EventPage?eventId=${eventDetails.id}`
+        : `${appUrl}/EventPage?eventId=${eventDetails.id}`;
+      
+      const shareMessage = `Check out ${eventDetails.title} by ${eventDetails.organizer} on ${eventDetails.date}\n${shareUrl}`;
+      
       await Share.share({
-        message: `Check out ${eventDetails.title} by ${eventDetails.organizer} on ${eventDetails.date}`,
-        url: `https://events.example.com/events/${eventDetails.id}`,
+        message: shareMessage,
+        url: shareUrl,
         title: eventDetails.title,
       });
+      
+      // Track share analytics
+      try {
+        await eventsApiService.shareEvent(eventDetails.id);
+        eventAnalytics.trackShare(eventDetails.id, Platform.OS, 'event_page');
+      } catch (shareError) {
+        console.error("❌ [EVENT PAGE] Failed to track share:", shareError);
+        // Still track analytics even if API call fails
+        eventAnalytics.trackShare(eventDetails.id, Platform.OS, 'event_page');
+      }
     } catch (err) {
-      console.error(err);
-      setError("Failed to share event.");
+      console.error("❌ [EVENT PAGE] Share failed:", err);
+      if (err instanceof Error && err.message !== "User canceled") {
+        setError("Failed to share event.");
+      }
     } finally {
       setIsLoading(false);
     }
   }, [eventDetails]);
 
-  const handleFavoritePress = useCallback(() => {
-    setIsFavorited((prev) => {
-      const next = !prev;
-      Alert.alert(
-        next ? "Added to Favorites" : "Removed from Favorites",
-        `${eventDetails.title} ${next ? "added to" : "removed from"} favorites.`
-      );
-      return next;
-    });
-  }, [eventDetails.title]);
+  const handleFavoritePress = useCallback(async () => {
+    if (!isAuthenticated || !user) {
+      alertOk("Login Required", "Please login to favorite events");
+      return;
+    }
+
+    try {
+      setIsLoadingFavorite(true);
+      const previousState = isFavorited;
+      
+      // Optimistically update UI
+      setIsFavorited(!previousState);
+      
+      // Call backend API to toggle favorite
+      const result = await eventsApiService.toggleEventFavorite(eventDetails.id);
+      
+      if (result.success) {
+        // Track analytics
+        eventAnalytics.trackFavoriteToggle(eventDetails.id, !previousState, 'event_page');
+        
+        alertOk(
+          !previousState ? "Added to Favorites" : "Removed from Favorites",
+          `${eventDetails.title} ${!previousState ? "added to" : "removed from"} favorites.`
+        );
+      } else {
+        // Revert on failure
+        setIsFavorited(previousState);
+        throw new Error(result.message || "Failed to update favorite status");
+      }
+    } catch (error) {
+      console.error("❌ [EVENT PAGE] Failed to toggle favorite:", error);
+      setError(error instanceof Error ? error.message : "Failed to update favorite status");
+      
+      // Revert optimistic update
+      setIsFavorited((prev) => !prev);
+    } finally {
+      setIsLoadingFavorite(false);
+    }
+  }, [eventDetails.id, eventDetails.title, isFavorited, isAuthenticated, user]);
 
   const handleOnlineBooking = useCallback(async () => {
     if (!eventDetails.isOnline) return;
@@ -208,25 +478,66 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
       if (supported) {
         await Linking.openURL(bookingUrl);
       } else {
-        Alert.alert("Error", "Unable to open booking link. Please try again later.");
+        alertOk("Error", "Unable to open booking link. Please try again later.");
       }
     } catch (error) {
       console.error("Error opening booking URL:", error);
-      Alert.alert("Error", "Failed to open booking page. Please try again.");
+      alertOk("Error", "Failed to open booking page. Please try again.");
     } finally {
       setIsLoading(false);
     }
   }, [eventDetails, eventData]);
 
-  const handleOfflineBooking = useCallback(() => {
+  const handleOfflineBooking = useCallback(async () => {
     if (eventDetails.isOnline) return;
-    setShowBookingModal(true);
-  }, [eventDetails.isOnline]);
+    
+    // Check if user needs to select a time slot
+    if (!selectedSlot && availableSlots.length > 0) {
+      alertOk("Select Time Slot", "Please select a time slot before booking.");
+      return;
+    }
 
-  const handleBookingSuccess = useCallback(() => {
+    // If no slots are available, show error
+    if (availableSlots.length === 0) {
+      alertOk("No Slots Available", "There are no available time slots for this event. Please contact the organizer.");
+      return;
+    }
+
+    // Check authentication
+    if (!isAuthenticated || !user) {
+      alertOk("Login Required", "Please login to book events");
+      return;
+    }
+
+    // Track booking start
+    eventAnalytics.trackBookingStart(eventDetails.id, selectedSlot || undefined, 'event_page');
+
+    // Open booking modal directly (for both free and paid events)
+    setShowBookingModal(true);
+  }, [eventDetails, selectedSlot, availableSlots, isAuthenticated, user]);
+
+  const handleBookingSuccess = useCallback((bookingId?: string) => {
     setShowBookingModal(false);
-    // Optionally refresh event data to show updated availability
-  }, []);
+    
+    // Show success message and navigate to bookings page
+    showAlert(
+      "Booking Confirmed!",
+      `Your booking has been confirmed${bookingId ? `. Booking Reference: ${bookingId}` : ''}. You can view all your bookings in the Bookings page.`,
+      [
+        { text: "Continue", style: "cancel" },
+        {
+          text: "View Bookings",
+          onPress: () => {
+            if (Platform.OS === 'ios') {
+              setTimeout(() => router.push('/BookingsPage' as any), 50);
+            } else {
+              router.push('/BookingsPage' as any);
+            }
+          }
+        }
+      ]
+    );
+  }, [router]);
 
   const handleBackPress = useCallback(() => router.back(), [router]);
 
@@ -241,17 +552,88 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
     [HORIZONTAL_PADDING, screenData]
   );
 
-  // Mock available slots for offline events
-  const availableSlots = useMemo(() => {
-    if (eventDetails.isOnline) return [];
+  // Loading skeleton component with better UX
+  if (isLoadingEvent) {
     return (
-      eventData?.availableSlots || [
-        { id: "slot1", time: "10:00 AM", available: true, maxCapacity: 50, bookedCount: 12 },
-        { id: "slot2", time: "2:00 PM", available: true, maxCapacity: 50, bookedCount: 28 },
-        { id: "slot3", time: "6:00 PM", available: false, maxCapacity: 50, bookedCount: 50 },
-      ]
+      <ThemedView style={styles.page}>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
+        <SafeAreaView style={{ backgroundColor: "#000000" }} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B5CF6" />
+          <Text style={styles.loadingText}>Loading event details...</Text>
+          <Animated.View
+            style={[
+              styles.loadingSkeleton,
+              {
+                opacity: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.3, 0.6],
+                }),
+              },
+            ]}
+          />
+        </View>
+      </ThemedView>
     );
-  }, [eventDetails.isOnline, eventData]);
+  }
+
+  // Error state component
+  if (error && !realEventData && !eventData) {
+    return (
+      <ThemedView style={styles.page}>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
+        <SafeAreaView style={{ backgroundColor: "#000000" }} />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={64} color="#EF4444" />
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setError(null);
+              setRetryCount(prev => prev + 1);
+              setIsLoadingEvent(true);
+              // Enhanced retry with exponential backoff
+              const loadEventData = async () => {
+                try {
+                  if (eventIdParam) {
+                    const realData = await eventsApiService.getEventById(eventIdParam);
+                    if (realData) {
+                      setRealEventData(realData);
+                      setRetryCount(0); // Reset on success
+                    } else {
+                      setError("Event not found");
+                    }
+                  }
+                } catch (error) {
+                  if (retryCount < MAX_RETRIES) {
+                    const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+                    setTimeout(() => {
+                      loadEventData();
+                    }, delay);
+                  } else {
+                    setError(`Failed to load event after ${MAX_RETRIES} attempts. Please check your connection.`);
+                    setIsLoadingEvent(false);
+                  }
+                } finally {
+                  if (retryCount >= MAX_RETRIES) {
+                    setIsLoadingEvent(false);
+                  }
+                }
+              };
+              loadEventData();
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="refresh" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.retryButtonText}>
+              {retryCount > 0 ? `Retry (${retryCount}/${MAX_RETRIES})` : 'Retry'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.page}>
@@ -261,17 +643,28 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
       {/* Top safe area to prevent overlap with the hero header */}
       <SafeAreaView style={{ backgroundColor: "#000000" }} />
 
-      {/* Hero Section */}
+      {/* Hero Section - Optimized Image Loading */}
       <View style={styles.heroSection}>
-        <ImageBackground
-          source={{ uri: eventDetails.image }}
-          style={styles.heroBackground}
-          resizeMode="cover"
-        >
-          <LinearGradient
-            colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0.75)"]}
-            style={styles.heroOverlay}
+        {!imageError ? (
+          <ImageBackground
+            source={{ uri: eventDetails.image }}
+            style={styles.heroBackground}
+            resizeMode="cover"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
           >
+            <Animated.View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  opacity: imageOpacity,
+                },
+              ]}
+            />
+            <LinearGradient
+              colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0.75)"]}
+              style={styles.heroOverlay}
+            >
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
@@ -282,12 +675,20 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
                 <TouchableOpacity style={styles.actionButton} onPress={handleSharePress}>
                   <Ionicons name="share-outline" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={handleFavoritePress}>
-                  <Ionicons
-                    name={isFavorited ? "heart" : "heart-outline"}
-                    size={20}
-                    color={isFavorited ? "#EF4444" : "#FFFFFF"}
-                  />
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={handleFavoritePress}
+                  disabled={isLoadingFavorite}
+                >
+                  {isLoadingFavorite ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons
+                      name={isFavorited ? "heart" : "heart-outline"}
+                      size={20}
+                      color={isFavorited ? "#EF4444" : "#FFFFFF"}
+                    />
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -321,14 +722,46 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
               </View>
             </View>
           </LinearGradient>
-        </ImageBackground>
+          </ImageBackground>
+        ) : (
+          <View style={[styles.heroBackground, styles.imagePlaceholder]}>
+            <Ionicons name="image-outline" size={64} color="#9CA3AF" />
+            <Text style={styles.imagePlaceholderText}>Image not available</Text>
+            <LinearGradient
+              colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0.75)"]}
+              style={styles.heroOverlay}
+            >
+              <View style={styles.heroContent}>
+                <View style={styles.categoryBadge}>
+                  <Text style={styles.categoryText}>{eventDetails.category}</Text>
+                </View>
+                <Text style={styles.heroTitle}>{eventDetails.title}</Text>
+                <Text style={styles.heroSubtitle}>by {eventDetails.organizer}</Text>
+              </View>
+            </LinearGradient>
+          </View>
+        )}
       </View>
 
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+          <Animated.ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            onScroll={(event) => {
+              const scrollY = event.nativeEvent.contentOffset.y;
+              const contentHeight = event.nativeEvent.contentSize.height;
+              const scrollViewHeight = event.nativeEvent.layoutMeasurement.height;
+              const scrollDepth = Math.min(100, Math.round((scrollY / (contentHeight - scrollViewHeight)) * 100));
+              scrollDepthRef.current = Math.max(scrollDepthRef.current, scrollDepth);
+            }}
+            scrollEventThrottle={16}
+            style={[
+              styles.content,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
         {/* Price Card */}
         <View style={styles.priceCard}>
           <View style={styles.priceInfo}>
@@ -363,59 +796,83 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
         </View>
 
         {/* Time Slots for Offline Events */}
-        {!eventDetails.isOnline && (
+        {isOfflineEvent && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Select Time Slot</Text>
             <Text style={styles.sectionSubtitle}>Choose your preferred time to attend the event</Text>
 
-            <View style={styles.slotsGrid}>
-              {availableSlots.map((slot) => (
-                <TouchableOpacity
-                  key={slot.id}
-                  style={[
-                    styles.slotCard,
-                    selectedSlot === slot.time && styles.slotCardSelected,
-                    !slot.available && styles.slotCardDisabled,
-                  ]}
-                  onPress={() => slot.available && setSelectedSlot(slot.time)}
-                  disabled={!slot.available}
-                >
-                  <View style={styles.slotHeader}>
-                    <Text
-                      style={[
-                        styles.slotTime,
-                        selectedSlot === slot.time && styles.slotTimeSelected,
-                        !slot.available && styles.slotTimeDisabled,
-                      ]}
-                    >
-                      {slot.time}
-                    </Text>
-                    {selectedSlot === slot.time && (
-                      <Ionicons name="checkmark-circle" size={20} color="#8B5CF6" />
-                    )}
-                  </View>
 
-                  <Text
-                    style={[styles.slotCapacity, !slot.available && styles.slotCapacityDisabled]}
+            {availableSlots.length > 0 ? (
+              <View style={styles.slotsGrid}>
+                {availableSlots.map((slot) => (
+                  <TouchableOpacity
+                    key={slot.id}
+                    style={[
+                      styles.slotCard,
+                      selectedSlot === slot.id && styles.slotCardSelected,
+                      !slot.available && styles.slotCardDisabled,
+                    ]}
+                    onPress={() => slot.available && setSelectedSlot(slot.id)}
+                    disabled={!slot.available}
                   >
-                    {slot.available ? `${slot.maxCapacity - slot.bookedCount} spots left` : "Fully booked"}
-                  </Text>
+                    <View style={styles.slotHeader}>
+                      <Text
+                        style={[
+                          styles.slotTime,
+                          selectedSlot === slot.id && styles.slotTimeSelected,
+                          !slot.available && styles.slotTimeDisabled,
+                        ]}
+                      >
+                        {slot.time}
+                      </Text>
+                      {selectedSlot === slot.id && (
+                        <Ionicons name="checkmark-circle" size={20} color="#8B5CF6" />
+                      )}
+                    </View>
 
-                  <View style={styles.capacityBar}>
-                    <View
-                      style={[
-                        styles.capacityFill,
-                        {
-                          width: `${(slot.bookedCount / slot.maxCapacity) * 100}%`,
-                          backgroundColor: slot.available ? "#8B5CF6" : "#9CA3AF",
-                        },
-                      ]}
-                    />
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <Text
+                      style={[styles.slotCapacity, !slot.available && styles.slotCapacityDisabled]}
+                    >
+                      {slot.available ? `${slot.maxCapacity - slot.bookedCount} spots left` : "Fully booked"}
+                    </Text>
+
+                    <View style={styles.capacityBar}>
+                      <View
+                        style={[
+                          styles.capacityFill,
+                          {
+                            width: `${(slot.bookedCount / slot.maxCapacity) * 100}%`,
+                            backgroundColor: slot.available ? "#8B5CF6" : "#9CA3AF",
+                          },
+                        ]}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptySlotsContainer}>
+                <Ionicons name="time-outline" size={48} color="#9CA3AF" />
+                <Text style={styles.emptySlotsText}>No time slots available</Text>
+                <Text style={styles.emptySlotsSubtext}>Please check back later or contact the organizer</Text>
+              </View>
+            )}
           </View>
+        )}
+
+        {/* Related Events Section - Lazy Loaded */}
+        {relatedEvents.length > 0 && (
+          <Animated.View
+            style={{
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            }}
+          >
+            <RelatedEventsSection
+              events={relatedEvents}
+              isLoading={isLoadingRelated}
+            />
+          </Animated.View>
         )}
 
         {/* Event Details */}
@@ -470,7 +927,7 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
             </View>
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Fixed Action Button */}
       <View style={styles.fixedBottom}>
@@ -485,22 +942,43 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
       </View>
 
       {error && (
-        <View style={styles.errorToast}>
+        <Animated.View
+          style={[
+            styles.errorToast,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim.interpolate({
+                inputRange: [0, 30],
+                outputRange: [0, -10],
+              })}],
+            },
+          ]}
+        >
           <TouchableOpacity onPress={() => setError(null)} activeOpacity={0.8}>
             <View style={styles.errorInner}>
               <Ionicons name="alert-circle" size={20} color="#EF4444" />
               <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity
+                onPress={() => setError(null)}
+                style={styles.errorCloseButton}
+              >
+                <Ionicons name="close" size={18} color="#991B1B" />
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       )}
 
       {/* Event Booking Modal */}
       <EventBookingModal
         visible={showBookingModal}
         onClose={() => setShowBookingModal(false)}
-        event={eventDetails}
+        event={{
+          ...eventDetails,
+          availableSlots: availableSlots.length > 0 ? availableSlots : eventDetails.availableSlots,
+        }}
         onBookingSuccess={handleBookingSuccess}
+        initialSelectedSlot={selectedSlot}
       />
     </ThemedView>
   );
@@ -528,7 +1006,7 @@ function EventActionButton({
       return price.isFree ? "Register Free" : "Book Now";
     } else {
       if (!hasSelectedSlot) return "Select Time Slot";
-      return `Add to Cart • ${price.isFree ? "Free" : `${price.currency}${price.amount}`}`;
+      return `Book Now • ${price.isFree ? "Free" : `${price.currency}${price.amount}`}`;
     }
   };
 
@@ -536,7 +1014,7 @@ function EventActionButton({
     if (loading) return "hourglass-outline";
     if (isOnline) return "globe-outline";
     if (!hasSelectedSlot) return "time-outline";
-    return "bag-add-outline";
+    return "calendar-outline";
   };
 
   return (
@@ -554,7 +1032,7 @@ function EventActionButton({
         <Text style={actionStyles.buttonText}>{getButtonText()}</Text>
       </LinearGradient>
     </TouchableOpacity>
-);
+  );
 }
 
 const createStyles = (
@@ -666,7 +1144,7 @@ const createStyles = (
     },
     scrollContent: {
       paddingTop: 0,
-      paddingBottom: 140, // ensure content isn't hidden behind the fixed button
+      paddingBottom: 180, // ensure content isn't hidden behind the fixed button (button is at 90px from bottom + ~60px button height + 30px spacing)
     },
 
     priceCard: {
@@ -791,6 +1269,25 @@ const createStyles = (
       height: "100%",
       borderRadius: 2,
     },
+    emptySlotsContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 40,
+      paddingHorizontal: 20,
+    },
+    emptySlotsText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: "#1F2937",
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptySlotsSubtext: {
+      fontSize: 14,
+      color: "#6B7280",
+      textAlign: "center",
+      lineHeight: 20,
+    },
 
     detailsList: {
       gap: 20,
@@ -828,7 +1325,7 @@ const createStyles = (
       position: "absolute",
       left: HORIZONTAL_PADDING,
       right: HORIZONTAL_PADDING,
-      bottom: Platform.OS === "ios" ? 24 : 16,
+      bottom: 70, // Position above bottom navigation bar (70px nav + 20px spacing)
     },
 
     // Error toast
@@ -858,6 +1355,74 @@ const createStyles = (
       fontSize: 14,
       fontWeight: "600",
       flex: 1,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 40,
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: "#6B7280",
+      fontWeight: "500",
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 40,
+    },
+    errorTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: "#1F2937",
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    errorMessage: {
+      fontSize: 16,
+      color: "#6B7280",
+      textAlign: "center",
+      marginBottom: 24,
+    },
+    retryButton: {
+      backgroundColor: "#8B5CF6",
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    retryButtonText: {
+      color: "#FFFFFF",
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    loadingSkeleton: {
+      width: '80%',
+      height: 200,
+      backgroundColor: '#E5E7EB',
+      borderRadius: 12,
+      marginTop: 20,
+    },
+    imagePlaceholder: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#F3F4F6',
+    },
+    imagePlaceholderText: {
+      marginTop: 12,
+      fontSize: 14,
+      color: '#6B7280',
+      fontWeight: '500',
+    },
+    errorCloseButton: {
+      padding: 4,
+      marginLeft: 8,
     },
   });
 
