@@ -74,6 +74,10 @@ export default function MenuItemCard({
           onPressOut={handlePressOut}
           activeOpacity={1}
           disabled={!item.isEnabled}
+          accessibilityLabel={item.title}
+          accessibilityRole="menuitem"
+          accessibilityHint={item.isEnabled ? `Double tap to open ${item.title}` : `${item.title} is currently unavailable`}
+          accessibilityState={{ disabled: !item.isEnabled }}
         >
           <View style={styles.leftContent}>
             <View style={[

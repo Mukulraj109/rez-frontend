@@ -142,7 +142,14 @@ export default function CashbackModal({
   );
 
   return (
-    <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Cashback earned dialog"
+    >
       <StatusBar backgroundColor="rgba(0,0,0,0.5)" barStyle="light-content" />
 
       <Animated.View
@@ -152,6 +159,9 @@ export default function CashbackModal({
           style={styles.overlayTouchable}
           activeOpacity={1}
           onPress={onClose}
+          accessibilityLabel="Close cashback modal"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to close this dialog"
         />
         <Animated.View
           style={[
@@ -161,7 +171,13 @@ export default function CashbackModal({
             },
           ]}
         >
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={onClose}
+            accessibilityLabel="Close cashback modal"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to close this dialog"
+          >
             <Ionicons name="close" size={22} color="#6B7280" />
           </TouchableOpacity>
 

@@ -127,10 +127,13 @@ export default function EarningsCard({
         </View>
 
         {/* Wallet Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.seeWalletButton}
           onPress={onSeeWallet}
           activeOpacity={0.7}
+          accessibilityLabel={`Total earnings: ${earnings.currency}${earnings.totalEarned}. Tap to see wallet`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to view your wallet details and transaction history"
         >
           <LinearGradient
             colors={['rgba(139, 92, 246, 0.15)', 'rgba(139, 92, 246, 0.1)']}
@@ -152,6 +155,10 @@ export default function EarningsCard({
         style={styles.chartToggle}
         onPress={toggleChart}
         activeOpacity={0.7}
+        accessibilityLabel={showChart ? 'Hide earnings chart' : 'View earnings chart'}
+        accessibilityRole="button"
+        accessibilityHint={`Double tap to ${showChart ? 'hide' : 'show'} earnings visualization chart`}
+        accessibilityState={{ selected: showChart }}
       >
         <LinearGradient
           colors={showChart 

@@ -170,7 +170,9 @@ export const CrossPlatformAlertProvider: React.FC<{ children: React.ReactNode }>
             <Text style={styles.title}>{alertData.title}</Text>
 
             {/* Message */}
-            <Text style={styles.message}>{alertData.message}</Text>
+            <View style={styles.messageContainer}>
+              <Text style={styles.message}>{alertData.message}</Text>
+            </View>
 
             {/* Buttons */}
             <View style={styles.buttonsContainer}>
@@ -238,11 +240,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
+  messageContainer: {
+    width: '100%',
+    marginBottom: 24,
+  },
   message: {
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 24,
     lineHeight: 24,
   },
   buttonsContainer: {

@@ -41,10 +41,14 @@ export default function ProjectCard({
   };
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.container}
       onPress={onPress}
       activeOpacity={0.7}
+      accessibilityLabel={`${project.title}. ${project.description || ''}. Pays ${project.payment} rupees. Takes ${project.duration}. Status: ${getStatusText(project.status)}`}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view project details"
+      accessibilityState={{ disabled: project.status === 'completed' }}
     >
       <View style={styles.content}>
         <View style={styles.header}>
@@ -89,13 +93,16 @@ export default function ProjectCard({
         )}
         
         {onStart && project.status === 'available' && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.startButton}
             onPress={(e) => {
               e.stopPropagation();
               onStart();
             }}
             activeOpacity={0.8}
+            accessibilityLabel={`Start ${project.title} project`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to begin this project and start earning"
           >
             <ThemedText style={styles.startButtonText}>Start Project</ThemedText>
           </TouchableOpacity>

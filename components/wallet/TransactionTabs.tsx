@@ -31,6 +31,10 @@ export default function TransactionTabs({ tabs, activeTab, onTabPress }: Transac
         ]}
         onPress={() => onTabPress(tab.id)}
         activeOpacity={0.7}
+        accessibilityLabel={`${tab.title} tab`}
+        accessibilityRole="tab"
+        accessibilityHint={`Double tap to filter transactions by ${tab.title}`}
+        accessibilityState={{ selected: isActive }}
       >
         <ThemedText style={[
           styles.tabText,

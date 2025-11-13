@@ -259,7 +259,12 @@ export default function OrderTrackingScreen() {
   );
 
   const renderModernOrderCard = (order: TrackingOrder) => (
-    <View key={order.id} style={styles.modernOrderCard}>
+    <View
+      key={order.id}
+      style={styles.modernOrderCard}
+      accessibilityLabel={`Order ${order.orderNumber}. Status: ${order.status}. ${order.merchantName}. Amount: ${order.totalAmount} rupees. ${order.estimatedDelivery}`}
+      accessibilityRole="summary"
+    >
       {/* Status Header with Progress */}
       <LinearGradient
         colors={[order.statusColor + '15', order.statusColor + '05']}
@@ -332,7 +337,12 @@ export default function OrderTrackingScreen() {
               <ThemedText style={styles.deliveryPersonRole}>Delivery Partner</ThemedText>
             </View>
           </View>
-          <TouchableOpacity style={styles.callButton}>
+          <TouchableOpacity
+            style={styles.callButton}
+            accessibilityLabel={`Call delivery partner ${order.deliveryPersonName}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to call delivery partner"
+          >
             <Ionicons name="call" size={18} color="white" />
           </TouchableOpacity>
         </View>
@@ -353,6 +363,9 @@ export default function OrderTrackingScreen() {
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={() => router.push(`/orders/${order.id}` as any)}
+          accessibilityLabel={`View details for order ${order.orderNumber}`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to view full order details"
         >
           <Ionicons name="receipt-outline" size={16} color="#8B5CF6" />
           <ThemedText style={styles.secondaryButtonText}>View Details</ThemedText>
@@ -362,6 +375,9 @@ export default function OrderTrackingScreen() {
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => router.push(`/orders/${order.id}/tracking` as any)}
+            accessibilityLabel={`Track live location for order ${order.orderNumber}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to track delivery in real-time"
           >
             <Ionicons name="location" size={16} color="white" />
             <ThemedText style={styles.primaryButtonText}>Track Live</ThemedText>
@@ -372,6 +388,9 @@ export default function OrderTrackingScreen() {
           <TouchableOpacity
             style={styles.shareButton}
             onPress={() => router.push(`/social-media?orderId=${order.id}` as any)}
+            accessibilityLabel={`Share order ${order.orderNumber} on social media and earn 5 percent cashback`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to share and earn rewards"
           >
             <Ionicons name="share-social" size={16} color="#10B981" />
             <ThemedText style={styles.shareButtonText}>Share & Earn 5%</ThemedText>
@@ -394,9 +413,12 @@ export default function OrderTrackingScreen() {
         style={styles.modernHeader}
       >
         <View style={styles.headerContent}>
-            <TouchableOpacity 
-              style={styles.modernBackButton} 
+            <TouchableOpacity
+              style={styles.modernBackButton}
               onPress={() => router.back()}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to previous screen"
             >
               <Ionicons name="arrow-back" size={22} color="white" />
             </TouchableOpacity>
@@ -411,9 +433,12 @@ export default function OrderTrackingScreen() {
               </ThemedText>
             </View>
             
-            <TouchableOpacity 
-              style={styles.modernRefreshButton} 
+            <TouchableOpacity
+              style={styles.modernRefreshButton}
               onPress={handleRefresh}
+              accessibilityLabel="Refresh orders"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to refresh order list"
             >
               <Ionicons name="refresh" size={22} color="white" />
             </TouchableOpacity>
@@ -422,24 +447,32 @@ export default function OrderTrackingScreen() {
 
       {/* Tab Selector */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, selectedTab === 'active' && styles.activeTab]}
           onPress={() => setSelectedTab('active')}
+          accessibilityLabel={`Active orders tab. ${activeOrders.length} active orders`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: selectedTab === 'active' }}
+          accessibilityHint="Double tap to view active orders"
         >
           <ThemedText style={[
-            styles.tabText, 
+            styles.tabText,
             selectedTab === 'active' && styles.activeTabText
           ]}>
             Active Orders
           </ThemedText>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.tab, selectedTab === 'delivered' && styles.activeTab]}
           onPress={() => setSelectedTab('delivered')}
+          accessibilityLabel={`Past orders tab. ${deliveredOrders.length} past orders`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: selectedTab === 'delivered' }}
+          accessibilityHint="Double tap to view past orders"
         >
           <ThemedText style={[
-            styles.tabText, 
+            styles.tabText,
             selectedTab === 'delivered' && styles.activeTabText
           ]}>
             Past Orders

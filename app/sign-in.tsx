@@ -250,6 +250,10 @@ export default function SignInScreen() {
           ]}
           onPress={handleRequestOTP}
           disabled={state.isLoading}
+          accessibilityLabel={state.isLoading ? "Sending OTP" : "Send OTP to phone number"}
+          accessibilityRole="button"
+          accessibilityHint={`Double tap to send verification code to ${formData.phoneNumber || 'your phone'}`}
+          accessibilityState={{ disabled: state.isLoading, busy: state.isLoading }}
         >
           {state.isLoading ? (
             <LoadingSpinner size="small" color="#FFFFFF" />
@@ -267,7 +271,13 @@ export default function SignInScreen() {
   const renderOTPStep = () => (
     <View style={styles.stepContainer}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackToPhone}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBackToPhone}
+          accessibilityLabel="Go back to phone number entry"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to return to phone number step"
+        >
           <Ionicons name="arrow-back" size={24} color="#8B5CF6" />
         </TouchableOpacity>
         <Text style={styles.title}>Enter OTP</Text>
@@ -294,11 +304,21 @@ export default function SignInScreen() {
 
         <View style={styles.otpActions}>
           {otpTimer > 0 ? (
-            <Text style={styles.timerText}>
+            <Text
+              style={styles.timerText}
+              accessibilityLabel={`You can resend OTP in ${otpTimer} seconds`}
+            >
               Resend OTP in {otpTimer}s
             </Text>
           ) : (
-            <TouchableOpacity onPress={handleResendOTP} disabled={!canResendOTP}>
+            <TouchableOpacity
+              onPress={handleResendOTP}
+              disabled={!canResendOTP}
+              accessibilityLabel="Resend OTP"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to receive a new verification code"
+              accessibilityState={{ disabled: !canResendOTP }}
+            >
               <Text style={[
                 styles.resendText,
                 !canResendOTP && styles.resendTextDisabled
@@ -316,6 +336,10 @@ export default function SignInScreen() {
           ]}
           onPress={handleVerifyOTP}
           disabled={state.isLoading}
+          accessibilityLabel={state.isLoading ? "Verifying OTP" : "Verify OTP and sign in"}
+          accessibilityRole="button"
+          accessibilityHint={`Double tap to verify the ${formData.otp.length > 0 ? formData.otp.length + ' digit' : ''} code and sign in to your account`}
+          accessibilityState={{ disabled: state.isLoading, busy: state.isLoading }}
         >
           {state.isLoading ? (
             <LoadingSpinner size="small" color="#FFFFFF" />
@@ -350,6 +374,9 @@ export default function SignInScreen() {
               <TouchableOpacity
                 style={styles.secondaryButton}
                 onPress={handleGoToSignUp}
+                accessibilityLabel="Don't have an account? Sign up"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to create a new account"
               >
                 <Text style={styles.secondaryButtonText}>
                   Don't have an account? Sign Up

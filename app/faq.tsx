@@ -125,6 +125,11 @@ export default function FAQPage() {
         selectedCategory === category.category && styles.categoryChipActive,
       ]}
       onPress={() => handleCategorySelect(category.category)}
+      accessible={true}
+      accessibilityLabel={`${category.category} category, ${category.count} FAQs`}
+      accessibilityRole="button"
+      accessibilityState={{ selected: selectedCategory === category.category }}
+      accessibilityHint={`Filter FAQs by ${category.category}`}
     >
       <ThemedText
         style={[
@@ -146,6 +151,11 @@ export default function FAQPage() {
           style={styles.faqHeader}
           onPress={() => handleFAQPress(faq)}
           activeOpacity={0.7}
+          accessible={true}
+          accessibilityLabel={`FAQ: ${faq.question}`}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: isExpanded }}
+          accessibilityHint={isExpanded ? "Collapse answer" : "Expand to view answer"}
         >
           <View style={styles.faqIcon}>
             <Ionicons name="help-circle" size={24} color="#3B82F6" />
@@ -178,6 +188,10 @@ export default function FAQPage() {
                 <TouchableOpacity
                   style={styles.helpfulButton}
                   onPress={() => handleHelpful(faq._id, true)}
+                  accessible={true}
+                  accessibilityLabel={`Mark as helpful, ${faq.helpfulCount} users found this helpful`}
+                  accessibilityRole="button"
+                  accessibilityHint="Rate this FAQ as helpful"
                 >
                   <Ionicons name="thumbs-up-outline" size={18} color="#10B981" />
                   <ThemedText style={styles.helpfulCount}>{faq.helpfulCount}</ThemedText>
@@ -185,6 +199,10 @@ export default function FAQPage() {
                 <TouchableOpacity
                   style={styles.helpfulButton}
                   onPress={() => handleHelpful(faq._id, false)}
+                  accessible={true}
+                  accessibilityLabel={`Mark as not helpful, ${faq.notHelpfulCount} users found this not helpful`}
+                  accessibilityRole="button"
+                  accessibilityHint="Rate this FAQ as not helpful"
                 >
                   <Ionicons name="thumbs-down-outline" size={18} color="#EF4444" />
                   <ThemedText style={styles.helpfulCount}>{faq.notHelpfulCount}</ThemedText>
@@ -203,15 +221,22 @@ export default function FAQPage() {
         <StatusBar barStyle="light-content" backgroundColor="#667eea" />
         <LinearGradient colors={['#667eea', '#764ba2'] as const} style={styles.header}>
           <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              accessible={true}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to previous screen"
+            >
               <Ionicons name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
-            <ThemedText style={styles.headerTitle}>FAQs</ThemedText>
+            <ThemedText style={styles.headerTitle} accessible={true} accessibilityRole="header">FAQs</ThemedText>
             <View style={styles.placeholder} />
           </View>
         </LinearGradient>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#667eea" />
+          <ActivityIndicator size="large" color="#667eea" accessible={true} accessibilityLabel="Loading FAQs" />
           <ThemedText style={styles.loadingText}>Loading FAQs...</ThemedText>
         </View>
       </View>
@@ -265,9 +290,19 @@ export default function FAQPage() {
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
+            accessible={true}
+            accessibilityLabel="Search FAQs"
+            accessibilityRole="search"
+            accessibilityHint="Enter keywords to search frequently asked questions"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessible={true}
+              accessibilityLabel="Clear search"
+              accessibilityRole="button"
+              accessibilityHint="Clear the search field"
+            >
               <Ionicons name="close-circle" size={20} color="#9CA3AF" />
             </TouchableOpacity>
           )}
@@ -341,6 +376,10 @@ export default function FAQPage() {
             <TouchableOpacity
               style={styles.contactButton}
               onPress={() => router.push('/support' as any)}
+              accessible={true}
+              accessibilityLabel="Contact support team"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to support page for personalized assistance"
             >
               <ThemedText style={styles.contactButtonText}>Contact Us</ThemedText>
             </TouchableOpacity>

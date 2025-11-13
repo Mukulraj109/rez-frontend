@@ -257,8 +257,16 @@ export default function SavedAddressesPage() {
     }
   };
 
-  const renderAddress = ({ item: address }: { item: Address }) => (
-    <View style={styles.addressCard}>
+  const renderAddress = ({ item: address }: { item: Address }) => {
+    const fullAddress = `${address.addressLine1}, ${address.addressLine2 ? address.addressLine2 + ', ' : ''}${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+    const addressLabel = `${address.title}. ${fullAddress}${address.isDefault ? '. Default address' : ''}${address.instructions ? '. Instructions: ' + address.instructions : ''}`;
+
+    return (
+    <View
+      style={styles.addressCard}
+      accessibilityRole="summary"
+      accessibilityLabel={addressLabel}
+    >
         <View style={styles.addressHeader}>
             <View style={styles.addressTitleContainer}>
           <View style={[styles.typeIcon, { backgroundColor: getAddressTypeColor(address.type) }]}>
@@ -277,12 +285,18 @@ export default function SavedAddressesPage() {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => handleEditAddress(address)}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${address.title}`}
+            accessibilityHint="Double tap to edit this address"
           >
             <Ionicons name="pencil-outline" size={18} color="#7C3AED" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => handleDeleteAddress(address)}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${address.title}`}
+            accessibilityHint="Double tap to remove this address. This action requires confirmation"
           >
             <Ionicons name="trash-outline" size={18} color="#EF4444" />
           </TouchableOpacity>
@@ -311,12 +325,16 @@ export default function SavedAddressesPage() {
         <TouchableOpacity
           style={styles.setDefaultButton}
           onPress={() => handleSetDefault(address)}
+          accessibilityRole="button"
+          accessibilityLabel={`Set ${address.title} as default address`}
+          accessibilityHint="Double tap to make this your default delivery address"
         >
           <ThemedText style={styles.setDefaultText}>Set as Default</ThemedText>
         </TouchableOpacity>
       )}
     </View>
-  );
+    );
+  };
 
   if (isLoading) {
     return (
@@ -373,11 +391,28 @@ export default function SavedAddressesPage() {
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
       <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Saved Addresses</ThemedText>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddAddress}>
+          <ThemedText
+            style={styles.headerTitle}
+            accessibilityRole="header"
+          >
+            Saved Addresses
+          </ThemedText>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={handleAddAddress}
+            accessibilityRole="button"
+            accessibilityLabel="Add new address"
+            accessibilityHint="Double tap to add a new delivery address"
+          >
             <Ionicons name="add" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -391,7 +426,13 @@ export default function SavedAddressesPage() {
             <ThemedText style={styles.emptyDescription}>
               Add your addresses to make checkout faster
             </ThemedText>
-            <TouchableOpacity style={styles.addAddressButton} onPress={handleAddAddress}>
+            <TouchableOpacity
+              style={styles.addAddressButton}
+              onPress={handleAddAddress}
+              accessibilityRole="button"
+              accessibilityLabel="Add your first address"
+              accessibilityHint="Double tap to add a new delivery address"
+            >
               <ThemedText style={styles.addAddressButtonText}>Add Address</ThemedText>
             </TouchableOpacity>
           </View>

@@ -187,6 +187,9 @@ export default function CouponsPage() {
         key={coupon._id}
         style={styles.couponCard}
         onPress={() => handleViewDetails(coupon)}
+        accessibilityLabel={`Coupon: ${coupon.couponCode}. ${coupon.discountType === 'PERCENTAGE' ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}. ${coupon.title}. Valid till ${formatDate(coupon.validTo)}${coupon.isFeatured ? '. Featured coupon' : ''}${isExpiringSoon ? '. Expiring soon' : ''}`}
+        accessibilityRole="button"
+        accessibilityHint="Double tap to view coupon details"
       >
         <LinearGradient
           colors={['#667eea', '#764ba2']}
@@ -253,6 +256,9 @@ export default function CouponsPage() {
               <TouchableOpacity
                 style={styles.claimButton}
                 onPress={() => handleClaimCoupon(coupon._id)}
+                accessibilityLabel={`Claim ${coupon.couponCode} coupon`}
+                accessibilityRole="button"
+                accessibilityHint="Double tap to add this coupon to your account"
               >
                 <ThemedText style={styles.claimButtonText}>Claim</ThemedText>
               </TouchableOpacity>
@@ -284,6 +290,10 @@ export default function CouponsPage() {
         key={userCoupon._id}
         style={styles.couponCard}
         onPress={() => handleViewDetails(coupon)}
+        accessibilityLabel={`${userCoupon.status === 'used' ? 'Used coupon' : userCoupon.status === 'expired' ? 'Expired coupon' : 'Available coupon'}: ${coupon.couponCode}. ${coupon.discountType === 'PERCENTAGE' ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}. ${coupon.title}. Expires: ${formatDate(userCoupon.expiryDate)}${isExpiringSoon && userCoupon.status === 'available' ? '. Expiring soon' : ''}`}
+        accessibilityRole="button"
+        accessibilityHint="Double tap to view coupon details"
+        accessibilityState={{ disabled: userCoupon.status === 'used' || userCoupon.status === 'expired' }}
       >
         <LinearGradient
           colors={userCoupon.status === 'used' ? ['#6B7280', '#4B5563'] : ['#667eea', '#764ba2']}
@@ -334,6 +344,9 @@ export default function CouponsPage() {
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => handleRemoveCoupon(userCoupon._id)}
+                accessibilityLabel={`Remove ${coupon.couponCode} coupon`}
+                accessibilityRole="button"
+                accessibilityHint="Double tap to delete this coupon from your account"
               >
                 <Ionicons name="trash-outline" size={16} color="#EF4444" />
               </TouchableOpacity>
@@ -362,11 +375,23 @@ export default function CouponsPage() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Returns to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Coupons</ThemedText>
-          <TouchableOpacity onPress={loadData} style={styles.refreshButton}>
+          <TouchableOpacity
+            onPress={loadData}
+            style={styles.refreshButton}
+            accessibilityLabel="Refresh coupons"
+            accessibilityRole="button"
+            accessibilityHint="Reload coupon list"
+          >
             <Ionicons name="refresh" size={24} color="#FFF" />
           </TouchableOpacity>
         </View>
@@ -394,6 +419,10 @@ export default function CouponsPage() {
           <TouchableOpacity
             style={[styles.tab, activeTab === 'available' && styles.activeTab]}
             onPress={() => setActiveTab('available')}
+            accessibilityLabel="Available coupons tab"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'available' }}
+            accessibilityHint="Show available coupons"
           >
             <ThemedText style={[styles.tabText, activeTab === 'available' && styles.activeTabText]}>
               Available
@@ -402,6 +431,10 @@ export default function CouponsPage() {
           <TouchableOpacity
             style={[styles.tab, activeTab === 'my-coupons' && styles.activeTab]}
             onPress={() => setActiveTab('my-coupons')}
+            accessibilityLabel="My coupons tab"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'my-coupons' }}
+            accessibilityHint="Show your claimed coupons"
           >
             <ThemedText style={[styles.tabText, activeTab === 'my-coupons' && styles.activeTabText]}>
               My Coupons
@@ -410,6 +443,10 @@ export default function CouponsPage() {
           <TouchableOpacity
             style={[styles.tab, activeTab === 'expired' && styles.activeTab]}
             onPress={() => setActiveTab('expired')}
+            accessibilityLabel="Expired coupons tab"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'expired' }}
+            accessibilityHint="Show expired coupons"
           >
             <ThemedText style={[styles.tabText, activeTab === 'expired' && styles.activeTabText]}>
               Expired
@@ -424,7 +461,11 @@ export default function CouponsPage() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         {loading ? (
-          <View style={styles.loadingContainer}>
+          <View
+            style={styles.loadingContainer}
+            accessibilityLabel="Loading coupons"
+            accessibilityRole="progressbar"
+          >
             <ActivityIndicator size="large" color="#667eea" />
           </View>
         ) : (
@@ -435,7 +476,11 @@ export default function CouponsPage() {
 
             {((activeTab === 'available' && availableCoupons.length === 0) ||
               ((activeTab === 'my-coupons' || activeTab === 'expired') && myCoupons.length === 0)) && (
-              <View style={styles.emptyContainer}>
+              <View
+                style={styles.emptyContainer}
+                accessibilityLabel={activeTab === 'available' ? 'No coupons available' : 'No coupons found'}
+                accessibilityRole="text"
+              >
                 <Ionicons name="ticket-outline" size={64} color="#9CA3AF" />
                 <ThemedText style={styles.emptyText}>
                   {activeTab === 'available' ? 'No coupons available' : 'No coupons found'}
@@ -457,7 +502,12 @@ export default function CouponsPage() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>Coupon Details</ThemedText>
-              <TouchableOpacity onPress={() => setShowDetailsModal(false)}>
+              <TouchableOpacity
+                onPress={() => setShowDetailsModal(false)}
+                accessibilityLabel="Close coupon details"
+                accessibilityRole="button"
+                accessibilityHint="Closes the coupon details modal"
+              >
                 <Ionicons name="close" size={24} color="#000" />
               </TouchableOpacity>
             </View>

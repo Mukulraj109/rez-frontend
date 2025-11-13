@@ -47,7 +47,12 @@ export default function ToastManager() {
   }, [addToast]);
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <View
+      style={styles.container}
+      pointerEvents="box-none"
+      accessible={false}
+      importantForAccessibility="no-hide-descendants"
+    >
       {toasts.map((toast) => (
         <Toast
           key={toast.id}

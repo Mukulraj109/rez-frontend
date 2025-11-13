@@ -15,11 +15,14 @@ import {
   Animated,
   ActivityIndicator,
   Platform,
+  RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { ThemedText } from '@/components/ThemedText';
+import ugcApi, { UGCMedia } from '@/services/ugcApi';
 
 // Optional (recommended) — enable silent autoplay on iOS in your app root
 // import { Audio } from 'expo-av';
@@ -27,6 +30,7 @@ import { ThemedText } from '@/components/ThemedText';
 //   Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: true });
 // }, []);
 
+// Transform UGCMedia from API to UGCImage format for component
 interface UGCImage {
   id: string;
   uri?: string; // fallback image
@@ -42,11 +46,17 @@ interface UGCImage {
   productTitle?: string;
   productPrice?: string;
   productThumb?: string;
+
+  // Like/Bookmark state
+  likes?: number;
+  isLiked?: boolean;
+  isBookmarked?: boolean;
 }
 
 interface UGCSectionProps {
   title?: string;
-  images?: UGCImage[];
+  storeId?: string; // Store ID to fetch UGC content
+  images?: UGCImage[]; // Optional override for custom images (store videos)
   onViewAllPress?: () => void;
   onImagePress?: (imageId: string) => void;
   onReadMorePress?: (imageId: string, url?: string) => void;
@@ -55,73 +65,32 @@ interface UGCSectionProps {
   maxDescriptionLength?: number;
 }
 
-/** Stable test video URLs (use your CDN in production) */
-const defaultImages: UGCImage[] = [
-  {
-    id: 'v1',
-    videoUrl:
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // stable public MP4
-    productThumb:
-      'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=120&h=120&fit=crop',
-    productTitle: 'Casual Cotton T-Shirt',
-    productPrice: '₹799',
-    viewCount: '2.5K',
-    description: 'Soft, breathable cotton t-shirt in pastel colors.',
-    category: 'Tops',
-    author: 'UrbanWear',
-  },
-  {
-    id: 'v2',
-    videoUrl:
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    productThumb:
-      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=120&h=120&fit=crop',
-    productTitle: 'Slim Fit Jeans',
-    productPrice: '₹1,499',
-    viewCount: '1.9K',
-    description: 'Stretchable slim fit denim for everyday style.',
-    category: 'Bottoms',
-    author: 'DenimHouse',
-  },
-  {
-    id: 'v3',
-    videoUrl:
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
-    productThumb:
-      'https://images.unsplash.com/photo-1520975918318-3a3d3a9a91a0?w=120&h=120&fit=crop',
-    productTitle: 'Floral Summer Dress',
-    productPrice: '₹1,299',
-    viewCount: '3.1K',
-    description: 'Lightweight floral dress perfect for summer outings.',
-    category: 'Dresses',
-    author: 'SunChic',
-  },
-   // fallback image-only
-  {
-    id: 'i1',
-    uri: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&h=900&fit=crop&crop=center',
-    viewCount: '8.1K',
-    description: 'Classic leather jacket, timeless style.',
-    category: 'Outerwear',
-    author: 'StyleHub',
-    productTitle: 'Leather Jacket',
-    productPrice: '₹3,499',
-    productThumb:
-      'https://cdn-icons-png.flaticon.com/512/3048/3048122.png',
-  },
-  {
-    id: 'i2',
-    uri: 'https://images.unsplash.com/photo-1546456073-92b9f0a8d413?w=600&h=900&fit=crop&crop=center',
-    viewCount: '5.4K',
-    description: 'Premium handwoven cotton kurta.',
-    category: 'Ethnic Wear',
-    author: 'Traditionals',
-    productTitle: 'Handwoven Cotton Kurta',
-    productPrice: '₹1,799',
-    productThumb:
-      'https://cdn-icons-png.flaticon.com/512/297/297743.png',
-  },
-];
+// Transform API UGCMedia to component UGCImage format
+const transformUGCMedia = (media: UGCMedia): UGCImage => {
+  const formatViewCount = (views: number): string => {
+    if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
+    if (views >= 1000) return `${(views / 1000).toFixed(1)}K`;
+    return views.toString();
+  };
+
+  return {
+    id: media._id,
+    uri: media.type === 'photo' ? media.url : media.thumbnail,
+    videoUrl: media.type === 'video' ? media.url : undefined,
+    viewCount: formatViewCount(media.views),
+    description: media.caption || '',
+    category: media.relatedProduct?.name || media.relatedStore?.name,
+    author: `${media.user.profile.firstName} ${media.user.profile.lastName}`,
+    productTitle: media.relatedProduct?.name,
+    productPrice: '', // Price not included in UGC
+    productThumb: media.relatedProduct?.image || media.relatedStore?.logo,
+    likes: media.likes,
+    isLiked: media.isLiked,
+    isBookmarked: media.isBookmarked,
+  };
+};
+
+// No default images - will fetch from API or use empty state
 
 interface UGCCardProps {
   item: UGCImage;
@@ -133,6 +102,8 @@ interface UGCCardProps {
   typography: any;
   onImagePress?: (imageId: string) => void;
   onReadMorePress: (item: UGCImage) => void;
+  onLikePress?: (item: UGCImage) => void;
+  onBookmarkPress?: (item: UGCImage) => void;
   getTruncatedDescription: (description: string, maxLength: number) => string;
   needsTruncation: (description: string, maxLength: number) => boolean;
 }
@@ -150,6 +121,8 @@ const UGCCard = memo(function UGCCard({
   visibleItems,
   onImagePress,
   onReadMorePress,
+  onLikePress,
+  onBookmarkPress,
   getTruncatedDescription,
   needsTruncation,
 }: UGCCardProps) {
@@ -157,6 +130,8 @@ const UGCCard = memo(function UGCCard({
   const showReadMore = needsTruncation(item.description, maxDescriptionLength) && !item.shortDescription;
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const likeScaleAnim = useRef(new Animated.Value(1)).current;
+  const bookmarkScaleAnim = useRef(new Animated.Value(1)).current;
   const videoRef = useRef<Video | null>(null);
 
   const [mediaLoading, setMediaLoading] = useState(true);
@@ -184,6 +159,35 @@ const UGCCard = memo(function UGCCard({
     }
   };
   const handleImagePress = () => onImagePress?.(item.id);
+
+  // Like button handler with animation
+  const handleLikePress = () => {
+    Animated.sequence([
+      Animated.timing(likeScaleAnim, { toValue: 0.8, duration: 100, useNativeDriver: true }),
+      Animated.spring(likeScaleAnim, { toValue: 1, friction: 3, tension: 100, useNativeDriver: true }),
+    ]).start();
+    onLikePress?.(item);
+  };
+
+  // Bookmark button handler with animation
+  const handleBookmarkPress = () => {
+    Animated.sequence([
+      Animated.timing(bookmarkScaleAnim, { toValue: 0.8, duration: 100, useNativeDriver: true }),
+      Animated.spring(bookmarkScaleAnim, { toValue: 1, friction: 3, tension: 100, useNativeDriver: true }),
+    ]).start();
+    onBookmarkPress?.(item);
+  };
+
+  // Format like count (1.2K, 5.3M)
+  const formatLikeCount = (count: number = 0): string => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    }
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K`;
+    }
+    return count.toString();
+  };
 
   // Debug: indicate whether Video component exists
   useEffect(() => {
@@ -244,7 +248,7 @@ const UGCCard = memo(function UGCCard({
           ) : (
             <>
               <Image
-                source={{ uri: item.uri! }}
+                source={{ uri: item.uri || 'https://via.placeholder.com/400x300/E5E7EB/9CA3AF?text=No+Image' }}
                 style={styles.cardMedia}
                 resizeMode="cover"
                 defaultSource={require('@/assets/images/icon.png')}
@@ -289,18 +293,72 @@ const UGCCard = memo(function UGCCard({
           </View>
         </View>
 
-        {/* Product plate (bottom) */}
-        <View style={styles.productPlateWrapper}>
-          <View style={styles.productPlate}>
-            <Image source={{ uri: item.productThumb || 'https://cdn-icons-png.flaticon.com/512/565/565547.png' }} style={styles.productThumb} />
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <ThemedText numberOfLines={1} style={styles.productTitle}>
-                {item.productTitle || item.category || 'Product'}
-              </ThemedText>
-              <ThemedText style={styles.productPrice}>{item.productPrice || ''}</ThemedText>
+        {/* Like & Bookmark buttons */}
+        <View style={styles.actionsContainer}>
+          {/* Like button */}
+          <TouchableOpacity
+            onPress={handleLikePress}
+            activeOpacity={0.7}
+            style={styles.actionButton}
+            accessibilityLabel={`${item.isLiked ? 'Unlike' : 'Like'} this content. ${formatLikeCount(item.likes || 0)} likes`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to like or unlike"
+          >
+            <Animated.View style={{ transform: [{ scale: likeScaleAnim }] }}>
+              <Ionicons
+                name={item.isLiked ? 'heart' : 'heart-outline'}
+                size={22}
+                color={item.isLiked ? '#EF4444' : '#FFFFFF'}
+                style={styles.actionIcon}
+              />
+            </Animated.View>
+            {(item.likes || 0) > 0 && (
+              <ThemedText style={styles.likeCountText}>{formatLikeCount(item.likes || 0)}</ThemedText>
+            )}
+          </TouchableOpacity>
+
+          {/* Bookmark button */}
+          <TouchableOpacity
+            onPress={handleBookmarkPress}
+            activeOpacity={0.7}
+            style={styles.actionButton}
+            accessibilityLabel={`${item.isBookmarked ? 'Remove bookmark' : 'Bookmark'} this content`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to bookmark or unbookmark"
+          >
+            <Animated.View style={{ transform: [{ scale: bookmarkScaleAnim }] }}>
+              <Ionicons
+                name={item.isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                size={22}
+                color={item.isBookmarked ? '#7C3AED' : '#FFFFFF'}
+                style={styles.actionIcon}
+              />
+            </Animated.View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Product plate (bottom) - Only show if we have product info */}
+        {(item.productTitle || item.productThumb) && (
+          <View style={styles.productPlateWrapper}>
+            <View style={styles.productPlate}>
+              {item.productThumb && (
+                <Image
+                  source={{ uri: item.productThumb }}
+                  style={styles.productThumb}
+                  defaultSource={require('@/assets/images/icon.png')}
+                />
+              )}
+              <View style={{ flex: 1, marginLeft: item.productThumb ? 10 : 0 }}>
+                <ThemedText numberOfLines={1} style={styles.productTitle}>
+                  {item.productTitle || item.category || ''}
+                </ThemedText>
+                {item.productPrice && (
+                  <ThemedText style={styles.productPrice}>{item.productPrice}</ThemedText>
+                )}
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* Optional description/read more (usually hidden) */}
         {showDescriptions && (
@@ -322,7 +380,8 @@ const UGCCard = memo(function UGCCard({
 
 export default function UGCSection({
   title = 'UGC',
-  images = defaultImages,
+  storeId,
+  images: propImages,
   onViewAllPress,
   onImagePress,
   onReadMorePress,
@@ -334,6 +393,183 @@ export default function UGCSection({
   const isTablet = width >= 768;
   const isLargeTablet = width >= 1024;
   const isSmallPhone = width < 375;
+
+  // API State Management
+  const [ugcContent, setUgcContent] = useState<UGCImage[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Combine store videos (propImages) with user-generated content (ugcContent)
+  const images = useMemo(() => {
+    const combined = [];
+
+    // Add store videos first (if any)
+    if (propImages && propImages.length > 0) {
+      combined.push(...propImages);
+    }
+
+    // Add user-generated content (if any)
+    if (ugcContent && ugcContent.length > 0) {
+      combined.push(...ugcContent);
+    }
+
+    return combined;
+  }, [propImages, ugcContent]);
+
+  // Fetch UGC content from API
+  const fetchUGCContent = useCallback(async (isRefresh = false) => {
+    if (!storeId) {
+      console.warn('⚠️ [UGC SECTION] No storeId provided, skipping UGC fetch');
+      return;
+    }
+
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      console.log('🎬 [UGC SECTION] Fetching UGC content for store:', storeId);
+      console.log('📹 [UGC SECTION] Store videos count:', propImages?.length || 0);
+
+      const response = await ugcApi.getStoreContent(storeId!, {
+        limit: 20,
+        offset: 0,
+      });
+
+      console.log('📡 [UGC SECTION] API Response:', {
+        success: response.success,
+        hasData: !!response.data,
+        hasContent: !!response.data?.content,
+        contentLength: response.data?.content?.length || 0
+      });
+
+      if (response.success && response.data?.content) {
+        const transformedContent = response.data.content.map(transformUGCMedia);
+        setUgcContent(transformedContent);
+        console.log('✅ [UGC SECTION] Loaded', transformedContent.length, 'user-generated items');
+        console.log('📊 [UGC SECTION] Total content:', (propImages?.length || 0) + transformedContent.length,
+          '(', propImages?.length || 0, 'store videos +', transformedContent.length, 'user content)');
+      } else {
+        console.warn('⚠️ [UGC SECTION] No content in response, using empty array');
+        setUgcContent([]); // Set empty array instead of error
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      console.error('❌ [UGC SECTION] Error fetching UGC:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [storeId, propImages]); // Keep propImages in deps for logging
+
+  // Load UGC content on mount
+  useEffect(() => {
+    fetchUGCContent();
+  }, [fetchUGCContent]);
+
+  // Handle pull-to-refresh
+  const handleRefresh = useCallback(() => {
+    fetchUGCContent(true);
+  }, [fetchUGCContent]);
+
+  // Handle like press
+  const handleLikePress = useCallback(async (item: UGCImage) => {
+    try {
+      console.log('💖 [UGC SECTION] Toggling like for:', item.id);
+
+      // Optimistic update
+      setUgcContent(prev =>
+        prev.map(ugc =>
+          ugc.id === item.id
+            ? {
+                ...ugc,
+                isLiked: !ugc.isLiked,
+                likes: (ugc.likes || 0) + (ugc.isLiked ? -1 : 1)
+              }
+            : ugc
+        )
+      );
+
+      // Call API
+      const response = await ugcApi.toggleLike(item.id);
+
+      if (!response.success) {
+        // Revert on failure
+        setUgcContent(prev =>
+          prev.map(ugc =>
+            ugc.id === item.id
+              ? {
+                  ...ugc,
+                  isLiked: item.isLiked,
+                  likes: item.likes
+                }
+              : ugc
+          )
+        );
+        console.error('❌ [UGC SECTION] Failed to toggle like:', response.error);
+      }
+    } catch (err) {
+      console.error('❌ [UGC SECTION] Error toggling like:', err);
+      // Revert on error
+      setUgcContent(prev =>
+        prev.map(ugc =>
+          ugc.id === item.id
+            ? {
+                ...ugc,
+                isLiked: item.isLiked,
+                likes: item.likes
+              }
+            : ugc
+        )
+      );
+    }
+  }, []);
+
+  // Handle bookmark press
+  const handleBookmarkPress = useCallback(async (item: UGCImage) => {
+    try {
+      console.log('🔖 [UGC SECTION] Toggling bookmark for:', item.id);
+
+      // Optimistic update
+      setUgcContent(prev =>
+        prev.map(ugc =>
+          ugc.id === item.id
+            ? { ...ugc, isBookmarked: !ugc.isBookmarked }
+            : ugc
+        )
+      );
+
+      // Call API
+      const response = await ugcApi.toggleBookmark(item.id);
+
+      if (!response.success) {
+        // Revert on failure
+        setUgcContent(prev =>
+          prev.map(ugc =>
+            ugc.id === item.id
+              ? { ...ugc, isBookmarked: item.isBookmarked }
+              : ugc
+          )
+        );
+        console.error('❌ [UGC SECTION] Failed to toggle bookmark:', response.error);
+      }
+    } catch (err) {
+      console.error('❌ [UGC SECTION] Error toggling bookmark:', err);
+      // Revert on error
+      setUgcContent(prev =>
+        prev.map(ugc =>
+          ugc.id === item.id
+            ? { ...ugc, isBookmarked: item.isBookmarked }
+            : ugc
+        )
+      );
+    }
+  }, []);
 
   const getCardDimensions = () => {
     let cardsPerView: number;
@@ -427,31 +663,111 @@ export default function UGCSection({
         visibleItems={visibleItems}
         onImagePress={onImagePress}
         onReadMorePress={handleReadMore}
+        onLikePress={handleLikePress}
+        onBookmarkPress={handleBookmarkPress}
         getTruncatedDescription={getTruncatedDescription}
         needsTruncation={needsTruncation}
       />
     ),
-    [cardWidth, cardHeight, typography, showDescriptions, maxDescriptionLength, visibleItems, onImagePress]
+    [cardWidth, cardHeight, typography, showDescriptions, maxDescriptionLength, visibleItems, onImagePress, handleLikePress, handleBookmarkPress]
   );
 
-  // debug: confirm expo-av Video import exists
-  useEffect(() => {
+  // Loading skeleton
+  if (loading && images.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
+          <ThemedText style={[styles.sectionTitle, { fontSize: typography.sectionTitle }]}>{title}</ThemedText>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.imagesList, { paddingHorizontal: horizontalPadding }]}
+          scrollEnabled={false}
+        >
+          {Array.from({ length: 3 }).map((_, index) => (
+            <View
+              key={index}
+              style={{
+                width: cardWidth,
+                height: cardHeight,
+                borderRadius: 18,
+                backgroundColor: '#E5E7EB',
+                marginRight: index < 2 ? cardSpacing : 0,
+                overflow: 'hidden',
+                position: 'relative',
+              }}
+            >
+              {/* Shimmer overlay */}
+              <View style={styles.skeletonOverlay}>
+                <LinearGradient
+                  colors={['#E5E7EB', '#F3F4F6', '#EDE9FE', '#F3F4F6', '#E5E7EB']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.skeletonGradient}
+                />
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
 
-  }, []);
+  // Error state with retry
+  if (error && images.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
+          <ThemedText style={[styles.sectionTitle, { fontSize: typography.sectionTitle }]}>{title}</ThemedText>
+        </View>
+        <View style={[styles.errorContainer, { paddingHorizontal: horizontalPadding }]}>
+          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <ThemedText style={styles.errorText}>{error}</ThemedText>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchUGCContent()}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="refresh" size={20} color="#FFFFFF" />
+            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Empty state
+  if (images.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
+          <ThemedText style={[styles.sectionTitle, { fontSize: typography.sectionTitle }]}>{title}</ThemedText>
+        </View>
+        <View style={[styles.emptyContainer, { paddingHorizontal: horizontalPadding }]}>
+          <Ionicons name="images-outline" size={64} color="#D1D5DB" />
+          <ThemedText style={styles.emptyText}>No content available yet</ThemedText>
+          <ThemedText style={styles.emptySubtext}>Check back later for updates</ThemedText>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
         <ThemedText style={[styles.sectionTitle, { fontSize: typography.sectionTitle }]}>{title}</ThemedText>
-        <TouchableOpacity
-          onPress={onViewAllPress}
-          activeOpacity={0.7}
-          accessibilityLabel="View all user generated content"
-          accessibilityRole="button"
-          accessibilityHint={`Browse all ${images.length} posts`}
-        >
-          <ThemedText style={[styles.viewAllText, { fontSize: typography.viewAllText }]}>View all</ThemedText>
-        </TouchableOpacity>
+        {onViewAllPress && (
+          <TouchableOpacity
+            onPress={onViewAllPress}
+            activeOpacity={0.7}
+            accessibilityLabel="View all user generated content"
+            accessibilityRole="button"
+            accessibilityHint={`Browse all ${images.length} posts`}
+          >
+            <ThemedText style={[styles.viewAllText, { fontSize: typography.viewAllText }]}>View all</ThemedText>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
@@ -473,6 +789,14 @@ export default function UGCSection({
         disableIntervalMomentum
         onViewableItemsChanged={stableOnViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#7C3AED"
+            colors={['#7C3AED']}
+          />
+        }
         accessibilityLabel={`Fashion inspiration carousel with ${images.length} posts`}
         accessibilityRole="list"
         scrollEventThrottle={80}
@@ -659,5 +983,69 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 18,
+  },
+
+  // Loading state
+  loadingContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+
+  // Error state
+  errorContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#EF4444',
+    textAlign: 'center',
+    maxWidth: '80%',
+  },
+  retryButton: {
+    marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  // Empty state
+  emptyContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
 });

@@ -93,7 +93,13 @@ export default function PaymentConfirmationPage() {
 
         <LinearGradient colors={['#EF4444', '#DC2626'] as any} style={styles.header}>
           <View style={styles.headerContainer}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to return to previous screen"
+            >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <ThemedText style={styles.headerTitle}>Payment Failed</ThemedText>
@@ -120,6 +126,9 @@ export default function PaymentConfirmationPage() {
               <TouchableOpacity
                 style={styles.retryButton}
                 onPress={() => router.push('/subscription/plans')}
+                accessibilityLabel="Try again"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to retry subscription payment"
               >
                 <Ionicons name="refresh" size={20} color="#FFFFFF" />
                 <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
@@ -128,6 +137,9 @@ export default function PaymentConfirmationPage() {
               <TouchableOpacity
                 style={styles.supportButton}
                 onPress={() => router.push('/support')}
+                accessibilityLabel="Contact support"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to get help with your payment issue"
               >
                 <ThemedText style={styles.supportButtonText}>Contact Support</ThemedText>
               </TouchableOpacity>
@@ -135,6 +147,9 @@ export default function PaymentConfirmationPage() {
               <TouchableOpacity
                 style={styles.homeButton}
                 onPress={() => router.push('/')}
+                accessibilityLabel="Back to home"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to return to home page"
               >
                 <ThemedText style={styles.homeButtonText}>Back to Home</ThemedText>
               </TouchableOpacity>
@@ -162,7 +177,12 @@ export default function PaymentConfirmationPage() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Success Animation */}
-        <View style={styles.successContainer}>
+        <View
+          style={styles.successContainer}
+          accessible={true}
+          accessibilityLabel={`Payment successful! Welcome to ${TIER_NAMES[tier]}. Your subscription has been activated successfully.`}
+          accessibilityRole="text"
+        >
           <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
             <View style={styles.successCircle}>
               <Ionicons name="checkmark" size={80} color="#FFFFFF" />
@@ -170,7 +190,12 @@ export default function PaymentConfirmationPage() {
           </Animated.View>
 
           <Animated.View style={{ opacity: fadeAnim }}>
-            <ThemedText style={styles.successTitle}>Welcome to {TIER_NAMES[tier]}!</ThemedText>
+            <ThemedText
+              style={styles.successTitle}
+              accessibilityRole="header"
+            >
+              Welcome to {TIER_NAMES[tier]}!
+            </ThemedText>
             <ThemedText style={styles.successMessage}>
               Your subscription has been activated successfully
             </ThemedText>
@@ -210,9 +235,15 @@ export default function PaymentConfirmationPage() {
             </ThemedText>
           </View>
 
-          <TouchableOpacity style={styles.receiptButton} onPress={() => {
-            Alert.alert('Receipt Download', 'Receipt will be sent to your email shortly.');
-          }}>
+          <TouchableOpacity
+            style={styles.receiptButton}
+            onPress={() => {
+              Alert.alert('Receipt Download', 'Receipt will be sent to your email shortly.');
+            }}
+            accessibilityLabel="Download payment receipt"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to download your payment receipt"
+          >
             <Ionicons name="download-outline" size={20} color="#8B5CF6" />
             <ThemedText style={styles.receiptButtonText}>Download Receipt</ThemedText>
           </TouchableOpacity>
@@ -255,6 +286,9 @@ export default function PaymentConfirmationPage() {
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => router.push('/subscription/manage')}
+            accessibilityLabel="View my subscription"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to manage your subscription details"
           >
             <ThemedText style={styles.primaryButtonText}>View My Subscription</ThemedText>
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
@@ -263,6 +297,9 @@ export default function PaymentConfirmationPage() {
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => router.push('/')}
+            accessibilityLabel="Start shopping"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to begin shopping with your new benefits"
           >
             <ThemedText style={styles.secondaryButtonText}>Start Shopping</ThemedText>
           </TouchableOpacity>

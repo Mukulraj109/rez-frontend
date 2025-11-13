@@ -69,6 +69,9 @@ export default function TierBadge({
           },
           style,
         ]}
+        accessible={true}
+        accessibilityLabel={`${tierName} tier badge`}
+        accessibilityRole="text"
       >
         <Ionicons name={tierIcon as any} size={config.iconSize} color="#FFFFFF" />
         <ThemedText
@@ -99,6 +102,9 @@ export default function TierBadge({
           },
           style,
         ]}
+        accessible={true}
+        accessibilityLabel={`${tierName} tier`}
+        accessibilityRole="text"
       >
         <Ionicons name={tierIcon as any} size={config.iconSize} color="#FFFFFF" />
       </View>
@@ -118,6 +124,9 @@ export default function TierBadge({
           },
           style,
         ]}
+        accessible={true}
+        accessibilityLabel={`${tierName} tier badge`}
+        accessibilityRole="text"
       >
         <ThemedText style={[styles.badgeText, { fontSize: config.fontSize }]}>
           {tierName}

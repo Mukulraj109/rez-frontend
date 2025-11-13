@@ -136,7 +136,13 @@ export default function UpgradeConfirmationPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED'] as any} style={styles.header}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to cancel and return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Confirm Upgrade</ThemedText>
@@ -194,6 +200,10 @@ export default function UpgradeConfirmationPage() {
           <TouchableOpacity
             style={[styles.timingOption, timing === 'immediate' && styles.timingOptionSelected]}
             onPress={() => setTiming('immediate')}
+            accessibilityLabel={`Upgrade immediately. ${proratedAmount > 0 ? `Pay ${proratedAmount} rupees today` : 'No additional charge'}. ${timing === 'immediate' ? 'Selected' : ''}`}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: timing === 'immediate' }}
+            accessibilityHint="Double tap to upgrade immediately and enjoy benefits instantly"
           >
             <View style={styles.radioButton}>
               {timing === 'immediate' && <View style={styles.radioButtonInner} />}
@@ -213,6 +223,10 @@ export default function UpgradeConfirmationPage() {
           <TouchableOpacity
             style={[styles.timingOption, timing === 'cycle_end' && styles.timingOptionSelected]}
             onPress={() => setTiming('cycle_end')}
+            accessibilityLabel={`Upgrade at cycle end. Takes effect after ${computed.daysRemaining} days. ${getTierPrice(newTier)} rupees per month from next cycle. ${timing === 'cycle_end' ? 'Selected' : ''}`}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: timing === 'cycle_end' }}
+            accessibilityHint="Double tap to schedule upgrade for the end of your current billing cycle"
           >
             <View style={styles.radioButton}>
               {timing === 'cycle_end' && <View style={styles.radioButtonInner} />}
@@ -253,6 +267,10 @@ export default function UpgradeConfirmationPage() {
             style={styles.confirmButton}
             onPress={handleUpgrade}
             disabled={isUpgrading}
+            accessibilityLabel={isUpgrading ? 'Processing upgrade' : (timing === 'immediate' ? 'Confirm and pay' : 'Schedule upgrade')}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isUpgrading, busy: isUpgrading }}
+            accessibilityHint={`Double tap to ${timing === 'immediate' ? 'proceed to payment' : 'schedule your upgrade'}`}
           >
             {isUpgrading ? (
               <ActivityIndicator color="#FFFFFF" />
@@ -270,6 +288,10 @@ export default function UpgradeConfirmationPage() {
             style={styles.cancelButton}
             onPress={() => router.back()}
             disabled={isUpgrading}
+            accessibilityLabel="Cancel upgrade"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isUpgrading }}
+            accessibilityHint="Double tap to cancel and return to previous screen"
           >
             <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
           </TouchableOpacity>

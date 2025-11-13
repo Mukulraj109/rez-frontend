@@ -180,10 +180,14 @@ export default function NotificationHistoryScreen() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const renderNotificationItem = (item: NotificationHistoryItem) => (
-    <TouchableOpacity 
-      key={item.id} 
+    <TouchableOpacity
+      key={item.id}
       style={styles.notificationItem}
       onPress={() => !item.read && markNotificationAsRead(item.id)}
+      accessibilityLabel={`${item.read ? 'Read' : 'Unread'} notification from ${item.category}: ${item.title}. ${item.message}. ${formatDate(item.timestamp)}`}
+      accessibilityRole="button"
+      accessibilityHint={!item.read ? "Double tap to mark as read" : "Notification already read"}
+      accessibilityState={{ disabled: item.read }}
     >
       <View style={styles.notificationIcon}>
         <Ionicons 
@@ -222,7 +226,11 @@ export default function NotificationHistoryScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View
+        style={styles.loadingContainer}
+        accessibilityLabel="Loading notification history"
+        accessibilityRole="progressbar"
+      >
         <ActivityIndicator size="large" color="#3B82F6" />
         <Text style={styles.loadingText}>Loading notification history...</Text>
       </View>
@@ -233,7 +241,13 @@ export default function NotificationHistoryScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Returns to previous screen"
+        >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -243,10 +257,14 @@ export default function NotificationHistoryScreen() {
           )}
         </View>
         {unreadCount > 0 && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.markAllButton}
             onPress={markAllAsRead}
             disabled={markingAllAsRead}
+            accessibilityLabel="Mark all notifications as read"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to mark all notifications as read"
+            accessibilityState={{ disabled: markingAllAsRead }}
           >
             {markingAllAsRead ? (
               <ActivityIndicator size="small" color="#3B82F6" />
@@ -267,7 +285,11 @@ export default function NotificationHistoryScreen() {
         {notifications.length > 0 ? (
           notifications.map(renderNotificationItem)
         ) : (
-          <View style={styles.emptyContainer}>
+          <View
+            style={styles.emptyContainer}
+            accessibilityLabel="No notifications. You haven't received any notifications yet."
+            accessibilityRole="text"
+          >
             <Ionicons name="notifications-off" size={64} color="#D1D5DB" />
             <Text style={styles.emptyTitle}>No Notifications</Text>
             <Text style={styles.emptyText}>

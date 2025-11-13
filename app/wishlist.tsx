@@ -261,6 +261,9 @@ export default function WishlistPage() {
     <TouchableOpacity
       style={styles.itemCard}
       onPress={() => handleItemPress(item)}
+      accessibilityLabel={`${item.name}. Price ${item.price} rupees. ${item.inStock ? 'In stock' : 'Out of stock'}`}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view product details"
     >
       <Image source={{ uri: item.image }} style={styles.itemImage} />
       <View style={styles.itemDetails}>
@@ -284,6 +287,9 @@ export default function WishlistPage() {
           <TouchableOpacity
             style={styles.removeButton}
             onPress={() => handleRemoveItem(item.id, wishlistId)}
+            accessibilityLabel={`Remove ${item.name} from wishlist`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to remove this item from wishlist"
           >
             <Ionicons name="trash-outline" size={16} color="#EF4444" />
           </TouchableOpacity>
@@ -306,6 +312,9 @@ export default function WishlistPage() {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => handleWishlistPress(wishlist)}
+            accessibilityLabel={`View ${wishlist.name} wishlist`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view all items in this wishlist"
           >
             <Ionicons name="eye-outline" size={20} color="#7C3AED" />
           </TouchableOpacity>
@@ -315,12 +324,18 @@ export default function WishlistPage() {
               setSelectedWishlistForShare(wishlist);
               setShowShareModal(true);
             }}
+            accessibilityLabel={`Share ${wishlist.name} wishlist`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to share this wishlist with others"
           >
             <Ionicons name="share-outline" size={20} color="#7C3AED" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => handleDeleteWishlist(wishlist.id, wishlist.name)}
+            accessibilityLabel={`Delete ${wishlist.name} wishlist`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to permanently delete this wishlist"
           >
             <Ionicons name="trash-outline" size={20} color="#EF4444" />
           </TouchableOpacity>
@@ -347,6 +362,9 @@ export default function WishlistPage() {
         <TouchableOpacity
           style={styles.viewAllButton}
           onPress={() => handleWishlistPress(wishlist)}
+          accessibilityLabel={`View all ${wishlist.itemCount} items in ${wishlist.name}`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to see all items in this wishlist"
         >
           <ThemedText style={styles.viewAllText}>
             View all {wishlist.itemCount} items
@@ -412,11 +430,23 @@ export default function WishlistPage() {
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
       <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>My Wishlists</ThemedText>
-          <TouchableOpacity style={styles.addButton} onPress={handleCreateWishlist}>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={handleCreateWishlist}
+            accessibilityLabel="Create new wishlist"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to create a new wishlist"
+          >
             <Ionicons name="add" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -424,13 +454,23 @@ export default function WishlistPage() {
 
       <View style={styles.content}>
         {wishlists.length === 0 ? (
-          <View style={styles.emptyContainer}>
+          <View
+            style={styles.emptyContainer}
+            accessibilityLabel="No wishlists yet. Start creating wishlists to save your favorite items"
+            accessibilityRole="text"
+          >
             <Ionicons name="heart-outline" size={80} color="#E5E7EB" />
             <ThemedText style={styles.emptyTitle}>No Wishlists Yet</ThemedText>
             <ThemedText style={styles.emptyDescription}>
               Start creating wishlists to save your favorite items
             </ThemedText>
-            <TouchableOpacity style={styles.createButton} onPress={handleCreateWishlist}>
+            <TouchableOpacity
+              style={styles.createButton}
+              onPress={handleCreateWishlist}
+              accessibilityLabel="Create wishlist"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to create your first wishlist"
+            >
               <ThemedText style={styles.createButtonText}>Create Wishlist</ThemedText>
             </TouchableOpacity>
           </View>

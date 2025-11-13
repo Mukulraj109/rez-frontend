@@ -125,6 +125,34 @@ export type {
   WishlistAnalytics
 } from './wishlistApi';
 
+// Articles service
+import articlesService from './articlesApi';
+export { default as articlesService } from './articlesApi';
+export type {
+  ArticlesQuery,
+  ArticlesResponse,
+  ArticleInput,
+  ArticleEngagement,
+  ArticleComment
+} from './articlesApi';
+
+// File Upload service
+import { fileUploadService } from './fileUploadService';
+export { fileUploadService } from './fileUploadService';
+export type {
+  UploadOptions,
+  UploadResult as FileUploadResult,
+  UploadProgress as FileUploadProgress
+} from './fileUploadService';
+
+// Video Upload service (Cloudinary)
+import { videoUploadService, videoUploadHelpers } from './videoUploadService';
+export { videoUploadService, videoUploadHelpers } from './videoUploadService';
+export type {
+  VideoUploadResult,
+  VideoUploadOptions
+} from './videoUploadService';
+
 // Service registry for easy access
 export const services = {
   auth: authService,
@@ -137,6 +165,9 @@ export const services = {
   notifications: notificationsService,
   reviews: reviewsService,
   wishlist: wishlistService,
+  articles: articlesService,
+  fileUpload: fileUploadService,
+  videoUpload: videoUploadService,
 } as const;
 
 // Initialize all services with authentication token

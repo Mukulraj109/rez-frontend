@@ -298,12 +298,23 @@ export default function StorePage() {
       fetchBackendData(params.cardId as string);
     } else if (params.cardData && params.cardId && params.cardType) {
       try {
+        // Parse and use the passed card data immediately for fast display
         const parsedData = JSON.parse(params.cardData as string);
         setCardData(parsedData);
         setIsDynamic(true);
+        fetchedProductIdRef.current = params.cardId as string;
+
+        // Also fetch latest backend data in background to ensure freshness
+        console.log('✅ [ProductPage] Using passed cardData and fetching latest from backend');
+        fetchBackendData(params.cardId as string);
       } catch (error) {
-        console.error('Failed to parse card data:', error);
+        console.error('❌ [ProductPage] Failed to parse card data:', error);
         setIsDynamic(false);
+
+        // Fallback: try to fetch from backend with just cardId
+        if (params.cardId) {
+          fetchBackendData(params.cardId as string);
+        }
       }
     } else {
       setIsDynamic(false);
@@ -504,7 +515,7 @@ export default function StorePage() {
               onPress={() => {
                 const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
                 if (storeId) {
-                  router.push(`/store/${storeId}/reviews` as any);
+                  router.push(`/reviews/${storeId}`);
                 }
               }}
               activeOpacity={0.7}

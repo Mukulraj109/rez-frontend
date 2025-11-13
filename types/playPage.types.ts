@@ -19,7 +19,19 @@ export interface Product {
   cashbackText?: string;
   image: string;
   category?: string;
+  // Backend data (preserved for detailed views)
+  pricing?: {
+    basePrice?: number;
+    salePrice?: number;
+    discount?: number;
+  };
+  inventory?: {
+    isAvailable?: boolean;
+    quantity?: number;
+  };
 }
+
+export type ContentType = 'merchant' | 'article' | 'ugc';
 
 export interface UGCVideoItem {
   id: string;
@@ -30,15 +42,18 @@ export interface UGCVideoItem {
   hashtags?: string[];
   productCount?: number;
   category: CategoryType;
+  contentType: ContentType; // Differentiates merchant, article, and UGC videos
   isLiked?: boolean;
   isShared?: boolean;
   products?: Product[];
   // Additional metadata
   author?: string;
+  authorAvatar?: string;
   duration?: number; // in seconds
   createdAt?: string;
   likes?: number;
   shares?: number;
+  comments?: number;
 }
 
 export interface VideoCardProps {
@@ -88,24 +103,26 @@ export interface SectionHeaderProps {
 export interface PlayPageState {
   // Video data
   featuredVideo?: UGCVideoItem;
-  trendingVideos: UGCVideoItem[];
-  articleVideos: UGCVideoItem[];
+  merchantVideos: UGCVideoItem[]; // Videos from merchant app
+  articleVideos: UGCVideoItem[]; // Article content
+  ugcVideos: UGCVideoItem[]; // User-generated content
+  trendingVideos: UGCVideoItem[]; // Legacy - can be removed later
   allVideos: UGCVideoItem[];
-  
+
   // UI state
   activeCategory: CategoryType;
   categories: CategoryTab[];
   loading: boolean;
   refreshing: boolean;
-  
+
   // Video playback state
   playingVideos: Set<string>; // Set of video IDs currently playing
   mutedVideos: Set<string>; // Set of video IDs that are muted
-  
+
   // Pagination
   hasMoreVideos: boolean;
   currentPage: number;
-  
+
   // Error handling
   error?: string;
 }

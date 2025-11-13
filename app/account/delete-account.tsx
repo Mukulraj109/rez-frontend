@@ -87,7 +87,13 @@ export default function DeleteAccountPage() {
       {/* Header */}
       <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
@@ -146,6 +152,8 @@ export default function DeleteAccountPage() {
             placeholderTextColor="#9CA3AF"
             autoCapitalize="characters"
             autoCorrect={false}
+            accessibilityLabel="Delete account confirmation"
+            accessibilityHint={`Type the word ${requiredText} to confirm account deletion`}
           />
         </View>
 
@@ -157,6 +165,10 @@ export default function DeleteAccountPage() {
           ]}
           onPress={handleDeleteAccount}
           disabled={confirmationText !== requiredText || isLoading}
+          accessibilityRole="button"
+          accessibilityLabel="Delete my account permanently"
+          accessibilityHint="Double tap to permanently delete your account. This action cannot be undone"
+          accessibilityState={{ disabled: confirmationText !== requiredText || isLoading }}
         >
           {isLoading ? (
             <ActivityIndicator color="white" size="small" />
@@ -178,6 +190,9 @@ export default function DeleteAccountPage() {
             <TouchableOpacity
               style={styles.alternativeItem}
               onPress={() => router.push('/account/settings')}
+              accessibilityRole="button"
+              accessibilityLabel="Update your privacy settings"
+              accessibilityHint="Double tap to adjust your account privacy settings instead of deleting"
             >
               <Ionicons name="settings" size={16} color="#8B5CF6" />
               <ThemedText style={styles.alternativeText}>Update your privacy settings</ThemedText>
@@ -185,6 +200,9 @@ export default function DeleteAccountPage() {
             <TouchableOpacity
               style={styles.alternativeItem}
               onPress={() => router.push('/account/notifications')}
+              accessibilityRole="button"
+              accessibilityLabel="Disable notifications"
+              accessibilityHint="Double tap to turn off notifications instead of deleting your account"
             >
               <Ionicons name="notifications-off" size={16} color="#8B5CF6" />
               <ThemedText style={styles.alternativeText}>Disable notifications</ThemedText>
@@ -192,6 +210,9 @@ export default function DeleteAccountPage() {
             <TouchableOpacity
               style={styles.alternativeItem}
               onPress={() => router.push('/support')}
+              accessibilityRole="button"
+              accessibilityLabel="Contact support for help"
+              accessibilityHint="Double tap to get help from our support team"
             >
               <Ionicons name="help-circle" size={16} color="#8B5CF6" />
               <ThemedText style={styles.alternativeText}>Contact support for help</ThemedText>

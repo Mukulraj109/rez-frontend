@@ -102,6 +102,10 @@ export function FilterChips({
             ]}
             onPress={chip.onPress}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${chip.label} filter`}
+            accessibilityHint={chip.isActive ? 'Double tap to remove filter' : 'Double tap to apply filter'}
+            accessibilityState={{ selected: chip.isActive }}
           >
             <View style={styles.chipContent}>
               <Ionicons
@@ -142,6 +146,9 @@ export function FilterChips({
               availability: [],
             })}
             activeOpacity={0.7}
+            accessibilityLabel={`Clear all ${activeFilters.length} active filters`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to remove all active filters"
           >
             <Ionicons
               name="close-circle-outline"

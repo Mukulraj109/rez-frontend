@@ -39,6 +39,10 @@ export default function AccountTabs({
           ]}
           onPress={() => handleTabPress(tab.id)}
           activeOpacity={0.7}
+          accessibilityLabel={`${tab.title} tab`}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab.isActive }}
+          accessibilityHint={`Double tap to switch to ${tab.title} section`}
         >
           <ThemedText
             style={[

@@ -25,11 +25,14 @@ export default function VoucherNavButton({
 
   if (variant === 'icon') {
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.iconButton, style]}
         onPress={handleNavigateToVouchers}
         activeOpacity={0.8}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        accessibilityLabel="Vouchers"
+        accessibilityRole="button"
+        accessibilityHint="Double tap to view online vouchers"
       >
         <View style={styles.iconContainer}>
           <Ionicons name="ticket-outline" size={24} color="#8B5CF6" />
@@ -43,10 +46,13 @@ export default function VoucherNavButton({
 
   if (variant === 'minimal') {
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.minimalButton, style]}
         onPress={handleNavigateToVouchers}
         activeOpacity={0.8}
+        accessibilityLabel="Online Vouchers"
+        accessibilityRole="button"
+        accessibilityHint="Double tap to view online vouchers"
       >
         <Ionicons name="ticket" size={20} color="#8B5CF6" />
         {showText && (
@@ -58,10 +64,13 @@ export default function VoucherNavButton({
 
   // Default card variant
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.cardContainer, style]}
       onPress={handleNavigateToVouchers}
       activeOpacity={0.8}
+      accessibilityLabel="Online Vouchers. Get cashback on top brands. Up to 20% off"
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view online vouchers"
     >
       <LinearGradient
         colors={['#8B5CF6', '#7C3AED']}

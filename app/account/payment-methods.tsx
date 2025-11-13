@@ -390,9 +390,15 @@ export default function PaymentMethodsManagementPage() {
   const renderPaymentCard = (method: PaymentMethod) => {
     if (method.type === PaymentMethodType.CARD && method.card) {
       const brandColor = getCardBrandColor(method.card.brand);
+      const cardLabel = `${method.card.brand} card ending ${method.card.lastFourDigits}. Expires ${method.card.expiryMonth}/${method.card.expiryYear}. ${method.card.cardholderName}${method.card.nickname ? '. ' + method.card.nickname : ''}${method.isDefault ? '. Default payment method' : ''}`;
 
       return (
-        <View key={method.id} style={styles.paymentCard}>
+        <View
+          key={method.id}
+          style={styles.paymentCard}
+          accessibilityRole="summary"
+          accessibilityLabel={cardLabel}
+        >
           <View style={styles.cardHeader}>
             <View style={styles.cardIconRow}>
               <View style={[styles.cardIcon, { backgroundColor: `${brandColor}20` }]}>
@@ -433,6 +439,9 @@ export default function PaymentMethodsManagementPage() {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => handleSetDefault(method)}
+                accessibilityRole="button"
+                accessibilityLabel={`Set card ending ${method.card?.lastFourDigits} as default`}
+                accessibilityHint="Double tap to make this your default payment method"
               >
                 <Ionicons name="checkmark-circle-outline" size={18} color="#10B981" />
                 <ThemedText style={styles.actionText}>Set Default</ThemedText>
@@ -441,6 +450,9 @@ export default function PaymentMethodsManagementPage() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleOpenEditModal(method)}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit card ending ${method.card?.lastFourDigits}`}
+              accessibilityHint="Double tap to edit card nickname"
             >
               <Ionicons name="create-outline" size={18} color="#3B82F6" />
               <ThemedText style={styles.actionText}>Edit</ThemedText>
@@ -448,6 +460,9 @@ export default function PaymentMethodsManagementPage() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleDeletePaymentMethod(method)}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete card ending ${method.card?.lastFourDigits}`}
+              accessibilityHint="Double tap to remove this payment method. This action requires confirmation"
             >
               <Ionicons name="trash-outline" size={18} color="#EF4444" />
               <ThemedText style={styles.actionText}>Delete</ThemedText>
@@ -458,8 +473,15 @@ export default function PaymentMethodsManagementPage() {
     }
 
     if (method.type === PaymentMethodType.UPI && method.upi) {
+      const upiLabel = `UPI ${method.upi.vpa}${method.upi.nickname ? '. ' + method.upi.nickname : ''}${method.isDefault ? '. Default payment method' : ''}`;
+
       return (
-        <View key={method.id} style={styles.paymentCard}>
+        <View
+          key={method.id}
+          style={styles.paymentCard}
+          accessibilityRole="summary"
+          accessibilityLabel={upiLabel}
+        >
           <View style={styles.cardHeader}>
             <View style={styles.cardIconRow}>
               <View style={[styles.cardIcon, { backgroundColor: '#F59E0B20' }]}>
@@ -490,6 +512,9 @@ export default function PaymentMethodsManagementPage() {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => handleSetDefault(method)}
+                accessibilityRole="button"
+                accessibilityLabel={`Set UPI ${method.upi?.vpa} as default`}
+                accessibilityHint="Double tap to make this your default payment method"
               >
                 <Ionicons name="checkmark-circle-outline" size={18} color="#10B981" />
                 <ThemedText style={styles.actionText}>Set Default</ThemedText>
@@ -498,6 +523,9 @@ export default function PaymentMethodsManagementPage() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleOpenEditModal(method)}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit UPI ${method.upi?.vpa}`}
+              accessibilityHint="Double tap to edit UPI nickname"
             >
               <Ionicons name="create-outline" size={18} color="#3B82F6" />
               <ThemedText style={styles.actionText}>Edit</ThemedText>
@@ -505,6 +533,9 @@ export default function PaymentMethodsManagementPage() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleDeletePaymentMethod(method)}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete UPI ${method.upi?.vpa}`}
+              accessibilityHint="Double tap to remove this payment method. This action requires confirmation"
             >
               <Ionicons name="trash-outline" size={18} color="#EF4444" />
               <ThemedText style={styles.actionText}>Delete</ThemedText>
@@ -517,9 +548,15 @@ export default function PaymentMethodsManagementPage() {
     if (method.type === PaymentMethodType.BANK_ACCOUNT && method.bankAccount) {
       // Extract last 4 digits from account number (it should be masked from backend)
       const accountNumberDisplay = method.bankAccount.accountNumber.slice(-4);
+      const bankLabel = `${method.bankAccount.bankName} ${method.bankAccount.accountType} account ending ${accountNumberDisplay}. IFSC ${method.bankAccount.ifscCode}${method.bankAccount.nickname ? '. ' + method.bankAccount.nickname : ''}${method.isDefault ? '. Default payment method' : ''}`;
 
       return (
-        <View key={method.id} style={styles.paymentCard}>
+        <View
+          key={method.id}
+          style={styles.paymentCard}
+          accessibilityRole="summary"
+          accessibilityLabel={bankLabel}
+        >
           <View style={styles.cardHeader}>
             <View style={styles.cardIconRow}>
               <View style={[styles.cardIcon, { backgroundColor: '#3B82F620' }]}>
@@ -555,6 +592,9 @@ export default function PaymentMethodsManagementPage() {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => handleSetDefault(method)}
+                accessibilityRole="button"
+                accessibilityLabel={`Set ${method.bankAccount?.bankName} account as default`}
+                accessibilityHint="Double tap to make this your default payment method"
               >
                 <Ionicons name="checkmark-circle-outline" size={18} color="#10B981" />
                 <ThemedText style={styles.actionText}>Set Default</ThemedText>
@@ -563,6 +603,9 @@ export default function PaymentMethodsManagementPage() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleOpenEditModal(method)}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit ${method.bankAccount?.bankName} account`}
+              accessibilityHint="Double tap to edit account nickname"
             >
               <Ionicons name="create-outline" size={18} color="#3B82F6" />
               <ThemedText style={styles.actionText}>Edit</ThemedText>
@@ -570,6 +613,9 @@ export default function PaymentMethodsManagementPage() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleDeletePaymentMethod(method)}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${method.bankAccount?.bankName} account`}
+              accessibilityHint="Double tap to remove this payment method. This action requires confirmation"
             >
               <Ionicons name="trash-outline" size={18} color="#EF4444" />
               <ThemedText style={styles.actionText}>Delete</ThemedText>
@@ -590,7 +636,13 @@ export default function PaymentMethodsManagementPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED'] as const} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
@@ -601,7 +653,13 @@ export default function PaymentMethodsManagementPage() {
             </ThemedText>
           </View>
 
-          <TouchableOpacity style={styles.addButton} onPress={() => handleOpenAddModal(PaymentMethodType.CARD)}>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => handleOpenAddModal(PaymentMethodType.CARD)}
+            accessibilityRole="button"
+            accessibilityLabel="Add new payment method"
+            accessibilityHint="Double tap to add a card, UPI, or bank account"
+          >
             <Ionicons name="add" size={24} color="white" />
           </TouchableOpacity>
         </View>
@@ -612,6 +670,9 @@ export default function PaymentMethodsManagementPage() {
         <TouchableOpacity
           style={styles.quickAddButton}
           onPress={() => handleOpenAddModal(PaymentMethodType.CARD)}
+          accessibilityRole="button"
+          accessibilityLabel="Add card"
+          accessibilityHint="Double tap to add a new credit or debit card"
         >
           <Ionicons name="card" size={20} color="#8B5CF6" />
           <ThemedText style={styles.quickAddText}>Card</ThemedText>
@@ -619,6 +680,9 @@ export default function PaymentMethodsManagementPage() {
         <TouchableOpacity
           style={styles.quickAddButton}
           onPress={() => handleOpenAddModal(PaymentMethodType.UPI)}
+          accessibilityRole="button"
+          accessibilityLabel="Add UPI"
+          accessibilityHint="Double tap to add a UPI payment method"
         >
           <Ionicons name="flash" size={20} color="#F59E0B" />
           <ThemedText style={styles.quickAddText}>UPI</ThemedText>
@@ -626,6 +690,9 @@ export default function PaymentMethodsManagementPage() {
         <TouchableOpacity
           style={styles.quickAddButton}
           onPress={() => handleOpenAddModal(PaymentMethodType.BANK_ACCOUNT)}
+          accessibilityRole="button"
+          accessibilityLabel="Add bank account"
+          accessibilityHint="Double tap to add a bank account"
         >
           <Ionicons name="business" size={20} color="#3B82F6" />
           <ThemedText style={styles.quickAddText}>Bank</ThemedText>

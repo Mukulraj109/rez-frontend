@@ -27,10 +27,14 @@ export default function ChallengeCard({
   const progressPercentage = Math.min((progress / maxProgress) * 100, 100);
 
   return (
-    <TouchableOpacity 
-      style={[styles.challengeCard, isCompleted && styles.completedCard]} 
+    <TouchableOpacity
+      style={[styles.challengeCard, isCompleted && styles.completedCard]}
       onPress={onPress}
       disabled={isCompleted}
+      accessibilityLabel={`${title} challenge. ${description}. Progress: ${progress} out of ${maxProgress}${isCompleted ? '. Complete!' : ''}`}
+      accessibilityRole="button"
+      accessibilityHint={isCompleted ? 'Challenge completed' : 'Double tap to view challenge details and continue progress'}
+      accessibilityState={{ disabled: isCompleted }}
     >
       <View style={styles.challengeInfo}>
         <View style={[styles.iconContainer, isCompleted && styles.completedIcon]}>

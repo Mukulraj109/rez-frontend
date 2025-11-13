@@ -56,6 +56,8 @@ export default function SkeletonLoader({
         },
         style,
       ]}
+      accessibilityElementsHidden={true}
+      importantForAccessibility="no"
     >
       <Animated.View
         style={{
@@ -79,7 +81,11 @@ export default function SkeletonLoader({
 
 export function SkeletonCard() {
   return (
-    <View style={styles.card}>
+    <View
+      style={styles.card}
+      accessibilityLabel="Loading content"
+      accessibilityRole="none"
+    >
       <SkeletonLoader width={60} height={60} variant="circle" style={styles.avatar} />
       <View style={styles.content}>
         <SkeletonLoader width="80%" height={16} style={styles.title} />
@@ -91,7 +97,11 @@ export function SkeletonCard() {
 
 export function SkeletonProjectCard() {
   return (
-    <View style={styles.projectCard}>
+    <View
+      style={styles.projectCard}
+      accessibilityLabel="Loading project"
+      accessibilityRole="none"
+    >
       <SkeletonLoader width="100%" height={120} style={styles.image} />
       <View style={styles.projectContent}>
         <SkeletonLoader width="70%" height={18} style={styles.projectTitle} />

@@ -57,7 +57,9 @@
       "Bash(timeout:*)",
       "Bash(move:*)",
       "Bash(del:*)",
-      "Bash(ren:*)"
+      "Bash(ren:*)",
+      "Bash(if exist src dir src)",
+      "Bash(nul)"
     ],
     "defaultMode": "acceptEdits"
   }

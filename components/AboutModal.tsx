@@ -126,7 +126,15 @@ export default function AboutModal({ visible, onClose, storeData }: AboutModalPr
   };
 
   return (
-    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="About store dialog"
+    >
       <TouchableWithoutFeedback onPress={handleBackdropPress}>
         <View style={styles.overlay}>
           <Animated.View style={[styles.blurContainer, { opacity: fadeAnim }]}>
@@ -144,7 +152,13 @@ export default function AboutModal({ visible, onClose, storeData }: AboutModalPr
             >
               <View style={styles.modal}>
                 {/* Close button */}
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={onClose}
+                  accessibilityLabel="Close about store"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to close this dialog"
+                >
                   <Ionicons name="close" size={20} color="#555" />
                 </TouchableOpacity>
 
@@ -159,7 +173,12 @@ export default function AboutModal({ visible, onClose, storeData }: AboutModalPr
                       {store.address.pinCode}
                     </ThemedText>
 
-                    <TouchableOpacity style={styles.openNowButton}>
+                    <TouchableOpacity
+                      style={styles.openNowButton}
+                      accessibilityLabel="Store is currently open"
+                      accessibilityRole="button"
+                      accessibilityHint="Store operating status indicator"
+                    >
                       <ThemedText style={styles.openNowText}>Open now</ThemedText>
                     </TouchableOpacity>
                   </View>

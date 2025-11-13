@@ -36,7 +36,11 @@ export function ProductGrid({
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
+    <View
+      style={styles.emptyContainer}
+      accessibilityRole="alert"
+      accessibilityLabel="No products found. Try adjusting your search or filters"
+    >
       <ThemedText style={styles.emptyTitle}>No products found</ThemedText>
       <ThemedText style={styles.emptySubtitle}>
         Try adjusting your search or filters
@@ -46,9 +50,14 @@ export function ProductGrid({
 
   const renderLoadingFooter = () => {
     if (!hasMore || !loading) return null;
-    
+
     return (
-      <View style={styles.loadingFooter}>
+      <View
+        style={styles.loadingFooter}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Loading more products"
+        accessibilityValue={{ text: "Loading" }}
+      >
         <ActivityIndicator size="small" color="#8B5CF6" />
         <ThemedText style={styles.loadingText}>Loading more products...</ThemedText>
       </View>
@@ -75,7 +84,12 @@ export function ProductGrid({
 
   if (loading && products.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
+      <View
+        style={styles.loadingContainer}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Loading products"
+        accessibilityValue={{ text: "Loading" }}
+      >
         <ActivityIndicator size="large" color="#8B5CF6" />
         <ThemedText style={styles.loadingText}>Loading products...</ThemedText>
       </View>
@@ -105,6 +119,8 @@ export function ProductGrid({
         maxToRenderPerBatch={10}
         windowSize={10}
         initialNumToRender={8}
+        accessibilityLabel={`Product grid. ${products.length} products available`}
+        accessibilityRole="list"
       />
     </View>
 );

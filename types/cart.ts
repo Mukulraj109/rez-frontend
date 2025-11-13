@@ -14,8 +14,19 @@ export interface CartItem {
   inventory?: {
     stock: number;
     lowStockThreshold?: number;
+    trackQuantity?: boolean; // Whether to track quantity for this item
+    allowBackorder?: boolean; // Whether backorders are allowed
+    reservedCount?: number; // Number of items reserved by other users
   };
   availabilityStatus?: 'in_stock' | 'low_stock' | 'out_of_stock';
+  metadata?: {
+    // For event items
+    slotTime?: string;
+    location?: string;
+    date?: string;
+    // Other metadata as needed
+    [key: string]: any;
+  };
 }
 
 export interface LockedProduct {

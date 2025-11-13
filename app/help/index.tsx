@@ -186,6 +186,9 @@ export default function HelpPage() {
       style={styles.quickAction}
       onPress={() => router.push(action.route as any)}
       activeOpacity={0.8}
+      accessibilityLabel={`${action.title}. ${action.description}`}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to access this support option"
     >
       <View style={[styles.quickActionIcon, { backgroundColor: action.iconColor + '15' }]}>
         <Ionicons name={action.icon as any} size={24} color={action.iconColor} />
@@ -201,12 +204,15 @@ export default function HelpPage() {
       style={styles.helpCategory}
       onPress={() => router.push(category.route as any)}
       activeOpacity={0.8}
+      accessibilityLabel={`${category.title} category. ${category.itemCount} articles available`}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to browse articles in this category"
     >
       <View style={styles.categoryLeft}>
         <View style={[styles.categoryIcon, { backgroundColor: category.iconColor + '15' }]}>
           <Ionicons name={category.icon as any} size={20} color={category.iconColor} />
         </View>
-        
+
         <View style={styles.categoryText}>
           <ThemedText style={styles.categoryTitle}>{category.title}</ThemedText>
           <ThemedText style={styles.categoryCount}>
@@ -214,34 +220,45 @@ export default function HelpPage() {
           </ThemedText>
         </View>
       </View>
-      
+
       <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
     </TouchableOpacity>
   );
 
-  const renderFAQItem = (faq: FAQItem) => (
-    <TouchableOpacity
-      key={faq.id}
-      style={styles.faqItem}
-      onPress={() => handleFAQPress(faq.id)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.faqHeader}>
-        <ThemedText style={styles.faqQuestion}>{faq.question}</ThemedText>
-        <Ionicons 
-          name={expandedFAQ === faq.id ? "chevron-up" : "chevron-down"} 
-          size={20} 
-          color="#9CA3AF" 
-        />
-      </View>
-      
-      {expandedFAQ === faq.id && (
-        <View style={styles.faqAnswer}>
-          <ThemedText style={styles.faqAnswerText}>{faq.answer}</ThemedText>
+  const renderFAQItem = (faq: FAQItem) => {
+    const isExpanded = expandedFAQ === faq.id;
+    return (
+      <TouchableOpacity
+        key={faq.id}
+        style={styles.faqItem}
+        onPress={() => handleFAQPress(faq.id)}
+        activeOpacity={0.8}
+        accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} FAQ: ${faq.question}`}
+        accessibilityRole="button"
+        accessibilityHint="Double tap to view answer"
+        accessibilityState={{ expanded: isExpanded }}
+      >
+        <View style={styles.faqHeader}>
+          <ThemedText style={styles.faqQuestion}>{faq.question}</ThemedText>
+          <Ionicons
+            name={isExpanded ? "chevron-up" : "chevron-down"}
+            size={20}
+            color="#9CA3AF"
+          />
         </View>
-      )}
-    </TouchableOpacity>
-  );
+
+        {isExpanded && (
+          <View
+            style={styles.faqAnswer}
+            accessibilityLabel={`Answer: ${faq.answer}`}
+            accessibilityRole="text"
+          >
+            <ThemedText style={styles.faqAnswerText}>{faq.answer}</ThemedText>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -257,7 +274,13 @@ export default function HelpPage() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           
@@ -276,9 +299,17 @@ export default function HelpPage() {
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="search"
+            accessibilityLabel="Search help articles"
+            accessibilityHint="Enter keywords to search for help articles"
+            accessibilityRole="search"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessibilityLabel="Clear search"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to clear search text"
+            >
               <Ionicons name="close" size={18} color="#9CA3AF" />
             </TouchableOpacity>
           )}
@@ -333,9 +364,12 @@ export default function HelpPage() {
             Our support team is available 24/7 to assist you.
           </ThemedText>
           
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.contactButton}
             onPress={() => router.push('/help/contact' as any)}
+            accessibilityLabel="Contact Support"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to contact our 24/7 support team"
           >
             <ThemedText style={styles.contactButtonText}>Contact Support</ThemedText>
           </TouchableOpacity>

@@ -32,11 +32,18 @@ export function ProductSection({
   }
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessibilityRole="region"
+      accessibilityLabel={`${section.title} section`}
+    >
       {/* Section Header */}
       <View style={styles.sectionHeader}>
         <View style={styles.titleContainer}>
-          <ThemedText style={styles.sectionTitle}>
+          <ThemedText
+            style={styles.sectionTitle}
+            accessibilityRole="header"
+          >
             {section.title}
           </ThemedText>
           {section.subtitle && (
@@ -45,12 +52,15 @@ export function ProductSection({
             </ThemedText>
           )}
         </View>
-        
+
         {section.showViewAll && (
           <TouchableOpacity
             style={styles.viewAllButton}
             onPress={onViewAll}
             activeOpacity={0.7}
+            accessibilityLabel={`View all ${section.title} products`}
+            accessibilityRole="button"
+            accessibilityHint={`Double tap to see all products in ${section.title}`}
           >
             <ThemedText style={styles.viewAllText}>View all</ThemedText>
           </TouchableOpacity>

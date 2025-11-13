@@ -70,56 +70,86 @@ class HomepageDataService {
     fallbackData: T
   ): Promise<{ data: T; fromCache: boolean; isOffline: boolean }> {
     try {
+      console.log(`📦 [HOMEPAGE SERVICE] getWithCacheAndFallback for ${cacheKey}`);
+
       // Try to get from cache first
       const cachedData = await cacheService.get<T>(cacheKey);
 
       if (cachedData) {
+        console.log(`✅ [HOMEPAGE SERVICE] Found cached data for ${cacheKey}`, {
+          isCachedDataArray: Array.isArray(cachedData),
+          cachedDataLength: Array.isArray(cachedData) ? (cachedData as any[]).length : 'N/A'
+        });
 
         // Try to refresh in background if backend is available
         const isBackendAvailable = await this.checkBackendAvailability();
+        console.log(`🔍 [HOMEPAGE SERVICE] Backend availability for ${cacheKey}:`, isBackendAvailable);
 
         if (isBackendAvailable) {
+          console.log(`🔄 [HOMEPAGE SERVICE] Starting background refresh for ${cacheKey}...`);
           // Background refresh (stale-while-revalidate)
           fetchFn()
             .then(async freshData => {
+              console.log(`✅ [HOMEPAGE SERVICE] Background refresh succeeded for ${cacheKey}`);
               await cacheService.set(cacheKey, freshData, {
                 ttl: this.CACHE_TTL,
                 priority: 'high'
               });
-
             })
             .catch(error => {
               console.error(`❌ [HOMEPAGE SERVICE] Background refresh failed for ${cacheKey}:`, error);
             });
+        } else {
+          console.log(`⚠️ [HOMEPAGE SERVICE] Backend unavailable, skipping background refresh for ${cacheKey}`);
         }
 
         return { data: cachedData, fromCache: true, isOffline: false };
       }
 
+      console.log(`ℹ️ [HOMEPAGE SERVICE] No cached data for ${cacheKey}, fetching from backend...`);
+
       // No cache, try to fetch from backend
       const isBackendAvailable = await this.checkBackendAvailability();
+      console.log(`🔍 [HOMEPAGE SERVICE] Backend availability check for ${cacheKey}:`, isBackendAvailable);
 
       if (isBackendAvailable) {
         try {
+          console.log(`📡 [HOMEPAGE SERVICE] Calling fetchFn for ${cacheKey}...`);
           const freshData = await fetchFn();
+          console.log(`✅ [HOMEPAGE SERVICE] Successfully fetched fresh data for ${cacheKey}`, {
+            isFreshDataArray: Array.isArray(freshData),
+            freshDataLength: Array.isArray(freshData) ? (freshData as any[]).length : 'N/A'
+          });
+
           // Cache the fresh data
           await cacheService.set(cacheKey, freshData, {
             ttl: this.CACHE_TTL,
             priority: 'high'
           });
+          console.log(`✅ [HOMEPAGE SERVICE] Cached fresh data for ${cacheKey}`);
+
           return { data: freshData, fromCache: false, isOffline: false };
         } catch (error) {
           console.error(`❌ [HOMEPAGE SERVICE] Failed to fetch data for ${cacheKey}:`, error);
+          console.error(`Error details:`, error instanceof Error ? error.message : String(error));
+          console.log(`🔄 [HOMEPAGE SERVICE] Falling back to fallback data for ${cacheKey}`);
           // Fall through to use fallback data
         }
+      } else {
+        console.log(`⚠️ [HOMEPAGE SERVICE] Backend unavailable for ${cacheKey}, using fallback data`);
       }
 
       // Backend unavailable or fetch failed, use fallback data
+      console.log(`📦 [HOMEPAGE SERVICE] Using fallback data for ${cacheKey}`, {
+        isFallbackArray: Array.isArray(fallbackData),
+        fallbackLength: Array.isArray(fallbackData) ? (fallbackData as any[]).length : 'N/A'
+      });
 
       return { data: fallbackData, fromCache: false, isOffline: true };
 
     } catch (error) {
       console.error(`❌ [HOMEPAGE SERVICE] Error in getWithCacheAndFallback for ${cacheKey}:`, error);
+      console.log(`📦 [HOMEPAGE SERVICE] Returning fallback data for ${cacheKey} due to exception`);
       return { data: fallbackData, fromCache: false, isOffline: true };
     }
   }
@@ -321,6 +351,8 @@ class HomepageDataService {
 
     const cacheKey = 'homepage_trending_stores';
 
+    console.log('🏪 [HOMEPAGE SERVICE] Fetching trending stores section...');
+
     const { data: trendingStores, fromCache, isOffline } = await this.getWithCacheAndFallback(
       cacheKey,
       async () => {
@@ -329,7 +361,32 @@ class HomepageDataService {
       },
       fallbackSection?.items || []
     );
-    
+
+    console.log('📊 [HOMEPAGE SERVICE] Trending stores result:', {
+      count: trendingStores.length,
+      fromCache,
+      isOffline,
+      usingFallback: trendingStores === (fallbackSection?.items || []),
+      firstStoreId: trendingStores[0]?.id,
+      firstStoreName: trendingStores[0]?.name
+    });
+
+    if (trendingStores.length > 0) {
+      const firstStore = trendingStores[0];
+      const isObjectId = /^[0-9a-fA-F]{24}$/.test(firstStore.id);
+      console.log(`🔍 [HOMEPAGE SERVICE] First store ID check: "${firstStore.id}" is ${isObjectId ? 'REAL ObjectId ✅' : 'MOCK String ID ❌'}`);
+
+      if (!isObjectId) {
+        console.warn('⚠️ [HOMEPAGE SERVICE] WARNING: Using mock data with fake string IDs!');
+        console.warn('This means the backend API call failed or returned no data.');
+        console.warn('Check the API logs above for errors.');
+      } else {
+        console.log('✅ [HOMEPAGE SERVICE] Using REAL backend data with ObjectIds!');
+      }
+    } else {
+      console.warn('⚠️ [HOMEPAGE SERVICE] No trending stores returned (empty array)');
+    }
+
     // Use real backend data, no fallbacks (unless offline)
     const result: HomepageSection = {
       ...sectionTemplate,

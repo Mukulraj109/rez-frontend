@@ -54,15 +54,39 @@ export default function ConnectionStatus() {
   const info = getStatusInfo();
 
   return (
-    <View style={[styles.container, { backgroundColor: info.color }]}>
+    <View
+      style={[styles.container, { backgroundColor: info.color }]}
+      accessible={true}
+      accessibilityRole="alert"
+      accessibilityLabel={`Connection status: ${info.text}`}
+      accessibilityLiveRegion="polite"
+    >
       <View style={styles.content}>
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <Ionicons name={info.icon as any} size={16} color="white" />
+          <Ionicons
+            name={info.icon as any}
+            size={16}
+            color="white"
+            accessible={false}
+          />
         </Animated.View>
-        <Text style={styles.text}>{info.text}</Text>
+        <Text
+          style={styles.text}
+          accessible={true}
+          accessibilityRole="text"
+        >
+          {info.text}
+        </Text>
       </View>
       {info.actionText && (
-        <TouchableOpacity style={styles.button} onPress={connect}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={connect}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={info.actionText}
+          accessibilityHint={`Double tap to ${info.actionText.toLowerCase()} to server`}
+        >
           <Text style={styles.buttonText}>{info.actionText}</Text>
         </TouchableOpacity>
       )}

@@ -80,6 +80,8 @@ export default function GoingOutPage() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
+        accessibilityRole="list"
+        accessibilityLabel="Going out products list"
       >
           {/* Category Tabs */}
           <CategoryTabs
@@ -111,7 +113,11 @@ export default function GoingOutPage() {
               
               {/* Empty state when no sections have products */}
               {state.cashbackHubSections.every(section => !section.products || section.products.length === 0) && (
-                <View style={styles.emptyState}>
+                <View
+                  style={styles.emptyState}
+                  accessibilityRole="text"
+                  accessibilityLabel="No products available. We're working on adding amazing products for you. Check back soon for the latest deals!"
+                >
                   <View style={styles.emptyIconContainer}>
                     <Ionicons name="storefront-outline" size={64} color="#D1D5DB" />
                   </View>
@@ -127,12 +133,19 @@ export default function GoingOutPage() {
           {/* Category Filtered Products - Show when a specific category is selected */}
           {!state.searchQuery.trim() && state.activeCategory !== 'all' && (
             <View style={styles.categoryResults}>
-              <View style={styles.categoryHeader}>
+              <View
+                style={styles.categoryHeader}
+                accessibilityRole="header"
+                accessibilityLabel={`${state.categories.find(cat => cat.id === state.activeCategory)?.name || 'Products'}. ${state.filteredProducts.length === 1 ? '1 product found' : `${state.filteredProducts.length} products found`}`}
+              >
                 <View style={styles.categoryTitleContainer}>
                   <ThemedText style={styles.categoryTitle}>
                     {state.categories.find(cat => cat.id === state.activeCategory)?.name || 'Products'}
                   </ThemedText>
-                  <View style={styles.categoryBadge}>
+                  <View
+                    style={styles.categoryBadge}
+                    accessibilityLabel={`${state.filteredProducts.length} items`}
+                  >
                     <ThemedText style={styles.categoryBadgeText}>
                       {state.filteredProducts.length}
                     </ThemedText>
@@ -157,7 +170,11 @@ export default function GoingOutPage() {
                   />
                 </View>
               ) : (
-                <View style={styles.emptyState}>
+                <View
+                  style={styles.emptyState}
+                  accessibilityRole="text"
+                  accessibilityLabel="No products found in this category. Try selecting a different category or browse all products."
+                >
                   <View style={styles.emptyIconContainer}>
                     <Ionicons name="search-outline" size={64} color="#D1D5DB" />
                   </View>
@@ -166,9 +183,12 @@ export default function GoingOutPage() {
                     We couldn't find any products in this category.{'\n'}Try selecting a different category or browse all products.
                   </ThemedText>
                   <View style={styles.emptyActionContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.emptyActionButton}
                       onPress={() => handlers.handleCategoryChange('all')}
+                      accessibilityLabel="Browse all products"
+                      accessibilityRole="button"
+                      accessibilityHint="Double tap to view all available products"
                     >
                       <ThemedText style={styles.emptyActionText}>Browse All Products</ThemedText>
                     </TouchableOpacity>
@@ -181,7 +201,17 @@ export default function GoingOutPage() {
           {/* Search Results - Show when there's a search query */}
           {state.searchQuery.trim() && (
             <>
-              <View style={styles.searchResultsHeader}>
+              <View
+                style={styles.searchResultsHeader}
+                accessibilityRole="header"
+                accessibilityLabel={
+                  state.searchQuery.trim().length < 2
+                    ? "Search Results. Type at least 2 characters to search"
+                    : state.loading
+                    ? "Search Results. Searching"
+                    : `Search Results. ${state.filteredProducts.length} ${state.filteredProducts.length === 1 ? 'product' : 'products'} found for ${state.searchQuery}`
+                }
+              >
                 <View style={styles.searchResultsTitleContainer}>
                   <Ionicons name="search" size={20} color="#8B5CF6" />
                   <ThemedText style={styles.searchResultsTitle}>
@@ -205,7 +235,11 @@ export default function GoingOutPage() {
               </View>
 
               {state.searchQuery.trim().length < 2 ? (
-                <View style={styles.searchHintContainer}>
+                <View
+                  style={styles.searchHintContainer}
+                  accessibilityRole="text"
+                  accessibilityLabel="Keep typing. Enter at least 2 characters to start searching"
+                >
                   <Ionicons name="information-circle-outline" size={48} color="#D1D5DB" />
                   <ThemedText style={styles.searchHintTitle}>Keep typing...</ThemedText>
                   <ThemedText style={styles.searchHintText}>
@@ -213,7 +247,12 @@ export default function GoingOutPage() {
                   </ThemedText>
                 </View>
               ) : state.loading ? (
-                <View style={styles.loadingContainer}>
+                <View
+                  style={styles.loadingContainer}
+                  accessibilityRole="progressbar"
+                  accessibilityLabel="Searching products"
+                  accessibilityValue={{ text: "Loading" }}
+                >
                   <ActivityIndicator size="large" color="#8B5CF6" />
                   <ThemedText style={styles.loadingText}>Searching products...</ThemedText>
                 </View>
@@ -232,7 +271,11 @@ export default function GoingOutPage() {
                   />
                 </View>
               ) : (
-                <View style={styles.searchEmptyState}>
+                <View
+                  style={styles.searchEmptyState}
+                  accessibilityRole="text"
+                  accessibilityLabel={`No results found for ${state.searchQuery}. Try different keywords or browse our categories`}
+                >
                   <View style={styles.emptyIconContainer}>
                     <Ionicons name="search-outline" size={80} color="#D1D5DB" />
                   </View>
@@ -244,9 +287,12 @@ export default function GoingOutPage() {
                     Try different keywords or browse our categories
                   </ThemedText>
                   <View style={styles.emptyActionContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.emptyActionButton}
                       onPress={() => handlers.handleSearchChange('')}
+                      accessibilityLabel="Clear search"
+                      accessibilityRole="button"
+                      accessibilityHint="Double tap to clear search and view all products"
                     >
                       <ThemedText style={styles.emptyActionText}>Clear Search</ThemedText>
                     </TouchableOpacity>

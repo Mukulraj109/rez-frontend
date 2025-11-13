@@ -243,22 +243,51 @@ export default function AdminSocialMediaPosts() {
       <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
 
       {/* Header */}
-      <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <LinearGradient
+        colors={['#8B5CF6', '#7C3AED']}
+        style={styles.header}
+        accessibilityRole="header"
+        accessibilityLabel="Admin Social Media Posts Dashboard"
+      >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Returns to previous screen"
+        >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Social Media Posts</Text>
-        <TouchableOpacity style={styles.refreshButton} onPress={loadPosts}>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={loadPosts}
+          accessibilityLabel="Refresh posts"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to reload all social media posts"
+        >
           <Ionicons name="refresh" size={24} color="white" />
         </TouchableOpacity>
       </LinearGradient>
 
       {/* Stats */}
-      <View style={styles.statsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View
+        style={styles.statsContainer}
+        accessibilityRole="summary"
+        accessibilityLabel={`Post statistics: ${stats.total} total, ${stats.pending} pending, ${stats.approved} approved, ${stats.credited} credited, ${stats.rejected} rejected`}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          accessibilityLabel="Filter posts by status"
+        >
           <TouchableOpacity
             style={[styles.statCard, selectedStatus === 'all' && styles.statCardActive]}
             onPress={() => setSelectedStatus('all')}
+            accessibilityRole="button"
+            accessibilityLabel={`All posts: ${stats.total}`}
+            accessibilityHint="Double tap to show all posts"
+            accessibilityState={{ selected: selectedStatus === 'all' }}
           >
             <Text style={[styles.statValue, selectedStatus === 'all' && styles.statValueActive]}>
               {stats.total}
@@ -271,6 +300,10 @@ export default function AdminSocialMediaPosts() {
           <TouchableOpacity
             style={[styles.statCard, selectedStatus === 'pending' && styles.statCardActive]}
             onPress={() => setSelectedStatus('pending')}
+            accessibilityRole="button"
+            accessibilityLabel={`Pending posts: ${stats.pending}`}
+            accessibilityHint="Double tap to show pending posts requiring review"
+            accessibilityState={{ selected: selectedStatus === 'pending' }}
           >
             <Text style={[styles.statValue, selectedStatus === 'pending' && styles.statValueActive]}>
               {stats.pending}
@@ -283,6 +316,10 @@ export default function AdminSocialMediaPosts() {
           <TouchableOpacity
             style={[styles.statCard, selectedStatus === 'approved' && styles.statCardActive]}
             onPress={() => setSelectedStatus('approved')}
+            accessibilityRole="button"
+            accessibilityLabel={`Approved posts: ${stats.approved}`}
+            accessibilityHint="Double tap to show approved posts awaiting credit"
+            accessibilityState={{ selected: selectedStatus === 'approved' }}
           >
             <Text style={[styles.statValue, selectedStatus === 'approved' && styles.statValueActive]}>
               {stats.approved}
@@ -295,6 +332,10 @@ export default function AdminSocialMediaPosts() {
           <TouchableOpacity
             style={[styles.statCard, selectedStatus === 'credited' && styles.statCardActive]}
             onPress={() => setSelectedStatus('credited')}
+            accessibilityRole="button"
+            accessibilityLabel={`Credited posts: ${stats.credited}`}
+            accessibilityHint="Double tap to show posts with credited cashback"
+            accessibilityState={{ selected: selectedStatus === 'credited' }}
           >
             <Text style={[styles.statValue, selectedStatus === 'credited' && styles.statValueActive]}>
               {stats.credited}
@@ -307,6 +348,10 @@ export default function AdminSocialMediaPosts() {
           <TouchableOpacity
             style={[styles.statCard, selectedStatus === 'rejected' && styles.statCardActive]}
             onPress={() => setSelectedStatus('rejected')}
+            accessibilityRole="button"
+            accessibilityLabel={`Rejected posts: ${stats.rejected}`}
+            accessibilityHint="Double tap to show rejected posts"
+            accessibilityState={{ selected: selectedStatus === 'rejected' }}
           >
             <Text style={[styles.statValue, selectedStatus === 'rejected' && styles.statValueActive]}>
               {stats.rejected}
@@ -319,14 +364,26 @@ export default function AdminSocialMediaPosts() {
       </View>
 
       {/* Posts List */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        accessibilityLabel={`${posts.length} ${selectedStatus} social media posts`}
+      >
         {loading ? (
-          <View style={styles.loadingContainer}>
+          <View
+            style={styles.loadingContainer}
+            accessibilityLabel="Loading posts"
+            accessibilityRole="progressbar"
+          >
             <ActivityIndicator size="large" color="#8B5CF6" />
             <Text style={styles.loadingText}>Loading posts...</Text>
           </View>
         ) : posts.length === 0 ? (
-          <View style={styles.emptyContainer}>
+          <View
+            style={styles.emptyContainer}
+            accessibilityRole="text"
+            accessibilityLabel={selectedStatus === 'all' ? 'No submissions yet' : `No ${selectedStatus} posts found`}
+          >
             <Ionicons name="document-text-outline" size={64} color="#D1D5DB" />
             <Text style={styles.emptyTitle}>No Posts Found</Text>
             <Text style={styles.emptyText}>
@@ -335,10 +392,21 @@ export default function AdminSocialMediaPosts() {
           </View>
         ) : (
           posts.map((post) => (
-            <View key={post._id} style={styles.postCard}>
+            <View
+              key={post._id}
+              style={styles.postCard}
+              accessibilityRole="article"
+              accessibilityLabel={`${post.platform} post from ${post.user.name}, status: ${post.status}, cashback: ${post.cashbackAmount} rupees`}
+            >
               {/* Post Header */}
-              <View style={styles.postHeader}>
-                <View style={styles.postPlatform}>
+              <View
+                style={styles.postHeader}
+                accessibilityRole="header"
+              >
+                <View
+                  style={styles.postPlatform}
+                  accessibilityLabel={`Platform: ${post.platform}`}
+                >
                   <Ionicons
                     name={getPlatformIcon(post.platform) as any}
                     size={20}
@@ -353,6 +421,8 @@ export default function AdminSocialMediaPosts() {
                     styles.postStatus,
                     { backgroundColor: getStatusColor(post.status) + '20' }
                   ]}
+                  accessibilityRole="text"
+                  accessibilityLabel={`Status: ${post.status}`}
                 >
                   <Text style={[styles.postStatusText, { color: getStatusColor(post.status) }]}>
                     {post.status.toUpperCase()}
@@ -361,7 +431,11 @@ export default function AdminSocialMediaPosts() {
               </View>
 
               {/* User Info */}
-              <View style={styles.userInfo}>
+              <View
+                style={styles.userInfo}
+                accessibilityRole="text"
+                accessibilityLabel={`User: ${post.user.name}, Email: ${post.user.email}`}
+              >
                 <Ionicons name="person-circle" size={20} color="#6B7280" />
                 <View style={styles.userDetails}>
                   <Text style={styles.userName}>{post.user.name}</Text>
@@ -371,7 +445,11 @@ export default function AdminSocialMediaPosts() {
 
               {/* Order Info */}
               {post.order && (
-                <View style={styles.orderInfo}>
+                <View
+                  style={styles.orderInfo}
+                  accessibilityRole="text"
+                  accessibilityLabel={`Order number ${post.order.orderNumber}, total amount ${post.order.totals.total} rupees`}
+                >
                   <Ionicons name="receipt" size={16} color="#8B5CF6" />
                   <Text style={styles.orderText}>
                     Order #{post.order.orderNumber} • ₹{post.order.totals.total}
@@ -383,6 +461,9 @@ export default function AdminSocialMediaPosts() {
               <TouchableOpacity
                 style={styles.postUrlContainer}
                 onPress={() => Linking.openURL(post.postUrl)}
+                accessibilityRole="link"
+                accessibilityLabel={`Open post URL: ${post.postUrl}`}
+                accessibilityHint="Double tap to open in browser"
               >
                 <Ionicons name="link" size={16} color="#6B7280" />
                 <Text style={styles.postUrl} numberOfLines={1}>
@@ -392,7 +473,11 @@ export default function AdminSocialMediaPosts() {
               </TouchableOpacity>
 
               {/* Metadata */}
-              <View style={styles.metadata}>
+              <View
+                style={styles.metadata}
+                accessibilityRole="summary"
+                accessibilityLabel={`Submitted on ${formatDate(post.submittedAt)}, Cashback amount: ${post.cashbackAmount} rupees${post.submissionIp ? `, IP address: ${post.submissionIp}` : ''}`}
+              >
                 <View style={styles.metaRow}>
                   <Text style={styles.metaLabel}>Submitted:</Text>
                   <Text style={styles.metaValue}>{formatDate(post.submittedAt)}</Text>
@@ -413,7 +498,11 @@ export default function AdminSocialMediaPosts() {
 
               {/* Rejection Reason */}
               {post.rejectionReason && (
-                <View style={styles.rejectionBox}>
+                <View
+                  style={styles.rejectionBox}
+                  accessibilityRole="alert"
+                  accessibilityLabel={`Rejection reason: ${post.rejectionReason}`}
+                >
                   <Ionicons name="alert-circle" size={16} color="#EF4444" />
                   <Text style={styles.rejectionText}>{post.rejectionReason}</Text>
                 </View>
@@ -421,11 +510,19 @@ export default function AdminSocialMediaPosts() {
 
               {/* Actions */}
               {post.status === 'pending' && (
-                <View style={styles.actions}>
+                <View
+                  style={styles.actions}
+                  accessibilityRole="toolbar"
+                  accessibilityLabel="Post review actions"
+                >
                   <TouchableOpacity
                     style={[styles.actionButton, styles.approveButton]}
                     onPress={() => handleApprove(post._id)}
                     disabled={actionLoading === post._id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Approve post from ${post.user.name}`}
+                    accessibilityHint="Double tap to approve this social media post"
+                    accessibilityState={{ disabled: actionLoading === post._id }}
                   >
                     {actionLoading === post._id ? (
                       <ActivityIndicator size="small" color="white" />
@@ -441,6 +538,10 @@ export default function AdminSocialMediaPosts() {
                     style={[styles.actionButton, styles.rejectButton]}
                     onPress={() => handleReject(post)}
                     disabled={actionLoading === post._id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Reject post from ${post.user.name}`}
+                    accessibilityHint="Double tap to reject this post with a reason"
+                    accessibilityState={{ disabled: actionLoading === post._id }}
                   >
                     <Ionicons name="close-circle" size={18} color="white" />
                     <Text style={styles.actionButtonText}>Reject</Text>
@@ -449,11 +550,19 @@ export default function AdminSocialMediaPosts() {
               )}
 
               {post.status === 'approved' && (
-                <View style={styles.actions}>
+                <View
+                  style={styles.actions}
+                  accessibilityRole="toolbar"
+                  accessibilityLabel="Cashback credit action"
+                >
                   <TouchableOpacity
                     style={[styles.actionButton, styles.creditButton]}
                     onPress={() => handleCredit(post._id, post.cashbackAmount)}
                     disabled={actionLoading === post._id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Credit ${post.cashbackAmount} rupees cashback to ${post.user.name}`}
+                    accessibilityHint="Double tap to credit cashback to user's wallet. Requires confirmation"
+                    accessibilityState={{ disabled: actionLoading === post._id }}
                   >
                     {actionLoading === post._id ? (
                       <ActivityIndicator size="small" color="white" />
@@ -479,17 +588,39 @@ export default function AdminSocialMediaPosts() {
         transparent
         animationType="slide"
         onRequestClose={() => setRejectionModalVisible(false)}
+        accessibilityViewIsModal
+        accessibilityLabel="Reject post modal"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
+        <View
+          style={styles.modalOverlay}
+          accessibilityRole="none"
+        >
+          <View
+            style={styles.modalContent}
+            accessibilityRole="dialog"
+            accessibilityLabel="Reject post form"
+          >
+            <View
+              style={styles.modalHeader}
+              accessibilityRole="header"
+            >
               <Text style={styles.modalTitle}>Reject Post</Text>
-              <TouchableOpacity onPress={() => setRejectionModalVisible(false)}>
+              <TouchableOpacity
+                onPress={() => setRejectionModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close rejection modal"
+                accessibilityHint="Double tap to cancel and close this dialog"
+              >
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalLabel}>Rejection Reason</Text>
+            <Text
+              style={styles.modalLabel}
+              accessibilityRole="text"
+            >
+              Rejection Reason
+            </Text>
             <TextInput
               style={styles.modalInput}
               placeholder="Enter reason for rejection..."
@@ -499,12 +630,19 @@ export default function AdminSocialMediaPosts() {
               multiline
               numberOfLines={4}
               textAlignVertical="top"
+              accessibilityLabel="Rejection reason input"
+              accessibilityHint="Enter the reason why you are rejecting this post"
+              accessibilityRole="none"
             />
 
             <TouchableOpacity
               style={[styles.modalButton, !rejectionReason.trim() && styles.modalButtonDisabled]}
               onPress={submitRejection}
               disabled={!rejectionReason.trim() || !!actionLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Submit rejection"
+              accessibilityHint="Double tap to reject the post with the provided reason"
+              accessibilityState={{ disabled: !rejectionReason.trim() || !!actionLoading }}
             >
               {actionLoading ? (
                 <ActivityIndicator color="white" />

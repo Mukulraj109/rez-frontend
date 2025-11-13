@@ -7,21 +7,32 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
+  ActivityIndicator,
+  Text,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { Deal, DealModalProps } from '@/types/deals';
-import { getDealsByStore, getTopDeals } from '@/utils/mock-deals-data';
 import DealDetailsModal from '@/components/DealDetailsModal';
 import DealList from '@/components/DealList';
+import realOffersApi from '@/services/realOffersApi';
+import DealsListSkeleton from '@/components/skeletons/DealsListSkeleton';
 
 export default function WalkInDealsModal({ visible, onClose, deals = [], storeId }: DealModalProps) {
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedDealForDetails, setSelectedDealForDetails] = useState<Deal | null>(null);
+
+  // API state management
   const [isLoadingDeals, setIsLoadingDeals] = useState(false);
+  const [apiDeals, setApiDeals] = useState<any[]>([]);
+  const [dealCount, setDealCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<'all' | 'walk_in' | 'online' | 'combo' | 'cashback' | 'flash_sale'>('all');
+  const [sortBy, setSortBy] = useState<'priority' | 'discount' | 'expiry' | 'newest'>('priority');
+
   const slideAnim = useRef(new Animated.Value(screenData.height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,7 +54,69 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
     };
   }, [slideAnim, visible]);
 
-  const activeDeals = deals.length > 0 ? deals : (storeId ? getDealsByStore(storeId) : getTopDeals(5));
+  // Fetch deals from API when modal opens or storeId changes
+  useEffect(() => {
+    if (visible && storeId) {
+      fetchStoreDeals();
+    }
+  }, [visible, storeId, filterType, sortBy]);
+
+  const fetchStoreDeals = useCallback(async () => {
+    if (!storeId) return;
+
+    try {
+      setIsLoadingDeals(true);
+      setError(null);
+
+      const response = await realOffersApi.getStoreOffers(storeId, {
+        type: filterType,
+        active: true,
+        sortBy: sortBy,
+        limit: 20
+      });
+
+      if (response.success && response.data) {
+        const fetchedDeals = response.data.deals || [];
+        // Transform API deals to match Deal interface
+        const transformedDeals = fetchedDeals.map((deal: any) => ({
+          id: deal.id,
+          title: deal.title,
+          discountType: deal.discountType === 'bogo' ? 'fixed' : deal.discountType,
+          discountValue: deal.discountValue,
+          minimumBill: deal.minPurchase || 0,
+          maxDiscount: deal.maxDiscount,
+          isOfflineOnly: deal.type === 'walk_in',
+          terms: deal.terms || [],
+          isActive: deal.isActive,
+          validUntil: new Date(deal.validUntil),
+          category: deal.category || 'instant-discount',
+          description: deal.description,
+          priority: deal.priority || 1,
+          usageLimit: deal.usageLimit,
+          usageCount: deal.usedCount || 0,
+          applicableProducts: deal.applicableProducts || [],
+          badge: deal.badge || {
+            text: `${deal.discountValue}%`,
+            backgroundColor: '#E5E7EB',
+            textColor: '#374151'
+          }
+        }));
+
+        setApiDeals(transformedDeals);
+        setDealCount(response.data.totalCount || transformedDeals.length);
+      } else {
+        setError(response.message || 'Failed to load deals');
+      }
+    } catch (err) {
+      console.error('❌ [WALK-IN DEALS] Error fetching store deals:', err);
+      setError('Unable to load deals. Please try again.');
+    } finally {
+      setIsLoadingDeals(false);
+    }
+  }, [storeId, filterType, sortBy]);
+
+  // Use API deals if available, otherwise fallback to passed deals
+  const activeDeals = apiDeals.length > 0 ? apiDeals : deals;
   const styles = useMemo(() => createStyles(screenData), [screenData]);
 
   useEffect(() => {
@@ -82,13 +155,27 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
   };
 
   const handleRefreshDeals = useCallback(async () => {
-    setIsLoadingDeals(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoadingDeals(false);
+    await fetchStoreDeals();
+  }, [fetchStoreDeals]);
+
+  const handleFilterChange = useCallback((type: typeof filterType) => {
+    setFilterType(type);
+  }, []);
+
+  const handleSortChange = useCallback((sort: typeof sortBy) => {
+    setSortBy(sort);
   }, []);
 
   return (
-    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Walk-in deals dialog"
+    >
       <TouchableWithoutFeedback onPress={handleBackdropPress}>
         <View style={styles.overlay}>
           <Animated.View style={[styles.blurContainer, { opacity: fadeAnim }]}>
@@ -98,27 +185,109 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
           <TouchableWithoutFeedback onPress={handleModalPress}>
             <Animated.View style={[styles.modalContainer, { transform: [{ translateY: slideAnim }] }]}>
               <View style={styles.modal}>
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={onClose}
+                  accessibilityLabel="Close walk-in deals"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to close this dialog"
+                >
                   <Ionicons name="close" size={20} color="#555" />
                 </TouchableOpacity>
 
                 <View style={styles.header}>
                   <ThemedText style={styles.headerTitle}>Walk-in Deals</ThemedText>
-                  <ThemedText style={styles.headerSubtitle}>Available offers for this store</ThemedText>
+                  <ThemedText style={styles.headerSubtitle}>
+                    {dealCount > 0 ? `${dealCount} deals available` : 'Available offers for this store'}
+                  </ThemedText>
                 </View>
 
-                <View style={styles.listContainer}>
-                  <DealList
-                    deals={activeDeals}
-                    selectedDeals={selectedDeals}
-                    onAddDeal={handleAddDeal}
-                    onRemoveDeal={handleRemoveDeal}
-                    onMoreDetails={handleMoreDetails}
-                    isLoading={isLoadingDeals}
-                    onRefresh={handleRefreshDeals}
-                    showFilters={true}
-                  />
+                {/* Filter Tabs */}
+                <View style={styles.filterContainer}>
+                  <TouchableOpacity
+                    style={[styles.filterTab, filterType === 'all' && styles.filterTabActive]}
+                    onPress={() => handleFilterChange('all')}
+                  >
+                    <Text style={[styles.filterTabText, filterType === 'all' && styles.filterTabTextActive]}>
+                      All
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterTab, filterType === 'walk_in' && styles.filterTabActive]}
+                    onPress={() => handleFilterChange('walk_in')}
+                  >
+                    <Text style={[styles.filterTabText, filterType === 'walk_in' && styles.filterTabTextActive]}>
+                      Walk-in
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterTab, filterType === 'online' && styles.filterTabActive]}
+                    onPress={() => handleFilterChange('online')}
+                  >
+                    <Text style={[styles.filterTabText, filterType === 'online' && styles.filterTabTextActive]}>
+                      Online
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterTab, filterType === 'cashback' && styles.filterTabActive]}
+                    onPress={() => handleFilterChange('cashback')}
+                  >
+                    <Text style={[styles.filterTabText, filterType === 'cashback' && styles.filterTabTextActive]}>
+                      Cashback
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterTab, filterType === 'combo' && styles.filterTabActive]}
+                    onPress={() => handleFilterChange('combo')}
+                  >
+                    <Text style={[styles.filterTabText, filterType === 'combo' && styles.filterTabTextActive]}>
+                      Combos
+                    </Text>
+                  </TouchableOpacity>
                 </View>
+
+                {/* Error State */}
+                {error && (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity style={styles.retryButton} onPress={handleRefreshDeals}>
+                      <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Empty State */}
+                {!isLoadingDeals && !error && activeDeals.length === 0 && (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="gift-outline" size={64} color="#D1D5DB" />
+                    <Text style={styles.emptyTitle}>No deals available right now</Text>
+                    <Text style={styles.emptySubtitle}>Check back later for exciting offers!</Text>
+                  </View>
+                )}
+
+                {/* Deals List */}
+                {!error && activeDeals.length > 0 && (
+                  <View style={styles.listContainer}>
+                    <DealList
+                      deals={activeDeals}
+                      selectedDeals={selectedDeals}
+                      onAddDeal={handleAddDeal}
+                      onRemoveDeal={handleRemoveDeal}
+                      onMoreDetails={handleMoreDetails}
+                      isLoading={isLoadingDeals}
+                      onRefresh={handleRefreshDeals}
+                      showFilters={true}
+                    />
+                  </View>
+                )}
+
+                {/* Loading Skeleton */}
+                {isLoadingDeals && activeDeals.length === 0 && (
+                  <View style={styles.listContainer}>
+                    <DealsListSkeleton count={4} />
+                  </View>
+                )}
               </View>
             </Animated.View>
           </TouchableWithoutFeedback>
@@ -131,7 +300,7 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
         deal={selectedDealForDetails}
       />
     </Modal>
-);
+  );
 }
 
 const createStyles = (screenData: { width: number; height: number }) => {
@@ -157,7 +326,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
     },
     modal: {
       backgroundColor: '#fff',
-      borderRadius: isTabletOrLarge ? 0 : 20, // No radius for full-width large screens
+      borderRadius: isTabletOrLarge ? 0 : 20,
       width: '100%',
       maxHeight: maxModalHeight,
       minHeight: isSmallScreen ? 300 : 400,
@@ -182,7 +351,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
     },
     header: {
       marginTop: isSmallScreen ? 16 : 24,
-      marginBottom: isSmallScreen ? 20 : 28,
+      marginBottom: isSmallScreen ? 16 : 20,
       alignItems: 'center',
       paddingHorizontal: isSmallScreen ? 12 : 20,
       paddingTop: 8,
@@ -201,6 +370,98 @@ const createStyles = (screenData: { width: number; height: number }) => {
       textAlign: 'center',
       lineHeight: isSmallScreen ? 18 : 20,
     },
+    filterContainer: {
+      flexDirection: 'row',
+      paddingHorizontal: isSmallScreen ? 8 : 12,
+      paddingVertical: 12,
+      gap: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: '#F1F5F9',
+      marginBottom: 12,
+    },
+    filterTab: {
+      paddingHorizontal: isSmallScreen ? 10 : 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: '#F8FAFC',
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+      minHeight: 36,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    filterTabActive: {
+      backgroundColor: '#7C3AED',
+      borderColor: '#7C3AED',
+    },
+    filterTabText: {
+      fontSize: isSmallScreen ? 12 : 13,
+      fontWeight: '600',
+      color: '#64748B',
+    },
+    filterTabTextActive: {
+      color: '#FFFFFF',
+    },
     listContainer: { flex: 1, marginTop: 0, paddingTop: 8 },
+    errorContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#FEF2F2',
+      padding: 16,
+      borderRadius: 12,
+      marginHorizontal: 12,
+      marginVertical: 12,
+      gap: 12,
+    },
+    errorText: {
+      flex: 1,
+      fontSize: 14,
+      color: '#EF4444',
+      fontWeight: '500',
+    },
+    retryButton: {
+      backgroundColor: '#7C3AED',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+    },
+    retryButtonText: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 60,
+      paddingHorizontal: 20,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#374151',
+      marginTop: 16,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    emptySubtitle: {
+      fontSize: 14,
+      color: '#6B7280',
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 60,
+    },
+    loadingText: {
+      marginTop: 16,
+      fontSize: 14,
+      color: '#6B7280',
+      fontWeight: '500',
+    },
   });
 };

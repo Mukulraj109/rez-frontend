@@ -43,10 +43,14 @@ export default function CategoryTile({
   const sizeStyles = getSizeStyles(size);
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.container, sizeStyles.container]}
       onPress={onPress}
       activeOpacity={0.8}
+      accessibilityLabel={`${category.name} category${category.projectCount > 0 ? `. ${category.projectCount} project${category.projectCount !== 1 ? 's' : ''} available` : ''}`}
+      accessibilityRole="button"
+      accessibilityHint={category.isActive ? `Double tap to view ${category.name} projects` : 'Coming soon'}
+      accessibilityState={{ disabled: !category.isActive }}
     >
       <LinearGradient
         colors={Array.isArray(gradient) && gradient.length > 0 ? gradient : ['#8B5CF6', '#7C3AED', '#6D28D9']}

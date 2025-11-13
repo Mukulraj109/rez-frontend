@@ -81,6 +81,8 @@ export default function HomeDeliveryPage() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
+        accessibilityLabel="Home delivery products list"
+        accessibilityRole="scrollbar"
       >
           {/* Category Tabs */}
           <CategoryTabs
@@ -114,7 +116,11 @@ export default function HomeDeliveryPage() {
           {!state.searchQuery.trim() && state.activeCategory !== 'all' && (
             <>
               {/* Simple Category Heading */}
-              <View style={styles.simpleCategoryHeader}>
+              <View
+                style={styles.simpleCategoryHeader}
+                accessibilityRole="header"
+                accessibilityLabel={`${state.categories.find(cat => cat.id === state.activeCategory)?.name || 'Products'} category`}
+              >
                 <ThemedText style={styles.simpleCategoryTitle}>
                   {state.categories.find(cat => cat.id === state.activeCategory)?.name || 'Products'}
                 </ThemedText>
@@ -133,7 +139,11 @@ export default function HomeDeliveryPage() {
                   />
                 </View>
               ) : (
-                <View style={styles.emptyState}>
+                <View
+                  style={styles.emptyState}
+                  accessibilityRole="alert"
+                  accessibilityLabel="No products found in this category"
+                >
                   <View style={styles.emptyIconContainer}>
                     <Ionicons name="search-outline" size={64} color="#D1D5DB" />
                   </View>
@@ -142,9 +152,12 @@ export default function HomeDeliveryPage() {
                     We couldn't find any products in this category.{'\n'}Try selecting a different category or browse all products.
                   </ThemedText>
                   <View style={styles.emptyActionContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.emptyActionButton}
                       onPress={() => handlers.handleCategoryChange('all')}
+                      accessibilityLabel="Browse all products"
+                      accessibilityRole="button"
+                      accessibilityHint="Double tap to view all available products"
                     >
                       <ThemedText style={styles.emptyActionText}>Browse All Products</ThemedText>
                     </TouchableOpacity>
@@ -158,7 +171,15 @@ export default function HomeDeliveryPage() {
           {state.searchQuery.trim() && (
             <>
               {/* Search Results Header */}
-              <View style={styles.searchResultsHeader}>
+              <View
+                style={styles.searchResultsHeader}
+                accessibilityRole="header"
+                accessibilityLabel={state.searchQuery.trim().length < 2
+                  ? "Search results. Type at least 2 characters to search"
+                  : state.loading
+                    ? "Searching for products"
+                    : `Search results for ${state.searchQuery}. ${state.filteredProducts.length} ${state.filteredProducts.length === 1 ? 'product' : 'products'} found`}
+              >
                 <View style={styles.searchResultsTitleContainer}>
                   <Ionicons name="search" size={20} color="#8B5CF6" />
                   <ThemedText style={styles.searchResultsTitle}>
@@ -184,7 +205,11 @@ export default function HomeDeliveryPage() {
               {/* Search Results Grid */}
               {state.searchQuery.trim().length < 2 ? (
                 // Show hint message for short queries
-                <View style={styles.searchHintContainer}>
+                <View
+                  style={styles.searchHintContainer}
+                  accessibilityRole="alert"
+                  accessibilityLabel="Search hint. Enter at least 2 characters to start searching"
+                >
                   <Ionicons name="information-circle-outline" size={48} color="#D1D5DB" />
                   <ThemedText style={styles.searchHintTitle}>Keep typing...</ThemedText>
                   <ThemedText style={styles.searchHintText}>
@@ -192,7 +217,12 @@ export default function HomeDeliveryPage() {
                   </ThemedText>
                 </View>
               ) : state.loading ? (
-                <View style={styles.loadingContainer}>
+                <View
+                  style={styles.loadingContainer}
+                  accessibilityRole="progressbar"
+                  accessibilityLabel="Searching for products"
+                  accessibilityValue={{ text: "Loading" }}
+                >
                   <ActivityIndicator size="large" color="#8B5CF6" />
                   <ThemedText style={styles.loadingText}>Searching products...</ThemedText>
                 </View>
@@ -209,7 +239,11 @@ export default function HomeDeliveryPage() {
                   />
                 </View>
               ) : (
-                <View style={styles.searchEmptyState}>
+                <View
+                  style={styles.searchEmptyState}
+                  accessibilityRole="alert"
+                  accessibilityLabel={`No results found for ${state.searchQuery}. Try different keywords or browse our categories`}
+                >
                   <View style={styles.emptyIconContainer}>
                     <Ionicons name="search-outline" size={80} color="#D1D5DB" />
                   </View>
@@ -221,9 +255,12 @@ export default function HomeDeliveryPage() {
                     Try different keywords or browse our categories
                   </ThemedText>
                   <View style={styles.emptyActionContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.emptyActionButton}
                       onPress={() => handlers.handleSearchChange('')}
+                      accessibilityLabel="Clear search"
+                      accessibilityRole="button"
+                      accessibilityHint="Double tap to clear search and view all products"
                     >
                       <ThemedText style={styles.emptyActionText}>Clear Search</ThemedText>
                     </TouchableOpacity>

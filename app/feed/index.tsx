@@ -127,7 +127,12 @@ const ActivityFeedPage = () => {
         <View style={styles.suggestedHeader}>
           <Text style={styles.suggestedTitle}>Suggested for you</Text>
           {followingCount > 0 && (
-            <TouchableOpacity onPress={() => loadSuggestions(10)}>
+            <TouchableOpacity
+              onPress={() => loadSuggestions(10)}
+              accessibilityLabel="Refresh suggestions"
+              accessibilityRole="button"
+              accessibilityHint="Loads new user suggestions"
+            >
               <Ionicons name="refresh" size={20} color="#007AFF" />
             </TouchableOpacity>
           )}
@@ -208,7 +213,13 @@ const ActivityFeedPage = () => {
         <Text style={styles.emptyText}>
           Follow people to see their activities in your feed
         </Text>
-        <TouchableOpacity style={styles.discoverButton} onPress={loadSuggestedUsers}>
+        <TouchableOpacity
+          style={styles.discoverButton}
+          onPress={loadSuggestedUsers}
+          accessibilityLabel="Discover people"
+          accessibilityRole="button"
+          accessibilityHint="Find new people to follow"
+        >
           <Text style={styles.discoverButtonText}>Discover People</Text>
         </TouchableOpacity>
       </View>
@@ -233,10 +244,19 @@ const ActivityFeedPage = () => {
           <TouchableOpacity
             style={styles.headerButton}
             onPress={() => setShowFilterMenu(!showFilterMenu)}
+            accessibilityLabel="Filter options"
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showFilterMenu }}
+            accessibilityHint="Opens filter menu to sort feed posts"
           >
             <Ionicons name="options-outline" size={24} color="#000" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            accessibilityLabel="Notifications"
+            accessibilityRole="button"
+            accessibilityHint="View your notifications"
+          >
             <Ionicons name="notifications-outline" size={24} color="#000" />
           </TouchableOpacity>
         </View>
@@ -288,7 +308,13 @@ const ActivityFeedPage = () => {
             },
           ]}
         >
-          <TouchableOpacity style={styles.newPostsButton} onPress={handleLoadNewPosts}>
+          <TouchableOpacity
+            style={styles.newPostsButton}
+            onPress={handleLoadNewPosts}
+            accessibilityLabel={`Load ${newPostsCount} new ${newPostsCount === 1 ? 'post' : 'posts'}`}
+            accessibilityRole="button"
+            accessibilityHint="Loads new posts to the feed"
+          >
             <Ionicons name="arrow-up" size={16} color="#fff" />
             <Text style={styles.newPostsText}>
               {newPostsCount} new {newPostsCount === 1 ? 'post' : 'posts'}

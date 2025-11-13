@@ -253,7 +253,13 @@ export default function SupportChatPage() {
         <Ionicons name="alert-circle" size={48} color="#EF4444" />
         <ThemedText style={styles.errorTitle}>Connection Error</ThemedText>
         <ThemedText style={styles.errorMessage}>{messagesError}</ThemedText>
-        <TouchableOpacity style={styles.retryButton} onPress={handleInitializeTicket}>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={handleInitializeTicket}
+          accessibilityLabel="Retry connection"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to retry connecting to support"
+        >
           <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
         </TouchableOpacity>
       </View>
@@ -277,6 +283,7 @@ export default function SupportChatPage() {
           onBack={handleBackPress}
           onCall={handleCallRequest}
           onInfo={() => {}}
+          accessibilityLabel={assignedAgent ? `Chat with ${assignedAgent.name}` : 'Support chat'}
         />
 
         {/* Connection Status */}
@@ -337,25 +344,32 @@ export default function SupportChatPage() {
               <ThemedText style={styles.messagesLoadingText}>Loading messages...</ThemedText>
             </View>
           ) : (
-            messages.map((msg) => (
-              <View
-                key={msg.id}
-                style={[
-                  styles.messageBubble,
-                  msg.sender === 'user' ? styles.userMessage : styles.agentMessage,
-                  msg.sender === 'system' && styles.systemMessage,
-                ]}
-              >
-                {msg.sender === 'agent' && assignedAgent && (
-                  <View style={styles.agentInfo}>
-                    <View style={styles.smallAgentAvatar}>
-                      <ThemedText style={styles.smallAgentInitial}>
-                        {assignedAgent.name.charAt(0)}
-                      </ThemedText>
+            messages.map((msg) => {
+              const messageTime = formatTime(msg.timestamp);
+              const sender = msg.sender === 'user' ? 'You' : msg.sender === 'agent' ? assignedAgent?.name || 'Agent' : 'System';
+              const accessibilityLabel = `${sender} at ${messageTime}: ${msg.content}`;
+
+              return (
+                <View
+                  key={msg.id}
+                  style={[
+                    styles.messageBubble,
+                    msg.sender === 'user' ? styles.userMessage : styles.agentMessage,
+                    msg.sender === 'system' && styles.systemMessage,
+                  ]}
+                  accessibilityLabel={accessibilityLabel}
+                  accessibilityRole="text"
+                >
+                  {msg.sender === 'agent' && assignedAgent && (
+                    <View style={styles.agentInfo}>
+                      <View style={styles.smallAgentAvatar}>
+                        <ThemedText style={styles.smallAgentInitial}>
+                          {assignedAgent.name.charAt(0)}
+                        </ThemedText>
+                      </View>
+                      <ThemedText style={styles.agentName}>{assignedAgent.name}</ThemedText>
                     </View>
-                    <ThemedText style={styles.agentName}>{assignedAgent.name}</ThemedText>
-                  </View>
-                )}
+                  )}
 
                 {msg.sender === 'system' ? (
                   <View style={styles.systemMessageContent}>
@@ -414,7 +428,8 @@ export default function SupportChatPage() {
                   </View>
                 )}
               </View>
-            ))
+            );
+          })
           )}
 
           {/* Typing Indicator */}
@@ -456,6 +471,9 @@ export default function SupportChatPage() {
                 <TouchableOpacity
                   style={styles.removeAttachmentButton}
                   onPress={() => removeAttachment(att.id)}
+                  accessibilityLabel={`Remove attachment ${att.name || 'file'}`}
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to remove this attachment"
                 >
                   <Ionicons name="close-circle" size={20} color="#EF4444" />
                 </TouchableOpacity>
@@ -469,6 +487,10 @@ export default function SupportChatPage() {
           <TouchableOpacity
             style={styles.attachButton}
             onPress={() => setShowOptions(!showOptions)}
+            accessibilityLabel={showOptions ? 'Close attachment options' : 'Add attachment'}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to attach files, photos, or access FAQ"
+            accessibilityState={{ expanded: showOptions }}
           >
             <Ionicons
               name={showOptions ? 'close-circle' : 'add-circle'}
@@ -485,12 +507,19 @@ export default function SupportChatPage() {
             onChangeText={handleInputChange}
             multiline
             maxLength={500}
+            accessibilityLabel="Message input field"
+            accessibilityHint="Type your message to support agent"
+            accessibilityRole="text"
           />
 
           <TouchableOpacity
             style={[styles.sendButton, !inputText.trim() && attachments.length === 0 && styles.sendButtonDisabled]}
             onPress={handleSend}
             disabled={!inputText.trim() && attachments.length === 0}
+            accessibilityLabel="Send message"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to send your message"
+            accessibilityState={{ disabled: !inputText.trim() && attachments.length === 0 }}
           >
             <LinearGradient
               colors={(inputText.trim() || attachments.length > 0 ? ['#10B981', '#059669'] : ['#E5E7EB', '#D1D5DB']) as any}
@@ -504,17 +533,35 @@ export default function SupportChatPage() {
         {/* Attachment Options */}
         {showOptions && (
           <View style={styles.optionsContainer}>
-            <TouchableOpacity style={styles.option} onPress={handleImagePick}>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={handleImagePick}
+              accessibilityLabel="Attach photo"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to attach a photo from your library"
+            >
               <Ionicons name="image" size={24} color="#3B82F6" />
               <ThemedText style={styles.optionText}>Photo</ThemedText>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.option} onPress={handleFilePick}>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={handleFilePick}
+              accessibilityLabel="Attach file"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to attach a file"
+            >
               <Ionicons name="document" size={24} color="#8B5CF6" />
               <ThemedText style={styles.optionText}>File</ThemedText>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.option} onPress={toggleFAQ}>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={toggleFAQ}
+              accessibilityLabel="View FAQ"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view frequently asked questions"
+            >
               <Ionicons name="help-circle" size={24} color="#F59E0B" />
               <ThemedText style={styles.optionText}>FAQ</ThemedText>
             </TouchableOpacity>

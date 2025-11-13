@@ -53,7 +53,13 @@ export default function TrialCountdownCircle({
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
+    <View
+      style={[styles.container, { width: size, height: size }]}
+      accessible={true}
+      accessibilityLabel={`Trial countdown: ${daysLeft} days remaining, ${Math.round(progress)}% of trial period left`}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 7, now: daysLeft }}
+    >
       <Svg width={size} height={size} style={styles.svg}>
         <Defs>
           <SvgLinearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">

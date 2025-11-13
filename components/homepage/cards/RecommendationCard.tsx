@@ -106,15 +106,28 @@ export default function RecommendationCard({
     }
   };
 
+  const discount = getDiscountPercentage();
+  const stockStatus = isOutOfStock ? 'Out of stock' : isLowStock ? 'Low stock' : 'In stock';
+  const wishlistStatus = isInWishlist(productId) ? 'in wishlist' : 'not in wishlist';
+
+  const recommendationLabel = `Recommended for you. ${recommendation.brand} ${recommendation.name}. Price ${formatPrice(recommendation.price.current)}${recommendation.price.original && recommendation.price.original > recommendation.price.current ? `. Was ${formatPrice(recommendation.price.original)}` : ''}${discount > 0 ? `. ${discount}% off` : ''}${recommendation.rating ? `. ${recommendation.rating.value} stars, ${recommendation.rating.count} reviews` : ''}. ${Math.round(recommendation.recommendationScore * 100)}% match based on ${recommendation.recommendationReason}. ${stockStatus}${recommendation.cashback ? `. Up to ${recommendation.cashback.percentage}% cashback` : ''}. ${wishlistStatus}`;
+
   return (
     <TouchableOpacity
       style={[styles.container, { width }]}
       onPress={() => onPress(recommendation)}
       activeOpacity={0.95}
+      accessibilityLabel={recommendationLabel}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view recommended product details"
     >
       <ThemedView style={styles.card}>
         {/* Recommendation Badge */}
-        <View style={styles.recommendationBadge}>
+        <View
+          style={styles.recommendationBadge}
+          accessibilityLabel="Recommended for you"
+          accessibilityRole="text"
+        >
           <Ionicons name="sparkles" size={12} color="#FFFFFF" />
           <ThemedText style={styles.recommendationBadgeText}>
             For You
@@ -198,7 +211,9 @@ export default function RecommendationCard({
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={12} color="#F59E0B" />
               <ThemedText style={styles.ratingText}>
-                {recommendation.rating.value}
+                {typeof recommendation.rating.value === 'number'
+                  ? recommendation.rating.value.toFixed(1)
+                  : recommendation.rating.value}
               </ThemedText>
               <ThemedText style={styles.ratingCount}>
                 ({recommendation.rating.count})

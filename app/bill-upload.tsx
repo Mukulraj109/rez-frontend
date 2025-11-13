@@ -75,6 +75,7 @@ import { errorReporter } from '@/utils/errorReporter';
 import { billUploadAnalytics } from '@/services/billUploadAnalytics';
 import type { CashbackCalculation } from '@/types/billVerification.types';
 import { FILE_SIZE_LIMITS, ALLOWED_FILE_FORMATS } from '@/utils/fileUploadConstants';
+import logger from '@/utils/logger';
 
 // Constants
 const FORM_STORAGE_KEY = '@bill_upload_draft';
@@ -255,7 +256,7 @@ export default function BillUploadPage() {
         showToast('Draft restored', 'info');
       }
     } catch (error) {
-      console.error('Failed to load saved form data:', error);
+      logger.error('Failed to load saved form data:', error);
     }
   };
 
@@ -270,7 +271,7 @@ export default function BillUploadPage() {
       };
       await AsyncStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(dataToSave));
     } catch (error) {
-      console.error('Failed to save form data:', error);
+      logger.error('Failed to save form data:', error);
     }
   }, [formData]);
 
@@ -281,7 +282,7 @@ export default function BillUploadPage() {
     try {
       await AsyncStorage.removeItem(FORM_STORAGE_KEY);
     } catch (error) {
-      console.error('Failed to clear saved form data:', error);
+      logger.error('Failed to clear saved form data:', error);
     }
   };
 
@@ -318,7 +319,7 @@ export default function BillUploadPage() {
         setMerchants(mappedStores);
       }
     } catch (error) {
-      console.error('Error loading merchants:', error);
+      logger.error('Error loading merchants:', error);
       showToast('Failed to load merchants', 'error');
     } finally {
       setIsLoadingMerchants(false);
@@ -547,7 +548,7 @@ export default function BillUploadPage() {
           showToast(`Bill photo captured (Quality: ${quality.score}/100)`, 'success');
         }
       } catch (error) {
-        console.error('Error taking picture:', error);
+        logger.error('Error taking picture:', error);
         showToast('Failed to take picture', 'error');
       }
     }
@@ -602,7 +603,7 @@ export default function BillUploadPage() {
         showToast(`Bill photo selected (Quality: ${quality.score}/100)`, 'success');
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      logger.error('Error picking image:', error);
       showToast('Failed to pick image', 'error');
     }
   };
@@ -704,7 +705,7 @@ export default function BillUploadPage() {
 
       // Check if online - use offline queue if offline
       if (!isOnline) {
-        console.log('📴 [BILL UPLOAD] Device is offline, adding to queue');
+        logger.debug('📴 [BILL UPLOAD] Device is offline, adding to queue');
 
         try {
           // Add to offline queue
@@ -735,7 +736,7 @@ export default function BillUploadPage() {
           resetForm();
           return;
         } catch (queueError) {
-          console.error('❌ [BILL UPLOAD] Failed to add to queue:', queueError);
+          logger.error('❌ [BILL UPLOAD] Failed to add to queue:', queueError);
           setShowProgressModal(false);
           showToast('Failed to queue bill for upload. Please try again.', 'error');
           setIsValidating(false);
@@ -812,7 +813,7 @@ export default function BillUploadPage() {
         });
       }
     } catch (error) {
-      console.error('Error uploading bill:', error);
+      logger.error('Error uploading bill:', error);
       setShowProgressModal(false);
       showToast('An unexpected error occurred', 'error');
     } finally {

@@ -138,7 +138,13 @@ export default function DowngradeConfirmationPage() {
       {/* Header */}
       <LinearGradient colors={['#F59E0B', '#D97706'] as any} style={styles.header}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to cancel and return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Confirm Downgrade</ThemedText>
@@ -236,6 +242,10 @@ export default function DowngradeConfirmationPage() {
         <TouchableOpacity
           style={styles.checkboxContainer}
           onPress={() => setUnderstood(!understood)}
+          accessibilityRole="checkbox"
+          accessibilityLabel={`I understand the consequences. ${understood ? 'Checked' : 'Unchecked'}`}
+          accessibilityState={{ checked: understood }}
+          accessibilityHint="Double tap to confirm you understand you will lose premium benefits"
         >
           <View style={[styles.checkbox, understood && styles.checkboxChecked]}>
             {understood && <Ionicons name="checkmark" size={20} color="#FFFFFF" />}
@@ -251,6 +261,10 @@ export default function DowngradeConfirmationPage() {
             style={[styles.downgradeButton, !understood && styles.downgradeButtonDisabled]}
             onPress={handleDowngrade}
             disabled={!understood || isDowngrading}
+            accessibilityLabel={isDowngrading ? 'Processing downgrade' : 'Confirm downgrade'}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !understood || isDowngrading, busy: isDowngrading }}
+            accessibilityHint={understood ? 'Double tap to confirm downgrade' : 'Confirm checkbox first to enable this button'}
           >
             {isDowngrading ? (
               <ActivityIndicator color="#FFFFFF" />
@@ -263,6 +277,10 @@ export default function DowngradeConfirmationPage() {
             style={styles.keepPlanButton}
             onPress={() => router.back()}
             disabled={isDowngrading}
+            accessibilityLabel="Keep my current plan"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isDowngrading }}
+            accessibilityHint="Double tap to cancel downgrade and keep your current subscription"
           >
             <ThemedText style={styles.keepPlanButtonText}>Keep My Current Plan</ThemedText>
           </TouchableOpacity>

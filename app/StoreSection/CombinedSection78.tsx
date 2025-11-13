@@ -78,12 +78,25 @@ export default function CombinedSection78({
   };
 
   return (
-    <View style={styles.wrap} testID={testID}>
-      <View style={styles.card}>
+    <View
+      style={styles.wrap}
+      testID={testID}
+      accessibilityRole="region"
+      accessibilityLabel="Instant discount voucher"
+    >
+      <View
+        style={styles.card}
+        accessibilityLabel={`${title}. ${savePercentage}. ${minimumBill}`}
+      >
         {/* header */}
         <View style={styles.headerRow}>
-          <ThemedText style={styles.title}>{title}</ThemedText>
-          <View style={styles.badge}>
+          <ThemedText
+            style={styles.title}
+            accessibilityRole="header"
+          >
+            {title}
+          </ThemedText>
+          <View style={styles.badge} accessibilityElementsHidden>
             <ThemedText style={styles.badgeText}>{savePercentage}</ThemedText>
           </View>
         </View>
@@ -124,6 +137,10 @@ export default function CombinedSection78({
           onPress={handleAddVoucher}
           disabled={disabled || isAddingVoucher}
           style={[styles.addBtn, (disabled || isAddingVoucher) && styles.addBtnDisabled]}
+          accessibilityRole="button"
+          accessibilityLabel={`Add ${title} voucher to account`}
+          accessibilityHint="Double tap to add this discount voucher"
+          accessibilityState={{ disabled: disabled || isAddingVoucher, busy: isAddingVoucher }}
         >
           <ThemedText style={styles.addText}>
             {isAddingVoucher ? 'Adding...' : 'Add'}

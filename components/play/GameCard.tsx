@@ -23,10 +23,14 @@ export default function GameCard({
   isLocked = false
 }: GameCardProps) {
   return (
-    <TouchableOpacity 
-      style={[styles.gameCard, isLocked && styles.lockedCard]} 
+    <TouchableOpacity
+      style={[styles.gameCard, isLocked && styles.lockedCard]}
       onPress={onPress}
       disabled={isLocked}
+      accessibilityLabel={`${title} game. ${description}. ${isLocked ? 'Locked' : `Reward: ${reward}`}`}
+      accessibilityRole="button"
+      accessibilityHint={isLocked ? 'Complete previous challenges to unlock' : 'Double tap to play game and earn rewards'}
+      accessibilityState={{ disabled: isLocked }}
     >
       <View style={styles.gameIcon}>
         <Ionicons name={icon} size={32} color={isLocked ? '#CBD5E1' : iconColor} />

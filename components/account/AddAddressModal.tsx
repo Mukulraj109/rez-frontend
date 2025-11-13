@@ -121,6 +121,8 @@ export default function AddAddressModal({ visible, onClose, onAdd }: AddAddressM
       animationType="slide"
       transparent={true}
       onRequestClose={handleClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Add new address dialog"
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -131,7 +133,13 @@ export default function AddAddressModal({ visible, onClose, onAdd }: AddAddressM
             {/* Header */}
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>Add New Address</ThemedText>
-              <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <TouchableOpacity
+                onPress={handleClose}
+                style={styles.closeButton}
+                accessibilityLabel="Close add address"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to close this dialog"
+              >
                 <Ionicons name="close" size={24} color={ACCOUNT_COLORS.text} />
               </TouchableOpacity>
             </View>
@@ -153,6 +161,10 @@ export default function AddAddressModal({ visible, onClose, onAdd }: AddAddressM
                         type === typeOption.value && styles.typeButtonActive,
                       ]}
                       onPress={() => setType(typeOption.value)}
+                      accessibilityLabel={`Set address type to ${typeOption.label}`}
+                      accessibilityRole="button"
+                      accessibilityHint={`Double tap to select ${typeOption.label} address type`}
+                      accessibilityState={{ selected: type === typeOption.value }}
                     >
                       <Ionicons
                         name={typeOption.icon as any}

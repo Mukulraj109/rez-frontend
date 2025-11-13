@@ -228,7 +228,15 @@ export default function DealComparisonModal({
   if (deals.length === 0) return null;
 
   return (
-    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Compare deals dialog"
+    >
       <TouchableWithoutFeedback onPress={handleBackdropPress}>
         <View style={styles.overlay}>
           <Animated.View style={[styles.blurContainer, { opacity: fadeAnim }]}>
@@ -247,7 +255,13 @@ export default function DealComparisonModal({
               <View style={styles.modal}>
                 {/* Header */}
                 <View style={styles.header}>
-                  <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={onClose}
+                    accessibilityLabel="Close compare deals"
+                    accessibilityRole="button"
+                    accessibilityHint="Double tap to close this dialog"
+                  >
                     <Ionicons name="close" size={20} color="#555" />
                   </TouchableOpacity>
                   
@@ -288,12 +302,15 @@ export default function DealComparisonModal({
                           Save ₹{bestDeal.savings.toLocaleString()}
                         </ThemedText>
                         {onSelectDeal && (
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             style={styles.selectBestButton}
                             onPress={() => {
                               onSelectDeal(bestDeal.deal.id);
                               onClose();
                             }}
+                            accessibilityLabel="Select best deal"
+                            accessibilityRole="button"
+                            accessibilityHint="Double tap to select this deal and close dialog"
                           >
                             <ThemedText style={styles.selectBestButtonText}>Select This Deal</ThemedText>
                           </TouchableOpacity>
@@ -314,11 +331,15 @@ export default function DealComparisonModal({
                             selectedMetrics.includes(key) && styles.metricTagSelected
                           ]}
                           onPress={() => toggleMetric(key)}
+                          accessibilityLabel={`${selectedMetrics.includes(key) ? 'Remove' : 'Add'} ${metric.label} metric`}
+                          accessibilityRole="button"
+                          accessibilityHint={`Double tap to ${selectedMetrics.includes(key) ? 'remove' : 'add'} this comparison metric`}
+                          accessibilityState={{ selected: selectedMetrics.includes(key) }}
                         >
-                          <Ionicons 
-                            name={metric.icon as any} 
-                            size={14} 
-                            color={selectedMetrics.includes(key) ? '#fff' : '#8B5CF6'} 
+                          <Ionicons
+                            name={metric.icon as any}
+                            size={14}
+                            color={selectedMetrics.includes(key) ? '#fff' : '#8B5CF6'}
                           />
                           <ThemedText style={[
                             styles.metricTagText,
@@ -400,6 +421,13 @@ export default function DealComparisonModal({
                               }
                             }}
                             disabled={!isValid}
+                            accessibilityLabel={`Select ${deal.title}`}
+                            accessibilityRole="button"
+                            accessibilityHint={isValid
+                              ? `Double tap to select this deal and close dialog. You will save ${result.discountAmount} rupees`
+                              : `This deal requires a minimum bill of ${deal.minimumBill} rupees`
+                            }
+                            accessibilityState={{ disabled: !isValid }}
                           >
                             <View style={styles.dealSelectionContent}>
                               <View style={styles.dealSelectionHeader}>

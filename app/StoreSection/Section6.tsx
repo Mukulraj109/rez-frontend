@@ -105,14 +105,24 @@ export default function Section6({ dynamicData, cardType }: Section6Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
+    <View
+      style={styles.container}
+      accessibilityRole="region"
+      accessibilityLabel="Store vouchers section"
+    >
+      <View
+        style={styles.card}
+        accessibilityLabel="10 vouchers for store visit available"
+      >
         {/* Header */}
         <View style={styles.header}>
-          <ThemedText style={styles.mainTitle}>
+          <ThemedText
+            style={styles.mainTitle}
+            accessibilityRole="header"
+          >
             10 Vouchers for store visit
           </ThemedText>
-          <View style={styles.percentContainer}>
+          <View style={styles.percentContainer} accessibilityElementsHidden>
             <ThemedText style={styles.percentIcon}>%</ThemedText>
           </View>
         </View>
@@ -134,6 +144,9 @@ export default function Section6({ dynamicData, cardType }: Section6Props) {
               setShowDetails(!showDetails);
             }
           }}
+          accessibilityRole="button"
+          accessibilityLabel={storeId ? `View all outlets for ${storeName || 'store'}` : 'View voucher details'}
+          accessibilityHint={storeId ? 'Double tap to see store outlet locations' : 'Double tap to expand voucher information'}
         >
           <ThemedText style={styles.expandText}>View all outlet</ThemedText>
           <Ionicons name="chevron-forward" size={18} color="#6c63ff" />
@@ -213,6 +226,10 @@ export default function Section6({ dynamicData, cardType }: Section6Props) {
                   activeOpacity={0.8}
                   onPress={handleAddVoucher}
                   disabled={isAddingVoucher || !selectedVoucher.canRedeem}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Claim ${selectedVoucher.name} voucher. Minimum bill ${selectedVoucher.minBillAmount} rupees`}
+                  accessibilityHint="Double tap to claim this voucher for your account"
+                  accessibilityState={{ disabled: isAddingVoucher || !selectedVoucher.canRedeem, busy: isAddingVoucher }}
                 >
                   <LinearGradient
                     colors={['#8B5CF6', '#7C3AED']}

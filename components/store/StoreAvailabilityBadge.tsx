@@ -71,8 +71,16 @@ export default function StoreAvailabilityBadge({
 
   return (
     <View style={styles.container}>
-      <View style={[styles.badge, sizeConfig.container, { backgroundColor: statusColor + '15' }]}>
-        <View style={[styles.statusDot, { backgroundColor: statusColor, width: sizeConfig.dot, height: sizeConfig.dot, borderRadius: sizeConfig.dot / 2 }]} />
+      <View
+        style={[styles.badge, sizeConfig.container, { backgroundColor: statusColor + '15' }]}
+        accessibilityRole="text"
+        accessibilityLabel={`Store status: ${getStatusText()}`}
+      >
+        <View
+          style={[styles.statusDot, { backgroundColor: statusColor, width: sizeConfig.dot, height: sizeConfig.dot, borderRadius: sizeConfig.dot / 2 }]}
+          accessibilityElementsHidden={true}
+          importantForAccessibility="no"
+        />
         <ThemedText style={[sizeConfig.text, { color: statusColor }]}>
           {getStatusText()}
         </ThemedText>

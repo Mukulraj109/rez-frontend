@@ -1,9 +1,9 @@
 import React from 'react';
-import { 
-  TouchableOpacity, 
-  StyleSheet, 
-  Image, 
-  View 
+import {
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  View
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,13 +11,24 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { StoreCardProps } from '@/types/homepage.types';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import QuickActions from '@/components/store/QuickActions';
 
-export default function StoreCard({ 
-  store, 
-  onPress, 
+export default function StoreCard({
+  store,
+  onPress,
   width = 280,
-  variant = 'default'
-}: StoreCardProps) {
+  variant = 'default',
+  showQuickActions = false, // New prop to enable Quick Actions
+  storeType, // Optional store type for Quick Actions
+  contact, // Optional contact info for Quick Actions
+}: StoreCardProps & {
+  showQuickActions?: boolean;
+  storeType?: 'PRODUCT' | 'SERVICE' | 'HYBRID' | 'RESTAURANT';
+  contact?: {
+    phone?: string;
+    email?: string;
+  };
+}) {
   const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#1F2937' }, 'background');
   const textColor = useThemeColor({}, 'text');
   const textSecondary = useThemeColor({ light: '#6B7280', dark: '#9CA3AF' }, 'text');
@@ -28,7 +39,9 @@ export default function StoreCard({
       <View style={styles.ratingContainer}>
         <Ionicons name="star" size={16} color="#F59E0B" />
         <ThemedText style={[styles.ratingText, { color: textColor }]}>
-          {store.rating.value}
+          {typeof store.rating.value === 'number'
+            ? store.rating.value.toFixed(1)
+            : store.rating.value}
         </ThemedText>
         <ThemedText style={[styles.ratingCount, { color: textSecondary }]}>
           ({store.rating.count})
@@ -130,13 +143,34 @@ export default function StoreCard({
                 Up to {store.cashback?.percentage || 10}% cash back
               </ThemedText>
             </View>
-            
+
             {store.minimumOrder && (
               <ThemedText style={styles.minOrderText}>
                 Min ₹{store.minimumOrder}
               </ThemedText>
             )}
           </View>
+
+          {/* Quick Actions (optional, compact variant) */}
+          {showQuickActions && (
+            <View style={styles.quickActionsContainer}>
+              <QuickActions
+                storeId={store.id}
+                storeName={store.name}
+                storeType={storeType || (store.category === 'Restaurant' ? 'RESTAURANT' : 'PRODUCT')}
+                contact={contact}
+                location={store.location ? {
+                  address: store.location.address,
+                  city: store.location.city,
+                } : undefined}
+                hasMenu={storeType === 'RESTAURANT' || store.category === 'Restaurant'}
+                allowBooking={storeType === 'SERVICE' || storeType === 'HYBRID'}
+                variant="compact"
+                maxActions={4}
+                hideTitle={false}
+              />
+            </View>
+          )}
         </View>
       </ThemedView>
     </TouchableOpacity>
@@ -278,5 +312,12 @@ const styles = StyleSheet.create({
   minOrderText: {
     fontSize: 12,
     color: '#9CA3AF',
+  },
+  quickActionsContainer: {
+    marginTop: 16,
+    marginHorizontal: -16, // Compensate for card padding
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 12,
   },
 });

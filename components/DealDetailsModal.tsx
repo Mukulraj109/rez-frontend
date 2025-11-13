@@ -116,7 +116,15 @@ export default function DealDetailsModal({ visible, onClose, deal }: DealDetails
   };
 
   return (
-    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Deal details dialog"
+    >
       <TouchableWithoutFeedback onPress={handleBackdropPress}>
         <View style={styles.overlay}>
           <Animated.View style={[styles.blurContainer, { opacity: fadeAnim }]}>
@@ -134,7 +142,13 @@ export default function DealDetailsModal({ visible, onClose, deal }: DealDetails
             >
               <View style={styles.modal}>
                 {/* Close button */}
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={onClose}
+                  accessibilityLabel="Close deal details"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to close this dialog"
+                >
                   <Ionicons name="close" size={20} color="#555" />
                 </TouchableOpacity>
 

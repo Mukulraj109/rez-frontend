@@ -45,7 +45,8 @@ export default function CashbackOffer({
         onPress && styles.pressable,
       ]}
       accessibilityRole={onPress ? "button" : "text"}
-      accessibilityLabel={`${title} ${pct}`}
+      accessibilityLabel={`${title} ${pct} offer`}
+      accessibilityHint={onPress ? "Double tap to view cashback details" : undefined}
     >
       <View style={[styles.card, isSmallScreen && styles.cardCompact]}>
         {showIcon && (

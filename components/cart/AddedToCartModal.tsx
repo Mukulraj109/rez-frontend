@@ -63,11 +63,16 @@ export default function AddedToCartModal({
       animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Added to cart confirmation dialog"
     >
       <TouchableOpacity
         style={styles.overlay}
         activeOpacity={1}
         onPress={onClose}
+        accessibilityLabel="Close added to cart"
+        accessibilityRole="button"
+        accessibilityHint="Double tap to close this dialog"
       >
         <Animated.View
           style={[
@@ -98,6 +103,9 @@ export default function AddedToCartModal({
               style={styles.closeButton}
               onPress={onClose}
               activeOpacity={0.7}
+              accessibilityLabel="Close dialog"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to close this dialog"
             >
               <Ionicons name="close" size={24} color="#6B7280" />
             </TouchableOpacity>
@@ -146,6 +154,9 @@ export default function AddedToCartModal({
                 onViewCart();
               }}
               activeOpacity={0.8}
+              accessibilityLabel="View cart"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view your shopping cart"
             >
               <LinearGradient
                 colors={['#8B5CF6', '#7C3AED']}
@@ -162,6 +173,9 @@ export default function AddedToCartModal({
               style={styles.continueButton}
               onPress={onClose}
               activeOpacity={0.8}
+              accessibilityLabel="Continue shopping"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to continue shopping and close this dialog"
             >
               <Text style={styles.continueText}>Continue Shopping</Text>
             </TouchableOpacity>

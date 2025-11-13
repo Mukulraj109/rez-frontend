@@ -22,6 +22,24 @@ export function HomeDeliveryProductCard({
   const discountPercentage = product.price.discount || 0;
   const hasDiscount = discountPercentage > 0;
 
+  // Build comprehensive accessibility label
+  const buildAccessibilityLabel = () => {
+    const parts = [
+      product.name,
+      product.brand ? `by ${product.brand}` : '',
+      `Price ${product.price.currency}${product.price.current}`,
+      product.price.original ? `was ${product.price.currency}${product.price.original}` : '',
+      hasDiscount ? `${discountPercentage}% off` : '',
+      product.rating ? `Rated ${product.rating.value} stars` : '',
+      showCashback ? `Up to ${product.cashback.percentage}% cashback` : '',
+      showDeliveryTime ? `Delivery in ${product.deliveryTime}` : '',
+      product.shipping.freeShippingEligible ? 'Free shipping available' : '',
+      product.isNew ? 'New product' : '',
+      `From ${product.store.name}`,
+    ];
+    return parts.filter(Boolean).join('. ');
+  };
+
   return (
     <TouchableOpacity
       style={[
@@ -30,6 +48,9 @@ export function HomeDeliveryProductCard({
       ]}
       onPress={onPress}
       activeOpacity={0.8}
+      accessibilityLabel={buildAccessibilityLabel()}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view product details"
     >
       {/* Product Image */}
       <View style={styles.imageContainer}>
@@ -103,7 +124,9 @@ export function HomeDeliveryProductCard({
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={12} color="#F59E0B" />
               <ThemedText style={styles.ratingText}>
-                {product.rating.value}
+                {typeof product.rating.value === 'number'
+                  ? product.rating.value.toFixed(1)
+                  : product.rating.value}
               </ThemedText>
             </View>
           )}

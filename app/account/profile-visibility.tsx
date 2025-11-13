@@ -99,12 +99,16 @@ export default function ProfileVisibilityPage() {
       ]}
       onPress={() => handleVisibilityChange(option.value)}
       activeOpacity={0.7}
+      accessibilityLabel={`${option.title}: ${option.description}${selectedVisibility === option.value ? ', selected' : ''}`}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selectedVisibility === option.value }}
+      accessibilityHint="Double tap to select this visibility level"
     >
       <View style={styles.optionHeader}>
         <View style={[styles.optionIcon, { backgroundColor: option.color + '20' }]}>
           <Ionicons name={option.icon as any} size={24} color={option.color} />
         </View>
-        
+
         <View style={styles.optionInfo}>
           <ThemedText style={styles.optionTitle}>{option.title}</ThemedText>
           <ThemedText style={styles.optionDescription}>{option.description}</ThemedText>
@@ -146,7 +150,13 @@ export default function ProfileVisibilityPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 

@@ -42,7 +42,11 @@ export default function ShimmerEffect({
   });
 
   return (
-    <View style={[styles.container, { width: width as any, height: height as any }, style]}>
+    <View
+      style={[styles.container, { width: width as any, height: height as any }, style]}
+      accessibilityElementsHidden={true}
+      importantForAccessibility="no"
+    >
       <View style={[styles.shimmerContainer, { width: width as any, height: height as any }]}>
         <Animated.View
           style={[

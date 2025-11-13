@@ -173,22 +173,35 @@ export default function OutletsPage() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View
+        style={styles.header}
+        accessibilityRole="header"
+      >
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          accessibilityHint="Navigate to previous screen"
         >
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>
+        <ThemedText
+          style={styles.headerTitle}
+          accessibilityRole="header"
+        >
           {storeName ? `${storeName} Outlets` : 'Store Outlets'}
         </ThemedText>
         <View style={styles.placeholder} />
       </View>
 
       {/* Outlet Count */}
-      <View style={styles.countBanner}>
+      <View
+        style={styles.countBanner}
+        accessibilityLabel={`${totalCount} ${totalCount === 1 ? 'outlet' : 'outlets'} found`}
+        accessibilityRole="summary"
+      >
         <ThemedText style={styles.countText}>
           {totalCount} {totalCount === 1 ? 'Outlet' : 'Outlets'} Found
         </ThemedText>
@@ -210,14 +223,24 @@ export default function OutletsPage() {
           </View>
         ) : (
           outlets.map((outlet, index) => (
-            <View key={outlet._id} style={styles.outletCard}>
+            <View
+              key={outlet._id}
+              style={styles.outletCard}
+              accessibilityRole="region"
+              accessibilityLabel={`Outlet ${index + 1}. ${outlet.name}. ${outlet.address}. ${getCurrentDayHours(outlet)}`}
+            >
               {/* Outlet Number Badge */}
-              <View style={styles.outletBadge}>
+              <View style={styles.outletBadge} accessibilityElementsHidden>
                 <ThemedText style={styles.outletBadgeText}>{index + 1}</ThemedText>
               </View>
 
               {/* Outlet Name */}
-              <ThemedText style={styles.outletName}>{outlet.name}</ThemedText>
+              <ThemedText
+                style={styles.outletName}
+                accessibilityRole="header"
+              >
+                {outlet.name}
+              </ThemedText>
 
               {/* Address */}
               <View style={styles.outletSection}>
@@ -245,6 +268,9 @@ export default function OutletsPage() {
                   style={styles.callButton}
                   onPress={() => handleCall(outlet.phone)}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Call ${outlet.name} at ${outlet.phone}`}
+                  accessibilityHint="Double tap to call this outlet"
                 >
                   <Ionicons name="call" size={18} color="#fff" />
                   <ThemedText style={styles.callButtonText}>Call</ThemedText>
@@ -254,6 +280,9 @@ export default function OutletsPage() {
                   style={styles.navigateButton}
                   onPress={() => handleNavigate(outlet)}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Navigate to ${outlet.name}`}
+                  accessibilityHint="Double tap to open maps and navigate"
                 >
                   <Ionicons name="navigate" size={18} color="#8B5CF6" />
                   <ThemedText style={styles.navigateButtonText}>Navigate</ThemedText>

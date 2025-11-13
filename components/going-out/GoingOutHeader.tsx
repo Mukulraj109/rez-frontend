@@ -82,16 +82,22 @@ export function GoingOutHeader({
             style={styles.backButton}
             onPress={onBack}
             activeOpacity={0.8}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
           >
             <Ionicons name="arrow-back" size={22} color="white" />
           </TouchableOpacity>
-          
+
           <ThemedText style={styles.headerTitle}>Going out</ThemedText>
-          
+
           <TouchableOpacity
             style={styles.searchIconButton}
             onPress={handleSearchIconPress}
             activeOpacity={0.8}
+            accessibilityLabel={isSearchVisible ? "Close search" : "Open search"}
+            accessibilityRole="button"
+            accessibilityHint={`Double tap to ${isSearchVisible ? 'close' : 'open'} search bar`}
           >
             <Ionicons name="search" size={22} color="white" />
           </TouchableOpacity>
@@ -124,6 +130,9 @@ export function GoingOutHeader({
               returnKeyType="search"
               autoCapitalize="none"
               autoCorrect={false}
+              accessibilityLabel="Search products"
+              accessibilityHint="Enter keywords to search for products, brands, or stores"
+              accessibilityRole="search"
             />
             
             {searchQuery.length > 0 && (
@@ -131,6 +140,9 @@ export function GoingOutHeader({
                 style={styles.clearButton}
                 onPress={handleClearSearch}
                 activeOpacity={0.7}
+                accessibilityLabel="Clear search"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to clear search input"
               >
                 <Ionicons name="close-circle" size={18} color="#A78BFA" />
               </TouchableOpacity>

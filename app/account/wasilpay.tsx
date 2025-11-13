@@ -374,7 +374,13 @@ export default function RezPaySettingsScreen() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to account settings"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           
@@ -408,6 +414,9 @@ export default function RezPaySettingsScreen() {
               <TouchableOpacity
                 style={styles.retryButton}
                 onPress={fetchWallet}
+                accessibilityLabel="Retry loading wallet"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to try loading wallet information again"
               >
                 <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
               </TouchableOpacity>
@@ -447,6 +456,9 @@ export default function RezPaySettingsScreen() {
                 <TouchableOpacity
                   style={styles.walletAction}
                   onPress={() => setShowTopupModal(true)}
+                  accessibilityLabel="Add money to wallet"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to add money to your RezPay wallet"
                 >
                   <Ionicons name="add-circle" size={16} color="white" />
                   <ThemedText style={styles.walletActionText}>Add Money</ThemedText>
@@ -455,6 +467,9 @@ export default function RezPaySettingsScreen() {
                 <TouchableOpacity
                   style={styles.walletAction}
                   onPress={() => setShowSendMoneyModal(true)}
+                  accessibilityLabel="Send money"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to send money to someone"
                 >
                   <Ionicons name="send" size={16} color="white" />
                   <ThemedText style={styles.walletActionText}>Send</ThemedText>
@@ -463,6 +478,9 @@ export default function RezPaySettingsScreen() {
                 <TouchableOpacity
                   style={styles.walletAction}
                   onPress={handleHistoryPress}
+                  accessibilityLabel="Transaction history"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to view your transaction history"
                 >
                   <Ionicons name="time" size={16} color="white" />
                   <ThemedText style={styles.walletActionText}>History</ThemedText>
@@ -482,7 +500,12 @@ export default function RezPaySettingsScreen() {
                 <ThemedText style={styles.recentTransactionsTitle}>
                   Recent Transactions
                 </ThemedText>
-                <TouchableOpacity onPress={handleHistoryPress}>
+                <TouchableOpacity
+                  onPress={handleHistoryPress}
+                  accessibilityLabel={`View all ${transactionCount} transactions`}
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to view complete transaction history"
+                >
                   <ThemedText style={styles.viewAllLink}>
                     View All ({transactionCount})
                   </ThemedText>
@@ -552,6 +575,10 @@ export default function RezPaySettingsScreen() {
                 onValueChange={toggleAutoPay}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                 thumbColor={localSettings.autoPayEnabled ? ACCOUNT_COLORS.primary : '#f4f3f4'}
+                accessibilityLabel="Auto-pay from RezPay wallet"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: localSettings.autoPayEnabled }}
+                accessibilityHint="Toggle to enable or disable automatic payments from your wallet"
               />
             </View>
 
@@ -570,6 +597,10 @@ export default function RezPaySettingsScreen() {
                 onValueChange={toggleBiometric}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                 thumbColor={localSettings.biometricEnabled ? ACCOUNT_COLORS.primary : '#f4f3f4'}
+                accessibilityLabel="Biometric authentication for payments"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: localSettings.biometricEnabled }}
+                accessibilityHint="Toggle to enable or disable fingerprint or face ID for payments"
               />
             </View>
           </View>
@@ -583,6 +614,9 @@ export default function RezPaySettingsScreen() {
             <TouchableOpacity
               style={styles.limitItem}
               onPress={() => handleLimitEdit('Daily', localSettings.transactionLimits.daily)}
+              accessibilityLabel={`Daily spending limit: ${localSettings.transactionLimits.daily} rupees${dailyLimitInfo ? `, spent ${dailyLimitInfo.spent}, remaining ${dailyLimitInfo.remaining}` : ''}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to edit daily spending limit"
             >
               <View style={styles.limitLeft}>
                 <Ionicons name="calendar" size={18} color={ACCOUNT_COLORS.primary} />
@@ -606,6 +640,9 @@ export default function RezPaySettingsScreen() {
             <TouchableOpacity
               style={styles.limitItem}
               onPress={() => handleLimitEdit('Weekly', localSettings.transactionLimits.weekly)}
+              accessibilityLabel={`Weekly spending limit: ${localSettings.transactionLimits.weekly} rupees`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to edit weekly spending limit"
             >
               <View style={styles.limitLeft}>
                 <Ionicons name="calendar-outline" size={18} color={ACCOUNT_COLORS.primary} />
@@ -622,6 +659,9 @@ export default function RezPaySettingsScreen() {
             <TouchableOpacity
               style={styles.limitItem}
               onPress={() => handleLimitEdit('Monthly', localSettings.transactionLimits.monthly)}
+              accessibilityLabel={`Monthly spending limit: ${localSettings.transactionLimits.monthly} rupees`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to edit monthly spending limit"
             >
               <View style={styles.limitLeft}>
                 <Ionicons name="stats-chart" size={18} color={ACCOUNT_COLORS.primary} />
@@ -641,7 +681,13 @@ export default function RezPaySettingsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Linked Payment Methods</ThemedText>
-            <TouchableOpacity style={styles.addButton} onPress={handleAddPaymentMethod}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={handleAddPaymentMethod}
+              accessibilityLabel="Add payment method"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to link a new payment method"
+            >
               <Ionicons name="add" size={20} color={ACCOUNT_COLORS.primary} />
               <ThemedText style={styles.addButtonText}>Add</ThemedText>
             </TouchableOpacity>
@@ -662,6 +708,9 @@ export default function RezPaySettingsScreen() {
               <TouchableOpacity
                 style={styles.emptyButton}
                 onPress={handleAddPaymentMethod}
+                accessibilityLabel="Add payment method"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to add your first payment method"
               >
                 <ThemedText style={styles.emptyButtonText}>Add Payment Method</ThemedText>
               </TouchableOpacity>
@@ -745,6 +794,9 @@ export default function RezPaySettingsScreen() {
             <TouchableOpacity
               style={styles.manageButton}
               onPress={() => router.push('/account/notifications' as any)}
+              accessibilityLabel="Manage all notifications"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to open notification settings"
             >
               <ThemedText style={styles.manageButtonText}>Manage All</ThemedText>
               <Ionicons name="chevron-forward" size={16} color={ACCOUNT_COLORS.primary} />
@@ -767,6 +819,10 @@ export default function RezPaySettingsScreen() {
                 onValueChange={() => toggleNotification('transactions')}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                 thumbColor={localSettings.notifications.transactions ? ACCOUNT_COLORS.primary : '#f4f3f4'}
+                accessibilityLabel="Transaction alerts"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: localSettings.notifications.transactions }}
+                accessibilityHint="Toggle to enable or disable notifications for all transactions"
               />
             </View>
 
@@ -785,6 +841,10 @@ export default function RezPaySettingsScreen() {
                 onValueChange={() => toggleNotification('lowBalance')}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.warning + '40' }}
                 thumbColor={localSettings.notifications.lowBalance ? ACCOUNT_COLORS.warning : '#f4f3f4'}
+                accessibilityLabel="Low balance alerts"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: localSettings.notifications.lowBalance }}
+                accessibilityHint="Toggle to enable or disable alerts when your wallet balance is low"
               />
             </View>
 
@@ -803,6 +863,10 @@ export default function RezPaySettingsScreen() {
                 onValueChange={() => toggleNotification('promotions')}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.secondary + '40' }}
                 thumbColor={localSettings.notifications.promotions ? ACCOUNT_COLORS.secondary : '#f4f3f4'}
+                accessibilityLabel="Promotional offers"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: localSettings.notifications.promotions }}
+                accessibilityHint="Toggle to enable or disable promotional offers and cashback alerts"
               />
             </View>
           </View>

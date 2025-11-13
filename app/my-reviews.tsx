@@ -181,11 +181,19 @@ export default function MyReviewsPage() {
               const storeId = typeof review.store === 'object' ? review.store._id : review.store;
               router.push(`/stores/${storeId}` as any);
             }}
+            accessibilityLabel="View store"
+            accessibilityRole="button"
+            accessibilityHint={`Opens ${storeName} store page`}
           >
             <Ionicons name="storefront-outline" size={16} color="#8B5CF6" />
             <Text style={styles.actionButtonText}>View Store</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            accessibilityLabel="Edit review"
+            accessibilityRole="button"
+            accessibilityHint="Opens editor to modify your review"
+          >
             <Ionicons name="create-outline" size={16} color="#6B7280" />
             <Text style={styles.actionButtonText}>Edit</Text>
           </TouchableOpacity>
@@ -202,7 +210,13 @@ export default function MyReviewsPage() {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Returns to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>My Reviews</Text>
@@ -239,7 +253,13 @@ export default function MyReviewsPage() {
               <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
               <Text style={styles.errorTitle}>Failed to Load Reviews</Text>
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={() => loadReviews(true)}>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => loadReviews(true)}
+                accessibilityLabel="Try again"
+                accessibilityRole="button"
+                accessibilityHint="Retries loading your reviews"
+              >
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             </View>
@@ -251,7 +271,13 @@ export default function MyReviewsPage() {
                 You haven't written any reviews yet.{'\n'}
                 Order from a store and share your experience!
               </Text>
-              <TouchableOpacity style={styles.shopButton} onPress={() => router.push('/(tabs)/' as any)}>
+              <TouchableOpacity
+                style={styles.shopButton}
+                onPress={() => router.push('/(tabs)/' as any)}
+                accessibilityLabel="Browse stores"
+                accessibilityRole="button"
+                accessibilityHint="Opens store browsing page"
+              >
                 <Text style={styles.shopButtonText}>Browse Stores</Text>
               </TouchableOpacity>
             </View>

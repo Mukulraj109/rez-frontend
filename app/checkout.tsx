@@ -222,14 +222,17 @@ export default function CheckoutPage() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.backButton} 
+          <TouchableOpacity
+            style={styles.backButton}
             onPress={() => {
 
               handlers.handleBackNavigation();
             }}
             activeOpacity={0.8}
             hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            accessibilityLabel="Go back to cart"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to shopping cart"
           >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
@@ -312,6 +315,9 @@ export default function CheckoutPage() {
               style={styles.promoCodeCard}
               onPress={() => setShowPromoModal(true)}
               activeOpacity={0.7}
+              accessibilityLabel={`Apply coupon. ${state.availablePromoCodes.length > 0 ? `${state.availablePromoCodes.length} coupons available` : 'Browse available coupons'}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view and apply discount coupons"
             >
               <View style={styles.promoCodeContent}>
                 <View>
@@ -440,6 +446,10 @@ export default function CheckoutPage() {
                     onValueChange={(value) => handlers.handleCoinToggle('promo', value)}
                     trackColor={{ false: '#E5E7EB', true: '#8B5CF6' }}
                     thumbColor={'white'}
+                    accessibilityLabel="Use promo coins"
+                    accessibilityRole="switch"
+                    accessibilityHint={`Toggle to ${state.coinSystem.promoCoin.used > 0 ? 'disable' : 'enable'} promo coin discount. ${state.coinSystem.promoCoin.available} coins available`}
+                    accessibilityState={{ checked: state.coinSystem.promoCoin.used > 0 }}
                   />
                   <ThemedText style={styles.promoCoinValue}>
                     {state.coinSystem.promoCoin.available}
@@ -638,6 +648,9 @@ export default function CheckoutPage() {
           style={styles.otherPaymentButton}
           onPress={handlers.navigateToOtherPaymentMethods}
           activeOpacity={0.7}
+          accessibilityLabel="Other payment methods"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to view alternative payment options like credit card, UPI, or net banking"
         >
           <ThemedText style={styles.otherPaymentText}>Other payment mode</ThemedText>
         </TouchableOpacity>
@@ -651,6 +664,16 @@ export default function CheckoutPage() {
           onPress={handlers.handlePayBillPayment}
           activeOpacity={0.7}
           disabled={state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
+          accessibilityLabel={state.loading
+            ? 'Processing payment'
+            : !canCheckout
+              ? 'Cannot checkout, cart has issues'
+              : paybillBalance < (state.billSummary?.totalPayable || 0)
+                ? `Insufficient PayBill balance. You have ₹${paybillBalance} but need ₹${state.billSummary?.totalPayable || 0}`
+                : `Pay ₹${state.billSummary?.totalPayable || 0} with PayBill. Your balance is ₹${paybillBalance}`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to complete payment using your PayBill wallet"
+          accessibilityState={{ disabled: state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout, busy: state.loading }}
         >
           <View style={styles.paybillButtonContent}>
             <Ionicons name="wallet" size={20} color="white" />
@@ -677,6 +700,16 @@ export default function CheckoutPage() {
           onPress={handlers.handleWalletPayment}
           activeOpacity={0.7}
           disabled={state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
+          accessibilityLabel={state.loading
+            ? 'Processing payment'
+            : !canCheckout
+              ? 'Cannot checkout, cart has issues'
+              : totalWalletBalance < (state.billSummary?.totalPayable || 0)
+                ? `Insufficient wallet balance. You have ${totalWalletBalance} coins but need ₹${state.billSummary?.totalPayable || 0}`
+                : `Load wallet and pay ₹${state.billSummary?.totalPayable || 0}. You have ${totalWalletBalance} REZ coins`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to load your wallet and complete payment"
+          accessibilityState={{ disabled: state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout, busy: state.loading }}
         >
           <ThemedText style={styles.loadWalletText}>
             {state.loading ? 'Processing...' : !canCheckout ? 'Cart has issues' : 'Load wallet & pay'}
@@ -696,6 +729,14 @@ export default function CheckoutPage() {
           onPress={handlers.handleCODPayment}
           activeOpacity={0.7}
           disabled={state.loading || !canCheckout}
+          accessibilityLabel={state.loading
+            ? 'Processing order'
+            : !canCheckout
+              ? 'Cannot checkout, cart has issues'
+              : `Place order with Cash on Delivery for ₹${state.billSummary?.totalPayable || 0}. Pay at home when your order arrives`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to place order and pay cash upon delivery"
+          accessibilityState={{ disabled: state.loading || !canCheckout, busy: state.loading }}
         >
           <View style={styles.codButtonContent}>
             <Ionicons name="cash-outline" size={20} color="#10B981" />

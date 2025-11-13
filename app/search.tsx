@@ -187,7 +187,14 @@ export default function SearchPage() {
   const renderHeader = () => (
     <LinearGradient colors={['#7C3AED', '#8B5CF6', '#C084FC'] as const} style={styles.header}>
       <View style={styles.headerContent}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.8}>
+        <TouchableOpacity
+          onPress={handleBack}
+          style={styles.backButton}
+          activeOpacity={0.8}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Returns to the previous screen"
+        >
           <View style={styles.backButtonContainer}>
             <Ionicons name="arrow-back" size={20} color="white" />
           </View>
@@ -220,17 +227,35 @@ export default function SearchPage() {
               autoFocus={!initialQuery}
               underlineColorAndroid="transparent"
               importantForAutofill="no"
+              accessibilityLabel="Search input"
+              accessibilityRole="search"
+              accessibilityHint="Enter keywords to search for services, stores or categories"
+              accessibilityValue={{ text: searchState.query }}
             />
 
             {searchState.query.length > 0 && (
-              <TouchableOpacity onPress={() => handleQueryChange('')} style={styles.clearButton}>
+              <TouchableOpacity
+                onPress={() => handleQueryChange('')}
+                style={styles.clearButton}
+                accessibilityLabel="Clear search"
+                accessibilityRole="button"
+                accessibilityHint="Clears the current search text"
+              >
                 <Ionicons name="close-circle" size={20} color="#9CA3AF" />
               </TouchableOpacity>
             )}
           </View>
         </View>
 
-        <TouchableOpacity style={styles.filterButton} activeOpacity={0.8} onPress={handleOpenFilters}>
+        <TouchableOpacity
+          style={styles.filterButton}
+          activeOpacity={0.8}
+          onPress={handleOpenFilters}
+          accessibilityLabel={`Filters${Object.keys(searchState.activeFilters).length > 0 ? `, ${Object.keys(searchState.activeFilters).length} active` : ''}`}
+          accessibilityRole="button"
+          accessibilityHint="Opens filter options to refine search results"
+          accessibilityState={{ selected: Object.keys(searchState.activeFilters).length > 0 }}
+        >
           <Ionicons name="options-outline" size={20} color="white" />
           {Object.keys(searchState.activeFilters).length > 0 && (
             <View style={styles.filterBadge}>
@@ -257,10 +282,13 @@ export default function SearchPage() {
                 <Text style={styles.sectionSubtitle}>{section.subtitle}</Text>
               )}
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.viewAllButton}
               onPress={() => handleViewAll(section.id)}
               activeOpacity={0.7}
+              accessibilityLabel={`View all ${section.title}`}
+              accessibilityRole="button"
+              accessibilityHint={`Opens full list of ${section.title} categories`}
             >
               <Text style={styles.viewAllText}>View all</Text>
               <Ionicons name="arrow-forward" size={16} color="#8B5CF6" style={{ marginLeft: 4 }} />
@@ -274,12 +302,24 @@ export default function SearchPage() {
                 style={styles.categoryCard}
                 onPress={() => handleCategoryPress(category)}
                 activeOpacity={0.9}
+                accessibilityLabel={`${category.name} category, up to ${category.cashbackPercentage}% cashback`}
+                accessibilityRole="button"
+                accessibilityHint={`Opens ${category.name} category page with products and offers`}
               >
                 <View style={styles.categoryImageContainer}>
                   {category.image ? (
-                    <Image source={{ uri: category.image }} style={styles.categoryImage} resizeMode="cover" />
+                    <Image
+                      source={{ uri: category.image }}
+                      style={styles.categoryImage}
+                      resizeMode="cover"
+                      accessibilityLabel={`${category.name} category image`}
+                      accessibilityRole="image"
+                    />
                   ) : (
-                    <View style={styles.categoryImagePlaceholder}>
+                    <View
+                      style={styles.categoryImagePlaceholder}
+                      accessibilityLabel={`${category.name} category placeholder`}
+                    >
                       <Ionicons name="image-outline" size={28} color="#8B5CF6" />
                     </View>
                   )}
@@ -303,7 +343,11 @@ export default function SearchPage() {
   );
 
   const renderSuggestions = () => (
-    <View style={styles.suggestionsContainer}>
+    <View
+      style={styles.suggestionsContainer}
+      accessibilityLabel="Search suggestions list"
+      accessibilityRole="list"
+    >
       <Text style={styles.suggestionsTitle}>Search Suggestions</Text>
       {searchState.suggestions
         .filter(s => s.text.toLowerCase().includes(searchState.query.toLowerCase()))
@@ -314,6 +358,9 @@ export default function SearchPage() {
             style={styles.suggestionItem}
             onPress={() => handleSuggestionPress(suggestion)}
             activeOpacity={0.7}
+            accessibilityLabel={`Search for ${suggestion.text}${suggestion.resultCount ? `, ${suggestion.resultCount} results available` : ''}`}
+            accessibilityRole="button"
+            accessibilityHint="Selects this search suggestion and performs search"
           >
             <Ionicons
               name={suggestion.type === 'category' ? 'grid-outline' : 'search-outline'}
@@ -348,17 +395,29 @@ export default function SearchPage() {
       {/* Results Grid */}
       <View style={styles.resultsGrid}>
         {searchState.results.map((result, index) => (
-          <TouchableOpacity 
-            key={result.id} 
-            style={styles.resultCard} 
-            onPress={() => handleResultPress(result, index + 1)} 
+          <TouchableOpacity
+            key={result.id}
+            style={styles.resultCard}
+            onPress={() => handleResultPress(result, index + 1)}
             activeOpacity={0.9}
+            accessibilityLabel={`${result.title}, ${result.category}, ${result.cashbackPercentage}% cashback`}
+            accessibilityRole="button"
+            accessibilityHint={`Opens details page for ${result.title}`}
           >
             <View style={styles.resultImageContainer}>
               {result.image ? (
-                <Image source={{ uri: result.image }} style={styles.resultImage} resizeMode="cover" />
+                <Image
+                  source={{ uri: result.image }}
+                  style={styles.resultImage}
+                  resizeMode="cover"
+                  accessibilityLabel={`${result.title} image`}
+                  accessibilityRole="image"
+                />
               ) : (
-                <View style={styles.resultImagePlaceholder}>
+                <View
+                  style={styles.resultImagePlaceholder}
+                  accessibilityLabel={`${result.title} placeholder image`}
+                >
                   <Text style={styles.resultImageText}>{result.title.charAt(0)}</Text>
                 </View>
               )}
@@ -386,8 +445,12 @@ export default function SearchPage() {
   );
 
   const renderErrorState = () => (
-    <View style={styles.errorContainer}>
-      <Ionicons name="alert-circle-outline" size={80} color="#EF4444" />
+    <View
+      style={styles.errorContainer}
+      accessibilityLabel="Error occurred"
+      accessibilityRole="alert"
+    >
+      <Ionicons name="alert-circle-outline" size={80} color="#EF4444" accessibilityLabel="Error icon" />
       <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
       <Text style={styles.errorMessage}>{searchState.error}</Text>
       <TouchableOpacity
@@ -400,6 +463,9 @@ export default function SearchPage() {
             actions.loadCategories();
           }
         }}
+        accessibilityLabel="Try again"
+        accessibilityRole="button"
+        accessibilityHint="Retries the failed operation"
       >
         <Text style={styles.retryButtonText}>Try Again</Text>
       </TouchableOpacity>
@@ -407,7 +473,11 @@ export default function SearchPage() {
   );
 
   const renderLoadingState = () => (
-    <View style={styles.loadingContainer}>
+    <View
+      style={styles.loadingContainer}
+      accessibilityLabel={searchState.isSearching ? 'Searching for results' : 'Loading content'}
+      accessibilityRole="progressbar"
+    >
       <ActivityIndicator size="large" color="#7C3AED" />
       <Text style={styles.loadingText}>
         {searchState.isSearching ? 'Searching...' : 'Loading...'}
@@ -416,9 +486,13 @@ export default function SearchPage() {
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
+    <View
+      style={styles.emptyContainer}
+      accessibilityLabel="No search results found"
+      accessibilityRole="alert"
+    >
       <View style={styles.emptyIconContainer}>
-        <Ionicons name="search-outline" size={80} color="#D1D5DB" />
+        <Ionicons name="search-outline" size={80} color="#D1D5DB" accessibilityLabel="Search icon" />
       </View>
       <Text style={styles.emptyTitle}>No results found</Text>
       <Text style={styles.emptyMessage}>
@@ -430,10 +504,13 @@ export default function SearchPage() {
       <View style={styles.emptyActionContainer}>
         <TouchableOpacity
           style={styles.emptyActionButton}
-        onPress={() => {
-          actions.handleClearSearch();
-          setViewMode('categories');
-        }}
+          onPress={() => {
+            actions.handleClearSearch();
+            setViewMode('categories');
+          }}
+          accessibilityLabel="Browse categories"
+          accessibilityRole="button"
+          accessibilityHint="Clears search and shows all available categories"
         >
           <Text style={styles.emptyActionText}>Browse Categories</Text>
         </TouchableOpacity>
@@ -442,8 +519,12 @@ export default function SearchPage() {
   );
 
   const renderSearchHint = () => (
-    <View style={styles.searchHintContainer}>
-      <Ionicons name="information-circle-outline" size={48} color="#D1D5DB" />
+    <View
+      style={styles.searchHintContainer}
+      accessibilityLabel="Search hint"
+      accessibilityRole="alert"
+    >
+      <Ionicons name="information-circle-outline" size={48} color="#D1D5DB" accessibilityLabel="Information icon" />
       <Text style={styles.searchHintTitle}>Keep typing...</Text>
       <Text style={styles.searchHintText}>
         Enter at least 2 characters to start searching
@@ -486,8 +567,12 @@ export default function SearchPage() {
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
       {renderHeader()}
       {searchState.error && searchState.sections.length > 0 && (
-        <View style={styles.errorBanner}>
-          <Ionicons name="warning-outline" size={16} color="#F59E0B" />
+        <View
+          style={styles.errorBanner}
+          accessibilityLabel={`Warning: ${searchState.error}`}
+          accessibilityRole="alert"
+        >
+          <Ionicons name="warning-outline" size={16} color="#F59E0B" accessibilityLabel="Warning icon" />
           <Text style={styles.errorBannerText}>{searchState.error}</Text>
         </View>
       )}

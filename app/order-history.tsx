@@ -111,11 +111,17 @@ export default function OrderHistoryPage() {
   ), [handleOrderPress]);
 
   const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
+    <View
+      style={styles.emptyContainer}
+      accessibilityLabel={searchQuery.trim()
+        ? 'No orders found matching your search criteria'
+        : 'No orders found. You have not placed any orders yet'}
+      accessibilityRole="text"
+    >
       <Ionicons name="receipt-outline" size={80} color="#E5E7EB" />
       <ThemedText style={styles.emptyTitle}>No Orders Found</ThemedText>
       <ThemedText style={styles.emptyDescription}>
-        {searchQuery.trim() 
+        {searchQuery.trim()
           ? 'No orders match your search criteria'
           : 'You haven\'t placed any orders yet'
         }
@@ -124,6 +130,9 @@ export default function OrderHistoryPage() {
         <TouchableOpacity
           style={styles.shopButton}
           onPress={() => router.push('/')}
+          accessibilityLabel="Start shopping"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to browse products and start shopping"
         >
           <ThemedText style={styles.shopButtonText}>Start Shopping</ThemedText>
         </TouchableOpacity>
@@ -134,7 +143,11 @@ export default function OrderHistoryPage() {
   const renderFooter = () => {
     if (!isLoading || !hasMore) return null;
     return (
-      <View style={styles.loadingFooter}>
+      <View
+        style={styles.loadingFooter}
+        accessibilityLabel="Loading more orders"
+        accessibilityRole="progressbar"
+      >
         <ActivityIndicator size="small" color="#7C3AED" />
         <ThemedText style={styles.loadingText}>Loading more orders...</ThemedText>
       </View>
@@ -147,18 +160,34 @@ export default function OrderHistoryPage() {
         <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
         <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
           <View style={styles.headerContainer}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBackPress}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to previous screen"
+            >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <ThemedText style={styles.headerTitle}>Order History</ThemedText>
             <View style={styles.headerRight} />
           </View>
         </LinearGradient>
-        <View style={styles.errorContainer}>
+        <View
+          style={styles.errorContainer}
+          accessibilityLabel="Error loading orders"
+          accessibilityRole="alert"
+        >
           <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
           <ThemedText style={styles.errorTitle}>Unable to load orders</ThemedText>
           <ThemedText style={styles.errorDetails}>{error}</ThemedText>
-          <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={handleRefresh}
+            accessibilityLabel="Try again to load orders"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to retry loading orders"
+          >
             <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
           </TouchableOpacity>
         </View>
@@ -173,13 +202,22 @@ export default function OrderHistoryPage() {
       {/* Header */}
       <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Order History</ThemedText>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.filterButton}
             onPress={() => setShowFilterModal(true)}
+            accessibilityLabel="Open filter options"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to filter and sort orders"
           >
             <Ionicons name="filter-outline" size={24} color="#FFFFFF" />
           </TouchableOpacity>
@@ -196,9 +234,16 @@ export default function OrderHistoryPage() {
             value={searchQuery}
             onChangeText={handleSearchChange}
             placeholderTextColor="#9CA3AF"
+            accessibilityLabel="Search orders"
+            accessibilityHint="Enter order number, product name, or store name to search"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessibilityLabel="Clear search"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to clear search text"
+            >
               <Ionicons name="close-circle" size={20} color="#9CA3AF" />
             </TouchableOpacity>
           )}
@@ -218,12 +263,14 @@ export default function OrderHistoryPage() {
             onRefresh={handleRefresh}
             tintColor="#7C3AED"
             colors={['#7C3AED']}
+            accessibilityLabel="Pull to refresh orders"
           />
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.1}
         ListEmptyComponent={renderEmptyState}
         ListFooterComponent={renderFooter}
+        accessibilityLabel={`Order list. ${filteredOrders.length} ${filteredOrders.length === 1 ? 'order' : 'orders'} found`}
       />
 
       {/* Filter Modal */}

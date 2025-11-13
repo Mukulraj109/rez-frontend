@@ -22,6 +22,7 @@ import ReferralSection from '@/components/earnPage/ReferralSection';
 import EarningOpportunities from '@/components/earnPage/EarningOpportunities';
 
 import { Notification, Project, Category } from '@/types/earnPage.types';
+import logger from '@/utils/logger';
 
 export default function EarnScreen() {
   const router = useRouter();
@@ -49,12 +50,12 @@ export default function EarnScreen() {
     earningsNotificationService.setupListeners(
       (notification) => {
         // Handle notification received while app is in foreground
-        console.log('📬 [EARN] Notification received:', notification);
+        logger.debug('📬 [EARN] Notification received:', notification);
       },
       (response) => {
         // Handle notification tap
         const data = response.notification.request.content.data;
-        console.log('👆 [EARN] Notification tapped:', data);
+        logger.debug('👆 [EARN] Notification tapped:', data);
         
         // Navigate based on notification type
         if (data?.type === 'project_approved' || data?.type === 'project_rejected') {
@@ -83,7 +84,7 @@ export default function EarnScreen() {
         setUserPoints(actualWalletCoins);
       }
     } catch (error) {
-      console.error('❌ [EARN PAGE] Failed to load wallet balance:', error);
+      logger.error('❌ [EARN PAGE] Failed to load wallet balance:', error);
       setUserPoints(0);
     } finally {
       setIsLoadingCoins(false);
@@ -99,7 +100,7 @@ export default function EarnScreen() {
         await loadWalletBalance();
       }
     } catch (error) {
-      console.error('Failed to refresh earn data:', error);
+      logger.error('Failed to refresh earn data:', error);
     } finally {
       setRefreshing(false);
     }
@@ -190,7 +191,7 @@ export default function EarnScreen() {
         url: referralLink,
       });
     } catch (error) {
-      console.error('Failed to share referral link:', error);
+      logger.error('Failed to share referral link:', error);
     }
   }, [actions]);
 
@@ -244,6 +245,9 @@ export default function EarnScreen() {
               }}
               activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
               delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+              accessibilityLabel={`Loyalty points: ${isLoadingCoins ? 'Loading' : userPoints}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view your loyalty points and rewards details"
             >
               <Ionicons name="star" size={18} color="#FFD700" />
               <ThemedText style={styles.coinsText}>
@@ -263,6 +267,9 @@ export default function EarnScreen() {
               activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
               delayPressIn={Platform.OS === 'ios' ? 50 : 0}
               style={styles.cartButton}
+              accessibilityLabel="Shopping cart"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view your shopping cart"
             >
               <Ionicons name="cart-outline" size={24} color="white" />
             </TouchableOpacity>
@@ -281,6 +288,9 @@ export default function EarnScreen() {
                 }
               }}
               activeOpacity={0.7}
+              accessibilityLabel="User profile menu"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to open profile menu and account settings"
             >
               <ThemedText style={styles.profileText}>
                 {user?.initials ||

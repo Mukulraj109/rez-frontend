@@ -104,6 +104,10 @@ export default function ProductsScreen() {
         selectedFilter === filter && styles.filterButtonActive,
       ]}
       onPress={() => setSelectedFilter(filter)}
+      accessibilityLabel={`${label} products${selectedFilter === filter ? ', selected' : ''}`}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: selectedFilter === filter }}
+      accessibilityHint="Double tap to filter products by this category"
     >
       <Text
         style={[
@@ -121,16 +125,26 @@ export default function ProductsScreen() {
     const productName = item.product?.name || 'Unknown Product';
     const productImages = item.product?.images || [];
     const productImage = productImages.length > 0 ? productImages[0] : 'https://via.placeholder.com/100';
-    
+
+    const warrantyInfo = item.warranty?.hasWarranty && item.warrantyStatus
+      ? `Warranty: ${item.warrantyStatus === 'active' ? `${item.warrantyDaysRemaining || 0} days left` : item.warrantyStatus.replace('_', ' ')}`
+      : '';
+    const amcInfo = item.amc?.hasAMC ? `AMC: ${item.amcDaysRemaining || 0} days remaining` : '';
+    const statusInfo = `Status: ${item.status?.replace('_', ' ') || 'unknown'}`;
+
     return (
       <TouchableOpacity
         style={styles.productCard}
         onPress={() => router.push(`/account/product-detail?id=${item._id}`)}
+        accessibilityLabel={`${productName}. Purchased ${formatDate(item.purchaseDate)}. ${warrantyInfo ? warrantyInfo + '. ' : ''}${amcInfo ? amcInfo + '. ' : ''}${statusInfo}`}
+        accessibilityRole="button"
+        accessibilityHint="Double tap to view full product details, warranty, and service options"
       >
         {/* Product Image */}
         <Image
           source={{ uri: productImage }}
           style={styles.productImage}
+          accessibilityLabel={`${productName} image`}
         />
 
         <View style={styles.productInfo}>
@@ -209,7 +223,11 @@ export default function ProductsScreen() {
   };
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
+    <View
+      style={styles.emptyState}
+      accessibilityLabel={`No products found. ${selectedFilter === 'all' ? 'You haven\'t purchased any products yet' : `No ${selectedFilter.replace('_', ' ')} products found`}`}
+      accessibilityRole="text"
+    >
       <Ionicons name="cube-outline" size={64} color="#D1D5DB" />
       <Text style={styles.emptyStateTitle}>No Products Found</Text>
       <Text style={styles.emptyStateText}>
@@ -218,9 +236,12 @@ export default function ProductsScreen() {
           : `No ${selectedFilter.replace('_', ' ')} products found.`}
       </Text>
       {selectedFilter === 'all' && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.shopButton}
           onPress={() => router.push('/MainStorePage')}
+          accessibilityLabel="Start Shopping"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to browse store and purchase products"
         >
           <Text style={styles.shopButtonText}>Start Shopping</Text>
         </TouchableOpacity>
@@ -229,11 +250,21 @@ export default function ProductsScreen() {
   );
 
   const renderErrorState = () => (
-    <View style={styles.errorState}>
+    <View
+      style={styles.errorState}
+      accessibilityLabel={`Error loading products. ${error}`}
+      accessibilityRole="alert"
+    >
       <Ionicons name="alert-circle" size={64} color="#EF4444" />
       <Text style={styles.errorStateTitle}>Error Loading Products</Text>
       <Text style={styles.errorStateText}>{error}</Text>
-      <TouchableOpacity style={styles.retryButton} onPress={loadProducts}>
+      <TouchableOpacity
+        style={styles.retryButton}
+        onPress={loadProducts}
+        accessibilityLabel="Try again"
+        accessibilityRole="button"
+        accessibilityHint="Double tap to reload products"
+      >
         <Text style={styles.retryButtonText}>Try Again</Text>
       </TouchableOpacity>
     </View>
@@ -252,10 +283,21 @@ export default function ProductsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Navigate to previous screen"
+        >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Products</Text>
+        <Text
+          style={styles.headerTitle}
+          accessibilityRole="header"
+        >
+          My Products
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 

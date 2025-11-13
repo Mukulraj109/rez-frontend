@@ -231,6 +231,10 @@ export default function CancelFeedbackPage() {
               selectedReason === reason.value && styles.reasonOptionSelected,
             ]}
             onPress={() => handleReasonSelect(reason.value)}
+            accessibilityLabel={`Reason: ${reason.label}. ${selectedReason === reason.value ? 'Selected' : ''}`}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: selectedReason === reason.value }}
+            accessibilityHint="Double tap to select this cancellation reason"
           >
             <View style={styles.radioButton}>
               {selectedReason === reason.value && <View style={styles.radioButtonInner} />}
@@ -256,11 +260,19 @@ export default function CancelFeedbackPage() {
             multiline
             numberOfLines={4}
             textAlignVertical="top"
+            accessibilityLabel="Other cancellation reason"
+            accessibilityHint="Enter details about why you want to cancel"
           />
         </View>
       )}
 
-      <TouchableOpacity style={styles.continueButton} onPress={handleContinueFromReason}>
+      <TouchableOpacity
+        style={styles.continueButton}
+        onPress={handleContinueFromReason}
+        accessibilityLabel="Continue to next step"
+        accessibilityRole="button"
+        accessibilityHint="Double tap to proceed with cancellation"
+      >
         <ThemedText style={styles.continueButtonText}>Continue</ThemedText>
         <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
       </TouchableOpacity>
@@ -355,11 +367,23 @@ export default function CancelFeedbackPage() {
       </View>
 
       <View style={styles.buttonGroup}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handlePauseSubscription}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={handlePauseSubscription}
+          accessibilityLabel="Pause my subscription"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to pause subscription for 1 month instead of cancelling"
+        >
           <ThemedText style={styles.primaryButtonText}>Pause My Subscription</ThemedText>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleSkipPause}>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={handleSkipPause}
+          accessibilityLabel="No, cancel permanently"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to skip pause option and proceed with cancellation"
+        >
           <ThemedText style={styles.secondaryButtonText}>No, Cancel Permanently</ThemedText>
         </TouchableOpacity>
       </View>
@@ -414,6 +438,8 @@ export default function CancelFeedbackPage() {
             multiline
             numberOfLines={4}
             textAlignVertical="top"
+            accessibilityLabel="Final feedback"
+            accessibilityHint="Optionally share any final thoughts about your cancellation"
           />
         </View>
 
@@ -424,6 +450,10 @@ export default function CancelFeedbackPage() {
               cancellationType === 'end_of_cycle' && styles.typeOptionSelected,
             ]}
             onPress={() => setCancellationType('end_of_cycle')}
+            accessibilityLabel={`Cancel at end of billing cycle. Keep access until ${formattedEndDate}. ${cancellationType === 'end_of_cycle' ? 'Selected' : ''}`}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: cancellationType === 'end_of_cycle' }}
+            accessibilityHint="Double tap to cancel at the end of your billing cycle"
           >
             <View style={styles.checkbox}>
               {cancellationType === 'end_of_cycle' && (
@@ -444,6 +474,10 @@ export default function CancelFeedbackPage() {
               cancellationType === 'immediate' && styles.typeOptionSelected,
             ]}
             onPress={() => setCancellationType('immediate')}
+            accessibilityLabel={`Cancel immediately. Lose access now. ${cancellationType === 'immediate' ? 'Selected' : ''}`}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: cancellationType === 'immediate' }}
+            accessibilityHint="Double tap to cancel immediately and lose access right away"
           >
             <View style={styles.checkbox}>
               {cancellationType === 'immediate' && (
@@ -462,6 +496,10 @@ export default function CancelFeedbackPage() {
             style={styles.keepButton}
             onPress={handleKeepSubscription}
             disabled={isCancelling}
+            accessibilityLabel="Keep my subscription"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isCancelling }}
+            accessibilityHint="Double tap to keep your subscription and go back"
           >
             <LinearGradient
               colors={['#8B5CF6', '#7C3AED']}
@@ -475,6 +513,10 @@ export default function CancelFeedbackPage() {
             style={styles.cancelButton}
             onPress={handleFinalCancel}
             disabled={isCancelling}
+            accessibilityLabel={isCancelling ? 'Cancelling subscription' : 'Cancel my subscription'}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isCancelling, busy: isCancelling }}
+            accessibilityHint="Double tap to confirm subscription cancellation"
           >
             {isCancelling ? (
               <ActivityIndicator color="#EF4444" />
@@ -503,7 +545,13 @@ export default function CancelFeedbackPage() {
       {/* Header */}
       <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.header}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityLabel="Cancel and go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to cancel and return to previous screen"
+          >
             <Ionicons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Cancel Subscription</ThemedText>

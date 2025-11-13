@@ -87,6 +87,9 @@ const FilterChips: React.FC<FilterChipsProps> = ({
             <TouchableOpacity
               onPress={() => setShowGenderModal(false)}
               style={styles.modalCloseButton}
+              accessibilityRole="button"
+              accessibilityLabel="Close gender selection"
+              accessibilityHint="Double tap to close modal"
             >
               <Ionicons name="close" size={24} color={COLORS.GRAY_600} />
             </TouchableOpacity>
@@ -102,6 +105,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
                   filters.gender.includes(item.id as any) && styles.genderOptionSelected
                 ]}
                 onPress={() => handleGenderSelect(item.id)}
+                accessibilityRole="checkbox"
+                accessibilityLabel={item.label}
+                accessibilityHint={filters.gender.includes(item.id as any) ? 'Double tap to deselect' : 'Double tap to select'}
+                accessibilityState={{ checked: filters.gender.includes(item.id as any) }}
               >
                 <Ionicons
                   name={item.icon as any}
@@ -148,6 +155,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
           onPress={handleFashionToggle}
           disabled={isLoading}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Fashion filter"
+          accessibilityHint={isFashionActive ? 'Double tap to remove fashion filter' : 'Double tap to apply fashion filter'}
+          accessibilityState={{ selected: isFashionActive, disabled: isLoading }}
         >
           <Ionicons
             name={FILTER_CATEGORIES.FASHION.icon as any}
@@ -173,6 +184,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
           onPress={() => setShowGenderModal(true)}
           disabled={isLoading}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={filters.gender.length > 0 ? `Gender filter. ${filters.gender.length} selected` : 'Gender filter'}
+          accessibilityHint="Double tap to open gender selection"
+          accessibilityState={{ selected: isGenderActive, disabled: isLoading }}
         >
           <Ionicons
             name={FILTER_CATEGORIES.GENDER.icon as any}
@@ -208,6 +223,10 @@ const FilterChips: React.FC<FilterChipsProps> = ({
           onPress={handleRezPayToggle}
           disabled={isLoading}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Rez Pay filter"
+          accessibilityHint={isRezPayActive ? 'Double tap to remove Rez Pay filter' : 'Double tap to show only Rez Pay stores'}
+          accessibilityState={{ selected: isRezPayActive, disabled: isLoading }}
         >
           <Ionicons
             name={FILTER_CATEGORIES.REZ_PAY.icon as any}
@@ -238,6 +257,9 @@ const FilterChips: React.FC<FilterChipsProps> = ({
             })}
             disabled={isLoading}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Clear all filters"
+            accessibilityHint="Double tap to remove all active filters"
           >
             <Ionicons
               name="close-circle"

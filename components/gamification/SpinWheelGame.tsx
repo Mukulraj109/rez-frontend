@@ -16,6 +16,7 @@ import { ThemedView } from '@/components/ThemedView';
 import type { SpinWheelSegment, SpinWheelResult } from '@/types/gamification.types';
 import gamificationAPI from '@/services/gamificationApi';
 import { useGamification } from '@/contexts/GamificationContext';
+import logger from '@/utils/logger';
 
 interface SpinWheelGameProps {
   segments: SpinWheelSegment[];
@@ -61,7 +62,7 @@ export default function SpinWheelGame({
       if (spinsRemaining > 0) {
         setCanSpin(true);
         setNextSpinTime(null);
-        console.log('[SPIN_WHEEL] User has', spinsRemaining, 'spins remaining - enabling button');
+        logger.debug('[SPIN_WHEEL] User has', spinsRemaining, 'spins remaining - enabling button');
       } else {
         setCanSpin(false);
         // Set next spin time to midnight UTC (when daily limit resets)
@@ -69,14 +70,14 @@ export default function SpinWheelGame({
         tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
         tomorrow.setUTCHours(0, 0, 0, 0);
         setNextSpinTime(tomorrow.toISOString());
-        console.log('[SPIN_WHEEL] No spins remaining - button disabled until midnight UTC');
+        logger.debug('[SPIN_WHEEL] No spins remaining - button disabled until midnight UTC');
       }
 
       // Note: Removed cooldown check that was causing conflicts
       // Backend now handles all eligibility logic in getSpinWheelData endpoint
 
     } catch (error: any) {
-      console.error('Error checking spin eligibility:', error);
+      logger.error('Error checking spin eligibility:', error);
       // Fallback to spinsRemaining prop
       setCanSpin(spinsRemaining > 0);
     } finally {
@@ -135,7 +136,7 @@ export default function SpinWheelGame({
       }
     } catch (error: any) {
       setIsSpinning(false);
-      console.error('Error spinning wheel:', error);
+      logger.error('Error spinning wheel:', error);
 
       const errorMessage = error.response?.data?.message || error.message || 'Failed to spin wheel. Please try again.';
       onError?.(errorMessage);

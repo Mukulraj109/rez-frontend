@@ -25,13 +25,21 @@ export default function ProductDetails({
   const isSmall = width < 360;
 
   return (
-    <View style={[styles.container, isSmall && styles.containerCompact]}>
+    <View
+      style={[styles.container, isSmall && styles.containerCompact]}
+      accessibilityRole="region"
+      accessibilityLabel={`Product details. ${title}. ${distance} away in ${location}. ${isOpen ? 'Open now' : 'Currently closed'}`}
+    >
       <View style={styles.rowTop}>
-        <ThemedText style={[styles.title, isSmall && styles.titleSmall]} numberOfLines={2}>
+        <ThemedText
+          style={[styles.title, isSmall && styles.titleSmall]}
+          numberOfLines={2}
+          accessibilityRole="header"
+        >
           {title}
         </ThemedText>
 
-       
+
       </View>
 
       <ThemedText style={[styles.description, isSmall && styles.descriptionSmall]} numberOfLines={3}>
@@ -44,13 +52,18 @@ export default function ProductDetails({
           onPress={onOpenMap}
           style={styles.locationPill}
           accessibilityRole="button"
-          accessibilityLabel={`Open map for ${location}`}
+          accessibilityLabel={`Location: ${distance} away at ${location}`}
+          accessibilityHint="Double tap to open map"
         >
           <Ionicons name="location-outline" size={16} color="#7C3AED" />
           <ThemedText style={styles.locationText}>{distance} • {location}</ThemedText>
         </TouchableOpacity>
 
-        <View style={[styles.openBadge, { backgroundColor: isOpen ? '#E6FDF3' : '#FEF3F2' }]}>
+        <View
+          style={[styles.openBadge, { backgroundColor: isOpen ? '#E6FDF3' : '#FEF3F2' }]}
+          accessibilityLabel={isOpen ? 'Store is open' : 'Store is closed'}
+          accessibilityRole="text"
+        >
           <ThemedText style={[styles.openText, { color: isOpen ? '#059669' : '#DC2626' }]}>
             {isOpen ? 'Open' : 'Closed'}
           </ThemedText>

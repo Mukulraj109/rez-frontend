@@ -153,7 +153,15 @@ export default function DealFilterModal({
   };
 
   return (
-    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Filter and sort deals dialog"
+    >
       <TouchableWithoutFeedback onPress={handleBackdropPress}>
         <View style={styles.overlay}>
           <Animated.View style={[styles.blurContainer, { opacity: fadeAnim }]}>
@@ -172,7 +180,13 @@ export default function DealFilterModal({
               <View style={styles.modal}>
                 {/* Header */}
                 <View style={styles.header}>
-                  <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={onClose}
+                    accessibilityLabel="Close filter dialog"
+                    accessibilityRole="button"
+                    accessibilityHint="Double tap to close this dialog"
+                  >
                     <Ionicons name="close" size={20} color="#555" />
                   </TouchableOpacity>
                   
@@ -194,7 +208,13 @@ export default function DealFilterModal({
                         onChangeText={setSearchTerm}
                       />
                       {searchTerm.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchTerm('')} style={styles.clearSearchButton}>
+                        <TouchableOpacity
+                          onPress={() => setSearchTerm('')}
+                          style={styles.clearSearchButton}
+                          accessibilityLabel="Clear search"
+                          accessibilityRole="button"
+                          accessibilityHint="Double tap to clear search text"
+                        >
                           <Ionicons name="close-circle" size={20} color="#9CA3AF" />
                         </TouchableOpacity>
                       )}
@@ -310,12 +330,24 @@ export default function DealFilterModal({
 
                 {/* Footer Actions */}
                 <View style={styles.footer}>
-                  <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+                  <TouchableOpacity
+                    style={styles.resetButton}
+                    onPress={handleReset}
+                    accessibilityLabel="Reset filters"
+                    accessibilityRole="button"
+                    accessibilityHint="Double tap to reset all filters to default"
+                  >
                     <Ionicons name="refresh-outline" size={16} color="#6B7280" />
                     <ThemedText style={styles.resetButtonText}>Reset</ThemedText>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
+
+                  <TouchableOpacity
+                    style={styles.applyButton}
+                    onPress={handleApply}
+                    accessibilityLabel="Apply filters"
+                    accessibilityRole="button"
+                    accessibilityHint="Double tap to apply selected filters and close dialog"
+                  >
                     <ThemedText style={styles.applyButtonText}>Apply Filters</ThemedText>
                   </TouchableOpacity>
                 </View>

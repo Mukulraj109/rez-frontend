@@ -97,6 +97,8 @@ export default function ReviewModal({
       animationType="none"
       statusBarTranslucent
       onRequestClose={onClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Reviews and ratings dialog"
     >
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
@@ -119,7 +121,13 @@ export default function ReviewModal({
                 <View style={styles.handleBar} />
 
                 {/* Close (cut) button */}
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={onClose}
+                  accessibilityLabel="Close reviews and ratings"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to close this dialog"
+                >
                   <Ionicons name="close" size={20} color="#555" />
                 </TouchableOpacity>
 

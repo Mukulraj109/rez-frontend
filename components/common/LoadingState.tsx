@@ -41,12 +41,31 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   color = '#9333EA',
   style,
 }) => {
+  const loadingMessage = message || 'Loading';
+
   return (
-    <View style={[styles.container, style]}>
-      <ActivityIndicator size={size} color={color} />
+    <View
+      style={[styles.container, style]}
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityLabel={loadingMessage}
+      accessibilityLiveRegion="polite"
+      accessibilityState={{ busy: true }}
+    >
+      <ActivityIndicator
+        size={size}
+        color={color}
+        accessible={false}
+      />
 
       {message && (
-        <ThemedText style={styles.message}>{message}</ThemedText>
+        <ThemedText
+          style={styles.message}
+          accessible={true}
+          accessibilityRole="text"
+        >
+          {message}
+        </ThemedText>
       )}
     </View>
   );

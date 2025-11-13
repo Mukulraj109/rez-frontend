@@ -26,11 +26,18 @@ export default function LoadingSpinner({
   const containerStyle = fullScreen ? styles.fullScreenContainer : styles.container;
   
   return (
-    <View style={containerStyle}>
+    <View
+      style={containerStyle}
+      accessibilityLabel={message || "Loading"}
+      accessibilityRole="progressbar"
+      accessible={true}
+    >
       <ActivityIndicator
         size={size}
         color={color}
         style={styles.spinner}
+        accessibilityElementsHidden={true}
+        importantForAccessibility="no"
       />
       {message && (
         <ThemedText style={styles.message}>

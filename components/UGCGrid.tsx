@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   FlatList,
@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,12 +16,14 @@ interface UGCGridProps {
   ugcContent: UGCContent[];
   onContentPress?: (content: UGCContent) => void;
   onLikeContent?: (contentId: string) => void;
+  onBookmarkContent?: (contentId: string) => void;
 }
 
 const UGCGrid: React.FC<UGCGridProps> = ({
   ugcContent,
   onContentPress,
   onLikeContent,
+  onBookmarkContent,
 }) => {
   const screenWidth = Dimensions.get('window').width;
   const itemWidth = (screenWidth - 64) / 2; // Account for padding and gap
@@ -29,18 +32,51 @@ const UGCGrid: React.FC<UGCGridProps> = ({
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 1) return '1d';
     if (diffDays < 7) return `${diffDays}d`;
     if (diffDays < 30) return `${Math.ceil(diffDays / 7)}w`;
     return `${Math.ceil(diffDays / 30)}m`;
   };
 
-  const renderUGCItem = ({ item }: { item: UGCContent }) => (
+  const formatLikeCount = (count: number): string => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    }
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K`;
+    }
+    return count.toString();
+  };
+
+  const renderUGCItem = ({ item }: { item: UGCContent }) => {
+    const likeScaleAnim = useRef(new Animated.Value(1)).current;
+    const bookmarkScaleAnim = useRef(new Animated.Value(1)).current;
+
+    const handleLikePress = () => {
+      Animated.sequence([
+        Animated.timing(likeScaleAnim, { toValue: 0.8, duration: 100, useNativeDriver: true }),
+        Animated.spring(likeScaleAnim, { toValue: 1, friction: 3, tension: 100, useNativeDriver: true }),
+      ]).start();
+      onLikeContent?.(item.id);
+    };
+
+    const handleBookmarkPress = () => {
+      Animated.sequence([
+        Animated.timing(bookmarkScaleAnim, { toValue: 0.8, duration: 100, useNativeDriver: true }),
+        Animated.spring(bookmarkScaleAnim, { toValue: 1, friction: 3, tension: 100, useNativeDriver: true }),
+      ]).start();
+      onBookmarkContent?.(item.id);
+    };
+
+    return (
     <TouchableOpacity
       style={styles.ugcItem}
       onPress={() => onContentPress?.(item)}
       activeOpacity={0.8}
+      accessibilityLabel={`${item.contentType === 'video' ? 'Video' : 'Photo'} by ${item.userName}. ${item.likes} likes${item.caption ? '. ' + item.caption : ''}`}
+      accessibilityRole="button"
+      accessibilityHint="Opens full content view"
     >
       <View style={styles.imageContainer}>
         <Image source={{ uri: item.uri }} style={styles.ugcImage} />
@@ -58,16 +94,43 @@ const UGCGrid: React.FC<UGCGridProps> = ({
           <ThemedText style={styles.userName}>{item.userName}</ThemedText>
         </View>
 
-        {/* Like button */}
+        {/* Bookmark button (top-right) */}
+        <TouchableOpacity
+          style={styles.bookmarkButton}
+          onPress={handleBookmarkPress}
+          accessibilityLabel={`${item.isBookmarked ? 'Remove bookmark' : 'Bookmark'} post`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: item.isBookmarked }}
+          accessibilityHint={`Double tap to ${item.isBookmarked ? 'remove bookmark' : 'bookmark this post'}`}
+        >
+          <Animated.View style={{ transform: [{ scale: bookmarkScaleAnim }] }}>
+            <Ionicons
+              name={item.isBookmarked ? "bookmark" : "bookmark-outline"}
+              size={20}
+              color={item.isBookmarked ? "#7C3AED" : "#FFFFFF"}
+            />
+          </Animated.View>
+        </TouchableOpacity>
+
+        {/* Like button (bottom-left) */}
         <TouchableOpacity
           style={styles.likeButton}
-          onPress={() => onLikeContent?.(item.id)}
+          onPress={handleLikePress}
+          accessibilityLabel={`${item.isLiked ? 'Unlike' : 'Like'} post. ${formatLikeCount(item.likes)} likes`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: item.isLiked }}
+          accessibilityHint={`Double tap to ${item.isLiked ? 'remove like' : 'like this post'}`}
         >
-          <Ionicons
-            name={item.isLiked ? "heart" : "heart-outline"}
-            size={16}
-            color={item.isLiked ? "#EF4444" : "#FFFFFF"}
-          />
+          <Animated.View style={{ transform: [{ scale: likeScaleAnim }], flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons
+              name={item.isLiked ? "heart" : "heart-outline"}
+              size={18}
+              color={item.isLiked ? "#EF4444" : "#FFFFFF"}
+            />
+            {item.likes > 0 && (
+              <ThemedText style={styles.likeCount}>{formatLikeCount(item.likes)}</ThemedText>
+            )}
+          </Animated.View>
         </TouchableOpacity>
       </View>
 
@@ -104,7 +167,8 @@ const UGCGrid: React.FC<UGCGridProps> = ({
         )}
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
   // Convert to simple View with manual grid layout to work better inside ScrollView
   if (ugcContent.length === 0) {
@@ -215,16 +279,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  likeButton: {
+  bookmarkButton: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 16,
-    width: 32,
-    height: 32,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 20,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  likeButton: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  likeCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginLeft: 4,
+    letterSpacing: 0.2,
   },
   contentInfo: {
     padding: 12,

@@ -335,6 +335,9 @@ export default function EarningsHistoryPage() {
             style={styles.backButton}
             onPress={() => router.back()}
             activeOpacity={0.7}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
           >
             <LinearGradient
               colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.1)']}
@@ -359,6 +362,10 @@ export default function EarningsHistoryPage() {
             onPress={handleExport}
             activeOpacity={0.7}
             disabled={exporting || transactions.length === 0}
+            accessibilityLabel={exporting ? "Exporting earnings report" : "Export earnings report"}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: exporting || transactions.length === 0, busy: exporting }}
+            accessibilityHint="Double tap to download earnings history as CSV"
           >
             <LinearGradient
               colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.1)']}
@@ -386,6 +393,8 @@ export default function EarningsHistoryPage() {
               transform: [{ translateY: slideAnim }],
             },
           ]}
+          accessibilityLabel={`Earnings summary. Total earned: ₹${summary.totalEarned}. Withdrawn: ₹${summary.totalWithdrawn}. Pending: ₹${summary.pendingAmount}`}
+          accessibilityRole="summary"
         >
           <LinearGradient
             colors={['#FFFFFF', '#F9FAFB']}
@@ -503,6 +512,10 @@ export default function EarningsHistoryPage() {
               ]}
               onPress={() => setSelectedFilter(filter.value as any)}
               activeOpacity={0.7}
+              accessibilityLabel={`Filter by ${filter.label}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedFilter === filter.value }}
+              accessibilityHint={`Double tap to show ${filter.label.toLowerCase()} transactions`}
             >
               {selectedFilter === filter.value ? (
                 <LinearGradient
@@ -601,6 +614,8 @@ export default function EarningsHistoryPage() {
                     ],
                   },
                 ]}
+                accessibilityLabel={`${transaction.type}. ${transaction.description}. Amount: ${transaction.type === 'withdrawal' ? '-' : '+'}₹${transaction.amount}. Date: ${formatDate(transaction.createdAt)}. Status: ${transaction.status}`}
+                accessibilityRole="text"
               >
                 <LinearGradient
                   colors={['#FFFFFF', '#F9FAFB']}

@@ -31,16 +31,66 @@ export default function FormInput({
 }: FormInputProps) {
   const [isFocused, setIsFocused] = useState(false);
 
+  // Build accessibility label
+  const buildAccessibilityLabel = () => {
+    let baseLabel = label || props.placeholder || 'Input field';
+    if (props.secureTextEntry) {
+      baseLabel += ', secure text entry';
+    }
+    if (props.editable === false) {
+      baseLabel += ', disabled';
+    }
+    return baseLabel;
+  };
+
+  // Build accessibility hint
+  const buildAccessibilityHint = () => {
+    if (error) {
+      return `Error: ${error}. Please correct this field.`;
+    }
+    if (props.placeholder && label) {
+      return `Enter ${label.toLowerCase()}`;
+    }
+    return props.accessibilityHint;
+  };
+
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
-      <View style={[
-        styles.inputContainer,
-        isFocused && styles.inputFocused,
-        error && styles.inputError
-      ]}>
-        {leftIcon && <View style={styles.leftIconContainer}>{leftIcon}</View>}
-        {prefix && <Text style={styles.prefixText}>{prefix}</Text>}
+      {label && (
+        <Text
+          style={styles.label}
+          accessible={true}
+          accessibilityRole="text"
+        >
+          {label}
+        </Text>
+      )}
+      <View
+        style={[
+          styles.inputContainer,
+          isFocused && styles.inputFocused,
+          error && styles.inputError
+        ]}
+        accessible={false}
+      >
+        {leftIcon && (
+          <View
+            style={styles.leftIconContainer}
+            accessible={false}
+            importantForAccessibility="no"
+          >
+            {leftIcon}
+          </View>
+        )}
+        {prefix && (
+          <Text
+            style={styles.prefixText}
+            accessible={false}
+            importantForAccessibility="no"
+          >
+            {prefix}
+          </Text>
+        )}
         <TextInput
           style={[
             styles.input,
@@ -53,10 +103,28 @@ export default function FormInput({
           autoComplete="off"
           autoCorrect={false}
           spellCheck={false}
+          accessible={true}
+          accessibilityLabel={buildAccessibilityLabel()}
+          accessibilityHint={buildAccessibilityHint()}
+          accessibilityValue={{ text: String(props.value || '') }}
+          accessibilityState={{
+            disabled: props.editable === false,
+            busy: false,
+          }}
+          accessibilityRole="none"
           {...props}
         />
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && (
+        <View
+          accessible={true}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          accessibilityLabel={`Error: ${error}`}
+        >
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
     </View>
   );
 }

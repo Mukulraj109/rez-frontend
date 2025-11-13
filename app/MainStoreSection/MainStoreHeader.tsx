@@ -1,5 +1,5 @@
 // MainStoreHeader.tsx (updated back-arrow to be circular)
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   TouchableOpacity,
@@ -7,6 +7,7 @@ import {
   Platform,
   Dimensions,
   StatusBar,
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +20,8 @@ export interface MainStoreHeaderProps {
   onBack?: () => void;
   onProfilePress?: () => void;
   showBack?: boolean;
+  onSearchChange?: (query: string) => void;
+  searchQuery?: string;
 }
 
 export default function MainStoreHeader({
@@ -27,6 +30,8 @@ export default function MainStoreHeader({
   onBack,
   onProfilePress,
   showBack = true,
+  onSearchChange,
+  searchQuery: externalSearchQuery,
 }: MainStoreHeaderProps) {
   const router = useRouter();
   const { width, height } = Dimensions.get("window");
@@ -34,9 +39,47 @@ export default function MainStoreHeader({
   const topPadding =
     Platform.OS === "ios" ? (height >= 812 ? 44 : 20) : StatusBar.currentHeight ?? 24;
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState(externalSearchQuery || "");
+  const [isFocused, setIsFocused] = useState(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync external search query with internal state
+  useEffect(() => {
+    if (externalSearchQuery !== undefined) {
+      setSearchQuery(externalSearchQuery);
+    }
+  }, [externalSearchQuery]);
+
+  // Debounced search handler
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      if (onSearchChange) {
+        onSearchChange(searchQuery);
+      }
+    }, 500);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [searchQuery, onSearchChange]);
+
   const handleBack = () => {
     if (onBack) onBack();
     else router.back();
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    if (onSearchChange) {
+      onSearchChange("");
+    }
   };
 
   const initials = React.useMemo(() => {
@@ -52,6 +95,8 @@ export default function MainStoreHeader({
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
       style={[styles.container, { paddingTop: topPadding + 8, paddingBottom: 12 }]}
+      accessibilityRole="header"
+      accessibilityLabel={`Store page header. ${storeName}${subtitle ? `. ${subtitle}` : ''}`}
     >
       <View style={styles.inner}>
         {/* Circular Back */}
@@ -59,15 +104,20 @@ export default function MainStoreHeader({
           activeOpacity={0.8}
           onPress={handleBack}
           disabled={!showBack}
+          accessibilityRole="button"
           accessibilityLabel="Go back"
           accessibilityHint="Navigate to the previous screen"
+          accessibilityState={{ disabled: !showBack }}
           style={[styles.iconBtn, !showBack && { opacity: 0 }]}
         >
           <Ionicons name="chevron-back" size={20} color="#fff" />
         </TouchableOpacity>
 
         {/* Title */}
-        <View style={styles.titleWrap}>
+        <View
+          style={styles.titleWrap}
+          accessibilityRole="header"
+        >
           <ThemedText style={[styles.title, isSmall && styles.titleSmall]} numberOfLines={1}>
             {storeName}
           </ThemedText>
@@ -82,7 +132,8 @@ export default function MainStoreHeader({
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={onProfilePress}
-          accessibilityLabel="Profile"
+          accessibilityRole="button"
+          accessibilityLabel={`Profile. ${initials}`}
           accessibilityHint="Open profile menu"
           style={styles.avatarWrap}
         >
@@ -90,6 +141,41 @@ export default function MainStoreHeader({
             <ThemedText style={styles.avatarText}>{initials}</ThemedText>
           </LinearGradient>
         </TouchableOpacity>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={[styles.searchWrapper, isFocused && styles.searchWrapperFocused]}>
+          <Ionicons
+            name="search"
+            size={20}
+            color={isFocused ? "#7C3AED" : "#9CA3AF"}
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search products..."
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            returnKeyType="search"
+            accessibilityLabel="Search products"
+            accessibilityHint="Enter product name to search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={handleClearSearch}
+              style={styles.clearButton}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              accessibilityHint="Clear the search input"
+            >
+              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Decorative curved highlight to the right (matches screenshot) */}
@@ -209,5 +295,48 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     opacity: 0.05,
     transform: [{ rotate: "18deg" }],
+  },
+
+  // Search bar styles
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 8,
+  },
+  searchWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    height: 44,
+    paddingHorizontal: 12,
+    borderWidth: 2,
+    borderColor: "transparent",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  searchWrapperFocused: {
+    borderColor: "#7C3AED",
+    backgroundColor: "#fff",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#111827",
+    padding: 0,
+    height: "100%",
+  },
+  clearButton: {
+    marginLeft: 8,
+    padding: 4,
   },
 });

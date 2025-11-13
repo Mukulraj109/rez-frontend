@@ -13,6 +13,8 @@ import {
   Dimensions,
   Alert,
   SafeAreaView,
+  ActivityIndicator,
+  Text,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +24,25 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import { useProductReviews } from '@/hooks/useProductReviews';
 import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
 import productsApi from '@/services/productsApi';
+import { useWallet } from '@/hooks/useWallet';
+import ProductVariantSelector from '@/components/product/ProductVariantSelector';
+import { IProductVariant } from '@/types/product-variants.types';
+import { useProductAvailability } from '@/hooks/useProductAvailability';
+import AddToCartModal from '@/components/product/AddToCartModal';
+import { useCart } from '@/contexts/CartContext';
+import StockBadge from '@/components/product/StockBadge';
+import StockNotificationModal from '@/components/product/StockNotificationModal';
+import ProductImageGallery from '@/components/product/ProductImageGallery';
+import RelatedProductsSection from '@/components/product/RelatedProductsSection';
+import FrequentlyBoughtTogether from '@/components/product/FrequentlyBoughtTogether';
+import DeliveryInformation from '@/components/product/DeliveryInformation';
+import ReturnPolicyCard from '@/components/product/ReturnPolicyCard';
+import SellerInformation from '@/components/product/SellerInformation';
+import CashbackRewardsCard from '@/components/product/CashbackRewardsCard';
+import ProductShareModal from '@/components/product/ProductShareModal';
+import SizeGuideModal from '@/components/product/SizeGuideModal';
+import { useProductAnalytics } from '@/hooks/useProductAnalytics';
+import analyticsService from '@/services/analyticsService';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -32,6 +53,7 @@ interface ProductDetails {
   originalPrice?: number;
   discount?: number;
   images: string[];
+  videos?: string[]; // Product videos
   description: string;
   specifications: { [key: string]: string };
   availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'LIMITED';
@@ -40,6 +62,7 @@ interface ProductDetails {
   category: string;
   brand: string;
   tags: string[];
+  variants?: IProductVariant[]; // Product variants for selection
 }
 
 export default function ProductDetailPage() {
@@ -47,11 +70,49 @@ export default function ProductDetailPage() {
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const [product, setProduct] = useState<ProductDetails | null>(null);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'reviews'>('details');
+  const [selectedVariant, setSelectedVariant] = useState<IProductVariant | null>(null);
+  const [showAddToCartModal, setShowAddToCartModal] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [showStockNotificationModal, setShowStockNotificationModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showSizeGuideModal, setShowSizeGuideModal] = useState(false);
+
+  // Cart context
+  const { state: cartState, actions: cartActions } = useCart();
+
+  // Wallet hook for coin balance
+  const { walletState, fetchWallet } = useWallet({
+    autoFetch: true,
+    refreshInterval: 30000 // Refresh every 30 seconds
+  });
+
+  // Extract coin balance
+  const wasilCoin = walletState.data?.coins?.find(c => c.type === 'wasil');
+  const coinBalance = wasilCoin?.amount || 0;
+
+  // Availability hook for stock checking
+  const {
+    availability,
+    isLoading: availabilityLoading,
+    checkAvailability,
+    canAddToCart: canAddToCartCheck,
+    getMaxQuantity,
+  } = useProductAvailability({
+    productId: id as string,
+    variantId: selectedVariant?._id,
+    selectedVariant,
+    autoCheck: true,
+  });
+
+  // Debug: Log wallet state
+  useEffect(() => {
+    console.log('💰 [ProductPage] Wallet state:', walletState);
+    console.log('💰 [ProductPage] Coin balance:', coinBalance);
+  }, [walletState, coinBalance]);
 
   // Use the reviews hook for complete review management
   const {
@@ -76,14 +137,32 @@ export default function ProductDetailPage() {
   });
 
   useEffect(() => {
+    console.log('🔍 [ProductPage] Route param ID received:', id);
     loadProductDetails(id as string);
   }, [id]);
 
+  // Track product view when product loads
+  useEffect(() => {
+    if (product) {
+      console.log('📊 [ProductPage] Tracking product view');
+      analyticsService.trackProductView({
+        productId: product.id,
+        productName: product.name,
+        productPrice: product.price,
+        category: product.category,
+        brand: product.brand,
+        variantId: selectedVariant?._id,
+      });
+    }
+  }, [product?.id, selectedVariant?._id]);
+
   const loadProductDetails = async (productId: string) => {
     try {
+      console.log('🔍 [ProductPage] Loading product with ID:', productId);
 
       // Fetch product details from backend
       const productResponse = await productsApi.getProductById(productId);
+      console.log('🔍 [ProductPage] Backend response:', productResponse);
 
       if (!productResponse.success || !productResponse.data) {
         console.error('❌ [PRODUCT PAGE] Failed to load product:', productResponse.message);
@@ -93,30 +172,71 @@ export default function ProductDetailPage() {
 
       const productData = productResponse.data;
 
+      // Transform backend variants to frontend format
+      const transformedVariants: IProductVariant[] = (productData.inventory?.variants || []).map((variant: any) => ({
+        _id: variant._id || variant.id,
+        id: variant.id || variant._id,
+        sku: variant.sku || `SKU-${variant._id}`,
+        attributes: variant.attributes || [],
+        pricing: {
+          basePrice: variant.pricing?.basePrice || variant.price || 0,
+          salePrice: variant.pricing?.salePrice || variant.pricing?.basePrice || variant.price || 0,
+          discount: variant.pricing?.discount || 0,
+          currency: variant.pricing?.currency || '₹',
+        },
+        inventory: {
+          quantity: variant.inventory?.quantity || 0,
+          isAvailable: variant.inventory?.quantity > 0,
+          reserved: variant.inventory?.reserved || 0,
+          threshold: variant.inventory?.threshold || 5,
+        },
+        images: variant.images || [],
+        isActive: variant.isActive !== false,
+        weight: variant.weight,
+        dimensions: variant.dimensions,
+      }));
+
+      // Determine price from first available variant or product-level pricing
+      const firstVariant = transformedVariants[0];
+      const productPrice = firstVariant?.pricing.salePrice || productData.pricing?.salePrice || productData.pricing?.basePrice || 0;
+      const productOriginalPrice = firstVariant?.pricing.basePrice || productData.pricing?.basePrice;
+
+      // Extract videos if available
+      const productVideos = productData.videos?.map((video: any) => {
+        if (typeof video === 'string') return video;
+        return video.url || video.uri || '';
+      }).filter(Boolean) || [];
+
       // Transform backend product data to component format
       const transformedProduct: ProductDetails = {
         id: productData.id || (productData as any)._id,
         name: productData.name,
-        price: productData.pricing?.salePrice || productData.pricing?.basePrice || 0,
-        originalPrice: productData.pricing?.basePrice !== productData.pricing?.salePrice
-          ? productData.pricing?.basePrice
+        price: productPrice,
+        originalPrice: productOriginalPrice !== productPrice ? productOriginalPrice : undefined,
+        discount: productOriginalPrice && productPrice
+          ? Math.round(((productOriginalPrice - productPrice) / productOriginalPrice) * 100)
           : undefined,
-        discount: productData.pricing?.salePrice && productData.pricing?.basePrice
-          ? Math.round(((productData.pricing.basePrice - productData.pricing.salePrice) / productData.pricing.basePrice) * 100)
-          : undefined,
-        images: productData.images?.map(img => img.url) || [
+        images: productData.images?.map((img: any) => img.url || img) || [
           'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500'
         ],
+        videos: productVideos.length > 0 ? productVideos : undefined,
         description: productData.description || 'No description available',
-        specifications: productData.variants?.[0]?.attributes || {},
-        availability: productData.variants?.[0]?.inventory?.quantity > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK',
+        specifications: productData.specifications
+          ? Object.fromEntries(productData.specifications.map((s: any) => [s.key, s.value]))
+          : firstVariant?.attributes?.reduce((acc: any, attr: any) => {
+              acc[attr.key] = attr.value;
+              return acc;
+            }, {}) || {},
+        availability: firstVariant?.inventory.quantity > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK',
         rating: reviewSummary?.averageRating || productData.ratings?.average || 0,
         reviewCount: reviewSummary?.totalReviews || productData.ratings?.count || 0,
         category: productData.category?.name || 'General',
         brand: productData.store?.name || 'Unknown',
         tags: productData.tags || [],
+        variants: transformedVariants.length > 0 ? transformedVariants : undefined,
       };
 
+      console.log('✅ [ProductPage] Transformed product:', transformedProduct);
       setProduct(transformedProduct);
     } catch (error) {
       console.error('❌ [PRODUCT PAGE] Error loading product:', error);
@@ -130,15 +250,106 @@ export default function ProductDetailPage() {
     router.back();
   };
 
-  const handleAddToCart = () => {
-    Alert.alert(
-      'Added to Cart',
-      `${product?.name} (${quantity} item${quantity > 1 ? 's' : ''}) added to your cart!`,
-      [
-        { text: 'Continue Shopping' },
-        { text: 'View Cart', onPress: () => router.push('/CartPage' as any) },
-      ]
-    );
+  /**
+   * Handle add to cart with full validation and cart integration
+   */
+  const handleAddToCart = async () => {
+    if (!product) return;
+
+    try {
+      setIsAddingToCart(true);
+
+      // Validation 1: Check if product has variants and one is selected
+      if (product.variants && product.variants.length > 0 && !selectedVariant) {
+        Alert.alert(
+          'Select Options',
+          'Please select all product options (size, color, etc.) before adding to cart.'
+        );
+        setIsAddingToCart(false);
+        return;
+      }
+
+      // Validation 2: Check stock availability
+      const isAvailable = await checkAvailability(quantity);
+      if (!isAvailable) {
+        Alert.alert(
+          'Out of Stock',
+          availability?.message || 'This product is currently out of stock.',
+          [{ text: 'OK' }]
+        );
+        setIsAddingToCart(false);
+        return;
+      }
+
+      // Validation 3: Check if quantity exceeds max available
+      const maxQty = getMaxQuantity();
+      if (quantity > maxQty) {
+        Alert.alert(
+          'Quantity Not Available',
+          `Only ${maxQty} item${maxQty > 1 ? 's' : ''} available. Please adjust quantity.`,
+          [{ text: 'OK' }]
+        );
+        setIsAddingToCart(false);
+        return;
+      }
+
+      // Build cart item
+      const cartItem = {
+        id: selectedVariant ? `${product.id}-${selectedVariant._id}` : product.id,
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        originalPrice: product.originalPrice || product.price,
+        discountedPrice: product.price,
+        image: product.images[0],
+        cashback: '0', // Can calculate from product data if available
+        category: 'products' as const,
+        quantity,
+        selected: true,
+        variant: selectedVariant ? {
+          id: selectedVariant._id,
+          sku: selectedVariant.sku,
+          attributes: selectedVariant.attributes,
+          price: selectedVariant.pricing.salePrice,
+        } : undefined,
+        inventory: {
+          stock: availability?.quantity || 0,
+          lowStockThreshold: 5,
+        },
+        availabilityStatus: availability?.status || 'in_stock' as const,
+      };
+
+      console.log('🛒 [ProductPage] Adding to cart:', cartItem);
+
+      // Add to cart via CartContext
+      await cartActions.addItem(cartItem);
+
+      console.log('✅ [ProductPage] Item added to cart successfully');
+      
+      // Track add to cart event
+      analyticsService.trackAddToCart({
+        productId: product.id,
+        productName: product.name,
+        price: product.price,
+        quantity,
+        variantId: selectedVariant?._id,
+        variantDetails: selectedVariant ? getVariantDetailsString() : undefined,
+        totalValue: product.price * quantity,
+      });
+
+      // Show success modal
+      setShowAddToCartModal(true);
+
+      setIsAddingToCart(false);
+    } catch (error) {
+      console.error('❌ [ProductPage] Error adding to cart:', error);
+      Alert.alert(
+        'Error',
+        'Failed to add item to cart. Please try again.',
+        [{ text: 'OK' }]
+      );
+      setIsAddingToCart(false);
+    }
   };
 
   const handleBuyNow = () => {
@@ -148,13 +359,14 @@ export default function ProductDetailPage() {
 
   const handleWishlist = async () => {
     if (!product) return;
-    
+
     try {
       const isInList = isInWishlist(product.id);
-      
+
       if (isInList) {
         await removeFromWishlist(product.id);
         Alert.alert('Removed from Wishlist', `${product.name} removed from your wishlist!`);
+        analyticsService.trackWishlist('remove', product.id, product.name);
       } else {
         await addToWishlist({
           productId: product.id,
@@ -171,8 +383,76 @@ export default function ProductDetailPage() {
         });
         Alert.alert('Added to Wishlist', `${product.name} added to your wishlist!`);
       }
+        analyticsService.trackWishlist('add', product.id, product.name);
     } catch (error) {
       Alert.alert('Error', 'Failed to update wishlist. Please try again.');
+    }
+  };
+
+  /**
+   * Handle variant selection change
+   * Update displayed price, availability, and images based on selected variant
+   */
+  const handleVariantChange = (variant: IProductVariant | null) => {
+    console.log('🔄 [ProductPage] Variant changed:', variant);
+    setSelectedVariant(variant);
+
+    if (variant && product) {
+      // Update product display with variant-specific data
+      const updatedProduct = {
+        ...product,
+        price: variant.pricing.salePrice,
+        originalPrice: variant.pricing.basePrice !== variant.pricing.salePrice ? variant.pricing.basePrice : undefined,
+        discount: variant.pricing.discount,
+        availability: variant.inventory.isAvailable ? 'IN_STOCK' as const : 'OUT_OF_STOCK' as const,
+        // Use variant images if available, otherwise keep product images
+        images: variant.images && variant.images.length > 0 ? variant.images : product.images,
+      };
+      setProduct(updatedProduct);
+      
+      // Track variant selection
+      const attributes = variant.attributes.reduce((acc: Record<string, string>, attr: any) => {
+        acc[attr.key] = attr.value;
+        return acc;
+      }, {});
+      analyticsService.trackVariantSelection(product.id, variant._id, attributes);
+    }
+  };
+
+  /**
+   * Generate variant details string for display
+   * e.g., "Size: Large, Color: Red"
+   */
+  const getVariantDetailsString = (): string | undefined => {
+    if (!selectedVariant) return undefined;
+    return selectedVariant.attributes
+      .map(attr => `${attr.key}: ${attr.value}`)
+      .join(', ');
+  };
+
+  /**
+   * Handle stock notification subscription
+   */
+  const handleStockNotification = async (email: string, phone?: string) => {
+    try {
+      console.log('📧 [ProductPage] Subscribing to stock notification:', { email, phone });
+
+      // TODO: Integrate with backend API when available
+      // For now, simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      console.log('✅ [ProductPage] Stock notification subscription successful');
+
+      // In production, call backend API:
+      // await stockNotificationApi.subscribe({
+      //   productId: product!.id,
+      //   variantId: selectedVariant?._id,
+      //   email,
+      //   phone,
+      // });
+    } catch (error) {
+      console.error('❌ [ProductPage] Failed to subscribe to stock notification:', error);
+      throw new Error('Failed to subscribe. Please try again later.');
     }
   };
 
@@ -212,58 +492,68 @@ export default function ProductDetailPage() {
         <TouchableOpacity style={styles.headerButton} onPress={handleBackPress}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        
+
         <ThemedText style={styles.headerTitle}>Product Details</ThemedText>
-        
+
+        {/* Coin Balance Display */}
+        <TouchableOpacity
+          style={styles.coinButton}
+          onPress={() => router.push('/WalletScreen' as any)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="star" size={16} color="#FFD700" />
+          <ThemedText style={styles.coinText}>{coinBalance}</ThemedText>
+        </TouchableOpacity>
+
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleWishlist}>
-            <Ionicons 
-              name={product && isInWishlist(product.id) ? "heart" : "heart-outline"} 
-              size={24} 
-              color={product && isInWishlist(product.id) ? "#EF4444" : "#333"} 
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleWishlist}
+            accessibilityLabel={product && isInWishlist(product.id) ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+            accessibilityRole="button"
+            accessibilityHint={`Double tap to ${product && isInWishlist(product.id) ? 'remove from' : 'add to'} your wishlist`}
+            accessibilityState={{ selected: product && isInWishlist(product.id) }}
+          >
+            <Ionicons
+              name={product && isInWishlist(product.id) ? "heart" : "heart-outline"}
+              size={24}
+              color={product && isInWishlist(product.id) ? "#EF4444" : "#333"}
             />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/CartPage' as any)}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setShowShareModal(true)}
+            accessibilityLabel={`Share ${product?.name || 'product'}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to share this product with friends and family"
+          >
+            <Ionicons name="share-social-outline" size={24} color="#333" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerButton, { position: 'relative' }]}
+            onPress={() => router.push('/CartPage' as any)}
+            accessibilityLabel={`Shopping cart. ${cartState.totalItems > 0 ? `${cartState.totalItems} item${cartState.totalItems !== 1 ? 's' : ''} in cart` : 'Cart is empty'}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view your shopping cart"
+          >
             <Ionicons name="cart-outline" size={24} color="#333" />
+            {cartState.totalItems > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cartState.totalItems}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Product Images */}
-        <View style={styles.imageSection}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(event) => {
-              const index = Math.floor(event.nativeEvent.contentOffset.x / screenWidth);
-              setSelectedImageIndex(index);
-            }}
-          >
-            {product.images.map((image, index) => (
-              <Image
-                key={index}
-                source={{ uri: image }}
-                style={styles.productImage}
-                resizeMode="cover"
-              />
-            ))}
-          </ScrollView>
-          
-          {/* Image indicators */}
-          <View style={styles.imageIndicators}>
-            {product.images.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.indicator,
-                  index === selectedImageIndex && styles.activeIndicator,
-                ]}
-              />
-            ))}
-          </View>
-        </View>
+        {/* Enhanced Product Gallery */}
+        <ProductImageGallery
+          images={product.images}
+          videos={product.videos}
+          showThumbnails={true}
+          autoPlayVideo={false}
+        />
 
         {/* Product Info */}
         <View style={styles.infoSection}>
@@ -290,20 +580,129 @@ export default function ProductDetailPage() {
             )}
           </View>
 
-          <View style={styles.availabilityRow}>
-            <Ionicons
-              name={product.availability === 'IN_STOCK' ? 'checkmark-circle' : 'close-circle'}
-              size={18}
-              color={product.availability === 'IN_STOCK' ? '#22C55E' : '#EF4444'}
-            />
-            <ThemedText style={[
-              styles.availabilityText,
-              { color: product.availability === 'IN_STOCK' ? '#22C55E' : '#EF4444' }
-            ]}>
-              {product.availability === 'IN_STOCK' ? 'In Stock' : 'Out of Stock'}
-            </ThemedText>
+          {/* Stock Badge */}
+          <View style={styles.stockBadgeContainer}>
+            {availability && (
+              <StockBadge
+                status={availability.status}
+                quantity={availability.quantity}
+                showIcon={true}
+                size="medium"
+              />
+            )}
+
+            {/* Notify Me Button for Out of Stock */}
+            {availability && !availability.canPurchase && (
+              <TouchableOpacity
+                style={styles.notifyMeButton}
+                onPress={() => setShowStockNotificationModal(true)}
+                activeOpacity={0.8}
+                accessibilityLabel="Notify me when back in stock"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to set up notifications when this product becomes available"
+              >
+                <Ionicons name="notifications-outline" size={16} color="#8B5CF6" />
+                <ThemedText style={styles.notifyMeText}>Notify Me</ThemedText>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
+
+        {/* Cashback & Rewards */}
+        <CashbackRewardsCard
+          productPrice={product.price}
+          cashbackOffer={{
+            type: 'percentage',
+            value: 5,
+            maxCashback: 200,
+            description: 'Get 5% cashback up to ₹200',
+          }}
+          rewardPoints={{
+            basePoints: 1,
+            bonusMultiplier: 2,
+            tierBonus: 50,
+          }}
+          showDetails={true}
+        />
+
+        {/* Product Variant Selector */}
+        {product.variants && product.variants.length > 0 && (
+          <View style={styles.section}>
+            <ProductVariantSelector
+              variants={product.variants}
+              selectedVariant={selectedVariant}
+              onVariantChange={handleVariantChange}
+              showTitle={true}
+              size="medium"
+            />
+
+            {/* Size Guide Button */}
+            <TouchableOpacity
+              style={styles.sizeGuideButton}
+              onPress={() => {
+                setShowSizeGuideModal(true);
+                analyticsService.trackSizeGuideView(product.id);
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="shirt-outline" size={18} color="#8B5CF6" />
+              <ThemedText style={styles.sizeGuideButtonText}>View Size Guide</ThemedText>
+              <Ionicons name="chevron-forward" size={18} color="#8B5CF6" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Frequently Bought Together */}
+        <FrequentlyBoughtTogether
+          productId={product.id}
+          currentProduct={{
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            image: product.images[0],
+          }}
+          onAddToCart={async (productIds) => {
+            console.log('🛒 [ProductPage] Adding bundle products to cart:', productIds);
+
+            try {
+              // Add all selected products to cart
+              for (const prodId of productIds) {
+                if (prodId === product.id) {
+                  // Add current product (already handled by user)
+                  await handleAddToCart();
+                } else {
+                  // For other products in bundle, we'll need to fetch their details and add
+                  // For now, just log - full implementation would fetch product details
+                  console.log('🛒 [ProductPage] Would add product to cart:', prodId);
+                  // TODO: Implement bulk add to cart when backend API is ready
+                }
+              }
+
+              Alert.alert(
+                'Added to Cart',
+                `${productIds.length} item${productIds.length > 1 ? 's' : ''} added to your cart!`,
+                [
+                  { text: 'Continue Shopping', style: 'cancel' },
+                  { text: 'View Cart', onPress: () => router.push('/CartPage' as any) },
+                ]
+              );
+            } catch (error) {
+              console.error('❌ [ProductPage] Error adding bundle to cart:', error);
+              Alert.alert('Error', 'Failed to add items to cart. Please try again.');
+            }
+          }}
+          limit={3}
+        />
+
+        {/* Delivery Information */}
+        <DeliveryInformation
+          productId={product.id}
+          storeId={product.brand}
+          productPrice={product.price}
+          onPinCodeChange={(pinCode) => {
+            console.log('📍 [ProductPage] Pin code changed:', pinCode);
+          }}
+        />
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
@@ -344,6 +743,35 @@ export default function ProductDetailPage() {
                 </View>
               ))}
             </View>
+
+            {/* Return Policy */}
+            <ReturnPolicyCard
+              productId={product.id}
+              categoryId={product.category}
+              storeId={product.brand}
+            />
+
+            {/* Seller Information */}
+            <SellerInformation
+              storeId={product.brand}
+              storeName={product.brand}
+              storeRating={4.5}
+              storeReviewCount={1234}
+              location="India"
+              isVerified={true}
+              onVisitStore={() => {
+                console.log('🏪 [ProductPage] Visiting store:', product.brand);
+                router.push(`/StoreListPage?storeId=${product.brand}` as any);
+              }}
+              onViewProducts={() => {
+                console.log('📦 [ProductPage] Viewing store products:', product.brand);
+                router.push(`/StoreListPage?storeId=${product.brand}&tab=products` as any);
+              }}
+              onContact={() => {
+                console.log('💬 [ProductPage] Contacting seller:', product.brand);
+                router.push(`/help/chat?storeId=${product.brand}` as any);
+              }}
+            />
           </>
         ) : (
           <View style={styles.reviewsSection}>
@@ -370,22 +798,51 @@ export default function ProductDetailPage() {
           </View>
         )}
 
+        {/* Related Products Section */}
+        <RelatedProductsSection
+          productId={product.id}
+          title="Similar Products"
+          type="similar"
+          limit={6}
+          onProductPress={(productId) => {
+            console.log('🔗 [ProductPage] Navigating to product:', productId);
+            router.push(`/product/${productId}` as any);
+          }}
+        />
+
         <View style={styles.bottomSpace} />
       </ScrollView>
 
       {/* Bottom Action Bar */}
       <View style={styles.actionBar}>
-        <View style={styles.quantityContainer}>
+        <View
+          style={styles.quantityContainer}
+          accessibilityRole="adjustable"
+          accessibilityLabel={`Quantity: ${quantity}`}
+        >
           <TouchableOpacity
             style={styles.quantityButton}
             onPress={() => setQuantity(Math.max(1, quantity - 1))}
+            accessibilityLabel="Decrease quantity"
+            accessibilityRole="button"
+            accessibilityHint={`Currently ${quantity} items. Double tap to decrease quantity`}
+            accessibilityState={{ disabled: quantity <= 1 }}
+            disabled={quantity <= 1}
           >
             <Ionicons name="remove" size={20} color="#333" />
           </TouchableOpacity>
-          <ThemedText style={styles.quantityText}>{quantity}</ThemedText>
+          <ThemedText
+            style={styles.quantityText}
+            accessibilityLabel={`${quantity} items`}
+          >
+            {quantity}
+          </ThemedText>
           <TouchableOpacity
             style={styles.quantityButton}
             onPress={() => setQuantity(quantity + 1)}
+            accessibilityLabel="Increase quantity"
+            accessibilityRole="button"
+            accessibilityHint={`Currently ${quantity} items. Double tap to increase quantity`}
           >
             <Ionicons name="add" size={20} color="#333" />
           </TouchableOpacity>
@@ -393,23 +850,143 @@ export default function ProductDetailPage() {
 
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={styles.addToCartButton}
+            style={[
+              styles.addToCartButton,
+              (isAddingToCart || !availability?.canPurchase) && styles.buttonDisabled,
+            ]}
             onPress={handleAddToCart}
+            disabled={isAddingToCart || !availability?.canPurchase}
             activeOpacity={0.8}
+            accessibilityLabel={isAddingToCart
+              ? 'Adding to cart'
+              : !availability?.canPurchase
+                ? 'Product out of stock'
+                : `Add ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart for ₹${(product?.price || 0) * quantity}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to add this product to your shopping cart"
+            accessibilityState={{ disabled: isAddingToCart || !availability?.canPurchase, busy: isAddingToCart }}
           >
-            <Ionicons name="cart-outline" size={20} color="#8B5CF6" />
-            <ThemedText style={styles.addToCartText}>Add to Cart</ThemedText>
+            {isAddingToCart ? (
+              <>
+                <ActivityIndicator size="small" color="#8B5CF6" />
+                <ThemedText style={styles.addToCartText}>Adding...</ThemedText>
+              </>
+            ) : (
+              <>
+                <Ionicons name="cart-outline" size={20} color="#8B5CF6" />
+                <ThemedText style={styles.addToCartText}>Add to Cart</ThemedText>
+              </>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.buyNowButton}
+            style={[
+              styles.buyNowButton,
+              !availability?.canPurchase && styles.buttonDisabled,
+            ]}
             onPress={handleBuyNow}
+            disabled={!availability?.canPurchase}
             activeOpacity={0.8}
+            accessibilityLabel={!availability?.canPurchase
+              ? 'Product out of stock'
+              : `Buy now ${quantity} ${quantity === 1 ? 'item' : 'items'} for ₹${(product?.price || 0) * quantity}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to proceed directly to checkout with this product"
+            accessibilityState={{ disabled: !availability?.canPurchase }}
           >
             <ThemedText style={styles.buyNowText}>Buy Now</ThemedText>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Add to Cart Success Modal */}
+      {product && (
+        <AddToCartModal
+          visible={showAddToCartModal}
+          onClose={() => setShowAddToCartModal(false)}
+          onViewCart={() => {
+            setShowAddToCartModal(false);
+            router.push('/CartPage' as any);
+          }}
+          productName={product.name}
+          productImage={product.images[0]}
+          quantity={quantity}
+          price={product.price}
+          variantDetails={getVariantDetailsString()}
+        />
+      )}
+
+      {/* Stock Notification Modal */}
+      {product && (
+        <StockNotificationModal
+          visible={showStockNotificationModal}
+          onClose={() => setShowStockNotificationModal(false)}
+          onSubscribe={handleStockNotification}
+          productName={product.name}
+          productImage={product.images[0]}
+          variantDetails={getVariantDetailsString()}
+        />
+      )}
+
+      {/* Product Share Modal */}
+      {product && (
+        <ProductShareModal
+          visible={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          productId={product.id}
+          productName={product.name}
+          productImage={product.images[0]}
+          productPrice={product.price}
+          productUrl={`https://app.wasil.com/product/${product.id}`}
+          referralCode="WASIL123" // TODO: Get from user's referral code
+          onShareComplete={(platform) => {
+            console.log('📤 [ProductPage] Product shared via:', platform);
+            analyticsService.trackShare({
+              productId: product.id,
+              platform,
+              referralCode: 'WASIL123',
+            });
+          }}
+        />
+      )}
+
+      {/* Size Guide Modal */}
+      {product && (
+        <SizeGuideModal
+          visible={showSizeGuideModal}
+          onClose={() => setShowSizeGuideModal(false)}
+          category="clothing"
+          productName={product.name}
+          fitType="regular"
+          sizeChart={[
+            {
+              size: 'XS',
+              measurements: { chest: '32-34', waist: '26-28', hips: '34-36', length: '26' },
+              conversions: { us: '0-2', uk: '4-6', eu: '32-34', jp: '5-7' },
+            },
+            {
+              size: 'S',
+              measurements: { chest: '34-36', waist: '28-30', hips: '36-38', length: '27' },
+              conversions: { us: '4-6', uk: '8-10', eu: '36-38', jp: '9-11' },
+            },
+            {
+              size: 'M',
+              measurements: { chest: '36-38', waist: '30-32', hips: '38-40', length: '28' },
+              conversions: { us: '8-10', uk: '12-14', eu: '40-42', jp: '13-15' },
+            },
+            {
+              size: 'L',
+              measurements: { chest: '38-40', waist: '32-34', hips: '40-42', length: '29' },
+              conversions: { us: '12-14', uk: '16-18', eu: '44-46', jp: '17-19' },
+            },
+            {
+              size: 'XL',
+              measurements: { chest: '40-42', waist: '34-36', hips: '42-44', length: '30' },
+              conversions: { us: '16-18', uk: '20-22', eu: '48-50', jp: '21-23' },
+            },
+          ]}
+        />
+      )}
     </SafeAreaView>
 );
 }
@@ -462,7 +1039,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: 'white',
     borderBottomWidth: 1,
@@ -479,35 +1056,45 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+    flex: 1,
+  },
+  coinButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  coinText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   headerRight: {
     flexDirection: 'row',
   },
+  cartBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   content: {
     flex: 1,
-  },
-  imageSection: {
-    backgroundColor: 'white',
-  },
-  productImage: {
-    width: screenWidth,
-    height: 300,
-    backgroundColor: '#F3F4F6',
-  },
-  imageIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingVertical: 16,
-  },
-  indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D1D5DB',
-    marginHorizontal: 4,
-  },
-  activeIndicator: {
-    backgroundColor: '#8B5CF6',
   },
   infoSection: {
     backgroundColor: 'white',
@@ -584,10 +1171,52 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 6,
   },
+  stockBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  notifyMeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#8B5CF6',
+    gap: 6,
+  },
+  notifyMeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B5CF6',
+  },
   section: {
     backgroundColor: 'white',
     padding: 16,
     marginBottom: 8,
+  },
+  sizeGuideButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3E8FF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#8B5CF6',
+    marginTop: 16,
+    gap: 8,
+  },
+  sizeGuideButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    flex: 1,
+    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 18,
@@ -724,5 +1353,8 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     fontSize: 16,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
 });

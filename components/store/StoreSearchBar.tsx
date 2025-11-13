@@ -168,17 +168,22 @@ const StoreSearchBar: React.FC<StoreSearchBarProps> = ({
       ]}
       onPress={() => handleSuggestionPress(item)}
       activeOpacity={0.7}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.type === 'category' ? 'Category' : item.type === 'location' ? 'Location' : 'Store'}: ${item.name}${item.description ? `, ${item.description}` : ''}`}
+      accessibilityHint="Double tap to search for this suggestion"
+      accessibilityState={{ selected: index === selectedIndex }}
     >
-      <Text style={styles.suggestionIcon}>{item.icon}</Text>
+      <Text style={styles.suggestionIcon} accessible={false}>{item.icon}</Text>
       <View style={styles.suggestionContent}>
         <Text style={styles.suggestionName}>{item.name}</Text>
         {item.description && (
           <Text style={styles.suggestionDescription}>{item.description}</Text>
         )}
       </View>
-      <View style={styles.suggestionType}>
+      <View style={styles.suggestionType} accessible={false}>
         <Text style={styles.suggestionTypeText}>
-          {item.type === 'category' ? 'Category' : 
+          {item.type === 'category' ? 'Category' :
            item.type === 'location' ? 'Location' : 'Store'}
         </Text>
       </View>
@@ -203,14 +208,30 @@ const StoreSearchBar: React.FC<StoreSearchBarProps> = ({
             onSubmitEditing={handleSearchPress}
             autoCorrect={false}
             autoCapitalize="none"
+            accessible={true}
+            accessibilityLabel="Search stores and categories"
+            accessibilityHint="Enter search terms to find stores, categories, or locations"
+            accessibilityValue={{ text: query || 'Empty' }}
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={handleClearPress} style={styles.clearButton}>
+            <TouchableOpacity
+              onPress={handleClearPress}
+              style={styles.clearButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              accessibilityHint="Double tap to clear search text"
+            >
               <Ionicons name="close-circle" size={20} color="#999" />
             </TouchableOpacity>
           )}
           {loading && (
-            <ActivityIndicator size="small" color="#7B61FF" style={styles.loadingIndicator} />
+            <ActivityIndicator
+              size="small"
+              color="#7B61FF"
+              style={styles.loadingIndicator}
+              accessible={false}
+            />
           )}
         </View>
         
@@ -218,6 +239,10 @@ const StoreSearchBar: React.FC<StoreSearchBarProps> = ({
           style={styles.searchButton}
           onPress={handleSearchPress}
           activeOpacity={0.7}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Search"
+          accessibilityHint="Double tap to perform search"
         >
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>

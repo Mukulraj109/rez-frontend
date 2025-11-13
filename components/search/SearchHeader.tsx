@@ -49,7 +49,13 @@ export default function SearchHeader({
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={onBack}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <View style={styles.backButtonContainer}>
               <Ionicons name="arrow-back" size={20} color="white" />
             </View>
@@ -77,11 +83,16 @@ export default function SearchHeader({
                 onSubmitEditing={handleSubmit}
                 returnKeyType="search"
                 autoFocus={!query}
+                accessibilityLabel="Search input"
+                accessibilityHint="Enter search terms to find services"
               />
               {query.length > 0 && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={handleClear}
                   style={styles.clearButton}
+                  accessibilityLabel="Clear search"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to clear search text"
                 >
                   <Ionicons name="close-circle" size={20} color="#9CA3AF" />
                 </TouchableOpacity>
@@ -89,7 +100,12 @@ export default function SearchHeader({
             </Animated.View>
           </View>
 
-          <TouchableOpacity style={styles.filterButton}>
+          <TouchableOpacity
+            style={styles.filterButton}
+            accessibilityLabel="Open filters"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to open filter options"
+          >
             <Ionicons name="options-outline" size={20} color="white" />
           </TouchableOpacity>
         </View>
@@ -113,6 +129,9 @@ export default function SearchHeader({
                 style={styles.suggestionItem}
                 onPress={() => onSuggestionPress(suggestion)}
                 activeOpacity={0.7}
+                accessibilityLabel={`Search suggestion: ${suggestion.text}`}
+                accessibilityRole="button"
+                accessibilityHint="Double tap to search for this suggestion"
               >
                 <View style={styles.suggestionIconContainer}>
                   <Ionicons 

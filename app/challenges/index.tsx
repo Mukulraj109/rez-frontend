@@ -18,6 +18,7 @@ import walletApi from '@/services/walletApi';
 import coinSyncService from '@/services/coinSyncService';
 import { useAuth } from '@/contexts/AuthContext';
 import { showAlert } from '@/components/common/CrossPlatformAlert';
+import logger from '@/utils/logger';
 
 const { width } = Dimensions.get('window');
 
@@ -95,7 +96,7 @@ export default function ChallengesPage() {
     try {
       setLoading(true);
 
-      console.log('🔍 [Challenges] Loading challenges data...');
+      logger.debug('🔍 [Challenges] Loading challenges data...');
 
       const [allChallengesRes, progressRes, statsRes, walletRes] = await Promise.all([
         apiClient.get('/gamification/challenges'),
@@ -104,7 +105,7 @@ export default function ChallengesPage() {
         walletApi.getBalance(),
       ]);
 
-      console.log('📡 [Challenges] API Response:', {
+      logger.debug('📡 [Challenges] API Response:', {
         allChallengesRes: allChallengesRes.data,
         progressRes: progressRes.data,
       });
@@ -112,13 +113,13 @@ export default function ChallengesPage() {
       // Get all available challenges
       // apiClient returns { success, data, message } where data is the array
       const availableChallenges = (allChallengesRes.data as any) || [];
-      console.log(`✅ [Challenges] Available challenges: ${availableChallenges.length}`);
-      console.log('📋 [Challenges] Challenges:', availableChallenges);
+      logger.debug(`✅ [Challenges] Available challenges: ${availableChallenges.length}`);
+      logger.debug('📋 [Challenges] Challenges:', availableChallenges);
 
       // Get user's progress
       // progressRes.data is { challenges: [], stats: {} }
       const userProgress = (progressRes.data as any)?.challenges || [];
-      console.log(`📊 [Challenges] User progress: ${userProgress.length}`);
+      logger.debug(`📊 [Challenges] User progress: ${userProgress.length}`);
 
       // Merge available challenges with user progress
       const mergedChallenges = availableChallenges.map((challenge: any) => {
@@ -155,8 +156,8 @@ export default function ChallengesPage() {
       const completed = mergedChallenges.filter((c: Challenge) => c.rewardsClaimed);
       const active = mergedChallenges.filter((c: Challenge) => !c.rewardsClaimed);
 
-      console.log(`🎯 [Challenges] Merged challenges: ${mergedChallenges.length}`);
-      console.log(`✅ [Challenges] Active: ${active.length}, Completed: ${completed.length}`);
+      logger.debug(`🎯 [Challenges] Merged challenges: ${mergedChallenges.length}`);
+      logger.debug(`✅ [Challenges] Active: ${active.length}, Completed: ${completed.length}`);
 
       setChallenges(active);
       setCompletedChallenges(completed);
@@ -182,7 +183,7 @@ export default function ChallengesPage() {
         setCoinBalance(wasilCoin?.amount || 0);
       }
     } catch (error) {
-      console.error('Error loading challenges data:', error);
+      logger.error('Error loading challenges data:', error);
       showAlert('Error', 'Failed to load challenges. Please try again.', undefined, 'error');
     } finally {
       setLoading(false);
@@ -220,34 +221,34 @@ export default function ChallengesPage() {
 
     try {
       setClaimingId(challengeId);
-      console.log('🎁 [Claim Reward] ========== STARTING CLAIM PROCESS ==========');
-      console.log('🎁 [Claim Reward] Challenge ID:', challengeId);
-      console.log('🎁 [Claim Reward] Current wallet balance:', coinBalance);
+      logger.debug('🎁 [Claim Reward] ========== STARTING CLAIM PROCESS ==========');
+      logger.debug('🎁 [Claim Reward] Challenge ID:', challengeId);
+      logger.debug('🎁 [Claim Reward] Current wallet balance:', coinBalance);
 
       const response = await apiClient.post(`/gamification/challenges/${challengeId}/claim`);
-      console.log('🎁 [Claim Reward] Raw response:', response);
-      console.log('🎁 [Claim Reward] Response.data:', response.data);
-      console.log('🎁 [Claim Reward] Response.data.success:', (response.data as any).success);
-      console.log('🎁 [Claim Reward] Response.success:', (response as any).success);
+      logger.debug('🎁 [Claim Reward] Raw response:', response);
+      logger.debug('🎁 [Claim Reward] Response.data:', response.data);
+      logger.debug('🎁 [Claim Reward] Response.data.success:', (response.data as any).success);
+      logger.debug('🎁 [Claim Reward] Response.success:', (response as any).success);
 
       // Handle both wrapped and unwrapped responses
       const responseData = (response as any).success ? response : response.data;
       const isSuccess = responseData.success === true;
 
-      console.log('🎁 [Claim Reward] Is success:', isSuccess);
+      logger.debug('🎁 [Claim Reward] Is success:', isSuccess);
 
       if (isSuccess) {
         const coinsEarned = responseData.data?.rewards?.coins || 10;
         const backendWalletBalance = responseData.data?.walletBalance;
 
-        console.log('🎁 [Claim Reward] ✅ Coins earned:', coinsEarned);
-        console.log('🎁 [Claim Reward] Previous balance:', coinBalance);
-        console.log('🎁 [Claim Reward] Expected new balance:', coinBalance + coinsEarned);
-        console.log('🎁 [Claim Reward] Backend wallet balance:', backendWalletBalance);
+        logger.debug('🎁 [Claim Reward] ✅ Coins earned:', coinsEarned);
+        logger.debug('🎁 [Claim Reward] Previous balance:', coinBalance);
+        logger.debug('🎁 [Claim Reward] Expected new balance:', coinBalance + coinsEarned);
+        logger.debug('🎁 [Claim Reward] Backend wallet balance:', backendWalletBalance);
 
         // Backend now handles wallet updates directly, so we use that balance if available
         if (backendWalletBalance !== undefined) {
-          console.log('✅ [Claim Reward] Using wallet balance from backend:', backendWalletBalance);
+          logger.debug('✅ [Claim Reward] Using wallet balance from backend:', backendWalletBalance);
 
           showAlert(
             'Reward Claimed! 🎉',
@@ -256,21 +257,21 @@ export default function ChallengesPage() {
             'success'
           );
           setCoinBalance(backendWalletBalance);
-          console.log('✅ [Claim Reward] Local state updated to:', backendWalletBalance);
+          logger.debug('✅ [Claim Reward] Local state updated to:', backendWalletBalance);
         } else {
           // Fallback: Try syncing via coin sync service (for backwards compatibility)
-          console.log('⚠️ [Claim Reward] Backend did not return wallet balance, trying coin sync service...');
+          logger.debug('⚠️ [Claim Reward] Backend did not return wallet balance, trying coin sync service...');
 
           const syncResult = await coinSyncService.handleChallengeReward(
             challengeId,
             'Challenge',
             coinsEarned
           );
-          console.log('💰 [Claim Reward] Sync result:', JSON.stringify(syncResult, null, 2));
+          logger.debug('💰 [Claim Reward] Sync result:', JSON.stringify(syncResult, null, 2));
 
           if (syncResult.success) {
-            console.log('✅ [Claim Reward] Sync successful!');
-            console.log('✅ [Claim Reward] New wallet balance from sync:', syncResult.newWalletBalance);
+            logger.debug('✅ [Claim Reward] Sync successful!');
+            logger.debug('✅ [Claim Reward] New wallet balance from sync:', syncResult.newWalletBalance);
 
             showAlert(
               'Reward Claimed! 🎉',
@@ -280,8 +281,8 @@ export default function ChallengesPage() {
             );
             setCoinBalance(syncResult.newWalletBalance);
           } else {
-            console.error('⚠️ [Claim Reward] Sync failed but claim succeeded');
-            console.error('⚠️ [Claim Reward] Sync error:', syncResult.error);
+            logger.error('⚠️ [Claim Reward] Sync failed but claim succeeded');
+            logger.error('⚠️ [Claim Reward] Sync error:', syncResult.error);
 
             showAlert(
               'Reward Claimed! 🎉',
@@ -293,20 +294,20 @@ export default function ChallengesPage() {
         }
 
         // Wait a moment before reloading to ensure everything is synced
-        console.log('⏳ [Claim Reward] Waiting 500ms before reload...');
+        logger.debug('⏳ [Claim Reward] Waiting 500ms before reload...');
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        console.log('🔄 [Claim Reward] Reloading challenges data...');
+        logger.debug('🔄 [Claim Reward] Reloading challenges data...');
         await loadChallengesData();
-        console.log('✅ [Claim Reward] Challenges reloaded. Final balance in state:', coinBalance);
-        console.log('🎁 [Claim Reward] ========== CLAIM PROCESS COMPLETE ==========');
+        logger.debug('✅ [Claim Reward] Challenges reloaded. Final balance in state:', coinBalance);
+        logger.debug('🎁 [Claim Reward] ========== CLAIM PROCESS COMPLETE ==========');
       } else {
-        console.error('❌ [Claim Reward] API returned success: false');
+        logger.error('❌ [Claim Reward] API returned success: false');
         showAlert('Error', 'Failed to claim reward. Please try again.', undefined, 'error');
       }
     } catch (error: any) {
-      console.error('❌ [Claim Reward] Error:', error);
-      console.error('❌ [Claim Reward] Error response:', error.response?.data);
+      logger.error('❌ [Claim Reward] Error:', error);
+      logger.error('❌ [Claim Reward] Error response:', error.response?.data);
 
       const errorMessage = error.response?.data?.message || error.response?.data?.error?.message || 'Failed to claim reward';
 

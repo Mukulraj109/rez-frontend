@@ -23,8 +23,17 @@ export default function ProgressSteps({ steps, currentStep }: ProgressStepsProps
     const isCurrent = index === currentStep;
     const isUpcoming = index > currentStep;
 
+    const stepStatus = isCompleted ? 'completed' : isCurrent ? 'current' : 'upcoming';
+    const accessibilityLabel = `Step ${index + 1} of ${steps.length}: ${step.title}. Status: ${stepStatus}`;
+
     return (
-      <View key={step.id} style={styles.stepContainer}>
+      <View
+        key={step.id}
+        style={styles.stepContainer}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole="progressbar"
+        accessible={true}
+      >
         {/* Step Circle */}
         <View style={styles.stepCircleContainer}>
           <View

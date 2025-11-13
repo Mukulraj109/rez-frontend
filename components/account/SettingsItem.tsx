@@ -50,6 +50,10 @@ export default function SettingsItem({
       onPress={handlePress}
       disabled={!category.isEnabled}
       activeOpacity={0.7}
+      accessibilityLabel={category.title}
+      accessibilityRole="button"
+      accessibilityHint={category.description || `Double tap to open ${category.title}`}
+      accessibilityState={{ disabled: !category.isEnabled }}
     >
       <View style={styles.leftContent}>
         <View style={[

@@ -400,6 +400,33 @@ class StoresService {
     return apiClient.get(`/stores/${storeId}/metrics`, { period });
   }
 
+  // Get store followers list
+  async getFollowers(
+    storeId: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<ApiResponse<{
+    followers: Array<{
+      id: string;
+      name: string;
+      avatar?: string;
+      followedAt: string;
+    }>;
+    pagination: {
+      current: number;
+      pages: number;
+      total: number;
+      limit: number;
+    };
+  }>> {
+    return apiClient.get(`/stores/${storeId}/followers`, { page, limit });
+  }
+
+  // Get follower count for a store
+  async getFollowerCount(storeId: string): Promise<ApiResponse<{ count: number }>> {
+    return apiClient.get(`/stores/${storeId}/followers/count`);
+  }
+
   // ===== FRONTEND HOMEPAGE INTEGRATION METHODS =====
 
   /**
@@ -407,49 +434,71 @@ class StoresService {
    */
   async getFeaturedForHomepage(limit: number = 10): Promise<any[]> {
     try {
+      console.log(`🏪 [STORES API] Fetching ${limit} featured stores for homepage...`);
+      console.log(`🌐 [STORES API] API URL: ${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5001/api'}/stores/featured`);
 
       const response = await apiClient.get('/stores/featured', { limit });
 
+      console.log('📊 [STORES API] Featured stores response:', {
+        success: response.success,
+        hasData: !!response.data,
+        isArray: Array.isArray(response.data),
+        count: response.data?.length || 0,
+        message: response.message,
+        error: response.error
+      });
+
       if (response.success && response.data && Array.isArray(response.data)) {
+        console.log(`✅ [STORES API] Successfully fetched ${response.data.length} featured stores from backend`);
 
         // Transform backend store data to frontend StoreItem format
-        const stores = response.data.map((store: any) => ({
-          id: store._id,
-          type: 'store',
-          title: store.name,
-          name: store.name,
-          image: store.image || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=200&fit=crop',
-          description: store.description,
-          logo: store.logo || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=100&h=100&fit=crop',
-          rating: {
-            value: store.ratings?.average || 4.5,
-            count: store.ratings?.count || 0,
-            maxValue: 5
-          },
-          cashback: {
-            percentage: store.offers?.cashback || 10,
-            maxAmount: store.offers?.maxCashback || 500
-          },
-          category: this.determineCategory(store.deliveryCategories),
-          location: {
-            address: store.location?.address || 'Location',
-            city: store.location?.city || 'City',
-            distance: this.calculateDisplayDistance(store.location?.coordinates)
-          },
-          isTrending: true, // Featured stores are considered trending
-          deliveryTime: store.operationalInfo?.deliveryTime || '30-45 mins',
-          minimumOrder: store.operationalInfo?.minimumOrder || 299
-        }));
+        const stores = response.data.map((store: any) => {
+          console.log(`   📍 Store: ${store.name} (ID: ${store._id})`);
+          return {
+            id: store._id,
+            type: 'store',
+            title: store.name,
+            name: store.name,
+            image: store.image || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=200&fit=crop',
+            description: store.description,
+            logo: store.logo || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=100&h=100&fit=crop',
+            rating: {
+              value: store.ratings?.average || 4.5,
+              count: store.ratings?.count || 0,
+              maxValue: 5
+            },
+            cashback: {
+              percentage: store.offers?.cashback || 10,
+              maxAmount: store.offers?.maxCashback || 500
+            },
+            category: this.determineCategory(store.deliveryCategories),
+            location: {
+              address: store.location?.address || 'Location',
+              city: store.location?.city || 'City',
+              distance: this.calculateDisplayDistance(store.location?.coordinates)
+            },
+            isTrending: true, // Featured stores are considered trending
+            deliveryTime: store.operationalInfo?.deliveryTime || '30-45 mins',
+            minimumOrder: store.operationalInfo?.minimumOrder || 299
+          };
+        });
 
+        console.log(`✅ [STORES API] Transformed ${stores.length} stores with real ObjectIds`);
         return stores;
       }
 
-      console.warn('⚠️ [STORES API] Invalid response structure:', response);
-      throw new Error(response.message || 'Failed to fetch featured stores');
+      console.error('❌ [STORES API] Invalid response structure or no data returned');
+      console.error('Response details:', JSON.stringify(response, null, 2));
+
+      // Throw error to trigger fallback mechanism
+      throw new Error(response.error || response.message || 'Failed to fetch featured stores - API returned no data');
     } catch (error) {
       console.error('❌ [STORES API] Error fetching homepage featured stores:', error);
-      // Return empty array on error to prevent homepage crash
-      return [];
+      console.error('Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+
+      // Re-throw error to trigger fallback mechanism instead of returning empty array
+      throw error;
     }
   }
 

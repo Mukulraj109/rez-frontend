@@ -181,10 +181,18 @@ export default function NotificationBell({
         style={styles.bellContainer}
         onPress={() => setShowDropdown(true)}
         activeOpacity={0.7}
+        accessibilityLabel={`Notifications${unreadCount > 0 ? `. ${unreadCount} unread ${unreadCount === 1 ? 'notification' : 'notifications'}` : '. No unread notifications'}`}
+        accessibilityRole="button"
+        accessibilityHint="Double tap to view notifications"
+        accessibilityState={{ disabled: false }}
       >
         <Ionicons name="notifications-outline" size={iconSize} color={iconColor} />
         {unreadCount > 0 && (
-          <View style={styles.badge}>
+          <View
+            style={styles.badge}
+            accessible={false}
+            importantForAccessibility="no"
+          >
             <Text style={styles.badgeText}>
               {unreadCount > 99 ? '99+' : unreadCount}
             </Text>
@@ -202,8 +210,15 @@ export default function NotificationBell({
           style={styles.overlay}
           activeOpacity={1}
           onPress={() => setShowDropdown(false)}
+          accessible={false}
         >
-          <View style={styles.dropdown}>
+          <View
+            style={styles.dropdown}
+            accessible={true}
+            accessibilityLabel="Notifications dropdown"
+            accessibilityRole="menu"
+            accessibilityViewIsModal={true}
+          >
             {/* Header */}
             <View style={styles.dropdownHeader}>
               <Text style={styles.dropdownTitle}>Notifications</Text>
@@ -212,6 +227,10 @@ export default function NotificationBell({
                   onPress={markAllAsRead}
                   disabled={marking}
                   style={styles.markAllButton}
+                  accessibilityLabel="Mark all notifications as read"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to mark all notifications as read"
+                  accessibilityState={{ disabled: marking, busy: marking }}
                 >
                   {marking ? (
                     <ActivityIndicator size="small" color="#3B82F6" />
@@ -238,12 +257,18 @@ export default function NotificationBell({
                     ]}
                     onPress={() => handleNotificationPress(notification)}
                     activeOpacity={0.7}
+                    accessibilityLabel={`${notification.isRead ? '' : 'Unread. '}${notification.title}. ${notification.message}. ${formatTimestamp(notification.createdAt)}`}
+                    accessibilityRole="button"
+                    accessibilityHint="Double tap to view notification details"
+                    accessibilityState={{ selected: !notification.isRead }}
                   >
                     <View
                       style={[
                         styles.notificationIconContainer,
                         { backgroundColor: `${getCategoryColor(notification.category)}20` },
                       ]}
+                      accessible={false}
+                      importantForAccessibility="no"
                     >
                       <Ionicons
                         name={getCategoryIcon(notification.category)}
@@ -252,7 +277,11 @@ export default function NotificationBell({
                       />
                     </View>
 
-                    <View style={styles.notificationContent}>
+                    <View
+                      style={styles.notificationContent}
+                      accessible={false}
+                      importantForAccessibility="no"
+                    >
                       <View style={styles.notificationHeader}>
                         <Text
                           style={[
@@ -288,6 +317,9 @@ export default function NotificationBell({
             <TouchableOpacity
               style={styles.viewAllButton}
               onPress={viewAllNotifications}
+              accessibilityLabel="View all notifications"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view complete notification history"
             >
               <Text style={styles.viewAllText}>View All Notifications</Text>
               <Ionicons name="chevron-forward" size={16} color="#3B82F6" />

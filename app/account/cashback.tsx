@@ -205,7 +205,11 @@ export default function CashbackPage() {
     icon: string
   ) => {
     return (
-      <View style={[styles.summaryCard, { borderLeftColor: color, borderLeftWidth: 4 }]}>
+      <View
+        style={[styles.summaryCard, { borderLeftColor: color, borderLeftWidth: 4 }]}
+        accessibilityLabel={`${title}: ₹${amount.toFixed(2)}. ${count} ${count === 1 ? 'item' : 'items'}`}
+        accessibilityRole="summary"
+      >
         <View style={styles.summaryHeader}>
           <View style={[styles.summaryIcon, { backgroundColor: `${color}20` }]}>
             <Ionicons name={icon as any} size={20} color={color} />
@@ -225,7 +229,12 @@ export default function CashbackPage() {
     const sourceIcon = getSourceIcon(cashback.source);
 
     return (
-      <View key={cashback._id} style={styles.cashbackCard}>
+      <View
+        key={cashback._id}
+        style={styles.cashbackCard}
+        accessibilityLabel={`${cashback.status.charAt(0).toUpperCase() + cashback.status.slice(1)} cashback: ₹${cashback.amount || 0}. ${cashback.description || 'Cashback earned'}. Earned on ${formatDate(cashback.earnedDate)}${cashback.status === 'pending' ? `. Expires: ${formatDate(cashback.expiryDate)}` : cashback.status === 'credited' && cashback.creditedDate ? `. Credited: ${formatDate(cashback.creditedDate)}` : ''}`}
+        accessibilityRole="summary"
+      >
         <View style={styles.cashbackHeader}>
           <View style={[styles.sourceIcon, { backgroundColor: `${statusColor}20` }]}>
             <Ionicons name={sourceIcon as any} size={24} color={statusColor} />
@@ -317,16 +326,32 @@ export default function CashbackPage() {
       {/* Header */}
       <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Returns to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Cashback</ThemedText>
-          <TouchableOpacity onPress={loadData} style={styles.refreshButton}>
+          <TouchableOpacity
+            onPress={loadData}
+            style={styles.refreshButton}
+            accessibilityLabel="Refresh cashback data"
+            accessibilityRole="button"
+            accessibilityHint="Reload cashback information"
+          >
             <Ionicons name="refresh" size={24} color="#FFF" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.totalEarned}>
+        <View
+          style={styles.totalEarned}
+          accessibilityLabel={`Total cashback earned: ₹${summary.totalEarned.toFixed(2)}`}
+          accessibilityRole="summary"
+        >
           <ThemedText style={styles.totalLabel}>Total Earned</ThemedText>
           <ThemedText style={styles.totalAmount}>₹{summary.totalEarned.toFixed(2)}</ThemedText>
         </View>
@@ -350,7 +375,13 @@ export default function CashbackPage() {
 
         {/* Redeem Button */}
         {pendingReady.length > 0 && (
-          <TouchableOpacity style={styles.redeemSection} onPress={handleRedeemCashback}>
+          <TouchableOpacity
+            style={styles.redeemSection}
+            onPress={handleRedeemCashback}
+            accessibilityLabel={`Redeem ₹${pendingReady.reduce((sum, cb) => sum + cb.amount, 0).toFixed(2)} cashback to your wallet`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to transfer cashback to your wallet"
+          >
             <LinearGradient
               colors={['#10B981', '#059669']}
               style={styles.redeemGradient}
@@ -381,6 +412,10 @@ export default function CashbackPage() {
           <TouchableOpacity
             style={[styles.tab, activeTab === 'all' && styles.activeTab]}
             onPress={() => setActiveTab('all')}
+            accessibilityLabel="All cashback tab"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'all' }}
+            accessibilityHint="Show all cashback transactions"
           >
             <ThemedText style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
               All
@@ -389,6 +424,10 @@ export default function CashbackPage() {
           <TouchableOpacity
             style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
             onPress={() => setActiveTab('pending')}
+            accessibilityLabel="Pending cashback tab"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'pending' }}
+            accessibilityHint="Show pending cashback"
           >
             <ThemedText style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
               Pending
@@ -397,6 +436,10 @@ export default function CashbackPage() {
           <TouchableOpacity
             style={[styles.tab, activeTab === 'credited' && styles.activeTab]}
             onPress={() => setActiveTab('credited')}
+            accessibilityLabel="Credited cashback tab"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'credited' }}
+            accessibilityHint="Show credited cashback"
           >
             <ThemedText style={[styles.tabText, activeTab === 'credited' && styles.activeTabText]}>
               Credited
@@ -405,6 +448,10 @@ export default function CashbackPage() {
           <TouchableOpacity
             style={[styles.tab, activeTab === 'expired' && styles.activeTab]}
             onPress={() => setActiveTab('expired')}
+            accessibilityLabel="Expired cashback tab"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'expired' }}
+            accessibilityHint="Show expired cashback"
           >
             <ThemedText style={[styles.tabText, activeTab === 'expired' && styles.activeTabText]}>
               Expired
@@ -414,10 +461,20 @@ export default function CashbackPage() {
 
         {/* Error Display */}
         {error && (
-          <View style={styles.errorContainer}>
+          <View
+            style={styles.errorContainer}
+            accessibilityLabel={`Error: ${error}`}
+            accessibilityRole="alert"
+          >
             <Ionicons name="alert-circle" size={24} color="#EF4444" />
             <ThemedText style={styles.errorText}>{error}</ThemedText>
-            <TouchableOpacity style={styles.retryButton} onPress={loadData}>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={loadData}
+              accessibilityLabel="Retry loading cashback"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to try loading again"
+            >
               <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
             </TouchableOpacity>
           </View>
@@ -426,19 +483,27 @@ export default function CashbackPage() {
         {/* Cashback History */}
         <View style={styles.section}>
           {loading ? (
-            <View style={styles.loadingContainer}>
+            <View
+              style={styles.loadingContainer}
+              accessibilityLabel="Loading cashback data"
+              accessibilityRole="progressbar"
+            >
               <ActivityIndicator size="large" color="#667eea" />
               <ThemedText style={styles.loadingText}>Loading cashback data...</ThemedText>
             </View>
           ) : cashbacks.length > 0 ? (
             cashbacks.map(renderCashbackCard)
           ) : (
-            <View style={styles.emptyContainer}>
+            <View
+              style={styles.emptyContainer}
+              accessibilityLabel={`No cashback found. ${activeTab === 'all' ? 'Start shopping to earn cashback!' : `No ${activeTab} cashback found`}`}
+              accessibilityRole="text"
+            >
               <Ionicons name="wallet-outline" size={64} color="#9CA3AF" />
               <ThemedText style={styles.emptyText}>No cashback found</ThemedText>
               <ThemedText style={styles.emptySubtext}>
-                {activeTab === 'all' 
-                  ? 'Start shopping to earn cashback!' 
+                {activeTab === 'all'
+                  ? 'Start shopping to earn cashback!'
                   : `No ${activeTab} cashback found`}
               </ThemedText>
             </View>

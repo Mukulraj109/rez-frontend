@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import {
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Image,
   View
@@ -15,6 +16,7 @@ import StockBadge from '@/components/common/StockBadge';
 import RatingStars from '@/components/reviews/RatingStars';
 import { useStockStatus } from '@/hooks/useStockStatus';
 import { useStockNotifications } from '@/hooks/useStockNotifications';
+import { useToast } from '@/hooks/useToast';
 
 export default function ProductCard({
   product,
@@ -26,6 +28,7 @@ export default function ProductCard({
   const { state: cartState, actions: cartActions } = useCart();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const { subscribe, subscribing } = useStockNotifications();
+  const { showSuccess, showError } = useToast();
   const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
 
   // Stock status
@@ -172,20 +175,32 @@ export default function ProductCard({
     }
   };
 
+  const discount = getDiscountPercentage();
+  const stockStatus = isOutOfStock ? 'Out of stock' : isLowStock ? 'Low stock' : 'In stock';
+  const wishlistStatus = isInWishlist(productId) ? 'in wishlist' : 'not in wishlist';
+
+  const productLabel = `${product.brand || 'Brand'} ${product.name || 'Product Name'}. Price ${formatPrice(product.price.current)}${product.price.original && product.price.original > product.price.current ? `. Was ${formatPrice(product.price.original)}` : ''}${discount > 0 ? `. ${discount}% off` : ''}${product.rating ? `. ${product.rating.value} stars, ${product.rating.count} reviews` : ''}. ${stockStatus}${product.cashback ? `. ${product.cashback.percentage}% cashback` : ''}. ${wishlistStatus}`;
+
   return (
-    <TouchableOpacity
+    <Pressable
       style={[styles.container, { width }]}
       onPress={() => onPress(product)}
-      activeOpacity={0.95}
+      accessibilityLabel={productLabel}
+      accessibilityHint="Double tap to view product details"
     >
       <ThemedView style={styles.card}>
         {/* Product Image */}
-        <View style={styles.imageContainer}>
+        <View
+          style={styles.imageContainer}
+          accessibilityLabel={`Product image for ${product.name}`}
+          accessibilityRole="image"
+        >
           <Image
             source={{ uri: product.image || 'https://via.placeholder.com/200x200?text=No+Image' }}
             style={styles.image}
             resizeMode="cover"
             fadeDuration={0}
+            accessible={false}
           />
           {renderBadges()}
           {renderStockBadge()}
@@ -196,6 +211,10 @@ export default function ProductCard({
             onPress={handleToggleWishlist}
             disabled={isTogglingWishlist}
             activeOpacity={0.7}
+            accessibilityLabel={isInWishlist(productId) ? "Remove from wishlist" : "Add to wishlist"}
+            accessibilityRole="button"
+            accessibilityHint={isInWishlist(productId) ? "Double tap to remove from wishlist" : "Double tap to add to wishlist"}
+            accessibilityState={{ disabled: isTogglingWishlist }}
           >
             <Ionicons
               name={isInWishlist(productId) ? "heart" : "heart-outline"}
@@ -228,7 +247,11 @@ export default function ProductCard({
           )}
 
           {/* Price Information */}
-          <View style={styles.priceContainer}>
+          <View
+            style={styles.priceContainer}
+            accessibilityLabel={`Price: ${formatPrice(product.price.current)}${product.price.original && product.price.original > product.price.current ? `. Was ${formatPrice(product.price.original)}. You save ${formatPrice(calculateSavings())}` : ''}`}
+            accessibilityRole="text"
+          >
             <ThemedText style={styles.currentPrice}>
               {formatPrice(product.price.current)}
             </ThemedText>
@@ -241,14 +264,21 @@ export default function ProductCard({
 
           {/* Savings */}
           {calculateSavings() > 0 && (
-            <ThemedText style={styles.savings}>
+            <ThemedText
+              style={styles.savings}
+              accessibilityLabel={`You save ${formatPrice(calculateSavings())}`}
+            >
               You save {formatPrice(calculateSavings())}
             </ThemedText>
           )}
 
           {/* Cashback */}
           {product.cashback && (
-            <View style={styles.cashbackContainer}>
+            <View
+              style={styles.cashbackContainer}
+              accessibilityLabel={`${product.cashback.percentage || 0}% cashback available`}
+              accessibilityRole="text"
+            >
               <ThemedText style={styles.cashbackText}>
                 {product.cashback.percentage || 0}% cashback
               </ThemedText>
@@ -277,6 +307,10 @@ export default function ProductCard({
                   }}
                   activeOpacity={0.95}
                   disabled={subscribing[productId]}
+                  accessibilityLabel={subscribing[productId] ? 'Subscribing to stock notifications' : 'Notify me when product is back in stock'}
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to subscribe to notifications when this product is available"
+                  accessibilityState={{ disabled: subscribing[productId] }}
                 >
                   <Ionicons name="notifications-outline" size={18} color="#8B5CF6" />
                   <ThemedText style={styles.notifyMeText}>
@@ -285,23 +319,42 @@ export default function ProductCard({
                 </TouchableOpacity>
               ) : isInCart ? (
                 // Quantity Controls (Flipkart style)
-                <View style={styles.quantityControls} key="quantity-controls">
+                <View
+                  style={styles.quantityControls}
+                  key="quantity-controls"
+                  accessibilityLabel={`Quantity in cart: ${quantityInCart}. Use buttons to adjust quantity`}
+                  accessibilityRole="adjustable"
+                >
                   <TouchableOpacity
                     style={styles.quantityButton}
                     onPress={async (e) => {
                       e.stopPropagation();
-                      if (quantityInCart > 1) {
-                        await cartActions.updateQuantity(cartItem!.id, quantityInCart - 1);
-                      } else {
-                        await cartActions.removeItem(cartItem!.id);
+                      try {
+                        if (quantityInCart > 1) {
+                          await cartActions.updateQuantity(cartItem!.id, quantityInCart - 1);
+                          showSuccess(`${product.name} quantity decreased`);
+                        } else {
+                          await cartActions.removeItem(cartItem!.id);
+                          showSuccess(`${product.name} removed from cart`);
+                        }
+                      } catch (error) {
+                        console.error('Error updating quantity:', error);
+                        showError(`Failed to update ${product.name}`);
                       }
                     }}
                     activeOpacity={0.7}
+                    accessibilityLabel={quantityInCart > 1 ? "Decrease quantity" : "Remove from cart"}
+                    accessibilityRole="button"
+                    accessibilityHint={quantityInCart > 1 ? "Double tap to decrease quantity by one" : "Double tap to remove product from cart"}
                   >
                     <Ionicons name="remove" size={18} color="#FFFFFF" />
                   </TouchableOpacity>
 
-                  <View style={styles.quantityDisplay}>
+                  <View
+                    style={styles.quantityDisplay}
+                    accessibilityLabel={`Current quantity: ${quantityInCart}`}
+                    accessibilityRole="text"
+                  >
                     <ThemedText style={styles.quantityText}>{quantityInCart}</ThemedText>
                   </View>
 
@@ -312,12 +365,24 @@ export default function ProductCard({
                     ]}
                     onPress={async (e) => {
                       e.stopPropagation();
-                      if (quantityInCart < stock) {
-                        await cartActions.updateQuantity(cartItem!.id, quantityInCart + 1);
+                      try {
+                        if (quantityInCart < stock) {
+                          await cartActions.updateQuantity(cartItem!.id, quantityInCart + 1);
+                          showSuccess(`${product.name} quantity increased`);
+                        } else {
+                          showError(`Maximum quantity reached for ${product.name}`);
+                        }
+                      } catch (error) {
+                        console.error('Error updating quantity:', error);
+                        showError(`Failed to update ${product.name}`);
                       }
                     }}
                     activeOpacity={quantityInCart >= stock ? 1 : 0.7}
                     disabled={quantityInCart >= stock}
+                    accessibilityLabel="Increase quantity"
+                    accessibilityRole="button"
+                    accessibilityHint={quantityInCart >= stock ? `Maximum stock reached: ${stock}` : "Double tap to increase quantity by one"}
+                    accessibilityState={{ disabled: quantityInCart >= stock }}
                   >
                     <Ionicons name="add" size={18} color="#FFFFFF" />
                   </TouchableOpacity>
@@ -330,14 +395,24 @@ export default function ProductCard({
                     !canAddToCartStock && styles.addToCartButtonDisabled
                   ]}
                   key="add-to-cart-button"
-                  onPress={(e) => {
+                  onPress={async (e) => {
                     e.stopPropagation();
                     if (onAddToCart && canAddToCartStock) {
-                      onAddToCart(product);
+                      try {
+                        await onAddToCart(product);
+                        showSuccess(`${product.name} added to cart`);
+                      } catch (error) {
+                        console.error('Error adding to cart:', error);
+                        showError(`Failed to add ${product.name} to cart`);
+                      }
                     }
                   }}
                   activeOpacity={0.95}
                   disabled={!canAddToCartStock}
+                  accessibilityLabel={`Add ${product.name} to cart`}
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to add this product to your shopping cart"
+                  accessibilityState={{ disabled: !canAddToCartStock }}
                 >
                   <Ionicons name="cart" size={18} color="#FFFFFF" />
                   <ThemedText style={styles.addToCartText}>Add to Cart</ThemedText>
@@ -347,7 +422,7 @@ export default function ProductCard({
           )}
         </View>
       </ThemedView>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 

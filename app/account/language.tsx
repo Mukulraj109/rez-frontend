@@ -180,6 +180,10 @@ export default function LanguageSettingsPage() {
       onPress={() => handleLanguageChange(language.code)}
       disabled={isUpdating}
       activeOpacity={0.7}
+      accessibilityLabel={`${language.name} - ${language.nativeName}${selectedLanguage === language.code ? ', selected' : ''}`}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selectedLanguage === language.code, disabled: isUpdating }}
+      accessibilityHint="Double tap to select this language"
     >
       <View style={styles.languageContent}>
         <View style={styles.languageInfo}>
@@ -217,6 +221,10 @@ export default function LanguageSettingsPage() {
       onPress={() => handleRegionChange(region.code)}
       disabled={isUpdating}
       activeOpacity={0.7}
+      accessibilityLabel={`${region.name}, ${region.currency}, ${region.timezone}${selectedRegion === region.code ? ', selected' : ''}`}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selectedRegion === region.code, disabled: isUpdating }}
+      accessibilityHint="Double tap to select this region"
     >
       <View style={styles.regionContent}>
         <View style={styles.regionInfo}>
@@ -267,7 +275,13 @@ export default function LanguageSettingsPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
@@ -363,6 +377,10 @@ export default function LanguageSettingsPage() {
                     settings?.general.timeFormat === '12h' && styles.toggleButtonActive,
                   ]}
                   onPress={() => updateGeneralSettings({ timeFormat: '12h' })}
+                  accessibilityLabel={`12-hour format${settings?.general.timeFormat === '12h' ? ', selected' : ''}`}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: settings?.general.timeFormat === '12h' }}
+                  accessibilityHint="Double tap to use 12-hour time format"
                 >
                   <ThemedText
                     style={[
@@ -379,6 +397,10 @@ export default function LanguageSettingsPage() {
                     settings?.general.timeFormat === '24h' && styles.toggleButtonActive,
                   ]}
                   onPress={() => updateGeneralSettings({ timeFormat: '24h' })}
+                  accessibilityLabel={`24-hour format${settings?.general.timeFormat === '24h' ? ', selected' : ''}`}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: settings?.general.timeFormat === '24h' }}
+                  accessibilityHint="Double tap to use 24-hour time format"
                 >
                   <ThemedText
                     style={[

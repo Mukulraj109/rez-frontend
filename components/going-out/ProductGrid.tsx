@@ -51,9 +51,14 @@ export function ProductGrid({
 
   const renderLoadingFooter = () => {
     if (!loading || !hasMore) return null;
-    
+
     return (
-      <View style={styles.loadingFooter}>
+      <View
+        style={styles.loadingFooter}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Loading more products"
+        accessibilityValue={{ text: "Loading" }}
+      >
         <ActivityIndicator size="small" color="#8B5CF6" />
         <ThemedText style={styles.loadingText}>Loading more products...</ThemedText>
       </View>
@@ -62,9 +67,13 @@ export function ProductGrid({
 
   const renderHeader = () => {
     if (!showHeader || products.length === 0) return null;
-    
+
     return (
-      <View style={styles.headerContainer}>
+      <View
+        style={styles.headerContainer}
+        accessibilityRole="header"
+        accessibilityLabel={`${products.length} product${products.length !== 1 ? 's' : ''} found`}
+      >
         <ThemedText style={styles.resultCount}>
           {products.length} product{products.length !== 1 ? 's' : ''} found
         </ThemedText>
@@ -73,7 +82,11 @@ export function ProductGrid({
   };
 
   const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
+    <View
+      style={styles.emptyContainer}
+      accessibilityRole="text"
+      accessibilityLabel="No products found. Try adjusting your search or category filters"
+    >
       <ThemedText style={styles.emptyTitle}>No products found</ThemedText>
       <ThemedText style={styles.emptyDescription}>
         Try adjusting your search or category filters
@@ -120,7 +133,12 @@ export function ProductGrid({
 
       {/* Initial Loading State */}
       {loading && products.length === 0 && (
-        <View style={styles.initialLoadingContainer}>
+        <View
+          style={styles.initialLoadingContainer}
+          accessibilityRole="progressbar"
+          accessibilityLabel="Loading products"
+          accessibilityValue={{ text: "Loading" }}
+        >
           <ActivityIndicator size="large" color="#8B5CF6" />
           <ThemedText style={styles.initialLoadingText}>
             Loading products...

@@ -128,6 +128,7 @@ export interface UGCContent {
   caption?: string;
   likes: number;
   isLiked: boolean;
+  isBookmarked?: boolean;
   date: Date;
   productTags?: string[];
 }

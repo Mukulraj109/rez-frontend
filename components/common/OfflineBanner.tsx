@@ -123,15 +123,36 @@ export function OfflineBanner({
           [position]: 0,
         },
       ]}
+      accessible={true}
+      accessibilityRole="alert"
+      accessibilityLabel={`${getBannerMessage()}. ${getBannerSubMessage()}`}
+      accessibilityLiveRegion="assertive"
     >
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name={getBannerIcon()} size={24} color="#FFFFFF" />
+          <Ionicons
+            name={getBannerIcon()}
+            size={24}
+            color="#FFFFFF"
+            accessible={false}
+          />
         </View>
 
         <View style={styles.textContainer}>
-          <Text style={styles.mainText}>{getBannerMessage()}</Text>
-          <Text style={styles.subText}>{getBannerSubMessage()}</Text>
+          <Text
+            style={styles.mainText}
+            accessible={true}
+            accessibilityRole="text"
+          >
+            {getBannerMessage()}
+          </Text>
+          <Text
+            style={styles.subText}
+            accessible={true}
+            accessibilityRole="text"
+          >
+            {getBannerSubMessage()}
+          </Text>
         </View>
       </View>
     </Animated.View>

@@ -20,10 +20,24 @@ export default function SplashScreen() {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
       style={styles.container}
+      accessible={true}
+      accessibilityLabel="Welcome to Rez App"
+      accessibilityRole="none"
     >
       <View style={styles.content}>
-        <Text style={styles.brandText}>Rez App</Text>
-        <Text style={styles.tagline}>Search & Find Best Deals</Text>
+        <Text
+          style={styles.brandText}
+          accessibilityLabel="Rez App brand logo"
+          accessibilityRole="header"
+        >
+          Rez App
+        </Text>
+        <Text
+          style={styles.tagline}
+          accessibilityLabel="App tagline: Search and Find Best Deals"
+        >
+          Search & Find Best Deals
+        </Text>
       </View>
     </LinearGradient>
 );

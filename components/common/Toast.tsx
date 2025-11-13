@@ -103,12 +103,35 @@ export default function Toast({
           transform: [{ translateY: slideAnim }],
         },
       ]}
+      accessible={true}
+      accessibilityRole="alert"
+      accessibilityLabel={`${type} notification: ${message}`}
+      accessibilityLiveRegion="polite"
     >
       <View style={styles.content}>
-        <Ionicons name={getIconName()} size={24} color="#fff" style={styles.icon} />
-        <Text style={styles.message}>{message}</Text>
+        <Ionicons
+          name={getIconName()}
+          size={24}
+          color="#fff"
+          style={styles.icon}
+          accessible={false}
+        />
+        <Text
+          style={styles.message}
+          accessible={true}
+          accessibilityRole="text"
+        >
+          {message}
+        </Text>
         {!actions && (
-          <TouchableOpacity onPress={dismiss} style={styles.closeButton}>
+          <TouchableOpacity
+            onPress={dismiss}
+            style={styles.closeButton}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss notification"
+            accessibilityHint="Double tap to close this notification"
+          >
             <Ionicons name="close" size={20} color="#fff" />
           </TouchableOpacity>
         )}
@@ -129,6 +152,10 @@ export default function Toast({
                 }
                 dismiss();
               }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={action.text}
+              accessibilityHint={`Double tap to ${action.text.toLowerCase()} and close notification`}
             >
               <Text
                 style={[

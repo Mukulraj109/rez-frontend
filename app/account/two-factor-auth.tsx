@@ -162,12 +162,16 @@ export default function TwoFactorAuthPage() {
       onPress={() => option.available && setSelectedMethod(option.value)}
       activeOpacity={option.available ? 0.7 : 1}
       disabled={!option.available}
+      accessibilityLabel={`${option.title}: ${option.description}${selectedMethod === option.value ? ', selected' : ''}`}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selectedMethod === option.value, disabled: !option.available }}
+      accessibilityHint="Double tap to select this verification method"
     >
       <View style={styles.optionHeader}>
         <View style={[styles.optionIcon, { backgroundColor: option.color + '20' }]}>
           <Ionicons name={option.icon as any} size={24} color={option.color} />
         </View>
-        
+
         <View style={styles.optionInfo}>
           <ThemedText style={styles.optionTitle}>{option.title}</ThemedText>
           <ThemedText style={styles.optionDescription}>{option.description}</ThemedText>
@@ -191,7 +195,12 @@ export default function TwoFactorAuthPage() {
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <ThemedText style={styles.modalTitle}>Backup Codes</ThemedText>
-          <TouchableOpacity onPress={() => setShowBackupCodes(false)}>
+          <TouchableOpacity
+            onPress={() => setShowBackupCodes(false)}
+            accessibilityLabel="Close backup codes modal"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to close the backup codes screen"
+          >
             <Ionicons name="close" size={24} color="#6B7280" />
           </TouchableOpacity>
         </View>
@@ -250,7 +259,13 @@ export default function TwoFactorAuthPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED'] as const} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
@@ -296,6 +311,10 @@ export default function TwoFactorAuthPage() {
               style={styles.enableButton}
               onPress={handleEnable2FA}
               disabled={isVerifying}
+              accessibilityLabel="Enable two-factor authentication"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: isVerifying }}
+              accessibilityHint="Double tap to enable two-factor authentication for your account"
             >
               <ThemedText style={styles.enableButtonText}>
                 {isVerifying ? 'Setting up...' : 'Enable Two-Factor Authentication'}
@@ -316,11 +335,17 @@ export default function TwoFactorAuthPage() {
                   keyboardType="numeric"
                   maxLength={6}
                   autoFocus
+                  accessibilityLabel="Verification code"
+                  accessibilityHint="Enter the 6-digit verification code"
                 />
                 <TouchableOpacity
                   style={styles.verifyButton}
                   onPress={handleVerifyCode}
                   disabled={isVerifying || !verificationCode.trim()}
+                  accessibilityLabel="Verify code"
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: isVerifying || !verificationCode.trim() }}
+                  accessibilityHint="Double tap to verify the entered code"
                 >
                   <ThemedText style={styles.verifyButtonText}>
                     {isVerifying ? 'Verifying...' : 'Verify'}
@@ -333,6 +358,9 @@ export default function TwoFactorAuthPage() {
             <TouchableOpacity
               style={styles.disableButton}
               onPress={handleDisable2FA}
+              accessibilityLabel="Disable two-factor authentication"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to disable two-factor authentication for your account"
             >
               <ThemedText style={styles.disableButtonText}>Disable Two-Factor Authentication</ThemedText>
             </TouchableOpacity>

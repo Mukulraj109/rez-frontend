@@ -14,6 +14,8 @@ export default function BrandedStoreCard({
   onPress, 
   width = 200 
 }: BrandedStoreCardProps) {
+  const storeLabel = `${store.brandName}. ${store.discount.description}. ${store.cashback.description}${store.isPartner ? `. ${store.partnerLevel} partner` : ''}`;
+
   return (
     <TouchableOpacity
       style={[styles.container, { width }]}
@@ -27,35 +29,54 @@ export default function BrandedStoreCard({
       activeOpacity={0.8}
       delayPressIn={0}
       delayPressOut={0}
+      accessibilityLabel={storeLabel}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view store details and offers"
     >
       <ThemedView style={[
         styles.card,
         { backgroundColor: store.backgroundColor || '#F8F9FA' }
       ]}>
         {/* Discount Badge */}
-        <View style={styles.discountBadge}>
+        <View
+          style={styles.discountBadge}
+          accessibilityLabel={`Discount: ${store.discount.description}`}
+          accessibilityRole="text"
+        >
           <ThemedText style={styles.discountText}>
             {store.discount.description}
           </ThemedText>
         </View>
 
         {/* Brand Logo */}
-        <View style={styles.logoContainer}>
-          <Image 
-            source={{ uri: store.brandLogo }} 
+        <View
+          style={styles.logoContainer}
+          accessibilityLabel={`${store.brandName} logo`}
+          accessibilityRole="image"
+        >
+          <Image
+            source={{ uri: store.brandLogo }}
             style={styles.logo}
             resizeMode="contain"
             fadeDuration={0}
+            accessible={false}
           />
         </View>
 
         {/* Brand Name */}
-        <ThemedText style={styles.brandName}>
+        <ThemedText
+          style={styles.brandName}
+          accessibilityLabel={`Store name: ${store.brandName}`}
+        >
           {store.brandName}
         </ThemedText>
 
         {/* Cashback Info */}
-        <View style={styles.cashbackContainer}>
+        <View
+          style={styles.cashbackContainer}
+          accessibilityLabel={`Cashback offer: ${store.cashback.description}`}
+          accessibilityRole="text"
+        >
           <ThemedText style={styles.cashbackText}>
             {store.cashback.description}
           </ThemedText>

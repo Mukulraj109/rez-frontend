@@ -97,6 +97,9 @@ export const SafeBackButton: React.FC<SafeBackButtonProps> = ({
       style={[styles.button, style]}
       activeOpacity={0.7}
       testID={testID}
+      accessibilityLabel="Go back"
+      accessibilityRole="button"
+      accessibilityHint="Double tap to navigate back"
     >
       <Ionicons name={iconName} size={iconSize} color={iconColor} />
     </TouchableOpacity>

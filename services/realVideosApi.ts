@@ -33,6 +33,7 @@ export interface Video {
   thumbnail: string;
   preview?: string;
   category: 'trending_me' | 'trending_her' | 'waist' | 'article' | 'featured' | 'challenge' | 'tutorial' | 'review';
+  contentType?: 'merchant' | 'ugc' | 'article_video'; // Content type from backend
   tags: string[];
   hashtags: string[];
   products: any[];
@@ -67,6 +68,7 @@ export const realVideosApi = {
   async getVideos(params?: {
     category?: string;
     creator?: string;
+    contentType?: 'merchant' | 'ugc' | 'article_video';
     hasProducts?: boolean;
     search?: string;
     sortBy?: 'newest' | 'popular' | 'trending' | 'likes';
@@ -77,6 +79,7 @@ export const realVideosApi = {
 
     if (params?.category) queryParams.append('category', params.category);
     if (params?.creator) queryParams.append('creator', params.creator);
+    if (params?.contentType) queryParams.append('contentType', params.contentType);
     if (params?.hasProducts !== undefined) queryParams.append('hasProducts', String(params.hasProducts));
     if (params?.search) queryParams.append('search', params.search);
     if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
@@ -118,7 +121,7 @@ export const realVideosApi = {
     if (params?.limit) queryParams.append('limit', String(params.limit));
     if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
 
-    return apiClient.get(`/videos/category/${category}?${queryParams.toString()}`).then(response => response.data as ApiResponse<{ videos: Video[]; pagination: any }>);
+    return apiClient.get(`/videos/category/${category}?${queryParams.toString()}`).then(response => response as ApiResponse<{ videos: Video[]; pagination: any }>);
   },
 
   /**
@@ -142,15 +145,21 @@ export const realVideosApi = {
   /**
    * Get single video by ID
    */
-  async getVideoById(videoId: string): Promise<ApiResponse<Video>> {
-    return apiClient.get(`/videos/${videoId}`).then(response => response.data as ApiResponse<Video>);
+  async getVideoById(videoId: string): Promise<any> {
+    console.log('🎬 [VIDEOS API] Fetching video by ID:', videoId);
+    const response = await apiClient.get(`/videos/${videoId}`);
+    console.log('📦 [VIDEOS API] Raw response:', response);
+    console.log('📦 [VIDEOS API] response.data:', response.data);
+    console.log('📦 [VIDEOS API] response.data.success:', response.data?.success);
+    console.log('📦 [VIDEOS API] response.data.data:', response.data?.data);
+    return response.data;
   },
 
   /**
    * Like/Unlike a video (requires authentication)
    */
-  async toggleVideoLike(videoId: string): Promise<ApiResponse<{ liked: boolean; likeCount: number }>> {
-    return apiClient.post(`/videos/${videoId}/like`).then(response => response.data as ApiResponse<{ liked: boolean; likeCount: number }>);
+  async toggleVideoLike(videoId: string): Promise<ApiResponse<{ liked: boolean; likeCount: number; isLiked?: boolean; totalLikes?: number }>> {
+    return apiClient.post(`/videos/${videoId}/like`).then(response => response as ApiResponse<{ liked: boolean; likeCount: number; isLiked?: boolean; totalLikes?: number }>);
   },
 
   /**
@@ -197,6 +206,17 @@ export const realVideosApi = {
     if (params.limit) queryParams.append('limit', String(params.limit));
 
     return apiClient.get(`/videos/search?${queryParams.toString()}`).then(response => response.data as ApiResponse<{ videos: Video[]; pagination: any }>);
+  },
+
+  /**
+   * Report a video (requires authentication)
+   */
+  async reportVideo(
+    videoId: string,
+    reason: 'inappropriate' | 'misleading' | 'spam' | 'copyright' | 'other',
+    details?: string
+  ): Promise<ApiResponse<{ videoId: string; reportCount: number; isReported: boolean }>> {
+    return apiClient.post(`/videos/${videoId}/report`, { reason, details }).then(response => response.data as ApiResponse<{ videoId: string; reportCount: number; isReported: boolean }>);
   },
 };
 

@@ -36,20 +36,30 @@ export default function EventCard({
     return `${event.price.currency}${event.price.amount}`;
   };
 
+  const eventLabel = `${event.title}. ${event.subtitle}. ${formatDate(event.date)}${event.time ? ` at ${event.time}` : ''}. ${event.isOnline ? 'Online event' : event.location}. Price: ${formatPrice()}. Category: ${event.category}`;
+
   return (
     <TouchableOpacity
       style={[styles.container, { width }]}
       onPress={() => onPress(event)}
       activeOpacity={0.95}
+      accessibilityLabel={eventLabel}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view event details and register"
     >
       <ThemedView style={[styles.card, { backgroundColor: cardBackground, borderColor }]}>
         {/* Event Image */}
-        <View style={styles.imageContainer}>
-          <Image 
-            source={{ uri: event.image }} 
+        <View
+          style={styles.imageContainer}
+          accessibilityLabel={`Event image for ${event.title}`}
+          accessibilityRole="image"
+        >
+          <Image
+            source={{ uri: event.image }}
             style={styles.image}
             resizeMode="cover"
             fadeDuration={0}
+            accessible={false}
           />
           {/* Image Overlay Gradient */}
           <LinearGradient
@@ -57,12 +67,20 @@ export default function EventCard({
             style={styles.imageOverlay}
           />
           {event.isOnline && (
-            <View style={styles.onlineBadge}>
+            <View
+              style={styles.onlineBadge}
+              accessibilityLabel="Online event"
+              accessibilityRole="text"
+            >
               <ThemedText style={styles.onlineBadgeText}>Online</ThemedText>
             </View>
           )}
           {/* Price Badge on Image */}
-          <View style={[styles.priceBadge, { backgroundColor: event.price.isFree ? '#10B981' : '#8B5CF6' }]}>
+          <View
+            style={[styles.priceBadge, { backgroundColor: event.price.isFree ? '#10B981' : '#8B5CF6' }]}
+            accessibilityLabel={`Event price: ${formatPrice()}`}
+            accessibilityRole="text"
+          >
             <ThemedText style={styles.priceBadgeText}>{formatPrice()}</ThemedText>
           </View>
         </View>

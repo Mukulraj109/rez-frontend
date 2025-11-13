@@ -100,11 +100,23 @@ const CoinDetailScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
       <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{coin.name}</Text>
-          <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={handleRefresh}
+            accessibilityLabel="Refresh coin data"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to reload coin information"
+          >
             <Ionicons name="refresh" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
@@ -112,7 +124,11 @@ const CoinDetailScreen: React.FC = () => {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Coin Header Card */}
-        <View style={styles.coinHeaderCard}>
+        <View
+          style={styles.coinHeaderCard}
+          accessibilityLabel={`${coin.name}. Balance: ${coin.formattedAmount}. Status: ${coin.isActive ? 'Active' : 'Inactive'}`}
+          accessibilityRole="summary"
+        >
           <View style={styles.coinIconContainer}>
             <View style={[styles.coinIcon, { backgroundColor: coin.backgroundColor }]}>
               <Ionicons
@@ -122,16 +138,16 @@ const CoinDetailScreen: React.FC = () => {
               />
             </View>
           </View>
-          
+
           <Text style={styles.coinName}>{coin.name}</Text>
           <Text style={styles.coinBalance}>{coin.formattedAmount}</Text>
-          
+
           <View style={styles.statusContainer}>
             <View style={[styles.statusBadge, { backgroundColor: coin.isActive ? '#E8FDEB' : '#FEE2E2' }]}>
-              <Ionicons 
-                name={coin.isActive ? 'checkmark-circle' : 'close-circle'} 
-                size={16} 
-                color={coin.isActive ? '#16A34A' : '#DC2626'} 
+              <Ionicons
+                name={coin.isActive ? 'checkmark-circle' : 'close-circle'}
+                size={16}
+                color={coin.isActive ? '#16A34A' : '#DC2626'}
               />
               <Text style={[styles.statusText, { color: coin.isActive ? '#16A34A' : '#DC2626' }]}>
                 {coin.isActive ? 'Active' : 'Inactive'}
@@ -211,17 +227,32 @@ const CoinDetailScreen: React.FC = () => {
         <View style={styles.actionsCard}>
           <Text style={styles.sectionTitle}>Actions</Text>
           
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            accessibilityLabel="Transfer coins"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to transfer coins to another user"
+          >
             <Ionicons name="swap-horizontal" size={20} color="#7C3AED" />
             <Text style={styles.actionButtonText}>Transfer</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton}>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            accessibilityLabel="Gift coins"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to gift coins to someone"
+          >
             <Ionicons name="gift" size={20} color="#7C3AED" />
             <Text style={styles.actionButtonText}>Gift</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton}>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            accessibilityLabel="View coin history"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view transaction history"
+          >
             <Ionicons name="time" size={20} color="#7C3AED" />
             <Text style={styles.actionButtonText}>History</Text>
           </TouchableOpacity>

@@ -122,7 +122,13 @@ export default function BillingHistoryPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Billing History</ThemedText>
@@ -141,25 +147,45 @@ export default function BillingHistoryPage() {
         {summary && !loading && (
           <View style={styles.summarySection}>
             <View style={styles.summaryGrid}>
-              <View style={styles.summaryCard}>
+              <View
+                style={styles.summaryCard}
+                accessible={true}
+                accessibilityLabel={`Total spent: ${summary.totalSpent} rupees`}
+                accessibilityRole="text"
+              >
                 <Ionicons name="wallet-outline" size={24} color="#8B5CF6" />
                 <ThemedText style={styles.summaryValue}>₹{summary.totalSpent}</ThemedText>
                 <ThemedText style={styles.summaryLabel}>Total Spent</ThemedText>
               </View>
 
-              <View style={styles.summaryCard}>
+              <View
+                style={styles.summaryCard}
+                accessible={true}
+                accessibilityLabel={`Total transactions: ${summary.totalTransactions}`}
+                accessibilityRole="text"
+              >
                 <Ionicons name="receipt-outline" size={24} color="#10B981" />
                 <ThemedText style={styles.summaryValue}>{summary.totalTransactions}</ThemedText>
                 <ThemedText style={styles.summaryLabel}>Transactions</ThemedText>
               </View>
 
-              <View style={styles.summaryCard}>
+              <View
+                style={styles.summaryCard}
+                accessible={true}
+                accessibilityLabel={`Total savings: ${summary.totalSavings} rupees`}
+                accessibilityRole="text"
+              >
                 <Ionicons name="trending-up-outline" size={24} color="#F59E0B" />
                 <ThemedText style={styles.summaryValue}>₹{summary.totalSavings}</ThemedText>
                 <ThemedText style={styles.summaryLabel}>Total Savings</ThemedText>
               </View>
 
-              <View style={styles.summaryCard}>
+              <View
+                style={styles.summaryCard}
+                accessible={true}
+                accessibilityLabel={`Net savings: ${summary.netSavings} rupees`}
+                accessibilityRole="text"
+              >
                 <Ionicons name="analytics-outline" size={24} color="#3B82F6" />
                 <ThemedText style={[
                   styles.summaryValue,
@@ -204,6 +230,9 @@ export default function BillingHistoryPage() {
               <TouchableOpacity
                 style={styles.emptyButton}
                 onPress={() => router.push('/subscription/plans')}
+                accessibilityLabel="View subscription plans"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to explore available subscription plans"
               >
                 <ThemedText style={styles.emptyButtonText}>View Plans</ThemedText>
               </TouchableOpacity>
@@ -222,6 +251,9 @@ export default function BillingHistoryPage() {
                 <TouchableOpacity
                   style={styles.loadMoreButton}
                   onPress={loadMore}
+                  accessibilityLabel="Load more transactions"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to load additional billing transactions"
                 >
                   <ThemedText style={styles.loadMoreText}>Load More</ThemedText>
                   <Ionicons name="chevron-down" size={16} color="#8B5CF6" />
@@ -246,6 +278,9 @@ export default function BillingHistoryPage() {
           <TouchableOpacity
             style={styles.supportButton}
             onPress={() => router.push('/support/chat')}
+            accessibilityLabel="Contact support"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to chat with customer support about billing inquiries"
           >
             <Ionicons name="chatbubble-outline" size={20} color="#FFFFFF" />
             <ThemedText style={styles.supportButtonText}>Contact Support</ThemedText>

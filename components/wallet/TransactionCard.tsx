@@ -38,11 +38,14 @@ export default function TransactionCard({
   const isDebit = transaction.type === 'PAYMENT';
   
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.container}
       onPress={handlePress}
       activeOpacity={0.7}
       disabled={!onPress}
+      accessibilityLabel={`Transaction: ${transaction.title}. Amount: ${isDebit ? 'Debit' : 'Credit'} ${formatCurrency(transaction.amount, transaction.currency)}. ${transaction.merchantName ? `Merchant: ${transaction.merchantName}. ` : ''}Status: ${transaction.status.toLowerCase()}${showDate ? `. Date: ${formatTransactionDate(transaction.date)}` : ''}`}
+      accessibilityRole="button"
+      accessibilityHint={onPress ? "Double tap to view transaction details" : undefined}
     >
       {/* Transaction Icon/Logo */}
       <View style={styles.iconContainer}>

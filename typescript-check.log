@@ -1,0 +1,8 @@
+__tests__/gamification/testUtils.ts(19,41): error TS1161: Unterminated regular expression literal.
+__tests__/gamification/testUtils.ts(20,7): error TS1161: Unterminated regular expression literal.
+hooks/usePerformance.ts(271,23): error TS1005: '>' expected.
+hooks/usePerformance.ts(271,35): error TS1109: Expression expected.
+hooks/usePerformance.ts(271,36): error TS1109: Expression expected.
+services/stockNotificationApi.ts(190,11): error TS1127: Invalid character.
+services/stockNotificationApi.ts(190,38): error TS1127: Invalid character.
+services/stockNotificationApi.ts(190,82): error TS1005: ';' expected.

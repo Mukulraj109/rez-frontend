@@ -36,6 +36,9 @@ export function PayBillHeader({
               onBack();
             }}
             activeOpacity={0.8}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
           >
             <Ionicons name="arrow-back" size={22} color="white" />
           </TouchableOpacity>
@@ -125,7 +128,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
-    backdropFilter: 'blur(10px)',
+    // backdropFilter: 'blur(10px)', // Not supported in React Native
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     ...Platform.select({

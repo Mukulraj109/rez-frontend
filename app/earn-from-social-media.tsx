@@ -153,6 +153,9 @@ export default function EarnFromSocialMediaPage() {
         style={styles.uploadButton}
         onPress={handlers.handleStartUpload}
         activeOpacity={0.8}
+        accessibilityLabel="Upload post"
+        accessibilityRole="button"
+        accessibilityHint="Start uploading your Instagram post for cashback"
       >
         <LinearGradient
           colors={EarnSocialData.ui.gradients.primary as any}
@@ -216,11 +219,15 @@ export default function EarnFromSocialMediaPage() {
       </View>
 
       {/* Upload Button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.uploadButton}
         onPress={handleSubmitUrl}
         activeOpacity={0.8}
         disabled={state.loading}
+        accessibilityLabel={state.loading ? "Uploading post" : "Upload post"}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: state.loading, busy: state.loading }}
+        accessibilityHint="Submits your Instagram post URL for verification"
       >
         <LinearGradient
           colors={EarnSocialData.ui.gradients.primary as any}
@@ -257,10 +264,13 @@ export default function EarnFromSocialMediaPage() {
       <ThemedText style={styles.successDescription}>
         Your post is under review. You'll receive cashback within 48 hours.
       </ThemedText>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.doneButton}
         onPress={handlers.handleGoBack}
         activeOpacity={0.8}
+        accessibilityLabel="Done"
+        accessibilityRole="button"
+        accessibilityHint="Returns to previous screen"
       >
         <ThemedText style={styles.doneButtonText}>Done</ThemedText>
       </TouchableOpacity>
@@ -279,6 +289,9 @@ export default function EarnFromSocialMediaPage() {
           style={styles.retryButton}
           onPress={handlers.handleRetry}
           activeOpacity={0.8}
+          accessibilityLabel="Try again"
+          accessibilityRole="button"
+          accessibilityHint="Retry uploading your post"
         >
           <Ionicons name="refresh-outline" size={20} color="#fff" />
           <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
@@ -287,6 +300,9 @@ export default function EarnFromSocialMediaPage() {
           style={styles.cancelButton}
           onPress={handlers.handleGoBack}
           activeOpacity={0.8}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Returns to previous screen"
         >
           <ThemedText style={styles.cancelButtonText}>Go Back</ThemedText>
         </TouchableOpacity>
@@ -321,11 +337,14 @@ export default function EarnFromSocialMediaPage() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.backButton} 
+          <TouchableOpacity
+            style={styles.backButton}
             onPress={handlers.handleGoBack}
             activeOpacity={0.8}
             hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Returns to previous screen"
           >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>

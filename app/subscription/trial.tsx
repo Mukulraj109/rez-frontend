@@ -335,6 +335,10 @@ export default function TrialPage() {
           onPress={() => handleSubscribeNow('premium')}
           disabled={isSubscribing}
           activeOpacity={0.8}
+          accessibilityLabel={isSubscribing ? 'Processing subscription' : 'Subscribe now'}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isSubscribing, busy: isSubscribing }}
+          accessibilityHint="Double tap to subscribe to Premium plan and continue after trial"
         >
           {isSubscribing ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -351,6 +355,10 @@ export default function TrialPage() {
           onPress={handleRemindLater}
           disabled={isSubscribing}
           activeOpacity={0.8}
+          accessibilityLabel="Remind me later"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: isSubscribing }}
+          accessibilityHint="Double tap to set a reminder before trial ends"
         >
           <Ionicons name="clock-outline" size={20} color="#8B5CF6" />
           <ThemedText style={styles.secondaryButtonText}>Remind Me Later</ThemedText>
@@ -366,6 +374,9 @@ export default function TrialPage() {
         style={styles.termsHeader}
         onPress={() => setExpandedTerms(!expandedTerms)}
         activeOpacity={0.7}
+        accessibilityLabel={`What happens next. ${expandedTerms ? 'Expanded' : 'Collapsed'}`}
+        accessibilityRole="button"
+        accessibilityHint={`Double tap to ${expandedTerms ? 'collapse' : 'expand'} trial terms and conditions`}
       >
         <ThemedText style={styles.termsTitle}>What Happens Next?</ThemedText>
         <Ionicons
@@ -435,7 +446,13 @@ export default function TrialPage() {
         <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
         <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
           <View style={styles.headerContainer}>
-            <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+            <TouchableOpacity
+              onPress={handleGoBack}
+              style={styles.backButton}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to return to previous screen"
+            >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <ThemedText style={styles.headerTitle}>Trial Period</ThemedText>
@@ -454,6 +471,9 @@ export default function TrialPage() {
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => router.push('/subscription/plans')}
+              accessibilityLabel="View subscription plans"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to explore available subscription plans"
             >
               <ThemedText style={styles.primaryButtonText}>View Plans</ThemedText>
             </TouchableOpacity>
@@ -489,6 +509,9 @@ export default function TrialPage() {
           <TouchableOpacity
             onPress={() => handleSubscribeNow('premium')}
             style={styles.urgentButton}
+            accessibilityLabel="Subscribe now"
+            accessibilityRole="button"
+            accessibilityHint={`Double tap to subscribe. Trial ends in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}`}
           >
             <ThemedText style={styles.urgentButtonText}>Subscribe</ThemedText>
           </TouchableOpacity>
@@ -498,7 +521,13 @@ export default function TrialPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={handleGoBack}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Your Trial Period</ThemedText>

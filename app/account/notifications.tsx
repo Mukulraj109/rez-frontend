@@ -273,8 +273,18 @@ export default function NotificationsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Loading settings...</Text>
+        <ActivityIndicator
+          size="large"
+          color="#3B82F6"
+          accessibilityLabel="Loading"
+          accessibilityRole="progressbar"
+        />
+        <Text
+          style={styles.loadingText}
+          accessibilityLabel="Loading notification settings"
+        >
+          Loading settings...
+        </Text>
       </View>
     );
   }
@@ -282,8 +292,19 @@ export default function NotificationsScreen() {
   if (!settings) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Failed to load settings</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadSettings}>
+        <Text
+          style={styles.errorText}
+          accessibilityRole="alert"
+        >
+          Failed to load settings
+        </Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={loadSettings}
+          accessibilityLabel="Retry loading notification settings"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to try loading settings again"
+        >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -294,18 +315,27 @@ export default function NotificationsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Navigate to previous screen"
+        >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notification Settings</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">Notification Settings</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Push Notifications */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.notificationSection}
           onPress={() => router.push('/account/push-notifications')}
+          accessibilityLabel="Push notifications settings"
+          accessibilityRole="button"
+          accessibilityHint="Navigate to manage push notification preferences"
         >
           <View style={styles.sectionIcon}>
             <Ionicons name="notifications" size={24} color="#3B82F6" />
@@ -318,9 +348,12 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
 
         {/* Email Notifications */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.notificationSection}
           onPress={() => router.push('/account/email-notifications')}
+          accessibilityLabel="Email notifications settings"
+          accessibilityRole="button"
+          accessibilityHint="Navigate to manage email notification settings"
         >
           <View style={styles.sectionIcon}>
             <Ionicons name="mail" size={24} color="#3B82F6" />
@@ -333,9 +366,12 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
 
         {/* SMS Notifications */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.notificationSection}
           onPress={() => router.push('/account/sms-notifications')}
+          accessibilityLabel="SMS notifications settings"
+          accessibilityRole="button"
+          accessibilityHint="Navigate to manage SMS notification preferences"
         >
           <View style={styles.sectionIcon}>
             <Ionicons name="chatbox" size={24} color="#3B82F6" />
@@ -348,9 +384,12 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
 
         {/* Notification History */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.notificationSection}
           onPress={() => router.push('/account/notification-history')}
+          accessibilityLabel="Notification history"
+          accessibilityRole="button"
+          accessibilityHint="Navigate to view all past notifications"
         >
           <View style={styles.sectionIcon}>
             <Ionicons name="time" size={24} color="#3B82F6" />

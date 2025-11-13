@@ -56,14 +56,22 @@ export default function Section5({ dynamicData, cardType }: Section5Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessibilityRole="region"
+      accessibilityLabel="Save deal action"
+    >
       <TouchableOpacity
         activeOpacity={0.85}
         style={[styles.button, isSaving && styles.buttonDisabled]}
         onPress={handleSaveDeal}
         disabled={isSaving}
+        accessibilityRole="button"
+        accessibilityLabel={isSaving ? 'Saving deal to wishlist' : `Save ${dynamicData?.title || dynamicData?.name || 'this deal'} for later`}
+        accessibilityHint="Double tap to save this deal to your wishlist"
+        accessibilityState={{ disabled: isSaving, busy: isSaving }}
       >
-        <View style={styles.iconContainer}>
+        <View style={styles.iconContainer} accessibilityElementsHidden>
           <ThemedText style={styles.icon}>{isSaving ? '⏳' : '🔄'}</ThemedText>
         </View>
         <View style={styles.textContainer}>
