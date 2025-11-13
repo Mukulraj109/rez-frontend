@@ -50,7 +50,11 @@ const StoreListSkeleton: React.FC<StoreListSkeletonProps> = ({
   const styles = createStyles(screenWidth);
 
   const SkeletonItem = () => (
-    <View style={styles.storeCardSkeleton}>
+    <View
+      style={styles.storeCardSkeleton}
+      accessibilityLabel="Loading store"
+      accessibilityRole="none"
+    >
       {/* Store Info Skeleton */}
       <View style={styles.storeInfoSkeleton}>
         <View style={styles.storeHeaderRow}>

@@ -24,6 +24,7 @@ import { AppPreferencesProvider } from '@/contexts/AppPreferencesContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { GamificationProvider } from '@/contexts/GamificationContext';
 import { OfflineQueueProvider } from '@/contexts/OfflineQueueContext';
+import { ToastProvider } from '@/contexts/ToastContext';
 import ToastManager from '@/components/common/ToastManager';
 import BottomNavigation from '@/components/navigation/BottomNavigation';
 import { billUploadAnalytics } from '@/services/billUploadAnalytics';
@@ -152,27 +153,28 @@ export default function RootLayout() {
   return (
     <ErrorBoundary onError={handleErrorBoundaryError}>
       <CrossPlatformAlertProvider>
-        <OfflineQueueProvider
-          autoSync={true}
-          onSyncComplete={handleQueueSyncComplete}
-          onSyncError={handleQueueSyncError}
-        >
-          <AppProvider>
-          <AuthProvider>
-            <SubscriptionProvider>
-              <GamificationProvider>
-                <SocketProvider>
-                  <LocationProvider>
-                    <GreetingProvider>
-                      <CartProvider>
-                        <OffersProvider>
-                          <CategoryProvider>
-                            <ProfileProvider>
-                              <WishlistProvider>
-                                <NotificationProvider>
-                                  <SecurityProvider>
-                                    <AppPreferencesProvider>
-                                      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <ToastProvider>
+          <OfflineQueueProvider
+            autoSync={true}
+            onSyncComplete={handleQueueSyncComplete}
+            onSyncError={handleQueueSyncError}
+          >
+            <AppProvider>
+            <AuthProvider>
+              <SubscriptionProvider>
+                <GamificationProvider>
+                  <SocketProvider>
+                    <LocationProvider>
+                      <GreetingProvider>
+                        <CartProvider>
+                          <OffersProvider>
+                            <CategoryProvider>
+                              <ProfileProvider>
+                                <WishlistProvider>
+                                  <NotificationProvider>
+                                    <SecurityProvider>
+                                      <AppPreferencesProvider>
+                                        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
                   {/* App Entry Point */}
                   <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -194,9 +196,13 @@ export default function RootLayout() {
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                   <Stack.Screen name="FashionPage" options={{ headerShown: false }} />
                    <Stack.Screen name="ProductPage" options={{ headerShown: false }} />
+                   <Stack.Screen name="products-videos" options={{ headerShown: false }} />
+                   <Stack.Screen name="articles" options={{ headerShown: false }} />
+                   <Stack.Screen name="article/[id]" options={{ headerShown: false }} />
                   <Stack.Screen name="CartPage" options={{ headerShown: false }} />
                   <Stack.Screen name="MainStorePage" options={{ headerShown: false }} />
                    <Stack.Screen name="Store" options={{ headerShown: false }} />
+                   <Stack.Screen name="store-visit" options={{ headerShown: false }} />
                    <Stack.Screen name="EventPage" options={{ headerShown: false }} />
                    <Stack.Screen name="UGCDetailScreen" options={{ headerShown: false }} />
                    <Stack.Screen name="CoinPage" options={{ headerShown: false }} />
@@ -222,6 +228,9 @@ export default function RootLayout() {
                     <Stack.Screen name="my-services" options={{ headerShown: false }} />
                     <Stack.Screen name="my-vouchers" options={{ headerShown: false }} />
                     <Stack.Screen name="my-earnings" options={{ headerShown: false }} />
+
+                    {/* Messaging System */}
+                    <Stack.Screen name="messages/index" options={{ headerShown: false }} />
                     <Stack.Screen name="search" options={{ headerShown: false }} />
                     <Stack.Screen name="going-out" options={{ headerShown: false }} />
                     <Stack.Screen name="home-delivery" options={{ headerShown: false }} />
@@ -323,6 +332,7 @@ export default function RootLayout() {
           </AuthProvider>
           </AppProvider>
         </OfflineQueueProvider>
+        </ToastProvider>
       </CrossPlatformAlertProvider>
     </ErrorBoundary>
   );

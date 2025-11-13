@@ -1,91 +1,235 @@
-// Stock Notification API Service
-// Handles stock notification subscriptions and management
+/**
+ * Stock Notifications API Service
+ *
+ * Handles stock notification requests to the backend
+ */
 
-import apiClient, { ApiResponse } from './apiClient';
+import apiClient from './apiClient';
+
+export interface StockNotificationRequest {
+  productId: string;
+  variantId?: string;
+  method?: 'email' | 'sms' | 'both' | 'push'; // Legacy support
+  notificationMethod?: ('email' | 'push' | 'sms')[];
+  contact?: {
+    email?: string;
+    phone?: string;
+  };
+}
 
 export interface StockNotification {
   _id: string;
   userId: string;
   productId: string;
-  email?: string;
-  phoneNumber?: string;
-  notificationMethod: 'email' | 'sms' | 'both' | 'push';
-  status: 'pending' | 'sent' | 'cancelled';
-  createdAt: string;
-  notifiedAt?: string;
-  product?: {
-    name: string;
-    image: string;
-    price: number;
+  variantId?: string;
+  notificationMethod: ('email' | 'push' | 'sms')[];
+  contact: {
+    email?: string;
+    phone?: string;
+  };
+  status: 'pending' | 'notified' | 'expired' | 'cancelled';
+  notifiedAt?: Date;
+  expiresAt: Date;
+  daysUntilExpiration?: number;
+  metadata?: {
+    productName?: string;
+    variantAttributes?: Record<string, any>;
+    priceAtSubscription?: number;
+    stockAtSubscription?: number;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface NotificationHistoryResponse {
+  notifications: StockNotification[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
   };
 }
 
-export interface SubscribeRequest {
-  productId: string;
-  method?: 'email' | 'sms' | 'both' | 'push';
-}
-
-export interface UnsubscribeRequest {
-  productId: string;
-}
-
-export interface SubscriptionResponse {
-  subscription: StockNotification;
-  message: string;
-}
-
-export interface SubscriptionsResponse {
-  subscriptions: StockNotification[];
-  total: number;
-}
-
-export interface SubscriptionCheckResponse {
-  isSubscribed: boolean;
-}
-
-/**
- * Stock Notification API Service
- */
-class StockNotificationService {
-  private baseURL = '/stock-notifications';
+class StockNotificationsApi {
+  private baseUrl = '/stock-notifications';
 
   /**
-   * Subscribe to stock notifications for a product
+   * Subscribe to stock notification
    */
-  async subscribe(data: SubscribeRequest): Promise<ApiResponse<SubscriptionResponse>> {
-    return apiClient.post<SubscriptionResponse>(`${this.baseURL}/subscribe`, data);
+  async subscribe(data: StockNotificationRequest) {
+    try {
+      console.log('🔔 [StockNotificationsApi] Subscribing to notification:', data);
+
+      const response = await apiClient.post(this.baseUrl, data);
+
+      console.log('✅ [StockNotificationsApi] Subscribed successfully');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [StockNotificationsApi] Subscribe error:', error);
+      throw error;
+    }
   }
 
   /**
-   * Unsubscribe from stock notifications for a product
+   * Get user's notification history
    */
-  async unsubscribe(data: UnsubscribeRequest): Promise<ApiResponse<null>> {
-    return apiClient.post<null>(`${this.baseURL}/unsubscribe`, data);
+  async getMyNotifications(params?: {
+    page?: number;
+    limit?: number;
+    status?: 'pending' | 'notified' | 'expired' | 'cancelled';
+  }) {
+    try {
+      console.log('📋 [StockNotificationsApi] Fetching notification history');
+
+      const response = await apiClient.get(`${this.baseUrl}/my-notifications`, {
+        params,
+      });
+
+      console.log('✅ [StockNotificationsApi] Fetched notifications:', response.data.data.notifications.length);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [StockNotificationsApi] Get notifications error:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get user's stock notification subscriptions
+   * Check if user has pending notification for a product
    */
-  async getMySubscriptions(status?: 'pending' | 'sent' | 'cancelled'): Promise<ApiResponse<SubscriptionsResponse>> {
-    const params = status ? { status } : {};
-    return apiClient.get<SubscriptionsResponse>(`${this.baseURL}/my-subscriptions`, params);
+  async checkNotification(productId: string, variantId?: string) {
+    try {
+      const response = await apiClient.get(`${this.baseUrl}/check/${productId}`, {
+        params: variantId ? { variantId } : {},
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [StockNotificationsApi] Check notification error:', error);
+      throw error;
+    }
   }
 
   /**
-   * Check if user is subscribed to a product
+   * Cancel a notification
    */
-  async checkSubscription(productId: string): Promise<ApiResponse<SubscriptionCheckResponse>> {
-    return apiClient.get<SubscriptionCheckResponse>(`${this.baseURL}/check/${productId}`);
+  async cancelNotification(notificationId: string) {
+    try {
+      console.log('🔕 [StockNotificationsApi] Cancelling notification:', notificationId);
+
+      const response = await apiClient.delete(`${this.baseUrl}/${notificationId}`);
+
+      console.log('✅ [StockNotificationsApi] Notification cancelled');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [StockNotificationsApi] Cancel error:', error);
+      throw error;
+    }
+  }
+
+
+  /**
+   * Adapter methods for backward compatibility with existing hook
+   */
+
+  /**
+   * Get user's subscriptions (adapter for my-notifications)
+   */
+  async getMySubscriptions(status?: 'pending' | 'sent' | 'cancelled' | 'notified' | 'expired') {
+    try {
+      // Map 'sent' status to 'notified'
+      const mappedStatus = status === 'sent' ? 'notified' : status;
+      const response = await this.getMyNotifications({ status: mappedStatus as any });
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            subscriptions: response.data.notifications || [],
+            total: response.data.pagination?.total || 0,
+          },
+        };
+      }
+
+      return response;
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**
-   * Delete a stock notification subscription
+   * Check subscription (adapter for checkNotification)
    */
-  async deleteSubscription(notificationId: string): Promise<ApiResponse<null>> {
-    return apiClient.delete<null>(`${this.baseURL}/${notificationId}`);
+  async checkSubscription(productId: string) {
+    try {
+      const response = await this.checkNotification(productId);
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            isSubscribed: response.data.hasPendingNotification || false,
+          },
+        };
+      }
+
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Unsubscribe (adapter that finds and cancels notification)
+   */
+  async unsubscribe(data: { productId: string }) {
+    try {
+      // First check if user has a pending notification
+      const checkResponse = await this.checkNotification(data.productId);
+
+      if (!checkResponse.success || !checkResponse.data?.hasPendingNotification) {
+        return { success: true, data: null };
+      }
+
+      // Get user's notifications to find the notification ID
+      const notificationsResponse = await this.getMyNotifications({ status: 'pending' });
+
+      if (notificationsResponse.success && notificationsResponse.data) {
+        const notification = notificationsResponse.data.notifications?.find(
+          (n: any) => n.productId === data.productId && n.status === 'pending'
+        );
+
+        if (notification) {
+          return await this.cancelNotification(notification._id);
+        }
+      }
+
+      return { success: true, data: null };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Delete subscription (adapter for cancelNotification)
+   */
+  async deleteSubscription(notificationId: string) {
+    return this.cancelNotification(notificationId);
+  }
+
+  /**
+   * Get product notification stats (Admin/Store)
+   */
+  async getProductStats(productId: string) {
+    try {
+      const response = await apiClient.get(`${this.baseUrl}/stats/${productId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [StockNotificationsApi] Get stats error:', error);
+      throw error;
+    }
   }
 }
 
-// Export singleton instance
-const stockNotificationService = new StockNotificationService();
-export default stockNotificationService;
+const stockNotificationsApi = new StockNotificationsApi();
+export default stockNotificationsApi;

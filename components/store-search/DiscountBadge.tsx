@@ -29,7 +29,11 @@ const DiscountBadge: React.FC<DiscountBadgeProps> = ({
   const discountText = customText || `Upto ${percentage}% OFF`;
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessibilityRole="text"
+      accessibilityLabel={`Discount: ${discountText}`}
+    >
       <ThemedText style={styles.text}>
         {discountText}
       </ThemedText>

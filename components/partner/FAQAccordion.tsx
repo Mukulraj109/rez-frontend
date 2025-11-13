@@ -68,6 +68,10 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ faq, isExpanded, onToggle
         style={styles.accordionHeader}
         onPress={handleToggle}
         activeOpacity={0.7}
+        accessibilityLabel={`${faq.question}. ${isExpanded ? 'Expanded' : 'Collapsed'}`}
+        accessibilityRole="button"
+        accessibilityHint="Double tap to expand or collapse this FAQ"
+        accessibilityState={{ expanded: isExpanded }}
       >
         <View style={styles.questionContainer}>
           <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(faq.category) + '20' }]}>
@@ -169,6 +173,10 @@ export default function FAQAccordion({ faqs, onContactPress }: FAQAccordionProps
               { borderColor: category.color }
             ]}
             onPress={() => setSelectedCategory(category.key)}
+            accessibilityLabel={`${category.name} category`}
+            accessibilityRole="button"
+            accessibilityHint={`Double tap to filter FAQs by ${category.name}`}
+            accessibilityState={{ selected: selectedCategory === category.key }}
           >
             <Ionicons 
               name={category.icon as any} 
@@ -192,11 +200,23 @@ export default function FAQAccordion({ faqs, onContactPress }: FAQAccordionProps
           Showing {filteredFAQs.length} of {faqs.length} questions
         </Text>
         <View style={styles.controlButtons}>
-          <TouchableOpacity style={styles.controlButton} onPress={expandAll}>
+          <TouchableOpacity
+            style={styles.controlButton}
+            onPress={expandAll}
+            accessibilityLabel="Expand all FAQs"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to expand all FAQ items"
+          >
             <Ionicons name="chevron-down-circle-outline" size={16} color="#8B5CF6" />
             <Text style={styles.controlButtonText}>Expand All</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.controlButton} onPress={collapseAll}>
+          <TouchableOpacity
+            style={styles.controlButton}
+            onPress={collapseAll}
+            accessibilityLabel="Collapse all FAQs"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to collapse all FAQ items"
+          >
             <Ionicons name="chevron-up-circle-outline" size={16} color="#8B5CF6" />
             <Text style={styles.controlButtonText}>Collapse All</Text>
           </TouchableOpacity>
@@ -230,10 +250,13 @@ export default function FAQAccordion({ faqs, onContactPress }: FAQAccordionProps
       </ScrollView>
 
       {/* Contact Support */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.contactButton}
         onPress={onContactPress}
         activeOpacity={0.8}
+        accessibilityLabel="Contact support"
+        accessibilityRole="button"
+        accessibilityHint="Double tap to chat with support"
       >
         <LinearGradient
           colors={['#8B5CF6', '#A78BFA']}

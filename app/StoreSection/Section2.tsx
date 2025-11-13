@@ -130,7 +130,11 @@ export default function Section2({ dynamicData, cardType }: Section2Props){
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessibilityRole="region"
+      accessibilityLabel="Store action buttons"
+    >
       <View style={styles.buttonRow}>
         {actions.map((action, index) => (
           <TouchableOpacity
@@ -138,6 +142,9 @@ export default function Section2({ dynamicData, cardType }: Section2Props){
             style={styles.button}
             activeOpacity={0.8}
             onPress={getHandler(action.label)}
+            accessibilityRole="button"
+            accessibilityLabel={`${action.label} store`}
+            accessibilityHint={`Double tap to ${action.label.toLowerCase()} this store`}
           >
             <ThemedText style={styles.buttonText}>
               {action.icon} {action.label}

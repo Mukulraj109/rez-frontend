@@ -101,6 +101,9 @@ export default function StorePromoCoinsPage() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
           >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
@@ -125,7 +128,11 @@ export default function StorePromoCoinsPage() {
         {/* Summary Cards */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryRow}>
-            <View style={[styles.summaryCard, { backgroundColor: '#10B981' }]}>
+            <View
+              style={[styles.summaryCard, { backgroundColor: '#10B981' }]}
+              accessibilityLabel={`Available promo coins: ${summary.totalAvailable}`}
+              accessibilityRole="summary"
+            >
               <Ionicons name="diamond" size={24} color="#FFFFFF" />
               <ThemedText style={styles.summaryValue}>
                 {summary.totalAvailable}
@@ -133,7 +140,11 @@ export default function StorePromoCoinsPage() {
               <ThemedText style={styles.summaryLabel}>Available</ThemedText>
             </View>
 
-            <View style={[styles.summaryCard, { backgroundColor: '#3B82F6' }]}>
+            <View
+              style={[styles.summaryCard, { backgroundColor: '#3B82F6' }]}
+              accessibilityLabel={`Total coins earned: ${summary.totalEarned}`}
+              accessibilityRole="summary"
+            >
               <Ionicons name="trending-up" size={24} color="#FFFFFF" />
               <ThemedText style={styles.summaryValue}>
                 {summary.totalEarned}
@@ -143,7 +154,11 @@ export default function StorePromoCoinsPage() {
           </View>
 
           <View style={styles.summaryRow}>
-            <View style={[styles.summaryCard, { backgroundColor: '#F59E0B' }]}>
+            <View
+              style={[styles.summaryCard, { backgroundColor: '#F59E0B' }]}
+              accessibilityLabel={`Coins used: ${summary.totalUsed}`}
+              accessibilityRole="summary"
+            >
               <Ionicons name="cart" size={24} color="#FFFFFF" />
               <ThemedText style={styles.summaryValue}>
                 {summary.totalUsed}
@@ -151,7 +166,11 @@ export default function StorePromoCoinsPage() {
               <ThemedText style={styles.summaryLabel}>Used</ThemedText>
             </View>
 
-            <View style={[styles.summaryCard, { backgroundColor: '#8B5CF6' }]}>
+            <View
+              style={[styles.summaryCard, { backgroundColor: '#8B5CF6' }]}
+              accessibilityLabel={`Active stores: ${summary.storeCount}`}
+              accessibilityRole="summary"
+            >
               <Ionicons name="storefront" size={24} color="#FFFFFF" />
               <ThemedText style={styles.summaryValue}>
                 {summary.storeCount}
@@ -187,7 +206,12 @@ export default function StorePromoCoinsPage() {
             </View>
           ) : (
             storeCoins.map((storeCoin) => (
-              <View key={storeCoin._id} style={styles.storeCard}>
+              <View
+                key={storeCoin._id}
+                style={styles.storeCard}
+                accessibilityLabel={`${getStoreName(storeCoin.store)}. Available: ${storeCoin.amount} coins. Earned: ${storeCoin.earned}, Used: ${storeCoin.used}${storeCoin.expiryDate ? `. Expires ${new Date(storeCoin.expiryDate).toLocaleDateString()}` : ''}`}
+                accessibilityRole="summary"
+              >
                 <View style={styles.storeCardHeader}>
                   {getStoreLogo(storeCoin.store) ? (
                     <Image

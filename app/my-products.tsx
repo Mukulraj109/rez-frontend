@@ -279,85 +279,115 @@ const MyProductsPage = () => {
     router.push('/ReviewPage' as any);
   };
 
-  const renderProduct = ({ item }: { item: PurchasedProduct }) => (
-    <TouchableOpacity
-      style={styles.productCard}
-      onPress={() => router.push(`/product/${item.productId}` as any)}
-      activeOpacity={0.7}
-    >
-      <Image source={{ uri: item.image }} style={styles.productImage} />
+  const renderProduct = ({ item }: { item: PurchasedProduct }) => {
+    const productLabel = `${item.name}${item.variant ? `, ${item.variant.type}: ${item.variant.value}` : ''}. Price: ${item.price} rupees. Quantity: ${item.quantity}. Order number ${item.orderId}, placed on ${new Date(item.orderDate).toLocaleDateString()}. Status: ${getStatusText(item.deliveryStatus)}`;
 
-      <View style={styles.productInfo}>
-        <Text style={styles.productName} numberOfLines={2}>
-          {item.name}
-        </Text>
+    return (
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={() => router.push(`/product/${item.productId}` as any)}
+        activeOpacity={0.7}
+        accessibilityLabel={productLabel}
+        accessibilityRole="button"
+        accessibilityHint="Double tap to view product details"
+      >
+        <Image
+          source={{ uri: item.image }}
+          style={styles.productImage}
+          accessibilityLabel={`Product image for ${item.name}`}
+          accessible={true}
+        />
 
-        {item.variant && (
-          <Text style={styles.productVariant}>
-            {item.variant.type}: {item.variant.value}
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={2}>
+            {item.name}
           </Text>
-        )}
 
-        <View style={styles.productDetails}>
-          <Text style={styles.productPrice}>₹{item.price}</Text>
-          <Text style={styles.productQuantity}>Qty: {item.quantity}</Text>
-        </View>
+          {item.variant && (
+            <Text style={styles.productVariant}>
+              {item.variant.type}: {item.variant.value}
+            </Text>
+          )}
 
-        <Text style={styles.orderInfo}>
-          Order #{item.orderId} • {new Date(item.orderDate).toLocaleDateString()}
-        </Text>
-
-        <View style={styles.statusBadge}>
           <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: getStatusColor(item.deliveryStatus) },
-            ]}
-          />
+            style={styles.productDetails}
+            accessibilityLabel={`Price: ${item.price} rupees. Quantity: ${item.quantity}`}
+            accessibilityRole="text"
+          >
+            <Text style={styles.productPrice}>₹{item.price}</Text>
+            <Text style={styles.productQuantity}>Qty: {item.quantity}</Text>
+          </View>
+
           <Text
-            style={[
-              styles.statusText,
-              { color: getStatusColor(item.deliveryStatus) },
-            ]}
+            style={styles.orderInfo}
+            accessibilityLabel={`Order number ${item.orderId}, placed on ${new Date(item.orderDate).toLocaleDateString()}`}
           >
-            {getStatusText(item.deliveryStatus)}
+            Order #{item.orderId} • {new Date(item.orderDate).toLocaleDateString()}
           </Text>
+
+          <View
+            style={styles.statusBadge}
+            accessibilityLabel={`Delivery status: ${getStatusText(item.deliveryStatus)}`}
+            accessibilityRole="text"
+          >
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: getStatusColor(item.deliveryStatus) },
+              ]}
+            />
+            <Text
+              style={[
+                styles.statusText,
+                { color: getStatusColor(item.deliveryStatus) },
+              ]}
+            >
+              {getStatusText(item.deliveryStatus)}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.actionsContainer}>
-        {item.canReorder && (
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              reorderingProductId === item.orderId && styles.actionButtonDisabled
-            ]}
-            onPress={() => handleReorder(item)}
-            disabled={reorderingProductId === item.orderId}
-          >
-            {reorderingProductId === item.orderId ? (
-              <ActivityIndicator size="small" color="#8B5CF6" />
-            ) : (
-              <>
-                <Ionicons name="repeat-outline" size={20} color="#8B5CF6" />
-                <Text style={styles.actionText}>Reorder</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        )}
+        <View style={styles.actionsContainer}>
+          {item.canReorder && (
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                reorderingProductId === item.orderId && styles.actionButtonDisabled
+              ]}
+              onPress={() => handleReorder(item)}
+              disabled={reorderingProductId === item.orderId}
+              accessibilityLabel={reorderingProductId === item.orderId ? 'Reordering product' : 'Reorder this product'}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to add all items from this order to your cart"
+              accessibilityState={{ disabled: reorderingProductId === item.orderId }}
+            >
+              {reorderingProductId === item.orderId ? (
+                <ActivityIndicator size="small" color="#8B5CF6" />
+              ) : (
+                <>
+                  <Ionicons name="repeat-outline" size={20} color="#8B5CF6" />
+                  <Text style={styles.actionText}>Reorder</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
 
-        {item.canReview && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleReview(item)}
-          >
-            <Ionicons name="star-outline" size={20} color="#F59E0B" />
-            <Text style={styles.actionText}>Review</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+          {item.canReview && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleReview(item)}
+              accessibilityLabel="Write a review for this product"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to submit a product review"
+            >
+              <Ionicons name="star-outline" size={20} color="#F59E0B" />
+              <Text style={styles.actionText}>Review</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>

@@ -229,7 +229,15 @@ ${deal.description || 'Don\'t miss out on this incredible offer!'}
   };
 
   return (
-    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Share deal dialog"
+    >
       <TouchableWithoutFeedback onPress={handleBackdropPress}>
         <View style={styles.overlay}>
           <Animated.View style={[styles.blurContainer, { opacity: fadeAnim }]}>
@@ -248,7 +256,13 @@ ${deal.description || 'Don\'t miss out on this incredible offer!'}
               <View style={styles.modal}>
                 {/* Header */}
                 <View style={styles.header}>
-                  <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={onClose}
+                    accessibilityLabel="Close share dialog"
+                    accessibilityRole="button"
+                    accessibilityHint="Double tap to close this dialog"
+                  >
                     <Ionicons name="close" size={20} color="#555" />
                   </TouchableOpacity>
                   
@@ -303,6 +317,9 @@ ${deal.description || 'Don\'t miss out on this incredible offer!'}
                           key={option.id}
                           style={styles.sharingOption}
                           onPress={() => handleShareOption(option)}
+                          accessibilityLabel={`Share via ${option.name}`}
+                          accessibilityRole="button"
+                          accessibilityHint={`Double tap to share this deal using ${option.name}`}
                         >
                           <View style={[styles.sharingIcon, { backgroundColor: option.color }]}>
                             <Ionicons name={option.icon as any} size={24} color="#fff" />

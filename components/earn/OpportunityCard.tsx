@@ -25,7 +25,13 @@ export default function OpportunityCard({
   category
 }: OpportunityCardProps) {
   return (
-    <TouchableOpacity style={styles.opportunityCard} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.opportunityCard}
+      onPress={onPress}
+      accessibilityLabel={`${isNew ? 'New! ' : ''}${title}. ${description}${category ? `. Category: ${category}` : ''}. Reward: ${reward}`}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to start earning with this opportunity"
+    >
       {isNew && (
         <View style={styles.newBadge}>
           <ThemedText style={styles.newText}>NEW</ThemedText>

@@ -11,26 +11,26 @@ export default function TabLayout() {
         headerShown: false,
         tabBarShowLabel: true,
         tabBarActiveTintColor: '#8B5CF6',
-        tabBarInactiveTintColor: '#0F0F0F',
+        tabBarInactiveTintColor: '#374151',
         tabBarStyle: {
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
           height: 70,
-          borderTopWidth: 0,
-          backgroundColor: 'transparent', 
+          borderTopWidth: 2,
+          borderTopColor: '#E5E7EB',
+          backgroundColor: '#FFFFFF',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 16,
+          elevation: 20,
         },
-        tabBarBackground: () => (
-          <BlurView
-            intensity={60} 
-            tint={Platform.OS === 'ios' ? 'light' : 'default'}
-            style={{ flex: 1 }}
-          />
-        ),
+        tabBarBackground: () => null,
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '600',
+          fontWeight: '800',
           marginTop: -4,
         },
         tabBarIconStyle: {
@@ -43,8 +43,14 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={22} name="house.fill" color={color} />
+            <IconSymbol
+              size={22}
+              name="house.fill"
+              color={color}
+              accessibilityLabel="Home icon"
+            />
           ),
+          tabBarAccessibilityLabel: 'Home tab, navigate to home screen',
         }}
       />
       <Tabs.Screen
@@ -52,8 +58,14 @@ export default function TabLayout() {
         options={{
           title: 'Play',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={22} name="play.fill" color={color} />
+            <IconSymbol
+              size={22}
+              name="play.fill"
+              color={color}
+              accessibilityLabel="Play icon"
+            />
           ),
+          tabBarAccessibilityLabel: 'Play tab, watch videos and discover content',
         }}
       />
       <Tabs.Screen
@@ -61,8 +73,14 @@ export default function TabLayout() {
         options={{
           title: 'Earn',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={22} name="indianrupeesign" color={color} />
+            <IconSymbol
+              size={22}
+              name="indianrupeesign"
+              color={color}
+              accessibilityLabel="Earn icon"
+            />
           ),
+          tabBarAccessibilityLabel: 'Earn tab, view earning opportunities and rewards',
         }}
       />
     </Tabs>

@@ -6,8 +6,9 @@ module.exports = {
   // Setup files
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 
-  // Transform files with ts-jest
+  // Transform files with babel for JS and ts-jest for TS
   transform: {
+    '^.+\\.(js|jsx)$': 'babel-jest',
     '^.+\\.(ts|tsx)$': [
       'ts-jest',
       {
@@ -27,6 +28,7 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(' +
       '@react-native|' +
+      '@react-native/.*|' +
       'react-native|' +
       '@expo|' +
       'expo|' +

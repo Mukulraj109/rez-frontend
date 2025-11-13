@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  ScrollView, 
-  StyleSheet, 
-  RefreshControl, 
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  RefreshControl,
   Alert,
-  ActivityIndicator 
+  ActivityIndicator,
+  TouchableOpacity
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -246,12 +247,16 @@ export default function CategoryPage() {
         <ThemedText style={styles.errorText}>
           The category &quot;{slug}&quot; could not be found.
         </ThemedText>
-        <ThemedText 
-          style={styles.backButton} 
+        <TouchableOpacity
           onPress={handleBack}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to return to previous screen"
         >
-          Go Back
-        </ThemedText>
+          <ThemedText style={styles.backButton}>
+            Go Back
+          </ThemedText>
+        </TouchableOpacity>
       </ThemedView>
     );
   }
@@ -288,15 +293,22 @@ export default function CategoryPage() {
           {category.banners && category.banners.length > 0 && (
             <View style={styles.bannersContainer}>
               {category.banners.map((banner) => (
-                <CategoryBanner
+                <View
                   key={banner.id}
-                  banner={banner}
-                  onPress={() => {
-                    if (banner.action?.type === 'navigate') {
-                      router.push(banner.action.target as any);
-                    }
-                  }}
-                />
+                  accessible={true}
+                  accessibilityLabel={`Banner: ${banner.title || 'Featured content'}`}
+                  accessibilityRole="image"
+                  accessibilityHint={banner.subtitle ? banner.subtitle : undefined}
+                >
+                  <CategoryBanner
+                    banner={banner}
+                    onPress={() => {
+                      if (banner.action?.type === 'navigate') {
+                        router.push(banner.action.target as any);
+                      }
+                    }}
+                  />
+                </View>
               ))}
             </View>
           )}
@@ -339,12 +351,16 @@ export default function CategoryPage() {
                     {section.title}
                   </ThemedText>
                   {section.viewAllLink && (
-                    <ThemedText 
-                      style={styles.viewAllButton}
+                    <TouchableOpacity
                       onPress={() => router.push(section.viewAllLink as any)}
+                      accessibilityLabel={`View all ${section.title.toLowerCase()}`}
+                      accessibilityRole="button"
+                      accessibilityHint="Double tap to see all items in this section"
                     >
-                      View all
-                    </ThemedText>
+                      <ThemedText style={styles.viewAllButton}>
+                        View all
+                      </ThemedText>
+                    </TouchableOpacity>
                   )}
                 </View>
                 <CategoryGrid
@@ -382,12 +398,16 @@ export default function CategoryPage() {
                 Try adjusting your search or filters
               </ThemedText>
               {Object.keys(state.filters).length > 0 && (
-                <ThemedText 
-                  style={styles.clearFiltersButton}
+                <TouchableOpacity
                   onPress={handleResetFilters}
+                  accessibilityLabel="Clear all filters"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to remove all active filters"
                 >
-                  Clear Filters
-                </ThemedText>
+                  <ThemedText style={styles.clearFiltersButton}>
+                    Clear Filters
+                  </ThemedText>
+                </TouchableOpacity>
               )}
             </View>
           )}

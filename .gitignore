@@ -31,13 +31,7 @@ yarn-error.*
 *.pem
 
 # local env files
-.env
 .env*.local
-*.env
-
-# documentation with potential secrets
-# (Add specific files here as needed, or use patterns)
-# Example: contexts/*KEYS*.md, contexts/*SECRET*.md
 
 # typescript
 *.tsbuildinfo

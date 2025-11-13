@@ -305,7 +305,13 @@ export default function RingSizerPage() {
       {/* Header */}
       <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Ring Sizer</ThemedText>
@@ -325,18 +331,26 @@ export default function RingSizerPage() {
         )}
 
         {/* Method Selection */}
-        <View style={styles.methodSelection}>
+        <View
+          style={styles.methodSelection}
+          accessibilityLabel="Ring sizing methods"
+          accessibilityRole="radiogroup"
+        >
           <TouchableOpacity
             style={[
               styles.methodButton,
               selectedMethod === 'measure' && styles.methodButtonActive
             ]}
             onPress={() => handleMethodSelect('measure')}
+            accessibilityLabel="Measure method"
+            accessibilityRole="radio"
+            accessibilityHint="Double tap to measure your finger circumference"
+            accessibilityState={{ selected: selectedMethod === 'measure' }}
           >
-            <Ionicons 
-              name="resize-outline" 
-              size={24} 
-              color={selectedMethod === 'measure' ? '#7C3AED' : '#6B7280'} 
+            <Ionicons
+              name="resize-outline"
+              size={24}
+              color={selectedMethod === 'measure' ? '#7C3AED' : '#6B7280'}
             />
             <ThemedText style={[
               styles.methodButtonText,
@@ -352,11 +366,15 @@ export default function RingSizerPage() {
               selectedMethod === 'compare' && styles.methodButtonActive
             ]}
             onPress={() => handleMethodSelect('compare')}
+            accessibilityLabel="Compare method"
+            accessibilityRole="radio"
+            accessibilityHint="Double tap to compare with an existing ring"
+            accessibilityState={{ selected: selectedMethod === 'compare' }}
           >
-            <Ionicons 
-              name="git-compare-outline" 
-              size={24} 
-              color={selectedMethod === 'compare' ? '#7C3AED' : '#6B7280'} 
+            <Ionicons
+              name="git-compare-outline"
+              size={24}
+              color={selectedMethod === 'compare' ? '#7C3AED' : '#6B7280'}
             />
             <ThemedText style={[
               styles.methodButtonText,
@@ -372,11 +390,15 @@ export default function RingSizerPage() {
               selectedMethod === 'guide' && styles.methodButtonActive
             ]}
             onPress={() => handleMethodSelect('guide')}
+            accessibilityLabel="Guide method"
+            accessibilityRole="radio"
+            accessibilityHint="Double tap to view ring sizing guide and tips"
+            accessibilityState={{ selected: selectedMethod === 'guide' }}
           >
-            <Ionicons 
-              name="help-circle-outline" 
-              size={24} 
-              color={selectedMethod === 'guide' ? '#7C3AED' : '#6B7280'} 
+            <Ionicons
+              name="help-circle-outline"
+              size={24}
+              color={selectedMethod === 'guide' ? '#7C3AED' : '#6B7280'}
             />
             <ThemedText style={[
               styles.methodButtonText,

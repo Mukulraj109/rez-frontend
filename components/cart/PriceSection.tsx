@@ -74,6 +74,10 @@ export default function PriceSection({
             disabled={loading || totalPrice === 0}
             activeOpacity={0.9}
             style={styles.buyNowButton}
+            accessibilityLabel={loading ? "Processing order" : `Proceed to checkout with ${itemCount} item${itemCount !== 1 ? 's' : ''} for ₹${formattedPrice}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to proceed to checkout and complete your purchase"
+            accessibilityState={{ disabled: loading || totalPrice === 0, busy: loading }}
           >
             <LinearGradient
               colors={loading || totalPrice === 0 ? ['#D1D5DB', '#9CA3AF'] : ['#8B5CF6', '#6D28D9']}

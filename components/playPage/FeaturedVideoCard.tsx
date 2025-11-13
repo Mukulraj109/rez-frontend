@@ -76,10 +76,14 @@ export default function FeaturedVideoCard({
   };
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.container}
       onPress={handleCardPress}
       activeOpacity={0.9}
+      accessibilityLabel={`Featured video: ${item.description}. ${item.viewCount} views${item.productCount ? `. ${item.productCount} product${item.productCount !== 1 ? 's' : ''} available` : ''}${item.hashtags?.length ? `. Tags: ${item.hashtags.join(', ')}` : ''}`}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to watch featured video and shop products"
+      accessibilityState={{ busy: isLoading, disabled: hasError }}
     >
       <View style={styles.videoContainer}>
         {!hasError ? (
@@ -173,10 +177,14 @@ export default function FeaturedVideoCard({
 
           {/* Action buttons */}
           <View style={styles.actionsContainer}>
-            <TouchableOpacity 
-              style={styles.actionButton} 
+            <TouchableOpacity
+              style={styles.actionButton}
               onPress={handleLikePress}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel={`${item.isLiked ? 'Unlike' : 'Like'} featured video`}
+              accessibilityRole="button"
+              accessibilityHint={`Double tap to ${item.isLiked ? 'remove like from' : 'like'} this featured video`}
+              accessibilityState={{ selected: item.isLiked }}
             >
               <Ionicons 
                 name={item.isLiked ? "heart" : "heart-outline"} 
@@ -184,11 +192,15 @@ export default function FeaturedVideoCard({
                 color={item.isLiked ? PLAY_PAGE_COLORS.like : "#FFFFFF"} 
               />
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionButton} 
+
+
+            <TouchableOpacity
+              style={styles.actionButton}
               onPress={handleSharePress}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Share featured video"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to share this featured video with others"
             >
               <Ionicons name="share-outline" size={20} color="#FFFFFF" />
             </TouchableOpacity>
@@ -270,7 +282,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8, // More padding
     gap: 8,
-    backdropFilter: 'blur(10px)', // Glass effect
+    // // backdropFilter: 'blur(10px)', // Not supported in React Native // Glass effect - not supported in React Native
   },
   viewCountText: {
     color: '#FFFFFF',

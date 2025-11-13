@@ -97,69 +97,91 @@ export default function TransactionsPreviewScreen() {
     }
   };
 
-  const renderBrandItem = (brand: BrandItem) => (
-    <View
-      key={brand.id}
-      style={[
-        styles.brandItem,
-        { backgroundColor: brand.backgroundColor },
-        !brand.isEnabled && styles.brandItemDisabled,
-      ]}
-    >
-      <View style={styles.brandInfo}>
-        <View style={styles.brandIcon}>
-          <Ionicons 
-            name={brand.icon as any} 
-            size={24} 
-            color={brand.isEnabled ? '#374151' : '#9CA3AF'} 
-          />
+  const renderBrandItem = (brand: BrandItem) => {
+    const discount = brand.originalPrice - brand.discountedPrice;
+    const discountPercentage = Math.round((discount / brand.originalPrice) * 100);
+
+    return (
+      <View
+        key={brand.id}
+        style={[
+          styles.brandItem,
+          { backgroundColor: brand.backgroundColor },
+          !brand.isEnabled && styles.brandItemDisabled,
+        ]}
+        accessible={true}
+        accessibilityLabel={`${brand.name} transaction example. Original price ${brand.originalPrice} rupees, discounted price ${brand.discountedPrice} rupees. Save ${discount} rupees, ${discountPercentage} percent off${!brand.isEnabled ? '. Coming soon' : ''}`}
+        accessibilityRole="text"
+      >
+        <View style={styles.brandInfo}>
+          <View style={styles.brandIcon}>
+            <Ionicons
+              name={brand.icon as any}
+              size={24}
+              color={brand.isEnabled ? '#374151' : '#9CA3AF'}
+            />
+          </View>
+          <Text style={[
+            styles.brandName,
+            !brand.isEnabled && styles.brandNameDisabled,
+          ]}>
+            {brand.name}
+          </Text>
         </View>
-        <Text style={[
-          styles.brandName,
-          !brand.isEnabled && styles.brandNameDisabled,
-        ]}>
-          {brand.name}
-        </Text>
+
+        <View style={styles.priceInfo}>
+          <Text style={[
+            styles.originalPrice,
+            !brand.isEnabled && styles.priceDisabled,
+          ]}>
+            ₹{brand.originalPrice}
+          </Text>
+          <Ionicons
+            name="arrow-forward"
+            size={16}
+            color={brand.isEnabled ? '#10B981' : '#9CA3AF'}
+            style={styles.arrowIcon}
+          />
+          <Text style={[
+            styles.discountedPrice,
+            !brand.isEnabled && styles.priceDisabled,
+          ]}>
+            ₹{brand.discountedPrice}
+          </Text>
+        </View>
       </View>
-      
-      <View style={styles.priceInfo}>
-        <Text style={[
-          styles.originalPrice,
-          !brand.isEnabled && styles.priceDisabled,
-        ]}>
-          ₹{brand.originalPrice}
-        </Text>
-        <Ionicons 
-          name="arrow-forward" 
-          size={16} 
-          color={brand.isEnabled ? '#10B981' : '#9CA3AF'} 
-          style={styles.arrowIcon}
-        />
-        <Text style={[
-          styles.discountedPrice,
-          !brand.isEnabled && styles.priceDisabled,
-        ]}>
-          ₹{brand.discountedPrice}
-        </Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <OnboardingContainer useGradient={false} style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Seamless Transactions{'\n'}& Rewards!</Text>
+          <Text
+            style={styles.title}
+            accessibilityLabel="Seamless Transactions and Rewards!"
+            accessibilityRole="header"
+          >
+            Seamless Transactions{'\n'}& Rewards!
+          </Text>
           <View style={styles.underline} />
-          
-          <Text style={styles.subtitle}>
+
+          <Text
+            style={styles.subtitle}
+            accessibilityLabel="Purchase your favorite brands using UPI and get a 10% discount. Earn the Brand Coin!"
+          >
             Purchase your favorite brands using UPI and get{'\n'}
             a 10% discount.{'\n'}
             Earn the Brand Coin!
           </Text>
-          
+
           {/* Floating Coins */}
-          <View style={styles.coinsContainer}>
+          <View
+            style={styles.coinsContainer}
+            accessible={true}
+            accessibilityLabel="Reward coins illustration"
+            accessibilityRole="image"
+          >
             <View style={[styles.coin, styles.coin1]}>
               <Text style={styles.coinText}>₹</Text>
             </View>
@@ -170,8 +192,13 @@ export default function TransactionsPreviewScreen() {
         </View>
 
         <View style={styles.transactionsSection}>
-          <Text style={styles.transactionsTitle}>Transactions</Text>
-          
+          <Text
+            style={styles.transactionsTitle}
+            accessibilityRole="header"
+          >
+            Transactions
+          </Text>
+
           <View style={styles.brandsList}>
             {brands.map(renderBrandItem)}
           </View>
@@ -180,6 +207,9 @@ export default function TransactionsPreviewScreen() {
         <TouchableOpacity
           style={styles.finishButton}
           onPress={handleFinish}
+          accessibilityLabel="Complete onboarding and start shopping"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to finish setup and explore the app"
         >
           <Text style={styles.finishButtonText}>Finish</Text>
         </TouchableOpacity>

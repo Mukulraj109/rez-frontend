@@ -81,12 +81,15 @@ export default function ProjectStatusCard({
           },
         ]}
       >
-        <TouchableOpacity 
-          style={styles.container} 
+        <TouchableOpacity
+          style={styles.container}
           onPress={onPress}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           activeOpacity={1}
+          accessibilityLabel={`${label}: ${count} project${count !== 1 ? 's' : ''}`}
+          accessibilityRole="button"
+          accessibilityHint={`Double tap to view ${label.toLowerCase()} projects`}
         >
           <LinearGradient
             colors={Array.isArray(gradientColors) ? gradientColors : ['#8B5CF6', '#7C3AED']}

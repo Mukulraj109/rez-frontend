@@ -9,6 +9,7 @@ import {
 import { useRouter, usePathname } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import logger from '@/utils/logger';
 
 interface BottomNavigationProps {
   style?: any;
@@ -35,14 +36,14 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
   const getActiveTab = () => {
     // Handle empty pathname - treat as home
     if (!pathname || pathname === '' || pathname === '/') {
-      console.log('[BOTTOM NAV] ✅ Home tab active (empty/root pathname)');
+      logger.debug('[BOTTOM NAV] ✅ Home tab active (empty/root pathname)');
       return 'Home';
     }
     
     // Normalize pathname for comparison (remove trailing slash)
     const normalizedPath = pathname.replace(/\/$/, '');
     
-    console.log('[BOTTOM NAV] Checking pathname:', normalizedPath || '(empty)');
+    logger.debug('[BOTTOM NAV] Checking pathname:', normalizedPath || '(empty)');
     
     // Check for Play tab - multiple formats (check first to avoid conflicts)
     if (
@@ -51,7 +52,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
       normalizedPath.startsWith('/play/') ||
       normalizedPath.startsWith('/(tabs)/play/')
     ) {
-      console.log('[BOTTOM NAV] ✅ Play tab active');
+      logger.debug('[BOTTOM NAV] ✅ Play tab active');
       return 'Play';
     }
     
@@ -62,7 +63,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
       normalizedPath.startsWith('/earn/') ||
       normalizedPath.startsWith('/(tabs)/earn/')
     ) {
-      console.log('[BOTTOM NAV] ✅ Earn tab active');
+      logger.debug('[BOTTOM NAV] ✅ Earn tab active');
       return 'Earn';
     }
     
@@ -78,12 +79,12 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
        !normalizedPath.includes('/play') && 
        !normalizedPath.includes('/earn'))
     ) {
-      console.log('[BOTTOM NAV] ✅ Home tab active');
+      logger.debug('[BOTTOM NAV] ✅ Home tab active');
       return 'Home';
     }
     
     // Default: no tab is active on other pages (offers, store, etc.)
-    console.log('[BOTTOM NAV] ❌ No tab active');
+    logger.debug('[BOTTOM NAV] ❌ No tab active');
     return null;
   };
 
@@ -128,6 +129,10 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
               style={styles.tab}
               onPress={() => handleTabPress(tab.route)}
               activeOpacity={0.7}
+              accessibilityLabel={`${tab.name} tab`}
+              accessibilityRole="tab"
+              accessibilityHint={`Double tap to navigate to ${tab.name} screen`}
+              accessibilityState={{ selected: tab.isActive }}
             >
               <Ionicons
                 name={tab.icon as any}

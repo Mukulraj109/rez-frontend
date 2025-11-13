@@ -268,7 +268,13 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
           <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
           <Text style={styles.errorTitle}>Unable to load wallet</Text>
           <Text style={styles.errorDetails}>{walletState.error.message}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={handleRetry}
+            accessibilityLabel="Try again"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to retry loading wallet data"
+          >
             <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -294,7 +300,13 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
       <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Wallet</Text>
@@ -333,6 +345,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
               router.push('/transactions');
             }}
             activeOpacity={0.7}
+            accessibilityLabel="View transactions"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to check your complete transaction history"
           >
             <LinearGradient
               colors={['#8B5CF6', '#7C3AED'] as const}
@@ -361,6 +376,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
           <TouchableOpacity
             style={styles.paybillCard}
             activeOpacity={0.9}
+            accessibilityLabel={`PayBill balance: Rupees ${paybillBalance}${totalSavings > 0 ? `. Saved Rupees ${totalSavings} with bonus` : ''}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view PayBill transactions"
           >
             <LinearGradient
               colors={['#10B981', '#059669'] as const}
@@ -403,6 +421,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
 
                     router.push('/paybill-transactions');
                   }}
+                  accessibilityLabel="View PayBill transactions"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to see your PayBill transaction history"
                 >
                   <Text style={styles.paybillActionText}>View Transactions</Text>
                   <Ionicons name="chevron-forward" size={16} color="rgba(255, 255, 255, 0.9)" />
@@ -435,22 +456,32 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
           onPress={() => {}}
         />
 
-         <ProfileCompletionCard
-        name={profile?.name || 'User'}
-        completionPercentage={completionStatus?.completionPercentage || 0}
-        onCompleteProfile={() => {
-          router.push('/profile/edit');
-        }}
-        onViewDetails={() => {
-          router.push('/profile');
-        }}
-        isLoading={profileLoading}
-      />
-      <ScratchCardOffer 
-        imageSource={scratchImage} 
-        onPress={() => router.push('/scratch-card')} 
-        isActive={true}
-      />
+         <View
+          accessibilityLabel={`Profile completion: ${completionStatus?.completionPercentage || 0} percent`}
+          accessibilityRole="none"
+        >
+          <ProfileCompletionCard
+            name={profile?.name || 'User'}
+            completionPercentage={completionStatus?.completionPercentage || 0}
+            onCompleteProfile={() => {
+              router.push('/profile/edit');
+            }}
+            onViewDetails={() => {
+              router.push('/profile');
+            }}
+            isLoading={profileLoading}
+          />
+        </View>
+      <View
+        accessibilityLabel="Scratch card offer available"
+        accessibilityRole="none"
+      >
+        <ScratchCardOffer
+          imageSource={scratchImage}
+          onPress={() => router.push('/scratch-card')}
+          isActive={true}
+        />
+      </View>
        <ProfileOptionsList 
          options={[
            {
@@ -546,6 +577,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={handleTopupCancel}
+                accessibilityLabel="Cancel top-up"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to cancel this top-up"
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
@@ -553,6 +587,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
               <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={handleTopupConfirm}
+                accessibilityLabel={`Confirm top-up of ${selectedTopupAmount} RC`}
+                accessibilityRole="button"
+                accessibilityHint="Double tap to confirm and add money to wallet"
               >
                 <Text style={styles.confirmButtonText}>Confirm</Text>
               </TouchableOpacity>

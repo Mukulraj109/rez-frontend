@@ -108,6 +108,10 @@ export default function AchievementsPage() {
         ]}
         onPress={() => setSelectedAchievement(achievement)}
         activeOpacity={0.8}
+        accessibilityLabel={`${achievement.title}. ${achievement.description}. Progress: ${achievement.progress}%${achievement.unlocked ? '. Unlocked' : '. Locked'}`}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isLocked }}
+        accessibilityHint={`Double tap to view ${achievement.unlocked ? 'details' : 'requirements'}`}
       >
         <View style={[
           styles.iconContainer,
@@ -182,6 +186,10 @@ export default function AchievementsPage() {
             style={styles.recalculateButton}
             onPress={handleRecalculate}
             disabled={isRecalculating}
+            accessibilityLabel={isRecalculating ? "Recalculating achievements" : "Recalculate achievements"}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isRecalculating, busy: isRecalculating }}
+            accessibilityHint="Double tap to refresh achievement progress"
           >
             <Ionicons
               name="refresh"
@@ -194,7 +202,11 @@ export default function AchievementsPage() {
 
         {/* Progress Summary */}
         {progress && (
-          <View style={styles.summaryCard}>
+          <View
+            style={styles.summaryCard}
+            accessibilityLabel={`Achievement progress. ${progress.summary.completionPercentage.toFixed(0)}% complete. ${progress.summary.unlocked} unlocked. ${progress.summary.inProgress} in progress`}
+            accessibilityRole="summary"
+          >
             <View style={styles.summaryItem}>
               <ThemedText style={styles.summaryNumber}>
                 {progress.summary.completionPercentage.toFixed(0)}%
@@ -224,6 +236,10 @@ export default function AchievementsPage() {
         <TouchableOpacity
           style={[styles.filterTab, filter === 'all' && styles.filterTabActive]}
           onPress={() => setFilter('all')}
+          accessibilityLabel={`Show all achievements. ${achievements.length} total`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: filter === 'all' }}
+          accessibilityHint="Double tap to show all achievements"
         >
           <ThemedText style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
             All ({achievements.length})
@@ -232,6 +248,10 @@ export default function AchievementsPage() {
         <TouchableOpacity
           style={[styles.filterTab, filter === 'unlocked' && styles.filterTabActive]}
           onPress={() => setFilter('unlocked')}
+          accessibilityLabel={`Show unlocked achievements. ${achievements.filter(a => a.unlocked).length} unlocked`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: filter === 'unlocked' }}
+          accessibilityHint="Double tap to show only unlocked achievements"
         >
           <ThemedText style={[styles.filterText, filter === 'unlocked' && styles.filterTextActive]}>
             Unlocked ({achievements.filter(a => a.unlocked).length})
@@ -240,6 +260,10 @@ export default function AchievementsPage() {
         <TouchableOpacity
           style={[styles.filterTab, filter === 'locked' && styles.filterTabActive]}
           onPress={() => setFilter('locked')}
+          accessibilityLabel={`Show locked achievements. ${achievements.filter(a => !a.unlocked).length} locked`}
+          accessibilityRole="button"
+          accessibilityState={{ selected: filter === 'locked' }}
+          accessibilityHint="Double tap to show only locked achievements"
         >
           <ThemedText style={[styles.filterText, filter === 'locked' && styles.filterTextActive]}>
             Locked ({achievements.filter(a => !a.unlocked).length})

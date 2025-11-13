@@ -2,26 +2,25 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Alert, Share, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { 
-  PlayPageState, 
-  PlayPageActions, 
+import {
+  PlayPageState,
+  PlayPageActions,
   UsePlayPageData,
   CategoryType,
   UGCVideoItem,
   CategoryTab
 } from '@/types/playPage.types';
-import { 
-  fetchPlayPageData, 
-  likeVideo, 
-  shareVideo,
-  categoryTabs as defaultCategoryTabs,
-  featuredVideo 
-} from '@/data/playPageData';
+import { categoryTabs as defaultCategoryTabs } from '@/data/playPageData';
+import realVideosApi from '@/services/realVideosApi';
+import { transformVideosToUGC, getFeaturedVideo } from '@/utils/videoTransformers';
+import { useAuth } from '@/contexts/AuthContext';
 
 const initialState: PlayPageState = {
   featuredVideo: undefined,
-  trendingVideos: [],
+  merchantVideos: [],
   articleVideos: [],
+  ugcVideos: [],
+  trendingVideos: [],
   allVideos: [],
   activeCategory: 'trending_me',
   categories: defaultCategoryTabs,
@@ -37,82 +36,178 @@ const initialState: PlayPageState = {
 export function usePlayPageData(): UsePlayPageData {
   const [state, setState] = useState<PlayPageState>(initialState);
   const router = useRouter();
+  const { user } = useAuth();
 
-  // Data fetching
-  const fetchVideos = useCallback(async (category?: CategoryType) => {
+  // Data fetching - Fetches all video types from backend API
+  const fetchVideos = useCallback(async (category?: CategoryType, page: number = 1) => {
     try {
       setState(prev => ({ ...prev, loading: true, error: undefined }));
-      
-      const response = await fetchPlayPageData(category);
-      
+
+      console.log(`📹 [PlayPage] Fetching videos for category: ${category || 'all'}, page: ${page}`);
+
+      // Fetch videos from real backend API
+      const response = await realVideosApi.getVideosByCategory(
+        category || 'trending_me',
+        {
+          page,
+          limit: 20,
+          sortBy: 'newest'
+        }
+      );
+
+      if (response.success) {
+        const videos = transformVideosToUGC(response.data.videos, user?.id);
+        const featured = getFeaturedVideo(response.data.videos, user?.id);
+
+        setState(prev => {
+          // On first page, replace all videos; on subsequent pages, append
+          const allVideos = page === 1
+            ? videos
+            : [...prev.allVideos, ...videos];
+
+          // Filter videos by contentType for the 3 main sections
+          const merchantVideos = allVideos.filter(v => v.contentType === 'merchant');
+          const articleVideos = allVideos.filter(v => v.contentType === 'article');
+          const ugcVideos = allVideos.filter(v => v.contentType === 'ugc');
+
+          console.log(`✅ [PlayPage] Loaded ${videos.length} videos successfully`);
+          console.log(`📊 [PlayPage] Merchant: ${merchantVideos.length}, Article: ${articleVideos.length}, UGC: ${ugcVideos.length}`);
+
+          return {
+            ...prev,
+            featuredVideo: featured || prev.featuredVideo,
+            allVideos,
+            merchantVideos,
+            articleVideos,
+            ugcVideos,
+            trendingVideos: category === 'trending_me' ? videos : prev.trendingVideos,
+            hasMoreVideos: response.data.pagination.hasNext,
+            currentPage: page,
+            loading: false
+          };
+        });
+      } else {
+        throw new Error(response.message || 'Failed to fetch videos');
+      }
+
+    } catch (error) {
       setState(prev => ({
         ...prev,
-        featuredVideo: response.featured || prev.featuredVideo,
-        allVideos: category ? response.videos : [...prev.allVideos, ...response.videos],
-        trendingVideos: category === 'trending_me' ? response.videos : prev.trendingVideos,
-        articleVideos: category === 'article' ? response.videos : prev.articleVideos,
-        hasMoreVideos: response.hasMore,
-        loading: false
+        loading: false,
+        error: 'Failed to load videos. Please try again.'
       }));
-      
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: 'Failed to load videos. Please try again.' 
-      }));
-      console.error('Failed to fetch videos:', error);
+      console.error('❌ [PlayPage] Failed to fetch videos:', error);
+
+      // Retry logic - attempt once more after 2 seconds
+      if (page === 1) {
+        console.log('🔄 [PlayPage] Retrying video fetch...');
+        setTimeout(() => {
+          fetchVideos(category, page);
+        }, 2000);
+      }
     }
-  }, []);
+  }, [user]);
 
   const refreshVideos = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, refreshing: true, error: undefined }));
-      
-      const response = await fetchPlayPageData();
-      
+
+      console.log('🔄 [PlayPage] Refreshing videos...');
+
+      // Fetch fresh data from backend API
+      const response = await realVideosApi.getVideosByCategory(
+        state.activeCategory || 'trending_me',
+        {
+          page: 1,
+          limit: 20,
+          sortBy: 'newest'
+        }
+      );
+
+      console.log('🔍 [PlayPage] Response success:', response.success);
+      console.log('🔍 [PlayPage] Response data videos count:', response.data?.videos?.length);
+
+      if (response.success) {
+        console.log('✅ [PlayPage] Response successful, starting transformation...');
+        console.log('🔍 [PlayPage] Videos to transform:', response.data.videos.length);
+        console.log('🔍 [PlayPage] User ID:', user?.id);
+
+        let videos: UGCVideoItem[] = [];
+        let featured: UGCVideoItem | undefined = undefined;
+
+        try {
+          console.log('🔄 [PlayPage] Calling transformVideosToUGC...');
+          videos = transformVideosToUGC(response.data.videos, user?.id);
+          console.log('✅ [PlayPage] transformVideosToUGC completed, count:', videos.length);
+        } catch (transformError) {
+          console.error('❌ [PlayPage] transformVideosToUGC FAILED:', transformError);
+          console.error('❌ [PlayPage] Error stack:', transformError instanceof Error ? transformError.stack : 'No stack');
+          throw transformError;
+        }
+
+        try {
+          console.log('🔄 [PlayPage] Calling getFeaturedVideo...');
+          featured = getFeaturedVideo(response.data.videos, user?.id);
+          console.log('✅ [PlayPage] getFeaturedVideo completed');
+        } catch (featuredError) {
+          console.error('❌ [PlayPage] getFeaturedVideo FAILED:', featuredError);
+          // Don't throw, featured is optional
+        }
+
+        console.log('🔄 [PlayPage] Updating state with transformed videos...');
+
+        // Filter videos by contentType for the 3 main sections
+        const merchantVideos = videos.filter(v => v.contentType === 'merchant');
+        const articleVideos = videos.filter(v => v.contentType === 'article');
+        const ugcVideos = videos.filter(v => v.contentType === 'ugc');
+
+        setState(prev => ({
+          ...prev,
+          featuredVideo: featured,
+          allVideos: videos,
+          merchantVideos,
+          articleVideos,
+          ugcVideos,
+          trendingVideos: videos.filter(v => v.category === 'trending_me'),
+          hasMoreVideos: response.data.pagination.hasNext,
+          refreshing: false,
+          currentPage: 1
+        }));
+
+        console.log('✅ [PlayPage] Videos refreshed successfully');
+        console.log(`📊 [PlayPage] Merchant: ${merchantVideos.length}, Article: ${articleVideos.length}, UGC: ${ugcVideos.length}`);
+      } else {
+        console.log('❌ [PlayPage] Response not successful');
+        throw new Error(response.message || 'Failed to refresh videos');
+      }
+
+    } catch (error) {
+      console.error('❌ [PlayPage] CAUGHT ERROR in refreshVideos:', error);
+      console.error('❌ [PlayPage] Error type:', typeof error);
+      console.error('❌ [PlayPage] Error message:', error instanceof Error ? error.message : String(error));
+      console.error('❌ [PlayPage] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+
       setState(prev => ({
         ...prev,
-        featuredVideo: response.featured || featuredVideo,
-        allVideos: response.videos,
-        trendingVideos: response.videos.filter(v => v.category === 'trending_me'),
-        articleVideos: response.videos.filter(v => v.category === 'article'),
-        hasMoreVideos: response.hasMore,
         refreshing: false,
-        currentPage: 1
+        error: 'Failed to refresh videos. Please try again.'
       }));
-      
-    } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        refreshing: false, 
-        error: 'Failed to refresh videos. Please try again.' 
-      }));
-      console.error('Failed to refresh videos:', error);
     }
-  }, []);
+  }, [state.activeCategory, user]);
 
   const loadMoreVideos = useCallback(async () => {
     if (!state.hasMoreVideos || state.loading) return;
-    
+
     try {
-      setState(prev => ({ ...prev, loading: true }));
-      
-      const response = await fetchPlayPageData(state.activeCategory);
-      
-      setState(prev => ({
-        ...prev,
-        allVideos: [...prev.allVideos, ...response.videos],
-        hasMoreVideos: response.hasMore,
-        currentPage: prev.currentPage + 1,
-        loading: false
-      }));
-      
+      const nextPage = state.currentPage + 1;
+      console.log(`📄 [PlayPage] Loading more videos, page: ${nextPage}`);
+
+      await fetchVideos(state.activeCategory, nextPage);
+
     } catch (error) {
-      setState(prev => ({ ...prev, loading: false }));
-      console.error('Failed to load more videos:', error);
+      console.error('❌ [PlayPage] Failed to load more videos:', error);
     }
-  }, [state.hasMoreVideos, state.loading, state.activeCategory]);
+  }, [state.hasMoreVideos, state.loading, state.activeCategory, state.currentPage, fetchVideos]);
 
   // Category management
   const setActiveCategory = useCallback((category: CategoryType) => {
@@ -166,52 +261,77 @@ export function usePlayPageData(): UsePlayPageData {
   // User interactions
   const likeVideoAction = useCallback(async (videoId: string): Promise<boolean> => {
     try {
-      const response = await likeVideo(videoId);
-      
+      console.log(`❤️ [PlayPage] Toggling like for video: ${videoId}`);
+
+      const response = await realVideosApi.toggleVideoLike(videoId);
+
       if (response.success) {
-        // Update video like status in state
-        setState(prev => ({
-          ...prev,
-          allVideos: prev.allVideos.map(video => 
-            video.id === videoId 
-              ? { ...video, isLiked: !video.isLiked, likes: response.newCount }
+        const isLiked = response.data.isLiked !== undefined ? response.data.isLiked : true;
+        const newCount = response.data.totalLikes || response.data.likeCount || 0;
+
+        // Update video like status in state across all filtered arrays
+        setState(prev => {
+          const updatedAllVideos = prev.allVideos.map(video =>
+            video.id === videoId
+              ? { ...video, isLiked, likes: newCount }
               : video
-          ),
-          featuredVideo: prev.featuredVideo?.id === videoId 
-            ? { ...prev.featuredVideo, isLiked: !prev.featuredVideo.isLiked, likes: response.newCount }
-            : prev.featuredVideo
-        }));
+          );
+
+          return {
+            ...prev,
+            allVideos: updatedAllVideos,
+            merchantVideos: updatedAllVideos.filter(v => v.contentType === 'merchant'),
+            articleVideos: updatedAllVideos.filter(v => v.contentType === 'article'),
+            ugcVideos: updatedAllVideos.filter(v => v.contentType === 'ugc'),
+            featuredVideo: prev.featuredVideo?.id === videoId
+              ? { ...prev.featuredVideo, isLiked, likes: newCount }
+              : prev.featuredVideo
+          };
+        });
+
+        console.log(`✅ [PlayPage] Video ${isLiked ? 'liked' : 'unliked'} successfully`);
       }
-      
+
       return response.success;
     } catch (error) {
-      console.error('Failed to like video:', error);
+      console.error('❌ [PlayPage] Failed to like video:', error);
       return false;
     }
   }, []);
 
   const shareVideoAction = useCallback(async (video: UGCVideoItem) => {
     try {
-      const response = await shareVideo(video);
-      
-      if (response.success) {
-        await Share.share({
-          message: `Check out this amazing fashion video: ${video.description}`,
-          url: response.shareUrl,
-        });
-        
-        // Update share count
-        setState(prev => ({
-          ...prev,
-          allVideos: prev.allVideos.map(v => 
-            v.id === video.id 
-              ? { ...v, isShared: true, shares: (v.shares || 0) + 1 }
+      console.log(`🔗 [PlayPage] Sharing video: ${video.id}`);
+
+      const shareMessage = `Check out this amazing video: ${video.description}\n\n#${video.hashtags?.join(' #') || ''}`;
+
+      const result = await Share.share({
+        message: shareMessage,
+        ...(Platform.OS === 'ios' ? { url: video.videoUrl } : {}),
+      });
+
+      if (result.action === Share.sharedAction) {
+        // Update share count locally and update all filtered arrays
+        setState(prev => {
+          const updatedAllVideos = prev.allVideos.map(v =>
+            v.id === video.id
+              ? { ...v, shares: (v.shares || 0) + 1 }
               : v
-          )
-        }));
+          );
+
+          return {
+            ...prev,
+            allVideos: updatedAllVideos,
+            merchantVideos: updatedAllVideos.filter(v => v.contentType === 'merchant'),
+            articleVideos: updatedAllVideos.filter(v => v.contentType === 'article'),
+            ugcVideos: updatedAllVideos.filter(v => v.contentType === 'ugc')
+          };
+        });
+
+        console.log('✅ [PlayPage] Video shared successfully');
       }
     } catch (error) {
-      console.error('Failed to share video:', error);
+      console.error('❌ [PlayPage] Failed to share video:', error);
       Alert.alert('Share Failed', 'Unable to share video. Please try again.');
     }
   }, []);
@@ -236,7 +356,8 @@ export function usePlayPageData(): UsePlayPageData {
   // Initialize data on mount
   useEffect(() => {
     refreshVideos();
-  }, [refreshVideos]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // iOS-specific video management
   useEffect(() => {
@@ -247,13 +368,13 @@ export function usePlayPageData(): UsePlayPageData {
         const videosArray = Array.from(state.playingVideos);
         const videosToKeep = videosArray.slice(-2); // Keep only last 2 videos playing
         const videosToPause = videosArray.slice(0, -2);
-        
+
         videosToPause.forEach(videoId => {
           pauseVideo(videoId);
         });
       }
     }
-  }, [state.playingVideos]);
+  }, [state.playingVideos, pauseVideo]);
 
   const actions: PlayPageActions = {
     fetchVideos,

@@ -189,6 +189,14 @@ export const profileMenuListItems: ProfileMenuListItem[] = [
     showArrow: true,
   },
   {
+    id: 'my_visits',
+    title: 'My Store Visits',
+    icon: 'storefront-outline',
+    route: '/my-visits',
+    description: 'View your scheduled and past store visits',
+    showArrow: true,
+  },
+  {
     id: 'incomplete_transaction',
     title: 'Incomplete Transaction',
     icon: 'warning-outline',

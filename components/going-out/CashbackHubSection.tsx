@@ -36,14 +36,18 @@ export function CashbackHubSection({
   return (
     <View style={styles.container}>
       {/* Section Header */}
-      <View style={styles.header}>
+      <View
+        style={styles.header}
+        accessibilityRole="header"
+        accessibilityLabel={`${section.title}${section.subtitle ? '. ' + section.subtitle : ''}`}
+      >
         <View style={styles.headerLeft}>
           <ThemedText style={styles.sectionTitle}>{section.title}</ThemedText>
           {section.subtitle && (
             <ThemedText style={styles.sectionSubtitle}>{section.subtitle}</ThemedText>
           )}
         </View>
-        
+
       </View>
 
       {/* Products Horizontal Scroll */}
@@ -52,6 +56,8 @@ export function CashbackHubSection({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         style={styles.scrollView}
+        accessibilityRole="list"
+        accessibilityLabel={`${section.title} products. Swipe to browse ${section.products.length} items`}
       >
         {section.products.map((product, index) => (
           <View
@@ -75,7 +81,11 @@ export function CashbackHubSection({
       </ScrollView>
 
       {/* Section Stats */}
-      <View style={styles.sectionStats}>
+      <View
+        style={styles.sectionStats}
+        accessibilityRole="summary"
+        accessibilityLabel={`Section statistics. ${section.products.length} ${section.products.length === 1 ? 'product' : 'products'}${section.products.filter(p => p.rating && p.rating.value >= 4.5).length > 0 ? `. ${section.products.filter(p => p.rating && p.rating.value >= 4.5).length} top rated` : ''}${section.products.length > 0 && Math.max(...section.products.map(p => p.cashback.percentage)) > 0 ? `. Up to ${Math.max(...section.products.map(p => p.cashback.percentage))}% cashback` : ''}`}
+      >
         <View style={styles.statItem}>
           <View style={styles.statIconContainer}>
             <Ionicons name="grid-outline" size={16} color="#8B5CF6" />
@@ -84,7 +94,7 @@ export function CashbackHubSection({
             {section.products.length} {section.products.length === 1 ? 'product' : 'products'}
           </ThemedText>
         </View>
-        
+
         {section.products.filter(p => p.rating && p.rating.value >= 4.5).length > 0 && (
           <View style={styles.statItem}>
             <View style={[styles.statIconContainer, { backgroundColor: '#ECFDF5' }]}>
@@ -95,7 +105,7 @@ export function CashbackHubSection({
             </ThemedText>
           </View>
         )}
-        
+
         {section.products.length > 0 && Math.max(...section.products.map(p => p.cashback.percentage)) > 0 && (
           <View style={styles.statItem}>
             <View style={[styles.statIconContainer, { backgroundColor: '#FEF3C7' }]}>

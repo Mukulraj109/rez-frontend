@@ -8,28 +8,38 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function AppEntry() {
   const router = useRouter();
   const pathname = usePathname();
-  const { state } = useAuth();
+
+  // Safe auth context access with fallback
+  let authState;
+  try {
+    const { state } = useAuth();
+    authState = state;
+  } catch (error) {
+    // If AuthProvider is not ready yet, use default state
+    authState = { isLoading: true, isAuthenticated: false, user: null };
+  }
+
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
 
     // Wait for auth context to initialize and react to auth changes
-    if (!state.isLoading) {
+    if (!authState.isLoading) {
       // Check app state immediately to prevent navigation race conditions
       checkAppState();
     }
-  }, [state.isLoading, state.isAuthenticated, state.user]); // Listen for all auth changes
+  }, [authState.isLoading, authState.isAuthenticated, authState.user]); // Listen for all auth changes
 
   const checkAppState = async () => {
     try {
 
       setIsChecking(true);
-      
+
       // Check authentication first
-      if (state.isAuthenticated && state.user) {
+      if (authState.isAuthenticated && authState.user) {
 
         // User is authenticated, check onboarding status
-        if (state.user.isOnboarded) {
+        if (authState.user.isOnboarded) {
 
           // User is fully onboarded, go to main app
           router.replace('/(tabs)/' as any);

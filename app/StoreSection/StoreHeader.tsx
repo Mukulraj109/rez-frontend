@@ -66,9 +66,12 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
       
       {/* Header actions */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.iconButton, { backgroundColor: surfaceColor }]}
           onPress={() => router.back()}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to return to previous screen"
         >
           <Ionicons name="arrow-back" size={20} color={textColor} />
         </TouchableOpacity>
@@ -77,6 +80,9 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
           <TouchableOpacity
             style={[styles.ratingBadge, { backgroundColor: primaryColor }]}
             onPress={() => router.push('/CoinPage')}
+            accessibilityLabel={`Coin balance: ${isLoadingPoints ? 'Loading' : (coinBalance?.total ?? 0).toLocaleString()} coins`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view coin details"
           >
             <Ionicons name="star" size={16} color="#FFD700" />
             <ThemedText style={styles.ratingText}>
@@ -98,13 +104,21 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
         </View>
         
         <View style={styles.rightIcons}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.iconButton, { backgroundColor: surfaceColor }]}
             onPress={() => router.push('/CartPage')}
+            accessibilityLabel="Open cart"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view shopping cart"
           >
             <Ionicons name="bag-outline" size={20} color={textColor} />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.iconButton, { backgroundColor: surfaceColor }]}>
+          <TouchableOpacity
+            style={[styles.iconButton, { backgroundColor: surfaceColor }]}
+            accessibilityLabel="Add to favorites"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to add this item to favorites"
+          >
             <Ionicons name="heart-outline" size={20} color={textColor} />
           </TouchableOpacity>
         </View>

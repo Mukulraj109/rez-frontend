@@ -35,7 +35,11 @@ export default function PricingToggle({
   return (
     <View style={styles.container}>
       {/* Billing Toggle */}
-      <View style={styles.toggleContainer}>
+      <View
+        style={styles.toggleContainer}
+        accessible={false}
+        accessibilityLabel="Billing cycle selection"
+      >
         <TouchableOpacity
           style={[
             styles.toggleOption,
@@ -43,12 +47,21 @@ export default function PricingToggle({
           ]}
           onPress={() => onChange('monthly')}
           activeOpacity={0.7}
+          accessible={true}
+          accessibilityRole="radio"
+          accessibilityLabel={`Monthly billing, ${monthlyMonthlyPrice} rupees per month`}
+          accessibilityHint="Double tap to select monthly billing"
+          accessibilityState={{
+            selected: billingCycle === 'monthly',
+            checked: billingCycle === 'monthly',
+          }}
         >
           <ThemedText
             style={[
               styles.toggleOptionText,
               billingCycle === 'monthly' && styles.toggleOptionTextActive,
             ]}
+            accessible={false}
           >
             Monthly
           </ThemedText>
@@ -57,12 +70,13 @@ export default function PricingToggle({
               styles.togglePrice,
               billingCycle === 'monthly' && styles.togglePriceActive,
             ]}
+            accessible={false}
           >
             ₹{monthlyMonthlyPrice}
           </ThemedText>
         </TouchableOpacity>
 
-        <View style={styles.toggleDivider} />
+        <View style={styles.toggleDivider} accessible={false} />
 
         <TouchableOpacity
           style={[
@@ -71,6 +85,14 @@ export default function PricingToggle({
           ]}
           onPress={() => onChange('yearly')}
           activeOpacity={0.7}
+          accessible={true}
+          accessibilityRole="radio"
+          accessibilityLabel={`Yearly billing, ${yearlyMonthlyPrice} rupees per month, save ${savings} percent`}
+          accessibilityHint="Double tap to select yearly billing and save money"
+          accessibilityState={{
+            selected: billingCycle === 'yearly',
+            checked: billingCycle === 'yearly',
+          }}
         >
           <View style={styles.yearlyLabelContainer}>
             <ThemedText
@@ -78,10 +100,11 @@ export default function PricingToggle({
                 styles.toggleOptionText,
                 billingCycle === 'yearly' && styles.toggleOptionTextActive,
               ]}
+              accessible={false}
             >
               Yearly
             </ThemedText>
-            <View style={styles.savingsBadge}>
+            <View style={styles.savingsBadge} accessible={false}>
               <ThemedText style={styles.savingsText}>Save {savings}%</ThemedText>
             </View>
           </View>
@@ -90,6 +113,7 @@ export default function PricingToggle({
               styles.togglePrice,
               billingCycle === 'yearly' && styles.togglePriceActive,
             ]}
+            accessible={false}
           >
             ₹{yearlyMonthlyPrice}/mo
           </ThemedText>
@@ -98,13 +122,18 @@ export default function PricingToggle({
 
       {/* Savings Calculation */}
       {billingCycle === 'yearly' && (
-        <View style={styles.savingsInfo}>
+        <View
+          style={styles.savingsInfo}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel={`Yearly savings: Total annual cost is ${yearlyPrice} rupees. You save ${monthlyPrice * 12 - yearlyPrice} rupees per year.`}
+        >
           <View style={styles.savingsRow}>
             <View style={styles.savingsColumn}>
               <ThemedText style={styles.savingsLabel}>Total Annual Cost</ThemedText>
               <ThemedText style={styles.savingsValue}>₹{yearlyPrice}</ThemedText>
             </View>
-            <View style={styles.savingsDivider} />
+            <View style={styles.savingsDivider} accessible={false} />
             <View style={styles.savingsColumn}>
               <ThemedText style={styles.savingsLabel}>You Save</ThemedText>
               <View style={styles.savingsValueRow}>
@@ -119,7 +148,12 @@ export default function PricingToggle({
       )}
 
       {/* ROI Projection */}
-      <View style={styles.roiContainer}>
+      <View
+        style={styles.roiContainer}
+        accessible={true}
+        accessibilityRole="text"
+        accessibilityLabel="Projected return on investment: Based on average usage, plus 2400 rupees per year"
+      >
         <View style={styles.roiHeader}>
           <Ionicons name="sparkles" size={16} color="#F59E0B" />
           <ThemedText style={styles.roiTitle}>Projected ROI</ThemedText>

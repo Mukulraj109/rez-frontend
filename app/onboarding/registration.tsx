@@ -123,12 +123,24 @@ export default function RegistrationScreen() {
               Please use Sign In to access your account.
             </Text>
             
-            <TouchableOpacity style={styles.signInButton} onPress={handleGoToSignIn}>
+            <TouchableOpacity
+              style={styles.signInButton}
+              onPress={handleGoToSignIn}
+              accessibilityLabel="Go to sign in page"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to navigate to sign in page to access your existing account"
+            >
               <Ionicons name="log-in-outline" size={20} color="#FFFFFF" />
               <Text style={styles.signInButtonText}>Go to Sign In</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.tryAgainButton} onPress={handleTryAgain}>
+
+            <TouchableOpacity
+              style={styles.tryAgainButton}
+              onPress={handleTryAgain}
+              accessibilityLabel="Try different phone number"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to clear the form and register with a different phone number"
+            >
               <Text style={styles.tryAgainText}>Try Different Number</Text>
             </TouchableOpacity>
           </View>
@@ -177,13 +189,23 @@ export default function RegistrationScreen() {
               ]}
               onPress={handleSubmit}
               disabled={state.isLoading}
+              accessibilityLabel={state.isLoading ? "Submitting registration" : `Submit registration for ${formData.phoneNumber || 'phone number'}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to submit your registration details and receive verification code"
+              accessibilityState={{ disabled: state.isLoading, busy: state.isLoading }}
             >
               <Text style={styles.submitButtonText}>
                 {state.isLoading ? 'Submitting...' : 'Submit'}
               </Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.alreadyHaveAccountButton} onPress={handleGoToSignIn}>
+
+            <TouchableOpacity
+              style={styles.alreadyHaveAccountButton}
+              onPress={handleGoToSignIn}
+              accessibilityLabel="Already have an account? Sign in"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to navigate to sign in page"
+            >
               <Text style={styles.alreadyHaveAccountText}>
                 Already have an account? Sign In
               </Text>

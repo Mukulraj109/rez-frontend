@@ -148,11 +148,21 @@ export default function ProductDetailScreen() {
 
   if (error || !product) {
     return (
-      <View style={styles.errorContainer}>
+      <View
+        style={styles.errorContainer}
+        accessibilityLabel={`Error loading product. ${error || 'Product not found'}`}
+        accessibilityRole="alert"
+      >
         <Ionicons name="alert-circle" size={64} color="#EF4444" />
         <Text style={styles.errorTitle}>Error Loading Product</Text>
         <Text style={styles.errorText}>{error || 'Product not found'}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadProductDetails}>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={loadProductDetails}
+          accessibilityLabel="Try again"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to reload product details"
+        >
           <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
@@ -163,10 +173,21 @@ export default function ProductDetailScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Navigate to previous screen"
+        >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Product Details</Text>
+        <Text
+          style={styles.headerTitle}
+          accessibilityRole="header"
+        >
+          Product Details
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -174,15 +195,19 @@ export default function ProductDetailScreen() {
         {/* Product Image */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ 
-              uri: product.product?.images?.[0] || 'https://via.placeholder.com/300' 
+            source={{
+              uri: product.product?.images?.[0] || 'https://via.placeholder.com/300'
             }}
             style={styles.productImage}
+            accessibilityLabel={`${product.product?.name || 'Product'} image`}
           />
         </View>
 
         {/* Product Info */}
-        <View style={styles.section}>
+        <View
+          style={styles.section}
+          accessibilityLabel={`Product information. ${product.product?.name || 'Unknown Product'}. ${product.product?.description || 'No description available'}`}
+        >
           <Text style={styles.productName}>
             {product.product?.name || 'Unknown Product'}
           </Text>
@@ -216,7 +241,10 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Warranty Information */}
-        <View style={styles.section}>
+        <View
+          style={styles.section}
+          accessibilityLabel={`Warranty information. ${product.warranty?.hasWarranty ? `Status: ${product.warrantyStatus?.replace('_', ' ') || 'Unknown'}. ${product.warrantyDaysRemaining !== undefined ? `${product.warrantyDaysRemaining} days remaining` : ''}` : 'No warranty information available'}`}
+        >
           <Text style={styles.sectionTitle}>Warranty Information</Text>
           
           {product.warranty?.hasWarranty ? (
@@ -248,7 +276,10 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* AMC Information */}
-        <View style={styles.section}>
+        <View
+          style={styles.section}
+          accessibilityLabel={`AMC information. ${product.amc?.hasAMC ? `Status: ${product.isAMCExpiringSoon ? 'Expiring soon' : 'Active'}. ${product.amcDaysRemaining !== undefined ? `${product.amcDaysRemaining} days remaining` : ''}` : 'No AMC information available'}`}
+        >
           <Text style={styles.sectionTitle}>AMC Information</Text>
           
           {product.amc?.hasAMC ? (
@@ -309,7 +340,13 @@ export default function ProductDetailScreen() {
           ) : (
             <View>
               <Text style={styles.noInfoText}>Product not registered</Text>
-              <TouchableOpacity style={styles.actionButton} onPress={handleRegisterProduct}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleRegisterProduct}
+                accessibilityLabel="Register product"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to register this product with serial number for warranty activation"
+              >
                 <Text style={styles.actionButtonText}>Register Product</Text>
               </TouchableOpacity>
             </View>
@@ -318,20 +355,38 @@ export default function ProductDetailScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionsSection}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleCreateServiceRequest}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleCreateServiceRequest}
+            accessibilityLabel={`Request service for ${product.product?.name || 'this product'}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to create a service request for repairs or maintenance"
+          >
             <Ionicons name="construct" size={20} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Request Service</Text>
           </TouchableOpacity>
-          
+
           {product.installation?.required && !product.installation?.completed && (
-            <TouchableOpacity style={styles.actionButton} onPress={handleScheduleInstallation}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleScheduleInstallation}
+              accessibilityLabel="Schedule installation"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to schedule product installation with a technician"
+            >
               <Ionicons name="calendar" size={20} color="#FFFFFF" />
               <Text style={styles.actionButtonText}>Schedule Installation</Text>
             </TouchableOpacity>
           )}
-          
+
           {product.amc?.renewalDue && (
-            <TouchableOpacity style={styles.actionButton} onPress={handleRenewAMC}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleRenewAMC}
+              accessibilityLabel="Renew AMC"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to renew annual maintenance contract for this product"
+            >
               <Ionicons name="refresh" size={20} color="#FFFFFF" />
               <Text style={styles.actionButtonText}>Renew AMC</Text>
             </TouchableOpacity>

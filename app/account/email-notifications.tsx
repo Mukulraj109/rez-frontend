@@ -106,6 +106,10 @@ export default function EmailNotificationsScreen() {
         disabled={disabled || saving}
         trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
         thumbColor={value ? '#FFFFFF' : '#F3F4F6'}
+        accessibilityLabel={`${title}${value ? ', enabled' : ', disabled'}`}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: value, disabled: disabled || saving }}
+        accessibilityHint={`Double tap to ${value ? 'disable' : 'enable'} ${title.toLowerCase()}`}
       />
     </View>
   );
@@ -134,7 +138,13 @@ export default function EmailNotificationsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to return to previous screen"
+        >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Email Notifications</Text>

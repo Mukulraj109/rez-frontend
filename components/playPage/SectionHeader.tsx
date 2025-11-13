@@ -49,16 +49,18 @@ const styles = StyleSheet.create({
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6, // More space
+    gap: 6,
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: PLAY_PAGE_COLORS.accent,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.15)',
   },
   viewAllText: {
-    fontSize: 15, // Slightly larger
-    fontWeight: '700', // Bolder
+    fontSize: 15,
+    fontWeight: '700',
     color: PLAY_PAGE_COLORS.primary,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
 });

@@ -157,7 +157,12 @@ export default function AccountProfilePage() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ThemedText>Loading...</ThemedText>
+        <ThemedText
+          accessibilityRole="progressbar"
+          accessibilityLabel="Loading account profile"
+        >
+          Loading...
+        </ThemedText>
       </View>
     );
   }
@@ -173,7 +178,13 @@ export default function AccountProfilePage() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
@@ -187,6 +198,9 @@ export default function AccountProfilePage() {
           <TouchableOpacity
             style={styles.editButton}
             onPress={() => router.push('/profile/edit' as any)}
+            accessibilityLabel="Edit profile"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to edit profile screen"
           >
             <Ionicons name="create-outline" size={22} color="white" />
           </TouchableOpacity>
@@ -230,6 +244,9 @@ export default function AccountProfilePage() {
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => handleNavigateToSetting('/account/language')}
+              accessibilityLabel={`Language and Region. Current setting: ${settings?.general.language.toUpperCase()}, ${settings?.general.currency}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to change language and region settings"
             >
               <View style={styles.settingIcon}>
                 <Ionicons name="language" size={20} color="#8B5CF6" />
@@ -264,6 +281,10 @@ export default function AccountProfilePage() {
               <Switch
                 value={notificationSettings?.push.enabled || false}
                 onValueChange={(value) => handleToggleSetting('notifications.push.enabled', value)}
+                accessibilityLabel={`Push notifications${notificationSettings?.push.enabled ? ', enabled' : ', disabled'}`}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: notificationSettings?.push.enabled || false }}
+                accessibilityHint={`Toggle to ${notificationSettings?.push.enabled ? 'disable' : 'enable'} push notifications`}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
                 thumbColor={notificationSettings?.push.enabled ? '#8B5CF6' : '#F3F4F6'}
               />
@@ -284,6 +305,10 @@ export default function AccountProfilePage() {
               <Switch
                 value={notificationSettings?.email.enabled || false}
                 onValueChange={(value) => handleToggleSetting('notifications.email.enabled', value)}
+                accessibilityLabel={`Email notifications${notificationSettings?.email.enabled ? ', enabled' : ', disabled'}`}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: notificationSettings?.email.enabled || false }}
+                accessibilityHint={`Toggle to ${notificationSettings?.email.enabled ? 'disable' : 'enable'} email notifications`}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
                 thumbColor={notificationSettings?.email.enabled ? '#8B5CF6' : '#F3F4F6'}
               />
@@ -304,6 +329,10 @@ export default function AccountProfilePage() {
               <Switch
                 value={notificationSettings?.sms.enabled || false}
                 onValueChange={(value) => handleToggleSetting('notifications.sms.enabled', value)}
+                accessibilityLabel={`SMS notifications${notificationSettings?.sms.enabled ? ', enabled' : ', disabled'}`}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: notificationSettings?.sms.enabled || false }}
+                accessibilityHint={`Toggle to ${notificationSettings?.sms.enabled ? 'disable' : 'enable'} SMS notifications`}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
                 thumbColor={notificationSettings?.sms.enabled ? '#8B5CF6' : '#F3F4F6'}
               />
@@ -316,9 +345,12 @@ export default function AccountProfilePage() {
           <ThemedText style={styles.sectionTitle}>Privacy & Security</ThemedText>
 
           <View style={styles.settingsCard}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.settingItem}
               onPress={() => router.push('/account/profile-visibility' as any)}
+              accessibilityLabel={`Profile visibility. Current setting: ${privacySettings?.profileVisibility || 'FRIENDS'}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to change who can see your profile"
             >
               <View style={styles.settingIcon}>
                 <Ionicons name="eye" size={20} color="#8B5CF6" />
@@ -334,9 +366,12 @@ export default function AccountProfilePage() {
 
             <View style={styles.divider} />
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.settingItem}
               onPress={() => router.push('/account/two-factor-auth' as any)}
+              accessibilityLabel={`Two-factor authentication. Status: ${securitySettings?.twoFactorAuth.enabled ? 'Enabled' : 'Disabled'}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to manage two-factor authentication settings"
             >
               <View style={styles.settingIcon}>
                 <Ionicons name="shield-checkmark" size={20} color="#8B5CF6" />
@@ -381,6 +416,10 @@ export default function AccountProfilePage() {
                     Alert.alert('Error', 'Failed to update biometric settings');
                   }
                 }}
+                accessibilityLabel={`Biometric login${securitySettings?.biometric.fingerprintEnabled || securitySettings?.biometric.faceIdEnabled ? ', enabled' : ', disabled'}`}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: securitySettings?.biometric.fingerprintEnabled || securitySettings?.biometric.faceIdEnabled || false }}
+                accessibilityHint={`Toggle to ${securitySettings?.biometric.fingerprintEnabled ? 'disable' : 'enable'} fingerprint or face ID login`}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
                 thumbColor={securitySettings?.biometric.fingerprintEnabled ? '#8B5CF6' : '#F3F4F6'}
               />
@@ -411,6 +450,10 @@ export default function AccountProfilePage() {
                     Alert.alert('Error', 'Failed to update animations setting');
                   }
                 }}
+                accessibilityLabel={`Animations${appPreferences?.animations ? ', enabled' : ', disabled'}`}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: appPreferences?.animations || false }}
+                accessibilityHint={`Toggle to ${appPreferences?.animations ? 'disable' : 'enable'} app animations`}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
                 thumbColor={appPreferences?.animations ? '#8B5CF6' : '#F3F4F6'}
               />
@@ -436,6 +479,10 @@ export default function AccountProfilePage() {
                     Alert.alert('Error', 'Failed to update sounds setting');
                   }
                 }}
+                accessibilityLabel={`Sounds${appPreferences?.sounds ? ', enabled' : ', disabled'}`}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: appPreferences?.sounds || false }}
+                accessibilityHint={`Toggle to ${appPreferences?.sounds ? 'disable' : 'enable'} app sounds`}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
                 thumbColor={appPreferences?.sounds ? '#8B5CF6' : '#F3F4F6'}
               />
@@ -461,6 +508,10 @@ export default function AccountProfilePage() {
                     Alert.alert('Error', 'Failed to update haptic feedback setting');
                   }
                 }}
+                accessibilityLabel={`Haptic feedback${appPreferences?.hapticFeedback ? ', enabled' : ', disabled'}`}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: appPreferences?.hapticFeedback || false }}
+                accessibilityHint={`Toggle to ${appPreferences?.hapticFeedback ? 'disable' : 'enable'} haptic feedback`}
                 trackColor={{ false: '#D1D5DB', true: '#A78BFA' }}
                 thumbColor={appPreferences?.hapticFeedback ? '#8B5CF6' : '#F3F4F6'}
               />
@@ -476,6 +527,9 @@ export default function AccountProfilePage() {
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => router.push('/profile/edit' as any)}
+              accessibilityLabel="Edit profile information"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to edit profile screen"
             >
               <View style={styles.settingIcon}>
                 <Ionicons name="person" size={20} color="#8B5CF6" />
@@ -494,6 +548,9 @@ export default function AccountProfilePage() {
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => router.push('/account/change-password' as any)}
+              accessibilityLabel="Change password"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to change password screen"
             >
               <View style={styles.settingIcon}>
                 <Ionicons name="key" size={20} color="#8B5CF6" />
@@ -512,6 +569,9 @@ export default function AccountProfilePage() {
             <TouchableOpacity
               style={styles.settingItem}
               onPress={() => router.push('/account/delete-account' as any)}
+              accessibilityLabel="Delete account permanently"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to account deletion screen. Warning: This action is permanent"
             >
               <View style={[styles.settingIcon, { backgroundColor: '#FEE2E2' }]}>
                 <Ionicons name="trash" size={20} color="#EF4444" />

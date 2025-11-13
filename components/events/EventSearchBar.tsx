@@ -115,22 +115,31 @@ export default function EventSearchBar({
             autoCapitalize="none"
             autoCorrect={false}
             clearButtonMode="never"
+            accessible={true}
+            accessibilityLabel="Search events"
+            accessibilityHint="Enter search terms to find events"
+            accessibilityValue={{ text: searchQuery || 'Empty' }}
           />
-          
+
           {loading && (
             <Ionicons
               name="hourglass-outline"
               size={20}
               color={tintColor}
               style={styles.loadingIcon}
+              accessible={false}
             />
           )}
-          
+
           {searchQuery.length > 0 && !loading && (
             <TouchableOpacity
               onPress={handleClear}
               style={styles.clearButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              accessibilityHint="Double tap to clear search text"
             >
               <Ionicons
                 name="close-circle"
@@ -144,12 +153,19 @@ export default function EventSearchBar({
 
       {/* Search Suggestions */}
       {showSuggestions && suggestions.length > 0 && isFocused && (
-        <ThemedView style={[styles.suggestionsContainer, { backgroundColor }]}>
+        <ThemedView
+          style={[styles.suggestionsContainer, { backgroundColor }]}
+          accessible={false}
+        >
           {suggestions.slice(0, 5).map((suggestion, index) => (
             <TouchableOpacity
               key={index}
               style={styles.suggestionItem}
               onPress={() => handleSuggestionPress(suggestion)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`Search suggestion: ${suggestion}`}
+              accessibilityHint="Double tap to search for this suggestion"
             >
               <Ionicons
                 name="search"

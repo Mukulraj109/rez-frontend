@@ -92,8 +92,19 @@ const OrderHistoryItem: React.FC<OrderHistoryItemProps> = ({ order, onPress }) =
     return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
   };
 
+  const itemCount = safeOrder.items.length;
+  const storeName = safeOrder.items[0]?.storeName || 'Store';
+  const statusLabel = formatStatus(safeOrder.status);
+
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.container}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityLabel={`Order number ${safeOrder.orderNumber}. Status: ${statusLabel}. ${itemCount} ${itemCount === 1 ? 'item' : 'items'}. Total: rupees ${safeOrder.total.toFixed(2)}. Ordered from ${storeName} on ${formatDate(safeOrder.createdAt)}`}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view order details"
+    >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.orderInfo}>
@@ -111,14 +122,22 @@ const OrderHistoryItem: React.FC<OrderHistoryItemProps> = ({ order, onPress }) =
       </View>
 
       {/* Items */}
-      <View style={styles.itemsContainer}>
+      <View
+        style={styles.itemsContainer}
+        accessibilityLabel={`Order items: ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`}
+      >
         {safeOrder.items.slice(0, 2).map((item, index) => (
-          <View key={`${item.id}-${index}`} style={styles.itemRow}>
+          <View
+            key={`${item.id}-${index}`}
+            style={styles.itemRow}
+            accessibilityLabel={`${item.productName}. Quantity: ${item.quantity}. Price: rupees ${(item.subtotal || 0).toFixed(2)}`}
+          >
             <View style={styles.itemImageContainer}>
               {item.productImage ? (
-                <Image 
-                  source={{ uri: item.productImage }} 
+                <Image
+                  source={{ uri: item.productImage }}
                   style={styles.itemImage}
+                  accessibilityLabel={`${item.productName} product image`}
                 />
               ) : (
                 <View style={styles.placeholderImage}>
@@ -142,9 +161,12 @@ const OrderHistoryItem: React.FC<OrderHistoryItemProps> = ({ order, onPress }) =
             </Text>
           </View>
         ))}
-        
+
         {safeOrder.items.length > 2 && (
-          <Text style={styles.moreItems}>
+          <Text
+            style={styles.moreItems}
+            accessibilityLabel={`Plus ${safeOrder.items.length - 2} more ${safeOrder.items.length - 2 > 1 ? 'items' : 'item'}`}
+          >
             +{safeOrder.items.length - 2} more item{safeOrder.items.length - 2 > 1 ? 's' : ''}
           </Text>
         )}
@@ -161,16 +183,31 @@ const OrderHistoryItem: React.FC<OrderHistoryItemProps> = ({ order, onPress }) =
         
         <View style={styles.actions}>
           {safeOrder.status === 'delivered' && (
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              accessibilityLabel={`Reorder order ${safeOrder.orderNumber}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to reorder these items"
+            >
               <Text style={styles.actionButtonText}>Reorder</Text>
             </TouchableOpacity>
           )}
           {safeOrder.status === 'shipped' && (
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              accessibilityLabel={`Track order ${safeOrder.orderNumber}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view live tracking"
+            >
               <Text style={styles.actionButtonText}>Track</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            accessibilityLabel={`View details for order ${safeOrder.orderNumber}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to see full order details"
+          >
             <Text style={styles.actionButtonText}>View Details</Text>
           </TouchableOpacity>
         </View>

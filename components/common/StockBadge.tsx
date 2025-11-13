@@ -100,6 +100,8 @@ export default function StockBadge({
 
   const isCompact = variant === 'compact';
 
+  const accessibilityLabel = `Stock status: ${stockMessage}${isLowStock ? '. Limited availability' : ''}${isOutOfStock ? '. Product currently unavailable' : ''}`;
+
   return (
     <Animated.View
       style={[
@@ -113,6 +115,8 @@ export default function StockBadge({
           ],
         },
       ]}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="text"
     >
       {showIcon && (
         <Ionicons

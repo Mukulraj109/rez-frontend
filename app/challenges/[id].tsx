@@ -20,6 +20,7 @@ import ClaimRewardModal from '@/components/challenges/ClaimRewardModal';
 import ChallengeTips from '@/components/challenges/ChallengeTips';
 import ActivityTimeline from '@/components/challenges/ActivityTimeline';
 import coinSyncService from '@/services/coinSyncService';
+import logger from '@/utils/logger';
 
 const { width } = Dimensions.get('window');
 
@@ -109,7 +110,7 @@ export default function ChallengeDetailPage() {
   const loadChallengeDetail = async () => {
     try {
       setLoading(true);
-      console.log('🔍 [Challenge Detail] Loading challenge:', id);
+      logger.debug('🔍 [Challenge Detail] Loading challenge:', id);
 
       // Fetch challenge and user progress
       const [challengeRes, progressRes] = await Promise.all([
@@ -120,9 +121,9 @@ export default function ChallengeDetailPage() {
       const allChallenges = (challengeRes.data as any) || [];
       const allProgress = (progressRes.data as any)?.challenges || [];
 
-      console.log('📊 [Challenge Detail] All challenges:', allChallenges.length);
-      console.log('📊 [Challenge Detail] User progress:', allProgress.length);
-      console.log('🎯 [Challenge Detail] Looking for ID:', id);
+      logger.debug('📊 [Challenge Detail] All challenges:', allChallenges.length);
+      logger.debug('📊 [Challenge Detail] User progress:', allProgress.length);
+      logger.debug('🎯 [Challenge Detail] Looking for ID:', id);
 
       // Find the specific challenge - first check user progress
       let progress = allProgress.find((p: any) => p._id === id);
@@ -130,11 +131,11 @@ export default function ChallengeDetailPage() {
 
       // If not found in progress, check if it's an available challenge (not started yet)
       if (!challenge) {
-        console.log('⚠️ [Challenge Detail] Not found in progress, checking available challenges...');
+        logger.debug('⚠️ [Challenge Detail] Not found in progress, checking available challenges...');
         challenge = allChallenges.find((c: any) => c._id === id);
 
         if (challenge) {
-          console.log('✅ [Challenge Detail] Found available challenge:', challenge.title);
+          logger.debug('✅ [Challenge Detail] Found available challenge:', challenge.title);
           setData({
             challenge,
             userProgress: null,
@@ -143,13 +144,13 @@ export default function ChallengeDetailPage() {
           return;
         }
       } else {
-        console.log('✅ [Challenge Detail] Found in progress:', challenge.title);
+        logger.debug('✅ [Challenge Detail] Found in progress:', challenge.title);
       }
 
       if (!challenge) {
-        console.error('❌ [Challenge Detail] Challenge not found anywhere. ID:', id);
-        console.error('Available challenge IDs:', allChallenges.map((c: any) => c._id).slice(0, 5));
-        console.error('Progress IDs:', allProgress.map((p: any) => p._id).slice(0, 5));
+        logger.error('❌ [Challenge Detail] Challenge not found anywhere. ID:', id);
+        logger.error('Available challenge IDs:', allChallenges.map((c: any) => c._id).slice(0, 5));
+        logger.error('Progress IDs:', allProgress.map((p: any) => p._id).slice(0, 5));
         showAlert('Error', 'Challenge not found', undefined, 'error');
         router.back();
         return;
@@ -160,7 +161,7 @@ export default function ChallengeDetailPage() {
         userProgress: progress || null,
       });
     } catch (error: any) {
-      console.error('❌ [Challenge Detail] Error loading challenge:', error);
+      logger.error('❌ [Challenge Detail] Error loading challenge:', error);
       showAlert('Error', 'Failed to load challenge details', undefined, 'error');
       router.back();
     } finally {
@@ -176,7 +177,7 @@ export default function ChallengeDetailPage() {
   };
 
   const navigateToAction = (action: string) => {
-    console.log('🧭 [Challenge Detail] Navigating to action:', action);
+    logger.debug('🧭 [Challenge Detail] Navigating to action:', action);
 
     // Special case: login_streak completes automatically
     if (action === 'login_streak') {
@@ -243,7 +244,7 @@ export default function ChallengeDetailPage() {
         setShowClaimModal(true);
       }
     } catch (error: any) {
-      console.error('❌ [Challenge Detail] Error claiming reward:', error);
+      logger.error('❌ [Challenge Detail] Error claiming reward:', error);
       showAlert('Error', 'Failed to claim reward', undefined, 'error');
     } finally {
       setClaiming(false);

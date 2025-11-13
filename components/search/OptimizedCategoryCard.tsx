@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-    backdropFilter: 'blur(10px)',
+    // backdropFilter: 'blur(10px)', // Not supported in React Native
   },
   cashbackText: {
     fontSize: 12,

@@ -41,7 +41,13 @@ export default function LoadingScreen({ duration = 5000, onComplete }: LoadingSc
 
   return (
     <PurpleGradientBg style={styles.container}>
-      <View style={styles.loadingContainer}>
+      <View
+        style={styles.loadingContainer}
+        accessible={true}
+        accessibilityLabel="Loading your personalized experience"
+        accessibilityRole="progressbar"
+        accessibilityHint="Please wait while we set up your account"
+      >
         <Animated.View
           style={[
             styles.spinner,
@@ -49,6 +55,9 @@ export default function LoadingScreen({ duration = 5000, onComplete }: LoadingSc
               transform: [{ rotate: spin }],
             },
           ]}
+          accessible={true}
+          accessibilityLabel="Loading spinner"
+          accessibilityRole="none"
         >
           <View style={styles.spinnerInner} />
         </Animated.View>

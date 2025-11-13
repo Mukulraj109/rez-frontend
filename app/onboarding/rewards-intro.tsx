@@ -16,16 +16,30 @@ export default function RewardsIntroScreen() {
     <OnboardingContainer useGradient={false} style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Shop, Share, and{'\n'}Earn Rewards!</Text>
+          <Text
+            style={styles.title}
+            accessibilityLabel="Shop, Share, and Earn Rewards!"
+            accessibilityRole="header"
+          >
+            Shop, Share, and{'\n'}Earn Rewards!
+          </Text>
           <View style={styles.underline} />
-          
-          <Text style={styles.subtitle}>
+
+          <Text
+            style={styles.subtitle}
+            accessibilityLabel="Share your purchase on social media and earn Rez Coins as cashback"
+          >
             Share your purchase on social media and earn{'\n'}
             Rez Coins as cashback!
           </Text>
         </View>
 
-        <View style={styles.illustrationContainer}>
+        <View
+          style={styles.illustrationContainer}
+          accessible={true}
+          accessibilityLabel="Social media post illustration showing how you can share purchases and earn rewards. Sample post by Sarah M with food images and social actions including like, comment, and share buttons. Three coin rewards floating around the post"
+          accessibilityRole="image"
+        >
           {/* Social Media Mockup */}
           <View style={styles.socialMediaContainer}>
             {/* Main Post Card */}
@@ -37,14 +51,14 @@ export default function RewardsIntroScreen() {
                   <Text style={styles.timestamp}>2 hours ago</Text>
                 </View>
               </View>
-              
+
               <View style={styles.postContent}>
                 <View style={styles.foodImage}>
                   <View style={styles.foodItem1} />
                   <View style={styles.foodItem2} />
                   <View style={styles.foodItem3} />
                 </View>
-                
+
                 <View style={styles.postActions}>
                   <View style={styles.actionButton}>
                     <Text style={styles.actionIcon}>♡</Text>
@@ -75,6 +89,9 @@ export default function RewardsIntroScreen() {
         <TouchableOpacity
           style={styles.nextButton}
           onPress={handleNext}
+          accessibilityLabel="Continue to transactions preview"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to see how transactions work"
         >
           <Text style={styles.nextButtonText}>Next</Text>
         </TouchableOpacity>

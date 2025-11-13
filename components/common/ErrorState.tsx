@@ -46,17 +46,45 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
   style,
 }) => {
   return (
-    <View style={[styles.container, style]}>
-      <Ionicons name={icon} size={64} color="#EF4444" style={styles.icon} />
+    <View
+      style={[styles.container, style]}
+      accessible={true}
+      accessibilityRole="alert"
+      accessibilityLabel={`Error: ${message}`}
+      accessibilityLiveRegion="polite"
+    >
+      <Ionicons
+        name={icon}
+        size={64}
+        color="#EF4444"
+        style={styles.icon}
+        accessible={false}
+      />
 
-      <ThemedText style={styles.message}>{message}</ThemedText>
+      <ThemedText
+        style={styles.message}
+        accessible={true}
+        accessibilityRole="text"
+      >
+        {message}
+      </ThemedText>
 
       <TouchableOpacity
         style={styles.retryButton}
         onPress={onRetry}
         activeOpacity={0.8}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel="Retry"
+        accessibilityHint="Double tap to retry the failed action"
       >
-        <Ionicons name="refresh" size={18} color="white" style={styles.retryIcon} />
+        <Ionicons
+          name="refresh"
+          size={18}
+          color="white"
+          style={styles.retryIcon}
+          accessible={false}
+        />
         <ThemedText style={styles.retryButtonText}>Tap to Retry</ThemedText>
       </TouchableOpacity>
     </View>

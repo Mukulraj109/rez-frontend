@@ -324,7 +324,7 @@ export default function ProfileEditPage() {
       <ThemedText style={styles.fieldLabel}>{label}</ThemedText>
       <TextInput
         style={[
-          styles.textInput, 
+          styles.textInput,
           multiline && styles.multilineInput,
           readonly && styles.readonlyInput
         ]}
@@ -340,6 +340,9 @@ export default function ProfileEditPage() {
         selectionColor={PROFILE_COLORS.primary}
         editable={!readonly}
         selectTextOnFocus={!readonly}
+        accessibilityLabel={`${label} input field`}
+        accessibilityHint={readonly ? 'This field cannot be edited' : `Enter your ${label.toLowerCase()}`}
+        accessibilityValue={{ text: formData[field] as string }}
       />
     </View>
   );
@@ -358,7 +361,13 @@ export default function ProfileEditPage() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to profile page"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           
@@ -368,6 +377,10 @@ export default function ProfileEditPage() {
             style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
             onPress={handleSave}
             disabled={isSaving}
+            accessibilityLabel={isSaving ? 'Saving profile changes' : hasChanges ? 'Save profile changes' : 'Save profile'}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to save your profile changes"
+            accessibilityState={{ disabled: isSaving, busy: isSaving }}
           >
             <ThemedText style={[
               styles.saveButtonText,
@@ -394,6 +407,10 @@ export default function ProfileEditPage() {
               onPress={handleImageUpload}
               disabled={uploadingImage}
               activeOpacity={0.7}
+              accessibilityLabel={uploadingImage ? 'Uploading profile photo' : 'Change profile photo'}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to select a new profile picture from your gallery"
+              accessibilityState={{ disabled: uploadingImage, busy: uploadingImage }}
             >
               <View style={styles.photoCircle}>
                 {user?.avatar ? (
@@ -445,9 +462,12 @@ export default function ProfileEditPage() {
           {/* Gender Selection */}
           <View style={styles.fieldContainer}>
             <ThemedText style={styles.fieldLabel}>Gender</ThemedText>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.genderSelector}
               onPress={() => setShowGenderModal(true)}
+              accessibilityLabel={`Gender: ${formData.gender ? genderOptions.find(opt => opt.value === formData.gender)?.label : 'Not selected'}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to select your gender"
             >
               <ThemedText style={[
                 styles.genderText,
@@ -474,7 +494,12 @@ export default function ProfileEditPage() {
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Account Settings</ThemedText>
           
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity
+            style={styles.settingItem}
+            accessibilityLabel="Change Password"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to update your account password"
+          >
             <View style={styles.settingItemLeft}>
               <Ionicons name="key-outline" size={24} color={PROFILE_COLORS.primary} />
               <View style={styles.settingItemText}>
@@ -487,7 +512,12 @@ export default function ProfileEditPage() {
             <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity
+            style={styles.settingItem}
+            accessibilityLabel="Notification Preferences"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to manage your notification settings"
+          >
             <View style={styles.settingItemLeft}>
               <Ionicons name="notifications-outline" size={24} color={PROFILE_COLORS.primary} />
               <View style={styles.settingItemText}>
@@ -500,7 +530,12 @@ export default function ProfileEditPage() {
             <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity
+            style={styles.settingItem}
+            accessibilityLabel="Privacy Settings"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to control who can see your profile"
+          >
             <View style={styles.settingItemLeft}>
               <Ionicons name="shield-outline" size={24} color={PROFILE_COLORS.primary} />
               <View style={styles.settingItemText}>
@@ -518,7 +553,7 @@ export default function ProfileEditPage() {
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Danger Zone</ThemedText>
           
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.dangerItem}
             onPress={() => {
               Alert.alert(
@@ -532,6 +567,9 @@ export default function ProfileEditPage() {
                 ]
               );
             }}
+            accessibilityLabel="Delete Account"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to permanently delete your account and all data. This action cannot be undone"
           >
             <Ionicons name="trash-outline" size={24} color="#EF4444" />
             <View style={styles.dangerItemText}>
@@ -557,7 +595,12 @@ export default function ProfileEditPage() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>Select Gender</ThemedText>
-              <TouchableOpacity onPress={() => setShowGenderModal(false)}>
+              <TouchableOpacity
+                onPress={() => setShowGenderModal(false)}
+                accessibilityLabel="Close gender selection"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to close the gender selection modal"
+              >
                 <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
@@ -572,6 +615,10 @@ export default function ProfileEditPage() {
                     formData.gender === item.value && styles.selectedGenderOption
                   ]}
                   onPress={() => handleGenderSelect(item.value)}
+                  accessibilityLabel={`Select ${item.label} as your gender`}
+                  accessibilityRole="button"
+                  accessibilityHint={`Double tap to set your gender to ${item.label}`}
+                  accessibilityState={{ selected: formData.gender === item.value }}
                 >
                   <ThemedText style={[
                     styles.genderOptionText,

@@ -157,7 +157,13 @@ export default function ProfileMenuModal({
       style={[styles.headerContainer, { paddingTop: insets.top }]}
     >
       <View style={styles.headerTop}>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={onClose}
+          accessibilityLabel="Close menu"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to close profile menu"
+        >
           <View style={styles.closeButtonBackground}>
             <Ionicons name="close" size={20} color="white" />
           </View>
@@ -188,7 +194,13 @@ export default function ProfileMenuModal({
           </View>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          accessibilityLabel="Logout"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to logout from your account"
+        >
           <Ionicons name="log-out-outline" size={18} color="white" />
           <ThemedText style={styles.logoutText}>Logout</ThemedText>
         </TouchableOpacity>
@@ -217,29 +229,36 @@ export default function ProfileMenuModal({
       animationType="none"
       onRequestClose={onClose}
       statusBarTranslucent
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Profile menu dialog"
     >
       <StatusBar backgroundColor="rgba(0,0,0,0.5)" barStyle="light-content" />
       
       {/* Backdrop */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backdrop}
         activeOpacity={1}
         onPress={onClose}
+        accessibilityLabel="Close profile menu"
+        accessibilityRole="button"
+        accessibilityHint="Double tap to close menu"
       >
         {/* Modal Content */}
         <Animated.View
           style={[
             styles.modalContainer,
-            { 
+            {
               transform: [{ translateX: slideAnim }],
               height: SCREEN_HEIGHT,
               paddingBottom: insets.bottom
             }
           ]}
+          onStartShouldSetResponder={() => true}
+          onTouchEnd={(e) => e.stopPropagation()}
         >
-          <TouchableOpacity activeOpacity={1} style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
             {renderModalHeader()}
-            
+
             <ScrollView
               style={styles.menuContainer}
               showsVerticalScrollIndicator={false}
@@ -250,12 +269,12 @@ export default function ProfileMenuModal({
                 <ThemedText style={styles.menuTitle}>Quick Actions</ThemedText>
                 <View style={styles.titleUnderline} />
               </View>
-              
+
               {menuSections?.map(renderMenuSection)}
-              
+
               <View style={styles.footerSpace} />
             </ScrollView>
-          </TouchableOpacity>
+          </View>
         </Animated.View>
       </TouchableOpacity>
     </Modal>

@@ -134,6 +134,9 @@ const FashionHeader = () => {
             <TouchableOpacity
               onPress={() => router.back()}
               style={styles.backButton}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to return to previous screen"
             >
               <Ionicons name="chevron-back" size={24} color="white" />
             </TouchableOpacity>
@@ -146,7 +149,13 @@ const FashionHeader = () => {
 
             <View style={styles.rightIcons}>
               {/* Coins */}
-              <TouchableOpacity style={styles.coinContainer} onPress={() => router.push('/CoinPage')}>
+              <TouchableOpacity
+                style={styles.coinContainer}
+                onPress={() => router.push('/CoinPage')}
+                accessibilityLabel={`Coin balance: ${userPoints} coins`}
+                accessibilityRole="button"
+                accessibilityHint="Double tap to view coin details"
+              >
                 <LinearGradient
                   colors={["rgba(255, 255, 255, 0.3)", "rgba(255, 255, 255, 0.15)"]}
                   style={styles.coinGradient}
@@ -162,6 +171,9 @@ const FashionHeader = () => {
               <TouchableOpacity
                 style={styles.cartButton}
                 onPress={() => router.push('/CartPage')}
+                accessibilityLabel="Open cart"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to view shopping cart"
               >
                 <LinearGradient
                   colors={["rgba(255, 255, 255, 0.25)", "rgba(255, 255, 255, 0.1)"]}
@@ -182,6 +194,9 @@ const FashionHeader = () => {
                   }
                 }}
                 activeOpacity={0.7}
+                accessibilityLabel="Open profile menu"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to open profile and settings menu"
               >
                 <LinearGradient
                   colors={["#FFD700", "#FFA500", "#FF69B4"]}

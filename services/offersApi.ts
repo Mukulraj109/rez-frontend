@@ -447,6 +447,54 @@ class MockOffersApi implements OffersApiEndpoints {
       timestamp: new Date().toISOString(),
     };
   }
+
+  async getStorePromotions(storeId: string): Promise<any> {
+    await this.simulateDelay();
+
+    // Import mock promotions
+    const { getMockPromotions } = await import('@/data/mockPromotions');
+    const promotions = getMockPromotions(storeId);
+
+    return {
+      success: true,
+      data: {
+        promotions,
+        totalCount: promotions.length,
+        activeCount: promotions.filter(p => p.isActive).length,
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async getExpiringDeals(storeId: string, hours: number = 24): Promise<any> {
+    await this.simulateDelay();
+
+    // Get all deals for the store
+    const allDeals = offersPageData.sections.flatMap(section => section.offers);
+
+    // Filter deals expiring within the specified hours
+    const now = new Date().getTime();
+    const thresholdTime = now + (hours * 60 * 60 * 1000);
+
+    const expiringDeals = allDeals.filter(offer => {
+      if (!offer.validUntil) return false;
+      const expiryTime = new Date(offer.validUntil).getTime();
+      return expiryTime > now && expiryTime <= thresholdTime;
+    });
+
+    // Sort by expiry time (soonest first)
+    expiringDeals.sort((a, b) => {
+      const timeA = new Date(a.validUntil!).getTime();
+      const timeB = new Date(b.validUntil!).getTime();
+      return timeA - timeB;
+    });
+
+    return {
+      success: true,
+      data: expiringDeals,
+      timestamp: new Date().toISOString(),
+    };
+  }
 }
 
 // Import real API

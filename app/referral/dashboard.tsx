@@ -207,7 +207,13 @@ export default function ReferralDashboard() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Share & Earn</Text>
 
-        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+        <TouchableOpacity
+          style={styles.shareButton}
+          onPress={handleShare}
+          accessibilityLabel={`Invite friends. Earn ₹${currentTierData.rewards.perReferral} per referral`}
+          accessibilityRole="button"
+          accessibilityHint="Opens share options to invite friends"
+        >
           <LinearGradient colors={['#7c3aed', '#a78bfa']} style={styles.shareButtonGradient}>
             <Ionicons name="share-social" size={24} color="#fff" />
             <View style={styles.shareButtonText}>
@@ -223,7 +229,12 @@ export default function ReferralDashboard() {
         <View style={styles.referralCodeBox}>
           <Text style={styles.referralCodeLabel}>Your Referral Code</Text>
           <Text style={styles.referralCode}>{qrData?.referralCode}</Text>
-          <TouchableOpacity style={styles.copyButton}>
+          <TouchableOpacity
+            style={styles.copyButton}
+            accessibilityLabel={`Copy referral code ${qrData?.referralCode}`}
+            accessibilityRole="button"
+            accessibilityHint="Copies your referral code to clipboard"
+          >
             <Ionicons name="copy-outline" size={20} color="#7c3aed" />
             <Text style={styles.copyButtonText}>Copy Code</Text>
           </TouchableOpacity>
@@ -265,6 +276,9 @@ export default function ReferralDashboard() {
                 onPress={() =>
                   handleClaimReward(reward.referralId!, reward.rewardIndex!)
                 }
+                accessibilityLabel={`Claim ${reward.description}`}
+                accessibilityRole="button"
+                accessibilityHint={`Claims your reward of ${reward.amount > 0 ? '₹' + reward.amount : 'premium access'}`}
               >
                 <Text style={styles.claimButtonText}>Claim</Text>
               </TouchableOpacity>
@@ -283,7 +297,12 @@ export default function ReferralDashboard() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Leaderboard</Text>
-          <TouchableOpacity onPress={handleViewLeaderboard}>
+          <TouchableOpacity
+            onPress={handleViewLeaderboard}
+            accessibilityLabel="View full leaderboard"
+            accessibilityRole="button"
+            accessibilityHint="Opens complete leaderboard page"
+          >
             <Text style={styles.viewAllButton}>View All</Text>
           </TouchableOpacity>
         </View>

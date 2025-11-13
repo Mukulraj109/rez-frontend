@@ -84,8 +84,17 @@ export default function Section4({
     typeof cardImageUri === "string" ? { uri: cardImageUri } : cardImageUri;
 
   return (
-    <View style={styles.container} testID={testID}>
-      <View style={styles.card}>
+    <View
+      style={styles.container}
+      testID={testID}
+      accessibilityRole="region"
+      accessibilityLabel="Card payment offers"
+    >
+      <View
+        style={styles.card}
+        accessibilityLabel={`${title}. ${subtitle}`}
+        accessibilityRole="summary"
+      >
         {/* Left icon */}
         <View
           style={styles.iconContainer}

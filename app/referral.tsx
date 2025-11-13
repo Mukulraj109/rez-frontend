@@ -343,7 +343,9 @@ const ReferralPageContent = () => {
             <TouchableOpacity
               style={styles.copyButton}
               onPress={handleCopyCode}
-              accessibilityLabel="Copy referral code"
+              accessibilityLabel={copied ? "Code copied" : "Copy referral code"}
+              accessibilityRole="button"
+              accessibilityState={{ selected: copied }}
               accessibilityHint="Copies your referral code to clipboard"
             >
               <Ionicons
@@ -357,8 +359,9 @@ const ReferralPageContent = () => {
           <TouchableOpacity
             style={styles.shareButton}
             onPress={handleShareReferral}
-            accessibilityLabel="Share referral"
-            accessibilityHint="Opens share menu to invite friends"
+            accessibilityLabel="Share referral code with friends"
+            accessibilityRole="button"
+            accessibilityHint="Opens share options to invite friends and earn rewards"
           >
             <Ionicons name="share-social" size={20} color="white" />
             <Text style={styles.shareButtonText}>Share with Friends</Text>

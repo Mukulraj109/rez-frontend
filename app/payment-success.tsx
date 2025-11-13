@@ -23,16 +23,31 @@ export default function PaymentSuccessPage() {
         style={styles.successContainer}
       >
         <View style={styles.successContent}>
-          <View style={styles.successIcon}>
+          <View
+            style={styles.successIcon}
+            accessible={true}
+            accessibilityLabel="Payment successful"
+            accessibilityRole="image"
+          >
             <Ionicons name="checkmark-circle" size={80} color="white" />
           </View>
-          
-          <ThemedText style={styles.successTitle}>Payment Successful!</ThemedText>
+
+          <ThemedText
+            style={styles.successTitle}
+            accessibilityRole="header"
+          >
+            Payment Successful!
+          </ThemedText>
           <ThemedText style={styles.successMessage}>
             Your payment has been processed successfully. You will receive a confirmation shortly.
           </ThemedText>
           
-          <View style={styles.orderInfo}>
+          <View
+            style={styles.orderInfo}
+            accessible={true}
+            accessibilityLabel="Order REZ123456. Estimated delivery 30 to 45 minutes"
+            accessibilityRole="text"
+          >
             <ThemedText style={styles.orderNumber}>Order #REZ123456</ThemedText>
             <ThemedText style={styles.estimatedDelivery}>
               Estimated Delivery: 30-45 minutes
@@ -43,13 +58,19 @@ export default function PaymentSuccessPage() {
             <TouchableOpacity
               style={styles.trackOrderButton}
               onPress={() => router.replace('/tracking')}
+              accessibilityLabel="Track your order"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view order tracking details"
             >
               <ThemedText style={styles.trackOrderText}>Track Order</ThemedText>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.continueShoppingButton}
               onPress={() => router.replace('/(tabs)/' as any)}
+              accessibilityLabel="Continue shopping"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to return to home page"
             >
               <ThemedText style={styles.continueShoppingText}>Continue Shopping</ThemedText>
             </TouchableOpacity>

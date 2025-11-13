@@ -1,55 +1,69 @@
 import React from 'react';
-import { View, StyleSheet , ScrollView,} from 'react-native';
-import { UGCVideoItem, PLAY_PAGE_COLORS } from '@/types/playPage.types';
+import { View, StyleSheet, FlatList, Dimensions } from 'react-native';
+import { PLAY_PAGE_COLORS } from '@/types/playPage.types';
+import { Article } from '@/types/article.types';
 import SectionHeader from './SectionHeader';
-import VideoGrid from './VideoGrid';
+import ArticleCard from './ArticleCard';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 
 interface ArticleSectionProps {
-  articles: UGCVideoItem[];
-  onArticlePress: (article: UGCVideoItem) => void;
+  articles: Article[];
+  onArticlePress: (article: Article) => void;
   onViewAllPress?: () => void;
-  autoPlay?: boolean;
   loading?: boolean;
 }
 
-export default function ArticleSection({ 
-  articles, 
-  onArticlePress, 
+export default function ArticleSection({
+  articles,
+  onArticlePress,
   onViewAllPress,
-  autoPlay = true,
-  loading = false 
+  loading = false
 }: ArticleSectionProps) {
+  const renderItem = ({ item }: { item: Article }) => (
+    <View style={{ width: CARD_WIDTH }}>
+      <ArticleCard
+        article={item}
+        onPress={onArticlePress}
+      />
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <SectionHeader
         title="Article"
-        showViewAll={true}
+        showViewAll={articles.length > 4}
         onViewAllPress={onViewAllPress}
       />
-         <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}
-      >
-      <VideoGrid
-        items={articles}
-        onItemPress={onArticlePress}
-        columns={2}
-        autoPlay={autoPlay}
-        showLoadMore={false}
-        loading={loading}
+
+      <FlatList
+        data={articles.slice(0, 4)}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => item.id || `article-${index}`}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        contentContainerStyle={styles.gridContainer}
+        scrollEnabled={false}
+        showsVerticalScrollIndicator={false}
       />
-      </ScrollView>
     </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: PLAY_PAGE_COLORS.background,
-    paddingBottom: 16,
+    paddingBottom: 24,
+    marginBottom: 8,
   },
-    scrollContainer: {
+  gridContainer: {
     paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  row: {
+    justifyContent: 'space-between',
+    gap: 12,
   },
 });

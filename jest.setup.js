@@ -51,12 +51,32 @@ jest.mock('expo-clipboard', () => ({
 }));
 
 // ============================================
-// Mock React Native Share
+// Mock NativeSettingsManager before react-native
+// ============================================
+jest.mock('react-native/Libraries/Settings/NativeSettingsManager', () => ({
+  __esModule: true,
+  default: {
+    getConstants: jest.fn(() => ({ settings: {} })),
+    setValues: jest.fn(),
+    deleteValues: jest.fn(),
+  },
+}));
+
+// ============================================
+// Mock React Native modules
 // ============================================
 jest.mock('react-native', () => {
   const RN = jest.requireActual('react-native');
+
   return {
     ...RN,
+    Settings: {
+      get: jest.fn((key) => null),
+      set: jest.fn((settings) => {}),
+      watchKeys: jest.fn(() => ({
+        remove: jest.fn(),
+      })),
+    },
     Share: {
       share: jest.fn(() =>
         Promise.resolve({
@@ -71,6 +91,7 @@ jest.mock('react-native', () => {
       alert: jest.fn(),
     },
     Platform: {
+      ...RN.Platform,
       OS: 'ios',
       select: jest.fn((obj) => obj.ios || obj.default),
     },

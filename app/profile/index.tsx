@@ -414,6 +414,9 @@ export default function ProfilePage() {
       style={styles.iconGridItem}
       onPress={() => handleIconGridItemPress(item)}
       activeOpacity={0.8}
+      accessibilityLabel={`${item.title}, ${item.count || 0} items`}
+      accessibilityRole="button"
+      accessibilityHint={`Double tap to view your ${item.title.toLowerCase()}`}
     >
       <View style={[styles.iconContainer, { backgroundColor: item.backgroundColor }]}>
         <Ionicons
@@ -465,6 +468,9 @@ export default function ProfilePage() {
         style={styles.menuItem}
         onPress={() => handleMenuItemPress(item)}
         activeOpacity={0.7}
+        accessibilityLabel={`${item.title}${badgeValue ? `, ${badgeValue} ${item.isNew ? '' : 'items'}` : ''}${item.description ? `, ${item.description}` : ''}`}
+        accessibilityRole="button"
+        accessibilityHint={`Double tap to navigate to ${item.title.toLowerCase()}`}
       >
         <View style={styles.menuItemLeft}>
           <View style={styles.menuIconContainer}>
@@ -543,6 +549,9 @@ export default function ProfilePage() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push('/profile/qr-code' as any)}
+              accessibilityLabel="View QR Code"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view your profile QR code"
             >
               <Ionicons name="qr-code-outline" size={22} color="white" />
             </TouchableOpacity>
@@ -550,6 +559,9 @@ export default function ProfilePage() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push('/profile/edit')}
+              accessibilityLabel="Edit profile"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to edit your profile information"
             >
               <Ionicons name="create-outline" size={22} color="white" />
             </TouchableOpacity>
@@ -557,6 +569,9 @@ export default function ProfilePage() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={handleShareProfile}
+              accessibilityLabel="Share profile"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to share your profile with others"
             >
               <Ionicons name="share-outline" size={22} color="white" />
             </TouchableOpacity>
@@ -585,6 +600,10 @@ export default function ProfilePage() {
               onPress={handleImageUpload}
               disabled={uploadingImage}
               activeOpacity={0.7}
+              accessibilityLabel={uploadingImage ? "Uploading profile picture" : "Change profile picture"}
+              accessibilityRole="button"
+              accessibilityHint={uploadingImage ? "Please wait while image uploads" : "Double tap to upload a new profile picture"}
+              accessibilityState={{ disabled: uploadingImage, busy: uploadingImage }}
             >
               <View style={styles.avatar}>
                 {user?.avatar ? (
@@ -631,6 +650,9 @@ export default function ProfilePage() {
               style={styles.completionCard}
               onPress={() => router.push('/profile/edit')}
               activeOpacity={0.7}
+              accessibilityLabel={`Profile completion ${profileCompletion} percent`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to complete your profile"
             >
               <View style={styles.completionHeader}>
                 <View style={styles.completionInfo}>
@@ -683,6 +705,9 @@ export default function ProfilePage() {
             style={styles.referralCard}
             onPress={() => router.push('/referral' as any)}
             activeOpacity={0.7}
+            accessibilityLabel="Refer and Earn 100 rupees"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to invite friends and get rewards"
           >
             <LinearGradient
               colors={['#8B5CF6', '#7C3AED']}
@@ -712,6 +737,9 @@ export default function ProfilePage() {
             style={styles.loyaltyCard}
             onPress={() => router.push('/profile/achievements' as any)}
             activeOpacity={0.7}
+            accessibilityLabel={`${userPoints} loyalty points. Gold tier`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view your loyalty rewards and achievements"
           >
             <View style={styles.loyaltyContent}>
               <View style={styles.loyaltyLeft}>
@@ -740,6 +768,9 @@ export default function ProfilePage() {
             style={styles.partnerCard}
             onPress={() => router.push('/profile/partner' as any)}
             activeOpacity={0.7}
+            accessibilityLabel="Partner Program, Level 1"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to unlock exclusive rewards and benefits"
           >
             <LinearGradient
               colors={['#8B5CF6', '#A78BFA']}
@@ -814,6 +845,9 @@ export default function ProfilePage() {
               <TouchableOpacity
                 onPress={() => router.push('/profile/activity' as any)}
                 style={styles.viewAllButton}
+                accessibilityLabel="View all activity"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to view complete activity history"
               >
                 <ThemedText style={styles.viewAllText}>View All</ThemedText>
                 <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
@@ -826,6 +860,9 @@ export default function ProfilePage() {
                 <TouchableOpacity
                   style={styles.statItem}
                   onPress={() => router.push('/transactions' as any)}
+                  accessibilityLabel={`${statistics.orders?.total || 0} orders`}
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to view all your orders"
                 >
                   <ThemedText style={styles.statNumber}>{statistics.orders?.total || 0}</ThemedText>
                   <ThemedText style={styles.statLabel}>Orders</ThemedText>
@@ -833,6 +870,9 @@ export default function ProfilePage() {
                 <TouchableOpacity
                   style={styles.statItem}
                   onPress={() => router.push('/WalletScreen' as any)}
+                  accessibilityLabel={`Rupees ${statistics.wallet?.totalSpent || 0} spent`}
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to view wallet details"
                 >
                   <ThemedText style={styles.statNumber}>₹{statistics.wallet?.totalSpent || 0}</ThemedText>
                   <ThemedText style={styles.statLabel}>Spent</ThemedText>
@@ -840,6 +880,9 @@ export default function ProfilePage() {
                 <TouchableOpacity
                   style={styles.statItem}
                   onPress={() => router.push('/profile/achievements' as any)}
+                  accessibilityLabel={`${statistics.achievements?.unlocked || 0} out of ${statistics.achievements?.total || 0} badges unlocked`}
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to view achievements and badges"
                 >
                   <ThemedText style={styles.statNumber}>{statistics.achievements?.unlocked || 0}/{statistics.achievements?.total || 0}</ThemedText>
                   <ThemedText style={styles.statLabel}>Badges</ThemedText>

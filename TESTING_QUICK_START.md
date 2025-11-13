@@ -1,6 +1,6 @@
 # Testing Quick Start Guide
 
-Get started with testing the REZ app in 5 minutes.
+**Get started with testing in 5 minutes** - Perfect for new developers!
 
 ## Quick Setup
 

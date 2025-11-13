@@ -294,10 +294,14 @@ export default function ProjectDetailPage() {
               style={styles.backButton}
               onPress={() => router.back()}
               activeOpacity={0.7}
+              accessible={true}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to previous screen"
             >
               <Ionicons name="arrow-back" size={24} color="#1F2937" />
             </TouchableOpacity>
-            <ThemedText style={styles.headerTitle}>Project Details</ThemedText>
+            <ThemedText style={styles.headerTitle} accessible={true} accessibilityRole="header">Project Details</ThemedText>
             <View style={styles.headerRight} />
           </View>
 
@@ -498,6 +502,22 @@ export default function ProjectDetailPage() {
                       }
                       setShowSubmissionForm(true);
                     }}
+                    accessible={true}
+                    accessibilityLabel={
+                      userSubmission
+                        ? userSubmission.status === 'approved' ? 'View Submission' :
+                          userSubmission.status === 'rejected' ? 'Edit and Resubmit Project' :
+                          'Edit Submission'
+                        : 'Start Project'
+                    }
+                    accessibilityRole="button"
+                    accessibilityHint={
+                      userSubmission
+                        ? userSubmission.status === 'approved' ? 'View your approved submission' :
+                          userSubmission.status === 'rejected' ? 'Edit and resubmit your rejected submission' :
+                          'Edit your pending submission'
+                        : `Start working on ${project.title}`
+                    }
                   >
                     <Ionicons 
                       name={
@@ -532,6 +552,10 @@ export default function ProjectDetailPage() {
                           },
                         } as any);
                       }}
+                      accessible={true}
+                      accessibilityLabel="View full submission details"
+                      accessibilityRole="button"
+                      accessibilityHint={`View complete details of your ${userSubmission.status} submission`}
                     >
                       <Ionicons name="eye-outline" size={18} color="#7C3AED" />
                       <ThemedText style={styles.viewSubmissionButtonText}>

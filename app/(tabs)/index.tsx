@@ -6,6 +6,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Pressable,
   RefreshControl,
   Platform,
   InteractionManager,
@@ -336,7 +337,7 @@ export default function HomeScreen() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#A855F7']} style={viewStyles.header}>
         <View style={viewStyles.headerTop}>
-          <TouchableOpacity
+          <Pressable
             style={viewStyles.locationContainer}
             onPress={() => {
               const newState = !showDetailedLocation;
@@ -356,7 +357,9 @@ export default function HomeScreen() {
                 }),
               ]).start();
             }}
-            activeOpacity={0.7}
+            accessibilityLabel="Current location"
+            accessibilityHint={showDetailedLocation ? "Double tap to collapse location details" : "Double tap to expand location details"}
+            accessibilityState={{ expanded: showDetailedLocation }}
           >
             <LocationDisplay
               compact={true}
@@ -372,7 +375,7 @@ export default function HomeScreen() {
               color="white"
               style={viewStyles.locationArrow}
             />
-          </TouchableOpacity>
+          </Pressable>
 
           <View style={viewStyles.headerRight}>
             <TouchableOpacity
@@ -385,6 +388,9 @@ export default function HomeScreen() {
               }}
               activeOpacity={0.7}
               style={{ marginRight: 12 }}
+              accessibilityLabel={`Subscription tier: ${subscriptionState.currentSubscription?.tier || 'free'}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view subscription plans and upgrade options"
             >
               <TierBadge
                 tier={subscriptionState.currentSubscription?.tier || 'free'}
@@ -403,6 +409,9 @@ export default function HomeScreen() {
               }}
               activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
               delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+              accessibilityLabel={`Loyalty points: ${userPoints}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view your loyalty points and rewards"
             >
               <Ionicons name="star" size={16} color="#FFD700" />
               <ThemedText style={textStyles.coinsText}>{userPoints}</ThemedText>
@@ -420,6 +429,9 @@ export default function HomeScreen() {
               }}
               activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
               delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+              accessibilityLabel={`Shopping cart: ${cartState.items.length} items`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view your shopping cart"
             >
               <Ionicons name="cart-outline" size={24} color="white" />
             </TouchableOpacity>
@@ -433,6 +445,9 @@ export default function HomeScreen() {
                 }
               }}
               activeOpacity={0.7}
+              accessibilityLabel="User profile menu"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to open profile menu and account settings"
             >
               <ThemedText style={textStyles.profileText}>
                 {user?.initials ||
@@ -518,7 +533,14 @@ export default function HomeScreen() {
           />
         </View>
 
-        <TouchableOpacity style={viewStyles.searchContainer} onPress={handleSearchPress} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={viewStyles.searchContainer}
+          onPress={handleSearchPress}
+          activeOpacity={0.85}
+          accessibilityLabel="Search bar"
+          accessibilityRole="search"
+          accessibilityHint="Double tap to search for stores, products, and services"
+        >
           <Ionicons name="search" size={20} color="#666" style={viewStyles.searchIcon} />
           <Text style={textStyles.searchPlaceholder}>Search for the service</Text>
         </TouchableOpacity>
@@ -527,10 +549,13 @@ export default function HomeScreen() {
       {/* Content */}
       <View style={viewStyles.content}>
         {/* Partner Card */}
-        <TouchableOpacity 
-          style={viewStyles.partnerCard} 
-          onPress={handlePartnerPress} 
+        <TouchableOpacity
+          style={viewStyles.partnerCard}
+          onPress={handlePartnerPress}
           activeOpacity={0.9}
+          accessibilityLabel={`Partner Level 1: ${userPoints || 0} points earned`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to view partner program details and rewards"
         >
           <View style={viewStyles.partnerInfo}>
             <View style={viewStyles.partnerIcon}>
@@ -573,6 +598,9 @@ export default function HomeScreen() {
               }
             }}
             activeOpacity={0.8}
+            accessibilityLabel={`Track orders: ${userStats ? Math.max(0, (userStats.orders?.total || 0) - (userStats.orders?.completed || 0) - (userStats.orders?.cancelled || 0)) : 0} active orders`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to track your active orders"
           >
             <View style={viewStyles.actionIcon}>
               <Ionicons name="location-outline" size={24} color="#333" />
@@ -595,6 +623,9 @@ export default function HomeScreen() {
               }
             }}
             activeOpacity={0.8}
+            accessibilityLabel={`Wallet balance: Rupees ${userPoints.toLocaleString()}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to open your wallet and view transactions"
           >
             <View style={viewStyles.actionIcon}>
               <Ionicons name="wallet-outline" size={24} color="#333" />
@@ -615,6 +646,9 @@ export default function HomeScreen() {
               }
             }}
             activeOpacity={0.8}
+            accessibilityLabel={`Offers: ${userStats?.offers?.totalRedeemed !== undefined ? Math.max(0, 5 - (userStats.offers.totalRedeemed || 0)) : 5} new offers available`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view available offers and deals"
           >
             <View style={viewStyles.actionIcon}>
               <Ionicons name="pricetag-outline" size={24} color="#333" />
@@ -644,6 +678,9 @@ export default function HomeScreen() {
                 }
               }}
               activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.8}
+              accessibilityLabel="Store: Explore stores and products"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to browse stores and their products"
             >
               <View style={viewStyles.actionIcon}>
                 <Ionicons name="storefront-outline" size={24} color="#333" />
@@ -667,10 +704,13 @@ export default function HomeScreen() {
         <View style={viewStyles.section}>
           <View style={viewStyles.sectionHeader}>
             <ThemedText style={textStyles.sectionTitle}>Going Out</ThemedText>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={viewStyles.viewAllButton}
               onPress={handleGoingOutViewAll}
               activeOpacity={0.8}
+              accessibilityLabel="View all going out categories"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view all going out category options"
             >
               <ThemedText style={textStyles.viewAllText}>View all</ThemedText>
             </TouchableOpacity>
@@ -717,7 +757,14 @@ export default function HomeScreen() {
             </View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={viewStyles.horizontalScrollContent}>
-              <TouchableOpacity style={viewStyles.horizontalCategoryItem} onPress={handleFashionPress} activeOpacity={0.85}>
+              <TouchableOpacity
+                style={viewStyles.horizontalCategoryItem}
+                onPress={handleFashionPress}
+                activeOpacity={0.85}
+                accessibilityLabel="Fashion category"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to browse fashion stores and products"
+              >
                 <View style={viewStyles.categoryIcon}>
                   <Ionicons name="shirt-outline" size={24} color="#8B5CF6" />
                 </View>
@@ -759,10 +806,13 @@ export default function HomeScreen() {
         <View style={viewStyles.section}>
           <View style={viewStyles.sectionHeader}>
             <ThemedText style={textStyles.sectionTitle}>Home Delivery</ThemedText>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={viewStyles.viewAllButton}
               onPress={handleHomeDeliveryViewAll}
               activeOpacity={0.8}
+              accessibilityLabel="View all home delivery categories"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view all home delivery category options"
             >
               <ThemedText style={textStyles.viewAllText}>View all</ThemedText>
             </TouchableOpacity>

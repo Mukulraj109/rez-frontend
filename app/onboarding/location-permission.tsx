@@ -80,11 +80,22 @@ export default function LocationPermissionScreen() {
     <OnboardingContainer useGradient={false} style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Please grant a{'\n'}location access</Text>
+          <Text
+            style={styles.title}
+            accessibilityLabel="Please grant location access"
+            accessibilityRole="header"
+          >
+            Please grant a{'\n'}location access
+          </Text>
           <View style={styles.underline} />
         </View>
 
-        <View style={styles.illustrationContainer}>
+        <View
+          style={styles.illustrationContainer}
+          accessible={true}
+          accessibilityLabel="Location permission illustration showing a phone with map and location pin"
+          accessibilityRole="image"
+        >
           {/* 3D Phone with Location Pin Illustration */}
           <View style={styles.phoneContainer}>
             <View style={styles.phone}>
@@ -97,13 +108,13 @@ export default function LocationPermissionScreen() {
               </View>
               <View style={styles.phoneButton} />
             </View>
-            
+
             {/* Location Pin */}
             <View style={styles.locationPin}>
               <View style={styles.pinTop} />
               <View style={styles.pinBottom} />
             </View>
-            
+
             {/* Phone Shadow */}
             <View style={styles.phoneShadow} />
           </View>
@@ -116,6 +127,10 @@ export default function LocationPermissionScreen() {
           ]}
           onPress={requestLocationPermission}
           disabled={state.isLoading || isRequesting}
+          accessibilityLabel={(state.isLoading || isRequesting) ? 'Getting your location' : 'Allow location access'}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to grant location permission and find deals near you"
+          accessibilityState={{ disabled: state.isLoading || isRequesting }}
         >
           <Text style={styles.submitButtonText}>
             {(state.isLoading || isRequesting) ? 'Getting Location...' : 'Submit'}

@@ -8,34 +8,41 @@ import { VideoCardProps, VIDEO_CARD_SIZES, PLAY_PAGE_COLORS } from '@/types/play
 import { getIOSVideoProps, getVideoLoadingStrategy } from '@/utils/videoUtils';
 import ShimmerEffect from '@/components/common/ShimmerEffect';
 import { useVideoManager } from '@/hooks/useVideoManager';
+import logger from '@/utils/logger';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-export default function VideoCard({ 
-  item, 
-  onPress, 
+export default function VideoCard({
+  item,
+  onPress,
   onPlay,
   onPause,
   autoPlay = true,
   showProductCount = true,
   showHashtags = true,
   size = 'medium',
-  style 
+  style
 }: VideoCardProps) {
   // Use the video manager hook
-  const { 
-    videoRef, 
-    isPlaying, 
-    isLoaded: isVideoReady, 
-    startPlayback, 
-    stopPlayback, 
+  const {
+    videoRef,
+    isPlaying,
+    isLoaded: isVideoReady,
+    startPlayback,
+    stopPlayback,
     setLoaded,
-    getManagerStatus 
+    getManagerStatus
   } = useVideoManager(item.id);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [isMuted, setIsMuted] = useState(true); // Volume control state
+  const [isFullscreen, setIsFullscreen] = useState(false); // Fullscreen state
+  const [showControls, setShowControls] = useState(false); // Show/hide controls
+  const [isLiked, setIsLiked] = useState(item.isLiked || false); // Like state
+  const [likeCount, setLikeCount] = useState(item.engagement?.likes || 0); // Like count
+  const [lastTap, setLastTap] = useState<number | null>(null); // For double-tap detection
   
   // Animation values
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -66,7 +73,7 @@ export default function VideoCard({
             }
           );
         } catch (error) {
-          console.warn('Video loading error:', error);
+          logger.warn('Video loading error:', error);
           setHasError(true);
         }
       }
@@ -85,7 +92,7 @@ export default function VideoCard({
         if (success) {
           onPlay?.();
         } else {
-          console.warn(`Auto-play failed for ${item.id}`);
+          logger.warn(`Auto-play failed for ${item.id}`);
         }
       } else if (!autoPlay && isPlaying) {
         await stopPlayback();
@@ -124,6 +131,14 @@ export default function VideoCard({
   };
 
   const handleCardPress = () => {
+    // Toggle controls visibility on card press
+    setShowControls(!showControls);
+
+    // Auto-hide controls after 3 seconds
+    if (!showControls) {
+      setTimeout(() => setShowControls(false), 3000);
+    }
+
     // Scale animation on press
     Animated.sequence([
       Animated.timing(scaleAnim, {
@@ -137,7 +152,113 @@ export default function VideoCard({
         useNativeDriver: true,
       }),
     ]).start();
-    
+  };
+
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300; // ms
+
+    if (lastTap && now - lastTap < DOUBLE_TAP_DELAY) {
+      // Double tap detected - like the video
+      handleLike();
+      setLastTap(null);
+    } else {
+      // Single tap - navigate to detail
+      setLastTap(now);
+      setTimeout(() => {
+        if (lastTap === now) {
+          onPress(item);
+        }
+      }, DOUBLE_TAP_DELAY);
+    }
+  };
+
+  const handleLike = async (e?: any) => {
+    e?.stopPropagation();
+
+    // Optimistic update
+    const newLikedState = !isLiked;
+    setIsLiked(newLikedState);
+    setLikeCount(prev => newLikedState ? prev + 1 : Math.max(0, prev - 1));
+
+    // Animate heart
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 1.2,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // TODO: Call API to update like status
+    logger.debug(`❤️ [VideoCard] ${newLikedState ? 'Liked' : 'Unliked'} video ${item.id}`);
+
+    // In real implementation, call API:
+    // try {
+    //   await videosApi.toggleLike(item.id);
+    // } catch (error) {
+    //   // Revert on error
+    //   setIsLiked(!newLikedState);
+    //   setLikeCount(prev => newLikedState ? prev - 1 : prev + 1);
+    // }
+  };
+
+  const handleShare = async (e: any) => {
+    e.stopPropagation();
+
+    logger.debug(`🔗 [VideoCard] Sharing video ${item.id}`);
+
+    // TODO: Implement share functionality
+    // For now, just log. In real implementation:
+    // - Use expo-sharing or react-native-share
+    // - Generate share URL
+    // - Track share event
+    // - Update share count
+
+    // Example:
+    // try {
+    //   await Share.share({
+    //     message: `Check out this video: ${item.description}`,
+    //     url: `https://yourapp.com/video/${item.id}`,
+    //   });
+    // } catch (error) {
+    //   logger.error('Error sharing:', error);
+    // }
+  };
+
+  const handleComment = (e: any) => {
+    e.stopPropagation();
+
+    // Navigate to detail screen (which has comments)
+    logger.debug(`💬 [VideoCard] Opening comments for video ${item.id}`);
+    onPress(item);
+  };
+
+  const handleVolumeToggle = async (e: any) => {
+    e.stopPropagation();
+
+    if (videoRef.current) {
+      try {
+        await videoRef.current.setIsMutedAsync(!isMuted);
+        setIsMuted(!isMuted);
+        logger.debug(`🔊 [VideoCard] Volume ${!isMuted ? 'muted' : 'unmuted'}`);
+      } catch (error) {
+        logger.error('Error toggling volume:', error);
+      }
+    }
+  };
+
+  const handleFullscreenToggle = (e: any) => {
+    e.stopPropagation();
+
+    // For now, navigate to UGC detail screen which provides better fullscreen experience
+    // In the future, implement native fullscreen with expo-video-player
+    logger.debug('🔲 [VideoCard] Fullscreen toggle - navigating to detail');
     onPress(item);
   };
 
@@ -150,17 +271,21 @@ export default function VideoCard({
         },
       ]}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[
-          styles.container, 
-          { 
-            width: cardWidth, 
-            height: sizeConfig.height 
-          }, 
+          styles.container,
+          {
+            width: cardWidth,
+            height: sizeConfig.height
+          },
           style
         ]}
         onPress={handleCardPress}
         activeOpacity={1} // Disable default opacity since we have custom animation
+        accessibilityLabel={`${item.description}. ${item.viewCount} views${item.productCount ? `. ${item.productCount} product${item.productCount !== 1 ? 's' : ''} available` : ''}${item.hashtags?.length ? `. Tags: ${item.hashtags.join(', ')}` : ''}`}
+        accessibilityRole="button"
+        accessibilityHint="Double tap to watch video and shop products"
+        accessibilityState={{ busy: isLoading, disabled: hasError }}
       >
       <View style={styles.videoContainer}>
         {!hasError ? (
@@ -174,8 +299,8 @@ export default function VideoCard({
             {...videoProps} // Apply iOS-optimized props
             // Override props to ensure auto-play compatibility
             isLooping={true}
-            isMuted={true}
-            volume={0}
+            isMuted={isMuted}
+            volume={isMuted ? 0 : 1}
             progressUpdateIntervalMillis={200}
           />
         ) : (
@@ -245,7 +370,139 @@ export default function VideoCard({
           </View>
         </View>
 
-       
+        {/* Product count badge */}
+        {showProductCount && item.productCount && item.productCount > 0 && (
+          <View style={styles.productCountContainer}>
+            <View style={styles.productCountPill}>
+              <Ionicons name="pricetag" size={12} color="#FFFFFF" />
+              <ThemedText style={styles.productCountText}>
+                {item.productCount} {item.productCount === 1 ? 'product' : 'products'}
+              </ThemedText>
+            </View>
+          </View>
+        )}
+
+        {/* Video Controls - Show on tap */}
+        {showControls && !isLoading && !hasError && (
+          <View style={styles.controlsContainer}>
+            {/* Volume Toggle */}
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleVolumeToggle}
+              activeOpacity={0.7}
+              accessibilityLabel={isMuted ? 'Unmute video' : 'Mute video'}
+              accessibilityRole="button"
+              accessibilityHint={`Double tap to ${isMuted ? 'turn on' : 'turn off'} video sound`}
+              accessibilityState={{ selected: !isMuted }}
+            >
+              <Ionicons
+                name={isMuted ? "volume-mute" : "volume-high"}
+                size={24}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+
+            {/* Fullscreen Toggle */}
+            <TouchableOpacity
+              style={styles.controlButton}
+              onPress={handleFullscreenToggle}
+              activeOpacity={0.7}
+              accessibilityLabel="Enter fullscreen mode"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to watch video in fullscreen mode"
+            >
+              <Ionicons
+                name="expand"
+                size={24}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Shop Now Button - Always visible if products available */}
+        {item.productCount && item.productCount > 0 && !isLoading && (
+          <TouchableOpacity
+            style={styles.shopNowButton}
+            onPress={handleDoubleTap}
+            activeOpacity={0.9}
+            accessibilityLabel={`Shop now. ${item.productCount} product${item.productCount !== 1 ? 's' : ''} available`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view and purchase products featured in this video"
+          >
+            <Ionicons name="cart" size={18} color="#FFFFFF" />
+            <ThemedText style={styles.shopNowText}>Shop Now</ThemedText>
+          </TouchableOpacity>
+        )}
+
+        {/* Social Actions - TikTok/Reels style */}
+        {!isLoading && !hasError && (
+          <View style={styles.socialActionsContainer}>
+            {/* Like Button */}
+            <TouchableOpacity
+              style={styles.socialActionButton}
+              onPress={handleLike}
+              activeOpacity={0.7}
+              accessibilityLabel={`${isLiked ? 'Unlike' : 'Like'} video${likeCount > 0 ? `. ${likeCount} like${likeCount !== 1 ? 's' : ''}` : ''}`}
+              accessibilityRole="button"
+              accessibilityHint={`Double tap to ${isLiked ? 'remove like from' : 'like'} this video`}
+              accessibilityState={{ selected: isLiked }}
+            >
+              <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                <Ionicons
+                  name={isLiked ? "heart" : "heart-outline"}
+                  size={28}
+                  color={isLiked ? "#EF4444" : "#FFFFFF"}
+                />
+              </Animated.View>
+              {likeCount > 0 && (
+                <ThemedText style={styles.socialActionText}>
+                  {likeCount >= 1000 ? `${(likeCount / 1000).toFixed(1)}k` : likeCount}
+                </ThemedText>
+              )}
+            </TouchableOpacity>
+
+            {/* Comment Button */}
+            <TouchableOpacity
+              style={styles.socialActionButton}
+              onPress={handleComment}
+              activeOpacity={0.7}
+              accessibilityLabel={`View comments${item.engagement?.comments ? `. ${item.engagement.comments} comment${item.engagement.comments !== 1 ? 's' : ''}` : ''}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view and add comments"
+            >
+              <Ionicons name="chatbubble-outline" size={26} color="#FFFFFF" />
+              {item.engagement?.comments && item.engagement.comments > 0 && (
+                <ThemedText style={styles.socialActionText}>
+                  {item.engagement.comments >= 1000
+                    ? `${(item.engagement.comments / 1000).toFixed(1)}k`
+                    : item.engagement.comments}
+                </ThemedText>
+              )}
+            </TouchableOpacity>
+
+            {/* Share Button */}
+            <TouchableOpacity
+              style={styles.socialActionButton}
+              onPress={handleShare}
+              activeOpacity={0.7}
+              accessibilityLabel={`Share video${item.engagement?.shares ? `. ${item.engagement.shares} share${item.engagement.shares !== 1 ? 's' : ''}` : ''}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to share this video with others"
+            >
+              <Ionicons name="paper-plane-outline" size={26} color="#FFFFFF" />
+              {item.engagement?.shares && item.engagement.shares > 0 && (
+                <ThemedText style={styles.socialActionText}>
+                  {item.engagement.shares >= 1000
+                    ? `${(item.engagement.shares / 1000).toFixed(1)}k`
+                    : item.engagement.shares}
+                </ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+
 
         {/* Content overlay */}
         <View style={styles.contentOverlay}>
@@ -377,7 +634,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6, // More padding
     gap: 6,
-    backdropFilter: 'blur(10px)', // Glass effect (iOS)
+    // // backdropFilter: 'blur(10px)', // Not supported in React Native // Glass effect - not supported in React Native
   },
   viewCountText: {
     color: '#FFFFFF',
@@ -457,5 +714,70 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#10B981',
+  },
+  controlsContainer: {
+    position: 'absolute',
+    bottom: 80,
+    right: 16,
+    flexDirection: 'column',
+    gap: 12,
+    alignItems: 'center',
+  },
+  controlButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+    backdropFilter: 'blur(10px)',
+  },
+  shopNowButton: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: PLAY_PAGE_COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    shadowColor: PLAY_PAGE_COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  shopNowText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  socialActionsContainer: {
+    position: 'absolute',
+    right: 16,
+    bottom: 160, // Above shop button and content
+    flexDirection: 'column',
+    gap: 20,
+    alignItems: 'center',
+  },
+  socialActionButton: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  socialActionText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

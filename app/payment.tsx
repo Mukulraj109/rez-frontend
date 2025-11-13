@@ -268,7 +268,7 @@ export default function PaymentPage() {
   };
 
   const renderPaymentMethods = () => (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.stepContainer,
         {
@@ -276,9 +276,18 @@ export default function PaymentPage() {
           transform: [{ translateY: slideAnim }],
         },
       ]}
+      accessibilityRole="none"
     >
-      <ThemedText style={styles.stepTitle}>Choose Payment Method</ThemedText>
-      <ThemedText style={styles.stepSubtitle}>
+      <ThemedText
+        style={styles.stepTitle}
+        accessibilityRole="header"
+      >
+        Choose Payment Method
+      </ThemedText>
+      <ThemedText
+        style={styles.stepSubtitle}
+        accessibilityRole="text"
+      >
         Select your preferred payment method to continue
       </ThemedText>
 
@@ -295,6 +304,10 @@ export default function PaymentPage() {
             }}
             disabled={!method.isAvailable}
             activeOpacity={0.7}
+            accessibilityLabel={`${method.name}${method.description ? `, ${method.description}` : ''}. ${method.processingFee && method.processingFee > 0 ? `Fee: ${method.processingFee} percent` : 'No fee'}. Processing time: ${method.processingTime}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to select this payment method"
+            accessibilityState={{ disabled: !method.isAvailable }}
           >
             <View style={[styles.methodIconContainer, { backgroundColor: getMethodColor(method.type) }]}>
               <Ionicons name={getMethodIcon(method.type)} size={24} color="#FFFFFF" />
@@ -329,7 +342,7 @@ export default function PaymentPage() {
     if (!selectedMethod) return null;
 
     return (
-      <Animated.View 
+      <Animated.View
         style={[
           styles.stepContainer,
           {
@@ -337,6 +350,7 @@ export default function PaymentPage() {
             transform: [{ translateY: slideAnim }],
           },
         ]}
+        accessibilityRole="none"
       >
         <View style={styles.methodHeader}>
           <View style={[styles.methodIconContainer, { backgroundColor: getMethodColor(selectedMethod.type) }]}>
@@ -352,7 +366,12 @@ export default function PaymentPage() {
 
         {selectedMethod.type === 'upi' && (
           <View style={styles.formContainer}>
-            <ThemedText style={styles.formLabel}>Enter UPI ID</ThemedText>
+            <ThemedText
+              style={styles.formLabel}
+              accessibilityRole="text"
+            >
+              Enter UPI ID
+            </ThemedText>
             <View style={styles.inputContainer}>
               <Ionicons name="person-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
@@ -363,12 +382,19 @@ export default function PaymentPage() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 placeholderTextColor="#9CA3AF"
+                accessibilityLabel="UPI ID input"
+                accessibilityHint="Enter your UPI ID, for example user at paytm"
+                accessibilityRole="none"
               />
             </View>
             <TouchableOpacity
               style={[styles.payButton, !upiId && styles.disabledButton]}
               onPress={handleUPIPayment}
               disabled={!upiId || isProcessing}
+              accessibilityLabel={isProcessing ? 'Processing payment' : `Pay ${currency} ${amount.toLocaleString()} with UPI`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to complete payment with UPI"
+              accessibilityState={{ disabled: !upiId || isProcessing, busy: isProcessing }}
             >
               <LinearGradient
                 colors={['#7C3AED', '#8B5CF6'] as const}
@@ -384,7 +410,12 @@ export default function PaymentPage() {
 
         {selectedMethod.type === 'card' && (
           <View style={styles.formContainer}>
-            <ThemedText style={styles.formLabel}>Card Number</ThemedText>
+            <ThemedText
+              style={styles.formLabel}
+              accessibilityRole="text"
+            >
+              Card Number
+            </ThemedText>
             <View style={styles.inputContainer}>
               <Ionicons name="card-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
@@ -395,12 +426,20 @@ export default function PaymentPage() {
                 keyboardType="numeric"
                 maxLength={19}
                 placeholderTextColor="#9CA3AF"
+                accessibilityLabel="Card number input"
+                accessibilityHint="Enter your 16-digit card number"
+                accessibilityRole="none"
               />
             </View>
 
             <View style={styles.row}>
               <View style={styles.halfContainer}>
-                <ThemedText style={styles.formLabel}>Expiry</ThemedText>
+                <ThemedText
+                  style={styles.formLabel}
+                  accessibilityRole="text"
+                >
+                  Expiry
+                </ThemedText>
                 <View style={styles.inputContainer}>
                   <Ionicons name="calendar-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput
@@ -414,12 +453,20 @@ export default function PaymentPage() {
                     keyboardType="numeric"
                     maxLength={5}
                     placeholderTextColor="#9CA3AF"
+                    accessibilityLabel="Card expiry date input"
+                    accessibilityHint="Enter card expiry as month and year, M M slash Y Y"
+                    accessibilityRole="none"
                   />
                 </View>
               </View>
 
               <View style={styles.halfContainer}>
-                <ThemedText style={styles.formLabel}>CVV</ThemedText>
+                <ThemedText
+                  style={styles.formLabel}
+                  accessibilityRole="text"
+                >
+                  CVV
+                </ThemedText>
                 <View style={styles.inputContainer}>
                   <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
                   <TextInput
@@ -431,12 +478,20 @@ export default function PaymentPage() {
                     maxLength={4}
                     secureTextEntry
                     placeholderTextColor="#9CA3AF"
+                    accessibilityLabel="Card CVV security code input"
+                    accessibilityHint="Enter 3 or 4 digit CVV code on back of card"
+                    accessibilityRole="none"
                   />
                 </View>
               </View>
             </View>
 
-            <ThemedText style={styles.formLabel}>Cardholder Name</ThemedText>
+            <ThemedText
+              style={styles.formLabel}
+              accessibilityRole="text"
+            >
+              Cardholder Name
+            </ThemedText>
             <View style={styles.inputContainer}>
               <Ionicons name="person-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
               <TextInput
@@ -446,6 +501,9 @@ export default function PaymentPage() {
                 onChangeText={setCardName}
                 autoCapitalize="words"
                 placeholderTextColor="#9CA3AF"
+                accessibilityLabel="Cardholder name input"
+                accessibilityHint="Enter name as it appears on card"
+                accessibilityRole="none"
               />
             </View>
 
@@ -453,6 +511,10 @@ export default function PaymentPage() {
               style={[styles.payButton, (!cardNumber || !cardExpiry || !cardCVV || !cardName) && styles.disabledButton]}
               onPress={handleCardPayment}
               disabled={!cardNumber || !cardExpiry || !cardCVV || !cardName || isProcessing}
+              accessibilityLabel={isProcessing ? 'Processing payment' : `Pay ${currency} ${amount.toLocaleString()} with card`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to complete payment with card"
+              accessibilityState={{ disabled: !cardNumber || !cardExpiry || !cardCVV || !cardName || isProcessing, busy: isProcessing }}
             >
               <LinearGradient
                 colors={['#7C3AED', '#8B5CF6'] as const}
@@ -468,7 +530,12 @@ export default function PaymentPage() {
 
         {selectedMethod.type === 'wallet' && (
           <View style={styles.formContainer}>
-            <ThemedText style={styles.formLabel}>Select Wallet</ThemedText>
+            <ThemedText
+              style={styles.formLabel}
+              accessibilityRole="text"
+            >
+              Select Wallet
+            </ThemedText>
             <View style={styles.walletGrid}>
               {['paytm', 'phonepe', 'gpay', 'amazonpay'].map((wallet) => (
                 <TouchableOpacity
@@ -478,6 +545,10 @@ export default function PaymentPage() {
                     walletType === wallet && styles.selectedWalletOption,
                   ]}
                   onPress={() => setWalletType(wallet)}
+                  accessibilityLabel={`${wallet.toUpperCase()}${walletType === wallet ? ', selected' : ''}`}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: walletType === wallet }}
+                  accessibilityHint={`Double tap to select ${wallet.toUpperCase()} wallet`}
                 >
                   <View style={[styles.walletIcon, { backgroundColor: getMethodColor('wallet') }]}>
                     <Ionicons name="wallet-outline" size={20} color="#FFFFFF" />
@@ -491,6 +562,10 @@ export default function PaymentPage() {
               style={styles.payButton}
               onPress={handleWalletPayment}
               disabled={isProcessing}
+              accessibilityLabel={isProcessing ? 'Processing payment' : `Pay with ${walletType.toUpperCase()}`}
+              accessibilityRole="button"
+              accessibilityHint={`Double tap to complete payment with ${walletType.toUpperCase()} wallet`}
+              accessibilityState={{ disabled: isProcessing, busy: isProcessing }}
             >
               <LinearGradient
                 colors={['#7C3AED', '#8B5CF6'] as const}
@@ -508,17 +583,38 @@ export default function PaymentPage() {
   };
 
   const renderProcessing = () => (
-    <View style={styles.processingContainer}>
-      <View style={styles.processingIcon}>
+    <View
+      style={styles.processingContainer}
+      accessibilityRole="none"
+      accessibilityLiveRegion="polite"
+      accessibilityLabel="Processing payment, please wait"
+    >
+      <View
+        style={styles.processingIcon}
+        accessibilityLabel="Payment processing indicator"
+        accessibilityRole="image"
+      >
         <Ionicons name="checkmark-circle" size={80} color="#10B981" />
       </View>
-      
-      <ThemedText style={styles.processingTitle}>Processing Payment</ThemedText>
-      <ThemedText style={styles.processingSubtitle}>
+
+      <ThemedText
+        style={styles.processingTitle}
+        accessibilityRole="header"
+      >
+        Processing Payment
+      </ThemedText>
+      <ThemedText
+        style={styles.processingSubtitle}
+        accessibilityRole="text"
+      >
         Please wait while we process your payment...
       </ThemedText>
 
-      <View style={styles.progressContainer}>
+      <View
+        style={styles.progressContainer}
+        accessibilityLabel="Payment processing in progress"
+        accessibilityRole="progressbar"
+      >
         <View style={styles.progressBar}>
           <Animated.View
             style={[
@@ -543,15 +639,35 @@ export default function PaymentPage() {
         <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
         <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
           <View style={styles.headerContainer}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBackPress}
+              accessibilityLabel="Back to previous screen"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to go back"
+            >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
-            <ThemedText style={styles.headerTitle}>Payment</ThemedText>
+            <ThemedText
+              style={styles.headerTitle}
+              accessibilityRole="header"
+            >
+              Payment
+            </ThemedText>
             <View style={styles.placeholder} />
           </View>
         </LinearGradient>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7C3AED" />
+        <View
+          style={styles.loadingContainer}
+          accessibilityRole="none"
+          accessibilityLiveRegion="polite"
+          accessibilityLabel="Loading payment methods"
+        >
+          <ActivityIndicator
+            size="large"
+            color="#7C3AED"
+            accessibilityLabel="Loading indicator"
+          />
           <ThemedText style={styles.loadingText}>Loading payment methods...</ThemedText>
         </View>
       </ThemedView>
@@ -563,14 +679,29 @@ export default function PaymentPage() {
       <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
       <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel={currentStep === 'details' ? 'Back to payment methods' : 'Back to previous screen'}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to go back"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Payment</ThemedText>
+          <ThemedText
+            style={styles.headerTitle}
+            accessibilityRole="header"
+          >
+            Payment
+          </ThemedText>
           <View style={styles.placeholder} />
         </View>
         
-        <View style={styles.amountSection}>
+        <View
+          style={styles.amountSection}
+          accessibilityLabel={`Amount to pay: ${currency} ${amount.toLocaleString()}`}
+          accessibilityRole="text"
+        >
           <ThemedText style={styles.amountLabel}>Amount to Pay</ThemedText>
           <ThemedText style={styles.amountValue}>
             {currency} {amount.toLocaleString()}
@@ -578,12 +709,13 @@ export default function PaymentPage() {
         </View>
       </LinearGradient>
 
-      <ScrollView 
-        style={styles.content} 
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         bounces={true}
         alwaysBounceVertical={false}
+        accessibilityRole="none"
       >
         {currentStep === 'methods' && renderPaymentMethods()}
         {currentStep === 'details' && renderPaymentDetails()}

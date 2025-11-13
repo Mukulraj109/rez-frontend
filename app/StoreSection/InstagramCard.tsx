@@ -98,6 +98,10 @@ export default function InstagramCard({ productData, disabled = false, onError }
       onPress={handleNavigateToEarnSocial}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       disabled={disabled || isNavigating}
+      accessibilityRole="button"
+      accessibilityLabel={isNavigating ? 'Loading Instagram earn page' : 'Earn from Instagram'}
+      accessibilityHint="Double tap to learn how to earn money from Instagram posts"
+      accessibilityState={{ disabled: disabled || isNavigating, busy: isNavigating }}
     >
       <LinearGradient
         colors={disabled ? ['#D1D5DB', '#9CA3AF'] : ['#EC4899', '#8B5CF6']}

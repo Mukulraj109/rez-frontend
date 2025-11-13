@@ -36,6 +36,10 @@ export function CategoryTabs({
               style={styles.categoryTabWrapper}
               onPress={() => onCategoryChange(category.id)}
               activeOpacity={0.8}
+              accessibilityLabel={`${category.name} tab`}
+              accessibilityRole="tab"
+              accessibilityHint={`Double tap to view ${category.name} products`}
+              accessibilityState={{ selected: isActive }}
             >
               {isActive ? (
                 <LinearGradient

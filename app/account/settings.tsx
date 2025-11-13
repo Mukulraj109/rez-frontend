@@ -69,15 +69,27 @@ export default function SettingsPage() {
         <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
         <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
           <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to previous screen"
+            >
               <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
-            <ThemedText style={styles.headerTitle}>Settings</ThemedText>
+            <ThemedText style={styles.headerTitle} accessibilityRole="header">Settings</ThemedText>
             <View style={styles.placeholder} />
           </View>
         </LinearGradient>
         <View style={styles.loadingContainer}>
-          <ThemedText style={styles.loadingText}>Loading settings...</ThemedText>
+          <ThemedText
+            style={styles.loadingText}
+            accessibilityRole="progressbar"
+            accessibilityLabel="Loading settings"
+          >
+            Loading settings...
+          </ThemedText>
         </View>
       </View>
     );
@@ -90,13 +102,25 @@ export default function SettingsPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
-          <ThemedText style={styles.headerTitle}>Settings</ThemedText>
+          <ThemedText style={styles.headerTitle} accessibilityRole="header">Settings</ThemedText>
 
-          <TouchableOpacity style={styles.resetButton} onPress={handleResetSettings}>
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={handleResetSettings}
+            accessibilityLabel="Reset all settings"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to reset all settings to default values"
+          >
             <Ionicons name="refresh" size={22} color="white" />
           </TouchableOpacity>
         </View>
@@ -113,6 +137,10 @@ export default function SettingsPage() {
             style={styles.sectionHeader}
             onPress={() => toggleSection('general')}
             activeOpacity={0.7}
+            accessibilityLabel={`General settings${expandedSection === 'general' ? ', expanded' : ', collapsed'}`}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: expandedSection === 'general' }}
+            accessibilityHint={`Double tap to ${expandedSection === 'general' ? 'collapse' : 'expand'} general settings section`}
           >
             <View style={styles.sectionTitleRow}>
               <Ionicons name="settings-outline" size={24} color="#8B5CF6" />
@@ -131,6 +159,9 @@ export default function SettingsPage() {
                 style={styles.settingRow}
                 onPress={() => router.push('/account/language')}
                 activeOpacity={0.7}
+                accessibilityLabel={`Language and Region. Current setting: ${settings.general.language.toUpperCase()}, ${settings.general.currency}`}
+                accessibilityRole="button"
+                accessibilityHint="Double tap to change language and region settings"
               >
                 <View style={styles.settingInfo}>
                   <ThemedText style={styles.settingLabel}>Language & Region</ThemedText>
@@ -159,6 +190,10 @@ export default function SettingsPage() {
                       settings.general.timeFormat === '12h' && styles.toggleButtonActive,
                     ]}
                     onPress={() => { updateGeneralSettings({ timeFormat: '12h' }); }}
+                    accessibilityLabel={`12 hour format${settings.general.timeFormat === '12h' ? ', selected' : ''}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: settings.general.timeFormat === '12h' }}
+                    accessibilityHint="Double tap to use 12 hour time format"
                   >
                     <ThemedText
                       style={[
@@ -175,6 +210,10 @@ export default function SettingsPage() {
                       settings.general.timeFormat === '24h' && styles.toggleButtonActive,
                     ]}
                     onPress={() => { updateGeneralSettings({ timeFormat: '24h' }); }}
+                    accessibilityLabel={`24 hour format${settings.general.timeFormat === '24h' ? ', selected' : ''}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: settings.general.timeFormat === '24h' }}
+                    accessibilityHint="Double tap to use 24 hour time format"
                   >
                     <ThemedText
                       style={[
@@ -197,6 +236,10 @@ export default function SettingsPage() {
             style={styles.sectionHeader}
             onPress={() => toggleSection('notifications')}
             activeOpacity={0.7}
+            accessibilityLabel={`Notifications section${expandedSection === 'notifications' ? ', expanded' : ', collapsed'}`}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: expandedSection === 'notifications' }}
+            accessibilityHint={`Double tap to ${expandedSection === 'notifications' ? 'collapse' : 'expand'} notifications section`}
           >
             <View style={styles.sectionTitleRow}>
               <Ionicons name="notifications-outline" size={24} color="#8B5CF6" />
@@ -222,6 +265,10 @@ export default function SettingsPage() {
                   onValueChange={(value) => {
                     updateNotifications({ push: { ...settings.notifications.push, enabled: value } });
                   }}
+                  accessibilityLabel={`Push notifications${settings.notifications.push.enabled ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.notifications.push.enabled }}
+                  accessibilityHint={`Toggle to ${settings.notifications.push.enabled ? 'disable' : 'enable'} push notifications`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -237,6 +284,10 @@ export default function SettingsPage() {
                           push: { ...settings.notifications.push, orderUpdates: value },
                         });
                       }}
+                      accessibilityLabel={`Order updates notifications${settings.notifications.push.orderUpdates ? ', enabled' : ', disabled'}`}
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: settings.notifications.push.orderUpdates }}
+                      accessibilityHint={`Toggle to ${settings.notifications.push.orderUpdates ? 'disable' : 'enable'} order updates notifications`}
                       trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                     />
                   </View>
@@ -250,6 +301,10 @@ export default function SettingsPage() {
                           push: { ...settings.notifications.push, promotions: value },
                         });
                       }}
+                      accessibilityLabel={`Promotions notifications${settings.notifications.push.promotions ? ', enabled' : ', disabled'}`}
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: settings.notifications.push.promotions }}
+                      accessibilityHint={`Toggle to ${settings.notifications.push.promotions ? 'disable' : 'enable'} promotions notifications`}
                       trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                     />
                   </View>
@@ -263,6 +318,10 @@ export default function SettingsPage() {
                           push: { ...settings.notifications.push, recommendations: value },
                         });
                       }}
+                      accessibilityLabel={`Recommendations notifications${settings.notifications.push.recommendations ? ', enabled' : ', disabled'}`}
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: settings.notifications.push.recommendations }}
+                      accessibilityHint={`Toggle to ${settings.notifications.push.recommendations ? 'disable' : 'enable'} recommendations notifications`}
                       trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                     />
                   </View>
@@ -280,6 +339,10 @@ export default function SettingsPage() {
                   onValueChange={(value) => {
                     updateNotifications({ email: { ...settings.notifications.email, enabled: value } });
                   }}
+                  accessibilityLabel={`Email notifications${settings.notifications.email.enabled ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.notifications.email.enabled }}
+                  accessibilityHint={`Toggle to ${settings.notifications.email.enabled ? 'disable' : 'enable'} email notifications`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -295,6 +358,10 @@ export default function SettingsPage() {
                           email: { ...settings.notifications.email, orderReceipts: value },
                         });
                       }}
+                      accessibilityLabel={`Order receipts emails${settings.notifications.email.orderReceipts ? ', enabled' : ', disabled'}`}
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: settings.notifications.email.orderReceipts }}
+                      accessibilityHint={`Toggle to ${settings.notifications.email.orderReceipts ? 'disable' : 'enable'} order receipts emails`}
                       trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                     />
                   </View>
@@ -308,6 +375,10 @@ export default function SettingsPage() {
                           email: { ...settings.notifications.email, weeklyDigest: value },
                         });
                       }}
+                      accessibilityLabel={`Weekly digest emails${settings.notifications.email.weeklyDigest ? ', enabled' : ', disabled'}`}
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: settings.notifications.email.weeklyDigest }}
+                      accessibilityHint={`Toggle to ${settings.notifications.email.weeklyDigest ? 'disable' : 'enable'} weekly digest emails`}
                       trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                     />
                   </View>
@@ -323,6 +394,10 @@ export default function SettingsPage() {
             style={styles.sectionHeader}
             onPress={() => toggleSection('privacy')}
             activeOpacity={0.7}
+            accessibilityLabel={`Privacy settings${expandedSection === 'privacy' ? ', expanded' : ', collapsed'}`}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: expandedSection === 'privacy' }}
+            accessibilityHint={`Double tap to ${expandedSection === 'privacy' ? 'collapse' : 'expand'} privacy settings section`}
           >
             <View style={styles.sectionTitleRow}>
               <Ionicons name="lock-closed-outline" size={24} color="#8B5CF6" />
@@ -347,6 +422,10 @@ export default function SettingsPage() {
                 <Switch
                   value={settings.privacy.showActivity}
                   onValueChange={(value) => { updatePrivacy({ showActivity: value }); }}
+                  accessibilityLabel={`Show activity${settings.privacy.showActivity ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.privacy.showActivity }}
+                  accessibilityHint={`Toggle to ${settings.privacy.showActivity ? 'hide' : 'show'} your activity status`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -356,6 +435,10 @@ export default function SettingsPage() {
                 <Switch
                   value={settings.privacy.allowMessaging}
                   onValueChange={(value) => { updatePrivacy({ allowMessaging: value }); }}
+                  accessibilityLabel={`Allow messaging${settings.privacy.allowMessaging ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.privacy.allowMessaging }}
+                  accessibilityHint={`Toggle to ${settings.privacy.allowMessaging ? 'disable' : 'enable'} messaging from other users`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -373,6 +456,10 @@ export default function SettingsPage() {
                       analytics: { ...settings.privacy.analytics, allowUsageTracking: value },
                     });
                   }}
+                  accessibilityLabel={`Analytics tracking${settings.privacy.analytics.allowUsageTracking ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.privacy.analytics.allowUsageTracking }}
+                  accessibilityHint={`Toggle to ${settings.privacy.analytics.allowUsageTracking ? 'disable' : 'enable'} usage analytics tracking`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -386,6 +473,10 @@ export default function SettingsPage() {
                       analytics: { ...settings.privacy.analytics, allowCrashReporting: value },
                     });
                   }}
+                  accessibilityLabel={`Crash reporting${settings.privacy.analytics.allowCrashReporting ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.privacy.analytics.allowCrashReporting }}
+                  accessibilityHint={`Toggle to ${settings.privacy.analytics.allowCrashReporting ? 'disable' : 'enable'} crash reporting`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -399,6 +490,10 @@ export default function SettingsPage() {
             style={styles.sectionHeader}
             onPress={() => toggleSection('security')}
             activeOpacity={0.7}
+            accessibilityLabel={`Security settings${expandedSection === 'security' ? ', expanded' : ', collapsed'}`}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: expandedSection === 'security' }}
+            accessibilityHint={`Double tap to ${expandedSection === 'security' ? 'collapse' : 'expand'} security settings section`}
           >
             <View style={styles.sectionTitleRow}>
               <Ionicons name="shield-checkmark-outline" size={24} color="#8B5CF6" />
@@ -422,6 +517,10 @@ export default function SettingsPage() {
                       twoFactorAuth: { ...settings.security.twoFactorAuth, enabled: value },
                     });
                   }}
+                  accessibilityLabel={`Two-factor authentication${settings.security.twoFactorAuth.enabled ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.security.twoFactorAuth.enabled }}
+                  accessibilityHint={`Toggle to ${settings.security.twoFactorAuth.enabled ? 'disable' : 'enable'} two-factor authentication`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -431,6 +530,10 @@ export default function SettingsPage() {
                 <Switch
                   value={settings.security.loginAlerts}
                   onValueChange={(value) => { updateSecurity({ loginAlerts: value }); }}
+                  accessibilityLabel={`Login alerts${settings.security.loginAlerts ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.security.loginAlerts }}
+                  accessibilityHint={`Toggle to ${settings.security.loginAlerts ? 'disable' : 'enable'} login alerts`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -447,6 +550,10 @@ export default function SettingsPage() {
                       },
                     });
                   }}
+                  accessibilityLabel={`Allow multiple sessions${settings.security.sessionManagement.allowMultipleSessions ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.security.sessionManagement.allowMultipleSessions }}
+                  accessibilityHint={`Toggle to ${settings.security.sessionManagement.allowMultipleSessions ? 'disable' : 'enable'} multiple login sessions`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -460,6 +567,10 @@ export default function SettingsPage() {
             style={styles.sectionHeader}
             onPress={() => toggleSection('preferences')}
             activeOpacity={0.7}
+            accessibilityLabel={`App preferences${expandedSection === 'preferences' ? ', expanded' : ', collapsed'}`}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: expandedSection === 'preferences' }}
+            accessibilityHint={`Double tap to ${expandedSection === 'preferences' ? 'collapse' : 'expand'} app preferences section`}
           >
             <View style={styles.sectionTitleRow}>
               <Ionicons name="apps-outline" size={24} color="#8B5CF6" />
@@ -479,6 +590,10 @@ export default function SettingsPage() {
                 <Switch
                   value={settings.preferences.animations}
                   onValueChange={(value) => { updateAppPreferences({ animations: value }); }}
+                  accessibilityLabel={`Animations${settings.preferences.animations ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.preferences.animations }}
+                  accessibilityHint={`Toggle to ${settings.preferences.animations ? 'disable' : 'enable'} app animations`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -488,6 +603,10 @@ export default function SettingsPage() {
                 <Switch
                   value={settings.preferences.sounds}
                   onValueChange={(value) => { updateAppPreferences({ sounds: value }); }}
+                  accessibilityLabel={`Sounds${settings.preferences.sounds ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.preferences.sounds }}
+                  accessibilityHint={`Toggle to ${settings.preferences.sounds ? 'disable' : 'enable'} app sounds`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -497,6 +616,10 @@ export default function SettingsPage() {
                 <Switch
                   value={settings.preferences.hapticFeedback}
                   onValueChange={(value) => { updateAppPreferences({ hapticFeedback: value }); }}
+                  accessibilityLabel={`Haptic feedback${settings.preferences.hapticFeedback ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.preferences.hapticFeedback }}
+                  accessibilityHint={`Toggle to ${settings.preferences.hapticFeedback ? 'disable' : 'enable'} haptic feedback`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -506,6 +629,10 @@ export default function SettingsPage() {
                 <Switch
                   value={settings.preferences.dataSaver}
                   onValueChange={(value) => { updateAppPreferences({ dataSaver: value }); }}
+                  accessibilityLabel={`Data saver mode${settings.preferences.dataSaver ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.preferences.dataSaver }}
+                  accessibilityHint={`Toggle to ${settings.preferences.dataSaver ? 'disable' : 'enable'} data saver mode`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -515,6 +642,10 @@ export default function SettingsPage() {
                 <Switch
                   value={settings.preferences.highQualityImages}
                   onValueChange={(value) => { updateAppPreferences({ highQualityImages: value }); }}
+                  accessibilityLabel={`High quality images${settings.preferences.highQualityImages ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: settings.preferences.highQualityImages }}
+                  accessibilityHint={`Toggle to ${settings.preferences.highQualityImages ? 'disable' : 'enable'} high quality images`}
                   trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
                 />
               </View>
@@ -523,7 +654,13 @@ export default function SettingsPage() {
         </View>
 
         {/* Reset Button */}
-        <TouchableOpacity style={styles.resetAllButton} onPress={handleResetSettings}>
+        <TouchableOpacity
+          style={styles.resetAllButton}
+          onPress={handleResetSettings}
+          accessibilityLabel="Reset all settings to defaults"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to restore all settings to their default values"
+        >
           <Ionicons name="refresh-circle-outline" size={24} color="#EF4444" />
           <ThemedText style={styles.resetAllText}>Reset All Settings</ThemedText>
         </TouchableOpacity>

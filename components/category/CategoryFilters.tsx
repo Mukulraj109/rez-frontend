@@ -46,6 +46,10 @@ export default function CategoryFilters({
         <TouchableOpacity
           style={styles.filterHeader}
           onPress={() => toggleFilterExpansion(filter.id)}
+          accessibilityRole="button"
+          accessibilityLabel={`${filter.name} filter`}
+          accessibilityHint={expandedFilters.has(filter.id) ? 'Double tap to collapse' : 'Double tap to expand'}
+          accessibilityState={{ expanded: expandedFilters.has(filter.id) }}
         >
           <ThemedText style={styles.filterTitle}>{filter.name}</ThemedText>
           <Ionicons
@@ -76,6 +80,10 @@ export default function CategoryFilters({
                       const newValue = isSelected ? null : option.value;
                       onFilterChange(filter.id, newValue);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${option.label} option`}
+                    accessibilityHint={isSelected ? 'Double tap to deselect' : 'Double tap to select'}
+                    accessibilityState={{ selected: isSelected }}
                   >
                     {option.icon && (
                       <Ionicons
@@ -111,6 +119,10 @@ export default function CategoryFilters({
         <TouchableOpacity
           style={styles.filterHeader}
           onPress={() => toggleFilterExpansion(filter.id)}
+          accessibilityRole="button"
+          accessibilityLabel={`${filter.name} filter. ${activeValues.length} selected`}
+          accessibilityHint={expandedFilters.has(filter.id) ? 'Double tap to collapse' : 'Double tap to expand'}
+          accessibilityState={{ expanded: expandedFilters.has(filter.id) }}
         >
           <ThemedText style={styles.filterTitle}>{filter.name}</ThemedText>
           {activeValues.length > 0 && (
@@ -146,6 +158,10 @@ export default function CategoryFilters({
                       }
                       onFilterChange(filter.id, newValues);
                     }}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={option.label}
+                    accessibilityHint={isSelected ? 'Double tap to uncheck' : 'Double tap to check'}
+                    accessibilityState={{ checked: isSelected }}
                   >
                     <View style={styles.checkboxContainer}>
                       <View style={[
@@ -181,6 +197,10 @@ export default function CategoryFilters({
         <TouchableOpacity
           style={styles.filterHeader}
           onPress={() => toggleFilterExpansion(filter.id)}
+          accessibilityRole="button"
+          accessibilityLabel={`${filter.name} filter. Range: ₹${activeValue.min} to ₹${activeValue.max}`}
+          accessibilityHint={expandedFilters.has(filter.id) ? 'Double tap to collapse' : 'Double tap to expand'}
+          accessibilityState={{ expanded: expandedFilters.has(filter.id) }}
         >
           <ThemedText style={styles.filterTitle}>{filter.name}</ThemedText>
           <ThemedText style={styles.rangeValue}>
@@ -219,6 +239,9 @@ export default function CategoryFilters({
                     onValueChange={(value) => {
                       onFilterChange(filter.id, { ...activeValue, min: value });
                     }}
+                    accessibilityLabel="Minimum price"
+                    accessibilityValue={{ now: activeValue.min, min: filter.range?.min || 0, max: activeValue.max }}
+                    accessibilityHint="Adjust minimum price range"
                   />
                 </View>
                 
@@ -235,6 +258,9 @@ export default function CategoryFilters({
                     onValueChange={(value) => {
                       onFilterChange(filter.id, { ...activeValue, max: value });
                     }}
+                    accessibilityLabel="Maximum price"
+                    accessibilityValue={{ now: activeValue.max, min: activeValue.min, max: filter.range?.max || 100 }}
+                    accessibilityHint="Adjust maximum price range"
                   />
                 </View>
               </View>
@@ -270,6 +296,10 @@ export default function CategoryFilters({
                   }}
                   trackColor={{ false: '#E5E7EB', true: '#8B5CF6' }}
                   thumbColor={isSelected ? '#FFFFFF' : '#F3F4F6'}
+                  accessibilityLabel={`${option.label} toggle`}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: isSelected }}
+                  accessibilityHint={isSelected ? 'Double tap to turn off' : 'Double tap to turn on'}
                 />
               </View>
             );
@@ -311,7 +341,13 @@ export default function CategoryFilters({
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Filters</ThemedText>
         {hasActiveFilters && (
-          <TouchableOpacity style={styles.resetButton} onPress={onReset}>
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={onReset}
+            accessibilityRole="button"
+            accessibilityLabel="Reset all filters"
+            accessibilityHint="Double tap to clear all active filters"
+          >
             <ThemedText style={styles.resetButtonText}>Reset All</ThemedText>
           </TouchableOpacity>
         )}

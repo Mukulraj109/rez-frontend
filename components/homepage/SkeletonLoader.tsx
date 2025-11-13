@@ -68,6 +68,8 @@ export function SkeletonLoader({
         },
         style,
       ]}
+      accessibilityElementsHidden={true}
+      importantForAccessibility="no"
     />
   );
 }
@@ -75,7 +77,11 @@ export function SkeletonLoader({
 // Skeleton for Event Card
 export function EventCardSkeleton({ width = 280 }: { width?: number }) {
   return (
-    <View style={[styles.cardSkeleton, { width }]}>
+    <View
+      style={[styles.cardSkeleton, { width }]}
+      accessibilityLabel="Loading event"
+      accessibilityRole="none"
+    >
       <SkeletonLoader width={width} height={140} borderRadius={12} />
       <View style={styles.cardContent}>
         <SkeletonLoader width={width * 0.8} height={16} style={styles.skeletonMargin} />
@@ -90,7 +96,11 @@ export function EventCardSkeleton({ width = 280 }: { width?: number }) {
 // Skeleton for Store Card
 export function StoreCardSkeleton({ width = 280 }: { width?: number }) {
   return (
-    <View style={[styles.cardSkeleton, { width }]}>
+    <View
+      style={[styles.cardSkeleton, { width }]}
+      accessibilityLabel="Loading store"
+      accessibilityRole="none"
+    >
       <SkeletonLoader width={width} height={140} borderRadius={12} />
       <View style={styles.cardContent}>
         <View style={styles.storeHeader}>
@@ -110,7 +120,11 @@ export function StoreCardSkeleton({ width = 280 }: { width?: number }) {
 // Skeleton for Product Card
 export function ProductCardSkeleton({ width = 200 }: { width?: number }) {
   return (
-    <View style={[styles.cardSkeleton, { width }]}>
+    <View
+      style={[styles.cardSkeleton, { width }]}
+      accessibilityLabel="Loading product"
+      accessibilityRole="none"
+    >
       <SkeletonLoader width={width} height={120} borderRadius={12} />
       <View style={styles.cardContent}>
         <SkeletonLoader width={width * 0.4} height={12} style={styles.skeletonMargin} />
@@ -128,7 +142,11 @@ export function ProductCardSkeleton({ width = 200 }: { width?: number }) {
 // Skeleton for Branded Store Card
 export function BrandedStoreCardSkeleton({ width = 200 }: { width?: number }) {
   return (
-    <View style={[styles.brandedCardSkeleton, { width }]}>
+    <View
+      style={[styles.brandedCardSkeleton, { width }]}
+      accessibilityLabel="Loading store"
+      accessibilityRole="none"
+    >
       <SkeletonLoader width={width * 0.8} height={12} style={styles.skeletonMargin} />
       <SkeletonLoader width={60} height={60} borderRadius={30} style={styles.skeletonMargin} />
       <SkeletonLoader width={width * 0.7} height={16} style={styles.skeletonMargin} />
@@ -186,7 +204,11 @@ export function HorizontalSectionSkeleton({
 // Complete Homepage Skeleton
 export function HomepageSkeleton() {
   return (
-    <View style={styles.homepageSkeleton}>
+    <View
+      style={styles.homepageSkeleton}
+      accessibilityLabel="Loading homepage"
+      accessibilityRole="none"
+    >
       {/* Header Skeleton */}
       <View style={styles.headerSkeleton}>
         <View style={styles.headerTop}>

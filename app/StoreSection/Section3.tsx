@@ -71,12 +71,20 @@ export default function Section3({ productPrice = 1000, storeId }: Section3Props
     : '10% Off on bill payment';
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessibilityRole="region"
+      accessibilityLabel="Discount offer section"
+    >
       {/* Compact Card */}
       <TouchableOpacity
         style={styles.card}
         activeOpacity={0.85}
         onPress={() => discount && setShowDetails(!showDetails)}
+        accessibilityRole="button"
+        accessibilityLabel={`${displayText}. ${discountText}${showDetails ? '. Expanded' : ''}`}
+        accessibilityHint={discount ? `Double tap to ${showDetails ? 'collapse' : 'expand'} discount details` : 'Discount not available'}
+        accessibilityState={{ disabled: !discount, expanded: showDetails }}
       >
         <View style={styles.textContainer}>
           <ThemedText style={styles.title}>{displayText}</ThemedText>
@@ -88,7 +96,7 @@ export default function Section3({ productPrice = 1000, storeId }: Section3Props
           {error && <ThemedText style={styles.errorText}>{error}</ThemedText>}
         </View>
 
-        <View style={styles.badge}>
+        <View style={styles.badge} accessibilityElementsHidden>
           <ThemedText style={styles.badgeIcon}>⚡</ThemedText>
         </View>
       </TouchableOpacity>
@@ -160,6 +168,10 @@ export default function Section3({ productPrice = 1000, storeId }: Section3Props
             activeOpacity={0.8}
             onPress={handleApplyDiscount}
             disabled={isApplying}
+            accessibilityRole="button"
+            accessibilityLabel={`Apply ${discount.name} discount`}
+            accessibilityHint="Double tap to add this discount to your order"
+            accessibilityState={{ disabled: isApplying, busy: isApplying }}
           >
             <LinearGradient
               colors={['#8B5CF6', '#7C3AED']}

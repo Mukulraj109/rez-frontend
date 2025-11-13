@@ -64,9 +64,12 @@ export default function OffersScreen() {
     const [imageError, setImageError] = React.useState(false);
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.productCard}
         onPress={() => handlers.handleOfferPress(offer)}
+        accessibilityLabel={`${offer.title}. ${offer.cashbackPercentage} percent cashback. ${offer.store?.name || ''}${offer.distance ? `. ${offer.distance} kilometers away` : ''}`}
+        accessibilityRole="button"
+        accessibilityHint="Double tap to view offer details"
       >
         {imageError || !offer.image ? (
           <View style={styles.productImagePlaceholder}>
@@ -114,7 +117,12 @@ export default function OffersScreen() {
     <View style={styles.sectionHeader}>
       <ThemedText style={styles.sectionTitle}>{section.title}</ThemedText>
       {section.viewAllEnabled && (
-        <TouchableOpacity onPress={() => handlers.handleViewAll(section.title)}>
+        <TouchableOpacity
+          onPress={() => handlers.handleViewAll(section.title)}
+          accessibilityLabel={`View all ${section.title} offers`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to view all offers in this category"
+        >
           <ThemedText style={styles.viewAll}>View all</ThemedText>
         </TouchableOpacity>
       )}
@@ -140,7 +148,13 @@ export default function OffersScreen() {
         style={styles.header}
       >
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to previous screen"
+          >
             <Ionicons name="chevron-back" size={24} color="white" />
           </TouchableOpacity>
           
@@ -155,14 +169,26 @@ export default function OffersScreen() {
           </View>
           
           <View style={styles.headerRight}>
-            <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
+            <TouchableOpacity
+              onPress={handleShare}
+              style={styles.headerButton}
+              accessibilityLabel="Share offers page"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to share this page"
+            >
               <Ionicons name="share-outline" size={20} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleFavorite} style={styles.headerButton}>
-              <Ionicons 
-                name={isFavorited ? "heart" : "heart-outline"} 
-                size={20} 
-                color={isFavorited ? "#EF4444" : "white"} 
+            <TouchableOpacity
+              onPress={handleFavorite}
+              style={styles.headerButton}
+              accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
+              accessibilityRole="button"
+              accessibilityHint={isFavorited ? "Double tap to remove from favorites" : "Double tap to add to favorites"}
+            >
+              <Ionicons
+                name={isFavorited ? "heart" : "heart-outline"}
+                size={20}
+                color={isFavorited ? "#EF4444" : "white"}
               />
             </TouchableOpacity>
           </View>

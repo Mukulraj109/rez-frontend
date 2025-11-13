@@ -237,10 +237,13 @@ function StoreCard({ item }: { item: Store }) {
   };
   
   return (
-    <TouchableOpacity 
-      activeOpacity={0.7} 
+    <TouchableOpacity
+      activeOpacity={0.7}
       style={styles.card}
       onPress={handleStorePress}
+      accessibilityLabel={`${item.title} store category`}
+      accessibilityRole="button"
+      accessibilityHint={`Double tap to browse ${item.title} stores. ${item.description || ''}`}
     >
       <View style={styles.cardIllustration}>
         <ModernCardIllustration 
@@ -367,6 +370,10 @@ export default function App() {
             style={styles.locationContainer}
             onPress={handleLocationDropdownToggle}
             activeOpacity={0.7}
+            accessibilityLabel="Current location"
+            accessibilityRole="button"
+            accessibilityHint={showLocationDropdown ? "Double tap to collapse location details" : "Double tap to expand location details"}
+            accessibilityState={{ expanded: showLocationDropdown }}
           >
             <LocationDisplay
               compact={!showLocationDropdown}
@@ -395,6 +402,9 @@ export default function App() {
               }}
               activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
               delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+              accessibilityLabel={`Loyalty points: ${isLoadingPoints ? 'Loading' : userPoints.toLocaleString()}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view your loyalty points and rewards"
             >
               <Ionicons name="star" size={16} color="#FFD700" />
               <ThemedText allowFontScaling={false} style={styles.coinsText}>
@@ -412,6 +422,9 @@ export default function App() {
               }}
               activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
               delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+              accessibilityLabel="Shopping cart"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view your shopping cart"
             >
               <Ionicons name="cart-outline" size={24} color="white" />
             </TouchableOpacity>
@@ -427,6 +440,9 @@ export default function App() {
                         }}
                         activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
                         delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+                        accessibilityLabel="User profile menu"
+                        accessibilityRole="button"
+                        accessibilityHint="Double tap to open profile menu and account settings"
                       >
                         <ThemedText style={styles.profileText}>
                           {user?.initials || 'R'}
@@ -437,9 +453,14 @@ export default function App() {
 
         {/* Search Row */}
         <View style={styles.searchRow}>
-          <TouchableOpacity style={styles.backBtn}
-           onPress={() => router.back()}
-          activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to go back to the previous screen"
+          >
             <Ionicons name="chevron-back" size={18} color="#7C3AED" />
           </TouchableOpacity>
 

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -11,6 +11,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { CartItemProps } from '@/types/cart';
 import { useStockStatus } from '@/hooks/useStockStatus';
+import StockBadge from '@/components/common/StockBadge';
+import QuantitySelector from '@/components/cart/QuantitySelector';
+import { useCart } from '@/contexts/CartContext';
+import { useToast } from '@/hooks/useToast';
 
 export default function CartItem({
   item,
@@ -22,6 +26,11 @@ export default function CartItem({
   const isSmallScreen = width < 360;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Cart context and toast
+  const { actions: cartActions } = useCart();
+  const { showSuccess, showError } = useToast();
 
   // Stock status
   const stock = item.inventory?.stock ?? (item.availabilityStatus === 'out_of_stock' ? 0 : 100);
@@ -69,6 +78,37 @@ export default function CartItem({
     ]).start();
   };
 
+  // Handle quantity change from QuantitySelector
+  const handleQuantityChange = async (newQty: number) => {
+    if (isUpdating) return;
+
+    try {
+      setIsUpdating(true);
+
+      if (newQty === 0) {
+        // Remove item when quantity reaches 0
+        await cartActions.removeItem(item.id);
+        showSuccess('Item removed from cart');
+        // Call onRemove if provided for parent component updates
+        if (onRemove) {
+          onRemove(item.id);
+        }
+      } else {
+        // Update quantity
+        await cartActions.updateQuantity(item.id, newQty);
+        showSuccess('Quantity updated');
+        // Call onUpdateQuantity if provided for parent component updates
+        if (onUpdateQuantity) {
+          onUpdateQuantity(item.id, newQty);
+        }
+      }
+    } catch (error) {
+      showError('Failed to update quantity');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <Animated.View
       style={[
@@ -98,9 +138,15 @@ export default function CartItem({
                 onError={(e) => {
 
                 }}
+                accessibilityLabel={`Product image of ${item.name}`}
+                accessibilityRole="image"
               />
             ) : (
-              <View style={[styles.productImage, styles.placeholderImage]}>
+              <View
+                style={[styles.productImage, styles.placeholderImage]}
+                accessibilityLabel="No product image available"
+                accessible={true}
+              >
                 <Ionicons name="image-outline" size={32} color="#9CA3AF" />
               </View>
             )}
@@ -156,25 +202,27 @@ export default function CartItem({
             >
               ₹{item.price?.toLocaleString('en-IN') || 0}
             </ThemedText>
-            {/* Stock Warning */}
-            {(isLowStock || isOutOfStock) && (
-              <View style={[
-                styles.stockWarning,
-                isOutOfStock ? styles.stockWarningError : styles.stockWarningLow
-              ]}>
-                <Ionicons
-                  name={isOutOfStock ? 'close-circle' : 'alert-circle'}
-                  size={12}
-                  color={isOutOfStock ? '#DC2626' : '#D97706'}
-                />
-                <ThemedText style={[
-                  styles.stockWarningText,
-                  isOutOfStock ? styles.stockWarningTextError : styles.stockWarningTextLow
-                ]}>
-                  {stockMessage}
-                </ThemedText>
-              </View>
-            )}
+
+            {/* Stock Badge Display */}
+            <View style={styles.badgeContainer}>
+              <StockBadge
+                stock={stock}
+                lowStockThreshold={lowStockThreshold}
+                variant="default"
+                showIcon={true}
+              />
+
+              {/* Quantity Warning - Show if cart quantity exceeds available stock */}
+              {(item.quantity || 1) > stock && stock > 0 && (
+                <View style={styles.quantityWarning}>
+                  <Ionicons name="alert-circle" size={12} color="#D97706" />
+                  <ThemedText style={styles.quantityWarningText}>
+                    Only {stock} available
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+
             {item.cashback && (
               <View style={styles.cashbackBadge}>
                 <ThemedText style={styles.cashbackText}>
@@ -185,51 +233,16 @@ export default function CartItem({
           </View>
         </TouchableOpacity>
 
-        {/* Quantity Controls */}
+        {/* Quantity Controls - Using QuantitySelector */}
         {onUpdateQuantity && (
-          <View style={styles.quantityControls}>
-            <TouchableOpacity
-              style={styles.quantityButton}
-              onPress={() => {
-                if (item.quantity && item.quantity > 1) {
-                  onUpdateQuantity(item.id, item.quantity - 1);
-                } else {
-                  handleDelete();
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={item.quantity && item.quantity > 1 ? "remove" : "trash-outline"}
-                size={18}
-                color="#FFFFFF"
-              />
-            </TouchableOpacity>
-
-            <View style={styles.quantityDisplay}>
-              <ThemedText style={styles.quantityText}>{item.quantity || 1}</ThemedText>
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.quantityButton,
-                isAtMaxStock && styles.quantityButtonDisabled
-              ]}
-              onPress={() => {
-                if (!isAtMaxStock) {
-                  onUpdateQuantity(item.id, (item.quantity || 1) + 1);
-                }
-              }}
-              activeOpacity={isAtMaxStock ? 1 : 0.7}
-              disabled={isAtMaxStock}
-            >
-              <Ionicons
-                name="add"
-                size={18}
-                color={isAtMaxStock ? 'rgba(255, 255, 255, 0.5)' : '#FFFFFF'}
-              />
-            </TouchableOpacity>
-          </View>
+          <QuantitySelector
+            quantity={item.quantity || 1}
+            min={0}
+            max={stock > 0 ? stock : 99}
+            onQuantityChange={handleQuantityChange}
+            disabled={isUpdating || isOutOfStock}
+            size="small"
+          />
         )}
 
         {/* Delete Button - Show only if no quantity controls */}
@@ -319,6 +332,26 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 6,
   },
+  badgeContainer: {
+    flexDirection: 'column',
+    gap: 4,
+    marginVertical: 6,
+  },
+  quantityWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: '#FEF3C7',
+    alignSelf: 'flex-start',
+  },
+  quantityWarningText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#D97706',
+  },
   cashbackBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#F3E8FF',
@@ -331,32 +364,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 12,
   },
-  stockWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginTop: 4,
-    alignSelf: 'flex-start',
-  },
-  stockWarningLow: {
-    backgroundColor: '#FEF3C7',
-  },
-  stockWarningError: {
-    backgroundColor: '#FEE2E2',
-  },
-  stockWarningText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  stockWarningTextLow: {
-    color: '#D97706',
-  },
-  stockWarningTextError: {
-    color: '#DC2626',
-  },
   deleteButton: {
     width: 40,
     height: 40,
@@ -366,36 +373,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(139,92,246,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(139,92,246,0.2)',
-  },
-  quantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#8B5CF6',
-    borderRadius: 20,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    gap: 8,
-  },
-  quantityButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quantityDisplay: {
-    minWidth: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  quantityText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  quantityButtonDisabled: {
-    opacity: 0.5,
   },
 });

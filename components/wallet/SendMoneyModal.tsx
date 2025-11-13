@@ -172,6 +172,8 @@ export default function SendMoneyModal({
       animationType="slide"
       transparent={true}
       onRequestClose={handleClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Send money from wallet"
     >
       <KeyboardAvoidingView
         style={styles.modalOverlay}
@@ -185,14 +187,30 @@ export default function SendMoneyModal({
           >
             <View style={styles.modalHeaderContent}>
               {step === 'confirm' && (
-                <TouchableOpacity onPress={handleBack} disabled={loading}>
+                <TouchableOpacity
+                  onPress={handleBack}
+                  disabled={loading}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel="Go back"
+                  accessibilityHint="Double tap to go back to previous step"
+                  accessibilityState={{ disabled: loading }}
+                >
                   <Ionicons name="arrow-back" size={24} color="white" />
                 </TouchableOpacity>
               )}
               <ThemedText style={styles.modalTitle}>
                 {step === 'input' ? 'Send Money' : 'Confirm Transfer'}
               </ThemedText>
-              <TouchableOpacity onPress={handleClose} disabled={loading}>
+              <TouchableOpacity
+                onPress={handleClose}
+                disabled={loading}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Close send money dialog"
+                accessibilityHint="Double tap to close this dialog"
+                accessibilityState={{ disabled: loading }}
+              >
                 <Ionicons name="close" size={24} color="white" />
               </TouchableOpacity>
             </View>
@@ -218,6 +236,11 @@ export default function SendMoneyModal({
                         recipientType === 'phone' && styles.typeButtonSelected,
                       ]}
                       onPress={() => setRecipientType('phone')}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel="Send to phone number"
+                      accessibilityHint="Double tap to select phone as recipient type"
+                      accessibilityState={{ selected: recipientType === 'phone' }}
                     >
                       <Ionicons
                         name="phone-portrait"
@@ -240,6 +263,11 @@ export default function SendMoneyModal({
                         recipientType === 'upi' && styles.typeButtonSelected,
                       ]}
                       onPress={() => setRecipientType('upi')}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel="Send to UPI ID"
+                      accessibilityHint="Double tap to select UPI as recipient type"
+                      accessibilityState={{ selected: recipientType === 'upi' }}
                     >
                       <Ionicons
                         name="swap-horizontal"
@@ -262,6 +290,11 @@ export default function SendMoneyModal({
                         recipientType === 'email' && styles.typeButtonSelected,
                       ]}
                       onPress={() => setRecipientType('email')}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel="Send to email address"
+                      accessibilityHint="Double tap to select email as recipient type"
+                      accessibilityState={{ selected: recipientType === 'email' }}
                     >
                       <Ionicons
                         name="mail"
@@ -291,6 +324,9 @@ export default function SendMoneyModal({
                     placeholderTextColor={ACCOUNT_COLORS.textSecondary}
                     keyboardType={recipientType === 'phone' ? 'phone-pad' : 'default'}
                     autoCapitalize="none"
+                    accessible={true}
+                    accessibilityLabel="Recipient information"
+                    accessibilityHint={`Enter recipient ${recipientType}`}
                   />
                 </View>
 
@@ -307,6 +343,9 @@ export default function SendMoneyModal({
                       placeholderTextColor={ACCOUNT_COLORS.textSecondary}
                       keyboardType="numeric"
                       maxLength={6}
+                      accessible={true}
+                      accessibilityLabel="Amount to send"
+                      accessibilityHint="Enter the amount you want to send"
                     />
                   </View>
                   <ThemedText style={styles.helperText}>
@@ -327,6 +366,9 @@ export default function SendMoneyModal({
                     placeholderTextColor={ACCOUNT_COLORS.textSecondary}
                     maxLength={100}
                     multiline
+                    accessible={true}
+                    accessibilityLabel="Add note"
+                    accessibilityHint="Optionally add a message with your transfer"
                   />
                 </View>
               </>
@@ -396,6 +438,11 @@ export default function SendMoneyModal({
                 ]}
                 onPress={handleProceed}
                 disabled={!recipient || !amount || loading}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Continue to confirm transfer"
+                accessibilityHint="Double tap to proceed to confirmation screen"
+                accessibilityState={{ disabled: !recipient || !amount || loading }}
               >
                 <ThemedText style={styles.proceedButtonText}>Continue</ThemedText>
               </TouchableOpacity>
@@ -404,6 +451,14 @@ export default function SendMoneyModal({
                 style={[styles.proceedButton, loading && styles.proceedButtonDisabled]}
                 onPress={handleConfirmSend}
                 disabled={loading}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={loading ? "Processing transfer" : `Confirm and send ${amount} rupees to ${recipient}`}
+                accessibilityHint="Double tap to confirm and send money"
+                accessibilityState={{
+                  disabled: loading,
+                  busy: loading
+                }}
               >
                 {loading ? (
                   <ActivityIndicator color="white" />

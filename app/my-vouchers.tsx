@@ -28,6 +28,7 @@ import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { HeaderBackButton } from '@/components/navigation';
 import QRCodeModal from '@/components/vouchers/QRCodeModal';
 import OnlineRedemptionModal from '@/components/voucher/OnlineRedemptionModal';
+import logger from '@/utils/logger';
 
 type VoucherStatus = 'all' | 'active' | 'used' | 'expired';
 
@@ -107,8 +108,8 @@ const MyVouchersPage = () => {
         realOffersApi.getUserRedemptions(params).catch(() => ({ data: [] }))
       ]);
 
-      console.log('[MY VOUCHERS] Vouchers response:', vouchersResponse);
-      console.log('[MY VOUCHERS] Redemptions response:', redemptionsResponse);
+      logger.debug('[MY VOUCHERS] Vouchers response:', vouchersResponse);
+      logger.debug('[MY VOUCHERS] Redemptions response:', redemptionsResponse);
 
       const allVouchers: UserVoucher[] = [];
 
@@ -132,7 +133,7 @@ const MyVouchersPage = () => {
 
       // 2. Map offer redemptions (cashback vouchers)
       const redemptionsArray = redemptionsResponse.data || [];
-      console.log('[MY VOUCHERS] Redemptions array:', redemptionsArray);
+      logger.debug('[MY VOUCHERS] Redemptions array:', redemptionsArray);
       
       if (redemptionsArray.length > 0) {
         const mappedRedemptions: UserVoucher[] = redemptionsArray.map((redemption: any) => {
@@ -178,14 +179,14 @@ const MyVouchersPage = () => {
             restrictions: redemption.restrictions || redemption.offer?.restrictions
           };
         });
-        console.log('[MY VOUCHERS] Mapped redemptions:', mappedRedemptions);
+        logger.debug('[MY VOUCHERS] Mapped redemptions:', mappedRedemptions);
         allVouchers.push(...mappedRedemptions);
       }
 
-      console.log('[MY VOUCHERS] Total vouchers:', allVouchers.length);
+      logger.debug('[MY VOUCHERS] Total vouchers:', allVouchers.length);
       setVouchers(allVouchers);
     } catch (error) {
-      console.error('Error fetching vouchers:', error);
+      logger.error('Error fetching vouchers:', error);
       setVouchers([]);
     } finally {
       setLoading(false);
@@ -260,7 +261,7 @@ const MyVouchersPage = () => {
         title: `${voucher.brandName} Voucher`
       });
     } catch (error) {
-      console.error('Error sharing voucher:', error);
+      logger.error('Error sharing voucher:', error);
     }
   };
 
@@ -285,7 +286,7 @@ const MyVouchersPage = () => {
       // Refresh vouchers list
       await fetchVouchers();
     } catch (error) {
-      console.error('Error marking voucher as used:', error);
+      logger.error('Error marking voucher as used:', error);
       throw error; // Re-throw to let modal handle error display
     }
   };
@@ -300,7 +301,7 @@ const MyVouchersPage = () => {
       setSelectedVoucher(null);
       fetchVouchers(); // Refresh vouchers list
     } catch (error) {
-      console.error('Error marking voucher as used:', error);
+      logger.error('Error marking voucher as used:', error);
       Alert.alert('Error', 'Failed to redeem voucher. Please try again.');
     }
   };

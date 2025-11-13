@@ -42,6 +42,7 @@ export default function ProductDisplay({
   const imageHeight = Math.round(imageCardWidth * (isTablet ? 0.95 : 1.25));
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const flatRef = useRef<FlatList<any> | null>(null);
 
   // viewability config + callback to track current index reliably
@@ -56,23 +57,44 @@ export default function ProductDisplay({
     }
   }).current;
 
+  const handleImageError = useCallback((imageId: string) => {
+    console.warn(`[ProductDisplay] Image load error for ID: ${imageId}`);
+    setImageErrors(prev => new Set(prev).add(imageId));
+  }, []);
+
   const renderImage = useCallback(
-    ({ item }: ListRenderItemInfo<ProductImage>) => (
-      <View style={[styles.imageWrapper, { width }]}>
-        <View style={[styles.imageCard, { width: imageCardWidth, height: imageHeight }]}>
-          <Image
-            source={{ uri: item.uri }}
-            style={[styles.image, { width: imageCardWidth, height: imageHeight }]}
-            resizeMode="cover"
-          />
+    ({ item }: ListRenderItemInfo<ProductImage>) => {
+      const hasError = imageErrors.has(item.id);
+      const fallbackUri = DEFAULT_IMAGES[0]?.uri || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=900";
+
+      return (
+        <View style={[styles.imageWrapper, { width }]}>
+          <View style={[styles.imageCard, { width: imageCardWidth, height: imageHeight }]}>
+            <Image
+              source={{ uri: hasError ? fallbackUri : item.uri }}
+              style={[styles.image, { width: imageCardWidth, height: imageHeight }]}
+              resizeMode="cover"
+              onError={() => handleImageError(item.id)}
+              defaultSource={require('@/assets/images/icon.png')}
+            />
+            {hasError && (
+              <View style={styles.errorOverlay}>
+                <Ionicons name="image-outline" size={48} color="#9CA3AF" />
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    ),
-    [imageCardWidth, imageHeight, width]
+      );
+    },
+    [imageCardWidth, imageHeight, width, imageErrors, handleImageError]
   );
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessibilityRole="region"
+      accessibilityLabel="Product image gallery"
+    >
       <FlatList
         ref={flatRef}
         data={images}
@@ -87,6 +109,8 @@ export default function ProductDisplay({
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
+        accessibilityLabel={`Product image carousel. Showing image ${currentIndex + 1} of ${images.length}`}
+        accessibilityRole="list"
       />
 
       {/* Floating action buttons (right column) */}
@@ -154,6 +178,16 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+  },
+  errorOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   actionCol: {

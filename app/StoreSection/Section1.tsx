@@ -38,19 +38,39 @@ export default function Section1({ dynamicData, cardType }: Section1Props) {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor }]}>
-      <ThemedText style={styles.title}>
+    <View
+      style={[styles.container, { backgroundColor }]}
+      accessibilityRole="region"
+      accessibilityLabel={`${dynamicData ? dynamicData.title || 'Product' : 'Product'} gallery section`}
+    >
+      <ThemedText
+        style={styles.title}
+        accessibilityRole="header"
+      >
         {dynamicData ? `${dynamicData.title || 'Product'} Gallery` : 'Product Gallery'}
       </ThemedText>
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
+        accessibilityLabel={`Horizontal scrolling gallery with ${storeImages.length} images`}
+        accessibilityRole="list"
       >
         {storeImages.map((item, index) => (
-          <TouchableOpacity key={index} style={styles.imageContainer} activeOpacity={0.8}>
-            <Image source={{ uri: item.uri }} style={styles.image} />
+          <TouchableOpacity
+            key={index}
+            style={styles.imageContainer}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.title}. Image ${index + 1} of ${storeImages.length}`}
+            accessibilityHint="Double tap to view full screen"
+          >
+            <Image
+              source={{ uri: item.uri }}
+              style={styles.image}
+              accessibilityIgnoresInvertColors
+            />
             <View style={styles.imageOverlay}>
               <ThemedText style={styles.imageTitle}>{item.title}</ThemedText>
             </View>

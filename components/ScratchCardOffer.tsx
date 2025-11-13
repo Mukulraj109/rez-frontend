@@ -11,26 +11,51 @@ const ScratchCardOffer: React.FC<ScratchCardOfferProps> = ({
   isActive = true 
 }) => {
   return (
-    <TouchableOpacity 
-      style={[styles.container, !isActive && styles.inactiveContainer]} 
-      onPress={isActive ? onPress : undefined} 
+    <TouchableOpacity
+      style={[styles.container, !isActive && styles.inactiveContainer]}
+      onPress={isActive ? onPress : undefined}
       activeOpacity={isActive ? 0.85 : 1}
       disabled={!isActive}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={`Scratch card offer${title ? `: ${title}` : ''}${description ? `. ${description}` : ''}`}
+      accessibilityHint={isActive ? "Double tap to view this scratch card offer" : "This offer has expired"}
+      accessibilityState={{ disabled: !isActive }}
     >
-      <Image 
-        source={imageSource} 
-        style={[styles.image, !isActive && styles.inactiveImage]} 
-        resizeMode="cover" 
+      <Image
+        source={imageSource}
+        style={[styles.image, !isActive && styles.inactiveImage]}
+        resizeMode="cover"
+        accessible={false}
       />
       {(title || description) && (
         <View style={styles.textContainer}>
-          {title && <Text style={styles.title}>{title}</Text>}
-          {description && <Text style={styles.description}>{description}</Text>}
+          {title && (
+            <Text
+              style={styles.title}
+              accessible={false}
+            >
+              {title}
+            </Text>
+          )}
+          {description && (
+            <Text
+              style={styles.description}
+              accessible={false}
+            >
+              {description}
+            </Text>
+          )}
         </View>
       )}
       {!isActive && (
         <View style={styles.overlay}>
-          <Text style={styles.inactiveText}>Expired</Text>
+          <Text
+            style={styles.inactiveText}
+            accessible={false}
+          >
+            Expired
+          </Text>
         </View>
       )}
     </TouchableOpacity>

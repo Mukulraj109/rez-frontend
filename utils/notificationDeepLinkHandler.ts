@@ -129,7 +129,7 @@ export function handleNotificationDeepLink(data: NotificationData): void {
         if (data.orderId) {
           router.push(`/tracking/${data.orderId}` as any);
         } else if (data.storeId) {
-          router.push(`/store/${data.storeId}/reviews` as any);
+          router.push(`/reviews/${data.storeId}`);
         }
         break;
 

@@ -76,30 +76,46 @@ const OrderFilterModal: React.FC<OrderFilterModalProps> = ({
     onSelect: (value: any) => void
   ) => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.optionsContainer}>
-        {options.map((option) => (
-          <TouchableOpacity
-            key={option.value}
-            style={[
-              styles.option,
-              currentValue === option.value && styles.optionSelected,
-            ]}
-            onPress={() => onSelect(option.value)}
-          >
-            <Text
+      <Text
+        style={styles.sectionTitle}
+        accessibilityRole="header"
+      >
+        {title}
+      </Text>
+      <View
+        style={styles.optionsContainer}
+        accessibilityRole="radiogroup"
+        accessibilityLabel={title}
+      >
+        {options.map((option) => {
+          const isSelected = currentValue === option.value;
+          return (
+            <TouchableOpacity
+              key={option.value}
               style={[
-                styles.optionText,
-                currentValue === option.value && styles.optionTextSelected,
+                styles.option,
+                isSelected && styles.optionSelected,
               ]}
+              onPress={() => onSelect(option.value)}
+              accessibilityLabel={`${option.label}${isSelected ? ', selected' : ''}`}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isSelected, checked: isSelected }}
+              accessibilityHint={`Double tap to select ${option.label}`}
             >
-              {option.label}
-            </Text>
-            {currentValue === option.value && (
-              <Ionicons name="checkmark" size={16} color="#7C3AED" />
-            )}
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.optionText,
+                  isSelected && styles.optionTextSelected,
+                ]}
+              >
+                {option.label}
+              </Text>
+              {isSelected && (
+                <Ionicons name="checkmark" size={16} color="#7C3AED" />
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -110,16 +126,29 @@ const OrderFilterModal: React.FC<OrderFilterModalProps> = ({
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={onClose}
+      accessibilityViewIsModal={true}
     >
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.closeButton}
+            accessibilityLabel="Close filter modal"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to close filter options"
+          >
             <Ionicons name="close" size={24} color="#374151" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Filter Orders</Text>
-          <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
+          <TouchableOpacity
+            onPress={handleReset}
+            style={styles.resetButton}
+            accessibilityLabel="Reset all filters"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to reset filters to default"
+          >
             <Text style={styles.resetButtonText}>Reset</Text>
           </TouchableOpacity>
         </View>
@@ -150,10 +179,22 @@ const OrderFilterModal: React.FC<OrderFilterModalProps> = ({
 
         {/* Footer */}
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={onClose}
+            accessibilityLabel="Cancel filter changes"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to cancel and close without applying filters"
+          >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
+          <TouchableOpacity
+            style={styles.applyButton}
+            onPress={handleApply}
+            accessibilityLabel="Apply filters"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to apply selected filters to order list"
+          >
             <Text style={styles.applyButtonText}>Apply Filters</Text>
           </TouchableOpacity>
         </View>

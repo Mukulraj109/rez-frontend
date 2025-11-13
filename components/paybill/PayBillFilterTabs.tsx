@@ -51,6 +51,10 @@ export function PayBillFilterTabs({
               ]}
               onPress={() => onFilterChange(tab.key)}
               activeOpacity={0.7}
+              accessibilityLabel={`${tab.label} tab`}
+              accessibilityRole="tab"
+              accessibilityHint={`Double tap to filter ${tab.label} transactions`}
+              accessibilityState={{ selected: isActive }}
             >
               <View style={styles.tabContent}>
                 <View style={styles.tabIconContainer}>

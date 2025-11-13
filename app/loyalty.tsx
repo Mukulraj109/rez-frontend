@@ -135,6 +135,10 @@ const LoyaltyPage = () => {
             style={[styles.actionCard, !canCheckIn && styles.actionCardDisabled]}
             onPress={handleDailyCheckIn}
             disabled={!canCheckIn}
+            accessibilityLabel={`Daily check-in${checkInStatus ? `. ${checkInStatus.streak.currentStreak} day streak` : ''}${!canCheckIn ? '. Already checked in today' : ''}`}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canCheckIn }}
+            accessibilityHint="Double tap to check in and earn points"
           >
             <Ionicons name="calendar" size={28} color={canCheckIn ? '#8B5CF6' : '#9CA3AF'} />
             <ThemedText style={styles.actionTitle}>Daily Check-in</ThemedText>
@@ -218,6 +222,9 @@ const LoyaltyPage = () => {
                   <TouchableOpacity
                     style={styles.claimButton}
                     onPress={() => handleClaimChallenge(challenge._id)}
+                    accessibilityLabel={`Claim ${challenge.points} points for completing ${challenge.title}`}
+                    accessibilityRole="button"
+                    accessibilityHint="Double tap to claim challenge reward"
                   >
                     <ThemedText style={styles.claimButtonText}>Claim</ThemedText>
                   </TouchableOpacity>
@@ -356,7 +363,13 @@ const LoyaltyPage = () => {
       {/* Header with Points Card */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Loyalty Rewards</ThemedText>
@@ -369,7 +382,11 @@ const LoyaltyPage = () => {
         </View>
 
         {/* Main Points Display */}
-        <View style={styles.pointsCard}>
+        <View
+          style={styles.pointsCard}
+          accessibilityLabel={`Available loyalty points: ${balance.currentPoints}${balance.nextTier ? `. ${balance.pointsToNextTier} points needed to reach ${balance.nextTier} tier` : ''}`}
+          accessibilityRole="summary"
+        >
           <View style={styles.pointsMain}>
             <Ionicons name="diamond" size={40} color="#F59E0B" />
             <ThemedText style={styles.pointsValue}>{balance.currentPoints}</ThemedText>

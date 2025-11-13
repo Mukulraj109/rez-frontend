@@ -100,16 +100,33 @@ export default function ManualCorrectionForm({
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity
+            onPress={onClose}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Close form"
+            accessibilityHint="Double tap to close the bill correction form"
+          >
             <Ionicons name="close" size={24} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Correct Bill Details</Text>
-          <View style={{ width: 24 }} />
+          <Text
+            style={styles.headerTitle}
+            accessible={true}
+            accessibilityRole="header"
+          >
+            Correct Bill Details
+          </Text>
+          <View style={{ width: 24 }} accessible={false} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Info Banner */}
-          <View style={styles.infoBanner}>
+          <View
+            style={styles.infoBanner}
+            accessible={true}
+            accessibilityRole="text"
+            accessibilityLabel="Information: Our OCR detected some information. Please review and correct any errors."
+          >
             <Ionicons name="information-circle" size={20} color="#2196F3" />
             <Text style={styles.infoText}>
               Our OCR detected some information. Please review and correct any errors.
@@ -118,16 +135,26 @@ export default function ManualCorrectionForm({
 
           {/* Merchant Name */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>
+            <Text
+              style={styles.label}
+              accessible={true}
+              accessibilityRole="text"
+            >
               Merchant Name <Text style={styles.required}>*</Text>
             </Text>
             {merchantMatches.length > 0 ? (
               <TouchableOpacity
                 style={styles.merchantSelector}
                 onPress={() => setShowMerchantPicker(true)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`Merchant name: ${corrections.merchantName || 'Not selected'}`}
+                accessibilityHint="Double tap to select merchant from list"
+                accessibilityState={{ selected: !!corrections.merchantName }}
               >
                 <Text
                   style={corrections.merchantName ? styles.selectedText : styles.placeholderText}
+                  accessible={false}
                 >
                   {corrections.merchantName || 'Select merchant'}
                 </Text>
@@ -142,17 +169,40 @@ export default function ManualCorrectionForm({
                   setErrors({ ...errors, merchantName: '' });
                 }}
                 placeholder="Enter merchant name"
+                accessible={true}
+                accessibilityLabel="Merchant name, required field"
+                accessibilityHint="Enter the name of the merchant"
+                accessibilityState={{ disabled: false }}
               />
             )}
-            {errors.merchantName && <Text style={styles.errorText}>{errors.merchantName}</Text>}
+            {errors.merchantName && (
+              <Text
+                style={styles.errorText}
+                accessible={true}
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+              >
+                {errors.merchantName}
+              </Text>
+            )}
             {ocrData.merchantName && (
-              <Text style={styles.hintText}>Detected: {ocrData.merchantName}</Text>
+              <Text
+                style={styles.hintText}
+                accessible={true}
+                accessibilityRole="text"
+              >
+                Detected: {ocrData.merchantName}
+              </Text>
             )}
           </View>
 
           {/* Amount */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>
+            <Text
+              style={styles.label}
+              accessible={true}
+              accessibilityRole="text"
+            >
               Bill Amount (₹) <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
@@ -164,14 +214,39 @@ export default function ManualCorrectionForm({
               }}
               placeholder="Enter amount"
               keyboardType="decimal-pad"
+              accessible={true}
+              accessibilityLabel="Bill amount in rupees, required field"
+              accessibilityHint="Enter the total bill amount"
+              accessibilityValue={{ text: corrections.amount ? `${corrections.amount} rupees` : 'Not entered' }}
             />
-            {errors.amount && <Text style={styles.errorText}>{errors.amount}</Text>}
-            {ocrData.amount && <Text style={styles.hintText}>Detected: ₹{ocrData.amount}</Text>}
+            {errors.amount && (
+              <Text
+                style={styles.errorText}
+                accessible={true}
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+              >
+                {errors.amount}
+              </Text>
+            )}
+            {ocrData.amount && (
+              <Text
+                style={styles.hintText}
+                accessible={true}
+                accessibilityRole="text"
+              >
+                Detected: ₹{ocrData.amount}
+              </Text>
+            )}
           </View>
 
           {/* Bill Date */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>
+            <Text
+              style={styles.label}
+              accessible={true}
+              accessibilityRole="text"
+            >
               Bill Date <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
@@ -182,28 +257,70 @@ export default function ManualCorrectionForm({
                 setErrors({ ...errors, billDate: '' });
               }}
               placeholder="YYYY-MM-DD"
+              accessible={true}
+              accessibilityLabel="Bill date, required field"
+              accessibilityHint="Enter date in YYYY-MM-DD format"
+              accessibilityValue={{ text: corrections.billDate || 'Not entered' }}
             />
-            {errors.billDate && <Text style={styles.errorText}>{errors.billDate}</Text>}
-            {ocrData.date && <Text style={styles.hintText}>Detected: {ocrData.date}</Text>}
+            {errors.billDate && (
+              <Text
+                style={styles.errorText}
+                accessible={true}
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+              >
+                {errors.billDate}
+              </Text>
+            )}
+            {ocrData.date && (
+              <Text
+                style={styles.hintText}
+                accessible={true}
+                accessibilityRole="text"
+              >
+                Detected: {ocrData.date}
+              </Text>
+            )}
           </View>
 
           {/* Bill Number (Optional) */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Bill Number (Optional)</Text>
+            <Text
+              style={styles.label}
+              accessible={true}
+              accessibilityRole="text"
+            >
+              Bill Number (Optional)
+            </Text>
             <TextInput
               style={styles.input}
               value={corrections.billNumber}
               onChangeText={(text) => setCorrections({ ...corrections, billNumber: text })}
               placeholder="Enter bill number"
+              accessible={true}
+              accessibilityLabel="Bill number, optional field"
+              accessibilityHint="Enter the bill or invoice number if available"
             />
             {ocrData.billNumber && (
-              <Text style={styles.hintText}>Detected: {ocrData.billNumber}</Text>
+              <Text
+                style={styles.hintText}
+                accessible={true}
+                accessibilityRole="text"
+              >
+                Detected: {ocrData.billNumber}
+              </Text>
             )}
           </View>
 
           {/* Notes */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Additional Notes (Optional)</Text>
+            <Text
+              style={styles.label}
+              accessible={true}
+              accessibilityRole="text"
+            >
+              Additional Notes (Optional)
+            </Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={corrections.notes}
@@ -211,12 +328,20 @@ export default function ManualCorrectionForm({
               placeholder="Add any additional notes or corrections..."
               multiline
               numberOfLines={3}
+              accessible={true}
+              accessibilityLabel="Additional notes, optional field"
+              accessibilityHint="Enter any additional notes or corrections about the bill"
             />
           </View>
 
           {/* OCR Confidence Warning */}
           {ocrData.confidence < 70 && (
-            <View style={styles.warningBanner}>
+            <View
+              style={styles.warningBanner}
+              accessible={true}
+              accessibilityRole="alert"
+              accessibilityLabel={`Warning: OCR confidence is low at ${ocrData.confidence} percent. Please verify all details carefully.`}
+            >
               <Ionicons name="warning" size={20} color="#FF9800" />
               <Text style={styles.warningText}>
                 OCR confidence is low ({ocrData.confidence}%). Please verify all details carefully.
@@ -227,10 +352,24 @@ export default function ManualCorrectionForm({
 
         {/* Action Buttons */}
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={onClose}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
+            accessibilityHint="Double tap to cancel and close the form"
+          >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <TouchableOpacity
+            style={styles.submitButton}
+            onPress={handleSubmit}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Apply corrections"
+            accessibilityHint="Double tap to submit the corrected bill details"
+          >
             <Text style={styles.submitButtonText}>Apply Corrections</Text>
           </TouchableOpacity>
         </View>

@@ -82,6 +82,9 @@ export function HomeDeliveryHeader({
             style={styles.backButton}
             onPress={onBack}
             activeOpacity={0.8}
+            accessibilityLabel="Back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to go back to previous page"
           >
             <Ionicons name="arrow-back" size={22} color="white" />
           </TouchableOpacity>
@@ -92,6 +95,10 @@ export function HomeDeliveryHeader({
             style={styles.searchIconButton}
             onPress={handleSearchIconPress}
             activeOpacity={0.8}
+            accessibilityLabel={isSearchVisible ? "Hide search bar" : "Show search bar"}
+            accessibilityRole="button"
+            accessibilityHint={`Double tap to ${isSearchVisible ? 'hide' : 'show'} the search bar`}
+            accessibilityState={{ expanded: isSearchVisible }}
           >
             <Ionicons name="search" size={22} color="white" />
           </TouchableOpacity>
@@ -124,6 +131,9 @@ export function HomeDeliveryHeader({
               returnKeyType="search"
               autoCapitalize="none"
               autoCorrect={false}
+              accessibilityLabel="Search input"
+              accessibilityHint="Enter product name, brand, or store to search"
+              accessibilityRole="search"
             />
             
             {searchQuery.length > 0 && (
@@ -131,6 +141,9 @@ export function HomeDeliveryHeader({
                 style={styles.clearButton}
                 onPress={handleClearSearch}
                 activeOpacity={0.7}
+                accessibilityLabel="Clear search"
+                accessibilityRole="button"
+                accessibilityHint="Double tap to clear search text"
               >
                 <Ionicons name="close-circle" size={18} color="#A78BFA" />
               </TouchableOpacity>

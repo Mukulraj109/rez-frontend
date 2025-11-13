@@ -180,6 +180,8 @@ export default function LeaderboardPage() {
           hasRankedUp && styles.rankedUpCard,
           { transform: [{ scale: isCurrentUser ? pulseAnim : 1 }] },
         ]}
+        accessibilityLabel={`Rank ${entry.rank}. ${entry.fullName}${isCurrentUser ? ' - You' : ''}. ${entry.coins.toLocaleString()} coins. ${entry.achievements} achievements${isTopThree ? `. Top ${entry.rank} position` : ''}${hasRankedUp ? '. Ranked up recently' : ''}`}
+        accessibilityRole="text"
       >
         {/* Rank */}
         <View style={styles.rankContainer}>
@@ -241,6 +243,10 @@ export default function LeaderboardPage() {
     <TouchableOpacity
       style={[styles.periodButton, selectedPeriod === period && styles.periodButtonActive]}
       onPress={() => setSelectedPeriod(period)}
+      accessibilityLabel={`${label} leaderboard`}
+      accessibilityRole="button"
+      accessibilityState={{ selected: selectedPeriod === period }}
+      accessibilityHint={`Double tap to view ${label.toLowerCase()} rankings`}
     >
       <ThemedText
         style={[
@@ -260,7 +266,13 @@ export default function LeaderboardPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>

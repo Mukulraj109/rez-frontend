@@ -37,7 +37,11 @@ export default function DealCardSkeleton() {
   const styles = createStyles(screenWidth);
 
   return (
-    <View style={styles.card}>
+    <View
+      style={styles.card}
+      accessibilityLabel="Loading deal"
+      accessibilityRole="none"
+    >
       {/* Badge skeleton */}
       <Animated.View 
         style={[

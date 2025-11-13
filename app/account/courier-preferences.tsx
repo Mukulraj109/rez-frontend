@@ -211,7 +211,13 @@ export default function CourierPreferencesScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to return to previous screen"
+        >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Courier Preferences</Text>
@@ -229,6 +235,10 @@ export default function CourierPreferencesScreen() {
               onPress={() =>
                 savePreferences({ preferredCourier: courier.value as any })
               }
+              accessibilityLabel={`${courier.label}${preferences.preferredCourier === courier.value ? ', selected' : ''}`}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: preferences.preferredCourier === courier.value }}
+              accessibilityHint="Double tap to select this courier"
             >
               <View
                 style={[
@@ -249,27 +259,32 @@ export default function CourierPreferencesScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Delivery Days</Text>
           <View style={styles.weekdaysContainer}>
-            {WEEKDAYS.map((day) => (
-              <TouchableOpacity
-                key={day}
-                style={[
-                  styles.weekdayButton,
-                  preferences.deliveryTimePreference.weekdays.includes(day as any) &&
-                    styles.weekdayButtonSelected,
-                ]}
-                onPress={() => toggleWeekday(day)}
-              >
-                <Text
+            {WEEKDAYS.map((day) => {
+              const isEnabled = preferences.deliveryTimePreference.weekdays.includes(day as any);
+              return (
+                <TouchableOpacity
+                  key={day}
                   style={[
-                    styles.weekdayText,
-                    preferences.deliveryTimePreference.weekdays.includes(day as any) &&
-                      styles.weekdayTextSelected,
+                    styles.weekdayButton,
+                    isEnabled && styles.weekdayButtonSelected,
                   ]}
+                  onPress={() => toggleWeekday(day)}
+                  accessibilityLabel={`${day}${isEnabled ? ', enabled' : ', disabled'}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isEnabled }}
+                  accessibilityHint={`Double tap to ${isEnabled ? 'disable' : 'enable'} delivery on ${day}`}
                 >
-                  {day}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.weekdayText,
+                      isEnabled && styles.weekdayTextSelected,
+                    ]}
+                  >
+                    {day}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <View style={styles.settingItem}>
@@ -280,6 +295,10 @@ export default function CourierPreferencesScreen() {
               disabled={saving}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
               thumbColor={preferences.deliveryTimePreference.avoidWeekends ? '#FFFFFF' : '#F3F4F6'}
+              accessibilityLabel={`Avoid weekends${preferences.deliveryTimePreference.avoidWeekends ? ', enabled' : ', disabled'}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: preferences.deliveryTimePreference.avoidWeekends, disabled: saving }}
+              accessibilityHint={`Double tap to ${preferences.deliveryTimePreference.avoidWeekends ? 'disable' : 'enable'} avoid weekends`}
             />
           </View>
         </View>
@@ -302,6 +321,10 @@ export default function CourierPreferencesScreen() {
               }
               disabled={saving}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+              accessibilityLabel={`Contactless delivery${preferences.deliveryInstructions.contactlessDelivery ? ', enabled' : ', disabled'}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: preferences.deliveryInstructions.contactlessDelivery, disabled: saving }}
+              accessibilityHint={`Double tap to ${preferences.deliveryInstructions.contactlessDelivery ? 'disable' : 'enable'} contactless delivery`}
             />
           </View>
 
@@ -319,6 +342,10 @@ export default function CourierPreferencesScreen() {
               }
               disabled={saving}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+              accessibilityLabel={`Leave at door${preferences.deliveryInstructions.leaveAtDoor ? ', enabled' : ', disabled'}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: preferences.deliveryInstructions.leaveAtDoor, disabled: saving }}
+              accessibilityHint={`Double tap to ${preferences.deliveryInstructions.leaveAtDoor ? 'disable' : 'enable'} leave at door`}
             />
           </View>
 
@@ -336,6 +363,10 @@ export default function CourierPreferencesScreen() {
               }
               disabled={saving}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+              accessibilityLabel={`Signature required${preferences.deliveryInstructions.signatureRequired ? ', enabled' : ', disabled'}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: preferences.deliveryInstructions.signatureRequired, disabled: saving }}
+              accessibilityHint={`Double tap to ${preferences.deliveryInstructions.signatureRequired ? 'disable' : 'enable'} signature required`}
             />
           </View>
 
@@ -353,6 +384,10 @@ export default function CourierPreferencesScreen() {
               }
               disabled={saving}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+              accessibilityLabel={`Call before delivery${preferences.deliveryInstructions.callBeforeDelivery ? ', enabled' : ', disabled'}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: preferences.deliveryInstructions.callBeforeDelivery, disabled: saving }}
+              accessibilityHint={`Double tap to ${preferences.deliveryInstructions.callBeforeDelivery ? 'disable' : 'enable'} call before delivery`}
             />
           </View>
 
@@ -372,6 +407,8 @@ export default function CourierPreferencesScreen() {
             }
             placeholder="Add any special delivery instructions..."
             placeholderTextColor="#9CA3AF"
+            accessibilityLabel="Special delivery instructions"
+            accessibilityHint="Enter any special instructions for delivery"
           />
         </View>
 
@@ -393,6 +430,10 @@ export default function CourierPreferencesScreen() {
               }
               disabled={saving}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+              accessibilityLabel={`SMS updates${preferences.courierNotifications.smsUpdates ? ', enabled' : ', disabled'}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: preferences.courierNotifications.smsUpdates, disabled: saving }}
+              accessibilityHint={`Double tap to ${preferences.courierNotifications.smsUpdates ? 'disable' : 'enable'} SMS updates`}
             />
           </View>
 
@@ -410,6 +451,10 @@ export default function CourierPreferencesScreen() {
               }
               disabled={saving}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+              accessibilityLabel={`Email updates${preferences.courierNotifications.emailUpdates ? ', enabled' : ', disabled'}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: preferences.courierNotifications.emailUpdates, disabled: saving }}
+              accessibilityHint={`Double tap to ${preferences.courierNotifications.emailUpdates ? 'disable' : 'enable'} email updates`}
             />
           </View>
 
@@ -427,6 +472,10 @@ export default function CourierPreferencesScreen() {
               }
               disabled={saving}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+              accessibilityLabel={`WhatsApp updates${preferences.courierNotifications.whatsappUpdates ? ', enabled' : ', disabled'}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: preferences.courierNotifications.whatsappUpdates, disabled: saving }}
+              accessibilityHint={`Double tap to ${preferences.courierNotifications.whatsappUpdates ? 'disable' : 'enable'} WhatsApp updates`}
             />
           </View>
 
@@ -444,6 +493,10 @@ export default function CourierPreferencesScreen() {
               }
               disabled={saving}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+              accessibilityLabel={`Call updates${preferences.courierNotifications.callUpdates ? ', enabled' : ', disabled'}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: preferences.courierNotifications.callUpdates, disabled: saving }}
+              accessibilityHint={`Double tap to ${preferences.courierNotifications.callUpdates ? 'disable' : 'enable'} call updates`}
             />
           </View>
         </View>

@@ -46,54 +46,88 @@ export default function CategorySelectionScreen() {
     <OnboardingContainer useGradient={false} style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Search & Find Best{'\n'}Deals</Text>
+          <Text
+            style={styles.title}
+            accessibilityLabel="Search and Find Best Deals"
+            accessibilityRole="header"
+          >
+            Search & Find Best{'\n'}Deals
+          </Text>
           <View style={styles.underline} />
-          
-          <Text style={styles.subtitle}>20 best offers{'\n'}waiting near you</Text>
-          
-          <View style={styles.cashbackBadge}>
+
+          <Text
+            style={styles.subtitle}
+            accessibilityLabel="20 best offers waiting near you"
+          >
+            20 best offers{'\n'}waiting near you
+          </Text>
+
+          <View
+            style={styles.cashbackBadge}
+            accessible={true}
+            accessibilityLabel="Cashback rewards available"
+            accessibilityRole="image"
+          >
             <Text style={styles.cashText}>CASH</Text>
             <Text style={styles.backText}>BACK</Text>
           </View>
         </View>
 
         <View style={styles.categoriesSection}>
-          <Text style={styles.categoriesTitle}>Categories</Text>
-          
+          <Text
+            style={styles.categoriesTitle}
+            accessibilityRole="header"
+          >
+            Categories
+          </Text>
+
           <View style={styles.categoriesList}>
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryItem,
-                  selectedCategories.includes(category.id) && styles.categoryItemSelected,
-                  !category.isEnabled && styles.categoryItemDisabled,
-                ]}
-                onPress={() => handleCategorySelect(category.id, category.isEnabled)}
-                disabled={!category.isEnabled}
-              >
-                <View style={styles.categoryIcon}>
-                  <Ionicons 
-                    name={category.icon as any} 
-                    size={24} 
-                    color={!category.isEnabled ? '#9CA3AF' : selectedCategories.includes(category.id) ? '#8B5CF6' : '#374151'} 
-                  />
-                </View>
-                <Text style={[
-                  styles.categoryName,
-                  selectedCategories.includes(category.id) && styles.categoryNameSelected,
-                  !category.isEnabled && styles.categoryNameDisabled,
-                ]}>
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {categories.map((category) => {
+              const isSelected = selectedCategories.includes(category.id);
+              return (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryItem,
+                    isSelected && styles.categoryItemSelected,
+                    !category.isEnabled && styles.categoryItemDisabled,
+                  ]}
+                  onPress={() => handleCategorySelect(category.id, category.isEnabled)}
+                  disabled={!category.isEnabled}
+                  accessibilityLabel={`${category.name} category${!category.isEnabled ? ', coming soon' : ''}`}
+                  accessibilityRole="button"
+                  accessibilityHint={category.isEnabled ? `Double tap to ${isSelected ? 'deselect' : 'select'} this category` : 'This category is not available yet'}
+                  accessibilityState={{
+                    selected: isSelected,
+                    disabled: !category.isEnabled
+                  }}
+                >
+                  <View style={styles.categoryIcon}>
+                    <Ionicons
+                      name={category.icon as any}
+                      size={24}
+                      color={!category.isEnabled ? '#9CA3AF' : isSelected ? '#8B5CF6' : '#374151'}
+                    />
+                  </View>
+                  <Text style={[
+                    styles.categoryName,
+                    isSelected && styles.categoryNameSelected,
+                    !category.isEnabled && styles.categoryNameDisabled,
+                  ]}>
+                    {category.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
         <TouchableOpacity
           style={styles.nextButton}
           onPress={handleNext}
+          accessibilityLabel="Continue to rewards introduction"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to proceed to the next step"
         >
           <Text style={styles.nextButtonText}>Next</Text>
         </TouchableOpacity>

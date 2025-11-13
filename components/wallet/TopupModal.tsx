@@ -136,6 +136,8 @@ export default function TopupModal({
       animationType="slide"
       transparent={true}
       onRequestClose={handleClose}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Add money to wallet"
     >
       <KeyboardAvoidingView
         style={styles.modalOverlay}
@@ -149,7 +151,15 @@ export default function TopupModal({
           >
             <View style={styles.modalHeaderContent}>
               <ThemedText style={styles.modalTitle}>Add Money</ThemedText>
-              <TouchableOpacity onPress={handleClose} disabled={loading}>
+              <TouchableOpacity
+                onPress={handleClose}
+                disabled={loading}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Close add money dialog"
+                accessibilityHint="Double tap to close this dialog"
+                accessibilityState={{ disabled: loading }}
+              >
                 <Ionicons name="close" size={24} color="white" />
               </TouchableOpacity>
             </View>
@@ -175,6 +185,14 @@ export default function TopupModal({
                     ]}
                     onPress={() => handleAmountSelect(amount)}
                     disabled={loading}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${amount} rupees`}
+                    accessibilityHint="Double tap to select this amount"
+                    accessibilityState={{
+                      disabled: loading,
+                      selected: selectedAmount === amount
+                    }}
                   >
                     <ThemedText
                       style={[
@@ -203,6 +221,9 @@ export default function TopupModal({
                   keyboardType="numeric"
                   maxLength={6}
                   editable={!loading}
+                  accessible={true}
+                  accessibilityLabel="Enter custom amount"
+                  accessibilityHint="Enter the amount you want to add to your wallet"
                 />
               </View>
               <ThemedText style={styles.helperText}>
@@ -250,6 +271,14 @@ export default function TopupModal({
               ]}
               onPress={handleProceedToPayment}
               disabled={getFinalAmount() <= 0 || loading}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={loading ? "Processing payment" : `Proceed to payment for ${getFinalAmount()} rupees`}
+              accessibilityHint="Double tap to proceed with payment"
+              accessibilityState={{
+                disabled: getFinalAmount() <= 0 || loading,
+                busy: loading
+              }}
             >
               {loading ? (
                 <ActivityIndicator color="white" />

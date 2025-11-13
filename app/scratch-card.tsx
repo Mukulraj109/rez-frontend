@@ -245,10 +245,17 @@ export default function ScratchCardPage() {
         <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
         <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
           <View style={styles.headerContainer}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBackPress}
+              accessible={true}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to previous screen"
+            >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
-            <ThemedText style={styles.headerTitle}>Scratch Card</ThemedText>
+            <ThemedText style={styles.headerTitle} accessible={true} accessibilityRole="header">Scratch Card</ThemedText>
             <View style={styles.headerRight} />
           </View>
         </LinearGradient>
@@ -262,15 +269,26 @@ export default function ScratchCardPage() {
           <ThemedText style={styles.progressText}>
             Current Progress: {completionStatus?.completionPercentage || 0}%
           </ThemedText>
-          <TouchableOpacity style={styles.completeButton} onPress={handleCompleteProfile}>
+          <TouchableOpacity
+            style={styles.completeButton}
+            onPress={handleCompleteProfile}
+            accessible={true}
+            accessibilityLabel="Complete your profile"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to profile editing page to complete your profile"
+          >
             <ThemedText style={styles.completeButtonText}>Complete Profile</ThemedText>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.completeButton, { backgroundColor: '#6B7280', marginTop: 10 }]} 
+
+          <TouchableOpacity
+            style={[styles.completeButton, { backgroundColor: '#6B7280', marginTop: 10 }]}
             onPress={() => {
               refreshProfile();
             }}
+            accessible={true}
+            accessibilityLabel="Refresh profile data"
+            accessibilityRole="button"
+            accessibilityHint="Reload your profile completion status"
           >
             <ThemedText style={styles.completeButtonText}>Refresh Data</ThemedText>
           </TouchableOpacity>
@@ -342,7 +360,14 @@ export default function ScratchCardPage() {
                 </View>
                 <ThemedText style={styles.prizeTitle}>{prize.title}</ThemedText>
                 <ThemedText style={styles.prizeDescription}>{prize.description}</ThemedText>
-                <TouchableOpacity style={styles.claimButton} onPress={handleClaimPrize}>
+                <TouchableOpacity
+                  style={styles.claimButton}
+                  onPress={handleClaimPrize}
+                  accessible={true}
+                  accessibilityLabel={`Claim your prize: ${prize.title}`}
+                  accessibilityRole="button"
+                  accessibilityHint={`Claim ${prize.description}`}
+                >
                   <ThemedText style={styles.claimButtonText}>Claim Prize</ThemedText>
                 </TouchableOpacity>
               </Animated.View>
@@ -362,7 +387,14 @@ export default function ScratchCardPage() {
 
         {/* Scratch Button (for testing) */}
         {!isScratched && (
-          <TouchableOpacity style={styles.scratchButton} onPress={handleScratch}>
+          <TouchableOpacity
+            style={styles.scratchButton}
+            onPress={handleScratch}
+            accessible={true}
+            accessibilityLabel="Scratch the card"
+            accessibilityRole="button"
+            accessibilityHint="Reveal your prize by scratching the card"
+          >
             <ThemedText style={styles.scratchButtonText}>Scratch Card</ThemedText>
           </TouchableOpacity>
         )}

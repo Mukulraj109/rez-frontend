@@ -137,6 +137,9 @@ export default function DeliverySettingsScreen() {
         <TouchableOpacity
           style={styles.moreButton}
           onPress={() => handleEditAddress(address)}
+          accessibilityLabel={`Edit ${address.title} address`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to edit this address"
         >
           <Ionicons name="ellipsis-vertical" size={16} color={ACCOUNT_COLORS.textSecondary} />
         </TouchableOpacity>
@@ -170,6 +173,9 @@ export default function DeliverySettingsScreen() {
           <TouchableOpacity
             style={styles.addressActionButton}
             onPress={() => handleSetDefault(address.id)}
+            accessibilityLabel={`Set ${address.title} as default address`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to make this your default delivery address"
           >
             <ThemedText style={styles.addressActionButtonText}>Set as Default</ThemedText>
           </TouchableOpacity>
@@ -178,6 +184,9 @@ export default function DeliverySettingsScreen() {
         <TouchableOpacity
           style={[styles.addressActionButton, styles.dangerButton]}
           onPress={() => handleDeleteAddress(address.id)}
+          accessibilityLabel={`Delete ${address.title} address`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to remove this address"
         >
           <ThemedText style={[styles.addressActionButtonText, styles.dangerButtonText]}>Delete</ThemedText>
         </TouchableOpacity>
@@ -215,7 +224,13 @@ export default function DeliverySettingsScreen() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back to account"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to account settings"
+          >
             <View style={styles.backButtonInner}>
               <Ionicons name="arrow-back" size={22} color="white" />
             </View>
@@ -228,7 +243,12 @@ export default function DeliverySettingsScreen() {
             </ThemedText>
           </View>
           
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            accessibilityLabel="Add new address"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to add a new delivery address"
+          >
             <Ionicons name="add-outline" size={22} color="white" />
           </TouchableOpacity>
         </View>
@@ -244,7 +264,13 @@ export default function DeliverySettingsScreen() {
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={20} color={ACCOUNT_COLORS.error} />
             <ThemedText style={styles.errorText}>{error}</ThemedText>
-            <TouchableOpacity onPress={clearError} style={styles.dismissButton}>
+            <TouchableOpacity
+              onPress={clearError}
+              style={styles.dismissButton}
+              accessibilityLabel="Dismiss error"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to close error message"
+            >
               <Ionicons name="close" size={18} color={ACCOUNT_COLORS.error} />
             </TouchableOpacity>
           </View>
@@ -262,7 +288,13 @@ export default function DeliverySettingsScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <ThemedText style={styles.sectionTitle}>Saved Addresses</ThemedText>
-                <TouchableOpacity style={styles.addButton} onPress={handleAddAddress}>
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={handleAddAddress}
+                  accessibilityLabel="Add new address"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to add your first delivery address"
+                >
                   <Ionicons name="add" size={20} color={ACCOUNT_COLORS.primary} />
                   <ThemedText style={styles.addButtonText}>Add New</ThemedText>
                 </TouchableOpacity>
@@ -275,7 +307,13 @@ export default function DeliverySettingsScreen() {
                   <ThemedText style={styles.emptyDescription}>
                     Add your first delivery address to get started
                   </ThemedText>
-                  <TouchableOpacity style={styles.emptyButton} onPress={handleAddAddress}>
+                  <TouchableOpacity
+                    style={styles.emptyButton}
+                    onPress={handleAddAddress}
+                    accessibilityLabel="Add your first delivery address"
+                    accessibilityRole="button"
+                    accessibilityHint="Double tap to create a new delivery address"
+                  >
                     <ThemedText style={styles.emptyButtonText}>Add Address</ThemedText>
                   </TouchableOpacity>
                 </View>
@@ -310,6 +348,10 @@ export default function DeliverySettingsScreen() {
                     onValueChange={toggleContactlessDelivery}
                     trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                     thumbColor={contactlessDelivery ? ACCOUNT_COLORS.primary : '#f4f3f4'}
+                    accessibilityLabel="Contactless delivery"
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: contactlessDelivery }}
+                    accessibilityHint="Toggle to leave packages at door without contact"
                   />
                 </View>
 
@@ -328,6 +370,10 @@ export default function DeliverySettingsScreen() {
                     onValueChange={toggleDeliveryNotifications}
                     trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                     thumbColor={deliveryNotifications ? ACCOUNT_COLORS.primary : '#f4f3f4'}
+                    accessibilityLabel="Delivery notifications"
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: deliveryNotifications }}
+                    accessibilityHint="Toggle to receive delivery updates"
                   />
                 </View>
               </View>
@@ -347,6 +393,9 @@ export default function DeliverySettingsScreen() {
                   <TouchableOpacity
                     style={styles.editInstructionsButton}
                     onPress={() => setShowInstructionsModal(true)}
+                    accessibilityLabel="Edit delivery instructions"
+                    accessibilityRole="button"
+                    accessibilityHint={`Current instructions: ${deliveryInstructions}. Double tap to edit`}
                   >
                     <ThemedText style={styles.editInstructionsText}>Edit Instructions</ThemedText>
                   </TouchableOpacity>

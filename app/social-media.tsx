@@ -272,11 +272,22 @@ export default function SocialMediaPage() {
 
         {/* Header */}
         <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Returns to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Social Media Earnings</Text>
-          <TouchableOpacity style={styles.infoButton}>
+          <TouchableOpacity
+            style={styles.infoButton}
+            accessibilityLabel="Information"
+            accessibilityRole="button"
+            accessibilityHint="View information about social media earnings"
+          >
             <Ionicons name="information-circle-outline" size={24} color="white" />
           </TouchableOpacity>
         </LinearGradient>
@@ -286,6 +297,10 @@ export default function SocialMediaPage() {
           <TouchableOpacity
             style={[styles.tab, activeTab === 'earn' && styles.activeTab]}
             onPress={() => setActiveTab('earn')}
+            accessibilityLabel="Earn Cashback tab"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'earn' }}
+            accessibilityHint="View how to earn cashback by sharing on social media"
           >
             <Text style={[styles.tabText, activeTab === 'earn' && styles.activeTabText]}>
               Earn Cashback
@@ -294,6 +309,10 @@ export default function SocialMediaPage() {
           <TouchableOpacity
             style={[styles.tab, activeTab === 'history' && styles.activeTab]}
             onPress={() => setActiveTab('history')}
+            accessibilityLabel="History tab"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'history' }}
+            accessibilityHint="View your submission history and earnings"
           >
             <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
               History
@@ -467,6 +486,10 @@ export default function SocialMediaPage() {
                         selectedPlatform === platform.id && styles.platformButtonActive
                       ]}
                       onPress={() => setSelectedPlatform(platform.id)}
+                      accessibilityLabel={`Select ${platform.name}`}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: selectedPlatform === platform.id }}
+                      accessibilityHint={`Choose ${platform.name} as your social media platform`}
                     >
                       <Ionicons
                         name={platform.icon as any}
@@ -501,7 +524,12 @@ export default function SocialMediaPage() {
                     autoCorrect={false}
                   />
                   {postUrl.length > 0 && (
-                    <TouchableOpacity onPress={() => setPostUrl('')}>
+                    <TouchableOpacity
+                      onPress={() => setPostUrl('')}
+                      accessibilityLabel="Clear URL"
+                      accessibilityRole="button"
+                      accessibilityHint="Clears the entered post URL"
+                    >
                       <Ionicons name="close-circle" size={20} color="#9CA3AF" />
                     </TouchableOpacity>
                   )}
@@ -511,6 +539,10 @@ export default function SocialMediaPage() {
                   style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
                   onPress={handleSubmitPost}
                   disabled={submitting}
+                  accessibilityLabel={submitting ? "Submitting post" : "Submit post for verification"}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: submitting, busy: submitting }}
+                  accessibilityHint="Submits your social media post URL for cashback approval"
                 >
                   {submitting ? (
                     <ActivityIndicator color="white" />
@@ -560,6 +592,9 @@ export default function SocialMediaPage() {
                     <TouchableOpacity
                       style={styles.emptyButton}
                       onPress={() => setActiveTab('earn')}
+                      accessibilityLabel="Submit your first post"
+                      accessibilityRole="button"
+                      accessibilityHint="Opens the earn tab to submit your first social media post"
                     >
                       <Text style={styles.emptyButtonText}>Submit Your First Post</Text>
                     </TouchableOpacity>
@@ -614,6 +649,9 @@ export default function SocialMediaPage() {
                           <TouchableOpacity
                             onPress={() => Linking.openURL(post.url)}
                             style={styles.postLink}
+                            accessibilityLabel={`View ${post.platform} post`}
+                            accessibilityRole="link"
+                            accessibilityHint="Opens your social media post in browser"
                           >
                             <Text style={styles.postLinkText}>View Post</Text>
                             <Ionicons name="open-outline" size={14} color="#8B5CF6" />

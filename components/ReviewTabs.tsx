@@ -52,6 +52,10 @@ const ReviewTabs: React.FC<ReviewTabsProps> = ({
           style={[styles.tab, { width: tabWidth }]}
           onPress={() => handleTabPress('reviews')}
           activeOpacity={0.8}
+          accessibilityLabel={`Reviews tab. ${reviewCount} reviews`}
+          accessibilityRole="tab"
+          accessibilityHint="Double tap to view reviews"
+          accessibilityState={{ selected: activeTab === 'reviews' }}
         >
           <ThemedText
             style={[
@@ -70,6 +74,10 @@ const ReviewTabs: React.FC<ReviewTabsProps> = ({
           style={[styles.tab, { width: tabWidth }]}
           onPress={() => handleTabPress('ugc')}
           activeOpacity={0.8}
+          accessibilityLabel={`UGC content tab${ugcCount > 0 ? `. ${ugcCount} items` : ''}`}
+          accessibilityRole="tab"
+          accessibilityHint="Double tap to view user-generated content"
+          accessibilityState={{ selected: activeTab === 'ugc' }}
         >
           <ThemedText
             style={[

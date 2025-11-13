@@ -118,10 +118,13 @@ export default function CategoryHeader({
         <View style={styles.rightActions}>
           {/* Coin Balance */}
           {category.headerConfig.showCoinBalance && (
-            <TouchableOpacity 
-              style={styles.coinContainer} 
+            <TouchableOpacity
+              style={styles.coinContainer}
               onPress={handleCoinPress}
               activeOpacity={0.8}
+              accessibilityLabel={`Coin balance: ${userPoints} coins`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view coin details"
             >
               <Ionicons name="star" size={16} color="#FFD700" />
               <ThemedText style={[styles.coinText, { color: category.headerConfig.textColor }]}>
@@ -144,7 +147,7 @@ export default function CategoryHeader({
           )}
 
           {/* Profile Avatar */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.profileAvatar}
             onPress={() => {
               if (Platform.OS === 'ios') {
@@ -155,6 +158,9 @@ export default function CategoryHeader({
             }}
             activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
             delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+            accessibilityLabel="Open profile menu"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to open profile and settings menu"
           >
             <ThemedText style={styles.profileText}>{user?.initials || 'R'}</ThemedText>
           </TouchableOpacity>

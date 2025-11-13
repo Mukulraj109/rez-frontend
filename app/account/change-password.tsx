@@ -114,7 +114,19 @@ export default function ChangePasswordPage() {
     field: keyof typeof formData,
     placeholder: string,
     showField: keyof typeof showPasswords
-  ) => (
+  ) => {
+    const fieldLabels = {
+      currentPassword: 'Current password',
+      newPassword: 'New password',
+      confirmPassword: 'Confirm new password'
+    };
+    const fieldHints = {
+      currentPassword: 'Enter your current password for verification',
+      newPassword: 'Enter your new password. Must be at least 6 characters',
+      confirmPassword: 'Re-enter your new password to confirm'
+    };
+
+    return (
     <View style={styles.inputContainer}>
       <ThemedText style={styles.inputLabel}>{label}</ThemedText>
       <View style={styles.passwordInputContainer}>
@@ -127,10 +139,15 @@ export default function ChangePasswordPage() {
           secureTextEntry={!showPasswords[showField]}
           autoCapitalize="none"
           autoCorrect={false}
+          accessibilityLabel={fieldLabels[field]}
+          accessibilityHint={fieldHints[field]}
         />
         <TouchableOpacity
           style={styles.eyeButton}
           onPress={() => togglePasswordVisibility(showField)}
+          accessibilityRole="button"
+          accessibilityLabel={`${showPasswords[showField] ? 'Hide' : 'Show'} ${fieldLabels[field]}`}
+          accessibilityHint={`Double tap to ${showPasswords[showField] ? 'hide' : 'reveal'} password characters`}
         >
           <Ionicons
             name={showPasswords[showField] ? 'eye-off' : 'eye'}
@@ -140,7 +157,8 @@ export default function ChangePasswordPage() {
         </TouchableOpacity>
       </View>
     </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -149,7 +167,13 @@ export default function ChangePasswordPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
@@ -201,6 +225,10 @@ export default function ChangePasswordPage() {
           style={[styles.changeButton, isLoading && styles.changeButtonDisabled]}
           onPress={handleChangePassword}
           disabled={isLoading}
+          accessibilityRole="button"
+          accessibilityLabel="Change password"
+          accessibilityHint="Double tap to submit your password change. You will be logged out for security"
+          accessibilityState={{ disabled: isLoading }}
         >
           {isLoading ? (
             <ActivityIndicator color="white" size="small" />

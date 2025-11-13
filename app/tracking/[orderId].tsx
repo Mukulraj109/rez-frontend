@@ -263,7 +263,12 @@ export default function DetailedOrderTrackingPage() {
     const isCompleted = !isActive || order?.status === 'delivered';
 
     return (
-      <View key={update._id || index} style={styles.trackingUpdate}>
+      <View
+        key={update._id || index}
+        style={styles.trackingUpdate}
+        accessibilityLabel={`${update.status || 'Update'}. ${update.message || 'Order status updated'}. ${update.timestamp ? formatTimestamp(update.timestamp) : ''}`}
+        accessibilityRole="text"
+      >
         <View style={styles.updateIndicator}>
           <View style={[
             styles.updateCircle,
@@ -420,7 +425,13 @@ export default function DetailedOrderTrackingPage() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Navigate to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
 
@@ -435,7 +446,13 @@ export default function DetailedOrderTrackingPage() {
             )}
           </View>
 
-          <TouchableOpacity style={styles.headerButton} onPress={handleRefresh}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleRefresh}
+            accessibilityLabel="Refresh order status"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to refresh order information"
+          >
             <Ionicons name="refresh" size={24} color="white" />
           </TouchableOpacity>
         </View>
@@ -454,7 +471,11 @@ export default function DetailedOrderTrackingPage() {
         }
       >
         {/* Status Card */}
-        <View style={styles.statusCard}>
+        <View
+          style={styles.statusCard}
+          accessibilityLabel={`Order status: ${order.statusDisplay}`}
+          accessibilityRole="text"
+        >
           <View style={styles.statusHeader}>
             <View style={[styles.statusBadge, { backgroundColor: order.statusColor + '20' }]}>
               <Ionicons
@@ -499,6 +520,10 @@ export default function DetailedOrderTrackingPage() {
               style={[styles.cancelButton, isCancelling && styles.cancelButtonDisabled]}
               onPress={handleCancelOrder}
               disabled={isCancelling}
+              accessibilityLabel={`Cancel order ${order.orderNumber}`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to cancel this order"
+              accessibilityState={{ disabled: isCancelling }}
             >
               {isCancelling ? (
                 <ActivityIndicator size="small" color="#EF4444" />
@@ -679,7 +704,13 @@ export default function DetailedOrderTrackingPage() {
             </View>
           )}
 
-          <TouchableOpacity style={styles.contactMerchant} onPress={handleCallMerchant}>
+          <TouchableOpacity
+            style={styles.contactMerchant}
+            onPress={handleCallMerchant}
+            accessibilityLabel={`Contact ${order?.merchantName || 'store'}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to contact the store"
+          >
             <Ionicons name="call-outline" size={20} color={PROFILE_COLORS.primary} />
             <ThemedText style={styles.contactMerchantText}>Contact Store</ThemedText>
           </TouchableOpacity>

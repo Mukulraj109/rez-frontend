@@ -70,11 +70,47 @@ export function GoingOutProductCard({
     }
   };
 
+  const getAccessibilityLabel = () => {
+    const parts = [product.name];
+
+    if (product.brand) {
+      parts.push(`by ${product.brand}`);
+    }
+
+    if (product.rating) {
+      parts.push(`${product.rating.value} stars with ${product.rating.count} reviews`);
+    }
+
+    parts.push(formatPrice(product.price.current));
+
+    if (product.price.original && product.price.original > product.price.current) {
+      const discount = getDiscountPercentage();
+      parts.push(`${discount}% off`);
+    }
+
+    parts.push(`${product.cashback.percentage}% cashback available`);
+
+    if (product.availabilityStatus === 'out_of_stock') {
+      parts.push('Out of stock');
+    } else {
+      parts.push('In stock');
+    }
+
+    if (isInWishlist) {
+      parts.push('Added to wishlist');
+    }
+
+    return parts.join('. ');
+  };
+
   return (
     <TouchableOpacity
       style={[styles.container, { width }]}
       onPress={handlePress}
       activeOpacity={0.95}
+      accessibilityLabel={getAccessibilityLabel()}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to view product details and offers"
     >
       <View style={styles.card}>
         {/* Product Image */}
@@ -139,15 +175,19 @@ export function GoingOutProductCard({
           )}
 
           {/* Favorite Button */}
-          <TouchableOpacity 
-            style={styles.favoriteButton} 
+          <TouchableOpacity
+            style={styles.favoriteButton}
             activeOpacity={0.8}
             onPress={handleWishlistToggle}
+            accessibilityLabel={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isInWishlist }}
+            accessibilityHint={`Double tap to ${isInWishlist ? 'remove this product from' : 'add this product to'} your wishlist`}
           >
-            <Ionicons 
-              name={isInWishlist ? "heart" : "heart-outline"} 
-              size={16} 
-              color={isInWishlist ? "#EF4444" : "#6B7280"} 
+            <Ionicons
+              name={isInWishlist ? "heart" : "heart-outline"}
+              size={16}
+              color={isInWishlist ? "#EF4444" : "#6B7280"}
             />
           </TouchableOpacity>
         </View>
@@ -171,7 +211,9 @@ export function GoingOutProductCard({
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={12} color="#F59E0B" />
               <ThemedText style={styles.ratingText}>
-                {product.rating.value}
+                {typeof product.rating.value === 'number'
+                  ? product.rating.value.toFixed(1)
+                  : product.rating.value}
               </ThemedText>
               <ThemedText style={styles.ratingCount}>
                 ({product.rating.count})
@@ -197,6 +239,9 @@ export function GoingOutProductCard({
               style={styles.addToCartButton}
               onPress={handleAddToCart}
               activeOpacity={0.8}
+              accessibilityLabel={`Add ${product.name} to cart`}
+              accessibilityRole="button"
+              accessibilityHint="Double tap to add this product to your shopping cart"
             >
               <Ionicons name="add-circle-outline" size={16} color="#8B5CF6" />
               <ThemedText style={styles.addToCartText}>Add</ThemedText>

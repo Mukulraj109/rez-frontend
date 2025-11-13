@@ -7,19 +7,30 @@ import {
 import { StoreCardProps } from '@/types/store-search';
 import StoreInfo from './StoreInfo';
 import ProductGrid from './ProductGrid';
-import { 
-  COLORS, 
-  SPACING, 
+import QuickActions from '@/components/store/QuickActions';
+import {
+  COLORS,
+  SPACING,
   BORDER_RADIUS,
-  SHADOWS 
+  SHADOWS
 } from '@/constants/search-constants';
 
-const StoreCard: React.FC<StoreCardProps> = ({
+const StoreCard: React.FC<StoreCardProps & {
+  showQuickActions?: boolean;
+  storeType?: 'PRODUCT' | 'SERVICE' | 'HYBRID' | 'RESTAURANT';
+  contact?: {
+    phone?: string;
+    email?: string;
+  };
+}> = ({
   store,
   onStoreSelect,
   onProductSelect,
   showDistance = true,
   maxProducts = 4,
+  showQuickActions = true, // Enable by default in store search
+  storeType,
+  contact,
 }) => {
   const screenWidth = Dimensions.get('window').width;
 
@@ -56,6 +67,24 @@ const StoreCard: React.FC<StoreCardProps> = ({
           columns={2}
         />
       </View>
+
+      {/* Quick Actions */}
+      {showQuickActions && (
+        <View style={styles.quickActionsContainer}>
+          <QuickActions
+            storeId={store.storeId}
+            storeName={store.storeName}
+            storeType={storeType || 'PRODUCT'}
+            contact={contact}
+            location={{
+              address: store.location,
+            }}
+            variant="compact"
+            maxActions={4}
+            hideTitle={false}
+          />
+        </View>
+      )}
     </View>
   );
 };
@@ -93,7 +122,14 @@ const createStyles = (screenWidth: number) => {
     productsContainer: {
       paddingHorizontal: cardPadding,
       paddingTop: SPACING.LG,
+      paddingBottom: SPACING.MD,
+    },
+    quickActionsContainer: {
+      paddingHorizontal: cardPadding,
       paddingBottom: cardPadding,
+      paddingTop: SPACING.SM,
+      borderTopWidth: 1,
+      borderTopColor: COLORS.GRAY_100,
     },
   });
 };

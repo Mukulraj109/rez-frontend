@@ -111,7 +111,13 @@ export default function AccountPage() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous page"
+          >
             <View style={styles.backButtonInner}>
               <Ionicons name="arrow-back" size={22} color="white" />
             </View>
@@ -127,16 +133,22 @@ export default function AccountPage() {
           </View>
           
           <View style={styles.headerActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push('/account/notifications')}
+              accessibilityLabel="Notifications"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view notifications"
             >
               <Ionicons name="notifications-outline" size={22} color="white" />
             </TouchableOpacity>
             
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push('/account/settings')}
+              accessibilityLabel="Settings"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to open account settings"
             >
               <Ionicons name="settings-outline" size={22} color="white" />
             </TouchableOpacity>

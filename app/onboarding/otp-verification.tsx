@@ -193,6 +193,8 @@ export default function OTPVerificationScreen() {
               maxLength={1}
               textAlign="center"
               selectTextOnFocus
+              accessibilityLabel={`OTP digit ${index + 1} of 6. ${digit ? `Currently ${digit}` : 'Empty'}`}
+              accessibilityHint={`Enter digit ${index + 1} of your verification code`}
             />
           ))}
         </View>
@@ -200,9 +202,13 @@ export default function OTPVerificationScreen() {
         <View style={styles.resendContainer}>
           <Text style={styles.resendText}>
             Didn&apos;t receive the code?{' '}
-            <TouchableOpacity 
-              onPress={handleResendOTP} 
+            <TouchableOpacity
+              onPress={handleResendOTP}
               disabled={!canResend || state.isLoading}
+              accessibilityLabel={canResend ? "Resend OTP" : `Resend OTP in ${timer} seconds`}
+              accessibilityRole="button"
+              accessibilityHint={canResend ? "Double tap to receive a new verification code" : `Wait ${timer} seconds before requesting new code`}
+              accessibilityState={{ disabled: !canResend || state.isLoading }}
             >
               <Text style={[
                 styles.resendButton,
@@ -221,6 +227,13 @@ export default function OTPVerificationScreen() {
           ]}
           onPress={() => handleSubmit()}
           disabled={state.isLoading || !otp.every(digit => digit.length === 1)}
+          accessibilityLabel={state.isLoading ? "Verifying OTP" : `Submit OTP code ${otp.join('')}`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to verify your OTP and complete registration"
+          accessibilityState={{
+            disabled: state.isLoading || !otp.every(digit => digit.length === 1),
+            busy: state.isLoading
+          }}
         >
           <Text style={styles.submitButtonText}>
             {state.isLoading ? 'Verifying...' : 'Submit'}

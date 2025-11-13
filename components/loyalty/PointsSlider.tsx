@@ -33,16 +33,34 @@ export default function PointsSlider({
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessible={false}
+    >
       <View style={styles.header}>
-        <ThemedText style={styles.title}>Use Points for Discount</ThemedText>
-        <View style={styles.availablePoints}>
+        <ThemedText
+          style={styles.title}
+          accessible={true}
+          accessibilityRole="header"
+        >
+          Use Points for Discount
+        </ThemedText>
+        <View
+          style={styles.availablePoints}
+          accessible={true}
+          accessibilityLabel={`${availablePoints} points available`}
+        >
           <Ionicons name="diamond" size={14} color="#F59E0B" />
           <ThemedText style={styles.availableText}>{availablePoints} available</ThemedText>
         </View>
       </View>
 
-      <View style={styles.selectedContainer}>
+      <View
+        style={styles.selectedContainer}
+        accessible={true}
+        accessibilityLabel={`${selectedPoints} points equals ${discount.toFixed(2)} rupees discount`}
+        accessibilityRole="text"
+      >
         <View style={styles.selectedPoints}>
           <Ionicons name="diamond" size={24} color="#8B5CF6" />
           <ThemedText style={styles.selectedValue}>{selectedPoints}</ThemedText>
@@ -70,16 +88,31 @@ export default function PointsSlider({
           minimumTrackTintColor="#8B5CF6"
           maximumTrackTintColor="#E5E7EB"
           thumbTintColor="#8B5CF6"
+          accessible={true}
+          accessibilityLabel="Points slider"
+          accessibilityHint={`Adjust to use between 0 and ${maxUsablePoints} points. Currently using ${selectedPoints} points for ${discount.toFixed(2)} rupees discount.`}
+          accessibilityValue={{
+            min: 0,
+            max: maxUsablePoints,
+            now: selectedPoints,
+            text: `${selectedPoints} points, ${discount.toFixed(2)} rupees discount`
+          }}
+          accessibilityRole="adjustable"
         />
       </View>
 
-      <View style={styles.marks}>
+      <View style={styles.marks} accessible={false}>
         <ThemedText style={styles.markText}>0</ThemedText>
         <ThemedText style={styles.markText}>{maxUsablePoints}</ThemedText>
       </View>
 
       {selectedPoints > 0 && (
-        <View style={styles.info}>
+        <View
+          style={styles.info}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="Information: Points will be deducted after order confirmation"
+        >
           <Ionicons name="information-circle" size={16} color="#6B7280" />
           <ThemedText style={styles.infoText}>
             Points will be deducted after order confirmation

@@ -278,6 +278,9 @@ ${earnings.recentTransactions.map((t, i) => `${i + 1}. ${new Date(t.date).toLoca
             <TouchableOpacity
               style={styles.headerIconButton}
               onPress={handleExportReport}
+              accessibilityLabel="Export earnings report"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to download earnings report as CSV"
             >
               <Ionicons name="download-outline" size={22} color="#FFFFFF" />
             </TouchableOpacity>
@@ -301,6 +304,8 @@ ${earnings.recentTransactions.map((t, i) => `${i + 1}. ${new Date(t.date).toLoca
         <LinearGradient
           colors={['#EC4899', '#DB2777']}
           style={styles.totalCard}
+          accessibilityLabel={`Total lifetime earnings: ₹${earnings.totalEarnings}. Available balance: ₹${earnings.availableBalance}. Pending: ₹${earnings.pendingEarnings}`}
+          accessibilityRole="summary"
         >
           <Text style={styles.totalLabel}>Total Lifetime Earnings</Text>
           <Text style={styles.totalAmount}>₹{earnings.totalEarnings}</Text>
@@ -323,7 +328,13 @@ ${earnings.recentTransactions.map((t, i) => `${i + 1}. ${new Date(t.date).toLoca
             </View>
           </View>
 
-          <TouchableOpacity style={styles.withdrawButton} onPress={handleWithdraw}>
+          <TouchableOpacity
+            style={styles.withdrawButton}
+            onPress={handleWithdraw}
+            accessibilityLabel={`Withdraw ₹${earnings.availableBalance}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to withdraw available balance to your account"
+          >
             <Ionicons name="arrow-down-circle-outline" size={20} color="#EC4899" />
             <Text style={styles.withdrawButtonText}>Withdraw</Text>
           </TouchableOpacity>
@@ -460,7 +471,12 @@ ${earnings.recentTransactions.map((t, i) => `${i + 1}. ${new Date(t.date).toLoca
           </View>
 
           {earnings.recentTransactions.map((transaction) => (
-            <View key={transaction.id} style={styles.transactionCard}>
+            <View
+              key={transaction.id}
+              style={styles.transactionCard}
+              accessibilityLabel={`${transaction.description}. Amount: ₹${transaction.amount}. Date: ${new Date(transaction.date).toLocaleDateString()}. Status: ${transaction.status === 'completed' ? 'Completed' : 'Pending'}`}
+              accessibilityRole="text"
+            >
               <View
                 style={[
                   styles.transactionIcon,

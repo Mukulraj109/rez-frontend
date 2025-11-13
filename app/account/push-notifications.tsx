@@ -108,6 +108,10 @@ export default function PushNotificationsScreen() {
         value={value}
         onValueChange={onValueChange}
         disabled={disabled || saving}
+        accessibilityLabel={`${title}${value ? ', enabled' : ', disabled'}${disabled ? ', unavailable' : ''}`}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: value, disabled: disabled || saving }}
+        accessibilityHint={disabled ? 'Enable push notifications first' : `Toggle to ${value ? 'disable' : 'enable'} ${title.toLowerCase()}`}
         trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
         thumbColor={value ? '#FFFFFF' : '#F3F4F6'}
       />
@@ -117,8 +121,18 @@ export default function PushNotificationsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Loading settings...</Text>
+        <ActivityIndicator
+          size="large"
+          color="#3B82F6"
+          accessibilityLabel="Loading"
+          accessibilityRole="progressbar"
+        />
+        <Text
+          style={styles.loadingText}
+          accessibilityLabel="Loading push notification settings"
+        >
+          Loading settings...
+        </Text>
       </View>
     );
   }
@@ -126,8 +140,19 @@ export default function PushNotificationsScreen() {
   if (!settings) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Failed to load settings</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadSettings}>
+        <Text
+          style={styles.errorText}
+          accessibilityRole="alert"
+        >
+          Failed to load settings
+        </Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={loadSettings}
+          accessibilityLabel="Retry loading push notification settings"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to try loading settings again"
+        >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -138,10 +163,16 @@ export default function PushNotificationsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          accessibilityHint="Navigate to notification settings"
+        >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Push Notifications</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">Push Notifications</Text>
         <View style={{ width: 40 }} />
       </View>
 

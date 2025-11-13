@@ -328,14 +328,26 @@ export default function OfferDetailPage() {
             <Ionicons name="chevron-back" size={28} color="#333" />
           </TouchableOpacity>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={handleLike} style={styles.headerButton}>
-              <Ionicons 
-                name={isLiked ? "heart" : "heart-outline"} 
-                size={26} 
-                color={isLiked ? "#EF4444" : "#333"} 
+            <TouchableOpacity
+              onPress={handleLike}
+              style={styles.headerButton}
+              accessibilityLabel={isLiked ? "Remove from favorites" : "Add to favorites"}
+              accessibilityRole="button"
+              accessibilityHint={isLiked ? "Double tap to unlike this offer" : "Double tap to like this offer"}
+            >
+              <Ionicons
+                name={isLiked ? "heart" : "heart-outline"}
+                size={26}
+                color={isLiked ? "#EF4444" : "#333"}
               />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
+            <TouchableOpacity
+              onPress={handleShare}
+              style={styles.headerButton}
+              accessibilityLabel="Share offer"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to share this offer"
+            >
               <Ionicons name="share-social-outline" size={26} color="#333" />
             </TouchableOpacity>
           </View>
@@ -416,7 +428,13 @@ export default function OfferDetailPage() {
           </LinearGradient>
 
           {/* Store Info */}
-          <TouchableOpacity style={styles.storeCard} onPress={handleStorePress}>
+          <TouchableOpacity
+            style={styles.storeCard}
+            onPress={handleStorePress}
+            accessibilityLabel={`Store: ${offer.store.name}${offer.store.rating ? `. Rating ${offer.store.rating} stars` : ''}${offer.store.verified ? '. Verified store' : ''}`}
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view store details"
+          >
             <View style={styles.storeLogoContainer}>
               {offer.store?.logo ? (
                 <Image source={{ uri: offer.store.logo }} style={styles.storeLogo} />
@@ -452,7 +470,15 @@ export default function OfferDetailPage() {
           )}
 
           {/* Validity */}
-          <View style={styles.validitySection}>
+          <View
+            style={styles.validitySection}
+            accessibilityLabel={`Validity: Valid until ${new Date(offer.validity.endDate).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}${isExpired ? '. This offer has expired' : daysRemaining > 0 ? `. ${daysRemaining} days remaining` : ''}`}
+            accessibilityRole="text"
+          >
             <View style={styles.validityHeader}>
               <Ionicons name="time-outline" size={20} color={isExpired ? "#EF4444" : "#10B981"} />
               <ThemedText style={styles.validityTitle}>Validity</ThemedText>
@@ -528,7 +554,11 @@ export default function OfferDetailPage() {
           )}
 
           {/* Engagement Stats */}
-          <View style={styles.engagementSection}>
+          <View
+            style={styles.engagementSection}
+            accessibilityLabel={`Engagement: ${offer.engagement.likesCount} likes, ${offer.engagement.sharesCount} shares, ${offer.engagement.viewsCount} views`}
+            accessibilityRole="text"
+          >
             <View style={styles.engagementItem}>
               <Ionicons name="heart" size={20} color="#EF4444" />
               <ThemedText style={styles.engagementText}>{offer.engagement.likesCount} likes</ThemedText>
@@ -557,18 +587,25 @@ export default function OfferDetailPage() {
               <ThemedText style={styles.redeemedText}>Already Redeemed</ThemedText>
             </View>
             <ThemedText style={styles.voucherCodeSmall}>Code: {existingVoucherCode}</ThemedText>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.viewVouchersButton}
               onPress={() => router.push('/my-vouchers')}
+              accessibilityLabel="View my vouchers"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view all your vouchers"
             >
               <ThemedText style={styles.viewVouchersButtonText}>View My Vouchers</ThemedText>
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.redeemButton, (isExpired || isRedeeming) && styles.redeemButtonDisabled]}
             onPress={handleRedeem}
             disabled={isExpired || isRedeeming}
+            accessibilityLabel={isExpired ? 'Offer expired' : 'Redeem offer'}
+            accessibilityRole="button"
+            accessibilityHint={isExpired ? 'This offer has expired and cannot be redeemed' : 'Double tap to redeem this offer and get your voucher code'}
+            accessibilityState={{ disabled: isExpired || isRedeeming }}
           >
             {isRedeeming ? (
               <ActivityIndicator color="white" />
@@ -636,13 +673,16 @@ export default function OfferDetailPage() {
             </ThemedText>
             <View style={styles.voucherCodeContainer}>
               <ThemedText style={styles.voucherCodeLabel}>Voucher Code:</ThemedText>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.voucherCodeBox}
                 onPress={async () => {
                   await Clipboard.setStringAsync(voucherCode);
                   Alert.alert('✅ Copied!', 'Voucher code copied to clipboard');
                 }}
                 activeOpacity={0.7}
+                accessibilityLabel={`Voucher code: ${voucherCode}. Tap to copy`}
+                accessibilityRole="button"
+                accessibilityHint="Double tap to copy voucher code to clipboard"
               >
                 <ThemedText style={styles.voucherCode}>{voucherCode}</ThemedText>
                 <Ionicons name="copy-outline" size={20} color="#8B5CF6" style={{ marginLeft: 8 }} />

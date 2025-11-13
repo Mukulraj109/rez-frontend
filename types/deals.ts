@@ -87,3 +87,41 @@ export interface StoreDealConfig {
   maxConcurrentDeals: number;
   allowDealStacking: boolean;
 }
+
+// Enhanced StoreDeal interface for walk-in deals from API
+export interface StoreDeal {
+  id: string;
+  storeId: string;
+  title: string;
+  description: string;
+  type: 'walk_in' | 'online' | 'combo' | 'cashback' | 'flash_sale';
+  discountType: 'percentage' | 'fixed' | 'bogo';
+  discountValue: number;
+  originalPrice?: number;
+  finalPrice?: number;
+  validFrom: string;
+  validUntil: string;
+  terms: string[];
+  applicableProducts?: string[];
+  minPurchase?: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  usedCount?: number;
+  isActive: boolean;
+  isFeatured?: boolean;
+  category?: string;
+  image?: string;
+  priority?: number;
+  badge?: DealBadge;
+}
+
+// API response type for store deals
+export interface StoreDealsResponse {
+  deals: StoreDeal[];
+  totalCount: number;
+  storeInfo?: {
+    id: string;
+    name: string;
+    logo?: string;
+  };
+}

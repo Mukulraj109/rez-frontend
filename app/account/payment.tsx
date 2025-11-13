@@ -419,6 +419,9 @@ export default function PaymentSettingsScreen() {
                   <TouchableOpacity
                     style={styles.verifyButton}
                     onPress={() => handleVerifyMethod(method)}
+                    accessibilityLabel="Verify payment method"
+                    accessibilityRole="button"
+                    accessibilityHint="Double tap to verify this payment method"
                   >
                     <ThemedText style={styles.verifyButtonText}>Verify</ThemedText>
                   </TouchableOpacity>
@@ -442,6 +445,9 @@ export default function PaymentSettingsScreen() {
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleSetDefault(method.id)}
+              accessibilityLabel="Set as default payment method"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to set this as your default payment method"
             >
               <ThemedText style={styles.actionButtonText}>Set as Default</ThemedText>
             </TouchableOpacity>
@@ -450,6 +456,9 @@ export default function PaymentSettingsScreen() {
           <TouchableOpacity
             style={[styles.actionButton, styles.dangerButton]}
             onPress={() => handleDeleteMethod(method)}
+            accessibilityLabel="Remove payment method"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to remove this payment method"
           >
             <ThemedText style={[styles.actionButtonText, styles.dangerButtonText]}>Remove</ThemedText>
           </TouchableOpacity>
@@ -497,7 +506,13 @@ export default function PaymentSettingsScreen() {
           {error && (
             <ThemedText style={styles.errorDetailText}>{error}</ThemedText>
           )}
-          <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={refetch}
+            accessibilityLabel="Retry loading payment methods"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to try loading payment methods again"
+          >
             <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
           </TouchableOpacity>
         </View>
@@ -518,7 +533,13 @@ export default function PaymentSettingsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={styles.sectionTitle}>Payment Methods</ThemedText>
-            <TouchableOpacity style={styles.addButton} onPress={handleAddPaymentMethod}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={handleAddPaymentMethod}
+              accessibilityLabel="Add new payment method"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to add a new payment method"
+            >
               <Ionicons name="add" size={20} color={ACCOUNT_COLORS.primary} />
               <ThemedText style={styles.addButtonText}>Add New</ThemedText>
             </TouchableOpacity>
@@ -568,6 +589,10 @@ export default function PaymentSettingsScreen() {
                 disabled={isSavingPreference}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                 thumbColor={preferences.saveCards ? ACCOUNT_COLORS.primary : '#f4f3f4'}
+                accessibilityLabel="Save payment methods"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: preferences.saveCards, disabled: isSavingPreference }}
+                accessibilityHint="Toggle to enable or disable saving payment methods"
               />
             </View>
 
@@ -587,6 +612,10 @@ export default function PaymentSettingsScreen() {
                 disabled={isSavingPreference}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                 thumbColor={preferences.biometricPayments ? ACCOUNT_COLORS.primary : '#f4f3f4'}
+                accessibilityLabel="Biometric payments"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: preferences.biometricPayments, disabled: isSavingPreference }}
+                accessibilityHint="Toggle to enable or disable biometric authentication for payments"
               />
             </View>
 
@@ -606,6 +635,10 @@ export default function PaymentSettingsScreen() {
                 disabled={isSavingPreference}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.primary + '40' }}
                 thumbColor={preferences.oneClickPayments ? ACCOUNT_COLORS.primary : '#f4f3f4'}
+                accessibilityLabel="One-click payments"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: preferences.oneClickPayments, disabled: isSavingPreference }}
+                accessibilityHint="Toggle to enable or disable one-click payments"
               />
             </View>
 
@@ -625,6 +658,10 @@ export default function PaymentSettingsScreen() {
                 disabled={isSavingPreference}
                 trackColor={{ false: ACCOUNT_COLORS.border, true: ACCOUNT_COLORS.success + '40' }}
                 thumbColor={preferences.autoFillCVV ? ACCOUNT_COLORS.success : '#f4f3f4'}
+                accessibilityLabel="Auto-fill CVV"
+                accessibilityRole="switch"
+                accessibilityState={{ checked: preferences.autoFillCVV, disabled: isSavingPreference }}
+                accessibilityHint="Toggle to enable or disable automatic CVV filling"
               />
             </View>
           </View>

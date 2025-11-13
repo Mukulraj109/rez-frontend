@@ -483,6 +483,10 @@ export default function SubscriptionPlansPage() {
               style={[styles.upgradeButton, { backgroundColor: color }]}
               onPress={() => handleSubscribe(tier as 'premium' | 'vip')}
               disabled={isSubscribing}
+              accessibilityLabel={isSubscribing && selectedTier === tier ? 'Processing subscription' : `${isUpgrade ? 'Upgrade' : 'Downgrade'} to ${name} plan`}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: isSubscribing, busy: isSubscribing && selectedTier === tier }}
+              accessibilityHint={`Double tap to ${isUpgrade ? 'upgrade' : 'downgrade'} to the ${name} plan`}
             >
               {isSubscribing && selectedTier === tier ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -508,7 +512,13 @@ export default function SubscriptionPlansPage() {
       {/* Header */}
       <LinearGradient colors={['#8B5CF6', '#7C3AED'] as const} style={styles.header}>
         <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={handleGoBack}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Choose Your Plan</ThemedText>
@@ -525,6 +535,10 @@ export default function SubscriptionPlansPage() {
               selectedBilling === 'monthly' && styles.billingOptionActive,
             ]}
             onPress={() => setSelectedBilling('monthly')}
+            accessibilityLabel={`Monthly billing. ${selectedBilling === 'monthly' ? 'Selected' : ''}`}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: selectedBilling === 'monthly' }}
+            accessibilityHint="Double tap to select monthly billing cycle"
           >
             <ThemedText
               style={[
@@ -541,6 +555,10 @@ export default function SubscriptionPlansPage() {
               selectedBilling === 'yearly' && styles.billingOptionActive,
             ]}
             onPress={() => setSelectedBilling('yearly')}
+            accessibilityLabel={`Yearly billing. Save 20%. ${selectedBilling === 'yearly' ? 'Selected' : ''}`}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: selectedBilling === 'yearly' }}
+            accessibilityHint="Double tap to select yearly billing cycle and save 20 percent"
           >
             <ThemedText
               style={[
@@ -561,6 +579,9 @@ export default function SubscriptionPlansPage() {
           <TouchableOpacity
             style={styles.promoToggle}
             onPress={() => setShowPromoInput(!showPromoInput)}
+            accessibilityLabel={showPromoInput ? 'Hide promo code input' : 'Show promo code input'}
+            accessibilityRole="button"
+            accessibilityHint={`Double tap to ${showPromoInput ? 'hide' : 'show'} promo code field`}
           >
             <Ionicons name="pricetag-outline" size={20} color="#8B5CF6" />
             <ThemedText style={styles.promoToggleText}>
@@ -582,11 +603,17 @@ export default function SubscriptionPlansPage() {
                 placeholder="Enter promo code"
                 placeholderTextColor="#9CA3AF"
                 autoCapitalize="characters"
+                accessibilityLabel="Promo code input"
+                accessibilityHint="Enter your promotional code here"
               />
               <TouchableOpacity
                 style={styles.promoApplyButton}
                 onPress={handleApplyPromo}
                 disabled={validatingPromo}
+                accessibilityLabel={validatingPromo ? 'Validating promo code' : 'Apply promo code'}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: validatingPromo, busy: validatingPromo }}
+                accessibilityHint="Double tap to apply the promo code"
               >
                 {validatingPromo ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
