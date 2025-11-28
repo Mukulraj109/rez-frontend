@@ -18,7 +18,9 @@
     "test:e2e:build:ios": "detox build --configuration ios.sim.debug",
     "test:e2e:build:android": "detox build --configuration android.emu.debug",
     "verify:production": "ts-node scripts/verify-production-readiness.ts",
-    "check:backend": "node scripts/check-backend.js"
+    "check:backend": "node scripts/check-backend.js",
+    "build:render": "npx expo export --platform web",
+    "serve:render": "npx serve dist"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.3",
