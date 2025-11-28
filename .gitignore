@@ -37,3 +37,6 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Sensitive files with API keys
+contexts/STRIPE_KEYS_FIXED.md
