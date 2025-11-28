@@ -37,20 +37,21 @@ export function useNetworkStatus() {
       const isConnected = state.isConnected ?? false;
       const isInternetReachable = state.isInternetReachable;
 
-      setNetworkStatus(prev => ({
-        ...prev,
-        isConnected,
-        isInternetReachable,
-        type: state.type
-      }));
+      setNetworkStatus(prev => {
+        // Track if we were offline and are now online
+        if (!prev.isConnected && isConnected) {
+          setWasOffline(true);
+        } else if (prev.isConnected && !isConnected) {
+          // Was online, now offline
+        }
 
-      // Track if we were offline and are now online
-      if (!prev.isConnected && isConnected) {
-
-        setWasOffline(true);
-      } else if (prev.isConnected && !isConnected) {
-
-      }
+        return {
+          ...prev,
+          isConnected,
+          isInternetReachable,
+          type: state.type
+        };
+      });
     });
 
     // Initial check

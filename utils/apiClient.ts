@@ -8,11 +8,14 @@ interface ApiConfig {
   defaultHeaders: Record<string, string>;
 }
 
-interface ApiResponse<T = any> {
-  data: T;
-  message?: string;
-  status: number;
+// NOTE: ApiResponse is now imported from services/apiClient.ts to avoid duplication
+// This interface is kept here for backward compatibility but should use the main one
+export interface ApiResponse<T = any> {
   success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+  errors?: { [key: string]: string[] };
 }
 
 interface ApiError {
@@ -114,7 +117,7 @@ class ApiClient {
   // Handle API response
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     let data: any;
-    
+
     try {
       const text = await response.text();
       data = text ? JSON.parse(text) : null;
@@ -135,11 +138,11 @@ class ApiClient {
       });
     }
 
+    // Return normalized ApiResponse format
     return {
+      success: true,
       data: data?.data || data,
       message: data?.message,
-      status: response.status,
-      success: true,
     };
   }
 

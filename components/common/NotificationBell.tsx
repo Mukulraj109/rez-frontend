@@ -100,7 +100,14 @@ export default function NotificationBell({
     } else if (notification.data?.storeId) {
       router.push(`/store/${notification.data.storeId}` as any);
     } else if (notification.data?.productId) {
-      router.push(`/product/${notification.data.productId}` as any);
+      // Navigate to ProductPage (comprehensive product page)
+      router.push({
+        pathname: '/ProductPage',
+        params: {
+          cardId: notification.data.productId,
+          cardType: 'product',
+        }
+      } as any);
     }
   };
 

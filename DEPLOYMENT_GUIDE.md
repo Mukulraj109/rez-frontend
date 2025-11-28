@@ -1,482 +1,234 @@
-# Production Deployment Guide
+# Deployment Guide
+## Rez App - Step-by-Step Production Deployment
 
-## Complete Guide to Deploying Rez App to Production
-
-This comprehensive guide covers everything needed to deploy the Rez App to production with 100% readiness.
+**Version**: 1.0.0
+**Last Updated**: 2025-11-14
+**Status**: Ready for deployment (Frontend only - pending backend fixes)
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Pre-Deployment Checklist](#pre-deployment-checklist)
 2. [Environment Setup](#environment-setup)
-3. [Security Configuration](#security-configuration)
-4. [Monitoring Setup](#monitoring-setup)
-5. [Database Configuration](#database-configuration)
-6. [Build & Deploy](#build--deploy)
-7. [Post-Deployment](#post-deployment)
+3. [Build Configuration](#build-configuration)
+4. [iOS Deployment](#ios-deployment)
+5. [Android Deployment](#android-deployment)
+6. [Web Deployment](#web-deployment)
+7. [Post-Deployment Verification](#post-deployment-verification)
 8. [Rollback Procedures](#rollback-procedures)
-9. [CI/CD Pipeline](#cicd-pipeline)
+9. [Monitoring Setup](#monitoring-setup)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Pre-Deployment Checklist
 
-### Code Quality ✅
-- [x] All TypeScript errors resolved
-- [x] ESLint passes with no errors
-- [x] Code review completed
-- [x] No console.log statements in production code
-- [x] All TODOs addressed
+### Before You Begin ⚠️
 
-### Testing ✅
-- [x] 95+ E2E tests passing
-- [x] Unit tests passing
-- [x] Integration tests passing
-- [x] Load testing completed
-- [x] Security testing completed
+**CRITICAL**: Do not deploy until backend issues are resolved!
 
-### Security ✅
-- [x] Security service implemented
-- [x] Input validation in place
-- [x] XSS prevention active
-- [x] Authentication guards configured
-- [x] Rate limiting implemented
-- [x] Secure storage configured
+Current blockers:
+- ❌ Backend authentication token refresh (401 errors)
+- ❌ WebSocket connection stability issues
+- ❌ API 500 errors on multiple endpoints
+- ⚠️ Database incomplete data
 
-### Performance ✅
-- [x] Images optimized
-- [x] Caching implemented
-- [x] Lazy loading configured
-- [x] Bundle size optimized
-- [x] Performance monitoring ready
+**Estimated time to backend readiness**: 2-3 weeks
+
+---
+
+### Frontend Pre-Deployment Checks ✅
+
+Run this checklist before deployment:
+
+```bash
+# 1. Verify all tests pass
+npm test -- --no-coverage
+
+# Expected: 400+ tests passing, 99%+ pass rate
+```
+
+```bash
+# 2. Check TypeScript errors
+npx tsc --noEmit
+
+# Expected: 0 errors
+```
+
+```bash
+# 3. Check ESLint warnings
+npm run lint
+
+# Expected: < 15 warnings (mostly non-critical)
+```
+
+```bash
+# 4. Verify environment variables
+cat .env.production
+
+# Verify all required variables are set
+```
+
+```bash
+# 5. Test production build
+npm run build
+
+# Should complete without errors
+```
+
+### Manual Checks
+
+- [ ] All critical features tested manually
+- [ ] Authentication flow works end-to-end
+- [ ] Payment integration tested (test mode)
+- [ ] Push notifications configured
+- [ ] Deep linking tested
+- [ ] Offline mode tested
+- [ ] All API endpoints responding
+- [ ] Error tracking configured (Sentry)
+- [ ] Analytics configured
+- [ ] App icons and splash screens ready
 
 ---
 
 ## Environment Setup
 
-### 1. Production Environment Variables
+### 1. Environment Variables
 
 Create `.env.production` file:
 
 ```bash
 # API Configuration
-API_URL=https://api.rezapp.com
-API_TIMEOUT=10000
+API_BASE_URL=https://api.production.rezapp.com
+API_TIMEOUT=30000
+API_VERSION=v1
 
 # Authentication
-JWT_SECRET=<your-production-jwt-secret>
-JWT_EXPIRY=7d
-REFRESH_TOKEN_EXPIRY=30d
+AUTH_TOKEN_KEY=rez_auth_token
+AUTH_REFRESH_KEY=rez_refresh_token
+SESSION_TIMEOUT=3600000
 
-# Monitoring - Sentry
-SENTRY_DSN=<your-sentry-dsn>
+# WebSocket
+WEBSOCKET_URL=wss://ws.production.rezapp.com
+WEBSOCKET_RECONNECT_ATTEMPTS=5
+WEBSOCKET_RECONNECT_DELAY=3000
+
+# Storage
+ASYNC_STORAGE_PREFIX=@rez_app_prod_
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_UPLOAD_PRESET=production_preset
+
+# Payment
+RAZORPAY_KEY_ID=your_production_key_id
+STRIPE_PUBLISHABLE_KEY=your_production_key
+
+# Analytics
+GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
+MIXPANEL_TOKEN=your_token
+
+# Error Tracking
+SENTRY_DSN=https://your-dsn@sentry.io/project
 SENTRY_ENVIRONMENT=production
 
-# Analytics - Google Analytics
-GA_TRACKING_ID=<your-ga-tracking-id>
-
-# Analytics - Mixpanel
-MIXPANEL_TOKEN=<your-mixpanel-token>
-
-# Payment - Razorpay
-RAZORPAY_KEY_ID=<your-razorpay-key-id>
-RAZORPAY_KEY_SECRET=<your-razorpay-key-secret>
-
-# Payment - Stripe (if used)
-STRIPE_PUBLISHABLE_KEY=<your-stripe-publishable-key>
-
-# Media - Cloudinary
-CLOUDINARY_CLOUD_NAME=<your-cloudinary-cloud-name>
-CLOUDINARY_API_KEY=<your-cloudinary-api-key>
-CLOUDINARY_API_SECRET=<your-cloudinary-api-secret>
-CLOUDINARY_UPLOAD_PRESET=<your-upload-preset>
-
-# Database
-MONGODB_URI=<your-production-mongodb-uri>
-REDIS_URL=<your-production-redis-url>
-
 # Feature Flags
-ENABLE_ANALYTICS=true
-ENABLE_CRASH_REPORTING=true
-ENABLE_PERFORMANCE_MONITORING=true
+ENABLE_GAMIFICATION=true
+ENABLE_SOCIAL_FEATURES=true
+ENABLE_VIDEO_FEATURES=true
+ENABLE_AR_FEATURES=false
 
 # App Configuration
 APP_VERSION=1.0.0
 APP_BUILD_NUMBER=1
-APP_ENV=production
+ENVIRONMENT=production
+DEBUG_MODE=false
 ```
 
-### 2. Sensitive Data Security
+### 2. Configuration Files
 
-**NEVER** commit these files:
-- `.env.production`
-- `.env.local`
-- Any files containing API keys or secrets
+Update `app.json`:
 
-**DO** commit:
-- `.env.example` (with placeholder values)
-
-### 3. Secret Management
-
-**Recommended Services**:
-- AWS Secrets Manager
-- Google Cloud Secret Manager
-- Azure Key Vault
-- HashiCorp Vault
-
-**Setup Example (AWS Secrets Manager)**:
-```bash
-# Install AWS CLI
-npm install -g aws-cli
-
-# Store secrets
-aws secretsmanager create-secret \
-  --name rezapp/production/api-keys \
-  --secret-string file://secrets.json
-
-# Retrieve in app
-aws secretsmanager get-secret-value \
-  --secret-id rezapp/production/api-keys
-```
-
----
-
-## Security Configuration
-
-### 1. Initialize Security Service
-
-**In `app/_layout.tsx`**:
-
-```typescript
-import {
-  InputSanitizer,
-  InputValidator,
-  AuthGuard,
-  SecurityLogger
-} from '@/utils/securityService';
-
-// Initialize security on app start
-useEffect(() => {
-  SecurityLogger.log('security', 'Security service initialized', 'low');
-}, []);
-```
-
-### 2. API Security Headers
-
-**Configure API Client** (`services/apiClient.ts`):
-
-```typescript
-import { APISecurityHeaders } from '@/utils/securityService';
-
-const api = axios.create({
-  baseURL: process.env.API_URL,
-  timeout: parseInt(process.env.API_TIMEOUT || '10000'),
-});
-
-api.interceptors.request.use(async (config) => {
-  const secureHeaders = await APISecurityHeaders.getSecureHeaders();
-  config.headers = { ...config.headers, ...secureHeaders };
-  return config;
-});
-```
-
-### 3. Input Validation
-
-**Apply to All User Inputs**:
-
-```typescript
-import { InputSanitizer, InputValidator } from '@/utils/securityService';
-
-// Example: Email validation
-const handleEmailSubmit = (email: string) => {
-  const sanitized = InputSanitizer.sanitizeEmail(email);
-  if (!sanitized || !InputValidator.isValidEmail(sanitized)) {
-    showError('Invalid email address');
-    return;
-  }
-  // Proceed with sanitized email
-};
-
-// Example: Password validation
-const handlePasswordChange = (password: string) => {
-  const validation = InputValidator.isValidPassword(password);
-  if (!validation.valid) {
-    showError(validation.errors.join('\n'));
-    return;
-  }
-  // Proceed with valid password
-};
-```
-
-### 4. Authentication Guards
-
-**Protect Routes**:
-
-```typescript
-import { AuthGuard } from '@/utils/securityService';
-
-const ProtectedScreen = () => {
-  useEffect(() => {
-    const checkAuth = async () => {
-      const isAuth = await AuthGuard.requireAuth();
-      if (!isAuth) {
-        router.replace('/sign-in');
+```json
+{
+  "expo": {
+    "name": "Rez App",
+    "slug": "rez-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "rezapp",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/your-project-id"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rezapp.ios",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.rezapp.android",
+      "versionCode": 1
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "sounds": ["./assets/sounds/notification.wav"]
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
       }
-    };
-    checkAuth();
-  }, []);
-};
-```
-
-### 5. Rate Limiting
-
-**Apply to API Calls**:
-
-```typescript
-import { ClientRateLimiter } from '@/utils/securityService';
-
-const handleSearch = async (query: string) => {
-  if (ClientRateLimiter.isLimitExceeded('search', 10, 60000)) {
-    showError('Too many requests. Please try again in a minute.');
-    return;
+    }
   }
-
-  ClientRateLimiter.recordRequest('search');
-  // Proceed with search
-};
-```
-
----
-
-## Monitoring Setup
-
-### 1. Sentry Configuration
-
-**Install Sentry**:
-```bash
-npm install @sentry/react-native
-```
-
-**Initialize in `app/_layout.tsx`**:
-
-```typescript
-import { initializeMonitoring } from '@/config/monitoring.config';
-
-export default function RootLayout() {
-  useEffect(() => {
-    initializeMonitoring();
-  }, []);
-
-  return <Stack />;
 }
 ```
 
-**Get Sentry DSN**:
-1. Sign up at https://sentry.io
-2. Create new project (React Native)
-3. Copy DSN
-4. Add to `.env.production`: `SENTRY_DSN=your-dsn`
-
-### 2. Google Analytics Setup
-
-**Install GA**:
-```bash
-npm install @react-native-firebase/analytics
-```
-
-**Configure**:
-```typescript
-import { MonitoringHelpers } from '@/config/monitoring.config';
-
-// Track page views
-useEffect(() => {
-  MonitoringHelpers.trackPageView('Product Page', { productId: '123' });
-}, []);
-
-// Track events
-MonitoringHelpers.trackEvent('add_to_cart', {
-  productId: '123',
-  quantity: 1,
-  price: 99.99
-});
-```
-
-**Get GA Tracking ID**:
-1. Sign up at https://analytics.google.com
-2. Create property
-3. Get tracking ID (UA-XXXXX-Y or G-XXXXXXXXXX)
-4. Add to `.env.production`: `GA_TRACKING_ID=your-tracking-id`
-
-### 3. Mixpanel Setup
-
-**Install Mixpanel**:
-```bash
-npm install mixpanel-react-native
-```
-
-**Track User Behavior**:
-```typescript
-// Identify user
-MonitoringHelpers.setUser('user-123', {
-  email: 'user@example.com',
-  plan: 'premium'
-});
-
-// Track events
-MonitoringHelpers.trackEvent('purchase', {
-  amount: 99.99,
-  currency: 'USD'
-});
-```
-
-### 4. Performance Monitoring
-
-**Track Performance**:
-```typescript
-import { MonitoringHelpers } from '@/config/monitoring.config';
-
-const trackApiPerformance = async () => {
-  const start = Date.now();
-
-  try {
-    await apiCall();
-  } finally {
-    const duration = Date.now() - start;
-    MonitoringHelpers.trackPerformance('apiCall', duration, {
-      endpoint: '/products'
-    });
-  }
-};
-```
-
 ---
 
-## Database Configuration
+## Build Configuration
 
-### 1. MongoDB Production Setup
+### Install EAS CLI
 
-**MongoDB Atlas**:
 ```bash
-# Connection string format
-mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/rezapp?retryWrites=true&w=majority
+npm install -g eas-cli
 ```
 
-**Security Settings**:
-- Enable IP whitelist
-- Use strong passwords
-- Enable encryption at rest
-- Configure backup schedule
-- Set up monitoring alerts
+### Login to Expo
 
-**Indexes** (for backend):
-```javascript
-// Products collection
-db.products.createIndex({ name: 'text', description: 'text' });
-db.products.createIndex({ category: 1, price: 1 });
-db.products.createIndex({ storeId: 1 });
-
-// Users collection
-db.users.createIndex({ email: 1 }, { unique: true });
-db.users.createIndex({ phone: 1 }, { unique: true });
-
-// Orders collection
-db.orders.createIndex({ userId: 1, createdAt: -1 });
-db.orders.createIndex({ status: 1 });
-```
-
-### 2. Redis Configuration
-
-**Redis Cloud**:
 ```bash
-# Connection string format
-redis://:<password>@redis-xxxxx.cloud.redislabs.com:12345
+eas login
 ```
 
-**Usage**:
-- Session storage
-- Cache layer
-- Rate limiting
-- Queue management
+### Configure EAS Build
 
----
+Create `eas.json`:
 
-## Build & Deploy
-
-### 1. iOS Build
-
-**Prerequisites**:
-- Xcode 14+
-- Apple Developer Account
-- App Store Connect access
-
-**Build Steps**:
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Install CocoaPods
-cd ios && pod install && cd ..
-
-# Build for production
-npx expo build:ios --release-channel production
-
-# Or with EAS
-eas build --platform ios --profile production
-```
-
-**App Store Submission**:
-1. Archive app in Xcode
-2. Upload to App Store Connect
-3. Fill app metadata
-4. Submit for review
-5. Wait for approval (1-7 days)
-
-### 2. Android Build
-
-**Prerequisites**:
-- Android Studio
-- Google Play Console access
-- Signing keys
-
-**Generate Signing Key**:
-```bash
-keytool -genkeypair -v \
-  -storetype PKCS12 \
-  -keystore rezapp-release.keystore \
-  -alias rezapp \
-  -keyalg RSA \
-  -keysize 2048 \
-  -validity 10000
-```
-
-**Build Steps**:
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Build for production
-npx expo build:android --release-channel production
-
-# Or with EAS
-eas build --platform android --profile production
-```
-
-**Play Store Submission**:
-1. Upload AAB to Play Console
-2. Fill store listing
-3. Set up content rating
-4. Configure pricing
-5. Submit for review
-6. Roll out to production
-
-### 3. EAS Build Configuration
-
-**eas.json**:
 ```json
 {
   "cli": {
@@ -485,26 +237,40 @@ eas build --platform android --profile production
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "buildConfiguration": "Debug"
+      },
+      "android": {
+        "buildType": "apk"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
+      "distribution": "store",
+      "autoIncrement": true,
       "env": {
-        "API_URL": "https://api.rezapp.com"
+        "ENVIRONMENT": "production"
       }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "1234567890",
-        "appleTeamId": "ABCD123456"
+        "appleId": "your-apple-id@email.com",
+        "ascAppId": "your-app-store-connect-id",
+        "appleTeamId": "your-team-id"
       },
       "android": {
-        "serviceAccountKeyPath": "./google-service-account.json",
+        "serviceAccountKeyPath": "./android-service-account.json",
         "track": "production"
       }
     }
@@ -514,418 +280,572 @@ eas build --platform android --profile production
 
 ---
 
-## Post-Deployment
+## iOS Deployment
 
-### 1. Smoke Tests
+### Prerequisites
 
-**Immediately After Deployment**:
+- Apple Developer Account ($99/year)
+- Mac computer with Xcode installed
+- App Store Connect access
+- Certificates and provisioning profiles
+
+### Step 1: Prepare iOS Assets
 
 ```bash
-# Run E2E tests against production
-detox test --configuration ios.sim.release \
-  --testNamePattern="Critical Flows"
+# Generate app icons
+npx expo-optimize
 
-# Test key flows manually:
-# - User registration
-# - Product search
-# - Add to cart
-# - Checkout
-# - Payment
+# Verify all iOS assets
+ls -la assets/images/
+# Should see: icon.png, adaptive-icon.png, splash.png
 ```
 
-### 2. Monitor Dashboards
+### Step 2: Configure App Store Connect
 
-**Check These Metrics**:
-- Error rate (should be < 1%)
-- Response times (< 1s for 95th percentile)
-- Crash-free rate (> 99%)
-- Active users
-- Conversion rate
+1. Go to [App Store Connect](https://appstoreconnect.apple.com)
+2. Create new app
+3. Fill in app information:
+   - Name: Rez App
+   - Bundle ID: com.rezapp.ios
+   - SKU: rezapp-ios-001
+   - Category: Shopping
+4. Upload screenshots (required sizes)
+5. Write app description
+6. Set privacy policy URL
+7. Configure in-app purchases (if any)
 
-**Dashboard Links**:
-- Sentry: https://sentry.io/organizations/rezapp/issues/
-- Google Analytics: https://analytics.google.com
-- Mixpanel: https://mixpanel.com/report
-- App Store Connect: https://appstoreconnect.apple.com
-- Play Console: https://play.google.com/console
+### Step 3: Build for iOS
 
-### 3. User Feedback
+```bash
+# Build production iOS app
+eas build --platform ios --profile production
 
-**Monitor**:
-- App store reviews
+# This will:
+# 1. Upload code to EAS
+# 2. Build on EAS servers
+# 3. Generate IPA file
+# 4. Provide download link
+```
+
+### Step 4: Test iOS Build
+
+```bash
+# Install TestFlight build
+eas submit --platform ios --profile production --latest
+
+# Add internal testers in App Store Connect
+# Test thoroughly before public release
+```
+
+### Step 5: Submit to App Store
+
+```bash
+# Submit for review
+eas submit --platform ios --profile production
+
+# Or manually:
+# 1. Download IPA from EAS
+# 2. Open Transporter app
+# 3. Upload IPA
+# 4. Submit in App Store Connect
+```
+
+### Step 6: App Store Review
+
+Expected timeline: 1-3 days
+
+Be prepared to answer:
+- Privacy policy questions
+- Data collection practices
+- Account deletion process
+- Payment integration details
+
+---
+
+## Android Deployment
+
+### Prerequisites
+
+- Google Play Developer Account ($25 one-time)
+- Android keystore file
+- Google Play Console access
+
+### Step 1: Generate Android Keystore
+
+```bash
+# Generate keystore (one time only)
+keytool -genkeypair -v -storetype PKCS12 \
+  -keystore rezapp-release.keystore \
+  -alias rezapp-key-alias \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000
+
+# IMPORTANT: Store keystore password securely!
+# If lost, you cannot update your app!
+```
+
+### Step 2: Configure Google Play Console
+
+1. Go to [Google Play Console](https://play.google.com/console)
+2. Create new app
+3. Fill in app details:
+   - App name: Rez App
+   - Package name: com.rezapp.android
+   - Category: Shopping
+4. Upload screenshots (required sizes)
+5. Write app description
+6. Set privacy policy URL
+7. Complete content rating questionnaire
+8. Set up pricing and distribution
+
+### Step 3: Build for Android
+
+```bash
+# Build production Android app
+eas build --platform android --profile production
+
+# This will:
+# 1. Upload code to EAS
+# 2. Build AAB (Android App Bundle)
+# 3. Sign with your keystore
+# 4. Provide download link
+```
+
+### Step 4: Test Android Build
+
+```bash
+# Create internal testing track
+# Upload AAB to Google Play Console
+# Add internal testers
+# Test thoroughly
+
+# Or use EAS Submit:
+eas submit --platform android --profile production --latest
+```
+
+### Step 5: Release to Production
+
+1. Go to Google Play Console
+2. Navigate to Production track
+3. Create new release
+4. Upload AAB
+5. Write release notes
+6. Review and rollout
+
+Options:
+- **Staged Rollout**: 5% → 10% → 20% → 50% → 100%
+- **Full Rollout**: 100% immediately (risky)
+
+**Recommended**: Start with 5% staged rollout
+
+---
+
+## Web Deployment
+
+### Option 1: Vercel (Recommended)
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Login
+vercel login
+
+# Deploy
+vercel --prod
+
+# Configure custom domain (optional)
+vercel domains add app.rezapp.com
+```
+
+### Option 2: Netlify
+
+```bash
+# Install Netlify CLI
+npm install -g netlify-cli
+
+# Login
+netlify login
+
+# Build and deploy
+npm run build:web
+netlify deploy --prod --dir=dist
+```
+
+### Option 3: AWS S3 + CloudFront
+
+```bash
+# Build for web
+npm run build:web
+
+# Upload to S3
+aws s3 sync dist/ s3://your-bucket-name --delete
+
+# Invalidate CloudFront cache
+aws cloudfront create-invalidation \
+  --distribution-id YOUR_DIST_ID \
+  --paths "/*"
+```
+
+### Web Configuration
+
+Create `vercel.json` or `netlify.toml`:
+
+**Vercel**:
+```json
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Post-Deployment Verification
+
+### 1. Smoke Tests (5-10 minutes)
+
+Run these tests immediately after deployment:
+
+```bash
+# Test checklist
+- [ ] App launches successfully
+- [ ] Home screen loads
+- [ ] User can sign in
+- [ ] User can sign up
+- [ ] Products load
+- [ ] Search works
+- [ ] Cart functions
+- [ ] Checkout works (test mode)
+- [ ] Profile loads
+- [ ] Navigation works
+- [ ] No crashes in 5 minutes
+```
+
+### 2. Monitor Error Rates
+
+Check Sentry dashboard:
+- Error rate should be < 0.1%
+- No critical errors
+- Performance metrics normal
+
+### 3. Check Analytics
+
+Verify events are being tracked:
+- App opens
+- Screen views
+- User actions
+- Conversion funnel
+
+### 4. Monitor Performance
+
+Check metrics:
+- App startup time < 2s
+- API response times < 500ms
+- Memory usage < 150MB
+- No memory leaks
+
+### 5. User Feedback
+
+Monitor:
+- App Store reviews
+- Google Play reviews
 - Support tickets
 - Social media mentions
-- In-app feedback
-
-**Response Times**:
-- Critical issues: < 1 hour
-- High priority: < 4 hours
-- Medium priority: < 24 hours
-- Low priority: < 7 days
 
 ---
 
 ## Rollback Procedures
 
-### Emergency Rollback (Critical Issues)
+### If Critical Issues Occur
 
-**iOS**:
-1. Login to App Store Connect
-2. Go to App Store → iOS App → Version
-3. Click "Remove from Sale"
-4. Upload previous version
-5. Submit for expedited review (if needed)
+#### iOS Rollback
 
-**Android**:
-1. Login to Play Console
-2. Go to Production → Releases
-3. Click "Create new release"
-4. Upload previous APK/AAB
-5. Roll out to 100%
+1. **Option 1: Remove from Sale**
+   - Go to App Store Connect
+   - Remove app from sale
+   - Fix issues
+   - Resubmit
 
-### Database Rollback
+2. **Option 2: Expedited Review**
+   - Request expedited review
+   - Usually 1-2 hours
+   - Use sparingly
 
-**MongoDB**:
+#### Android Rollback
+
+1. **Immediate Rollback**
+   ```bash
+   # In Google Play Console
+   1. Go to Production track
+   2. Click "Manage release"
+   3. Click "Revert to previous version"
+   4. Confirm rollback
+   ```
+
+2. **Staged Rollout Halt**
+   ```bash
+   # Halt rollout at current percentage
+   1. Pause rollout
+   2. Fix issues
+   3. Resume or create new release
+   ```
+
+#### Web Rollback
+
 ```bash
-# Restore from backup
-mongorestore --uri="mongodb+srv://..." \
-  --archive=rezapp-backup-YYYY-MM-DD.gz \
-  --gzip
+# Vercel
+vercel rollback
 
-# Or point-in-time restore in Atlas UI
+# Netlify
+netlify rollback
+
+# AWS S3
+aws s3 sync s3://your-bucket-name-backup/ s3://your-bucket-name/
 ```
 
-### API Rollback
+### Rollback Decision Matrix
 
-**Using Docker**:
+| Severity | Action | Timeline |
+|----------|--------|----------|
+| **Critical** (app crashes) | Immediate rollback | < 15 minutes |
+| **High** (major feature broken) | Rollback within 1 hour | < 1 hour |
+| **Medium** (minor bug) | Hotfix in next release | 1-2 days |
+| **Low** (cosmetic issue) | Fix in regular release | Next sprint |
+
+---
+
+## Monitoring Setup
+
+### 1. Error Tracking (Sentry)
+
 ```bash
-# Roll back to previous image
-docker pull rezapp/api:previous-stable
-docker-compose up -d
+# Already configured in code
+# Verify in Sentry dashboard
+# Set up alerts for:
+- Error rate > 1%
+- New error types
+- Performance degradation
+- Memory leaks
 ```
 
-### Feature Flag Rollback
+### 2. Analytics (Google Analytics / Mixpanel)
 
-**Disable Feature**:
-```typescript
-// In .env.production
-ENABLE_NEW_FEATURE=false
+```bash
+# Verify events:
+- app_open
+- screen_view
+- user_signup
+- user_login
+- product_view
+- add_to_cart
+- purchase_complete
 ```
 
-Then push updated environment variables and restart.
+### 3. Performance Monitoring
 
----
-
-## CI/CD Pipeline
-
-### GitHub Actions Workflow
-
-**`.github/workflows/deploy-production.yml`**:
-
-```yaml
-name: Deploy to Production
-
-on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
-
-      - name: Run linter
-        run: |
-          cd frontend
-          npm run lint
-
-      - name: Run tests
-        run: |
-          cd frontend
-          npm test
-
-  build-ios:
-    needs: test
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
-
-      - name: Build iOS
-        run: |
-          cd frontend
-          eas build --platform ios --profile production --non-interactive
-
-      - name: Submit to App Store
-        run: |
-          cd frontend
-          eas submit --platform ios --latest --profile production
-
-  build-android:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
-
-      - name: Build Android
-        run: |
-          cd frontend
-          eas build --platform android --profile production --non-interactive
-
-      - name: Submit to Play Store
-        run: |
-          cd frontend
-          eas submit --platform android --latest --profile production
-
-  deploy-backend:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Deploy to production
-        run: |
-          # Your backend deployment script
-          ./scripts/deploy-backend.sh
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-
-  notify:
-    needs: [build-ios, build-android, deploy-backend]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify Slack
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          text: 'Production deployment completed!'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+```bash
+# Monitor via:
+- Firebase Performance
+- New Relic (if configured)
+- Custom metrics dashboard
 ```
 
-### Environment Secrets
+### 4. User Feedback
 
-**Required GitHub Secrets**:
-- `EXPO_TOKEN` - Expo authentication token
-- `SENTRY_DSN` - Sentry DSN
-- `GA_TRACKING_ID` - Google Analytics ID
-- `MIXPANEL_TOKEN` - Mixpanel token
-- `RAZORPAY_KEY_ID` - Razorpay key
-- `RAZORPAY_KEY_SECRET` - Razorpay secret
-- `CLOUDINARY_CLOUD_NAME` - Cloudinary cloud name
-- `CLOUDINARY_API_KEY` - Cloudinary API key
-- `CLOUDINARY_API_SECRET` - Cloudinary API secret
-- `MONGODB_URI` - MongoDB connection string
-- `REDIS_URL` - Redis connection string
-- `SLACK_WEBHOOK` - Slack notification webhook
+Set up:
+- In-app feedback form
+- Email support
+- Social media monitoring
+- Review monitoring (App Annie)
 
 ---
 
-## Production Monitoring Checklist
+## Troubleshooting
 
-### Daily Checks ✅
-- [ ] Error rate < 1%
-- [ ] Crash-free rate > 99%
-- [ ] API response time < 1s (95th percentile)
-- [ ] No critical errors in Sentry
-- [ ] App store rating > 4.0
+### Common Deployment Issues
 
-### Weekly Checks ✅
-- [ ] Review analytics trends
-- [ ] Check performance metrics
-- [ ] Review user feedback
-- [ ] Update dependencies (security patches)
-- [ ] Backup verification
+#### Build Failures
 
-### Monthly Checks ✅
-- [ ] Full security audit
-- [ ] Performance optimization review
-- [ ] Database optimization
-- [ ] Cost analysis
-- [ ] Capacity planning
+**Issue**: EAS build fails
+```bash
+# Solution 1: Clear cache
+eas build:clear-cache
 
----
+# Solution 2: Check logs
+eas build:list
+eas build:view BUILD_ID
 
-## Support & Maintenance
+# Solution 3: Update dependencies
+npm update
+```
 
-### On-Call Rotation
-- **Tier 1**: 24/7 critical issues
-- **Tier 2**: Business hours support
-- **Tier 3**: Scheduled maintenance
+#### Code Signing Issues (iOS)
 
-### Incident Response
-1. **Detect**: Monitoring alerts
-2. **Assess**: Severity and impact
-3. **Respond**: Execute runbook
-4. **Resolve**: Fix and verify
-5. **Document**: Post-mortem
+**Issue**: Provisioning profile invalid
+```bash
+# Solution:
+1. Revoke certificates in Apple Developer
+2. Delete local certificates
+3. Let EAS auto-generate
+4. Rebuild
+```
 
-### Contact Information
-- **Emergency**: [emergency-contact]
-- **Support**: support@rezapp.com
-- **Status Page**: https://status.rezapp.com
+#### Upload Issues
 
----
+**Issue**: IPA/AAB upload fails
+```bash
+# Solution 1: Check file size
+# Must be < 200MB for iOS, < 150MB for Android
 
-## Compliance & Legal
+# Solution 2: Check internet connection
+# Upload can take 10-30 minutes
 
-### Data Privacy ✅
-- GDPR compliance
-- CCPA compliance
-- Data retention policies
-- User data deletion
+# Solution 3: Use alternate method
+# Download and upload manually
+```
 
-### App Store Compliance ✅
-- Privacy policy published
-- Terms of service published
-- Age rating appropriate
-- Content guidelines followed
+#### Runtime Errors in Production
 
-### Security Compliance ✅
-- PCI DSS (for payments)
-- SOC 2 Type II (if applicable)
-- ISO 27001 (if applicable)
-- Regular security audits
+**Issue**: App works in dev but crashes in production
+
+```bash
+# Common causes:
+1. Environment variables not set
+2. API endpoints wrong
+3. Missing native modules
+4. Code obfuscation issues
+
+# Debug:
+1. Check Sentry logs
+2. Test production build locally
+3. Enable source maps
+4. Review build configuration
+```
 
 ---
 
-## Performance Targets
+## Emergency Contacts
 
-### Response Times
-- **Homepage load**: < 2s
-- **Product page**: < 3s
-- **Search results**: < 1s
-- **API calls**: < 500ms
+### Support Escalation
 
-### Availability
-- **Uptime**: 99.9% (< 43 minutes downtime/month)
-- **Error rate**: < 0.1%
-- **Crash rate**: < 0.01%
+- **Frontend Lead**: [Contact]
+- **Backend Lead**: [Contact]
+- **DevOps**: [Contact]
+- **On-Call Engineer**: [Contact]
 
-### Scalability
-- **Concurrent users**: 10,000+
-- **Requests/second**: 1,000+
-- **Database queries**: < 100ms
+### External Support
+
+- **Expo Support**: https://expo.dev/support
+- **Apple Developer**: https://developer.apple.com/support
+- **Google Play Support**: https://support.google.com/googleplay
 
 ---
 
-## Final Pre-Launch Checklist
+## Deployment Commands Quick Reference
 
-### Technical ✅
-- [x] All tests passing
-- [x] Security audit complete
-- [x] Performance optimized
-- [x] Monitoring configured
-- [x] Backups automated
-- [x] SSL certificates valid
-- [x] CDN configured
+```bash
+# Pre-deployment
+npm test
+npm run lint
+npm run build
 
-### Business ✅
-- [x] App store assets ready
-- [x] Marketing materials prepared
-- [x] Support team trained
-- [x] Legal documents signed
-- [x] Payment processing tested
-- [x] Launch plan documented
+# iOS
+eas build --platform ios --profile production
+eas submit --platform ios
 
-### Operations ✅
-- [x] On-call schedule set
-- [x] Runbooks created
-- [x] Rollback plan tested
-- [x] Communication channels ready
-- [x] Status page configured
+# Android
+eas build --platform android --profile production
+eas submit --platform android
 
----
+# Web
+npm run build:web
+vercel --prod
 
-## 🚀 Launch Day Checklist
+# Post-deployment
+npm run monitor
+npm run analytics-check
 
-### T-24 Hours
-- [ ] Final code freeze
-- [ ] Deploy to staging
-- [ ] Run full E2E suite
-- [ ] Notify stakeholders
-
-### T-12 Hours
-- [ ] Verify all monitoring
-- [ ] Test rollback procedure
-- [ ] Brief support team
-- [ ] Prepare announcements
-
-### T-1 Hour
-- [ ] Deploy to production
-- [ ] Run smoke tests
-- [ ] Monitor dashboards
-- [ ] Stand by for issues
-
-### T+0 (Launch!)
-- [ ] Announce launch
-- [ ] Monitor closely
-- [ ] Respond to feedback
-- [ ] Document issues
-
-### T+24 Hours
-- [ ] Review metrics
-- [ ] Address bugs
-- [ ] Thank team
-- [ ] Plan improvements
+# Rollback
+vercel rollback
+# OR manually in app stores
+```
 
 ---
 
-**Status**: ✅ Production Ready - 100/100
+## Checklist Summary
 
-**Last Updated**: January 2025
+Before going live:
 
-**Maintainers**: Development Team
+- [ ] Backend issues resolved
+- [ ] All tests passing
+- [ ] Environment configured
+- [ ] Assets prepared
+- [ ] App store accounts ready
+- [ ] Build configurations set
+- [ ] Monitoring configured
+- [ ] Support team briefed
+- [ ] Rollback plan tested
+- [ ] Legal review complete
+- [ ] Privacy policy published
+- [ ] Terms of service published
 
 ---
 
-## Resources
+## Success Criteria
 
-- [E2E Testing Guide](./E2E_TESTING_GUIDE.md)
-- [Security Service](../utils/securityService.ts)
-- [Monitoring Config](./monitoring.config.ts)
-- [Production Readiness](./PRODUCTION_READY_100.md)
+After deployment, monitor for 48 hours:
+
+- ✅ Crash rate < 0.1%
+- ✅ Error rate < 1%
+- ✅ App store rating > 4.0
+- ✅ User retention > 40% (Day 1)
+- ✅ No critical bugs reported
+- ✅ Performance metrics normal
+- ✅ Support tickets manageable
+
+If all criteria met → Deployment successful! 🎉
+
+---
+
+**Document Version**: 1.0.0
+**Last Updated**: 2025-11-14
+**Next Review**: After first production deployment
+
+---
+
+## Additional Resources
+
+- [Expo Documentation](https://docs.expo.dev)
+- [EAS Build Documentation](https://docs.expo.dev/build/introduction/)
+- [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/)
+- [Google Play Policy](https://play.google.com/about/developer-content-policy/)
+- [React Native Performance](https://reactnative.dev/docs/performance)
+
+---
+
+**END OF DEPLOYMENT GUIDE**

@@ -1,31 +1,76 @@
-import React from 'react';
-import { 
-  TouchableOpacity, 
-  StyleSheet, 
-  Image, 
-  View 
+import React, { useMemo, useCallback } from 'react';
+import {
+  TouchableOpacity,
+  StyleSheet,
+  View
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BrandedStoreCardProps } from '@/types/homepage.types';
+import FastImage from '@/components/common/FastImage';
 
-export default function BrandedStoreCard({ 
-  store, 
-  onPress, 
-  width = 200 
+// Custom comparison function for React.memo
+const arePropsEqual = (prevProps: BrandedStoreCardProps, nextProps: BrandedStoreCardProps) => {
+  return (
+    prevProps.store.id === nextProps.store.id &&
+    prevProps.width === nextProps.width &&
+    prevProps.store.brandName === nextProps.store.brandName &&
+    prevProps.store.discount.description === nextProps.store.discount.description &&
+    prevProps.store.cashback.description === nextProps.store.cashback.description &&
+    prevProps.store.isPartner === nextProps.store.isPartner &&
+    prevProps.store.partnerLevel === nextProps.store.partnerLevel
+  );
+};
+
+function BrandedStoreCard({
+  store,
+  onPress,
+  width = 200
 }: BrandedStoreCardProps) {
-  const storeLabel = `${store.brandName}. ${store.discount.description}. ${store.cashback.description}${store.isPartner ? `. ${store.partnerLevel} partner` : ''}`;
+  // Memoize accessibility label
+  const storeLabel = useMemo(() => {
+    return `${store.brandName}. ${store.discount.description}. ${store.cashback.description}${store.isPartner ? `. ${store.partnerLevel} partner` : ''}`;
+  }, [store.brandName, store.discount.description, store.cashback.description, store.isPartner, store.partnerLevel]);
+
+  // Memoize onPress callback
+  const handlePress = useCallback(() => {
+    try {
+      onPress(store);
+    } catch (error) {
+      console.error('Branded store card press error:', error);
+    }
+  }, [onPress, store]);
+
+  // Memoize partner badge styles
+  const partnerBadgeStyles = useMemo(() => {
+    const baseStyle = [styles.partnerBadge];
+    if (store.partnerLevel === 'gold') {
+      baseStyle.push(styles.goldPartner);
+    } else if (store.partnerLevel === 'silver') {
+      baseStyle.push(styles.silverPartner);
+    } else if (store.partnerLevel === 'bronze') {
+      baseStyle.push(styles.bronzePartner);
+    }
+    return baseStyle;
+  }, [store.partnerLevel]);
+
+  // Memoize partner text styles
+  const partnerTextStyles = useMemo(() => {
+    const baseStyle = [styles.partnerText];
+    if (store.partnerLevel === 'gold') {
+      baseStyle.push(styles.goldPartnerText);
+    } else if (store.partnerLevel === 'silver') {
+      baseStyle.push(styles.silverPartnerText);
+    } else if (store.partnerLevel === 'bronze') {
+      baseStyle.push(styles.bronzePartnerText);
+    }
+    return baseStyle;
+  }, [store.partnerLevel]);
 
   return (
     <TouchableOpacity
       style={[styles.container, { width }]}
-      onPress={() => {
-        try {
-          onPress(store);
-        } catch (error) {
-          console.error('Branded store card press error:', error);
-        }
-      }}
+      onPress={handlePress}
       activeOpacity={0.8}
       delayPressIn={0}
       delayPressOut={0}
@@ -54,12 +99,11 @@ export default function BrandedStoreCard({
           accessibilityLabel={`${store.brandName} logo`}
           accessibilityRole="image"
         >
-          <Image
-            source={{ uri: store.brandLogo }}
+          <FastImage
+            source={store.brandLogo}
             style={styles.logo}
             resizeMode="contain"
-            fadeDuration={0}
-            accessible={false}
+            showLoader={true}
           />
         </View>
 
@@ -84,26 +128,18 @@ export default function BrandedStoreCard({
 
         {/* Partner Badge */}
         {store.isPartner && (
-          <View style={[
-            styles.partnerBadge,
-            store.partnerLevel === 'gold' && styles.goldPartner,
-            store.partnerLevel === 'silver' && styles.silverPartner,
-            store.partnerLevel === 'bronze' && styles.bronzePartner
-          ]}>
-            <ThemedText style={[
-              styles.partnerText,
-              store.partnerLevel === 'gold' && styles.goldPartnerText,
-              store.partnerLevel === 'silver' && styles.silverPartnerText,
-              store.partnerLevel === 'bronze' && styles.bronzePartnerText
-            ]}>
+          <View style={partnerBadgeStyles}>
+            <ThemedText style={partnerTextStyles}>
               {store.partnerLevel?.toUpperCase()} PARTNER
             </ThemedText>
           </View>
         )}
       </ThemedView>
     </TouchableOpacity>
-);
+  );
 }
+
+export default React.memo(BrandedStoreCard, arePropsEqual);
 
 const styles = StyleSheet.create({
   container: {

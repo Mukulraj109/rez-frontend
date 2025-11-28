@@ -5,12 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
 import { useCurrentLocation, useLocationPermission } from '@/hooks/useLocation';
 import { UserLocation } from '@/types/location.types';
 import { webLocationService } from '@/services/webLocationService';
+import { showAlert } from '@/components/common/CrossPlatformAlert';
 
 interface LocationDisplayProps {
   showCoordinates?: boolean;
@@ -23,6 +23,18 @@ interface LocationDisplayProps {
   textStyle?: any;
   buttonStyle?: any;
 }
+
+// Shared web location state (singleton pattern for web)
+let sharedWebLocation: any = null;
+let sharedWebLocationPromise: Promise<any> | null = null;
+let isInitializing = false;
+const locationListeners = new Set<(location: any) => void>();
+
+// Helper to notify all instances when location changes
+const notifyLocationChange = (location: any) => {
+  sharedWebLocation = location;
+  locationListeners.forEach(listener => listener(location));
+};
 
 export default function LocationDisplay({
   showCoordinates = false,
@@ -40,52 +52,100 @@ export default function LocationDisplay({
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Web-specific location state
-  const [webLocation, setWebLocation] = useState<any>(null);
+  const [webLocation, setWebLocation] = useState<any>(sharedWebLocation);
   const [webLoading, setWebLoading] = useState(false);
   const [webError, setWebError] = useState<string | null>(null);
 
-  // Initialize web location on mount
+  // Initialize web location on mount and subscribe to changes
   useEffect(() => {
     if (Platform.OS === 'web') {
-      initializeWebLocation();
+      // Subscribe to location changes
+      const handleLocationChange = (location: any) => {
+        setWebLocation(location);
+      };
+
+      locationListeners.add(handleLocationChange);
+
+      // If we already have shared location, use it immediately
+      if (sharedWebLocation) {
+        setWebLocation(sharedWebLocation);
+      } else if (sharedWebLocationPromise) {
+        // If another instance is already fetching, wait for it
+        setWebLoading(true);
+        sharedWebLocationPromise.then(location => {
+          if (location) {
+            setWebLocation(location);
+          }
+          setWebLoading(false);
+        }).catch(() => {
+          setWebLoading(false);
+        });
+      } else {
+        // First instance - initialize location
+        initializeWebLocation();
+      }
+
+      // Cleanup: unsubscribe on unmount
+      return () => {
+        locationListeners.delete(handleLocationChange);
+      };
     }
   }, []);
 
   const initializeWebLocation = async () => {
+    // Prevent multiple simultaneous initializations
+    if (isInitializing) {
+      return;
+    }
 
+    isInitializing = true;
     setWebLoading(true);
     setWebError(null);
 
-    try {
-      // Check if permission is already granted
-      const permissionStatus = await webLocationService.checkLocationPermission();
+    // Create promise that other instances can await
+    sharedWebLocationPromise = (async () => {
+      try {
+        // Check if permission is already granted
+        const permissionStatus = await webLocationService.checkLocationPermission();
 
-      if (permissionStatus === 'granted') {
-        // Get current location
+        let location: any = null;
 
-        const location = await webLocationService.getCurrentLocation();
+        if (permissionStatus === 'granted') {
+          // Permission already granted - get current location
+          location = await webLocationService.getCurrentLocation();
+        } else if (permissionStatus === 'prompt') {
+          // Permission not yet requested - automatically request it
+          try {
+            const granted = await webLocationService.requestLocationPermission();
+
+            if (granted) {
+              location = await webLocationService.getCurrentLocation();
+            }
+          } catch (requestError) {
+            // Permission request failed, silently continue
+          }
+        }
+
         if (location) {
-          setWebLocation(location);
-
+          // Notify all instances of location change
+          notifyLocationChange(location);
         } else {
-          console.warn('[LocationDisplay] getCurrentLocation returned null');
           setWebError('Failed to get location data');
         }
-      } else {
-        // Permission not granted, don't set error - just wait for user action
 
-        // Don't set error, just leave location empty for user to click refresh
+        return location;
+      } catch (error) {
+        setWebError(`Location error: ${error.message || 'Unknown error'}`);
+        return null;
+      } finally {
+        setWebLoading(false);
+        isInitializing = false;
       }
-    } catch (error) {
-      console.error('[LocationDisplay] Web location initialization error:', error);
-      setWebError(`Location error: ${error.message || 'Unknown error'}`);
-    } finally {
-      setWebLoading(false);
-    }
+    })();
+
+    await sharedWebLocationPromise;
   };
 
-  // Debug logging (commented out for production)
-  // 
 
   const handleRefresh = async () => {
     if (onRefresh) {
@@ -99,36 +159,78 @@ export default function LocationDisplay({
       setWebError(null);
 
       try {
-        // Request permission first
+        // Check permission status first
+        const permissionStatus = await webLocationService.checkLocationPermission();
+        
+        if (permissionStatus === 'denied') {
+          // Permission was denied - show helpful message
+          showAlert(
+            'Location Permission Denied',
+            'Location permission has been denied. To enable location:\n\n1. Click the lock/info icon in your browser\'s address bar\n2. Find "Location" in the permissions list\n3. Change it to "Allow"\n4. Refresh this page',
+            [{ text: 'OK' }],
+            'warning'
+          );
+          setWebError('Permission denied');
+          setIsRefreshing(false);
+          return;
+        }
+
+        // Request permission (will show prompt if status is 'prompt')
         const granted = await webLocationService.requestLocationPermission();
         if (!granted) {
-          Alert.alert(
-            'Permission Required',
-            'Location permission is required to show your current location.',
-            [{ text: 'OK' }]
-          );
+          // Check if it's still in prompt state (user dismissed)
+          const currentStatus = await webLocationService.checkLocationPermission();
+          if (currentStatus === 'denied') {
+            showAlert(
+              'Location Permission Denied',
+              'Location permission has been denied. To enable location:\n\n1. Click the lock/info icon in your browser\'s address bar\n2. Find "Location" in the permissions list\n3. Change it to "Allow"\n4. Refresh this page',
+              [{ text: 'OK' }],
+              'warning'
+            );
+          } else {
+            showAlert(
+              'Permission Required',
+              'Location permission is required to show your current location. Please allow location access when prompted.',
+              [{ text: 'OK' }],
+              'info'
+            );
+          }
+          setIsRefreshing(false);
           return;
         }
 
         // Get current location
         const location = await webLocationService.getCurrentLocation();
         if (location) {
-          setWebLocation(location);
+          // Update shared state and notify all instances
+          notifyLocationChange(location);
         } else {
           setWebError('Failed to get location');
-          Alert.alert(
+          showAlert(
             'Location Error',
             'Failed to get your current location. Please try again.',
-            [{ text: 'OK' }]
+            [{ text: 'OK' }],
+            'error'
           );
         }
-      } catch (error) {
+      } catch (error: any) {
         setWebError('Location not available');
-        Alert.alert(
-          'Location Error',
-          'Failed to get your current location. Please try again.',
-          [{ text: 'OK' }]
-        );
+        // Check if it's a permission error
+        if (error?.code === 1 || error?.message?.includes('denied')) {
+          showAlert(
+            'Location Permission Denied',
+            'Location permission has been denied. To enable location:\n\n1. Click the lock/info icon in your browser\'s address bar\n2. Find "Location" in the permissions list\n3. Change it to "Allow"\n4. Refresh this page',
+            [{ text: 'OK' }],
+            'warning'
+          );
+        } else {
+          showAlert(
+            'Location Error',
+            'Failed to get your current location. Please try again.',
+            [{ text: 'OK' }],
+            'error'
+          );
+        }
       } finally {
         setIsRefreshing(false);
       }
@@ -137,10 +239,11 @@ export default function LocationDisplay({
       if (permissionStatus !== 'granted') {
         const granted = await requestPermission();
         if (!granted) {
-          Alert.alert(
+          showAlert(
             'Permission Required',
             'Location permission is required to show your current location.',
-            [{ text: 'OK' }]
+            [{ text: 'OK' }],
+            'info'
           );
           return;
         }
@@ -150,10 +253,11 @@ export default function LocationDisplay({
       try {
         await refreshLocation();
       } catch (error) {
-        Alert.alert(
+        showAlert(
           'Location Error',
           'Failed to get your current location. Please try again.',
-          [{ text: 'OK' }]
+          [{ text: 'OK' }],
+          'error'
         );
       } finally {
         setIsRefreshing(false);
@@ -199,8 +303,6 @@ export default function LocationDisplay({
   };
 
   const getLocationText = (location: UserLocation) => {
-    // 
-
     if (typeof location.address === 'string') {
       if (compact) {
         // Extract locality from the full address string for compact mode
@@ -231,12 +333,9 @@ export default function LocationDisplay({
           }
         }
 
-        const result = locality && city ? `${locality}, ${city}` : locality || city || 'Unknown Location';
-        // 
-        return result;
+        return locality && city ? `${locality}, ${city}` : locality || city || 'Unknown Location';
       } else {
         // Show full address when not in compact mode
-        // 
         return location.address;
       }
     }
@@ -246,9 +345,7 @@ export default function LocationDisplay({
     if (location.address.city) parts.push(location.address.city);
     if (location.address.state) parts.push(location.address.state);
 
-    const result = parts.join(', ') || location.address.formattedAddress || 'Unknown Location';
-    // 
-    return result;
+    return parts.join(', ') || location.address.formattedAddress || 'Unknown Location';
   };
 
   const getPermissionStatusText = () => {
@@ -280,6 +377,10 @@ export default function LocationDisplay({
   // Handle loading states
   const isLocationLoading = Platform.OS === 'web' ? (webLoading || isRefreshing) : (isLoading || isRefreshing);
 
+  // Determine current location and error based on platform
+  const effectiveLocation = Platform.OS === 'web' ? webLocation : currentLocation;
+  const effectiveError = Platform.OS === 'web' ? webError : error;
+
   if (isLocationLoading) {
     return (
       <View style={[styles.container, compact && styles.compactContainer, style]}>
@@ -289,14 +390,14 @@ export default function LocationDisplay({
     );
   }
 
-  // Determine current location and error based on platform
-  const effectiveLocation = Platform.OS === 'web' ? webLocation : currentLocation;
-  const effectiveError = Platform.OS === 'web' ? webError : error;
-
   // Show default location if no location is available and not loading
   if (!effectiveLocation && !isLocationLoading && !effectiveError) {
     return (
-      <View style={[styles.container, compact && styles.compactContainer, style]}>
+      <TouchableOpacity
+        style={[styles.container, compact && styles.compactContainer, style]}
+        onPress={onPress || handleRefresh}
+        activeOpacity={0.7}
+      >
         <Text style={[styles.locationText, textStyle]}>📍 Select Location</Text>
         {showRefreshButton && Platform.OS === 'web' && (
           <TouchableOpacity
@@ -306,14 +407,17 @@ export default function LocationDisplay({
             <Text style={styles.refreshButtonText}>🔄</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </TouchableOpacity>
     );
   }
 
   if (effectiveError) {
-
     return (
-      <View style={[styles.container, compact && styles.compactContainer, style]}>
+      <TouchableOpacity
+        style={[styles.container, compact && styles.compactContainer, style]}
+        onPress={onPress || handleRefresh}
+        activeOpacity={0.7}
+      >
         <Text style={[styles.errorText, textStyle]}>Location unavailable</Text>
         {showRefreshButton && (
           <TouchableOpacity
@@ -323,7 +427,7 @@ export default function LocationDisplay({
             <Text style={styles.refreshButtonText}>Retry</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </TouchableOpacity>
     );
   }
 

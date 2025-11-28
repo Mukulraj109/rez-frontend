@@ -15,6 +15,12 @@ import {
 import homepageDataService from '@/services/homepageDataService';
 import { useCart } from '@/contexts/CartContext';
 import { showToast } from '@/components/common/ToastManager';
+import {
+  Product as UnifiedProduct,
+  Store as UnifiedStore,
+  toProduct,
+  toStore
+} from '@/types/unified';
 
 // Homepage Reducer
 function homepageReducer(state: HomepageState, action: HomepageAction): HomepageState {
@@ -88,80 +94,60 @@ export function useHomepage(): UseHomepageDataResult {
   const refreshAllSections = useCallback(async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      
+
+      // NEW: Try to use batch endpoint first
+      try {
+        const batchSections = await homepageDataService.fetchAllSectionsWithBatch();
+
+        // Convert to array format for state
+        const sectionsArray = [
+          batchSections.events,
+          batchSections.justForYou,
+          batchSections.trendingStores,
+          batchSections.offers,
+          batchSections.flashSales,
+          batchSections.newArrivals
+        ].filter(section => section && section.items && section.items.length > 0);
+
+        dispatch({ type: 'SET_SECTIONS', payload: sectionsArray });
+        dispatch({ type: 'SET_LAST_REFRESH', payload: new Date().toISOString() });
+
+        return;
+      } catch (batchError) {
+        console.warn('Batch approach failed, using fallback:', batchError);
+      }
+
+      // Fallback to original approach if batch fails
+
       // Get base homepage data (for sections that don't need API integration)
       const data = await fetchHomepageData();
-      
+
       // Update specific sections with backend data
       const updatedSections = await Promise.all(
         data.sections.map(async (section) => {
-          if (section.id === 'events') {
-
-            try {
-              const backendSection = await homepageDataService.getEventsSection();
-
-              return backendSection;
-            } catch (error) {
-              console.warn('⚠️ Failed to load "Events" from backend, using fallback:', error);
-              return section; // fallback to original section
+          try {
+            if (section.id === 'events') {
+              return await homepageDataService.getEventsSection();
+            } else if (section.id === 'just_for_you') {
+              return await homepageDataService.getJustForYouSection();
+            } else if (section.id === 'new_arrivals') {
+              return await homepageDataService.getNewArrivalsSection();
+            } else if (section.id === 'trending_stores') {
+              return await homepageDataService.getTrendingStoresSection();
+            } else if (section.id === 'offers' || section.id === 'special_offers') {
+              return await homepageDataService.getOffersSection();
+            } else if (section.id === 'flash_sales') {
+              return await homepageDataService.getFlashSalesSection();
+            } else {
+              return section;
             }
-          } else if (section.id === 'just_for_you') {
-
-            try {
-              const backendSection = await homepageDataService.getJustForYouSection();
-
-              return backendSection;
-            } catch (error) {
-              console.warn('⚠️ Failed to load "Just for You" from backend, using fallback:', error);
-              return section; // fallback to original section
-            }
-          } else if (section.id === 'new_arrivals') {
-
-            try {
-              const backendSection = await homepageDataService.getNewArrivalsSection();
-
-              return backendSection;
-            } catch (error) {
-              console.warn('⚠️ Failed to load "New Arrivals" from backend, using fallback:', error);
-              return section; // fallback to original section
-            }
-          } else if (section.id === 'trending_stores') {
-
-            try {
-              const backendSection = await homepageDataService.getTrendingStoresSection();
-
-              return backendSection;
-            } catch (error) {
-              console.warn('⚠️ Failed to load "Trending Stores" from backend, using fallback:', error);
-              return section; // fallback to original section
-            }
-          } else if (section.id === 'offers' || section.id === 'special_offers') {
-
-            try {
-              const backendSection = await homepageDataService.getOffersSection();
-
-              return backendSection;
-            } catch (error) {
-              console.warn('⚠️ Failed to load "Offers" from backend, using fallback:', error);
-              return section; // fallback to original section
-            }
-          } else if (section.id === 'flash_sales') {
-
-            try {
-              const backendSection = await homepageDataService.getFlashSalesSection();
-
-              return backendSection;
-            } catch (error) {
-              console.warn('⚠️ Failed to load "Flash Sales" from backend, using fallback:', error);
-              return section; // fallback to original section
-            }
-          } else {
-            // Keep other sections unchanged
-            return section;
+          } catch (error) {
+            console.warn(`Failed to load "${section.id}" section:`, error);
+            return section; // fallback to original section
           }
         })
       );
-      
+
       dispatch({ type: 'SET_SECTIONS', payload: updatedSections });
       dispatch({ type: 'SET_LAST_REFRESH', payload: new Date().toISOString() });
     } catch (error) {
@@ -179,13 +165,10 @@ export function useHomepage(): UseHomepageDataResult {
       
       // Use new backend service for specific sections
       if (sectionId === 'just_for_you') {
-
         sectionData = await homepageDataService.getJustForYouSection();
       } else if (sectionId === 'new_arrivals') {
-
         sectionData = await homepageDataService.getNewArrivalsSection();
       } else if (sectionId === 'trending_stores') {
-
         sectionData = await homepageDataService.getTrendingStoresSection();
       } else {
         // Use fallback for other sections
@@ -226,39 +209,35 @@ export function useHomepage(): UseHomepageDataResult {
   // Analytics tracking (placeholder for backend integration)
   const trackSectionView = useCallback((sectionId: string) => {
     // TODO: Send analytics event to backend
-
   }, []);
 
   const trackItemClick = useCallback((sectionId: string, itemId: string) => {
     // TODO: Send analytics event to backend
-
   }, []);
 
   // Auto-refresh on mount
   useEffect(() => {
-
     // Since we now have fallback data, sections.length will not be 0, so let's trigger refresh anyway
-
     refreshAllSections();
-  }, [refreshAllSections]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount, refreshAllSections is stable
 
-  // Debug effect to test service directly
-  useEffect(() => {
-    const testService = async () => {
-
-      try {
-        const justForYouSection = await homepageDataService.getJustForYouSection();
-
-      } catch (error) {
-        console.error('🧪 [HOMEPAGE HOOK] Direct service test failed:', error);
-      }
-    };
-    
-    // Run test only once
-    if (state.sections.length > 0) {
-      testService();
-    }
-  }, [state.sections.length]);
+  // Debug effect to test service directly - disabled to prevent infinite loop
+  // This was causing infinite loops because state.sections.length changes constantly
+  // useEffect(() => {
+  //   const testService = async () => {
+  //     try {
+  //       const justForYouSection = await homepageDataService.getJustForYouSection();
+  //     } catch (error) {
+  //       console.error('🧪 [HOMEPAGE HOOK] Direct service test failed:', error);
+  //     }
+  //   };
+  //
+  //   // Run test only once
+  //   if (state.sections.length > 0) {
+  //     testService();
+  //   }
+  // }, [state.sections.length]);
 
   return {
     state,
@@ -327,40 +306,40 @@ export function useHomepageNavigation() {
   const { actions: cartActions } = useCart();
 
   const handleItemPress = useCallback((sectionId: string, item: any) => {
-
     // Track click
     actions.trackItemClick(sectionId, item.id);
-    
+
     try {
       // For "Just for you" and "New Arrivals" sections, navigate to dynamic StorePage
       if (sectionId === 'just_for_you' || sectionId === 'new_arrivals') {
-
         // Pass complete item data to StorePage for dynamic content
         try {
-          // Extract price from complex price object
+          // Extract price from complex price object with proper fallback chain
           let extractedPrice = 999; // default
           if (item.price) {
             if (typeof item.price === 'number') {
               extractedPrice = item.price;
             } else if (typeof item.price === 'object') {
-              // Handle price objects like { current: 8999, original: 12999, ... }
-              extractedPrice = item.price.current || item.price.amount || 999;
+              extractedPrice = item.price.current || item.price.selling || item.price.amount || 999;
             } else if (typeof item.price === 'string') {
               extractedPrice = parseFloat(item.price) || 999;
             }
+          } else if (item.pricing && item.pricing.selling) {
+            extractedPrice = item.pricing.selling;
           }
 
-          // Extract rating from complex rating object
+          // Extract rating from complex rating object with proper fallback chain
           let extractedRating = 4.5; // default
           if (item.rating) {
             if (typeof item.rating === 'number') {
               extractedRating = item.rating;
             } else if (typeof item.rating === 'object') {
-              // Handle rating objects like { value: 4.6, count: 567 }
-              extractedRating = item.rating.value || 4.5;
+              extractedRating = item.rating.value || item.rating.average || 4.5;
             } else if (typeof item.rating === 'string') {
               extractedRating = parseFloat(item.rating) || 4.5;
             }
+          } else if (item.ratings && item.ratings.average) {
+            extractedRating = item.ratings.average;
           }
 
           const cardData = {
@@ -372,36 +351,31 @@ export function useHomepageNavigation() {
             rating: extractedRating,
             category: item.category,
             merchant: item.merchant || item.store || item.brand,
-            storeId: item.store?._id || item.store?.id || item.storeId || item.store,
+            storeId: item.store?._id || item.store?.id || item.storeId,
             storeName: item.store?.name || item.storeName || 'Store',
             type: item.type,
             section: sectionId,
-            // Include original price structure for reference
             originalPrice: item.price,
-            originalRating: item.rating,
-            // Include full item data for reference
-            fullData: item
+            originalRating: item.rating
           };
 
           router.push({
             pathname: '/ProductPage',
             params: {
-              cardId: item.id,
+              id: item.id,
               cardType: sectionId,
               cardData: JSON.stringify(cardData)
             }
           });
         } catch (error) {
           console.error('Failed to serialize card data:', error);
-          // Fallback to basic navigation
           router.push('/ProductPage');
         }
         return;
       }
 
-      // Store sections navigation to dynamic MainStorePage  
+      // Store sections navigation to dynamic MainStorePage
       if (sectionId === 'trending_stores' || sectionId === 'new_stores' || sectionId === 'top_stores') {
-
         // Pass complete store data to MainStorePage for dynamic content
         try {
           // Extract store data for MainStorePage
@@ -451,7 +425,6 @@ export function useHomepageNavigation() {
 
       // Events section navigation to dynamic EventPage
       if (sectionId === 'events' || item.type === 'event') {
-
         // Pass complete event data to EventPage for dynamic content
         try {
           const eventData = {
@@ -503,9 +476,15 @@ export function useHomepageNavigation() {
           router.push('/StorePage' as any);
           break;
         case 'product':
-          // Navigate to product detail
-
-          router.push(`/product/${item.id}`);
+          // Navigate to ProductPage (comprehensive product page)
+          router.push({
+            pathname: '/ProductPage',
+            params: {
+              id: item.id,
+              cardType: 'product',
+              cardData: JSON.stringify(item)
+            }
+          } as any);
           break;
         case 'branded_store':
           // Navigate to brand store (fallback)
@@ -541,7 +520,7 @@ export function useHomepageNavigation() {
         return;
       }
 
-      // Extract price - handle complex price objects
+      // Extract price - handle complex price objects with proper fallback chain
       let currentPrice = 0;
       let originalPrice = 0;
 
@@ -550,9 +529,13 @@ export function useHomepageNavigation() {
           currentPrice = item.price;
           originalPrice = item.originalPrice || item.price;
         } else if (typeof item.price === 'object') {
-          currentPrice = item.price.current || item.price.amount || 0;
-          originalPrice = item.price.original || item.price.current || item.price.amount || 0;
+          currentPrice = item.price.current || item.price.selling || item.price.amount || 0;
+          originalPrice = item.price.original || item.price.mrp || item.price.current || item.price.selling || item.price.amount || 0;
         }
+      } else if (item.pricing) {
+        // Fallback to pricing object for backend data format
+        currentPrice = item.pricing.selling || item.pricing.current || 0;
+        originalPrice = item.pricing.mrp || item.pricing.original || item.pricing.selling || 0;
       }
 
       // Extract image - handle multiple possible formats
@@ -566,6 +549,10 @@ export function useHomepageNavigation() {
       } else if (item.images && typeof item.images === 'string') {
         imageUrl = item.images;
       }
+
+      // Extract variants data if available
+      const variants = item.variants || item.options || null;
+      const selectedVariant = item.selectedVariant || null;
 
       // Check if item already exists in cart
       const existingItem = cartActions.isItemInCart(productId);
@@ -585,6 +572,11 @@ export function useHomepageNavigation() {
         quantity: 1,
         cashback: item.cashback || 0,
         category: item.category || 'general',
+        // Add variant data to cart flow
+        variants: variants,
+        selectedVariant: selectedVariant,
+        storeId: item.store?._id || item.store?.id || item.storeId,
+        storeName: item.store?.name || item.storeName || 'Store'
       });
 
       // Wait a bit for the cart state to update

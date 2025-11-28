@@ -103,8 +103,8 @@ export default function QuantitySelector({
       >
         <Ionicons
           name="remove"
-          size={size === 'small' ? 16 : 18}
-          color={isDecreaseDisabled ? 'rgba(124, 58, 237, 0.4)' : '#7C3AED'}
+          size={size === 'small' ? 14 : 18}
+          color={isDecreaseDisabled ? 'rgba(139, 92, 246, 0.4)' : '#8B5CF6'}
         />
       </TouchableOpacity>
 
@@ -149,8 +149,8 @@ export default function QuantitySelector({
       >
         <Ionicons
           name="add"
-          size={size === 'small' ? 16 : 18}
-          color={isIncreaseDisabled ? 'rgba(124, 58, 237, 0.4)' : '#7C3AED'}
+          size={size === 'small' ? 14 : 18}
+          color={isIncreaseDisabled ? 'rgba(139, 92, 246, 0.4)' : '#8B5CF6'}
         />
       </TouchableOpacity>
     </View>
@@ -224,21 +224,22 @@ const stylesSmall = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    padding: 6,
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     borderRadius: 10,
-    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    backgroundColor: 'rgba(139, 92, 246, 0.08)',
     borderWidth: 1,
     borderColor: '#E9D5FF',
   },
   button: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#7C3AED',
+    borderColor: '#8B5CF6',
     backgroundColor: '#FFFFFF',
   },
   decreaseButton: {
@@ -249,28 +250,29 @@ const stylesSmall = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
-    borderColor: 'rgba(124, 58, 237, 0.4)',
+    borderColor: 'rgba(139, 92, 246, 0.4)',
   },
   display: {
-    minWidth: 40,
-    height: 32,
+    minWidth: 32,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 6,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E9D5FF',
+    paddingHorizontal: 8,
   },
   displayDisabled: {
     opacity: 0.5,
   },
   quantityText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#7C3AED',
+    color: '#8B5CF6',
     textAlign: 'center',
   },
   quantityTextDisabled: {
-    color: 'rgba(124, 58, 237, 0.5)',
+    color: 'rgba(139, 92, 246, 0.5)',
   },
 });

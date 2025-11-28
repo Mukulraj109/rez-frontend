@@ -216,6 +216,10 @@ export async function createRazorpayPayment(config: {
       handler: async (response: RazorpaySuccessResponse) => {
         // Step 4: Verify payment on backend
         try {
+          // If card payment was used, try to auto-apply card offer
+          // Note: Razorpay doesn't expose card number, but we can check payment method
+          // The offer should already be applied via CardOffersSection before payment
+          
           const verifyResponse = await razorpayApi.verifyPayment({
             razorpayOrderId: response.razorpay_order_id,
             razorpayPaymentId: response.razorpay_payment_id,

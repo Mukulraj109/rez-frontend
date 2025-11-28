@@ -1,13 +1,20 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CartItem as CartItemType } from '@/types/cart';
-import { CartItem as ApiCartItemType } from '@/services/cartApi';
+import { CartItem as ApiCartItemType, UnifiedCartItem, UnifiedCart } from '@/services/cartApi';
 import cartService from '@/services/cartApi';
 import { mapBackendCartToFrontend } from '@/utils/dataMappers';
 import offlineQueueService from '@/services/offlineQueueService';
 import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from './AuthContext';
 import { billUploadAnalytics } from '@/services/billUploadAnalytics';
+import cacheService from '@/services/cacheService';
+import {
+  CartItem as UnifiedCartItemType,
+  toCartItem,
+  validateCartItem,
+  isCartItemAvailable
+} from '@/types/unified';
 
 // Extended cart item with quantity and selected state
 interface CartItemWithQuantity extends CartItemType {
@@ -27,6 +34,7 @@ interface CartState {
   lastUpdated: string | null;
   isOnline: boolean;
   pendingSync: boolean;
+  appliedCardOffer?: any; // Applied card offer discount
 }
 
 type CartAction =
@@ -41,7 +49,9 @@ type CartAction =
   | { type: 'CLEAR_CART' }
   | { type: 'CLEAR_ERROR' }
   | { type: 'SET_ONLINE_STATUS'; payload: boolean }
-  | { type: 'SET_PENDING_SYNC'; payload: boolean };
+  | { type: 'SET_PENDING_SYNC'; payload: boolean }
+  | { type: 'SET_CARD_OFFER'; payload: any }
+  | { type: 'REMOVE_CARD_OFFER' };
 
 // Storage key
 const CART_STORAGE_KEY = 'shopping_cart';
@@ -56,6 +66,7 @@ const initialState: CartState = {
   lastUpdated: null,
   isOnline: true,
   pendingSync: false,
+  appliedCardOffer: undefined,
 };
 
 // Helper functions
@@ -222,6 +233,12 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     case 'SET_PENDING_SYNC':
       return { ...state, pendingSync: action.payload };
 
+    case 'SET_CARD_OFFER':
+      return { ...state, appliedCardOffer: action.payload };
+
+    case 'REMOVE_CARD_OFFER':
+      return { ...state, appliedCardOffer: undefined };
+
     default:
       return state;
   }
@@ -245,6 +262,8 @@ interface CartContextType {
     getItemQuantity: (itemId: string) => number;
     applyCoupon: (couponCode: string) => Promise<void>;
     removeCoupon: () => Promise<void>;
+    setCardOffer: (offer: any) => Promise<void>;
+    removeCardOffer: () => void;
     syncWithServer: () => Promise<void>;
   };
 }
@@ -439,7 +458,10 @@ export function CartProvider({ children }: CartProviderProps) {
         metadataEventId: itemMetadata?.eventId,
         fullItem: item,
       });
-      
+
+      // Invalidate cache on cart add
+      await cacheService.invalidateByEvent({ type: 'cart:add' });
+
       // Update UI optimistically - reducer will handle the state update
       // Make sure metadata is preserved - explicitly spread metadata
       const itemWithMetadata = {
@@ -654,6 +676,9 @@ export function CartProvider({ children }: CartProviderProps) {
         return;
       }
 
+      // Invalidate cache on cart remove
+      await cacheService.invalidateByEvent({ type: 'cart:remove' });
+
       // Optimistic update
       dispatch({ type: 'REMOVE_ITEM', payload: itemId });
 
@@ -701,6 +726,9 @@ export function CartProvider({ children }: CartProviderProps) {
       }
 
       const productId = item.productId || itemId;
+
+      // Invalidate cache on cart update
+      await cacheService.invalidateByEvent({ type: 'cart:update' });
 
       // Optimistic update
       dispatch({ type: 'UPDATE_QUANTITY', payload: { id: itemId, quantity } });
@@ -752,6 +780,9 @@ export function CartProvider({ children }: CartProviderProps) {
 
   const clearCart = async () => {
     try {
+
+      // Invalidate cache on cart clear
+      await cacheService.invalidateByEvent({ type: 'cart:clear' });
 
       // Clear local state
       dispatch({ type: 'CLEAR_CART' });
@@ -828,6 +859,24 @@ export function CartProvider({ children }: CartProviderProps) {
       throw error;
     }
   };
+
+  const setCardOffer = useCallback(async (offer: any) => {
+    try {
+      dispatch({ type: 'SET_CARD_OFFER', payload: offer });
+      
+      // If offer has a code, apply it as coupon
+      if (offer.code && typeof applyCoupon === 'function') {
+        await applyCoupon(offer.code);
+      }
+    } catch (error) {
+      console.error('🛒 [CartContext] Failed to set card offer:', error);
+      throw error;
+    }
+  }, []);
+
+  const removeCardOffer = useCallback(() => {
+    dispatch({ type: 'REMOVE_CARD_OFFER' });
+  }, []);
 
   const syncWithServer = useCallback(async () => {
     try {
@@ -932,6 +981,8 @@ export function CartProvider({ children }: CartProviderProps) {
       getItemQuantity,
       applyCoupon,
       removeCoupon,
+      setCardOffer,
+      removeCardOffer,
       syncWithServer,
     },
   };

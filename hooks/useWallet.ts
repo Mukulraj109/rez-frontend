@@ -41,6 +41,7 @@ export const useWallet = ({
   const lastOperationRef = useRef<() => Promise<void>>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout>(null);
   const abortControllerRef = useRef<AbortController>(null);
+  const pendingRequestRef = useRef<Promise<void> | null>(null);
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -54,12 +55,19 @@ export const useWallet = ({
 
   // Fetch wallet data
   const fetchWallet = useCallback(async (): Promise<void> => {
-    try {
-      // Cancel any ongoing requests
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
+    // Prevent race condition - wait for pending request to complete
+    if (pendingRequestRef.current) {
+      console.log('⏳ [useWallet] Waiting for pending request to complete');
+      await pendingRequestRef.current;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        // Cancel any ongoing requests
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
 
       setWalletState(prev => ({
         ...prev,
@@ -141,39 +149,54 @@ export const useWallet = ({
         lastFetched: new Date(),
       });
 
-      lastOperationRef.current = fetchWallet;
-    } catch (error) {
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
+        lastOperationRef.current = fetchWallet;
+      } catch (error) {
+        if (abortControllerRef.current?.signal.aborted) {
+          return;
+        }
+
+        console.error('❌ [useWallet] Fetch error:', error);
+
+        const walletError = createWalletError(
+          'NETWORK_ERROR',
+          'Failed to load wallet data',
+          error instanceof Error ? error.message : 'Unknown error occurred'
+        );
+
+        setWalletState(prev => ({
+          ...prev,
+          isLoading: false,
+          isRefreshing: false,
+          error: walletError,
+        }));
+
+        lastOperationRef.current = fetchWallet;
+      } finally {
+        // Clear pending request
+        pendingRequestRef.current = null;
       }
+    })();
 
-      console.error('❌ [useWallet] Fetch error:', error);
-
-      const walletError = createWalletError(
-        'NETWORK_ERROR',
-        'Failed to load wallet data',
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      );
-      
-      setWalletState(prev => ({
-        ...prev,
-        isLoading: false,
-        isRefreshing: false,
-        error: walletError,
-      }));
-
-      lastOperationRef.current = fetchWallet;
-    }
+    // Store pending request
+    pendingRequestRef.current = requestPromise;
+    await requestPromise;
   }, [userId]);
 
   // Refresh wallet data
   const refreshWallet = useCallback(async (forceRefresh = false): Promise<void> => {
-    try {
-      // Cancel any ongoing requests
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
+    // Prevent race condition - wait for pending request to complete
+    if (pendingRequestRef.current) {
+      console.log('⏳ [useWallet] Waiting for pending request to complete before refresh');
+      await pendingRequestRef.current;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        // Cancel any ongoing requests
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
 
       setWalletState(prev => ({
         ...prev,
@@ -254,28 +277,36 @@ export const useWallet = ({
         lastFetched: new Date(),
       }));
 
-      lastOperationRef.current = () => refreshWallet(forceRefresh);
-    } catch (error) {
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
+        lastOperationRef.current = () => refreshWallet(forceRefresh);
+      } catch (error) {
+        if (abortControllerRef.current?.signal.aborted) {
+          return;
+        }
+
+        console.error('❌ [useWallet] Refresh error:', error);
+
+        const walletError = createWalletError(
+          'NETWORK_ERROR',
+          'Failed to refresh wallet',
+          error instanceof Error ? error.message : 'Unknown error occurred'
+        );
+
+        setWalletState(prev => ({
+          ...prev,
+          isRefreshing: false,
+          error: walletError,
+        }));
+
+        lastOperationRef.current = () => refreshWallet(forceRefresh);
+      } finally {
+        // Clear pending request
+        pendingRequestRef.current = null;
       }
+    })();
 
-      console.error('❌ [useWallet] Refresh error:', error);
-
-      const walletError = createWalletError(
-        'NETWORK_ERROR',
-        'Failed to refresh wallet',
-        error instanceof Error ? error.message : 'Unknown error occurred'
-      );
-      
-      setWalletState(prev => ({
-        ...prev,
-        isRefreshing: false,
-        error: walletError,
-      }));
-
-      lastOperationRef.current = () => refreshWallet(forceRefresh);
-    }
+    // Store pending request
+    pendingRequestRef.current = requestPromise;
+    await requestPromise;
   }, [userId]);
 
   // Clear error

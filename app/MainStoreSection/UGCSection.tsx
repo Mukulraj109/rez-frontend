@@ -1,7 +1,12 @@
 /**
- * UGCSection v2.3 - Full component (autoplay working)
+ * UGCSection v3.0 - Modernized with Design System & Haptic Feedback
  *
- * Paste this file into your project. Ensure `expo-av` is installed.
+ * Features:
+ * - Design System integration for consistent styling
+ * - Haptic feedback on all interactions
+ * - Modern glassmorphism effects
+ * - Purple-tinted shimmer loading states
+ * - 8px grid spacing system
  */
 
 import React, { useRef, useState, useCallback, useEffect, useMemo, memo } from 'react';
@@ -21,8 +26,20 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
+import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from '@/components/ThemedText';
+import { ShimmerSkeleton } from '@/components/ui';
 import ugcApi, { UGCMedia } from '@/services/ugcApi';
+import {
+  Colors,
+  Spacing,
+  Shadows,
+  BorderRadius,
+  IconSize,
+  Timing,
+  Gradients,
+  Typography,
+} from '@/constants/DesignSystem';
 
 // Optional (recommended) — enable silent autoplay on iOS in your app root
 // import { Audio } from 'expo-av';
@@ -141,39 +158,72 @@ const UGCCard = memo(function UGCCard({
   const isVisible = visibleItems.includes(item.id);
   const shouldLoadMedia = isVisible;
 
-  // Press animations
+  // Press animations with haptic feedback
   const handlePressIn = () => {
-    // Disable animation on iOS to prevent conflicts
+    triggerImpact('Light');
+
     if (Platform.OS === 'ios') {
       scaleAnim.setValue(0.98);
     } else {
-      Animated.spring(scaleAnim, { toValue: 0.98, useNativeDriver: true, tension: 300, friction: 10 }).start();
+      Animated.spring(scaleAnim, {
+        toValue: 0.98,
+        useNativeDriver: true,
+        ...Timing.springBouncy
+      }).start();
     }
   };
+
   const handlePressOut = () => {
-    // Disable animation on iOS to prevent conflicts
     if (Platform.OS === 'ios') {
       scaleAnim.setValue(1);
     } else {
-      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 300, friction: 10 }).start();
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        ...Timing.springBouncy
+      }).start();
     }
   };
-  const handleImagePress = () => onImagePress?.(item.id);
 
-  // Like button handler with animation
+  const handleImagePress = () => {
+    triggerImpact('Medium');
+    onImagePress?.(item.id);
+  };
+
+  // Like button handler with animation & haptic feedback
   const handleLikePress = () => {
+    triggerImpact('Medium');
+
     Animated.sequence([
-      Animated.timing(likeScaleAnim, { toValue: 0.8, duration: 100, useNativeDriver: true }),
-      Animated.spring(likeScaleAnim, { toValue: 1, friction: 3, tension: 100, useNativeDriver: true }),
+      Animated.timing(likeScaleAnim, {
+        toValue: 0.8,
+        duration: Timing.fast,
+        useNativeDriver: true
+      }),
+      Animated.spring(likeScaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        ...Timing.springBouncy
+      }),
     ]).start();
     onLikePress?.(item);
   };
 
-  // Bookmark button handler with animation
+  // Bookmark button handler with animation & haptic feedback
   const handleBookmarkPress = () => {
+    triggerImpact('Medium');
+
     Animated.sequence([
-      Animated.timing(bookmarkScaleAnim, { toValue: 0.8, duration: 100, useNativeDriver: true }),
-      Animated.spring(bookmarkScaleAnim, { toValue: 1, friction: 3, tension: 100, useNativeDriver: true }),
+      Animated.timing(bookmarkScaleAnim, {
+        toValue: 0.8,
+        duration: Timing.fast,
+        useNativeDriver: true
+      }),
+      Animated.spring(bookmarkScaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        ...Timing.springBouncy
+      }),
     ]).start();
     onBookmarkPress?.(item);
   };
@@ -465,7 +515,7 @@ export default function UGCSection({
       setLoading(false);
       setRefreshing(false);
     }
-  }, [storeId, propImages]); // Keep propImages in deps for logging
+  }, [storeId]); // propImages removed to prevent infinite loop if parent passes unstable reference
 
   // Load UGC content on mount
   useEffect(() => {
@@ -793,8 +843,8 @@ export default function UGCSection({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#7C3AED"
-            colors={['#7C3AED']}
+            tintColor={Colors.primary[700]}
+            colors={[Colors.primary[700]]}
           />
         }
         accessibilityLabel={`Fashion inspiration carousel with ${images.length} posts`}
@@ -807,66 +857,60 @@ export default function UGCSection({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 16,
-    paddingBottom: 20,
+    backgroundColor: Colors.background.primary,
+    paddingTop: Spacing.base,
+    paddingBottom: Spacing.lg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: Spacing.base,
   },
   sectionTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.6,
+    ...Typography.h3,
+    color: Colors.text.primary,
   },
   viewAllText: {
-    fontSize: 15,
+    ...Typography.bodyLarge,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: Colors.primary[700],
     opacity: 0.9,
   },
   imagesList: {
     paddingVertical: 2,
   },
 
-  // Card
+  // Modern Card Styles
   cardContainer: {
-    borderRadius: 18,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
     position: 'relative',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#1F2937',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
+    backgroundColor: Colors.background.primary,
+    ...Shadows.strong,
     borderWidth: 0.5,
     borderColor: 'rgba(0,0,0,0.04)',
   },
   cardMedia: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.gray[100],
   },
 
-  // Overlays
+  // Modern Overlays
   gradientOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     height: '52%',
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
+    borderBottomLeftRadius: BorderRadius.lg,
+    borderBottomRightRadius: BorderRadius.lg,
   },
   viewCountContainer: {
     position: 'absolute',
-    top: 12,
-    left: 12,
+    top: Spacing.md,
+    left: Spacing.md,
   },
   viewCountBadge: {
     flexDirection: 'row',
@@ -874,49 +918,44 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.85)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: BorderRadius.md,
+    ...Shadows.subtle,
   },
-  eyeIcon: { marginRight: 4 },
+  eyeIcon: { marginRight: Spacing.xs },
   viewCountText: {
-    fontSize: 12,
+    ...Typography.caption,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
+    color: Colors.text.white,
   },
 
-  // Product plate
+  // Modern Product Plate
   productPlateWrapper: {
     position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 12,
+    left: Spacing.md,
+    right: Spacing.md,
+    bottom: Spacing.md,
   },
   productPlate: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-    borderRadius: 14,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? 10 : Spacing.sm,
+    borderRadius: BorderRadius.md,
     backgroundColor: 'rgba(0,0,0,0.45)',
   },
   productThumb: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: BorderRadius.sm,
     backgroundColor: '#222',
   },
   productTitle: {
-    color: '#FFF',
-    fontSize: 13,
+    color: Colors.text.white,
+    ...Typography.bodySmall,
     fontWeight: '700',
   },
   productPrice: {
-    color: '#FF5F7A',
+    color: Colors.error,
     fontSize: 12.5,
     fontWeight: '800',
     marginTop: 2,
@@ -928,38 +967,38 @@ const styles = StyleSheet.create({
     bottom: 68,
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: Spacing.base,
     backgroundColor: 'transparent',
   },
   descriptionText: {
-    fontSize: 14,
+    ...Typography.body,
     fontWeight: '500',
-    color: '#FFFFFF',
+    color: Colors.text.white,
     lineHeight: 21,
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  readMoreButton: { alignSelf: 'flex-start', marginTop: 8 },
+  readMoreButton: { alignSelf: 'flex-start', marginTop: Spacing.sm },
   readMoreText: {
-    fontSize: 13,
+    ...Typography.bodySmall,
     fontWeight: '600',
-    color: '#8B5FD9',
+    color: Colors.primary[400],
     letterSpacing: 0.1,
     textShadowColor: 'rgba(0,0,0,0.7)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
 
-  // Loading/Error
+  // Modern Loading/Error States
   skeletonOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 18,
+    backgroundColor: Colors.background.secondary,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
   },
   skeletonGradient: {
@@ -979,73 +1018,98 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.background.secondary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 18,
+    borderRadius: BorderRadius.lg,
   },
 
-  // Loading state
+  // Modern Loading State
   loadingContainer: {
     paddingVertical: 60,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 15,
+    marginTop: Spacing.base,
+    ...Typography.bodyLarge,
     fontWeight: '600',
-    color: '#6B7280',
+    color: Colors.gray[500],
   },
 
-  // Error state
+  // Modern Error State
   errorContainer: {
     paddingVertical: 60,
     alignItems: 'center',
     justifyContent: 'center',
   },
   errorText: {
-    marginTop: 16,
-    fontSize: 15,
+    marginTop: Spacing.base,
+    ...Typography.bodyLarge,
     fontWeight: '600',
-    color: '#EF4444',
+    color: Colors.error,
     textAlign: 'center',
     maxWidth: '80%',
   },
   retryButton: {
-    marginTop: 20,
+    marginTop: Spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#7C3AED',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
+    backgroundColor: Colors.primary[700],
+    paddingHorizontal: Spacing['2xl'] - 8,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.sm,
+    ...Shadows.medium,
   },
   retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    color: Colors.text.white,
+    ...Typography.bodyLarge,
     fontWeight: '700',
   },
 
-  // Empty state
+  // Modern Empty State
   emptyContainer: {
     paddingVertical: 60,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#6B7280',
+    marginTop: Spacing.base,
+    ...Typography.h4,
+    color: Colors.gray[500],
     textAlign: 'center',
   },
   emptySubtext: {
-    marginTop: 8,
-    fontSize: 14,
+    marginTop: Spacing.sm,
+    ...Typography.body,
     fontWeight: '500',
-    color: '#9CA3AF',
+    color: Colors.gray[400],
     textAlign: 'center',
+  },
+
+  // Action buttons (like/bookmark)
+  actionsContainer: {
+    position: 'absolute',
+    right: Spacing.md,
+    top: Spacing.md,
+    gap: Spacing.sm,
+  },
+  actionButton: {
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  actionIcon: {
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  likeCountText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: Colors.text.white,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

@@ -7,14 +7,18 @@ import {
   ScrollView,
   Image,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import RatingStars from './RatingStars';
 import { CreateReviewData, Review } from '@/types/review.types';
 import reviewService from '@/services/reviewApi';
+import SuccessModal from '@/components/common/SuccessModal';
+import ErrorModal from '@/components/common/ErrorModal';
 
 interface ReviewFormProps {
   storeId: string;
@@ -36,7 +40,12 @@ export default function ReviewForm({
   const [comment, setComment] = useState(existingReview?.comment || '');
   const [images, setImages] = useState<string[]>(existingReview?.images || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
@@ -90,39 +99,87 @@ export default function ReviewForm({
       }
 
       if (response.success && response.data?.review) {
-        Alert.alert(
-          'Success',
-          isEdit ? 'Review updated successfully!' : 'Review submitted successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                onSubmit?.(response.data!.review);
-              }
-            }
-          ]
+        // Set success message and show modal
+        setSuccessMessage(
+          isEdit 
+            ? 'Review updated successfully! It will be visible after merchant approval.' 
+            : 'Review submitted successfully! It will be visible after merchant approval.'
         );
+        setShowSuccessModal(true);
+        // Call onSubmit immediately so parent modal can close
+        onSubmit?.(response.data!.review);
       } else {
         throw new Error(response.error || 'Failed to submit review');
       }
     } catch (error: any) {
       console.error('Error submitting review:', error);
-      Alert.alert(
-        'Error',
-        error.message || 'Failed to submit review. Please try again.'
-      );
+      // Show error in modal (works on both web and mobile)
+      setErrorMessage(error.message || 'Failed to submit review. Please try again.');
+      setShowErrorModal(true);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleImageAdd = () => {
-    // TODO: Implement image picker
-    Alert.alert(
-      'Add Images',
-      'Image upload functionality will be implemented soon',
-      [{ text: 'OK' }]
-    );
+  const handleImageAdd = async () => {
+    try {
+      // Check image limit
+      if (images.length >= 5) {
+        Alert.alert('Limit Reached', 'You can upload up to 5 images.');
+        return;
+      }
+
+      // Request permission (mobile only)
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permission Required',
+            'Please grant permission to access your photos to upload review images.'
+          );
+          return;
+        }
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        allowsMultipleSelection: false,
+      });
+
+      if (result.canceled || !result.assets[0]) {
+        return;
+      }
+
+      const imageUri = result.assets[0].uri;
+      setIsUploadingImage(true);
+
+      try {
+        // Upload image to Cloudinary
+        const uploadResponse = await reviewService.uploadReviewImage(imageUri);
+        
+        if (uploadResponse.success && uploadResponse.data?.url) {
+          setImages(prev => [...prev, uploadResponse.data!.url]);
+        } else {
+          throw new Error(uploadResponse.error || 'Failed to upload image');
+        }
+      } catch (uploadError: any) {
+        console.error('Error uploading image:', uploadError);
+        Alert.alert(
+          'Upload Failed',
+          uploadError.message || 'Failed to upload image. Please try again.'
+        );
+      } finally {
+        setIsUploadingImage(false);
+      }
+    } catch (error: any) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      setIsUploadingImage(false);
+    }
   };
 
   const handleImageRemove = (index: number) => {
@@ -238,12 +295,19 @@ export default function ReviewForm({
             {/* Add Image Button */}
             {images.length < 5 && (
               <TouchableOpacity
-                style={styles.addImageButton}
+                style={[styles.addImageButton, isUploadingImage && styles.addImageButtonDisabled]}
                 onPress={handleImageAdd}
+                disabled={isUploadingImage}
                 activeOpacity={0.7}
               >
-                <Ionicons name="camera-outline" size={32} color="#8B5CF6" />
-                <ThemedText style={styles.addImageText}>Add Photo</ThemedText>
+                {isUploadingImage ? (
+                  <ActivityIndicator size="small" color="#8B5CF6" />
+                ) : (
+                  <>
+                    <Ionicons name="camera-outline" size={32} color="#8B5CF6" />
+                    <ThemedText style={styles.addImageText}>Add Photo</ThemedText>
+                  </>
+                )}
               </TouchableOpacity>
             )}
           </ScrollView>
@@ -298,6 +362,23 @@ export default function ReviewForm({
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Success"
+        message={successMessage}
+        onClose={() => setShowSuccessModal(false)}
+        autoCloseDelay={2000}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={showErrorModal}
+        title="Error"
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
+      />
     </ThemedView>
 );
 }
@@ -408,6 +489,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
+  },
+  addImageButtonDisabled: {
+    opacity: 0.6,
   },
   addImageText: {
     fontSize: 12,

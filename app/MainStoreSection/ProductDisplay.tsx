@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useRef, useState, memo } from "react";
 import {
   View,
   TouchableOpacity,
@@ -9,8 +9,19 @@ import {
   ListRenderItemInfo,
   ViewToken,
   Platform,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { triggerImpact, triggerNotification } from "@/utils/haptics";
+import { GlassCard } from "@/components/ui";
+import {
+  Colors,
+  Spacing,
+  Shadows,
+  BorderRadius,
+  IconSize,
+  Timing,
+} from "@/constants/DesignSystem";
 
 interface ProductImage {
   id: string;
@@ -30,7 +41,7 @@ const DEFAULT_IMAGES: ProductImage[] = [
   { id: "3", uri: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=900&h=1100&fit=crop" },
 ];
 
-export default function ProductDisplay({
+export default memo(function ProductDisplay({
   images = DEFAULT_IMAGES,
   onSharePress,
   onFavoritePress,
@@ -39,11 +50,17 @@ export default function ProductDisplay({
   const { width } = Dimensions.get("window");
   const isTablet = width >= 768;
   const imageCardWidth = Math.round(width * (isTablet ? 0.7 : 0.92));
+  // Increased height ratio to fill more screen space
   const imageHeight = Math.round(imageCardWidth * (isTablet ? 0.95 : 1.25));
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const flatRef = useRef<FlatList<any> | null>(null);
+
+  // Animation refs for micro-interactions
+  const shareScaleAnim = useRef(new Animated.Value(1)).current;
+  const favoriteScaleAnim = useRef(new Animated.Value(1)).current;
+  const imageScaleAnim = useRef(new Animated.Value(1)).current;
 
   // viewability config + callback to track current index reliably
   const viewabilityConfig = useRef({
@@ -62,6 +79,26 @@ export default function ProductDisplay({
     setImageErrors(prev => new Set(prev).add(imageId));
   }, []);
 
+  // Animation helper
+  const animateScale = useCallback((animValue: Animated.Value, toValue: number) => {
+    Animated.spring(animValue, {
+      toValue,
+      useNativeDriver: true,
+      ...Timing.springBouncy,
+    }).start();
+  }, []);
+
+  // Handlers with haptic feedback
+  const handleSharePress = useCallback(() => {
+    triggerImpact('Medium');
+    if (onSharePress) onSharePress();
+  }, [onSharePress]);
+
+  const handleFavoritePress = useCallback(() => {
+    triggerImpact('Medium');
+    if (onFavoritePress) onFavoritePress();
+  }, [onFavoritePress]);
+
   const renderImage = useCallback(
     ({ item }: ListRenderItemInfo<ProductImage>) => {
       const hasError = imageErrors.has(item.id);
@@ -73,13 +110,13 @@ export default function ProductDisplay({
             <Image
               source={{ uri: hasError ? fallbackUri : item.uri }}
               style={[styles.image, { width: imageCardWidth, height: imageHeight }]}
-              resizeMode="cover"
+              resizeMode="contain"
               onError={() => handleImageError(item.id)}
               defaultSource={require('@/assets/images/icon.png')}
             />
             {hasError && (
               <View style={styles.errorOverlay}>
-                <Ionicons name="image-outline" size={48} color="#9CA3AF" />
+                <Ionicons name="image-outline" size={48} color={Colors.gray[400]} />
               </View>
             )}
           </View>
@@ -92,7 +129,6 @@ export default function ProductDisplay({
   return (
     <View
       style={styles.container}
-      accessibilityRole="region"
       accessibilityLabel="Product image gallery"
     >
       <FlatList
@@ -113,47 +149,82 @@ export default function ProductDisplay({
         accessibilityRole="list"
       />
 
-      {/* Floating action buttons (right column) */}
-      <View style={[styles.actionCol, { top: 20 }]}>
-        <TouchableOpacity
-          onPress={onSharePress}
-          style={styles.actionBtn}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Share product"
-        >
-          <Ionicons name="share-social-outline" size={18} color="#374151" />
-        </TouchableOpacity>
+      {/* Glassmorphic Floating Action Buttons */}
+      <View style={[styles.actionCol, { top: Spacing.lg }]}>
+        {/* Share Button with Animation */}
+        <Animated.View style={{ transform: [{ scale: shareScaleAnim }] }}>
+          <GlassCard
+            variant="light"
+            intensity={80}
+            borderRadius={BorderRadius.full}
+            shadow={true}
+            style={styles.actionBtn}
+          >
+            <TouchableOpacity
+              onPress={handleSharePress}
+              onPressIn={() => animateScale(shareScaleAnim, 0.90)}
+              onPressOut={() => animateScale(shareScaleAnim, 1)}
+              style={styles.actionBtnTouchable}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Share product"
+            >
+              <Ionicons name="share-social-outline" size={IconSize.sm} color={Colors.gray[700]} />
+            </TouchableOpacity>
+          </GlassCard>
+        </Animated.View>
 
-        <TouchableOpacity
-          onPress={onFavoritePress}
-          style={[styles.actionBtn, styles.favoriteBtn]}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
-        >
-          <Ionicons name={isFavorited ? "heart" : "heart-outline"} size={18} color={isFavorited ? "#EF4444" : "#374151"} />
-        </TouchableOpacity>
+        {/* Favorite Button with Animation */}
+        <Animated.View style={{ transform: [{ scale: favoriteScaleAnim }] }}>
+          <GlassCard
+            variant="light"
+            intensity={80}
+            borderRadius={BorderRadius.full}
+            shadow={true}
+            style={styles.actionBtn}
+          >
+            <TouchableOpacity
+              onPress={handleFavoritePress}
+              onPressIn={() => animateScale(favoriteScaleAnim, 0.90)}
+              onPressOut={() => animateScale(favoriteScaleAnim, 1)}
+              style={styles.actionBtnTouchable}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Ionicons
+                name={isFavorited ? "heart" : "heart-outline"}
+                size={IconSize.sm}
+                color={isFavorited ? Colors.error : Colors.gray[700]}
+              />
+            </TouchableOpacity>
+          </GlassCard>
+        </Animated.View>
       </View>
 
-      {/* Pagination dots (centered below carousel) */}
+      {/* Modern Pagination Dots */}
       {images.length > 1 && (
         <View style={styles.pagination}>
-          {images.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dotBase,
-                i === currentIndex ? styles.dotActive : styles.dotInactive,
-                i === currentIndex ? styles.dotActiveWide : undefined,
-              ]}
-            />
-          ))}
+          {images.map((_, i) => {
+            const isActive = i === currentIndex;
+            return (
+              <View
+                key={i}
+                style={[
+                  styles.dotBase,
+                  isActive ? styles.dotActive : styles.dotInactive,
+                  isActive ? styles.dotActiveWide : undefined,
+                ]}
+                accessibilityLabel={`Image ${i + 1} of ${images.length}`}
+                accessibilityState={{ selected: isActive }}
+              />
+            );
+          })}
         </View>
       )}
     </View>
 );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -162,22 +233,18 @@ const styles = StyleSheet.create({
   imageWrapper: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F6F3FB",
+    backgroundColor: "#F8FAFC", // Modern light gray background
   },
   imageCard: {
-    borderRadius: 14,
+    borderRadius: BorderRadius.lg,
     overflow: "hidden",
-    backgroundColor: "#fff",
-    // elevated card shadow
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 6,
+    backgroundColor: Colors.background.primary,
+    ...Shadows.medium,
   },
   image: {
     width: "100%",
     height: "100%",
+    backgroundColor: Colors.gray[50], // Light background for contain mode
   },
   errorOverlay: {
     position: "absolute",
@@ -185,63 +252,57 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Colors.gray[100],
     justifyContent: "center",
     alignItems: "center",
   },
 
+  // Glassmorphic Action Buttons
   actionCol: {
     position: "absolute",
-    right: 18,
+    right: Spacing.base + 2,
     zIndex: 20,
     justifyContent: "flex-start",
     alignItems: "center",
-    // keep buttons stacked
   },
   actionBtn: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.95)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
-    // subtle border + shadow
-    borderWidth: 0.5,
-    borderColor: "rgba(15,23,42,0.06)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: Spacing.md,
   },
-  favoriteBtn: {
-    // slightly stronger elevation for favorite
+  actionBtnTouchable: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
+  // Modern Pagination Dots
   pagination: {
     position: "absolute",
-    bottom: 12,
+    bottom: Spacing.md,
     left: 0,
     right: 0,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
+    gap: Spacing.sm,
   },
   dotBase: {
     height: 8,
-    borderRadius: 6,
+    borderRadius: BorderRadius.sm,
     marginHorizontal: 4,
   },
   dotActive: {
-    backgroundColor: "#7C3AED",
+    backgroundColor: Colors.primary[700],
   },
   dotActiveWide: {
     width: 28,
   },
   dotInactive: {
-    backgroundColor: "#E5E7EB",
+    backgroundColor: Colors.gray[200],
     width: 8,
   },
 });

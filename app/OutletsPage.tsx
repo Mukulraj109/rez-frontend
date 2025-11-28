@@ -173,10 +173,7 @@ export default function OutletsPage() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View
-        style={styles.header}
-        accessibilityRole="header"
-      >
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}

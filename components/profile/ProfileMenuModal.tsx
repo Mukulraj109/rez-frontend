@@ -6,6 +6,7 @@ import {
   View,
   Modal,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   Dimensions,
   Animated,
@@ -233,29 +234,28 @@ export default function ProfileMenuModal({
       accessibilityLabel="Profile menu dialog"
     >
       <StatusBar backgroundColor="rgba(0,0,0,0.5)" barStyle="light-content" />
-      
+
       {/* Backdrop */}
-      <TouchableOpacity
-        style={styles.backdrop}
-        activeOpacity={1}
+      <TouchableWithoutFeedback
         onPress={onClose}
         accessibilityLabel="Close profile menu"
         accessibilityRole="button"
         accessibilityHint="Double tap to close menu"
       >
-        {/* Modal Content */}
-        <Animated.View
-          style={[
-            styles.modalContainer,
-            {
-              transform: [{ translateX: slideAnim }],
-              height: SCREEN_HEIGHT,
-              paddingBottom: insets.bottom
-            }
-          ]}
-          onStartShouldSetResponder={() => true}
-          onTouchEnd={(e) => e.stopPropagation()}
-        >
+        <View style={styles.backdrop}>
+          {/* Modal Content */}
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              {
+                transform: [{ translateX: slideAnim }],
+                height: SCREEN_HEIGHT,
+                paddingBottom: insets.bottom
+              }
+            ]}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
           <View style={{ flex: 1 }}>
             {renderModalHeader()}
 
@@ -275,8 +275,9 @@ export default function ProfileMenuModal({
               <View style={styles.footerSpace} />
             </ScrollView>
           </View>
-        </Animated.View>
-      </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </TouchableWithoutFeedback>
     </Modal>
 );
 }

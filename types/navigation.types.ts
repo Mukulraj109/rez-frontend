@@ -63,8 +63,8 @@ export type NavigationGuard = (
  */
 export type NavigationMiddleware = (
   to: string,
-  from?: string,
-  next: () => void
+  next: () => void,
+  from?: string
 ) => void | Promise<void>;
 
 /**

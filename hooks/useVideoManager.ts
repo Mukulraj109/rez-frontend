@@ -13,8 +13,15 @@ class VideoManager {
   private activeVideos: Map<string, VideoInstance> = new Map();
   private maxSimultaneousVideos = Platform.OS === 'ios' ? 2 : 4; // iOS limitation
   private currentlyPlaying: string[] = [];
+  private cleanupTimers: Map<string, NodeJS.Timeout> = new Map();
 
   registerVideo(id: string, ref: any): void {
+    // Clear any existing cleanup timer for this video
+    if (this.cleanupTimers.has(id)) {
+      clearTimeout(this.cleanupTimers.get(id)!);
+      this.cleanupTimers.delete(id);
+    }
+
     this.activeVideos.set(id, {
       id,
       ref,
@@ -26,6 +33,12 @@ class VideoManager {
   unregisterVideo(id: string): void {
     this.stopVideo(id);
     this.activeVideos.delete(id);
+
+    // Clear any cleanup timer
+    if (this.cleanupTimers.has(id)) {
+      clearTimeout(this.cleanupTimers.get(id)!);
+      this.cleanupTimers.delete(id);
+    }
   }
 
   async startVideo(id: string): Promise<boolean> {
@@ -65,9 +78,34 @@ class VideoManager {
       video.isPlaying = false;
       this.currentlyPlaying = this.currentlyPlaying.filter(playingId => playingId !== id);
 
+      // Schedule cleanup of video resources after a delay
+      const cleanupTimer = setTimeout(() => {
+        if (video.ref) {
+          try {
+            video.ref.unloadAsync?.();
+          } catch (e) {
+            console.warn(`Failed to unload video ${id}:`, e);
+          }
+        }
+        this.cleanupTimers.delete(id);
+      }, 5000); // 5 second delay before cleanup
+
+      this.cleanupTimers.set(id, cleanupTimer);
+
     } catch (error) {
       console.warn(`Failed to stop video ${id}:`, error);
     }
+  }
+
+  // Cleanup all videos - useful for page unmount
+  cleanupAll(): void {
+    this.activeVideos.forEach((video, id) => {
+      this.stopVideo(id);
+    });
+    this.cleanupTimers.forEach(timer => clearTimeout(timer));
+    this.cleanupTimers.clear();
+    this.activeVideos.clear();
+    this.currentlyPlaying = [];
   }
 
   setVideoLoaded(id: string, loaded: boolean): void {
@@ -98,23 +136,37 @@ export function useVideoManager(videoId: string) {
   const videoRef = useRef<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     // Register video on mount
     videoManager.registerVideo(videoId, videoRef.current);
 
-    return () => {
-      // Unregister on unmount
+    // Store cleanup function
+    cleanupRef.current = () => {
+      // Stop video before unregistering
+      videoManager.stopVideo(videoId);
       videoManager.unregisterVideo(videoId);
+      setIsPlaying(false);
+      setIsLoaded(false);
+    };
+
+    return () => {
+      // Cleanup on unmount
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      }
     };
   }, [videoId]);
 
   useEffect(() => {
-    // Update ref when it changes
+    // Update ref when it changes, but don't create a new dependency
     if (videoRef.current) {
       videoManager.registerVideo(videoId, videoRef.current);
     }
-  }, [videoRef.current, videoId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoId]); // Only depend on videoId, not videoRef.current
 
   const startPlayback = async (): Promise<boolean> => {
     const success = await videoManager.startVideo(videoId);

@@ -1,0 +1,174 @@
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+
+/**
+ * RecommendationContext - Tracks shown products/stores across recommendation sections
+ * Implements Amazon/Flipkart style deduplication to prevent showing same items
+ * everywhere in the app
+ */
+
+interface RecommendationContextType {
+  // Track shown products and stores
+  shownProducts: Set<string>;
+  shownStores: Set<string>;
+
+  // Add items to tracking
+  addShownProduct: (productId: string) => void;
+  addShownProducts: (productIds: string[]) => void;
+  addShownStore: (storeId: string) => void;
+  addShownStores: (storeIds: string[]) => void;
+
+  // Check if already shown
+  isProductShown: (productId: string) => boolean;
+  isStoreShown: (storeId: string) => boolean;
+
+  // Get lists for filtering
+  getShownProducts: () => string[];
+  getShownStores: () => string[];
+
+  // Reset tracking (new page/session)
+  clearShownProducts: () => void;
+  clearShownStores: () => void;
+  clearAll: () => void;
+}
+
+const RecommendationContext = createContext<RecommendationContextType | undefined>(undefined);
+
+interface RecommendationProviderProps {
+  children: ReactNode;
+}
+
+export function RecommendationProvider({ children }: RecommendationProviderProps) {
+  const [shownProducts, setShownProducts] = useState<Set<string>>(new Set());
+  const [shownStores, setShownStores] = useState<Set<string>>(new Set());
+
+  // Add single product
+  const addShownProduct = useCallback((productId: string) => {
+    if (!productId) return;
+    setShownProducts(prev => new Set(prev).add(productId));
+  }, []);
+
+  // Add multiple products
+  const addShownProducts = useCallback((productIds: string[]) => {
+    if (!productIds || productIds.length === 0) return;
+    setShownProducts(prev => {
+      const newSet = new Set(prev);
+      productIds.forEach(id => id && newSet.add(id));
+      return newSet;
+    });
+  }, []);
+
+  // Add single store
+  const addShownStore = useCallback((storeId: string) => {
+    if (!storeId) return;
+    setShownStores(prev => new Set(prev).add(storeId));
+  }, []);
+
+  // Add multiple stores
+  const addShownStores = useCallback((storeIds: string[]) => {
+    if (!storeIds || storeIds.length === 0) return;
+    setShownStores(prev => {
+      const newSet = new Set(prev);
+      storeIds.forEach(id => id && newSet.add(id));
+      return newSet;
+    });
+  }, []);
+
+  // Check if product already shown
+  const isProductShown = useCallback((productId: string): boolean => {
+    return shownProducts.has(productId);
+  }, [shownProducts]);
+
+  // Check if store already shown
+  const isStoreShown = useCallback((storeId: string): boolean => {
+    return shownStores.has(storeId);
+  }, [shownStores]);
+
+  // Get array of shown products
+  const getShownProducts = useCallback((): string[] => {
+    return Array.from(shownProducts);
+  }, [shownProducts]);
+
+  // Get array of shown stores
+  const getShownStores = useCallback((): string[] => {
+    return Array.from(shownStores);
+  }, [shownStores]);
+
+  // Clear products
+  const clearShownProducts = useCallback(() => {
+    setShownProducts(new Set());
+  }, []);
+
+  // Clear stores
+  const clearShownStores = useCallback(() => {
+    setShownStores(new Set());
+  }, []);
+
+  // Clear all tracking
+  const clearAll = useCallback(() => {
+    setShownProducts(new Set());
+    setShownStores(new Set());
+  }, []);
+
+  const value: RecommendationContextType = {
+    shownProducts,
+    shownStores,
+    addShownProduct,
+    addShownProducts,
+    addShownStore,
+    addShownStores,
+    isProductShown,
+    isStoreShown,
+    getShownProducts,
+    getShownStores,
+    clearShownProducts,
+    clearShownStores,
+    clearAll,
+  };
+
+  return (
+    <RecommendationContext.Provider value={value}>
+      {children}
+    </RecommendationContext.Provider>
+  );
+}
+
+/**
+ * Hook to access recommendation tracking
+ * Usage:
+ *
+ * const { addShownProducts, getShownProducts } = useRecommendationTracking();
+ *
+ * // After fetching products:
+ * addShownProducts(products.map(p => p.id));
+ *
+ * // Before fetching new products:
+ * const excludeIds = getShownProducts();
+ * fetchProducts({ excludeIds });
+ */
+export function useRecommendationTracking() {
+  const context = useContext(RecommendationContext);
+
+  if (context === undefined) {
+    // Return no-op functions if context not available (graceful degradation)
+    console.warn('useRecommendationTracking used outside of RecommendationProvider');
+    return {
+      shownProducts: new Set<string>(),
+      shownStores: new Set<string>(),
+      addShownProduct: () => {},
+      addShownProducts: () => {},
+      addShownStore: () => {},
+      addShownStores: () => {},
+      isProductShown: () => false,
+      isStoreShown: () => false,
+      getShownProducts: () => [],
+      getShownStores: () => [],
+      clearShownProducts: () => {},
+      clearShownStores: () => {},
+      clearAll: () => {},
+    };
+  }
+
+  return context;
+}
+
+export default RecommendationContext;

@@ -2,6 +2,7 @@
 // Base client for all backend API communications
 
 import { parseConnectionError, formatConnectionError, isConnectionError } from '@/utils/connectionUtils';
+import { globalDeduplicator, createRequestKey } from '@/utils/requestDeduplicator';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -9,6 +10,16 @@ interface ApiResponse<T = any> {
   message?: string;
   error?: string;
   errors?: { [key: string]: string[] };
+  meta?: {
+    pagination?: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+    timestamp?: string;
+    [key: string]: any;
+  };
 }
 
 interface RequestOptions {
@@ -16,6 +27,7 @@ interface RequestOptions {
   headers?: Record<string, string>;
   body?: any;
   timeout?: number;
+  deduplicate?: boolean; // Enable/disable deduplication per-request
 }
 
 class ApiClient {
@@ -77,7 +89,11 @@ class ApiClient {
 
     try {
       const success = await this.refreshPromise;
+      console.log(`✅ [API CLIENT] Token refresh ${success ? 'succeeded' : 'failed'}`);
       return success;
+    } catch (error) {
+      console.error('❌ [API CLIENT] Token refresh error:', error);
+      return false;
     } finally {
       this.isRefreshing = false;
       this.refreshPromise = null;
@@ -200,7 +216,8 @@ class ApiClient {
       return {
         success: true,
         data: responseData.data || responseData,
-        message: responseData.message
+        message: responseData.message,
+        meta: responseData.meta // Preserve meta field for pagination info
       };
 
     } catch (error) {
@@ -255,10 +272,14 @@ class ApiClient {
     }
   }
 
-  // GET request
-  async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
+  // GET request (with automatic deduplication)
+  async get<T>(
+    endpoint: string,
+    params?: Record<string, any>,
+    options?: { deduplicate?: boolean }
+  ): Promise<ApiResponse<T>> {
     let url = endpoint;
-    
+
     if (params) {
       const searchParams = new URLSearchParams();
       Object.keys(params).forEach(key => {
@@ -269,35 +290,111 @@ class ApiClient {
       url += `?${searchParams.toString()}`;
     }
 
+    // Deduplicate GET requests by default (can be disabled per-request)
+    const shouldDeduplicate = options?.deduplicate !== false;
+
+    if (shouldDeduplicate) {
+      const requestKey = createRequestKey(`${this.baseURL}${url}`, params);
+
+      return globalDeduplicator.dedupe(
+        requestKey,
+        () => this.makeRequest<T>(url, { method: 'GET' })
+      );
+    }
+
     return this.makeRequest<T>(url, { method: 'GET' });
   }
 
-  // POST request
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  // POST request (optional deduplication)
+  async post<T>(
+    endpoint: string,
+    data?: any,
+    options?: { deduplicate?: boolean }
+  ): Promise<ApiResponse<T>> {
+    // POST requests are NOT deduplicated by default (usually mutating)
+    const shouldDeduplicate = options?.deduplicate === true;
+
+    if (shouldDeduplicate) {
+      const requestKey = createRequestKey(`POST:${this.baseURL}${endpoint}`, data);
+
+      return globalDeduplicator.dedupe(
+        requestKey,
+        () => this.makeRequest<T>(endpoint, { method: 'POST', body: data })
+      );
+    }
+
     return this.makeRequest<T>(endpoint, {
       method: 'POST',
       body: data
     });
   }
 
-  // PUT request
-  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  // PUT request (optional deduplication)
+  async put<T>(
+    endpoint: string,
+    data?: any,
+    options?: { deduplicate?: boolean }
+  ): Promise<ApiResponse<T>> {
+    // PUT requests are NOT deduplicated by default (usually mutating)
+    const shouldDeduplicate = options?.deduplicate === true;
+
+    if (shouldDeduplicate) {
+      const requestKey = createRequestKey(`PUT:${this.baseURL}${endpoint}`, data);
+
+      return globalDeduplicator.dedupe(
+        requestKey,
+        () => this.makeRequest<T>(endpoint, { method: 'PUT', body: data })
+      );
+    }
+
     return this.makeRequest<T>(endpoint, {
       method: 'PUT',
       body: data
     });
   }
 
-  // PATCH request
-  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  // PATCH request (optional deduplication)
+  async patch<T>(
+    endpoint: string,
+    data?: any,
+    options?: { deduplicate?: boolean }
+  ): Promise<ApiResponse<T>> {
+    // PATCH requests are NOT deduplicated by default (usually mutating)
+    const shouldDeduplicate = options?.deduplicate === true;
+
+    if (shouldDeduplicate) {
+      const requestKey = createRequestKey(`PATCH:${this.baseURL}${endpoint}`, data);
+
+      return globalDeduplicator.dedupe(
+        requestKey,
+        () => this.makeRequest<T>(endpoint, { method: 'PATCH', body: data })
+      );
+    }
+
     return this.makeRequest<T>(endpoint, {
       method: 'PATCH',
       body: data
     });
   }
 
-  // DELETE request
-  async delete<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+  // DELETE request (optional deduplication)
+  async delete<T>(
+    endpoint: string,
+    data?: any,
+    options?: { deduplicate?: boolean }
+  ): Promise<ApiResponse<T>> {
+    // DELETE requests are NOT deduplicated by default (usually mutating)
+    const shouldDeduplicate = options?.deduplicate === true;
+
+    if (shouldDeduplicate) {
+      const requestKey = createRequestKey(`DELETE:${this.baseURL}${endpoint}`, data);
+
+      return globalDeduplicator.dedupe(
+        requestKey,
+        () => this.makeRequest<T>(endpoint, { method: 'DELETE', body: data })
+      );
+    }
+
     return this.makeRequest<T>(endpoint, {
       method: 'DELETE',
       body: data
@@ -339,6 +436,21 @@ class ApiClient {
   // Get base URL
   getBaseURL(): string {
     return this.baseURL;
+  }
+
+  // Get deduplication statistics
+  getDeduplicationStats() {
+    return globalDeduplicator.getStats();
+  }
+
+  // Print deduplication statistics
+  printDeduplicationStats() {
+    globalDeduplicator.printStats();
+  }
+
+  // Cancel all in-flight requests
+  cancelAllRequests() {
+    globalDeduplicator.cancelAll();
   }
 }
 

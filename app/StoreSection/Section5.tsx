@@ -1,7 +1,19 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from '@/components/ThemedText';
 import wishlistApi from '@/services/wishlistApi';
+import { platformAlert } from '@/utils/platformAlert';
+import {
+  Colors,
+  Spacing,
+  Shadows,
+  BorderRadius,
+  Typography,
+  IconSize,
+  Timing,
+} from '@/constants/DesignSystem';
 
 interface Section5Props {
   dynamicData?: {
@@ -20,13 +32,37 @@ interface Section5Props {
 export default function Section5({ dynamicData, cardType }: Section5Props) {
   const [isSaving, setIsSaving] = useState(false);
 
+  // Animation ref for button interaction
+  const buttonScaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Animation helper
+  const animateScale = (animValue: Animated.Value, toValue: number) => {
+    Animated.spring(animValue, {
+      toValue,
+      useNativeDriver: true,
+      ...Timing.springBouncy,
+    }).start();
+  };
+
   const handleSaveDeal = async () => {
+    // Haptic feedback on button press
+    triggerImpact('Medium');
+
     try {
       setIsSaving(true);
 
       const productId = dynamicData?.id || dynamicData?._id;
       if (!productId) {
-        Alert.alert('Error', 'Product information not available');
+        platformAlert('Error', 'Product information not available');
+        return;
+      }
+
+      // Check if item already exists in wishlist
+      const checkResponse = await wishlistApi.checkWishlistStatus('product', productId);
+
+      if (checkResponse.success && checkResponse.data?.inWishlist) {
+        // Item already in wishlist
+        platformAlert('Already Saved', 'This deal is already in your wishlist');
         return;
       }
 
@@ -39,17 +75,21 @@ export default function Section5({ dynamicData, cardType }: Section5Props) {
       });
 
       if (response.success) {
-        Alert.alert(
+        // Success haptic feedback
+        triggerNotification('Success');
+        platformAlert(
           'Deal Saved!',
-          `${dynamicData?.title || dynamicData?.name || 'This deal'} has been saved to your wishlist`,
-          [{ text: 'OK' }]
+          `${dynamicData?.title || dynamicData?.name || 'This deal'} has been saved to your wishlist`
         );
       } else {
-        Alert.alert('Error', response.message || 'Failed to save deal');
+        // Error haptic feedback
+        triggerNotification('Error');
+        platformAlert('Error', response.message || 'Failed to save deal');
       }
     } catch (error) {
-      console.error('Save deal error:', error);
-      Alert.alert('Error', 'Unable to save deal. Please try again.');
+      // Error haptic feedback
+      triggerNotification('Error');
+      platformAlert('Error', 'Unable to save deal. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -61,77 +101,85 @@ export default function Section5({ dynamicData, cardType }: Section5Props) {
       accessibilityRole="region"
       accessibilityLabel="Save deal action"
     >
-      <TouchableOpacity
-        activeOpacity={0.85}
-        style={[styles.button, isSaving && styles.buttonDisabled]}
-        onPress={handleSaveDeal}
-        disabled={isSaving}
-        accessibilityRole="button"
-        accessibilityLabel={isSaving ? 'Saving deal to wishlist' : `Save ${dynamicData?.title || dynamicData?.name || 'this deal'} for later`}
-        accessibilityHint="Double tap to save this deal to your wishlist"
-        accessibilityState={{ disabled: isSaving, busy: isSaving }}
-      >
-        <View style={styles.iconContainer} accessibilityElementsHidden>
-          <ThemedText style={styles.icon}>{isSaving ? '⏳' : '🔄'}</ThemedText>
-        </View>
-        <View style={styles.textContainer}>
-          <ThemedText style={styles.title}>
-            {isSaving ? 'Saving...' : 'Save Deal for Later'}
-          </ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Keep this offer saved in your list
-          </ThemedText>
-        </View>
-      </TouchableOpacity>
+      <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.button, isSaving && styles.buttonDisabled]}
+          onPress={handleSaveDeal}
+          onPressIn={() => animateScale(buttonScaleAnim, 0.96)}
+          onPressOut={() => animateScale(buttonScaleAnim, 1)}
+          disabled={isSaving}
+          accessibilityRole="button"
+          accessibilityLabel={isSaving ? 'Saving deal to wishlist' : `Save ${dynamicData?.title || dynamicData?.name || 'this deal'} for later`}
+          accessibilityHint="Double tap to save this deal to your wishlist"
+          accessibilityState={{ disabled: isSaving, busy: isSaving }}
+        >
+          <View style={styles.iconContainer} accessibilityElementsHidden>
+            <Ionicons
+              name={isSaving ? 'hourglass-outline' : 'bookmark-outline'}
+              size={IconSize.lg}
+              color={Colors.primary[600]}
+            />
+          </View>
+          <View style={styles.textContainer}>
+            <ThemedText style={styles.title}>
+              {isSaving ? 'Saving...' : 'Save Deal for Later'}
+            </ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Keep this offer saved in your list
+            </ThemedText>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({
+  // Modern Container
   container: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: Spacing['2xl'] - 4,
+    paddingVertical: Spacing.base,
+    backgroundColor: Colors.background.primary,
   },
+
+  // Modern Button with Purple Tint
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 14,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: Colors.background.purpleLight,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    ...Shadows.subtle,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
+
+  // Modern Icon Container
   iconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: '#e8e6ff',
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primary[50],
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: Spacing.md,
   },
-  icon: {
-    fontSize: 24,
-    color: '#6c63ff',
-  },
+
   textContainer: {
     flex: 1,
   },
+
+  // Modern Typography
   title: {
-    fontSize: 16,
+    ...Typography.h4,
     fontWeight: '600',
-    color: '#333333',
-    marginBottom: 3,
+    color: Colors.text.primary,
+    marginBottom: Spacing.xs - 1,
   },
   subtitle: {
-    fontSize: 13,
-    color: '#6c757d',
+    ...Typography.body,
+    color: Colors.gray[600],
   },
 });

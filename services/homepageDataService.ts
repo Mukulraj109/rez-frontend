@@ -3,12 +3,13 @@ import storesService from './storesApi';
 import eventsApiService from './eventsApi';
 import realOffersApi from './realOffersApi';
 import cacheService from './cacheService';
-import { ProductItem, RecommendationItem, HomepageSection, EventItem } from '@/types/homepage.types';
+import { ProductItem, RecommendationItem, HomepageSection, EventItem, HomepageBatchResponse } from '@/types/homepage.types';
 import { getSectionById } from '@/data/homepageData';
 import {
   getFallbackSectionData,
   getAllFallbackSections
 } from '@/data/offlineFallbackData';
+import HomepageApiService from './homepageApi';
 
 /**
  * Homepage Data Service
@@ -18,6 +19,7 @@ import {
  * - Offline fallback data
  * - TTL-based cache invalidation
  * - Smart cache warming
+ * - NEW: Batch endpoint support with feature flag
  */
 class HomepageDataService {
   private backendAvailable: boolean | null = null;
@@ -25,6 +27,20 @@ class HomepageDataService {
   private BACKEND_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
   private CACHE_TTL = 60 * 60 * 1000; // 1 hour cache TTL
   private STALE_TTL = 30 * 60 * 1000; // 30 minutes before considering stale
+
+  // FEATURE FLAG: Enable/disable batch endpoint
+  // OPTIMIZATION: Enable in production to reduce API calls from 6 to 1
+  private USE_BATCH_ENDPOINT = true; // Enabled for performance
+
+  // Performance metrics
+  private performanceMetrics = {
+    batchCalls: 0,
+    individualCalls: 0,
+    batchSuccesses: 0,
+    batchFailures: 0,
+    avgBatchTime: 0,
+    avgIndividualTime: 0
+  };
 
   /**
    * Check if backend is available (with caching)
@@ -70,86 +86,55 @@ class HomepageDataService {
     fallbackData: T
   ): Promise<{ data: T; fromCache: boolean; isOffline: boolean }> {
     try {
-      console.log(`📦 [HOMEPAGE SERVICE] getWithCacheAndFallback for ${cacheKey}`);
-
       // Try to get from cache first
       const cachedData = await cacheService.get<T>(cacheKey);
 
       if (cachedData) {
-        console.log(`✅ [HOMEPAGE SERVICE] Found cached data for ${cacheKey}`, {
-          isCachedDataArray: Array.isArray(cachedData),
-          cachedDataLength: Array.isArray(cachedData) ? (cachedData as any[]).length : 'N/A'
-        });
-
         // Try to refresh in background if backend is available
         const isBackendAvailable = await this.checkBackendAvailability();
-        console.log(`🔍 [HOMEPAGE SERVICE] Backend availability for ${cacheKey}:`, isBackendAvailable);
 
         if (isBackendAvailable) {
-          console.log(`🔄 [HOMEPAGE SERVICE] Starting background refresh for ${cacheKey}...`);
           // Background refresh (stale-while-revalidate)
           fetchFn()
             .then(async freshData => {
-              console.log(`✅ [HOMEPAGE SERVICE] Background refresh succeeded for ${cacheKey}`);
               await cacheService.set(cacheKey, freshData, {
                 ttl: this.CACHE_TTL,
                 priority: 'high'
               });
             })
             .catch(error => {
-              console.error(`❌ [HOMEPAGE SERVICE] Background refresh failed for ${cacheKey}:`, error);
+              console.error(`Background refresh failed for ${cacheKey}:`, error);
             });
-        } else {
-          console.log(`⚠️ [HOMEPAGE SERVICE] Backend unavailable, skipping background refresh for ${cacheKey}`);
         }
 
         return { data: cachedData, fromCache: true, isOffline: false };
       }
 
-      console.log(`ℹ️ [HOMEPAGE SERVICE] No cached data for ${cacheKey}, fetching from backend...`);
-
       // No cache, try to fetch from backend
       const isBackendAvailable = await this.checkBackendAvailability();
-      console.log(`🔍 [HOMEPAGE SERVICE] Backend availability check for ${cacheKey}:`, isBackendAvailable);
 
       if (isBackendAvailable) {
         try {
-          console.log(`📡 [HOMEPAGE SERVICE] Calling fetchFn for ${cacheKey}...`);
           const freshData = await fetchFn();
-          console.log(`✅ [HOMEPAGE SERVICE] Successfully fetched fresh data for ${cacheKey}`, {
-            isFreshDataArray: Array.isArray(freshData),
-            freshDataLength: Array.isArray(freshData) ? (freshData as any[]).length : 'N/A'
-          });
 
           // Cache the fresh data
           await cacheService.set(cacheKey, freshData, {
             ttl: this.CACHE_TTL,
             priority: 'high'
           });
-          console.log(`✅ [HOMEPAGE SERVICE] Cached fresh data for ${cacheKey}`);
 
           return { data: freshData, fromCache: false, isOffline: false };
         } catch (error) {
-          console.error(`❌ [HOMEPAGE SERVICE] Failed to fetch data for ${cacheKey}:`, error);
-          console.error(`Error details:`, error instanceof Error ? error.message : String(error));
-          console.log(`🔄 [HOMEPAGE SERVICE] Falling back to fallback data for ${cacheKey}`);
+          console.error(`Failed to fetch ${cacheKey}:`, error);
           // Fall through to use fallback data
         }
-      } else {
-        console.log(`⚠️ [HOMEPAGE SERVICE] Backend unavailable for ${cacheKey}, using fallback data`);
       }
 
       // Backend unavailable or fetch failed, use fallback data
-      console.log(`📦 [HOMEPAGE SERVICE] Using fallback data for ${cacheKey}`, {
-        isFallbackArray: Array.isArray(fallbackData),
-        fallbackLength: Array.isArray(fallbackData) ? (fallbackData as any[]).length : 'N/A'
-      });
-
       return { data: fallbackData, fromCache: false, isOffline: true };
 
     } catch (error) {
-      console.error(`❌ [HOMEPAGE SERVICE] Error in getWithCacheAndFallback for ${cacheKey}:`, error);
-      console.log(`📦 [HOMEPAGE SERVICE] Returning fallback data for ${cacheKey} due to exception`);
+      console.error(`Error in getWithCacheAndFallback for ${cacheKey}:`, error);
       return { data: fallbackData, fromCache: false, isOffline: true };
     }
   }
@@ -351,8 +336,6 @@ class HomepageDataService {
 
     const cacheKey = 'homepage_trending_stores';
 
-    console.log('🏪 [HOMEPAGE SERVICE] Fetching trending stores section...');
-
     const { data: trendingStores, fromCache, isOffline } = await this.getWithCacheAndFallback(
       cacheKey,
       async () => {
@@ -361,31 +344,6 @@ class HomepageDataService {
       },
       fallbackSection?.items || []
     );
-
-    console.log('📊 [HOMEPAGE SERVICE] Trending stores result:', {
-      count: trendingStores.length,
-      fromCache,
-      isOffline,
-      usingFallback: trendingStores === (fallbackSection?.items || []),
-      firstStoreId: trendingStores[0]?.id,
-      firstStoreName: trendingStores[0]?.name
-    });
-
-    if (trendingStores.length > 0) {
-      const firstStore = trendingStores[0];
-      const isObjectId = /^[0-9a-fA-F]{24}$/.test(firstStore.id);
-      console.log(`🔍 [HOMEPAGE SERVICE] First store ID check: "${firstStore.id}" is ${isObjectId ? 'REAL ObjectId ✅' : 'MOCK String ID ❌'}`);
-
-      if (!isObjectId) {
-        console.warn('⚠️ [HOMEPAGE SERVICE] WARNING: Using mock data with fake string IDs!');
-        console.warn('This means the backend API call failed or returned no data.');
-        console.warn('Check the API logs above for errors.');
-      } else {
-        console.log('✅ [HOMEPAGE SERVICE] Using REAL backend data with ObjectIds!');
-      }
-    } else {
-      console.warn('⚠️ [HOMEPAGE SERVICE] No trending stores returned (empty array)');
-    }
 
     // Use real backend data, no fallbacks (unless offline)
     const result: HomepageSection = {
@@ -482,7 +440,7 @@ class HomepageDataService {
             limit: 10
           });
 
-          if (response.success && response.data) {
+          if (response.success && response.data && response.data.items) {
             const offers = response.data.items || [];
 
             // Transform offers to homepage format
@@ -578,14 +536,14 @@ class HomepageDataService {
             limit: 10
           });
 
-          if (response.success && response.data) {
+          if (response.success && response.data && response.data.items) {
             // Filter for flash sale offers
             const flashSales = response.data.items.filter(offer =>
               offer.metadata?.flashSale?.isActive
-            ) || [];
+            );
 
             // Transform flash sales to homepage format
-            const transformedItems = flashSales.map(offer => ({
+            const transformedItems = (flashSales || []).map(offer => ({
               id: offer._id,
               type: 'product' as const,
               title: offer.title,
@@ -723,6 +681,231 @@ class HomepageDataService {
 
     await this.clearCache();
     await this.warmCache();
+  }
+
+  /**
+   * NEW: Fetch all sections using batch endpoint
+   * Returns all sections in a single API call
+   */
+  async fetchAllSectionsBatch(userId?: string): Promise<{
+    justForYou: HomepageSection;
+    newArrivals: HomepageSection;
+    trendingStores: HomepageSection;
+    events: HomepageSection;
+    offers: HomepageSection;
+    flashSales: HomepageSection;
+  }> {
+    const startTime = Date.now();
+
+    try {
+      this.performanceMetrics.batchCalls++;
+
+      const response = await HomepageApiService.fetchHomepageBatch(userId);
+
+      if (!response.success || !response.data) {
+        throw new Error('Batch endpoint returned unsuccessful response');
+      }
+
+      const batchTime = Date.now() - startTime;
+      this.performanceMetrics.avgBatchTime =
+        (this.performanceMetrics.avgBatchTime * (this.performanceMetrics.batchSuccesses) + batchTime) /
+        (this.performanceMetrics.batchSuccesses + 1);
+      this.performanceMetrics.batchSuccesses++;
+
+      // Transform batch response to individual sections
+      return this.transformBatchResponseToSections(response);
+
+    } catch (error) {
+      this.performanceMetrics.batchFailures++;
+      console.error('Batch endpoint failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Transform batch response to individual HomepageSection objects
+   */
+  private transformBatchResponseToSections(response: HomepageBatchResponse): {
+    justForYou: HomepageSection;
+    newArrivals: HomepageSection;
+    trendingStores: HomepageSection;
+    events: HomepageSection;
+    offers: HomepageSection;
+    flashSales: HomepageSection;
+  } {
+    const { sections, metadata } = response.data;
+    const timestamp = new Date().toISOString();
+
+    // Get section templates
+    const justForYouTemplate = getSectionById('just_for_you');
+    const newArrivalsTemplate = getSectionById('new_arrivals');
+    const trendingStoresTemplate = getSectionById('trending_stores');
+    const eventsTemplate = getSectionById('events');
+    const offersTemplate = getSectionById('offers');
+    const flashSalesTemplate = getSectionById('flash_sales');
+
+    return {
+      justForYou: {
+        ...(justForYouTemplate || {}),
+        id: 'just_for_you',
+        title: 'Just for you',
+        type: 'recommendations',
+        items: sections.justForYou || [],
+        lastUpdated: timestamp,
+        loading: false,
+        error: null,
+        showViewAll: false,
+        isHorizontalScroll: true,
+        refreshable: true,
+        priority: 2
+      } as HomepageSection,
+
+      newArrivals: {
+        ...(newArrivalsTemplate || {}),
+        id: 'new_arrivals',
+        title: 'New Arrivals',
+        type: 'products',
+        items: sections.newArrivals || [],
+        lastUpdated: timestamp,
+        loading: false,
+        error: null,
+        showViewAll: false,
+        isHorizontalScroll: true,
+        refreshable: true,
+        priority: 6
+      } as HomepageSection,
+
+      trendingStores: {
+        ...(trendingStoresTemplate || {}),
+        id: 'trending_stores',
+        title: 'Trending Stores',
+        type: 'stores',
+        items: sections.trendingStores || [],
+        lastUpdated: timestamp,
+        loading: false,
+        error: null,
+        showViewAll: false,
+        isHorizontalScroll: true,
+        refreshable: true,
+        priority: 3
+      } as HomepageSection,
+
+      events: {
+        ...(eventsTemplate || {}),
+        id: 'events',
+        title: 'Events',
+        type: 'events',
+        items: sections.events || [],
+        lastUpdated: timestamp,
+        loading: false,
+        error: null,
+        showViewAll: false,
+        isHorizontalScroll: true,
+        refreshable: true,
+        priority: 1
+      } as HomepageSection,
+
+      offers: {
+        ...(offersTemplate || {}),
+        id: 'offers',
+        title: 'Special Offers',
+        type: 'products',
+        items: sections.offers || [],
+        lastUpdated: timestamp,
+        loading: false,
+        error: null,
+        showViewAll: true,
+        isHorizontalScroll: true,
+        refreshable: true,
+        priority: 4
+      } as HomepageSection,
+
+      flashSales: {
+        ...(flashSalesTemplate || {}),
+        id: 'flash_sales',
+        title: 'Flash Sales',
+        type: 'products',
+        items: sections.flashSales || [],
+        lastUpdated: timestamp,
+        loading: false,
+        error: null,
+        showViewAll: true,
+        isHorizontalScroll: true,
+        refreshable: true,
+        priority: 5
+      } as HomepageSection
+    };
+  }
+
+  /**
+   * NEW: Fetch all sections with batch endpoint (with fallback)
+   * Uses batch endpoint if enabled, falls back to individual calls
+   */
+  async fetchAllSectionsWithBatch(userId?: string): Promise<{
+    justForYou: HomepageSection;
+    newArrivals: HomepageSection;
+    trendingStores: HomepageSection;
+    events: HomepageSection;
+    offers: HomepageSection;
+    flashSales: HomepageSection;
+  }> {
+    // Check feature flag
+    if (this.USE_BATCH_ENDPOINT) {
+      try {
+        return await this.fetchAllSectionsBatch(userId);
+      } catch (error) {
+        console.warn('Batch endpoint failed, using individual calls');
+        // Fall through to individual calls
+      }
+    }
+
+    // Fallback: Individual calls (original behavior)
+    const startTime = Date.now();
+    this.performanceMetrics.individualCalls++;
+
+    const [justForYou, newArrivals, trendingStores, events, offers, flashSales] = await Promise.all([
+      this.getJustForYouSection(),
+      this.getNewArrivalsSection(),
+      this.getTrendingStoresSection(),
+      this.getEventsSection(),
+      this.getOffersSection(),
+      this.getFlashSalesSection()
+    ]);
+
+    const individualTime = Date.now() - startTime;
+    this.performanceMetrics.avgIndividualTime =
+      (this.performanceMetrics.avgIndividualTime * (this.performanceMetrics.individualCalls - 1) + individualTime) /
+      this.performanceMetrics.individualCalls;
+
+    return {
+      justForYou,
+      newArrivals,
+      trendingStores,
+      events,
+      offers,
+      flashSales
+    };
+  }
+
+  /**
+   * Get performance metrics
+   */
+  getPerformanceMetrics() {
+    return {
+      ...this.performanceMetrics,
+      featureFlagEnabled: this.USE_BATCH_ENDPOINT,
+      batchSuccessRate: this.performanceMetrics.batchCalls > 0
+        ? (this.performanceMetrics.batchSuccesses / this.performanceMetrics.batchCalls * 100).toFixed(2) + '%'
+        : 'N/A',
+      avgTimeSaved: this.performanceMetrics.avgIndividualTime - this.performanceMetrics.avgBatchTime
+    };
+  }
+
+  /**
+   * Toggle feature flag (for testing)
+   */
+  toggleBatchEndpoint(enabled: boolean) {
+    this.USE_BATCH_ENDPOINT = enabled;
   }
 }
 

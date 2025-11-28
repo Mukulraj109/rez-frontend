@@ -2,7 +2,15 @@
 // Handles order creation, management, and tracking
 
 import apiClient, { ApiResponse } from './apiClient';
+import {
+  Order as UnifiedOrder,
+  OrderItem as UnifiedOrderItem,
+  toOrder,
+  validateOrder,
+  canCancelOrder
+} from '@/types/unified';
 
+// Keep the old OrderItem interface for backwards compatibility during migration
 export interface OrderItem {
   id: string;
   productId: string;
@@ -133,6 +141,9 @@ export interface Order {
   notes?: string;
 }
 
+// Export unified Order types for new code
+export { UnifiedOrder, UnifiedOrderItem };
+
 export interface CreateOrderRequest {
   deliveryAddress: {
     name: string;
@@ -199,26 +210,88 @@ export interface RefundRequest {
 class OrdersService {
   // Create new order from cart
   async createOrder(data: CreateOrderRequest): Promise<ApiResponse<Order>> {
+    try {
+      console.log('📦 [ORDERS API] Creating order...');
+      const response = await apiClient.post<Order>('/orders', data);
 
-    return apiClient.post('/orders', data);
+      if (response.success) {
+        console.log('✅ [ORDERS API] Order created successfully:', response.data?.orderNumber);
+      } else {
+        console.error('❌ [ORDERS API] Order creation failed:', response.error);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [ORDERS API] Error creating order:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to create order',
+        message: error?.message || 'Failed to create order',
+      };
+    }
   }
 
   // Get user orders with filtering
   async getOrders(query: OrdersQuery = {}): Promise<ApiResponse<OrdersResponse>> {
+    try {
+      console.log('📦 [ORDERS API] Fetching orders...');
+      const response = await apiClient.get<OrdersResponse>('/orders', query);
 
-    return apiClient.get('/orders', query);
+      if (response.success) {
+        console.log(`✅ [ORDERS API] Fetched ${response.data?.orders?.length || 0} orders`);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [ORDERS API] Error fetching orders:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch orders',
+        message: error?.message || 'Failed to fetch orders',
+      };
+    }
   }
 
   // Get single order by ID
   async getOrderById(orderId: string): Promise<ApiResponse<Order>> {
+    try {
+      console.log(`📦 [ORDERS API] Fetching order: ${orderId}`);
+      const response = await apiClient.get<Order>(`/orders/${orderId}`);
 
-    return apiClient.get(`/orders/${orderId}`);
+      if (response.success) {
+        console.log(`✅ [ORDERS API] Order fetched: ${response.data?.orderNumber}`);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [ORDERS API] Error fetching order:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch order',
+        message: error?.message || 'Failed to fetch order',
+      };
+    }
   }
 
   // Get order tracking
   async getOrderTracking(orderId: string): Promise<ApiResponse<any>> {
+    try {
+      console.log(`📦 [ORDERS API] Fetching tracking for order: ${orderId}`);
+      const response = await apiClient.get(`/orders/${orderId}/tracking`);
 
-    return apiClient.get(`/orders/${orderId}/tracking`);
+      if (response.success) {
+        console.log('✅ [ORDERS API] Tracking info fetched');
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [ORDERS API] Error fetching tracking:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch order tracking',
+        message: error?.message || 'Failed to fetch order tracking',
+      };
+    }
   }
 
   // Cancel order
@@ -226,8 +299,23 @@ class OrdersService {
     orderId: string,
     reason?: string
   ): Promise<ApiResponse<Order>> {
+    try {
+      console.log(`📦 [ORDERS API] Cancelling order: ${orderId}`);
+      const response = await apiClient.patch<Order>(`/orders/${orderId}/cancel`, { reason });
 
-    return apiClient.patch(`/orders/${orderId}/cancel`, { reason });
+      if (response.success) {
+        console.log('✅ [ORDERS API] Order cancelled successfully');
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [ORDERS API] Error cancelling order:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to cancel order',
+        message: error?.message || 'Failed to cancel order',
+      };
+    }
   }
 
   // Rate order
@@ -236,14 +324,54 @@ class OrdersService {
     rating: number,
     review?: string
   ): Promise<ApiResponse<Order>> {
+    try {
+      console.log(`📦 [ORDERS API] Rating order: ${orderId}`);
 
-    return apiClient.post(`/orders/${orderId}/rate`, { rating, review });
+      // Validate rating
+      if (rating < 1 || rating > 5) {
+        return {
+          success: false,
+          error: 'Invalid rating',
+          message: 'Rating must be between 1 and 5',
+        };
+      }
+
+      const response = await apiClient.post<Order>(`/orders/${orderId}/rate`, { rating, review });
+
+      if (response.success) {
+        console.log('✅ [ORDERS API] Order rated successfully');
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [ORDERS API] Error rating order:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to rate order',
+        message: error?.message || 'Failed to rate order',
+      };
+    }
   }
 
   // Get order statistics
   async getOrderStats(): Promise<ApiResponse<any>> {
+    try {
+      console.log('📦 [ORDERS API] Fetching order statistics...');
+      const response = await apiClient.get('/orders/stats');
 
-    return apiClient.get('/orders/stats');
+      if (response.success) {
+        console.log('✅ [ORDERS API] Statistics fetched');
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [ORDERS API] Error fetching statistics:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch order statistics',
+        message: error?.message || 'Failed to fetch order statistics',
+      };
+    }
   }
 
   // Update order status (admin/store owner)
@@ -253,12 +381,27 @@ class OrdersService {
     estimatedDeliveryTime?: string,
     trackingInfo?: any
   ): Promise<ApiResponse<Order>> {
+    try {
+      console.log(`📦 [ORDERS API] Updating order status: ${orderId} -> ${status}`);
+      const response = await apiClient.patch<Order>(`/orders/${orderId}/status`, {
+        status,
+        estimatedDeliveryTime,
+        trackingInfo
+      });
 
-    return apiClient.patch(`/orders/${orderId}/status`, {
-      status,
-      estimatedDeliveryTime,
-      trackingInfo
-    });
+      if (response.success) {
+        console.log('✅ [ORDERS API] Order status updated');
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [ORDERS API] Error updating order status:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to update order status',
+        message: error?.message || 'Failed to update order status',
+      };
+    }
   }
 
 }

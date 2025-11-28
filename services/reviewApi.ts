@@ -1,6 +1,7 @@
 // Review API Service
 // Handles store reviews and ratings
 
+import { Platform } from 'react-native';
 import apiClient, { ApiResponse } from './apiClient';
 import {
   Review,
@@ -129,9 +130,16 @@ class ReviewService {
   }>> {
     try {
 
-      const response = await apiClient.get(
-        `/reviews/user/my-reviews?page=${page}&limit=${limit}`
-      );
+      const response = await apiClient.get<{
+        reviews: UserReview[];
+        pagination: {
+          currentPage: number;
+          totalPages: number;
+          totalReviews: number;
+          hasNextPage: boolean;
+          hasPrevPage: boolean;
+        };
+      }>(`/reviews/user/my-reviews?page=${page}&limit=${limit}`);
       return response;
     } catch (error) {
       console.error('L [REVIEW API] Error fetching user reviews:', error);
@@ -172,6 +180,43 @@ class ReviewService {
       return response;
     } catch (error) {
       console.error('L [REVIEW API] Error reporting review:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload review image to Cloudinary
+   */
+  async uploadReviewImage(imageUri: string): Promise<ApiResponse<{ url: string; publicId: string }>> {
+    try {
+      const formData = new FormData();
+      const filename = imageUri.split('/').pop() || 'review-image.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      
+      // Handle web vs mobile (React Native)
+      if (Platform.OS === 'web') {
+        // Web - convert blob URL to file
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
+        formData.append('image', blob, filename);
+      } else {
+        // Mobile (React Native) - use file URI
+        formData.append('image', {
+          uri: Platform.OS === 'android' ? imageUri : imageUri.replace('file://', ''),
+          name: filename,
+          type,
+        } as any);
+      }
+
+      const result = await apiClient.uploadFile<{ url: string; publicId: string }>(
+        '/reviews/upload-image',
+        formData
+      );
+
+      return result;
+    } catch (error) {
+      console.error('L [REVIEW API] Error uploading review image:', error);
       throw error;
     }
   }

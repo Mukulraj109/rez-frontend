@@ -1,11 +1,22 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet, Image, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons , MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from '@/components/ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useGamification } from '@/contexts/GamificationContext';
+import {
+  Colors,
+  Spacing,
+  Shadows,
+  BorderRadius,
+  Typography,
+  IconSize,
+  Timing,
+  Gradients,
+} from '@/constants/DesignSystem';
 
 interface StoreHeaderProps {
   dynamicData?: {
@@ -28,6 +39,41 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
   const primaryColor = useThemeColor({}, 'primary');
   const textColor = useThemeColor({}, 'text');
   const { coinBalance, isLoading: isLoadingPoints } = useGamification();
+
+  // Animation refs
+  const backScaleAnim = useRef(new Animated.Value(1)).current;
+  const cartScaleAnim = useRef(new Animated.Value(1)).current;
+  const heartScaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Haptic feedback handlers
+  const handleBackPress = () => {
+    triggerImpact('Medium');
+    router.back();
+  };
+
+  const handleCartPress = () => {
+    triggerImpact('Light');
+    router.push('/CartPage');
+  };
+
+  const handleCoinPress = () => {
+    triggerImpact('Light');
+    router.push('/CoinPage');
+  };
+
+  const handleFavoritePress = () => {
+    triggerImpact('Medium');
+    // Add favorite logic here
+  };
+
+  // Animation helper
+  const animateScale = (animValue: Animated.Value, toValue: number) => {
+    Animated.spring(animValue, {
+      toValue,
+      useNativeDriver: true,
+      ...Timing.springBouncy,
+    }).start();
+  };
 
   // Use dynamic data if available, otherwise use defaults
   const storeTitle = dynamicData?.title || "Featured Store";
@@ -66,25 +112,29 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
       
       {/* Header actions */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={[styles.iconButton, { backgroundColor: surfaceColor }]}
-          onPress={() => router.back()}
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          accessibilityHint="Double tap to return to previous screen"
-        >
-          <Ionicons name="arrow-back" size={20} color={textColor} />
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: backScaleAnim }] }}>
+          <TouchableOpacity
+            style={[styles.iconButton, { backgroundColor: surfaceColor }]}
+            onPress={handleBackPress}
+            onPressIn={() => animateScale(backScaleAnim, 0.92)}
+            onPressOut={() => animateScale(backScaleAnim, 1)}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to previous screen"
+          >
+            <Ionicons name="arrow-back" size={IconSize.md} color={textColor} />
+          </TouchableOpacity>
+        </Animated.View>
         
         <View style={styles.centerInfo}>
           <TouchableOpacity
             style={[styles.ratingBadge, { backgroundColor: primaryColor }]}
-            onPress={() => router.push('/CoinPage')}
+            onPress={handleCoinPress}
             accessibilityLabel={`Coin balance: ${isLoadingPoints ? 'Loading' : (coinBalance?.total ?? 0).toLocaleString()} coins`}
             accessibilityRole="button"
             accessibilityHint="Double tap to view coin details"
           >
-            <Ionicons name="star" size={16} color="#FFD700" />
+            <Ionicons name="star" size={IconSize.sm} color="#FFD700" />
             <ThemedText style={styles.ratingText}>
               {isLoadingPoints ? '...' : (coinBalance?.total ?? 0).toLocaleString()}
             </ThemedText>
@@ -104,23 +154,32 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
         </View>
         
         <View style={styles.rightIcons}>
-          <TouchableOpacity
-            style={[styles.iconButton, { backgroundColor: surfaceColor }]}
-            onPress={() => router.push('/CartPage')}
-            accessibilityLabel="Open cart"
-            accessibilityRole="button"
-            accessibilityHint="Double tap to view shopping cart"
-          >
-            <Ionicons name="bag-outline" size={20} color={textColor} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.iconButton, { backgroundColor: surfaceColor }]}
-            accessibilityLabel="Add to favorites"
-            accessibilityRole="button"
-            accessibilityHint="Double tap to add this item to favorites"
-          >
-            <Ionicons name="heart-outline" size={20} color={textColor} />
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: cartScaleAnim }] }}>
+            <TouchableOpacity
+              style={[styles.iconButton, { backgroundColor: surfaceColor }]}
+              onPress={handleCartPress}
+              onPressIn={() => animateScale(cartScaleAnim, 0.92)}
+              onPressOut={() => animateScale(cartScaleAnim, 1)}
+              accessibilityLabel="Open cart"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to view shopping cart"
+            >
+              <Ionicons name="bag-outline" size={IconSize.md} color={textColor} />
+            </TouchableOpacity>
+          </Animated.View>
+          <Animated.View style={{ transform: [{ scale: heartScaleAnim }] }}>
+            <TouchableOpacity
+              style={[styles.iconButton, { backgroundColor: surfaceColor }]}
+              onPress={handleFavoritePress}
+              onPressIn={() => animateScale(heartScaleAnim, 0.92)}
+              onPressOut={() => animateScale(heartScaleAnim, 1)}
+              accessibilityLabel="Add to favorites"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to add this item to favorites"
+            >
+              <Ionicons name="heart-outline" size={IconSize.md} color={textColor} />
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </View>
       
@@ -139,7 +198,7 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
           />
         ) : (
           <View style={styles.placeholderContainer}>
-            <Ionicons name="image-outline" size={64} color="#D1D5DB" />
+            <Ionicons name="image-outline" size={64} color={Colors.gray[300]} />
             <ThemedText style={styles.placeholderText}>No Image Available</ThemedText>
           </View>
         )}
@@ -147,10 +206,10 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
           colors={['transparent', 'rgba(0,0,0,0.4)']}
           style={styles.imageGradient}
         />
-        
+
         {/* Brand icon badge */}
         <View style={[styles.brandBadge, { backgroundColor: 'rgba(255, 255, 255, 0.95)' }]}>
-          <Ionicons name="storefront" size={18} color={primaryColor} />
+          <Ionicons name="storefront" size={IconSize.sm} color={primaryColor} />
         </View>
       </View>
     </View>
@@ -160,55 +219,126 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
 const styles = StyleSheet.create({
   container: { position: 'relative' },
   gradientOverlay: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 120, zIndex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    zIndex: 1,
   },
+
+  // Modern Header
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 16, paddingTop: 50, zIndex: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.base,
+    paddingTop: 50,
+    zIndex: 2,
   },
   iconButton: {
-    width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.medium,
   },
   centerInfo: { alignItems: 'center' },
   ratingBadge: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 25,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+    borderRadius: 25,
+    ...Shadows.medium,
+    gap: Spacing.xs,
   },
-  ratingText: { fontSize: 14, fontWeight: '700', color: '#ffffff' },
+  ratingText: {
+    ...Typography.body,
+    fontWeight: '700',
+    color: Colors.text.white,
+  },
   sectionLabel: {
-    fontSize: 12, fontWeight: '600', marginTop: 4, textAlign: 'center',
+    ...Typography.caption,
+    fontWeight: '600',
+    marginTop: Spacing.xs,
+    textAlign: 'center',
   },
   categoryBadge: {
-    fontSize: 10, fontWeight: '500', marginTop: 2, textAlign: 'center',
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8,
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 2,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
   },
-  rightIcons: { flexDirection: 'row', gap: 12 },
+  rightIcons: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+
+  // Modern Product Image
   productImageContainer: {
-    position: 'relative', height: 340, marginHorizontal: 20, borderRadius: 24, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 8,
+    position: 'relative',
+    height: 340,
+    marginHorizontal: Spacing.lg,
+    borderRadius: BorderRadius['2xl'],
+    overflow: 'hidden',
+    ...Shadows.strong,
   },
-  productImage: { width: '100%', height: '100%' },
+  productImage: {
+    width: '100%',
+    height: '100%',
+  },
   placeholderContainer: {
-    width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background.secondary,
   },
   placeholderText: {
-    fontSize: 16, color: '#6B7280', marginTop: 8, fontWeight: '500',
+    ...Typography.h4,
+    color: Colors.gray[500],
+    marginTop: Spacing.sm,
+    fontWeight: '500',
   },
-  imageGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 140 },
+  imageGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+  },
+
+  // Modern Brand Badge
   brandBadge: {
-    position: 'absolute', bottom: 20, left: 20, width: 48, height: 48, borderRadius: 24,
-    justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6,
+    position: 'absolute',
+    bottom: Spacing.lg,
+    left: Spacing.lg,
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius['2xl'],
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.medium,
   },
   textOverlay: {
-    position: 'absolute', bottom: 20, left: 80, paddingRight: 20,
+    position: 'absolute',
+    bottom: Spacing.lg,
+    left: 80,
+    paddingRight: Spacing.lg,
   },
   storeName: {
-    fontSize: 20, fontWeight: '700', color: '#fff',
+    ...Typography.h3,
+    color: Colors.text.white,
   },
   storeCategory: {
-    fontSize: 14, color: '#eee', marginTop: 2,
+    ...Typography.body,
+    color: '#eee',
+    marginTop: 2,
   },
 });

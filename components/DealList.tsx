@@ -469,12 +469,12 @@ const createStyles = (screenData: { width: number; height: number }, isTablet: b
   },
   listContainer: {
     paddingBottom: 24,
-    paddingHorizontal: screenData.width < 375 ? 4 : 8, // Reduced since cards have more margin now
+    paddingHorizontal: 0, // No horizontal padding - cards are full width
     flexGrow: 1,
   },
   dealItemContainer: {
     marginBottom: 0, // DealCard has its own margin
-    paddingHorizontal: 0, // Removed padding since cards have increased margins
+    paddingHorizontal: 0, // No horizontal padding - cards are full width
   },
   dealItemTablet: {
     flex: 1,

@@ -18,6 +18,7 @@ import LockedItem from '@/components/cart/LockedItem';
 import PriceSection from '@/components/cart/PriceSection';
 import CartValidation from '@/components/cart/CartValidation';
 import StockWarningBanner from '@/components/cart/StockWarningBanner';
+import CardOffersSection from '@/components/cart/CardOffersSection';
 import { ThemedText } from '@/components/ThemedText';
 import { CartItem as CartItemType, LockedProduct, LOCK_CONFIG } from '@/types/cart';
 import {
@@ -99,18 +100,39 @@ export default function CartPage() {
 
   // Use real cart totals from CartContext
   const overallTotal = useMemo(() => {
-    // Use real cart total from backend, not calculated from mock data
-    const cartTotal = cartState.totalPrice || 0;
-    const lockedTotal = calculateLockedTotal(lockedProducts);
+    // ✅ FIX: Add type checking and safe number conversion
+    const cartTotal = typeof cartState.totalPrice === 'number' && !isNaN(cartState.totalPrice)
+      ? cartState.totalPrice
+      : 0;
+    const lockedTotal = typeof calculateLockedTotal === 'function'
+      ? calculateLockedTotal(lockedProducts)
+      : 0;
     const total = cartTotal + lockedTotal;
+
+    console.log('💰 [CART PAGE] Total calculation:', {
+      cartTotal,
+      lockedTotal,
+      total
+    });
 
     return total;
   }, [cartState.totalPrice, lockedProducts]);
 
   const overallItemCount = useMemo(() => {
-    // Use real cart item count from backend
-    const cartCount = cartState.totalItems || 0;
-    const lockedCount = getLockedItemCount(lockedProducts);
+    // ✅ FIX: Add type checking for item count calculation
+    const cartCount = typeof cartState.totalItems === 'number' && !isNaN(cartState.totalItems)
+      ? cartState.totalItems
+      : 0;
+    const lockedCount = typeof getLockedItemCount === 'function'
+      ? getLockedItemCount(lockedProducts)
+      : 0;
+
+    console.log('🔢 [CART PAGE] Item count:', {
+      cartCount,
+      lockedCount,
+      total: cartCount + lockedCount
+    });
+
     return cartCount + lockedCount;
   }, [cartState.totalItems, lockedProducts]);
 
@@ -382,7 +404,7 @@ export default function CartPage() {
   };
 
   return (
-   <SafeAreaView style={styles.container} edges={['left', 'right']}>
+   <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 
       <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
 
@@ -414,6 +436,7 @@ export default function CartPage() {
             contentContainerStyle={[
               styles.listContent,
               currentItems.length === 0 && styles.emptyListContent,
+              overallItemCount > 0 && { paddingBottom: Platform.OS === 'ios' ? 180 : 160 },
             ]}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={renderEmptyState}
@@ -424,6 +447,18 @@ export default function CartPage() {
           />
         )}
       </View>
+
+      {/* Card Offers Section */}
+      {overallItemCount > 0 && overallTotal > 0 && (
+        <CardOffersSection
+          storeId={(productItems[0] as any)?.store?.id || (productItems[0] as any)?.storeId}
+          orderValue={overallTotal}
+          onOfferApplied={(offer) => {
+            // Offer applied - cart context will handle it
+            console.log('Card offer applied:', offer);
+          }}
+        />
+      )}
 
       {overallItemCount > 0 && (
         <PriceSection
@@ -451,15 +486,14 @@ export default function CartPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
-    
+    backgroundColor: '#FAFBFC',
   },
   listContainer: {
     flex: 1,
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 12,
     paddingBottom: 20,
   },
   emptyListContent: {
@@ -469,29 +503,29 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-    borderWidth: Platform.OS === 'ios' ? 0 : 0.5,
-    borderColor: '#E5E7EB',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   emptyContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
-    paddingVertical: 60,
+    paddingVertical: 80,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#111827',
-    marginBottom: 6,
+    marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtitle: {
@@ -504,11 +538,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 15,
     color: '#6B7280',
+    fontWeight: '500',
   },
 });

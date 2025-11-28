@@ -1,7 +1,7 @@
 // Global Notification Context
 // Manages notification settings and applies them globally across the app
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from './AuthContext';
@@ -164,7 +164,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   };
 
   // Update settings
-  const updateSettings = async (updates: Partial<NotificationSettings>): Promise<boolean> => {
+  const updateSettings = useCallback(async (updates: Partial<NotificationSettings>): Promise<boolean> => {
     try {
       if (!settings) return false;
 
@@ -197,36 +197,36 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setError('Failed to update settings');
       return false;
     }
-  };
+  }, [settings, isAuthenticated, user]);
 
   // Refresh settings from backend
-  const refreshSettings = async () => {
+  const refreshSettings = useCallback(async () => {
     await loadSettings();
-  };
+  }, []);
 
   // Check if push notification can be sent
-  const canSendPushNotification = (type: keyof NotificationSettings['push']): boolean => {
+  const canSendPushNotification = useCallback((type: keyof NotificationSettings['push']): boolean => {
     if (!settings) return false;
     return settings.push.enabled && settings.push[type];
-  };
+  }, [settings]);
 
   // Check if email notification can be sent
-  const canSendEmailNotification = (type: keyof NotificationSettings['email']): boolean => {
+  const canSendEmailNotification = useCallback((type: keyof NotificationSettings['email']): boolean => {
     if (!settings) return false;
     return settings.email.enabled && settings.email[type];
-  };
+  }, [settings]);
 
   // Check if SMS notification can be sent
-  const canSendSMSNotification = (type: keyof NotificationSettings['sms']): boolean => {
+  const canSendSMSNotification = useCallback((type: keyof NotificationSettings['sms']): boolean => {
     if (!settings) return false;
     return settings.sms.enabled && settings.sms[type];
-  };
+  }, [settings]);
 
   // Check if in-app notification can be shown
-  const canShowInAppNotification = (): boolean => {
+  const canShowInAppNotification = useCallback((): boolean => {
     if (!settings) return false;
     return settings.inApp.enabled;
-  };
+  }, [settings]);
 
   // Configure notification handler based on settings
   useEffect(() => {
@@ -249,6 +249,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   }, [isAuthenticated, user]);
 
   // Auto-sync with backend every 5 minutes
+  // FIXED: Added proper cleanup for interval to prevent memory leak
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
@@ -269,10 +270,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
     }, 5 * 60 * 1000); // 5 minutes
 
-    return () => clearInterval(interval);
-  }, [isAuthenticated, user]);
+    // CRITICAL: Cleanup interval on unmount or when dependencies change
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, user, refreshSettings]);
 
-  const value: NotificationContextType = {
+  // OPTIMIZED: Memoize context value to prevent unnecessary re-renders
+  const value: NotificationContextType = useMemo(() => ({
     settings,
     isLoading,
     error,
@@ -282,7 +287,17 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     canSendEmailNotification,
     canSendSMSNotification,
     canShowInAppNotification,
-  };
+  }), [
+    settings,
+    isLoading,
+    error,
+    updateSettings,
+    refreshSettings,
+    canSendPushNotification,
+    canSendEmailNotification,
+    canSendSMSNotification,
+    canShowInAppNotification,
+  ]);
 
   return (
     <NotificationContext.Provider value={value}>

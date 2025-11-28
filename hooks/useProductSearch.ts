@@ -192,7 +192,7 @@ export function useProductSearch(
     [products]
   );
 
-  // Search products with debounce
+  // Search products with debounce - Fixed stale closure
   const searchProducts = useCallback(
     (searchQuery: string) => {
       console.log('🔎 [useProductSearch] Search triggered:', searchQuery);
@@ -203,12 +203,18 @@ export function useProductSearch(
       // Clear previous debounce timer
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
       }
 
-      // Debounce search
-      debounceTimer.current = setTimeout(() => {
-        fetchProducts(searchQuery, 1, false);
+      // Debounce search using latest searchQuery from closure
+      const timerId = setTimeout(() => {
+        // Only fetch if this timer hasn't been cancelled
+        if (debounceTimer.current === timerId) {
+          fetchProducts(searchQuery, 1, false);
+        }
       }, debounceMs);
+
+      debounceTimer.current = timerId;
     },
     [fetchProducts, debounceMs]
   );
@@ -234,9 +240,10 @@ export function useProductSearch(
     setError(null);
     setTotal(0);
 
-    // Clear debounce timer
+    // Clear debounce timer to prevent memory leak
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
     }
 
     // Load initial products
@@ -296,7 +303,8 @@ export function useProductSearch(
   // Load initial products on mount
   useEffect(() => {
     fetchProducts('', 1, false);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only fetch on mount, fetchProducts is stable via useCallback
 
   return {
     // State

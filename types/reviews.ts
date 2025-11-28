@@ -15,6 +15,7 @@ export interface Review {
   helpfulCount?: number;
   isHelpful?: boolean;
   storeResponse?: StoreResponse;
+  moderationStatus?: 'pending' | 'approved' | 'rejected'; // For pending reviews
 }
 
 export interface ReviewImage {
@@ -88,6 +89,8 @@ export interface ReviewModalProps {
   onLikeReview?: (reviewId: string) => void;
   onReportReview?: (reviewId: string) => void;
   onHelpfulReview?: (reviewId: string) => void;
+  ugcContent?: UGCContent[];
+  ugcLoading?: boolean;
 }
 
 export interface ReviewCardProps {

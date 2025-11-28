@@ -572,6 +572,7 @@ class RealOffersApi {
 
   /**
    * Get store-specific deals/offers (Walk-in deals)
+   * Uses /offers endpoint with store filter
    */
   async getStoreOffers(storeId: string, params?: {
     type?: 'walk_in' | 'online' | 'combo' | 'cashback' | 'flash_sale' | 'all';
@@ -583,12 +584,49 @@ class RealOffersApi {
     limit?: number;
   }): Promise<ApiResponse<any>> {
     try {
-      // If backend is not ready, return comprehensive mock data
+      // Use /offers/store/:storeId endpoint which accepts active parameter
+      const queryParams: any = {
+        page: params?.page || 1,
+        limit: params?.limit || 20,
+      };
+      
+      // Map active filter (only if explicitly set, default to true for active offers)
+      if (params?.active !== undefined) {
+        queryParams.active = params.active;
+      } else {
+        queryParams.active = true; // Default to active offers
+      }
+      
+      // Note: /offers/store/:storeId endpoint doesn't support sortBy/order
+      // It returns offers sorted by default (likely by creation date)
+      
+      // Use the store-specific endpoint which accepts active parameter
+      const response = await apiClient.get<PaginatedResponse<Offer>>(`/offers/store/${storeId}`, queryParams);
+      
+      if (response.success && response.data) {
+        // Backend returns: { success: true, data: [offers array], meta: { pagination: {...} } }
+        // apiClient extracts responseData.data, so response.data is the array of offers
+        // But apiClient doesn't preserve meta, so we need to get it from the raw response
+        // For now, we'll use the array length as fallback for totalCount
+        const offers = Array.isArray(response.data) ? response.data : [];
+        
+        // Try to get pagination from response if available (apiClient might not preserve it)
+        const pagination = (response as any).meta?.pagination || (response as any).pagination || {};
+        
+        return {
+          ...response,
+          data: {
+            deals: offers,
+            totalCount: pagination.total || offers.length,
+            storeInfo: {
+              id: storeId,
+            }
+          }
+        };
+      }
+      
+      // Fallback to mock data if API fails
       const mockDeals = this.generateMockStoreDeals(storeId, params);
-
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-
       return {
         success: true,
         data: {
@@ -599,13 +637,9 @@ class RealOffersApi {
             name: 'Store Name',
           }
         },
-        message: 'Store deals retrieved successfully',
+        message: 'Store deals retrieved successfully (fallback)',
         timestamp: new Date().toISOString()
       };
-
-      // Real API call (uncomment when backend is ready)
-      // const response = await apiClient.get<any>(`/stores/${storeId}/offers`, params);
-      // return response;
     } catch (error) {
       console.error(`[OFFERS API] Error fetching store offers for ${storeId}:`, error);
       throw error;

@@ -17,6 +17,8 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import { useToast } from '@/hooks/useToast';
 import ProductVariantModal, { VariantSelection } from '@/components/cart/ProductVariantModal';
 import { hasVariants, createCartItemFromVariant } from '@/utils/variantHelper';
+import { normalizeProductPrice, normalizeProductRating } from '@/utils/productDataNormalizer';
+import { formatPrice } from '@/utils/priceFormatter';
 
 interface StoreProductCardProps {
   product: ProductItem;
@@ -48,25 +50,21 @@ export default function StoreProductCard({
   // Get main image or fallback
   const mainImage = product.images?.[0]?.url || product.image || 'https://via.placeholder.com/300';
 
-  // Calculate discount percentage if available
-  const originalPrice = (product as any).comparePrice || product.price.original;
-  const currentPrice = product.price.current || (product.price as any);
+  // Normalize price and rating using utility functions
+  const normalizedPrice = normalizeProductPrice(product);
+  const normalizedRating = normalizeProductRating(product);
 
-  const hasDiscount = originalPrice && originalPrice > currentPrice;
-  const discountPercentage = hasDiscount
-    ? product.price.discount || Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-    : 0;
+  const currentPrice = normalizedPrice.current;
+  const originalPrice = normalizedPrice.original;
+  const discountPercentage = normalizedPrice.discount;
 
-  // Format price
-  const formatPrice = (price: number) => {
-    return `₹${price.toLocaleString('en-IN')}`;
-  };
+  const hasDiscount = discountPercentage !== null && discountPercentage > 0;
 
   // Render rating stars
   const renderStars = () => {
-    const rating =
-      (product as any).ratings?.average || (product as any).rating?.value || 0;
-    const fullStars = Math.floor(typeof rating === 'string' ? parseInt(rating) : rating);
+    if (normalizedRating.value === null) return null;
+
+    const fullStars = Math.floor(normalizedRating.value);
     const stars = [];
 
     for (let i = 0; i < 5; i++) {
@@ -82,13 +80,10 @@ export default function StoreProductCard({
 
   // Get rating info
   const getRatingInfo = () => {
-    const rating = (product as any).rating || (product as any).ratings;
-    if (!rating) return null;
-
-    const count = rating.count || 0;
-    if (count === 0) return null;
-
-    return count;
+    if (normalizedRating.count === null || normalizedRating.count === 0) {
+      return null;
+    }
+    return normalizedRating.count;
   };
 
   // Handle variant confirmation
@@ -146,6 +141,12 @@ export default function StoreProductCard({
     setIsAddingToCart(true);
 
     try {
+      // Only add to cart if price is valid
+      if (currentPrice === null) {
+        showError('Product price unavailable');
+        return;
+      }
+
       const cartItem = {
         id: product.id,
         productId: product.id,
@@ -214,15 +215,11 @@ export default function StoreProductCard({
           productId,
           productName: product.name,
           productImage: mainImage,
-          price: currentPrice,
-          originalPrice: originalPrice || currentPrice,
-          discount: discountPercentage,
-          rating:
-            (product as any).ratings?.average ||
-            (product as any).rating?.value ||
-            0,
-          reviewCount:
-            (product as any).ratings?.count || (product as any).rating?.count || 0,
+          price: currentPrice || 0,
+          originalPrice: originalPrice || currentPrice || 0,
+          discount: discountPercentage || 0,
+          rating: normalizedRating.value || 0,
+          reviewCount: normalizedRating.count || 0,
           brand: product.brand || 'Brand',
           category: product.category || 'General',
           availability: 'IN_STOCK',
@@ -300,12 +297,14 @@ export default function StoreProductCard({
 
           {/* Price */}
           <View style={styles.priceContainer}>
-            <Text style={styles.currentPrice}>
-              {formatPrice(currentPrice)}
-            </Text>
-            {hasDiscount && originalPrice && (
+            {currentPrice !== null && (
+              <Text style={styles.currentPrice}>
+                {formatPrice(currentPrice, 'INR', false)}
+              </Text>
+            )}
+            {hasDiscount && originalPrice !== null && (
               <Text style={styles.originalPrice}>
-                {formatPrice(originalPrice)}
+                {formatPrice(originalPrice, 'INR', false)}
               </Text>
             )}
           </View>

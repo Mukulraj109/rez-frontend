@@ -15,6 +15,7 @@ import React, { useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useCart } from '@/contexts/CartContext';
 import { useSocket } from '@/contexts/SocketContext';
+import { formatPrice } from '@/utils/priceFormatter';
 
 export function CartSocketIntegration() {
   const { state: cartState, actions: cartActions } = useCart();
@@ -38,27 +39,30 @@ export function CartSocketIntegration() {
       if (!cartItem) return;
 
       // If cart quantity exceeds available stock, adjust it
-      if (cartItem.quantity > payload.quantity) {
+      const safePayloadQuantity = typeof payload.quantity === 'number' ? payload.quantity : 0;
+      const safeCartQuantity = typeof cartItem.quantity === 'number' ? cartItem.quantity : 0;
 
-        if (payload.quantity === 0) {
+      if (safeCartQuantity > safePayloadQuantity) {
+
+        if (safePayloadQuantity === 0) {
           // Remove item if no stock available
           cartActions.removeItem(cartItem.id);
           Alert.alert(
             'Stock Update',
-            `${cartItem.name} is now out of stock and has been removed from your cart.`
+            `${cartItem.name || 'This product'} is now out of stock and has been removed from your cart.`
           );
         } else {
           // Update quantity to match available stock
-          cartActions.updateQuantity(cartItem.id, payload.quantity);
+          cartActions.updateQuantity(cartItem.id, safePayloadQuantity);
           Alert.alert(
             'Stock Update',
-            `${cartItem.name} stock is now ${payload.quantity}. Your cart has been updated.`
+            `${cartItem.name || 'This product'} stock is now ${safePayloadQuantity}. Your cart has been updated.`
           );
         }
       }
 
       // Show low stock warning
-      if (payload.status === 'LOW_STOCK' && cartItem.quantity === payload.quantity) {
+      if (payload.status === 'LOW_STOCK' && safeCartQuantity === safePayloadQuantity) {
 
         // Could show a toast notification here instead of alert
       }
@@ -76,7 +80,7 @@ export function CartSocketIntegration() {
       cartActions.removeItem(cartItem.id);
       Alert.alert(
         'Out of Stock',
-        `${payload.productName} is now out of stock and has been removed from your cart.`
+        `${payload.productName || cartItem.name || 'This product'} is now out of stock and has been removed from your cart.`
       );
     });
 
@@ -91,15 +95,22 @@ export function CartSocketIntegration() {
       // Reload cart to get updated prices
       cartActions.loadCart();
 
-      // Notify user of price change
-      const priceChange = payload.newPrice - payload.oldPrice;
+      // Safely calculate price change
+      const oldPrice = typeof payload.oldPrice === 'number' ? payload.oldPrice : 0;
+      const newPrice = typeof payload.newPrice === 'number' ? payload.newPrice : 0;
+      const priceChange = newPrice - oldPrice;
+
+      if (priceChange === 0) return; // No change, don't notify
+
+      const absChange = Math.abs(priceChange);
+      const formattedChange = formatPrice(absChange, 'INR') || `₹${absChange.toFixed(2)}`;
       const priceChangeText = priceChange > 0
-        ? `increased by $${Math.abs(priceChange).toFixed(2)}`
-        : `decreased by $${Math.abs(priceChange).toFixed(2)}`;
+        ? `increased by ${formattedChange}`
+        : `decreased by ${formattedChange}`;
 
       Alert.alert(
         'Price Update',
-        `The price of ${cartItem.name} has ${priceChangeText}. Your cart has been updated.`
+        `The price of ${cartItem.name || 'this product'} has ${priceChangeText}. Your cart has been updated.`
       );
     });
 

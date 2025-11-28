@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EarningCard as EarningCardType, EarningCardTheme } from '@/types/earning';
+import { formatPrice } from '@/utils/priceFormatter';
 
 interface EarningCardProps {
   card: EarningCardType;
@@ -29,7 +30,9 @@ const themeConfig: Record<EarningCardType['theme'], EarningCardTheme> = {
 };
 
 const EarningCard: React.FC<EarningCardProps> = ({ card }) => {
-  const theme = themeConfig[card.theme];
+  const theme = themeConfig[card.theme] || themeConfig.purple;
+  const safeEarning = typeof card.earning === 'number' ? card.earning : 0;
+  const formattedEarning = formatPrice(safeEarning, 'INR', false) || `₹${safeEarning}`;
 
   const renderIcon = () => {
     // Placeholder for icons - will be replaced with actual icons in Phase 3
@@ -70,10 +73,10 @@ const EarningCard: React.FC<EarningCardProps> = ({ card }) => {
           <View style={styles.cardHeader}>
             <View style={styles.titleSection}>
               <Text style={[styles.cardTitle, { color: theme.textColor }]}>
-                {card.title}
+                {card.title || 'Earn'}
               </Text>
               <Text style={[styles.cardDescription, { color: theme.textColor }]}>
-                {card.description}
+                {card.description || 'Complete tasks to earn'}
               </Text>
             </View>
             <View style={styles.iconSection}>
@@ -86,7 +89,7 @@ const EarningCard: React.FC<EarningCardProps> = ({ card }) => {
             <View style={styles.coinIndicator}>
               <Text style={styles.coinIcon}>🪙</Text>
               <Text style={[styles.earningText, { color: theme.iconColor }]}>
-                = ₹{card.earning}
+                = {formattedEarning}
               </Text>
             </View>
           </View>

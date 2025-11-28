@@ -152,7 +152,14 @@ export default function UGCDetailPage() {
 
   const handleProductPress = () => {
     if (post?.productInfo) {
-      router.push(`/product/${post.productInfo.id}`);
+      // Navigate to ProductPage (comprehensive product page)
+      router.push({
+        pathname: '/ProductPage',
+        params: {
+          cardId: post.productInfo.id,
+          cardType: 'product',
+        }
+      } as any);
     }
   };
 

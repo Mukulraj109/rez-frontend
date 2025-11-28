@@ -1,137 +1,139 @@
-// components/common/ErrorState.tsx - Reusable error display component
+/**
+ * ErrorState Component
+ *
+ * Enhanced error display component with design tokens integration.
+ * Provides a consistent UX for error handling across the app.
+ */
 
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from '@/components/ThemedText';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { SPACING, TYPOGRAPHY, COLORS, BORDER_RADIUS, SHADOWS } from '@/constants/DesignTokens';
 
 interface ErrorStateProps {
   /**
-   * Error message to display
+   * Error object or error message string
    */
-  message: string;
+  error: Error | string;
 
   /**
    * Callback function when retry button is pressed
    */
-  onRetry: () => void;
+  onRetry?: () => void;
 
   /**
-   * Optional icon name (defaults to 'alert-circle')
+   * Optional custom title (defaults to "Oops! Something went wrong")
    */
-  icon?: keyof typeof Ionicons.glyphMap;
+  title?: string;
 
   /**
    * Optional custom styles
    */
-  style?: object;
+  style?: any;
 }
 
 /**
- * ErrorState Component
- *
- * Displays error message with retry button
- * Used throughout the app for consistent error handling UX
+ * ErrorState displays error information with an optional retry action
  *
  * @example
  * <ErrorState
- *   message="Failed to load data"
- *   onRetry={() => fetchData()}
+ *   error={error}
+ *   onRetry={() => refetchData()}
+ *   title="Failed to Load Store"
  * />
  */
-export const ErrorState: React.FC<ErrorStateProps> = ({
-  message,
+export default function ErrorState({
+  error,
   onRetry,
-  icon = 'alert-circle',
+  title = 'Oops! Something went wrong',
   style,
-}) => {
+}: ErrorStateProps) {
+  const errorMessage = typeof error === 'string' ? error : error.message;
+
   return (
     <View
       style={[styles.container, style]}
       accessible={true}
       accessibilityRole="alert"
-      accessibilityLabel={`Error: ${message}`}
+      accessibilityLabel={`Error: ${title}. ${errorMessage}`}
       accessibilityLiveRegion="polite"
     >
-      <Ionicons
-        name={icon}
-        size={64}
-        color="#EF4444"
+      <Text
         style={styles.icon}
         accessible={false}
-      />
+        aria-hidden={true}
+      >
+        ⚠️
+      </Text>
 
-      <ThemedText
+      <Text
+        style={styles.title}
+        accessible={true}
+        accessibilityRole="header"
+      >
+        {title}
+      </Text>
+
+      <Text
         style={styles.message}
         accessible={true}
         accessibilityRole="text"
       >
-        {message}
-      </ThemedText>
+        {errorMessage}
+      </Text>
 
-      <TouchableOpacity
-        style={styles.retryButton}
-        onPress={onRetry}
-        activeOpacity={0.8}
-        accessible={true}
-        accessibilityRole="button"
-        accessibilityLabel="Retry"
-        accessibilityHint="Double tap to retry the failed action"
-      >
-        <Ionicons
-          name="refresh"
-          size={18}
-          color="white"
-          style={styles.retryIcon}
-          accessible={false}
-        />
-        <ThemedText style={styles.retryButtonText}>Tap to Retry</ThemedText>
-      </TouchableOpacity>
+      {onRetry && (
+        <TouchableOpacity
+          style={styles.button}
+          onPress={onRetry}
+          activeOpacity={0.8}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Try Again"
+          accessibilityHint="Double tap to retry the failed action"
+        >
+          <Text style={styles.buttonText}>Try Again</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#F9FAFB',
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.xxl,
+    backgroundColor: COLORS.background.secondary,
   },
   icon: {
-    marginBottom: 16,
+    fontSize: 64,
+    marginBottom: SPACING.lg,
+  },
+  title: {
+    ...TYPOGRAPHY.h2,
+    color: COLORS.error[500],
+    textAlign: 'center',
+    marginBottom: SPACING.sm,
   },
   message: {
-    fontSize: 16,
-    color: '#6B7280',
+    ...TYPOGRAPHY.body,
+    color: COLORS.text.secondary,
     textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 24,
-    maxWidth: '80%',
+    marginBottom: SPACING.lg,
+    maxWidth: 320,
   },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#9333EA',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-    shadowColor: '#9333EA',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    gap: 8,
+  button: {
+    marginTop: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.error[500],
+    borderRadius: BORDER_RADIUS.lg,
+    ...SHADOWS.md,
   },
-  retryIcon: {
-    marginRight: 4,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+  buttonText: {
+    ...TYPOGRAPHY.button,
+    color: COLORS.text.inverse,
   },
 });
-
-export default ErrorState;

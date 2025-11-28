@@ -1,8 +1,17 @@
 // Authentication API Service
 // Handles user authentication, registration, and profile management
+// Enhanced with comprehensive error handling, validation, token management, and logging
 
 import apiClient, { ApiResponse } from './apiClient';
+import { withRetry, createErrorResponse, getUserFriendlyErrorMessage, logApiRequest, logApiResponse } from '@/utils/apiUtils';
+import {
+  User as UnifiedUser,
+  toUser,
+  validateUser,
+  isUserVerified
+} from '@/types/unified';
 
+// Keep the old User interface for backwards compatibility during migration
 export interface User {
   id: string;
   phoneNumber: string;
@@ -47,6 +56,9 @@ export interface User {
   createdAt: string;
   updatedAt: string;
 }
+
+// Export unified User type for new code
+export { UnifiedUser };
 
 export interface AuthResponse {
   user: User;
@@ -99,48 +111,459 @@ export interface ProfileUpdate {
   };
 }
 
+/**
+ * Validates phone number format
+ * Supports: +91XXXXXXXXXX, 91XXXXXXXXXX, XXXXXXXXXX
+ */
+function isValidPhoneNumber(phoneNumber: string): boolean {
+  if (!phoneNumber || typeof phoneNumber !== 'string') {
+    return false;
+  }
+
+  // Remove spaces and dashes
+  const cleaned = phoneNumber.replace(/[\s-]/g, '');
+
+  // Check Indian phone number format
+  const phoneRegex = /^(\+91|91)?[6-9]\d{9}$/;
+  return phoneRegex.test(cleaned);
+}
+
+/**
+ * Validates email format
+ */
+function isValidEmail(email: string): boolean {
+  if (!email || typeof email !== 'string') {
+    return false;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * Validates OTP format (6 digits)
+ */
+function isValidOtp(otp: string): boolean {
+  if (!otp || typeof otp !== 'string') {
+    return false;
+  }
+
+  const otpRegex = /^\d{6}$/;
+  return otpRegex.test(otp);
+}
+
+// validateUser is imported from @/types/unified (line 10)
+
+/**
+ * Validates auth response structure
+ */
+function validateAuthResponse(response: any): boolean {
+  if (!response || typeof response !== 'object') {
+    console.warn('[AUTH API] Invalid auth response: not an object');
+    return false;
+  }
+
+  if (!response.user || !validateUser(response.user)) {
+    console.warn('[AUTH API] Auth response missing valid user');
+    return false;
+  }
+
+  if (!response.tokens || typeof response.tokens !== 'object') {
+    console.warn('[AUTH API] Auth response missing tokens');
+    return false;
+  }
+
+  if (!response.tokens.accessToken || !response.tokens.refreshToken) {
+    console.warn('[AUTH API] Auth response missing required tokens');
+    return false;
+  }
+
+  return true;
+}
+
 class AuthService {
-  // Send OTP for registration or login
+  /**
+   * Send OTP for registration or login
+   */
   async sendOtp(data: OtpRequest): Promise<ApiResponse<{ message: string; expiresIn: number }>> {
-    return apiClient.post('/user/auth/send-otp', data);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!data.phoneNumber) {
+        return {
+          success: false,
+          error: 'Phone number is required',
+          message: 'Please enter your phone number',
+        };
+      }
+
+      if (!isValidPhoneNumber(data.phoneNumber)) {
+        return {
+          success: false,
+          error: 'Invalid phone number format',
+          message: 'Please enter a valid 10-digit phone number',
+        };
+      }
+
+      // Validate email if provided
+      if (data.email && !isValidEmail(data.email)) {
+        return {
+          success: false,
+          error: 'Invalid email format',
+          message: 'Please enter a valid email address',
+        };
+      }
+
+      // Log request (sanitize phone number)
+      logApiRequest('POST', '/user/auth/send-otp', {
+        phoneNumber: data.phoneNumber.slice(-4).padStart(10, '*'),
+        email: data.email
+      });
+
+      const response = await withRetry(
+        () => apiClient.post<{ message: string; expiresIn: number }>('/user/auth/send-otp', data),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', '/user/auth/send-otp', { success: response.success }, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[AUTH API] Error sending OTP:', error);
+      return createErrorResponse(error, 'Failed to send OTP. Please try again.');
+    }
   }
 
-  // Verify OTP and authenticate/register user
+  /**
+   * Verify OTP and authenticate/register user
+   */
   async verifyOtp(data: OtpVerification): Promise<ApiResponse<AuthResponse>> {
-    return apiClient.post('/user/auth/verify-otp', data);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!data.phoneNumber) {
+        return {
+          success: false,
+          error: 'Phone number is required',
+          message: 'Please enter your phone number',
+        };
+      }
+
+      if (!isValidPhoneNumber(data.phoneNumber)) {
+        return {
+          success: false,
+          error: 'Invalid phone number format',
+          message: 'Please enter a valid phone number',
+        };
+      }
+
+      if (!data.otp) {
+        return {
+          success: false,
+          error: 'OTP is required',
+          message: 'Please enter the OTP sent to your phone',
+        };
+      }
+
+      if (!isValidOtp(data.otp)) {
+        return {
+          success: false,
+          error: 'Invalid OTP format',
+          message: 'Please enter a valid 6-digit OTP',
+        };
+      }
+
+      // Log request (sanitize sensitive data)
+      logApiRequest('POST', '/user/auth/verify-otp', {
+        phoneNumber: data.phoneNumber.slice(-4).padStart(10, '*'),
+        otp: '******'
+      });
+
+      const response = await withRetry(
+        () => apiClient.post<AuthResponse>('/user/auth/verify-otp', data),
+        { maxRetries: 1 } // Don't retry OTP verification
+      );
+
+      logApiResponse('POST', '/user/auth/verify-otp', { success: response.success }, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateAuthResponse(response.data)) {
+          console.error('[AUTH API] Invalid auth response structure');
+          return {
+            success: false,
+            error: 'Invalid authentication response',
+            message: 'Authentication failed. Please try again.',
+          };
+        }
+
+        // Store tokens securely
+        if (response.data.tokens?.accessToken) {
+          this.setAuthToken(response.data.tokens.accessToken);
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[AUTH API] Error verifying OTP:', error);
+      return createErrorResponse(error, 'Failed to verify OTP. Please check the code and try again.');
+    }
   }
 
-  // Refresh access token
+  /**
+   * Refresh access token using refresh token
+   */
   async refreshToken(refreshToken: string): Promise<ApiResponse<{ tokens: { accessToken: string; refreshToken: string; expiresIn: number } }>> {
-    return apiClient.post('/user/auth/refresh-token', { refreshToken });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!refreshToken) {
+        return {
+          success: false,
+          error: 'Refresh token is required',
+          message: 'Authentication token missing',
+        };
+      }
+
+      logApiRequest('POST', '/user/auth/refresh-token', { token: '***' });
+
+      const response = await withRetry(
+        () => apiClient.post<{ tokens: { accessToken: string; refreshToken: string; expiresIn: number } }>(
+          '/user/auth/refresh-token',
+          { refreshToken }
+        ),
+        { maxRetries: 1 } // Don't retry token refresh
+      );
+
+      logApiResponse('POST', '/user/auth/refresh-token', { success: response.success }, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data?.tokens) {
+        const tokens = response.data.tokens;
+
+        if (!tokens.accessToken || !tokens.refreshToken) {
+          console.error('[AUTH API] Invalid token refresh response');
+          return {
+            success: false,
+            error: 'Invalid token response',
+            message: 'Failed to refresh authentication',
+          };
+        }
+
+        // Update stored token
+        this.setAuthToken(tokens.accessToken);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[AUTH API] Error refreshing token:', error);
+      return createErrorResponse(error, 'Session expired. Please log in again.');
+    }
   }
 
-  // Logout user
+  /**
+   * Logout user and invalidate tokens
+   */
   async logout(): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post('/user/auth/logout');
+    const startTime = Date.now();
+
+    try {
+      logApiRequest('POST', '/user/auth/logout');
+
+      const response = await withRetry(
+        () => apiClient.post<{ message: string }>('/user/auth/logout'),
+        { maxRetries: 1 }
+      );
+
+      logApiResponse('POST', '/user/auth/logout', response, Date.now() - startTime);
+
+      // Clear stored token regardless of API response
+      this.setAuthToken(null);
+
+      return response;
+    } catch (error: any) {
+      console.error('[AUTH API] Error during logout:', error);
+
+      // Clear token even if logout API fails
+      this.setAuthToken(null);
+
+      return createErrorResponse(error, 'Logged out successfully');
+    }
   }
 
-  // Get current user profile
+  /**
+   * Get current user profile
+   */
   async getProfile(): Promise<ApiResponse<User>> {
-    return apiClient.get('/user/auth/me');
+    const startTime = Date.now();
+
+    try {
+      logApiRequest('GET', '/user/auth/me');
+
+      const response = await withRetry(
+        () => apiClient.get<User>('/user/auth/me'),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/user/auth/me', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateUser(response.data)) {
+          console.error('[AUTH API] Invalid user data in profile response');
+          return {
+            success: false,
+            error: 'Invalid profile data',
+            message: 'Failed to load profile',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[AUTH API] Error fetching profile:', error);
+
+      // Handle 401 Unauthorized - token expired
+      if (error?.status === 401) {
+        this.setAuthToken(null);
+        return createErrorResponse(error, 'Session expired. Please log in again.');
+      }
+
+      return createErrorResponse(error, 'Failed to load profile. Please try again.');
+    }
   }
 
-  // Update user profile
+  /**
+   * Update user profile
+   */
   async updateProfile(data: ProfileUpdate): Promise<ApiResponse<User>> {
-    return apiClient.put('/user/profile', data);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!data || (Object.keys(data).length === 0)) {
+        return {
+          success: false,
+          error: 'No profile data provided',
+          message: 'Please provide profile information to update',
+        };
+      }
+
+      // Validate email if provided
+      if (data.profile?.email && !isValidEmail(data.profile.email as any)) {
+        return {
+          success: false,
+          error: 'Invalid email format',
+          message: 'Please enter a valid email address',
+        };
+      }
+
+      logApiRequest('PUT', '/user/profile', { fields: Object.keys(data) });
+
+      const response = await withRetry(
+        () => apiClient.put<User>('/user/profile', data),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('PUT', '/user/profile', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateUser(response.data)) {
+          console.error('[AUTH API] Invalid user data in update response');
+          return {
+            success: false,
+            error: 'Invalid profile data',
+            message: 'Failed to update profile',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[AUTH API] Error updating profile:', error);
+      return createErrorResponse(error, 'Failed to update profile. Please try again.');
+    }
   }
 
-  // Complete onboarding
+  /**
+   * Complete onboarding process
+   */
   async completeOnboarding(data: ProfileUpdate): Promise<ApiResponse<User>> {
-    return apiClient.post('/user/auth/complete-onboarding', data);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!data || Object.keys(data).length === 0) {
+        return {
+          success: false,
+          error: 'Profile data is required',
+          message: 'Please complete your profile information',
+        };
+      }
+
+      logApiRequest('POST', '/user/auth/complete-onboarding', { fields: Object.keys(data) });
+
+      const response = await withRetry(
+        () => apiClient.post<User>('/user/auth/complete-onboarding', data),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', '/user/auth/complete-onboarding', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateUser(response.data)) {
+          console.error('[AUTH API] Invalid user data in onboarding response');
+          return {
+            success: false,
+            error: 'Invalid profile data',
+            message: 'Failed to complete onboarding',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[AUTH API] Error completing onboarding:', error);
+      return createErrorResponse(error, 'Failed to complete onboarding. Please try again.');
+    }
   }
 
-  // Delete account
+  /**
+   * Delete user account
+   */
   async deleteAccount(): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.delete('/user/auth/account');
+    const startTime = Date.now();
+
+    try {
+      logApiRequest('DELETE', '/user/auth/account');
+
+      const response = await withRetry(
+        () => apiClient.delete<{ message: string }>('/user/auth/account'),
+        { maxRetries: 1 }
+      );
+
+      logApiResponse('DELETE', '/user/auth/account', response, Date.now() - startTime);
+
+      // Clear token after account deletion
+      if (response.success) {
+        this.setAuthToken(null);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[AUTH API] Error deleting account:', error);
+      return createErrorResponse(error, 'Failed to delete account. Please try again or contact support.');
+    }
   }
 
-  // Get user statistics (aggregated data from all modules)
+  /**
+   * Get user statistics (aggregated data from all modules)
+   */
   async getUserStatistics(): Promise<ApiResponse<{
     user: {
       joinedDate: string;
@@ -186,17 +609,96 @@ class AuthService {
       totalSpendings: number;
     };
   }>> {
-    return apiClient.get('/user/auth/statistics');
+    const startTime = Date.now();
+
+    try {
+      logApiRequest('GET', '/user/auth/statistics');
+
+      const response = await withRetry(
+        () => apiClient.get('/user/auth/statistics'),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/user/auth/statistics', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[AUTH API] Error fetching user statistics:', error);
+      return createErrorResponse(error, 'Failed to load statistics. Please try again.');
+    }
   }
 
-  // Set authentication token
-  setAuthToken(token: string | null) {
-    apiClient.setAuthToken(token);
+  /**
+   * Set authentication token in API client
+   */
+  setAuthToken(token: string | null): void {
+    try {
+      apiClient.setAuthToken(token);
+
+      if (token) {
+        console.log('[AUTH API] Authentication token set');
+      } else {
+        console.log('[AUTH API] Authentication token cleared');
+      }
+    } catch (error) {
+      console.error('[AUTH API] Error setting auth token:', error);
+    }
   }
 
-  // Get current auth token
+  /**
+   * Get current authentication token from API client
+   */
   getAuthToken(): string | null {
-    return apiClient.getAuthToken();
+    try {
+      return apiClient.getAuthToken();
+    } catch (error) {
+      console.error('[AUTH API] Error getting auth token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if user is authenticated
+   */
+  isAuthenticated(): boolean {
+    const token = this.getAuthToken();
+    return token !== null && token.length > 0;
+  }
+
+  /**
+   * Validate and refresh token if needed
+   * Call this before making authenticated requests
+   */
+  async ensureValidToken(): Promise<boolean> {
+    try {
+      const token = this.getAuthToken();
+
+      if (!token) {
+        console.warn('[AUTH API] No token available');
+        return false;
+      }
+
+      // Try to get profile to validate token
+      const profileResponse = await this.getProfile();
+
+      if (profileResponse.success) {
+        return true;
+      }
+
+      // If 401, try to refresh token
+      if (profileResponse.error?.includes('401') || profileResponse.error?.includes('expired')) {
+        console.log('[AUTH API] Token expired, attempting refresh...');
+
+        // Note: refreshToken needs to be stored separately
+        // This is a simplified implementation
+        return false;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('[AUTH API] Error validating token:', error);
+      return false;
+    }
   }
 }
 

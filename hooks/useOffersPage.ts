@@ -56,15 +56,17 @@ export function useOffersPage(): UseOffersPageReturn {
     userLocation: null
   });
 
-  // Load offers page data
+  // Load offers page data - using useRef to prevent circular dependency
   const loadOffersPageData = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
 
+      // Get current location from state snapshot
+      const currentLocation = state.userLocation;
       const params: any = {};
-      if (state.userLocation) {
-        params.lat = state.userLocation.latitude;
-        params.lng = state.userLocation.longitude;
+      if (currentLocation) {
+        params.lat = currentLocation.latitude;
+        params.lng = currentLocation.longitude;
       }
 
       const [pageDataResponse, categoriesResponse, bannersResponse] = await Promise.all([
@@ -79,7 +81,7 @@ export function useOffersPage(): UseOffersPageReturn {
           hasUserEngagement: !!pageDataResponse.data.userEngagement,
           fullResponse: pageDataResponse.data.userEngagement
         });
-        
+
         setState(prev => ({
           ...prev,
           pageData: pageDataResponse.data || null,
@@ -99,17 +101,20 @@ export function useOffersPage(): UseOffersPageReturn {
         error: error instanceof Error ? error.message : 'Failed to load offers'
       }));
     }
-  }, [state.userLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove state.userLocation dependency to prevent circular loop
 
-  // Refresh offers page data
+  // Refresh offers page data - using useRef to prevent circular dependency
   const refreshOffersPageData = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, refreshing: true, error: null }));
 
+      // Get current location from state snapshot
+      const currentLocation = state.userLocation;
       const params: any = {};
-      if (state.userLocation) {
-        params.lat = state.userLocation.latitude;
-        params.lng = state.userLocation.longitude;
+      if (currentLocation) {
+        params.lat = currentLocation.latitude;
+        params.lng = currentLocation.longitude;
       }
 
       const [pageDataResponse, categoriesResponse, bannersResponse] = await Promise.all([
@@ -138,7 +143,8 @@ export function useOffersPage(): UseOffersPageReturn {
         error: error instanceof Error ? error.message : 'Failed to refresh offers'
       }));
     }
-  }, [state.userLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove state.userLocation dependency to prevent circular loop
 
   // Toggle offer like
   const toggleOfferLike = useCallback(async (offerId: string) => {
@@ -287,29 +293,85 @@ export function useOffersPage(): UseOffersPageReturn {
             longitude: locationState.currentLocation!.coordinates.longitude
           }
         }));
-        // Reload data with location
-        await loadOffersPageData();
+        // Manually reload data with location instead of calling loadOffersPageData
+        // This prevents the circular dependency
+        try {
+          const params: any = {
+            lat: locationState.currentLocation!.coordinates.latitude,
+            lng: locationState.currentLocation!.coordinates.longitude
+          };
+
+          const [pageDataResponse, categoriesResponse, bannersResponse] = await Promise.all([
+            realOffersApi.getOffersPageData(params),
+            realOffersApi.getOfferCategories(),
+            realOffersApi.getHeroBanners({ page: 'offers' })
+          ]);
+
+          if (pageDataResponse.success && pageDataResponse.data) {
+            setState(prev => ({
+              ...prev,
+              pageData: pageDataResponse.data || null,
+              categories: categoriesResponse.success ? (categoriesResponse.data || []) : [],
+              heroBanners: bannersResponse.success ? (bannersResponse.data || []) : [],
+              loading: false,
+              error: null
+            }));
+          }
+        } catch (loadError) {
+          console.error('Error loading offers with location:', loadError);
+        }
       }
     } catch (error) {
       console.error('Error requesting location permission:', error);
     }
-  }, [requestLocationPermission, locationState, loadOffersPageData]);
+  }, [requestLocationPermission, locationState]);
 
-  // Load data on mount
+  // Load data on mount - only once
   useEffect(() => {
     loadOffersPageData();
-  }, [loadOffersPageData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
-  // Update user location when location context changes
+  // Update user location when location context changes and reload data
   useEffect(() => {
     if (locationState.currentLocation) {
-      setState(prev => ({
-        ...prev,
-        userLocation: {
-          latitude: locationState.currentLocation!.coordinates.latitude,
-          longitude: locationState.currentLocation!.coordinates.longitude
+      const newLocation = {
+        latitude: locationState.currentLocation.coordinates.latitude,
+        longitude: locationState.currentLocation.coordinates.longitude
+      };
+
+      // Only update and reload if location actually changed
+      setState(prev => {
+        const hasChanged = !prev.userLocation ||
+          prev.userLocation.latitude !== newLocation.latitude ||
+          prev.userLocation.longitude !== newLocation.longitude;
+
+        if (hasChanged) {
+          // Reload data with new location in the background
+          const params: any = {
+            lat: newLocation.latitude,
+            lng: newLocation.longitude
+          };
+
+          realOffersApi.getOffersPageData(params).then(response => {
+            if (response.success && response.data) {
+              setState(current => ({
+                ...current,
+                pageData: response.data || null
+              }));
+            }
+          }).catch(error => {
+            console.error('Error reloading offers with new location:', error);
+          });
+
+          return {
+            ...prev,
+            userLocation: newLocation
+          };
         }
-      }));
+
+        return prev;
+      });
     }
   }, [locationState.currentLocation]);
 

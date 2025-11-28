@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/ThemedText';
 import StarRating from '@/components/StarRating';
 import { Ionicons } from '@expo/vector-icons';
 import { ReviewCardProps } from '@/types/reviews';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ReviewCard: React.FC<ReviewCardProps> = ({
   review,
@@ -19,17 +20,85 @@ const ReviewCard: React.FC<ReviewCardProps> = ({
   showStoreResponse = true,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const { state } = useAuth();
+  
+  // Get current user ID (handle both id and _id formats)
+  const currentUserId = state.user?.id || state.user?._id || '';
+  
+  // Check if this review belongs to the current user
+  // Normalize both IDs to strings for comparison
+  const reviewUserId = review.userId?.toString() || '';
+  const normalizedCurrentUserId = currentUserId.toString();
+  const isMyReview = normalizedCurrentUserId && reviewUserId && normalizedCurrentUserId === reviewUserId;
+  
+  // Pending badge only shows for user's own pending reviews
+  // Other users won't see pending reviews (filtered by backend)
+  const isPending = review.moderationStatus === 'pending' && isMyReview;
 
   const formatDate = (date: Date) => {
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const reviewDate = new Date(date);
+    const diffTime = now.getTime() - reviewDate.getTime();
+    const diffMs = Math.abs(diffTime);
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
-    if (diffDays < 365) return `${Math.ceil(diffDays / 30)} months ago`;
-    return `${Math.ceil(diffDays / 365)} years ago`;
+    // Same day - show time
+    if (diffDays === 0) {
+      if (diffMinutes < 1) return 'Just now';
+      if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+      if (diffHours < 24) {
+        const timeStr = reviewDate.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        });
+        return `Today at ${timeStr}`;
+      }
+    }
+    
+    // Yesterday - show time
+    if (diffDays === 1) {
+      const timeStr = reviewDate.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      return `Yesterday at ${timeStr}`;
+    }
+    
+    // Within a week - show day and time
+    if (diffDays < 7) {
+      const timeStr = reviewDate.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      const dayName = reviewDate.toLocaleDateString('en-US', { weekday: 'short' });
+      return `${dayName} at ${timeStr}`;
+    }
+    
+    // Older - show date and time
+    if (diffDays < 365) {
+      const dateStr = reviewDate.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      const timeStr = reviewDate.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      return `${dateStr} at ${timeStr}`;
+    }
+    
+    // Very old - show full date
+    return reviewDate.toLocaleDateString('en-US', { 
+      year: 'numeric',
+      month: 'short', 
+      day: 'numeric' 
+    });
   };
 
   const handleLike = () => {
@@ -46,6 +115,16 @@ const ReviewCard: React.FC<ReviewCardProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* Pending Badge - Only show for user's own pending reviews */}
+      {isPending && (
+        <View style={styles.pendingBadge}>
+          <Ionicons name="time-outline" size={14} color="#F59E0B" />
+          <ThemedText style={styles.pendingBadgeText}>
+            Pending Approval
+          </ThemedText>
+        </View>
+      )}
+      
       {/* User Info Header */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
@@ -284,6 +363,25 @@ const styles = StyleSheet.create({
   actionTextActive: {
     color: '#7C3AED',
     fontWeight: '600',
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  pendingBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F59E0B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });
 

@@ -112,11 +112,17 @@ export const normalizeRoute = (route: Href): string => {
  */
 export const requiresAuth = (route: string): boolean => {
   const publicRoutes = [
-    '/',
     '/sign-in',
     '/onboarding',
     '/(tabs)',
   ];
+
+  // Exact match for root
+  if (route === '/') {
+    return false;
+  }
+
+  // Check if route starts with any public route
   return !publicRoutes.some(publicRoute => route.startsWith(publicRoute));
 };
 

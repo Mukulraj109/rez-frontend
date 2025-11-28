@@ -271,8 +271,11 @@ export default function WishlistPage() {
           {item.name}
         </ThemedText>
         <View style={styles.priceContainer}>
-          <ThemedText style={styles.itemPrice}>₹{item.price.toLocaleString()}</ThemedText>
-          {item.originalPrice && (
+          {/* ✅ FIX: Add null checks before price formatting */}
+          <ThemedText style={styles.itemPrice}>
+            ₹{typeof item.price === 'number' ? item.price.toLocaleString() : '0'}
+          </ThemedText>
+          {item.originalPrice && typeof item.originalPrice === 'number' && (
             <ThemedText style={styles.originalPrice}>
               ₹{item.originalPrice.toLocaleString()}
             </ThemedText>

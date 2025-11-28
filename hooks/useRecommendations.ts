@@ -190,7 +190,8 @@ export function usePersonalizedRecommendations({
     } finally {
       setLoading(false);
     }
-  }, [limit, excludeProducts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [limit]);
 
   // Refresh recommendations
   const refresh = useCallback(async () => {

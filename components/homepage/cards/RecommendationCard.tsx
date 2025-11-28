@@ -1,8 +1,7 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import {
   TouchableOpacity,
   StyleSheet,
-  Image,
   View
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,8 +13,27 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import StockBadge from '@/components/common/StockBadge';
 import { useStockStatus } from '@/hooks/useStockStatus';
 import { useStockNotifications } from '@/hooks/useStockNotifications';
+import FastImage from '@/components/common/FastImage';
 
-export default function RecommendationCard({
+// Custom comparison function for React.memo
+const arePropsEqual = (prevProps: RecommendationCardProps, nextProps: RecommendationCardProps) => {
+  const prevRec = prevProps.recommendation;
+  const nextRec = nextProps.recommendation;
+
+  return (
+    (prevRec._id || prevRec.id) === (nextRec._id || nextRec.id) &&
+    prevProps.width === nextProps.width &&
+    prevProps.showReason === nextProps.showReason &&
+    prevRec.name === nextRec.name &&
+    prevRec.price.current === nextRec.price.current &&
+    prevRec.price.original === nextRec.price.original &&
+    prevRec.rating?.value === nextRec.rating?.value &&
+    prevRec.inventory?.stock === nextRec.inventory?.stock &&
+    prevRec.availabilityStatus === nextRec.availabilityStatus
+  );
+};
+
+function RecommendationCard({
   recommendation,
   onPress,
   onAddToCart,
@@ -55,15 +73,26 @@ export default function RecommendationCard({
       isInCart: inCart
     };
   }, [recommendation._id, recommendation.id, cartState.items, cartState.items.length]);
-  const formatPrice = (price: number) => {
+  // Memoize price formatting
+  const formattedCurrentPrice = useMemo(() => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0,
-    }).format(price);
-  };
+    }).format(recommendation.price.current);
+  }, [recommendation.price.current]);
 
-  const getDiscountPercentage = () => {
+  const formattedOriginalPrice = useMemo(() => {
+    if (!recommendation.price.original) return null;
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(recommendation.price.original);
+  }, [recommendation.price.original]);
+
+  // Memoize discount calculation
+  const discountPercentage = useMemo(() => {
     if (recommendation.price.discount) {
       return recommendation.price.discount;
     }
@@ -71,9 +100,14 @@ export default function RecommendationCard({
       return Math.round(((recommendation.price.original - recommendation.price.current) / recommendation.price.original) * 100);
     }
     return 0;
-  };
+  }, [recommendation.price.discount, recommendation.price.original, recommendation.price.current]);
 
-  const handleToggleWishlist = async (e: any) => {
+  // Memoize recommendation score percentage
+  const scorePercentage = useMemo(() => {
+    return Math.round(recommendation.recommendationScore * 100);
+  }, [recommendation.recommendationScore]);
+
+  const handleToggleWishlist = useCallback(async (e: any) => {
     e.stopPropagation();
 
     if (isTogglingWishlist) return;
@@ -91,7 +125,7 @@ export default function RecommendationCard({
           productImage: recommendation.image,
           price: recommendation.price.current,
           originalPrice: recommendation.price.original,
-          discount: getDiscountPercentage(),
+          discount: discountPercentage,
           rating: recommendation.rating?.value || 0,
           reviewCount: recommendation.rating?.count || 0,
           brand: recommendation.brand,
@@ -104,18 +138,65 @@ export default function RecommendationCard({
     } finally {
       setIsTogglingWishlist(false);
     }
-  };
+  }, [isTogglingWishlist, productId, isInWishlist, removeFromWishlist, addToWishlist, recommendation, discountPercentage, isOutOfStock, isLowStock]);
 
-  const discount = getDiscountPercentage();
-  const stockStatus = isOutOfStock ? 'Out of stock' : isLowStock ? 'Low stock' : 'In stock';
-  const wishlistStatus = isInWishlist(productId) ? 'in wishlist' : 'not in wishlist';
+  // Memoize accessibility label
+  const recommendationLabel = useMemo(() => {
+    const stockStatus = isOutOfStock ? 'Out of stock' : isLowStock ? 'Low stock' : 'In stock';
+    const wishlistStatus = isInWishlist(productId) ? 'in wishlist' : 'not in wishlist';
 
-  const recommendationLabel = `Recommended for you. ${recommendation.brand} ${recommendation.name}. Price ${formatPrice(recommendation.price.current)}${recommendation.price.original && recommendation.price.original > recommendation.price.current ? `. Was ${formatPrice(recommendation.price.original)}` : ''}${discount > 0 ? `. ${discount}% off` : ''}${recommendation.rating ? `. ${recommendation.rating.value} stars, ${recommendation.rating.count} reviews` : ''}. ${Math.round(recommendation.recommendationScore * 100)}% match based on ${recommendation.recommendationReason}. ${stockStatus}${recommendation.cashback ? `. Up to ${recommendation.cashback.percentage}% cashback` : ''}. ${wishlistStatus}`;
+    return `Recommended for you. ${recommendation.brand} ${recommendation.name}. Price ${formattedCurrentPrice}${formattedOriginalPrice ? `. Was ${formattedOriginalPrice}` : ''}${discountPercentage > 0 ? `. ${discountPercentage}% off` : ''}${recommendation.rating ? `. ${recommendation.rating.value} stars, ${recommendation.rating.count} reviews` : ''}. ${scorePercentage}% match based on ${recommendation.recommendationReason}. ${stockStatus}${recommendation.cashback ? `. Up to ${recommendation.cashback.percentage}% cashback` : ''}. ${wishlistStatus}`;
+  }, [recommendation, formattedCurrentPrice, formattedOriginalPrice, discountPercentage, scorePercentage, isOutOfStock, isLowStock, isInWishlist, productId]);
+
+  // Memoize the main onPress callback
+  const handlePress = useCallback(() => {
+    onPress(recommendation);
+  }, [onPress, recommendation]);
+
+  // Memoize notify me callback
+  const handleNotifyMe = useCallback((e: any) => {
+    e.stopPropagation();
+    subscribe(productId, 'push');
+  }, [subscribe, productId]);
+
+  // Memoize quantity decrease callback
+  const handleDecreaseQuantity = useCallback(async (e: any) => {
+    e.stopPropagation();
+    if (quantityInCart > 1) {
+      await cartActions.updateQuantity(cartItem!.id, quantityInCart - 1);
+    } else {
+      await cartActions.removeItem(cartItem!.id);
+    }
+  }, [quantityInCart, cartItem, cartActions]);
+
+  // Memoize quantity increase callback
+  const handleIncreaseQuantity = useCallback(async (e: any) => {
+    e.stopPropagation();
+    if (quantityInCart < stock) {
+      await cartActions.updateQuantity(cartItem!.id, quantityInCart + 1);
+    }
+  }, [quantityInCart, stock, cartItem, cartActions]);
+
+  // Memoize add to cart callback
+  const handleAddToCart = useCallback((e: any) => {
+    e.stopPropagation();
+    if (canAddToCartStock && onAddToCart) {
+      onAddToCart(recommendation);
+    }
+  }, [canAddToCartStock, onAddToCart, recommendation]);
+
+  // Memoize formatted rating
+  const formattedRating = useMemo(() => {
+    if (!recommendation.rating) return null;
+    return typeof recommendation.rating.value === 'number'
+      ? recommendation.rating.value.toFixed(1)
+      : recommendation.rating.value;
+  }, [recommendation.rating]);
 
   return (
     <TouchableOpacity
       style={[styles.container, { width }]}
-      onPress={() => onPress(recommendation)}
+      onPress={handlePress}
       activeOpacity={0.95}
       accessibilityLabel={recommendationLabel}
       accessibilityRole="button"
@@ -136,16 +217,16 @@ export default function RecommendationCard({
 
         {/* Product Image */}
         <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: recommendation.image }}
+          <FastImage
+            source={recommendation.image}
             style={styles.image}
             resizeMode="cover"
-            fadeDuration={0}
+            showLoader={true}
           />
-          {getDiscountPercentage() > 0 && (
+          {discountPercentage > 0 && (
             <View style={styles.discountBadge}>
               <ThemedText style={styles.discountText}>
-                {getDiscountPercentage()}% OFF
+                {discountPercentage}% OFF
               </ThemedText>
             </View>
           )}
@@ -197,23 +278,21 @@ export default function RecommendationCard({
           {/* Price Information */}
           <View style={styles.priceContainer}>
             <ThemedText style={styles.currentPrice}>
-              {formatPrice(recommendation.price.current)}
+              {formattedCurrentPrice}
             </ThemedText>
-            {recommendation.price.original && recommendation.price.original > recommendation.price.current && (
+            {formattedOriginalPrice && (
               <ThemedText style={styles.originalPrice}>
-                {formatPrice(recommendation.price.original)}
+                {formattedOriginalPrice}
               </ThemedText>
             )}
           </View>
 
           {/* Rating */}
-          {recommendation.rating && (
+          {recommendation.rating && formattedRating && (
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={12} color="#F59E0B" />
               <ThemedText style={styles.ratingText}>
-                {typeof recommendation.rating.value === 'number'
-                  ? recommendation.rating.value.toFixed(1)
-                  : recommendation.rating.value}
+                {formattedRating}
               </ThemedText>
               <ThemedText style={styles.ratingCount}>
                 ({recommendation.rating.count})
@@ -233,15 +312,15 @@ export default function RecommendationCard({
           {/* Recommendation Score Indicator */}
           <View style={styles.scoreContainer}>
             <View style={styles.scoreBar}>
-              <View 
+              <View
                 style={[
-                  styles.scoreProgress, 
-                  { width: `${recommendation.recommendationScore * 100}%` }
-                ]} 
+                  styles.scoreProgress,
+                  { width: `${scorePercentage}%` }
+                ]}
               />
             </View>
             <ThemedText style={styles.scoreText}>
-              {Math.round(recommendation.recommendationScore * 100)}% match
+              {scorePercentage}% match
             </ThemedText>
           </View>
 
@@ -256,10 +335,7 @@ export default function RecommendationCard({
                     subscribing[productId] && styles.notifyMeButtonDisabled
                   ]}
                   key="notify-me-button"
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    subscribe(productId, 'push');
-                  }}
+                  onPress={handleNotifyMe}
                   activeOpacity={0.95}
                   disabled={subscribing[productId]}
                 >
@@ -273,14 +349,7 @@ export default function RecommendationCard({
                 <View style={styles.quantityControls} key="quantity-controls">
                   <TouchableOpacity
                     style={styles.quantityButton}
-                    onPress={async (e) => {
-                      e.stopPropagation();
-                      if (quantityInCart > 1) {
-                        await cartActions.updateQuantity(cartItem!.id, quantityInCart - 1);
-                      } else {
-                        await cartActions.removeItem(cartItem!.id);
-                      }
-                    }}
+                    onPress={handleDecreaseQuantity}
                     activeOpacity={0.7}
                   >
                     <Ionicons name="remove" size={18} color="#FFFFFF" />
@@ -295,12 +364,7 @@ export default function RecommendationCard({
                       styles.quantityButton,
                       quantityInCart >= stock && styles.quantityButtonDisabled
                     ]}
-                    onPress={async (e) => {
-                      e.stopPropagation();
-                      if (quantityInCart < stock) {
-                        await cartActions.updateQuantity(cartItem!.id, quantityInCart + 1);
-                      }
-                    }}
+                    onPress={handleIncreaseQuantity}
                     activeOpacity={quantityInCart >= stock ? 1 : 0.7}
                     disabled={quantityInCart >= stock}
                   >
@@ -315,12 +379,7 @@ export default function RecommendationCard({
                     !canAddToCartStock && styles.addToCartButtonDisabled
                   ]}
                   key="add-to-cart-button"
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    if (canAddToCartStock) {
-                      onAddToCart(recommendation);
-                    }
-                  }}
+                  onPress={handleAddToCart}
                   activeOpacity={0.95}
                   disabled={!canAddToCartStock}
                 >
@@ -333,8 +392,10 @@ export default function RecommendationCard({
         </View>
       </ThemedView>
     </TouchableOpacity>
-);
+  );
 }
+
+export default React.memo(RecommendationCard, arePropsEqual);
 
 const styles = StyleSheet.create({
   container: {

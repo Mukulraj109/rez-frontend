@@ -15,6 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ProductItem } from '@/types/homepage.types';
 import { LinearGradient } from 'expo-linear-gradient';
+import { normalizeProductPrice, normalizeProductRating } from '@/utils/productDataNormalizer';
+import { formatPrice } from '@/utils/priceFormatter';
 
 interface ShoppableProductCardProps {
   product: any; // Can be ProductItem or backend product structure
@@ -40,31 +42,14 @@ export default function ShoppableProductCard({
   const [isAdding, setIsAdding] = useState(false);
   const [scaleAnim] = useState(new Animated.Value(1));
 
-  // Extract product data from different possible structures
-  // IMPORTANT: Use !== undefined to handle 0 prices correctly (0 is falsy but valid)
-  let extractedPrice = 0;
-  if (product.price?.current !== undefined) {
-    extractedPrice = product.price.current;
-  } else if (product.pricing?.selling !== undefined) {
-    // ✅ FIX: Check for pricing.selling (used by food products like Butter Chicken, Biryani)
-    extractedPrice = product.pricing.selling;
-  } else if (product.pricing?.basePrice !== undefined) {
-    extractedPrice = product.pricing.basePrice;
-  } else if (product.pricing?.base !== undefined) {
-    extractedPrice = product.pricing.base;
-  } else if (typeof product.price === 'number') {
-    extractedPrice = product.price;
-  } else if (typeof product.price === 'string') {
-    // Parse string like "₹2,199" to number
-    const parsed = parseInt(String(product.price).replace(/[₹,]/g, ''), 10);
-    extractedPrice = isNaN(parsed) ? 0 : parsed;
-  }
+  // Normalize price and rating using utility functions
+  const normalizedPrice = normalizeProductPrice(product);
+  const normalizedRating = normalizeProductRating(product);
 
   // Extract image from various possible structures
   let extractedImage = product.image || product.thumbnail;
   if (!extractedImage && product.images) {
     if (Array.isArray(product.images)) {
-      // ✅ FIX: Handle images as array of strings OR array of objects
       if (typeof product.images[0] === 'string') {
         extractedImage = product.images[0];
       } else if (product.images[0]?.url) {
@@ -73,28 +58,16 @@ export default function ShoppableProductCard({
     }
   }
 
-  // Extract original price
-  const originalPrice = product.price?.original !== undefined
-    ? product.price.original
-    : product.pricing?.mrp || product.pricing?.base || product.pricing?.salePrice;
-
-  // Calculate discount if not provided
-  let discount = product.price?.discount || product.pricing?.discount;
-  if (!discount && originalPrice && extractedPrice && originalPrice > extractedPrice) {
-    // ✅ FIX: Calculate discount percentage if missing
-    discount = Math.round(((originalPrice - extractedPrice) / originalPrice) * 100);
-  }
-
   const productData = {
     id: product._id || product.id,
     name: product.name || product.title,
     image: extractedImage,
-    price: extractedPrice,
-    originalPrice: originalPrice,
-    discount: discount,
+    price: normalizedPrice.current,
+    originalPrice: normalizedPrice.original,
+    discount: normalizedPrice.discount,
     currency: product.price?.currency || product.pricing?.currency || '₹',
-    rating: typeof product.rating === 'object' ? product.rating.value : product.rating,
-    ratingCount: typeof product.rating === 'object' ? product.rating.count : 0,
+    rating: normalizedRating.value,
+    ratingCount: normalizedRating.count,
     storeName: product.store?.name || product.brand,
     availabilityStatus: product.availabilityStatus || (product.inventory?.isAvailable ? 'in_stock' : 'out_of_stock'),
     cashback: product.cashback?.percentage,
@@ -102,9 +75,9 @@ export default function ShoppableProductCard({
 
   // Debug logging for troubleshooting
   console.log(`📦 [ProductCard] ${productData.name}:`, {
-    price: extractedPrice,
-    originalPrice: originalPrice,
-    discount: discount,
+    price: normalizedPrice.current,
+    originalPrice: normalizedPrice.original,
+    discount: normalizedPrice.discount,
     image: extractedImage ? '✅ Has image' : '❌ No image',
     hasImages: !!product.images,
     hasPricing: !!product.pricing,
@@ -112,14 +85,14 @@ export default function ShoppableProductCard({
   });
 
   const isInStock = productData.availabilityStatus === 'in_stock';
-  const hasDiscount = productData.discount && productData.discount > 0;
+  const hasDiscount = productData.discount !== null && productData.discount > 0;
 
   /**
    * Format price for display
    */
-  const formattedPrice = typeof productData.price === 'number'
-    ? `${productData.currency}${productData.price.toLocaleString()}`
-    : `${productData.currency}0`;
+  const formattedPrice = productData.price !== null
+    ? formatPrice(productData.price, productData.currency, false)
+    : null;
 
   /**
    * Handle add to cart with animation
@@ -178,21 +151,17 @@ export default function ShoppableProductCard({
    * Render rating stars
    */
   const renderRating = () => {
-    if (!productData.rating) return null;
-
-    const rating = typeof productData.rating === 'string'
-      ? parseFloat(productData.rating)
-      : productData.rating;
+    if (productData.rating === null) return null;
 
     return (
       <View style={styles.ratingContainer}>
         <Ionicons name="star" size={12} color="#F59E0B" style={styles.ratingStar} />
         <View style={styles.ratingTextWrapper}>
           <Text style={styles.ratingText}>
-            {rating.toFixed(1)}
+            {productData.rating.toFixed(1)}
           </Text>
         </View>
-        {productData.ratingCount && productData.ratingCount > 0 && (
+        {productData.ratingCount !== null && productData.ratingCount > 0 && (
           <Text style={styles.ratingCount}>
             ({productData.ratingCount})
           </Text>
@@ -205,13 +174,15 @@ export default function ShoppableProductCard({
    * Render price section
    */
   const renderPrice = () => {
+    if (!formattedPrice) return null;
+
     return (
       <View style={styles.priceContainer}>
         <Text style={[styles.price, styles.priceItem]}>{formattedPrice}</Text>
-        {hasDiscount && productData.originalPrice && productData.discount && (
+        {hasDiscount && productData.originalPrice !== null && productData.discount !== null && (
           <>
             <Text style={[styles.originalPrice, styles.priceItem]}>
-              {productData.currency}{productData.originalPrice.toLocaleString()}
+              {formatPrice(productData.originalPrice, productData.currency, false)}
             </Text>
             <View style={styles.discountBadge}>
               <Text style={styles.discountText}>
@@ -236,7 +207,7 @@ export default function ShoppableProductCard({
             style={styles.compactImage}
             resizeMode="cover"
           />
-          {hasDiscount && productData.discount && (
+          {hasDiscount && productData.discount !== null && (
             <View style={[styles.badge, styles.discountBadgeCompact]}>
               <Text style={styles.badgeText}>{Math.round(productData.discount)}% OFF</Text>
             </View>
@@ -250,7 +221,9 @@ export default function ShoppableProductCard({
             <Text style={styles.compactName} numberOfLines={1}>
               {productData.name}
             </Text>
-            <Text style={styles.compactPrice}>{formattedPrice}</Text>
+            {formattedPrice && (
+              <Text style={styles.compactPrice}>{formattedPrice}</Text>
+            )}
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -272,7 +245,7 @@ export default function ShoppableProductCard({
           />
 
           {/* Badges */}
-          {hasDiscount && productData.discount && (
+          {hasDiscount && productData.discount !== null && (
             <View style={[styles.badge, styles.discountBadgeTop]}>
               <Text style={styles.badgeText}>{Math.round(productData.discount)}% OFF</Text>
             </View>
@@ -284,7 +257,7 @@ export default function ShoppableProductCard({
             </View>
           )}
 
-          {productData.cashback && typeof productData.cashback === 'number' && productData.cashback > 0 && (
+          {productData.cashback !== null && productData.cashback !== undefined && typeof productData.cashback === 'number' && productData.cashback > 0 && (
             <View style={[styles.badge, styles.cashbackBadge]}>
               <Ionicons name="cash-outline" size={10} color="#FFFFFF" style={styles.badgeIcon} />
               <Text style={styles.badgeText}>

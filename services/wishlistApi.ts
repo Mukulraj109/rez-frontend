@@ -1,7 +1,9 @@
 // Wishlist API Service
 // Handles user favorites, bookmarks, and wish lists
+// Enhanced with comprehensive error handling, validation, retry logic, and logging
 
 import apiClient, { ApiResponse } from './apiClient';
+import { withRetry, createErrorResponse, getUserFriendlyErrorMessage, logApiRequest, logApiResponse } from '@/utils/apiUtils';
 
 export interface WishlistItem {
   id: string;
@@ -137,8 +139,106 @@ export interface WishlistAnalytics {
   }>;
 }
 
+/**
+ * Validates wishlist data structure
+ */
+function validateWishlist(data: any): boolean {
+  if (!data || typeof data !== 'object') {
+    console.warn('[WISHLIST API] Invalid wishlist data: not an object');
+    return false;
+  }
+
+  // Accept both _id and id for MongoDB compatibility
+  if (!data.id && !data._id) {
+    console.warn('[WISHLIST API] Wishlist missing id field');
+    return false;
+  }
+
+  // Accept both user (populated) and userId fields - backend returns 'user'
+  if (!data.userId && !data.user) {
+    console.warn('[WISHLIST API] Wishlist missing user/userId field');
+    return false;
+  }
+
+  // items can be an array or undefined (empty wishlist)
+  if (data.items && !Array.isArray(data.items)) {
+    console.warn('[WISHLIST API] Wishlist items is not an array');
+    return false;
+  }
+
+  // itemCount might be a virtual field or not present for new wishlists
+  // Don't require it strictly
+  return true;
+}
+
+/**
+ * Validates wishlist item data structure
+ */
+function validateWishlistItem(item: any): boolean {
+  if (!item || typeof item !== 'object') {
+    console.warn('[WISHLIST API] Invalid wishlist item: not an object');
+    return false;
+  }
+
+  // Accept both _id and id for MongoDB compatibility
+  if (!item.id && !item._id) {
+    console.warn('[WISHLIST API] Wishlist item missing id field');
+    return false;
+  }
+
+  // Backend uses capitalized itemType: 'Product', 'Store', 'Video'
+  // Frontend uses lowercase: 'product', 'store', 'video', 'project'
+  const validItemTypes = ['product', 'video', 'store', 'project', 'Product', 'Store', 'Video', 'Project'];
+  if (!item.itemType || !validItemTypes.includes(item.itemType)) {
+    console.warn('[WISHLIST API] Wishlist item has invalid itemType:', item.itemType);
+    return false;
+  }
+
+  if (!item.itemId) {
+    console.warn('[WISHLIST API] Wishlist item missing itemId field');
+    return false;
+  }
+
+  // item details might be populated or just an ObjectId reference - don't require it
+  // The backend populates this field, but it might not always be present
+
+  // Priority defaults to 'medium' if not provided
+  if (item.priority && !['low', 'medium', 'high'].includes(item.priority)) {
+    console.warn('[WISHLIST API] Wishlist item has invalid priority');
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validates wishlist response data
+ */
+function validateWishlistsResponse(data: any): boolean {
+  if (!data || typeof data !== 'object') {
+    console.warn('[WISHLIST API] Invalid wishlists response: not an object');
+    return false;
+  }
+
+  if (!Array.isArray(data.items)) {
+    console.warn('[WISHLIST API] Wishlists response items is not an array');
+    return false;
+  }
+
+  if (!data.pagination || typeof data.pagination !== 'object') {
+    console.warn('[WISHLIST API] Wishlists response missing pagination');
+    return false;
+  }
+
+  return true;
+}
+
 class WishlistService {
-  // Get user's wishlists
+  // ==================== PHASE 1: CRITICAL CRUD OPERATIONS ====================
+
+  /**
+   * Get user's wishlists
+   */
   async getWishlists(
     page: number = 1,
     limit: number = 20
@@ -151,57 +251,670 @@ class WishlistService {
       limit: number;
     };
   }>> {
-    return apiClient.get('/wishlist', { page, limit });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (page < 1) {
+        return {
+          success: false,
+          error: 'Invalid page number',
+          message: 'Page number must be at least 1',
+        };
+      }
+
+      if (limit < 1 || limit > 100) {
+        return {
+          success: false,
+          error: 'Invalid limit',
+          message: 'Limit must be between 1 and 100',
+        };
+      }
+
+      logApiRequest('GET', '/wishlist', { page, limit });
+
+      const response = await withRetry(
+        () => apiClient.get('/wishlist', { page, limit }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/wishlist', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!Array.isArray(response.data.wishlists)) {
+          console.error('[WISHLIST API] Invalid wishlists response');
+          return {
+            success: false,
+            error: 'Invalid wishlists data received from server',
+            message: 'Failed to load wishlists',
+          };
+        }
+
+        // Validate each wishlist
+        response.data.wishlists = response.data.wishlists.filter((wishlist: any) => {
+          if (!validateWishlist(wishlist)) {
+            console.warn('[WISHLIST API] Filtered out invalid wishlist:', wishlist?.id);
+            return false;
+          }
+          return true;
+        });
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching wishlists:', error);
+      return createErrorResponse(error, 'Failed to load wishlists. Please try again.');
+    }
   }
 
-  // Get specific wishlist
+  /**
+   * Add item to wishlist
+   * Supports optimistic updates - returns immediately for UI
+   */
+  async addToWishlist(data: AddToWishlistRequest): Promise<ApiResponse<WishlistItem>> {
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!data.itemType) {
+        return {
+          success: false,
+          error: 'Item type is required',
+          message: 'Please specify the item type',
+        };
+      }
+
+      if (!['product', 'video', 'store', 'project'].includes(data.itemType)) {
+        return {
+          success: false,
+          error: 'Invalid item type',
+          message: 'Item type must be product, video, store, or project',
+        };
+      }
+
+      if (!data.itemId) {
+        return {
+          success: false,
+          error: 'Item ID is required',
+          message: 'Please specify the item to add',
+        };
+      }
+
+      // Validate priority if provided
+      if (data.priority && !['low', 'medium', 'high'].includes(data.priority)) {
+        return {
+          success: false,
+          error: 'Invalid priority',
+          message: 'Priority must be low, medium, or high',
+        };
+      }
+
+      logApiRequest('POST', '/wishlist/add', {
+        itemType: data.itemType,
+        itemId: data.itemId,
+        wishlistId: data.wishlistId
+      });
+
+      // If wishlistId is not provided, get or create default wishlist
+      let wishlistId = data.wishlistId;
+
+      if (!wishlistId) {
+        const defaultWishlistResponse = await this.getDefaultWishlist();
+
+        if (defaultWishlistResponse.success && defaultWishlistResponse.data) {
+          // Backend returns _id (MongoDB), handle both _id and id
+          wishlistId = defaultWishlistResponse.data.id || (defaultWishlistResponse.data as any)._id;
+        } else {
+          // Create default wishlist if it doesn't exist
+          const createResponse = await this.createWishlist({
+            name: 'My Wishlist',
+            description: 'My default wishlist',
+            isPublic: false
+          });
+
+          if (createResponse.success && createResponse.data) {
+            // Backend returns _id (MongoDB), handle both _id and id
+            wishlistId = createResponse.data.id || (createResponse.data as any)._id;
+          } else {
+            console.error('[WISHLIST API] Failed to create default wishlist');
+            return {
+              success: false,
+              error: 'Failed to create default wishlist',
+              message: 'Could not add item to wishlist. Please try again.',
+            };
+          }
+        }
+      }
+
+      // Now add item to the wishlist using the correct endpoint
+      const response = await withRetry(
+        () => apiClient.post<WishlistItem>(`/wishlist/${wishlistId}/items`, {
+          itemType: data.itemType,
+          itemId: data.itemId,
+          notes: data.notes,
+          priority: data.priority || 'medium',
+          tags: data.tags || []
+        }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', `/wishlist/${wishlistId}/items`, response, Date.now() - startTime);
+
+      // Backend returns the full wishlist (not just the added item)
+      // Validate the wishlist structure, not as a single item
+      if (response.success && response.data) {
+        // The response is the full wishlist, validate it as such
+        if (!validateWishlist(response.data)) {
+          console.warn('[WISHLIST API] Wishlist validation warning in add response, but item was added');
+          // Don't fail - the item was successfully added, just the response structure is different
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error adding to wishlist:', error);
+      return createErrorResponse(error, 'Failed to add item to wishlist. Please try again.');
+    }
+  }
+
+  /**
+   * Remove item from wishlist
+   * Supports optimistic updates
+   * Can be called with:
+   * - removeFromWishlist('store', 'storeId') - using itemType and itemId
+   * - removeFromWishlist('wishlistItemId') - using wishlist item ID directly (legacy)
+   */
+  async removeFromWishlist(
+    itemTypeOrItemId: string,
+    itemId?: string
+  ): Promise<ApiResponse<{ message: string }>> {
+    const startTime = Date.now();
+
+    try {
+      // If itemId is provided, we're using itemType + itemId format
+      if (itemId) {
+        const itemType = itemTypeOrItemId;
+
+        // Validate input
+        if (!itemType) {
+          return {
+            success: false,
+            error: 'Item type is required',
+            message: 'Please specify the item type',
+          };
+        }
+
+        if (!itemId) {
+          return {
+            success: false,
+            error: 'Item ID is required',
+            message: 'Please specify the item to remove',
+          };
+        }
+
+        logApiRequest('POST', '/wishlist/remove-item', { itemType, itemId });
+
+        // Use the new convenience endpoint (POST because DELETE with body isn't universally supported)
+        const response = await withRetry(
+          () => apiClient.post<{ message: string }>('/wishlist/remove-item', {
+            itemType,
+            itemId
+          }),
+          { maxRetries: 2 }
+        );
+
+        logApiResponse('POST', '/wishlist/remove-item', response, Date.now() - startTime);
+
+        return response;
+      }
+
+      // Legacy: using wishlist item ID directly
+      const wishlistItemId = itemTypeOrItemId;
+
+      // Validate input
+      if (!wishlistItemId) {
+        return {
+          success: false,
+          error: 'Item ID is required',
+          message: 'Please specify the item to remove',
+        };
+      }
+
+      logApiRequest('DELETE', `/wishlist/items/${wishlistItemId}`);
+
+      const response = await withRetry(
+        () => apiClient.delete<{ message: string }>(`/wishlist/items/${wishlistItemId}`),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('DELETE', `/wishlist/items/${wishlistItemId}`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error removing from wishlist:', error);
+      return createErrorResponse(error, 'Failed to remove item from wishlist. Please try again.');
+    }
+  }
+
+  /**
+   * Clear wishlist
+   */
+  async clearWishlist(wishlistId: string): Promise<ApiResponse<{ message: string; count: number }>> {
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist to clear',
+        };
+      }
+
+      logApiRequest('DELETE', `/wishlist/${wishlistId}/clear`);
+
+      const response = await withRetry(
+        () => apiClient.delete<{ message: string; count: number }>(`/wishlist/${wishlistId}/clear`),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('DELETE', `/wishlist/${wishlistId}/clear`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error clearing wishlist:', error);
+      return createErrorResponse(error, 'Failed to clear wishlist. Please try again.');
+    }
+  }
+
+  /**
+   * Check if item is in wishlist
+   */
+  async isInWishlist(
+    itemType: WishlistItem['itemType'],
+    itemId: string
+  ): Promise<ApiResponse<{
+    inWishlist: boolean;
+    wishlistItemId?: string;
+    wishlistId?: string;
+    addedAt?: string;
+  }>> {
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!itemType) {
+        return {
+          success: false,
+          error: 'Item type is required',
+          message: 'Please specify the item type',
+        };
+      }
+
+      if (!['product', 'video', 'store', 'project'].includes(itemType)) {
+        return {
+          success: false,
+          error: 'Invalid item type',
+          message: 'Item type must be product, video, store, or project',
+        };
+      }
+
+      if (!itemId) {
+        return {
+          success: false,
+          error: 'Item ID is required',
+          message: 'Please specify the item ID',
+        };
+      }
+
+      logApiRequest('GET', '/wishlist/check', { itemType, itemId });
+
+      const response = await withRetry(
+        () => apiClient.get('/wishlist/check', { itemType, itemId }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/wishlist/check', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error checking wishlist status:', error);
+      return createErrorResponse(error, 'Failed to check wishlist status. Please try again.');
+    }
+  }
+
+  /**
+   * Get wishlist item count
+   */
+  async getWishlistCount(wishlistId?: string): Promise<ApiResponse<{ count: number }>> {
+    const startTime = Date.now();
+
+    try {
+      const endpoint = wishlistId ? `/wishlist/${wishlistId}/count` : '/wishlist/count';
+
+      logApiRequest('GET', endpoint);
+
+      const response = await withRetry(
+        () => apiClient.get<{ count: number }>(endpoint),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', endpoint, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching wishlist count:', error);
+      return createErrorResponse(error, 'Failed to load wishlist count. Please try again.');
+    }
+  }
+
+  // ==================== PHASE 2: ADVANCED FEATURES ====================
+
+  /**
+   * Get specific wishlist
+   */
   async getWishlistById(wishlistId: string): Promise<ApiResponse<Wishlist>> {
-    return apiClient.get(`/wishlist/${wishlistId}`);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist ID',
+        };
+      }
+
+      logApiRequest('GET', `/wishlist/${wishlistId}`);
+
+      const response = await withRetry(
+        () => apiClient.get<Wishlist>(`/wishlist/${wishlistId}`),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', `/wishlist/${wishlistId}`, response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateWishlist(response.data)) {
+          console.error('[WISHLIST API] Invalid wishlist data in response');
+          return {
+            success: false,
+            error: 'Invalid wishlist data received from server',
+            message: 'Failed to load wishlist',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching wishlist:', error);
+      return createErrorResponse(error, 'Failed to load wishlist. Please try again.');
+    }
   }
 
-  // Get default wishlist
+  /**
+   * Get default wishlist
+   */
   async getDefaultWishlist(): Promise<ApiResponse<Wishlist>> {
-    return apiClient.get('/wishlist/default');
+    const startTime = Date.now();
+
+    try {
+      logApiRequest('GET', '/wishlist/default');
+
+      const response = await withRetry(
+        () => apiClient.get<Wishlist>('/wishlist/default'),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/wishlist/default', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateWishlist(response.data)) {
+          console.error('[WISHLIST API] Invalid default wishlist data');
+          return {
+            success: false,
+            error: 'Invalid wishlist data received from server',
+            message: 'Failed to load default wishlist',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching default wishlist:', error);
+      return createErrorResponse(error, 'Failed to load default wishlist. Please try again.');
+    }
   }
 
-  // Create new wishlist
+  /**
+   * Create new wishlist
+   */
   async createWishlist(data: CreateWishlistRequest): Promise<ApiResponse<Wishlist>> {
-    return apiClient.post('/wishlist', data);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!data.name || data.name.trim() === '') {
+        return {
+          success: false,
+          error: 'Wishlist name is required',
+          message: 'Please enter a name for your wishlist',
+        };
+      }
+
+      if (data.name.length > 100) {
+        return {
+          success: false,
+          error: 'Wishlist name too long',
+          message: 'Wishlist name must be 100 characters or less',
+        };
+      }
+
+      logApiRequest('POST', '/wishlist', { name: data.name });
+
+      const response = await withRetry(
+        () => apiClient.post<Wishlist>('/wishlist', data),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', '/wishlist', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateWishlist(response.data)) {
+          console.error('[WISHLIST API] Invalid wishlist data in create response');
+          return {
+            success: false,
+            error: 'Invalid wishlist data received from server',
+            message: 'Failed to create wishlist',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error creating wishlist:', error);
+      return createErrorResponse(error, 'Failed to create wishlist. Please try again.');
+    }
   }
 
-  // Update wishlist
+  /**
+   * Update wishlist
+   */
   async updateWishlist(
     wishlistId: string,
     updates: Partial<CreateWishlistRequest>
   ): Promise<ApiResponse<Wishlist>> {
-    return apiClient.patch(`/wishlist/${wishlistId}`, updates);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist to update',
+        };
+      }
+
+      if (!updates || Object.keys(updates).length === 0) {
+        return {
+          success: false,
+          error: 'No updates provided',
+          message: 'Please provide data to update',
+        };
+      }
+
+      if (updates.name && updates.name.trim() === '') {
+        return {
+          success: false,
+          error: 'Wishlist name cannot be empty',
+          message: 'Please enter a valid wishlist name',
+        };
+      }
+
+      if (updates.name && updates.name.length > 100) {
+        return {
+          success: false,
+          error: 'Wishlist name too long',
+          message: 'Wishlist name must be 100 characters or less',
+        };
+      }
+
+      logApiRequest('PATCH', `/wishlist/${wishlistId}`, updates);
+
+      const response = await withRetry(
+        () => apiClient.patch<Wishlist>(`/wishlist/${wishlistId}`, updates),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('PATCH', `/wishlist/${wishlistId}`, response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateWishlist(response.data)) {
+          console.error('[WISHLIST API] Invalid wishlist data in update response');
+          return {
+            success: false,
+            error: 'Invalid wishlist data received from server',
+            message: 'Failed to update wishlist',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error updating wishlist:', error);
+      return createErrorResponse(error, 'Failed to update wishlist. Please try again.');
+    }
   }
 
-  // Delete wishlist
+  /**
+   * Delete wishlist
+   */
   async deleteWishlist(wishlistId: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.delete(`/wishlist/${wishlistId}`);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist to delete',
+        };
+      }
+
+      logApiRequest('DELETE', `/wishlist/${wishlistId}`);
+
+      const response = await withRetry(
+        () => apiClient.delete<{ message: string }>(`/wishlist/${wishlistId}`),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('DELETE', `/wishlist/${wishlistId}`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error deleting wishlist:', error);
+      return createErrorResponse(error, 'Failed to delete wishlist. Please try again.');
+    }
   }
 
-  // Get wishlist items with filtering
+  /**
+   * Get wishlist items with filtering
+   */
   async getWishlistItems(
     wishlistId?: string,
     query: WishlistsQuery = {}
   ): Promise<ApiResponse<WishlistsResponse>> {
-    const endpoint = wishlistId ? `/wishlist/${wishlistId}/items` : '/wishlist/items';
-    return apiClient.get(endpoint, query);
+    const startTime = Date.now();
+
+    try {
+      // Validate pagination
+      if (query.page && query.page < 1) {
+        return {
+          success: false,
+          error: 'Invalid page number',
+          message: 'Page number must be at least 1',
+        };
+      }
+
+      if (query.limit && (query.limit < 1 || query.limit > 100)) {
+        return {
+          success: false,
+          error: 'Invalid limit',
+          message: 'Limit must be between 1 and 100',
+        };
+      }
+
+      const endpoint = wishlistId ? `/wishlist/${wishlistId}/items` : '/wishlist/items';
+
+      logApiRequest('GET', endpoint, query);
+
+      const response = await withRetry(
+        () => apiClient.get<WishlistsResponse>(endpoint, query),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', endpoint, response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateWishlistsResponse(response.data)) {
+          console.error('[WISHLIST API] Invalid wishlist items response');
+          return {
+            success: false,
+            error: 'Invalid wishlist items data received from server',
+            message: 'Failed to load wishlist items',
+          };
+        }
+
+        // Filter out invalid items
+        response.data.items = response.data.items.filter((item: any) => {
+          if (!validateWishlistItem(item)) {
+            console.warn('[WISHLIST API] Filtered out invalid wishlist item:', item?.id);
+            return false;
+          }
+          return true;
+        });
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching wishlist items:', error);
+      return createErrorResponse(error, 'Failed to load wishlist items. Please try again.');
+    }
   }
 
-  // Add item to wishlist
-  async addToWishlist(data: AddToWishlistRequest): Promise<ApiResponse<WishlistItem>> {
-    return apiClient.post('/wishlist/items', data);
-  }
-
-  // Remove item from wishlist
-  async removeFromWishlist(itemId: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.delete(`/wishlist/items/${itemId}`);
-  }
-
-  // Update wishlist item
+  /**
+   * Update wishlist item
+   */
   async updateWishlistItem(
     itemId: string,
     updates: Partial<{
@@ -211,20 +924,266 @@ class WishlistService {
       category: string;
     }>
   ): Promise<ApiResponse<WishlistItem>> {
-    return apiClient.patch(`/wishlist/items/${itemId}`, updates);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!itemId) {
+        return {
+          success: false,
+          error: 'Item ID is required',
+          message: 'Please specify the item to update',
+        };
+      }
+
+      if (!updates || Object.keys(updates).length === 0) {
+        return {
+          success: false,
+          error: 'No updates provided',
+          message: 'Please provide data to update',
+        };
+      }
+
+      if (updates.priority && !['low', 'medium', 'high'].includes(updates.priority)) {
+        return {
+          success: false,
+          error: 'Invalid priority',
+          message: 'Priority must be low, medium, or high',
+        };
+      }
+
+      logApiRequest('PATCH', `/wishlist/items/${itemId}`, updates);
+
+      const response = await withRetry(
+        () => apiClient.patch<WishlistItem>(`/wishlist/items/${itemId}`, updates),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('PATCH', `/wishlist/items/${itemId}`, response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateWishlistItem(response.data)) {
+          console.error('[WISHLIST API] Invalid wishlist item in update response');
+          return {
+            success: false,
+            error: 'Invalid item data received from server',
+            message: 'Failed to update wishlist item',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error updating wishlist item:', error);
+      return createErrorResponse(error, 'Failed to update wishlist item. Please try again.');
+    }
   }
 
-  // Move item between wishlists
+  /**
+   * Move item to cart
+   */
+  async moveToCart(itemId: string): Promise<ApiResponse<{ message: string }>> {
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!itemId) {
+        return {
+          success: false,
+          error: 'Item ID is required',
+          message: 'Please specify the item to move',
+        };
+      }
+
+      logApiRequest('POST', `/wishlist/items/${itemId}/move-to-cart`);
+
+      const response = await withRetry(
+        () => apiClient.post<{ message: string }>(`/wishlist/items/${itemId}/move-to-cart`),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', `/wishlist/items/${itemId}/move-to-cart`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error moving item to cart:', error);
+      return createErrorResponse(error, 'Failed to move item to cart. Please try again.');
+    }
+  }
+
+  /**
+   * Share wishlist
+   */
+  async shareWishlist(
+    wishlistId: string,
+    shareWith: Array<{
+      userId: string;
+      permissions: 'view' | 'edit';
+    }>
+  ): Promise<ApiResponse<{ message: string }>> {
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist to share',
+        };
+      }
+
+      if (!shareWith || shareWith.length === 0) {
+        return {
+          success: false,
+          error: 'Share recipients required',
+          message: 'Please specify who to share with',
+        };
+      }
+
+      // Validate share recipients
+      for (const recipient of shareWith) {
+        if (!recipient.userId) {
+          return {
+            success: false,
+            error: 'Invalid recipient',
+            message: 'Each recipient must have a valid user ID',
+          };
+        }
+
+        if (!['view', 'edit'].includes(recipient.permissions)) {
+          return {
+            success: false,
+            error: 'Invalid permissions',
+            message: 'Permissions must be view or edit',
+          };
+        }
+      }
+
+      logApiRequest('POST', `/wishlist/${wishlistId}/share`, { shareWith: shareWith.length });
+
+      const response = await withRetry(
+        () => apiClient.post<{ message: string }>(`/wishlist/${wishlistId}/share`, { shareWith }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', `/wishlist/${wishlistId}/share`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error sharing wishlist:', error);
+      return createErrorResponse(error, 'Failed to share wishlist. Please try again.');
+    }
+  }
+
+  /**
+   * Sync wishlist (for offline support)
+   */
+  async syncWishlist(
+    wishlistId: string,
+    localChanges: Array<{
+      action: 'add' | 'remove' | 'update';
+      itemId?: string;
+      data?: any;
+    }>
+  ): Promise<ApiResponse<Wishlist>> {
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist to sync',
+        };
+      }
+
+      if (!localChanges || localChanges.length === 0) {
+        return {
+          success: false,
+          error: 'No changes to sync',
+          message: 'No local changes to synchronize',
+        };
+      }
+
+      logApiRequest('POST', `/wishlist/${wishlistId}/sync`, { changes: localChanges.length });
+
+      const response = await withRetry(
+        () => apiClient.post<Wishlist>(`/wishlist/${wishlistId}/sync`, { changes: localChanges }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', `/wishlist/${wishlistId}/sync`, response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateWishlist(response.data)) {
+          console.error('[WISHLIST API] Invalid wishlist data in sync response');
+          return {
+            success: false,
+            error: 'Invalid wishlist data received from server',
+            message: 'Failed to sync wishlist',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error syncing wishlist:', error);
+      return createErrorResponse(error, 'Failed to sync wishlist. Please try again.');
+    }
+  }
+
+  /**
+   * Move item between wishlists
+   */
   async moveItem(
     itemId: string,
     targetWishlistId: string
   ): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.patch(`/wishlist/items/${itemId}/move`, {
-      targetWishlistId
-    });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!itemId) {
+        return {
+          success: false,
+          error: 'Item ID is required',
+          message: 'Please specify the item to move',
+        };
+      }
+
+      if (!targetWishlistId) {
+        return {
+          success: false,
+          error: 'Target wishlist ID is required',
+          message: 'Please specify the destination wishlist',
+        };
+      }
+
+      logApiRequest('PATCH', `/wishlist/items/${itemId}/move`, { targetWishlistId });
+
+      const response = await withRetry(
+        () => apiClient.patch<{ message: string }>(`/wishlist/items/${itemId}/move`, { targetWishlistId }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('PATCH', `/wishlist/items/${itemId}/move`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error moving item:', error);
+      return createErrorResponse(error, 'Failed to move item. Please try again.');
+    }
   }
 
-  // Bulk operations
+  // ==================== BULK OPERATIONS ====================
+
+  /**
+   * Bulk add to wishlist
+   */
   async bulkAddToWishlist(
     items: AddToWishlistRequest[]
   ): Promise<ApiResponse<{
@@ -232,18 +1191,96 @@ class WishlistService {
     failed: number;
     items: WishlistItem[];
   }>> {
-    return apiClient.post('/wishlist/items/bulk', { items });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!items || items.length === 0) {
+        return {
+          success: false,
+          error: 'No items provided',
+          message: 'Please provide items to add',
+        };
+      }
+
+      // Validate each item
+      for (const item of items) {
+        if (!item.itemType || !item.itemId) {
+          return {
+            success: false,
+            error: 'Invalid item data',
+            message: 'Each item must have itemType and itemId',
+          };
+        }
+      }
+
+      logApiRequest('POST', '/wishlist/items/bulk', { count: items.length });
+
+      const response = await withRetry(
+        () => apiClient.post('/wishlist/items/bulk', { items }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', '/wishlist/items/bulk', response, Date.now() - startTime);
+
+      // Validate response items
+      if (response.success && response.data?.items) {
+        response.data.items = response.data.items.filter((item: any) => {
+          if (!validateWishlistItem(item)) {
+            console.warn('[WISHLIST API] Filtered out invalid item in bulk response');
+            return false;
+          }
+          return true;
+        });
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error bulk adding to wishlist:', error);
+      return createErrorResponse(error, 'Failed to add items to wishlist. Please try again.');
+    }
   }
 
+  /**
+   * Bulk remove from wishlist
+   */
   async bulkRemoveFromWishlist(
     itemIds: string[]
   ): Promise<ApiResponse<{
     removed: number;
     failed: number;
   }>> {
-    return apiClient.post('/wishlist/items/bulk-remove', { itemIds });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!itemIds || itemIds.length === 0) {
+        return {
+          success: false,
+          error: 'No item IDs provided',
+          message: 'Please provide items to remove',
+        };
+      }
+
+      logApiRequest('POST', '/wishlist/items/bulk-remove', { count: itemIds.length });
+
+      const response = await withRetry(
+        () => apiClient.post('/wishlist/items/bulk-remove', { itemIds }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', '/wishlist/items/bulk-remove', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error bulk removing from wishlist:', error);
+      return createErrorResponse(error, 'Failed to remove items from wishlist. Please try again.');
+    }
   }
 
+  /**
+   * Bulk move items
+   */
   async bulkMoveItems(
     itemIds: string[],
     targetWishlistId: string
@@ -251,13 +1288,47 @@ class WishlistService {
     moved: number;
     failed: number;
   }>> {
-    return apiClient.patch('/wishlist/items/bulk-move', {
-      itemIds,
-      targetWishlistId
-    });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!itemIds || itemIds.length === 0) {
+        return {
+          success: false,
+          error: 'No item IDs provided',
+          message: 'Please provide items to move',
+        };
+      }
+
+      if (!targetWishlistId) {
+        return {
+          success: false,
+          error: 'Target wishlist ID is required',
+          message: 'Please specify the destination wishlist',
+        };
+      }
+
+      logApiRequest('PATCH', '/wishlist/items/bulk-move', { count: itemIds.length, targetWishlistId });
+
+      const response = await withRetry(
+        () => apiClient.patch('/wishlist/items/bulk-move', { itemIds, targetWishlistId }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('PATCH', '/wishlist/items/bulk-move', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error bulk moving items:', error);
+      return createErrorResponse(error, 'Failed to move items. Please try again.');
+    }
   }
 
-  // Check if item is in wishlist
+  // ==================== SOCIAL & SHARING FEATURES ====================
+
+  /**
+   * Check if item is in wishlist (alias for isInWishlist)
+   */
   async checkWishlistStatus(
     itemType: WishlistItem['itemType'],
     itemId: string
@@ -267,13 +1338,12 @@ class WishlistService {
     wishlistId?: string;
     addedAt?: string;
   }>> {
-    return apiClient.get('/wishlist/check', {
-      itemType,
-      itemId
-    });
+    return this.isInWishlist(itemType, itemId);
   }
 
-  // Get wishlist recommendations
+  /**
+   * Get wishlist recommendations
+   */
   async getRecommendations(
     wishlistId?: string,
     limit: number = 10
@@ -288,26 +1358,37 @@ class WishlistService {
     reason: string;
     similarity: number;
   }>>> {
-    return apiClient.get('/wishlist/recommendations', {
-      wishlistId,
-      limit
-    });
+    const startTime = Date.now();
+
+    try {
+      // Validate limit
+      if (limit < 1 || limit > 50) {
+        return {
+          success: false,
+          error: 'Invalid limit',
+          message: 'Limit must be between 1 and 50',
+        };
+      }
+
+      logApiRequest('GET', '/wishlist/recommendations', { wishlistId, limit });
+
+      const response = await withRetry(
+        () => apiClient.get('/wishlist/recommendations', { wishlistId, limit }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/wishlist/recommendations', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching recommendations:', error);
+      return createErrorResponse(error, 'Failed to load recommendations. Please try again.');
+    }
   }
 
-  // Share wishlist
-  async shareWishlist(
-    wishlistId: string,
-    shareWith: Array<{
-      userId: string;
-      permissions: 'view' | 'edit';
-    }>
-  ): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post(`/wishlist/${wishlistId}/share`, {
-      shareWith
-    });
-  }
-
-  // Get shared wishlists
+  /**
+   * Get shared wishlists
+   */
   async getSharedWishlists(
     page: number = 1,
     limit: number = 20
@@ -328,18 +1409,82 @@ class WishlistService {
       limit: number;
     };
   }>> {
-    return apiClient.get('/wishlist/shared', { page, limit });
+    const startTime = Date.now();
+
+    try {
+      // Validate pagination
+      if (page < 1) {
+        return {
+          success: false,
+          error: 'Invalid page number',
+          message: 'Page number must be at least 1',
+        };
+      }
+
+      if (limit < 1 || limit > 100) {
+        return {
+          success: false,
+          error: 'Invalid limit',
+          message: 'Limit must be between 1 and 100',
+        };
+      }
+
+      logApiRequest('GET', '/wishlist/shared', { page, limit });
+
+      const response = await withRetry(
+        () => apiClient.get('/wishlist/shared', { page, limit }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/wishlist/shared', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching shared wishlists:', error);
+      return createErrorResponse(error, 'Failed to load shared wishlists. Please try again.');
+    }
   }
 
-  // Remove sharing
+  /**
+   * Remove sharing
+   */
   async unshareWishlist(
     wishlistId: string,
     userId?: string
   ): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.delete(`/wishlist/${wishlistId}/share${userId ? `/${userId}` : ''}`);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist',
+        };
+      }
+
+      const endpoint = `/wishlist/${wishlistId}/share${userId ? `/${userId}` : ''}`;
+
+      logApiRequest('DELETE', endpoint);
+
+      const response = await withRetry(
+        () => apiClient.delete<{ message: string }>(endpoint),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('DELETE', endpoint, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error unsharing wishlist:', error);
+      return createErrorResponse(error, 'Failed to unshare wishlist. Please try again.');
+    }
   }
 
-  // Get public wishlists
+  /**
+   * Get public wishlists
+   */
   async getPublicWishlists(
     query: {
       page?: number;
@@ -364,20 +1509,109 @@ class WishlistService {
       limit: number;
     };
   }>> {
-    return apiClient.get('/wishlist/public', query);
+    const startTime = Date.now();
+
+    try {
+      // Validate pagination
+      if (query.page && query.page < 1) {
+        return {
+          success: false,
+          error: 'Invalid page number',
+          message: 'Page number must be at least 1',
+        };
+      }
+
+      if (query.limit && (query.limit < 1 || query.limit > 100)) {
+        return {
+          success: false,
+          error: 'Invalid limit',
+          message: 'Limit must be between 1 and 100',
+        };
+      }
+
+      logApiRequest('GET', '/wishlist/public', query);
+
+      const response = await withRetry(
+        () => apiClient.get('/wishlist/public', query),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/wishlist/public', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching public wishlists:', error);
+      return createErrorResponse(error, 'Failed to load public wishlists. Please try again.');
+    }
   }
 
-  // Follow public wishlist
+  /**
+   * Follow public wishlist
+   */
   async followWishlist(wishlistId: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post(`/wishlist/${wishlistId}/follow`);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist to follow',
+        };
+      }
+
+      logApiRequest('POST', `/wishlist/${wishlistId}/follow`);
+
+      const response = await withRetry(
+        () => apiClient.post<{ message: string }>(`/wishlist/${wishlistId}/follow`),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', `/wishlist/${wishlistId}/follow`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error following wishlist:', error);
+      return createErrorResponse(error, 'Failed to follow wishlist. Please try again.');
+    }
   }
 
-  // Unfollow wishlist
+  /**
+   * Unfollow wishlist
+   */
   async unfollowWishlist(wishlistId: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.delete(`/wishlist/${wishlistId}/follow`);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist to unfollow',
+        };
+      }
+
+      logApiRequest('DELETE', `/wishlist/${wishlistId}/follow`);
+
+      const response = await withRetry(
+        () => apiClient.delete<{ message: string }>(`/wishlist/${wishlistId}/follow`),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('DELETE', `/wishlist/${wishlistId}/follow`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error unfollowing wishlist:', error);
+      return createErrorResponse(error, 'Failed to unfollow wishlist. Please try again.');
+    }
   }
 
-  // Get followed wishlists
+  /**
+   * Get followed wishlists
+   */
   async getFollowedWishlists(
     page: number = 1,
     limit: number = 20
@@ -397,10 +1631,47 @@ class WishlistService {
       limit: number;
     };
   }>> {
-    return apiClient.get('/wishlist/following', { page, limit });
+    const startTime = Date.now();
+
+    try {
+      // Validate pagination
+      if (page < 1) {
+        return {
+          success: false,
+          error: 'Invalid page number',
+          message: 'Page number must be at least 1',
+        };
+      }
+
+      if (limit < 1 || limit > 100) {
+        return {
+          success: false,
+          error: 'Invalid limit',
+          message: 'Limit must be between 1 and 100',
+        };
+      }
+
+      logApiRequest('GET', '/wishlist/following', { page, limit });
+
+      const response = await withRetry(
+        () => apiClient.get('/wishlist/following', { page, limit }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/wishlist/following', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching followed wishlists:', error);
+      return createErrorResponse(error, 'Failed to load followed wishlists. Please try again.');
+    }
   }
 
-  // Export wishlist
+  // ==================== IMPORT/EXPORT FEATURES ====================
+
+  /**
+   * Export wishlist
+   */
   async exportWishlist(
     wishlistId: string,
     format: 'pdf' | 'csv' | 'json' = 'pdf'
@@ -409,10 +1680,45 @@ class WishlistService {
     filename: string;
     expiresAt: string;
   }>> {
-    return apiClient.get(`/wishlist/${wishlistId}/export`, { format });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist to export',
+        };
+      }
+
+      if (!['pdf', 'csv', 'json'].includes(format)) {
+        return {
+          success: false,
+          error: 'Invalid export format',
+          message: 'Format must be pdf, csv, or json',
+        };
+      }
+
+      logApiRequest('GET', `/wishlist/${wishlistId}/export`, { format });
+
+      const response = await withRetry(
+        () => apiClient.get(`/wishlist/${wishlistId}/export`, { format }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', `/wishlist/${wishlistId}/export`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error exporting wishlist:', error);
+      return createErrorResponse(error, 'Failed to export wishlist. Please try again.');
+    }
   }
 
-  // Import wishlist
+  /**
+   * Import wishlist
+   */
   async importWishlist(
     file: File,
     wishlistId?: string
@@ -425,15 +1731,45 @@ class WishlistService {
       error: string;
     }>;
   }>> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (wishlistId) {
-      formData.append('wishlistId', wishlistId);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!file) {
+        return {
+          success: false,
+          error: 'File is required',
+          message: 'Please select a file to import',
+        };
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+      if (wishlistId) {
+        formData.append('wishlistId', wishlistId);
+      }
+
+      logApiRequest('POST', '/wishlist/import', { filename: file.name });
+
+      const response = await withRetry(
+        () => apiClient.uploadFile('/wishlist/import', formData),
+        { maxRetries: 1 } // Don't retry file uploads
+      );
+
+      logApiResponse('POST', '/wishlist/import', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error importing wishlist:', error);
+      return createErrorResponse(error, 'Failed to import wishlist. Please try again.');
     }
-    return apiClient.uploadFile('/wishlist/import', formData);
   }
 
-  // Get price alerts for wishlist items
+  // ==================== PRICE TRACKING FEATURES ====================
+
+  /**
+   * Get price alerts for wishlist items
+   */
   async getPriceAlerts(
     wishlistId?: string
   ): Promise<ApiResponse<Array<{
@@ -445,26 +1781,107 @@ class WishlistService {
     percentage: number;
     triggeredAt: string;
   }>>> {
-    const endpoint = wishlistId ? `/wishlist/${wishlistId}/price-alerts` : '/wishlist/price-alerts';
-    return apiClient.get(endpoint);
+    const startTime = Date.now();
+
+    try {
+      const endpoint = wishlistId ? `/wishlist/${wishlistId}/price-alerts` : '/wishlist/price-alerts';
+
+      logApiRequest('GET', endpoint);
+
+      const response = await withRetry(
+        () => apiClient.get(endpoint),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', endpoint, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching price alerts:', error);
+      return createErrorResponse(error, 'Failed to load price alerts. Please try again.');
+    }
   }
 
-  // Set price alert
+  /**
+   * Set price alert
+   */
   async setPriceAlert(
     itemId: string,
     alertPrice: number
   ): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post(`/wishlist/items/${itemId}/price-alert`, {
-      alertPrice
-    });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!itemId) {
+        return {
+          success: false,
+          error: 'Item ID is required',
+          message: 'Please specify the item',
+        };
+      }
+
+      if (typeof alertPrice !== 'number' || alertPrice <= 0) {
+        return {
+          success: false,
+          error: 'Invalid alert price',
+          message: 'Please enter a valid price',
+        };
+      }
+
+      logApiRequest('POST', `/wishlist/items/${itemId}/price-alert`, { alertPrice });
+
+      const response = await withRetry(
+        () => apiClient.post<{ message: string }>(`/wishlist/items/${itemId}/price-alert`, { alertPrice }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', `/wishlist/items/${itemId}/price-alert`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error setting price alert:', error);
+      return createErrorResponse(error, 'Failed to set price alert. Please try again.');
+    }
   }
 
-  // Remove price alert
+  /**
+   * Remove price alert
+   */
   async removePriceAlert(itemId: string): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.delete(`/wishlist/items/${itemId}/price-alert`);
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!itemId) {
+        return {
+          success: false,
+          error: 'Item ID is required',
+          message: 'Please specify the item',
+        };
+      }
+
+      logApiRequest('DELETE', `/wishlist/items/${itemId}/price-alert`);
+
+      const response = await withRetry(
+        () => apiClient.delete<{ message: string }>(`/wishlist/items/${itemId}/price-alert`),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('DELETE', `/wishlist/items/${itemId}/price-alert`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error removing price alert:', error);
+      return createErrorResponse(error, 'Failed to remove price alert. Please try again.');
+    }
   }
 
-  // Get wishlist analytics
+  // ==================== ANALYTICS & INSIGHTS ====================
+
+  /**
+   * Get wishlist analytics
+   */
   async getWishlistAnalytics(
     wishlistId?: string,
     dateRange?: {
@@ -472,11 +1889,30 @@ class WishlistService {
       to: string;
     }
   ): Promise<ApiResponse<WishlistAnalytics>> {
-    const endpoint = wishlistId ? `/wishlist/${wishlistId}/analytics` : '/wishlist/analytics';
-    return apiClient.get(endpoint, dateRange);
+    const startTime = Date.now();
+
+    try {
+      const endpoint = wishlistId ? `/wishlist/${wishlistId}/analytics` : '/wishlist/analytics';
+
+      logApiRequest('GET', endpoint, dateRange);
+
+      const response = await withRetry(
+        () => apiClient.get<WishlistAnalytics>(endpoint, dateRange),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', endpoint, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching analytics:', error);
+      return createErrorResponse(error, 'Failed to load analytics. Please try again.');
+    }
   }
 
-  // Get similar items
+  /**
+   * Get similar items
+   */
   async getSimilarItems(
     itemId: string,
     limit: number = 5
@@ -490,25 +1926,110 @@ class WishlistService {
     type: WishlistItem['itemType'];
     similarity: number;
   }>>> {
-    return apiClient.get(`/wishlist/items/${itemId}/similar`, { limit });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!itemId) {
+        return {
+          success: false,
+          error: 'Item ID is required',
+          message: 'Please specify the item',
+        };
+      }
+
+      if (limit < 1 || limit > 20) {
+        return {
+          success: false,
+          error: 'Invalid limit',
+          message: 'Limit must be between 1 and 20',
+        };
+      }
+
+      logApiRequest('GET', `/wishlist/items/${itemId}/similar`, { limit });
+
+      const response = await withRetry(
+        () => apiClient.get(`/wishlist/items/${itemId}/similar`, { limit }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', `/wishlist/items/${itemId}/similar`, response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error fetching similar items:', error);
+      return createErrorResponse(error, 'Failed to load similar items. Please try again.');
+    }
   }
 
-  // Clear wishlist
-  async clearWishlist(wishlistId: string): Promise<ApiResponse<{ message: string; count: number }>> {
-    return apiClient.delete(`/wishlist/${wishlistId}/clear`);
-  }
+  // ==================== WISHLIST MANAGEMENT ====================
 
-  // Duplicate wishlist
+  /**
+   * Duplicate wishlist
+   */
   async duplicateWishlist(
     wishlistId: string,
     newName: string
   ): Promise<ApiResponse<Wishlist>> {
-    return apiClient.post(`/wishlist/${wishlistId}/duplicate`, {
-      name: newName
-    });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!wishlistId) {
+        return {
+          success: false,
+          error: 'Wishlist ID is required',
+          message: 'Please specify the wishlist to duplicate',
+        };
+      }
+
+      if (!newName || newName.trim() === '') {
+        return {
+          success: false,
+          error: 'New name is required',
+          message: 'Please enter a name for the new wishlist',
+        };
+      }
+
+      if (newName.length > 100) {
+        return {
+          success: false,
+          error: 'Name too long',
+          message: 'Wishlist name must be 100 characters or less',
+        };
+      }
+
+      logApiRequest('POST', `/wishlist/${wishlistId}/duplicate`, { name: newName });
+
+      const response = await withRetry(
+        () => apiClient.post<Wishlist>(`/wishlist/${wishlistId}/duplicate`, { name: newName }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', `/wishlist/${wishlistId}/duplicate`, response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateWishlist(response.data)) {
+          console.error('[WISHLIST API] Invalid wishlist data in duplicate response');
+          return {
+            success: false,
+            error: 'Invalid wishlist data received from server',
+            message: 'Failed to duplicate wishlist',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error duplicating wishlist:', error);
+      return createErrorResponse(error, 'Failed to duplicate wishlist. Please try again.');
+    }
   }
 
-  // Merge wishlists
+  /**
+   * Merge wishlists
+   */
   async mergeWishlists(
     sourceWishlistId: string,
     targetWishlistId: string,
@@ -518,11 +2039,52 @@ class WishlistService {
     merged: number;
     duplicates: number;
   }>> {
-    return apiClient.post('/wishlist/merge', {
-      sourceWishlistId,
-      targetWishlistId,
-      deleteSource
-    });
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!sourceWishlistId) {
+        return {
+          success: false,
+          error: 'Source wishlist ID is required',
+          message: 'Please specify the source wishlist',
+        };
+      }
+
+      if (!targetWishlistId) {
+        return {
+          success: false,
+          error: 'Target wishlist ID is required',
+          message: 'Please specify the target wishlist',
+        };
+      }
+
+      if (sourceWishlistId === targetWishlistId) {
+        return {
+          success: false,
+          error: 'Cannot merge wishlist with itself',
+          message: 'Source and target wishlists must be different',
+        };
+      }
+
+      logApiRequest('POST', '/wishlist/merge', { sourceWishlistId, targetWishlistId, deleteSource });
+
+      const response = await withRetry(
+        () => apiClient.post('/wishlist/merge', {
+          sourceWishlistId,
+          targetWishlistId,
+          deleteSource
+        }),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', '/wishlist/merge', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[WISHLIST API] Error merging wishlists:', error);
+      return createErrorResponse(error, 'Failed to merge wishlists. Please try again.');
+    }
   }
 }
 

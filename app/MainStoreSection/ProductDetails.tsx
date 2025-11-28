@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
@@ -13,14 +13,25 @@ interface ProductDetailsProps {
   onOpenMap?: () => void;
 }
 
-export default function ProductDetails({
-  title = 'Little Big Comfort Tee',
-  description = 'Little Big Comfort Tee offers a perfect blend of relaxed fit and soft fabric for all-day comfort and effortless style',
-  location = 'BTM',
-  distance = '0.7 Km',
-  isOpen = true,
+export default memo(function ProductDetails({
+  title,
+  description,
+  location,
+  distance,
+  isOpen,
   onOpenMap,
 }: ProductDetailsProps) {
+  // Show error state if required data is missing
+  if (!title || !description) {
+    return (
+      <View style={[styles.container, styles.errorContainer]}>
+        <Ionicons name="alert-circle-outline" size={24} color="#EF4444" />
+        <ThemedText style={styles.errorText}>
+          Product information unavailable
+        </ThemedText>
+      </View>
+    );
+  }
   const { width } = Dimensions.get('window');
   const isSmall = width < 360;
 
@@ -47,31 +58,41 @@ export default function ProductDetails({
       </ThemedText>
 
       <View style={styles.rowBottom}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={onOpenMap}
-          style={styles.locationPill}
-          accessibilityRole="button"
-          accessibilityLabel={`Location: ${distance} away at ${location}`}
-          accessibilityHint="Double tap to open map"
-        >
-          <Ionicons name="location-outline" size={16} color="#7C3AED" />
-          <ThemedText style={styles.locationText}>{distance} • {location}</ThemedText>
-        </TouchableOpacity>
+        {(distance || location) && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={onOpenMap}
+            style={styles.locationPill}
+            accessibilityRole="button"
+            accessibilityLabel={`Location: ${distance || ''} ${distance && location ? 'away at' : ''} ${location || ''}`}
+            accessibilityHint="Double tap to open map"
+          >
+            <Ionicons name="location-outline" size={16} color="#7C3AED" style={{ flexShrink: 0 }} />
+            <ThemedText 
+              style={styles.locationText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {distance && location ? `${distance} • ${location}` : distance || location || 'Location not available'}
+            </ThemedText>
+          </TouchableOpacity>
+        )}
 
-        <View
-          style={[styles.openBadge, { backgroundColor: isOpen ? '#E6FDF3' : '#FEF3F2' }]}
-          accessibilityLabel={isOpen ? 'Store is open' : 'Store is closed'}
-          accessibilityRole="text"
-        >
-          <ThemedText style={[styles.openText, { color: isOpen ? '#059669' : '#DC2626' }]}>
-            {isOpen ? 'Open' : 'Closed'}
-          </ThemedText>
-        </View>
+        {isOpen !== undefined && (
+          <View
+            style={[styles.openBadge, { backgroundColor: isOpen ? '#E6FDF3' : '#FEF3F2' }]}
+            accessibilityLabel={isOpen ? 'Store is open' : 'Store is closed'}
+            accessibilityRole="text"
+          >
+            <ThemedText style={[styles.openText, { color: isOpen ? '#059669' : '#DC2626' }]}>
+              {isOpen ? 'Open' : 'Closed'}
+            </ThemedText>
+          </View>
+        )}
       </View>
     </View>
 );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -81,10 +102,26 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     // subtle bottom divider look (keeps visual separation when stacked)
     borderBottomWidth: 0,
+    overflow: 'hidden', // Prevent content from overflowing
   },
   containerCompact: {
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 24,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#DC2626',
   },
   rowTop: {
     flexDirection: 'row',
@@ -128,7 +165,9 @@ const styles = StyleSheet.create({
     marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    gap: 10,
+    flexWrap: 'wrap',
   },
   locationPill: {
     flexDirection: 'row',
@@ -144,12 +183,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
+    flex: 1,
+    minWidth: 0, // Allow shrinking below content size
+    maxWidth: '100%', // Prevent overflow
   },
   locationText: {
     marginLeft: 8,
     color: '#374151',
     fontSize: 13,
     fontWeight: '600',
+    flex: 1,
+    flexShrink: 1, // Allow text to shrink
   },
   openBadge: {
     paddingHorizontal: 10,
@@ -160,6 +204,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.04)',
+    flexShrink: 0, // Prevent badge from shrinking
   },
   openText: {
     fontSize: 12,

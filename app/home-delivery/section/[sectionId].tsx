@@ -210,7 +210,15 @@ export default function SectionDetailPage() {
   };
 
   const handleProductPress = (product: HomeDeliveryProduct) => {
-    router.push(`/product/${product.id}` as any);
+    // Navigate to ProductPage (comprehensive product page)
+    router.push({
+      pathname: '/ProductPage',
+      params: {
+        cardId: product.id,
+        cardType: 'product',
+        cardData: JSON.stringify(product)
+      }
+    } as any);
   };
 
   const handleBack = () => {

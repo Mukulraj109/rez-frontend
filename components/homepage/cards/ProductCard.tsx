@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useCallback, memo } from 'react';
 import {
   TouchableOpacity,
   Pressable,
@@ -18,7 +18,7 @@ import { useStockStatus } from '@/hooks/useStockStatus';
 import { useStockNotifications } from '@/hooks/useStockNotifications';
 import { useToast } from '@/hooks/useToast';
 
-export default function ProductCard({
+function ProductCard({
   product,
   onPress,
   onAddToCart,
@@ -39,48 +39,50 @@ export default function ProductCard({
     lowStockThreshold,
   });
 
-  // Check if product is in cart and get quantity - memoized to reduce re-renders
-  // Use cartState.items.length as dependency to only recalculate when items count changes
-  const { productId, cartItem, quantityInCart, isInCart } = useMemo(() => {
-    const id = product._id || product.id;
-    // Access cartState.items from closure - it will be current when length changes
-    const item = cartState.items.find(i => i.productId === id);
+  // Memoize product ID to avoid recalculation
+  const productId = useMemo(() => product._id || product.id, [product._id, product.id]);
+
+  // Check if product is in cart and get quantity - ONLY for THIS product
+  const { cartItem, quantityInCart, isInCart } = useMemo(() => {
+    // Find this specific product in cart
+    const item = cartState.items.find(i => i.productId === productId);
     const qty = item?.quantity || 0;
     const inCart = qty > 0;
 
     return {
-      productId: id,
       cartItem: item,
       quantityInCart: qty,
       isInCart: inCart
     };
-  }, [product._id, product.id, cartState.items.length, cartState.items]);
-  const formatPrice = (price: number) => {
+  }, [productId, cartState.items]);
+
+  // Memoize formatPrice function
+  const formatPrice = useCallback((price: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(price);
-  };
+  }, []);
 
-  const calculateSavings = () => {
-    if (product.price.original && product.price.original > product.price.current) {
-      return product.price.original - product.price.current;
-    }
-    return 0;
-  };
+  // Memoize price calculations
+  const priceData = useMemo(() => {
+    const savings = product.price.original && product.price.original > product.price.current
+      ? product.price.original - product.price.current
+      : 0;
 
-  const getDiscountPercentage = () => {
+    let discount = 0;
     if (product.price.discount) {
-      return product.price.discount;
+      discount = product.price.discount;
+    } else if (product.price.original && product.price.original > product.price.current) {
+      discount = Math.round(((product.price.original - product.price.current) / product.price.original) * 100);
     }
-    if (product.price.original && product.price.original > product.price.current) {
-      return Math.round(((product.price.original - product.price.current) / product.price.original) * 100);
-    }
-    return 0;
-  };
 
-  const handleToggleWishlist = async (e: any) => {
+    return { savings, discount };
+  }, [product.price.original, product.price.current, product.price.discount]);
+
+  // Memoize event handlers with useCallback
+  const handleToggleWishlist = useCallback(async (e: any) => {
     e.stopPropagation();
 
     if (isTogglingWishlist) return;
@@ -98,7 +100,7 @@ export default function ProductCard({
           productImage: product.image,
           price: product.price.current,
           originalPrice: product.price.original,
-          discount: getDiscountPercentage(),
+          discount: priceData.discount,
           rating: product.rating?.value || 0,
           reviewCount: product.rating?.count || 0,
           brand: product.brand,
@@ -111,36 +113,37 @@ export default function ProductCard({
     } finally {
       setIsTogglingWishlist(false);
     }
-  };
+  }, [isTogglingWishlist, isInWishlist, productId, removeFromWishlist, addToWishlist, product.name, product.image, product.price.current, product.price.original, priceData.discount, product.rating, product.brand, product.category, isOutOfStock, isLowStock]);
 
-  const renderBadges = () => {
-    const badges = [];
+  // Memoize badge rendering
+  const badges = useMemo(() => {
+    const badgeElements = [];
 
     if (product.isNewArrival) {
-      badges.push(
+      badgeElements.push(
         <View key="new" style={[styles.badge, styles.newBadge]}>
           <ThemedText style={styles.newBadgeText}>New</ThemedText>
         </View>
       );
     }
 
-    const discount = getDiscountPercentage();
-    if (discount > 0) {
-      badges.push(
+    if (priceData.discount > 0) {
+      badgeElements.push(
         <View key="discount" style={[styles.badge, styles.discountBadge]}>
-          <ThemedText style={styles.discountBadgeText}>{discount}% OFF</ThemedText>
+          <ThemedText style={styles.discountBadgeText}>{priceData.discount}% OFF</ThemedText>
         </View>
       );
     }
 
-    return badges.length > 0 ? (
+    return badgeElements.length > 0 ? (
       <View style={styles.badgesContainer}>
-        {badges}
+        {badgeElements}
       </View>
     ) : null;
-  };
+  }, [product.isNewArrival, priceData.discount]);
 
-  const renderStockBadge = () => {
+  // Memoize stock badge rendering
+  const stockBadge = useMemo(() => {
     // Show stock badge on the bottom-right corner of image
     if (product.inventory || isOutOfStock || isLowStock) {
       return (
@@ -154,9 +157,10 @@ export default function ProductCard({
       );
     }
     return null;
-  };
+  }, [product.inventory, isOutOfStock, isLowStock, stock, lowStockThreshold]);
 
-  const renderAvailabilityStatus = () => {
+  // Memoize availability status rendering
+  const availabilityStatus = useMemo(() => {
     switch (product.availabilityStatus) {
       case 'low_stock':
         return (
@@ -173,18 +177,78 @@ export default function ProductCard({
       default:
         return null;
     }
-  };
+  }, [product.availabilityStatus]);
 
-  const discount = getDiscountPercentage();
-  const stockStatus = isOutOfStock ? 'Out of stock' : isLowStock ? 'Low stock' : 'In stock';
-  const wishlistStatus = isInWishlist(productId) ? 'in wishlist' : 'not in wishlist';
+  // Memoize accessibility label
+  const productLabel = useMemo(() => {
+    const stockStatus = isOutOfStock ? 'Out of stock' : isLowStock ? 'Low stock' : 'In stock';
+    const wishlistStatus = isInWishlist(productId) ? 'in wishlist' : 'not in wishlist';
 
-  const productLabel = `${product.brand || 'Brand'} ${product.name || 'Product Name'}. Price ${formatPrice(product.price.current)}${product.price.original && product.price.original > product.price.current ? `. Was ${formatPrice(product.price.original)}` : ''}${discount > 0 ? `. ${discount}% off` : ''}${product.rating ? `. ${product.rating.value} stars, ${product.rating.count} reviews` : ''}. ${stockStatus}${product.cashback ? `. ${product.cashback.percentage}% cashback` : ''}. ${wishlistStatus}`;
+    return `${product.brand || 'Brand'} ${product.name || 'Product Name'}. Price ${formatPrice(product.price.current)}${product.price.original && product.price.original > product.price.current ? `. Was ${formatPrice(product.price.original)}` : ''}${priceData.discount > 0 ? `. ${priceData.discount}% off` : ''}${product.rating ? `. ${product.rating.value} stars, ${product.rating.count} reviews` : ''}. ${stockStatus}${product.cashback ? `. ${product.cashback.percentage}% cashback` : ''}. ${wishlistStatus}`;
+  }, [product.brand, product.name, product.price.current, product.price.original, priceData.discount, product.rating, product.cashback, isOutOfStock, isLowStock, isInWishlist, productId, formatPrice]);
+
+  // Memoize press handler
+  const handlePress = useCallback(() => {
+    onPress(product);
+  }, [onPress, product]);
+
+  // Memoize notify me handler
+  const handleNotifyMe = useCallback((e: any) => {
+    e.stopPropagation();
+    subscribe(productId, 'push');
+  }, [subscribe, productId]);
+
+  // Memoize decrease quantity handler
+  const handleDecreaseQuantity = useCallback(async (e: any) => {
+    e.stopPropagation();
+    try {
+      if (quantityInCart > 1) {
+        await cartActions.updateQuantity(cartItem!.id, quantityInCart - 1);
+        showSuccess(`${product.name} quantity decreased`);
+      } else {
+        await cartActions.removeItem(cartItem!.id);
+        showSuccess(`${product.name} removed from cart`);
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      showError(`Failed to update ${product.name}`);
+    }
+  }, [quantityInCart, cartActions, cartItem, showSuccess, showError, product.name]);
+
+  // Memoize increase quantity handler
+  const handleIncreaseQuantity = useCallback(async (e: any) => {
+    e.stopPropagation();
+    try {
+      if (quantityInCart < stock) {
+        await cartActions.updateQuantity(cartItem!.id, quantityInCart + 1);
+        showSuccess(`${product.name} quantity increased`);
+      } else {
+        showError(`Maximum quantity reached for ${product.name}`);
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      showError(`Failed to update ${product.name}`);
+    }
+  }, [quantityInCart, stock, cartActions, cartItem, showSuccess, showError, product.name]);
+
+  // Memoize add to cart handler
+  const handleAddToCart = useCallback(async (e: any) => {
+    e.stopPropagation();
+    if (onAddToCart && canAddToCartStock) {
+      try {
+        await onAddToCart(product);
+        showSuccess(`${product.name} added to cart`);
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+        showError(`Failed to add ${product.name} to cart`);
+      }
+    }
+  }, [onAddToCart, canAddToCartStock, product, showSuccess, showError]);
 
   return (
     <Pressable
       style={[styles.container, { width }]}
-      onPress={() => onPress(product)}
+      onPress={handlePress}
       accessibilityLabel={productLabel}
       accessibilityHint="Double tap to view product details"
     >
@@ -202,8 +266,8 @@ export default function ProductCard({
             fadeDuration={0}
             accessible={false}
           />
-          {renderBadges()}
-          {renderStockBadge()}
+          {badges}
+          {stockBadge}
 
           {/* Wishlist Heart Button */}
           <TouchableOpacity
@@ -249,7 +313,7 @@ export default function ProductCard({
           {/* Price Information */}
           <View
             style={styles.priceContainer}
-            accessibilityLabel={`Price: ${formatPrice(product.price.current)}${product.price.original && product.price.original > product.price.current ? `. Was ${formatPrice(product.price.original)}. You save ${formatPrice(calculateSavings())}` : ''}`}
+            accessibilityLabel={`Price: ${formatPrice(product.price.current)}${product.price.original && product.price.original > product.price.current ? `. Was ${formatPrice(product.price.original)}. You save ${formatPrice(priceData.savings)}` : ''}`}
             accessibilityRole="text"
           >
             <ThemedText style={styles.currentPrice}>
@@ -263,12 +327,12 @@ export default function ProductCard({
           </View>
 
           {/* Savings */}
-          {calculateSavings() > 0 && (
+          {priceData.savings > 0 && (
             <ThemedText
               style={styles.savings}
-              accessibilityLabel={`You save ${formatPrice(calculateSavings())}`}
+              accessibilityLabel={`You save ${formatPrice(priceData.savings)}`}
             >
-              You save {formatPrice(calculateSavings())}
+              You save {formatPrice(priceData.savings)}
             </ThemedText>
           )}
 
@@ -286,7 +350,7 @@ export default function ProductCard({
           )}
 
           {/* Availability Status */}
-          {renderAvailabilityStatus()}
+          {availabilityStatus}
         </View>
 
         {/* Add to Cart Button / Quantity Controls - Bottom aligned */}
@@ -301,10 +365,7 @@ export default function ProductCard({
                     subscribing[productId] && styles.notifyMeButtonDisabled
                   ]}
                   key="notify-me-button"
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    subscribe(productId, 'push');
-                  }}
+                  onPress={handleNotifyMe}
                   activeOpacity={0.95}
                   disabled={subscribing[productId]}
                   accessibilityLabel={subscribing[productId] ? 'Subscribing to stock notifications' : 'Notify me when product is back in stock'}
@@ -327,21 +388,7 @@ export default function ProductCard({
                 >
                   <TouchableOpacity
                     style={styles.quantityButton}
-                    onPress={async (e) => {
-                      e.stopPropagation();
-                      try {
-                        if (quantityInCart > 1) {
-                          await cartActions.updateQuantity(cartItem!.id, quantityInCart - 1);
-                          showSuccess(`${product.name} quantity decreased`);
-                        } else {
-                          await cartActions.removeItem(cartItem!.id);
-                          showSuccess(`${product.name} removed from cart`);
-                        }
-                      } catch (error) {
-                        console.error('Error updating quantity:', error);
-                        showError(`Failed to update ${product.name}`);
-                      }
-                    }}
+                    onPress={handleDecreaseQuantity}
                     activeOpacity={0.7}
                     accessibilityLabel={quantityInCart > 1 ? "Decrease quantity" : "Remove from cart"}
                     accessibilityRole="button"
@@ -363,20 +410,7 @@ export default function ProductCard({
                       styles.quantityButton,
                       quantityInCart >= stock && styles.quantityButtonDisabled
                     ]}
-                    onPress={async (e) => {
-                      e.stopPropagation();
-                      try {
-                        if (quantityInCart < stock) {
-                          await cartActions.updateQuantity(cartItem!.id, quantityInCart + 1);
-                          showSuccess(`${product.name} quantity increased`);
-                        } else {
-                          showError(`Maximum quantity reached for ${product.name}`);
-                        }
-                      } catch (error) {
-                        console.error('Error updating quantity:', error);
-                        showError(`Failed to update ${product.name}`);
-                      }
-                    }}
+                    onPress={handleIncreaseQuantity}
                     activeOpacity={quantityInCart >= stock ? 1 : 0.7}
                     disabled={quantityInCart >= stock}
                     accessibilityLabel="Increase quantity"
@@ -395,18 +429,7 @@ export default function ProductCard({
                     !canAddToCartStock && styles.addToCartButtonDisabled
                   ]}
                   key="add-to-cart-button"
-                  onPress={async (e) => {
-                    e.stopPropagation();
-                    if (onAddToCart && canAddToCartStock) {
-                      try {
-                        await onAddToCart(product);
-                        showSuccess(`${product.name} added to cart`);
-                      } catch (error) {
-                        console.error('Error adding to cart:', error);
-                        showError(`Failed to add ${product.name} to cart`);
-                      }
-                    }
-                  }}
+                  onPress={handleAddToCart}
                   activeOpacity={0.95}
                   disabled={!canAddToCartStock}
                   accessibilityLabel={`Add ${product.name} to cart`}
@@ -425,6 +448,43 @@ export default function ProductCard({
     </Pressable>
   );
 }
+
+// Memoize the component with a custom comparison function
+// Only re-render when THIS product's data or cart quantity changes
+const MemoizedProductCard = memo(ProductCard, (prevProps, nextProps) => {
+  // If product ID changed, re-render
+  if ((prevProps.product._id || prevProps.product.id) !== (nextProps.product._id || nextProps.product.id)) {
+    return false;
+  }
+
+  // If product data changed (price, stock, etc), re-render
+  if (
+    prevProps.product.price.current !== nextProps.product.price.current ||
+    prevProps.product.price.original !== nextProps.product.price.original ||
+    prevProps.product.price.discount !== nextProps.product.price.discount ||
+    prevProps.product.inventory?.stock !== nextProps.product.inventory?.stock ||
+    prevProps.product.availabilityStatus !== nextProps.product.availabilityStatus ||
+    prevProps.product.name !== nextProps.product.name ||
+    prevProps.product.image !== nextProps.product.image
+  ) {
+    return false;
+  }
+
+  // If width or showAddToCart props changed, re-render
+  if (prevProps.width !== nextProps.width || prevProps.showAddToCart !== nextProps.showAddToCart) {
+    return false;
+  }
+
+  // If callbacks changed (they shouldn't with stable refs), re-render
+  if (prevProps.onPress !== nextProps.onPress || prevProps.onAddToCart !== nextProps.onAddToCart) {
+    return false;
+  }
+
+  // Otherwise, don't re-render (cart changes to OTHER products won't trigger re-render)
+  return true;
+});
+
+export default MemoizedProductCard;
 
 const styles = StyleSheet.create({
   container: {

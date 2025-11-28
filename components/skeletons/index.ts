@@ -14,6 +14,7 @@ export { default as UGCCardSkeleton } from './UGCCardSkeleton';
 export { default as VoucherCardSkeleton } from './VoucherCardSkeleton';
 export { default as StoreHeaderSkeleton } from './StoreHeaderSkeleton';
 export { default as ReviewCardSkeleton } from './ReviewCardSkeleton';
+export { default as PromotionBannerSkeleton } from './PromotionBannerSkeleton';
 
 // Grid and list wrappers
 export { default as ProductGridSkeleton } from './ProductGridSkeleton';

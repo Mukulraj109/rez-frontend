@@ -476,11 +476,15 @@ export function useEarnPageData() {
 
   // Subscribe to real-time earnings updates
   useEffect(() => {
+    // Use refs to track latest state values to avoid stale closure issues
+    const earningsRef = { current: state.earnings };
+    earningsRef.current = state.earnings;
+
     const unsubscribeEarnings = onEarningsUpdate((data) => {
       console.log('📊 [EARNINGS SOCKET] Earnings update received:', data);
-      
-      // Calculate the difference in earnings
-      const prevTotal = state.earnings.totalEarned;
+
+      // Calculate the difference in earnings using ref to get latest value
+      const prevTotal = earningsRef.current.totalEarned;
       const newTotal = data.earnings.totalEarned;
       const earningsDiff = newTotal - prevTotal;
 
@@ -489,13 +493,13 @@ export function useEarnPageData() {
         // Determine source from breakdown changes
         const breakdown = data.earnings.breakdown;
         let source = 'earnings';
-        if (breakdown.projects > (state.earnings.breakdown?.projects || 0)) {
+        if (breakdown.projects > (earningsRef.current.breakdown?.projects || 0)) {
           source = 'Projects';
-        } else if (breakdown.referrals > (state.earnings.breakdown?.referrals || 0)) {
+        } else if (breakdown.referrals > (earningsRef.current.breakdown?.referrals || 0)) {
           source = 'Referrals';
-        } else if (breakdown.shareAndEarn > (state.earnings.breakdown?.shareAndEarn || 0)) {
+        } else if (breakdown.shareAndEarn > (earningsRef.current.breakdown?.shareAndEarn || 0)) {
           source = 'Share & Earn';
-        } else if (breakdown.spin > (state.earnings.breakdown?.spin || 0)) {
+        } else if (breakdown.spin > (earningsRef.current.breakdown?.spin || 0)) {
           source = 'Spin & Win';
         }
 
@@ -540,9 +544,9 @@ export function useEarnPageData() {
 
     const unsubscribeNotification = onEarningsNotification((data) => {
       console.log('🔔 [EARNINGS SOCKET] Earnings notification received:', data);
-      
+
       const notification = data.notification;
-      
+
       // Show push notification based on type
       if (notification.type === 'project_approved') {
         earningsNotificationService.showProjectApprovedNotification(
@@ -573,14 +577,16 @@ export function useEarnPageData() {
       }));
     });
 
+    // Cleanup function to prevent memory leaks
     return () => {
-      unsubscribeEarnings();
-      unsubscribeProjectStatus();
-      unsubscribeBalance();
-      unsubscribeTransaction();
-      unsubscribeNotification();
+      if (unsubscribeEarnings) unsubscribeEarnings();
+      if (unsubscribeProjectStatus) unsubscribeProjectStatus();
+      if (unsubscribeBalance) unsubscribeBalance();
+      if (unsubscribeTransaction) unsubscribeTransaction();
+      if (unsubscribeNotification) unsubscribeNotification();
     };
-  }, [onEarningsUpdate, onProjectStatusUpdate, onBalanceUpdate, onNewTransaction, onEarningsNotification, loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only setup subscriptions once on mount
 
   return {
     state,

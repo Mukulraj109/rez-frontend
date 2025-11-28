@@ -1,4 +1,4 @@
-// MainStoreHeader.tsx (updated back-arrow to be circular)
+// MainStoreHeader.tsx - Modernized with Design System & Micro-animations
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -8,11 +8,24 @@ import {
   Dimensions,
   StatusBar,
   TextInput,
+  Animated,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from "@/components/ThemedText";
+import { GlassCard } from "@/components/ui";
+import {
+  Colors,
+  Spacing,
+  Shadows,
+  BorderRadius,
+  Typography,
+  Gradients,
+  Timing,
+  IconSize,
+} from "@/constants/DesignSystem";
 
 export interface MainStoreHeaderProps {
   storeName?: string;
@@ -44,6 +57,11 @@ export default function MainStoreHeader({
   const [isFocused, setIsFocused] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Animation refs
+  const searchScaleAnim = useRef(new Animated.Value(1)).current;
+  const avatarScaleAnim = useRef(new Animated.Value(1)).current;
+  const backButtonScaleAnim = useRef(new Animated.Value(1)).current;
+
   // Sync external search query with internal state
   useEffect(() => {
     if (externalSearchQuery !== undefined) {
@@ -70,16 +88,43 @@ export default function MainStoreHeader({
     };
   }, [searchQuery, onSearchChange]);
 
+  // Handlers with haptic feedback & animations
   const handleBack = () => {
+    triggerImpact('Medium');
     if (onBack) onBack();
     else router.back();
   };
 
   const handleClearSearch = () => {
+    triggerImpact('Light');
     setSearchQuery("");
     if (onSearchChange) {
       onSearchChange("");
     }
+  };
+
+  const handleProfilePress = () => {
+    triggerImpact('Medium');
+    if (onProfilePress) onProfilePress();
+  };
+
+  // Animation handlers
+  const animateScale = (animValue: Animated.Value, toValue: number) => {
+    Animated.spring(animValue, {
+      toValue,
+      useNativeDriver: true,
+      ...Timing.springBouncy,
+    }).start();
+  };
+
+  const handleSearchFocus = () => {
+    setIsFocused(true);
+    animateScale(searchScaleAnim, 1.02);
+  };
+
+  const handleSearchBlur = () => {
+    setIsFocused(false);
+    animateScale(searchScaleAnim, 1);
   };
 
   const initials = React.useMemo(() => {
@@ -91,27 +136,44 @@ export default function MainStoreHeader({
 
   return (
     <LinearGradient
-      colors={["#7C3AED", "#8B5CF6"]}
+      colors={Gradients.purplePrimary}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
-      style={[styles.container, { paddingTop: topPadding + 8, paddingBottom: 12 }]}
+      style={[styles.container, { paddingTop: topPadding + Spacing.sm, paddingBottom: Spacing.md }]}
       accessibilityRole="header"
       accessibilityLabel={`Store page header. ${storeName}${subtitle ? `. ${subtitle}` : ''}`}
     >
       <View style={styles.inner}>
-        {/* Circular Back */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleBack}
-          disabled={!showBack}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          accessibilityHint="Navigate to the previous screen"
-          accessibilityState={{ disabled: !showBack }}
-          style={[styles.iconBtn, !showBack && { opacity: 0 }]}
+        {/* Glassmorphic Back Button with Animation */}
+        <Animated.View
+          style={{
+            transform: [{ scale: backButtonScaleAnim }],
+            opacity: showBack ? 1 : 0,
+          }}
         >
-          <Ionicons name="chevron-back" size={20} color="#fff" />
-        </TouchableOpacity>
+          <GlassCard
+            variant="light"
+            intensity={30}
+            borderRadius={BorderRadius.full}
+            shadow={false}
+            style={styles.iconBtn}
+          >
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleBack}
+              onPressIn={() => animateScale(backButtonScaleAnim, 0.92)}
+              onPressOut={() => animateScale(backButtonScaleAnim, 1)}
+              disabled={!showBack}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              accessibilityHint="Navigate to the previous screen"
+              accessibilityState={{ disabled: !showBack }}
+              style={styles.iconBtnTouchable}
+            >
+              <Ionicons name="chevron-back" size={IconSize.md} color={Colors.text.white} />
+            </TouchableOpacity>
+          </GlassCard>
+        </Animated.View>
 
         {/* Title */}
         <View
@@ -128,38 +190,48 @@ export default function MainStoreHeader({
           ) : null}
         </View>
 
-        {/* Profile avatar */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={onProfilePress}
-          accessibilityRole="button"
-          accessibilityLabel={`Profile. ${initials}`}
-          accessibilityHint="Open profile menu"
-          style={styles.avatarWrap}
-        >
-          <LinearGradient colors={["#FFD166", "#FF8A65"]} style={styles.avatarGradient}>
-            <ThemedText style={styles.avatarText}>{initials}</ThemedText>
-          </LinearGradient>
-        </TouchableOpacity>
+        {/* Animated Profile Avatar */}
+        <Animated.View style={{ transform: [{ scale: avatarScaleAnim }] }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleProfilePress}
+            onPressIn={() => animateScale(avatarScaleAnim, 0.92)}
+            onPressOut={() => animateScale(avatarScaleAnim, 1)}
+            accessibilityRole="button"
+            accessibilityLabel={`Profile. ${initials}`}
+            accessibilityHint="Open profile menu"
+            style={styles.avatarWrap}
+          >
+            <LinearGradient colors={["#FFD166", "#FF8A65"]} style={styles.avatarGradient}>
+              <ThemedText style={styles.avatarText}>{initials}</ThemedText>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
 
-      {/* Search Bar */}
+      {/* Animated Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={[styles.searchWrapper, isFocused && styles.searchWrapperFocused]}>
+        <Animated.View
+          style={[
+            styles.searchWrapper,
+            isFocused && styles.searchWrapperFocused,
+            { transform: [{ scale: searchScaleAnim }] },
+          ]}
+        >
           <Ionicons
             name="search"
-            size={20}
-            color={isFocused ? "#7C3AED" : "#9CA3AF"}
+            size={IconSize.md}
+            color={isFocused ? Colors.primary[700] : Colors.gray[400]}
             style={styles.searchIcon}
           />
           <TextInput
             style={styles.searchInput}
             placeholder="Search products..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={Colors.gray[400]}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onFocus={handleSearchFocus}
+            onBlur={handleSearchBlur}
             returnKeyType="search"
             accessibilityLabel="Search products"
             accessibilityHint="Enter product name to search"
@@ -171,11 +243,12 @@ export default function MainStoreHeader({
               accessibilityRole="button"
               accessibilityLabel="Clear search"
               accessibilityHint="Clear the search input"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={IconSize.md} color={Colors.gray[400]} />
             </TouchableOpacity>
           )}
-        </View>
+        </Animated.View>
       </View>
 
       {/* Decorative curved highlight to the right (matches screenshot) */}
@@ -191,46 +264,39 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     overflow: "hidden",
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
+    borderBottomLeftRadius: BorderRadius.lg,
+    borderBottomRightRadius: BorderRadius.lg,
+    ...Shadows.medium,
   },
   inner: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: Spacing.base,
     minHeight: 56,
     justifyContent: "space-between",
   },
-  // <-- updated: make iconBtn a circle (44x44, borderRadius 22) -->
+  // Glassmorphic circular back button
   iconBtn: {
     width: 44,
     height: 44,
-    borderRadius: 22, // half of width/height to make a perfect circle
-    backgroundColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+  },
+  iconBtnTouchable: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   titleWrap: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: Spacing.sm,
   },
   title: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    letterSpacing: 0.3,
+    color: Colors.text.white,
+    ...Typography.h4,
     textAlign: "center",
     textShadowColor: "rgba(0,0,0,0.12)",
     textShadowOffset: { width: 0, height: 1 },
@@ -239,7 +305,7 @@ const styles = StyleSheet.create({
   titleSmall: { fontSize: 16 },
   subtitle: {
     color: "rgba(255,255,255,0.9)",
-    fontSize: 12,
+    ...Typography.bodySmall,
     marginTop: 2,
     opacity: 0.9,
   },
@@ -248,13 +314,9 @@ const styles = StyleSheet.create({
   avatarWrap: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: BorderRadius.md,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    ...Shadows.medium,
   },
   avatarGradient: {
     flex: 1,
@@ -262,7 +324,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: {
-    color: "#fff",
+    color: Colors.text.white,
     fontWeight: "800",
     fontSize: 16,
   },
@@ -282,7 +344,7 @@ const styles = StyleSheet.create({
     width: 220,
     height: 72,
     borderRadius: 100,
-    backgroundColor: "#ffffff",
+    backgroundColor: Colors.text.white,
     opacity: 0.06,
     transform: [{ rotate: "18deg" }],
   },
@@ -292,51 +354,45 @@ const styles = StyleSheet.create({
     width: 96,
     height: 36,
     borderRadius: 60,
-    backgroundColor: "#ffffff",
+    backgroundColor: Colors.text.white,
     opacity: 0.05,
     transform: [{ rotate: "18deg" }],
   },
 
-  // Search bar styles
+  // Modern Search Bar Styles
   searchContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    paddingTop: 8,
+    paddingHorizontal: Spacing.base,
+    paddingBottom: Spacing.md,
+    paddingTop: Spacing.sm,
   },
   searchWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    borderRadius: 12,
+    backgroundColor: Colors.gray[100],
+    borderRadius: BorderRadius.md,
     height: 44,
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.md,
     borderWidth: 2,
     borderColor: "transparent",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    ...Shadows.subtle,
   },
   searchWrapperFocused: {
-    borderColor: "#7C3AED",
-    backgroundColor: "#fff",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderColor: Colors.primary[700],
+    backgroundColor: Colors.background.primary,
+    ...Shadows.medium,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: Spacing.sm,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    color: "#111827",
+    ...Typography.bodyLarge,
+    color: Colors.text.primary,
     padding: 0,
     height: "100%",
   },
   clearButton: {
-    marginLeft: 8,
-    padding: 4,
+    marginLeft: Spacing.sm,
+    padding: Spacing.xs,
   },
 });

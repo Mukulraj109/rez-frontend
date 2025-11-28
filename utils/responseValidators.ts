@@ -1,0 +1,451 @@
+// Response Validators
+// Validates and normalizes API responses to ensure consistent data structures
+
+import { ProductItem } from '@/types/homepage.types';
+
+/**
+ * Validates and normalizes product data from API responses
+ */
+export function validateProduct(rawProduct: any): ProductItem | null {
+  try {
+    if (!rawProduct || typeof rawProduct !== 'object') {
+      console.warn('[VALIDATOR] Invalid product data: not an object', rawProduct);
+      return null;
+    }
+
+    // Validate required fields
+    const id = rawProduct.id || rawProduct._id;
+    if (!id) {
+      console.warn('[VALIDATOR] Product missing ID field', rawProduct);
+      return null;
+    }
+
+    const name = rawProduct.name || rawProduct.title;
+    if (!name) {
+      console.warn('[VALIDATOR] Product missing name/title field', rawProduct);
+      return null;
+    }
+
+    // Normalize price field (pricing → price)
+    const price = normalizePrice(rawProduct);
+    if (!price) {
+      console.warn('[VALIDATOR] Product missing valid price data', rawProduct);
+      return null;
+    }
+
+    // Normalize rating field (ratings → rating)
+    const rating = normalizeRating(rawProduct);
+
+    // Normalize images field
+    const images = normalizeImages(rawProduct);
+    const image = images[0]?.url || rawProduct.image || '';
+
+    // Build validated product object
+    const validatedProduct: ProductItem = {
+      id,
+      type: 'product',
+      name,
+      title: name,
+      brand: rawProduct.brand || rawProduct.store?.name || 'Unknown Brand',
+      image,
+      images,
+      price,
+      category: rawProduct.category?.name || rawProduct.category || 'Uncategorized',
+      subcategory: rawProduct.subcategory?.name || rawProduct.subcategory,
+      rating,
+      cashback: normalizeCashback(rawProduct),
+      availabilityStatus: normalizeAvailabilityStatus(rawProduct),
+      inventory: normalizeInventory(rawProduct),
+      tags: Array.isArray(rawProduct.tags) ? rawProduct.tags : [],
+      description: rawProduct.description || '',
+      isNewArrival: rawProduct.isNewArrival || false,
+      isRecommended: rawProduct.isRecommended || false,
+      arrivalDate: rawProduct.arrivalDate || rawProduct.createdAt,
+    };
+
+    return validatedProduct;
+  } catch (error) {
+    console.error('[VALIDATOR] Error validating product:', error);
+    return null;
+  }
+}
+
+/**
+ * Validates and normalizes store data from API responses
+ */
+export function validateStore(rawStore: any): any | null {
+  try {
+    if (!rawStore || typeof rawStore !== 'object') {
+      console.warn('[VALIDATOR] Invalid store data: not an object', rawStore);
+      return null;
+    }
+
+    // Validate required fields
+    const id = rawStore.id || rawStore._id;
+    if (!id) {
+      console.warn('[VALIDATOR] Store missing ID field', rawStore);
+      return null;
+    }
+
+    const name = rawStore.name;
+    if (!name) {
+      console.warn('[VALIDATOR] Store missing name field', rawStore);
+      return null;
+    }
+
+    // Normalize rating with breakdown preservation
+    const rating = normalizeStoreRating(rawStore);
+
+    // Build validated store object
+    const validatedStore = {
+      id,
+      type: 'store',
+      name,
+      title: name,
+      image: rawStore.image || rawStore.banner || '',
+      logo: rawStore.logo || '',
+      description: rawStore.description || '',
+      rating,
+      cashback: normalizeCashback(rawStore),
+      category: rawStore.category?.name || rawStore.category || 'General',
+      location: normalizeLocation(rawStore),
+      isTrending: rawStore.isTrending || rawStore.featured || false,
+      isNew: rawStore.isNew || false,
+      isTopRated: rating.value >= 4.5,
+      deliveryTime: rawStore.deliveryTime || rawStore.operationalInfo?.deliveryTime || '30-45 mins',
+      minimumOrder: rawStore.minimumOrder || rawStore.operationalInfo?.minimumOrder || 0,
+      openingHours: rawStore.openingHours || rawStore.hours,
+    };
+
+    return validatedStore;
+  } catch (error) {
+    console.error('[VALIDATOR] Error validating store:', error);
+    return null;
+  }
+}
+
+/**
+ * Validates an array of products and filters out invalid ones
+ */
+export function validateProductArray(products: any[]): ProductItem[] {
+  if (!Array.isArray(products)) {
+    console.warn('[VALIDATOR] Expected array of products, got:', typeof products);
+    return [];
+  }
+
+  const validated = products
+    .map(validateProduct)
+    .filter((p): p is ProductItem => p !== null);
+
+  const invalidCount = products.length - validated.length;
+  if (invalidCount > 0) {
+    console.warn(`[VALIDATOR] Filtered out ${invalidCount} invalid products`);
+  }
+
+  return validated;
+}
+
+/**
+ * Validates an array of stores and filters out invalid ones
+ */
+export function validateStoreArray(stores: any[]): any[] {
+  if (!Array.isArray(stores)) {
+    console.warn('[VALIDATOR] Expected array of stores, got:', typeof stores);
+    return [];
+  }
+
+  const validated = stores
+    .map(validateStore)
+    .filter((s): s is any => s !== null);
+
+  const invalidCount = stores.length - validated.length;
+  if (invalidCount > 0) {
+    console.warn(`[VALIDATOR] Filtered out ${invalidCount} invalid stores`);
+  }
+
+  return validated;
+}
+
+// ===== HELPER FUNCTIONS =====
+
+/**
+ * Normalize price field from various API response formats
+ * Handles: pricing.basePrice, pricing.salePrice, price.current, price
+ */
+function normalizePrice(data: any): ProductItem['price'] | null {
+  try {
+    // Format 1: pricing object with basePrice/salePrice
+    if (data.pricing) {
+      const current = data.pricing.salePrice || data.pricing.basePrice;
+      const original = data.pricing.salePrice ? data.pricing.basePrice : undefined;
+
+      if (typeof current === 'number') {
+        return {
+          current,
+          original,
+          currency: data.pricing.currency || 'INR',
+          discount: original ? Math.round(((original - current) / original) * 100) : undefined,
+        };
+      }
+    }
+
+    // Format 2: price object with current/original
+    if (data.price && typeof data.price === 'object') {
+      const current = data.price.current || data.price.sale || data.price.value;
+      const original = data.price.original || data.price.regular;
+
+      if (typeof current === 'number') {
+        return {
+          current,
+          original,
+          currency: data.price.currency || 'INR',
+          discount: data.price.discount || (original ? Math.round(((original - current) / original) * 100) : undefined),
+        };
+      }
+    }
+
+    // Format 3: Direct price number
+    if (typeof data.price === 'number') {
+      return {
+        current: data.price,
+        currency: 'INR',
+      };
+    }
+
+    // Format 4: basePrice as fallback
+    if (typeof data.basePrice === 'number') {
+      return {
+        current: data.basePrice,
+        original: data.originalPrice,
+        currency: 'INR',
+        discount: data.discount,
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[VALIDATOR] Error normalizing price:', error);
+    return null;
+  }
+}
+
+/**
+ * Normalize rating field from various API response formats
+ * Handles: ratings.average, rating.value, rating
+ */
+function normalizeRating(data: any): ProductItem['rating'] {
+  try {
+    // Format 1: ratings object with average
+    if (data.ratings && typeof data.ratings === 'object') {
+      return {
+        value: parseFloat(data.ratings.average || data.ratings.value || 0),
+        count: parseInt(data.ratings.count || 0, 10),
+      };
+    }
+
+    // Format 2: rating object with value
+    if (data.rating && typeof data.rating === 'object') {
+      return {
+        value: parseFloat(data.rating.value || data.rating.average || 0),
+        count: parseInt(data.rating.count || 0, 10),
+      };
+    }
+
+    // Format 3: Direct rating number
+    if (typeof data.rating === 'number') {
+      return {
+        value: data.rating,
+        count: data.ratingCount || 0,
+      };
+    }
+
+    // Default
+    return {
+      value: 0,
+      count: 0,
+    };
+  } catch (error) {
+    console.error('[VALIDATOR] Error normalizing rating:', error);
+    return { value: 0, count: 0 };
+  }
+}
+
+/**
+ * Normalize store rating with breakdown preservation
+ */
+function normalizeStoreRating(data: any): any {
+  try {
+    const baseRating = normalizeRating(data);
+
+    // Preserve rating breakdown if available
+    const breakdown = data.ratings?.breakdown || data.rating?.breakdown || {};
+
+    return {
+      ...baseRating,
+      maxValue: 5,
+      breakdown,
+    };
+  } catch (error) {
+    console.error('[VALIDATOR] Error normalizing store rating:', error);
+    return { value: 0, count: 0, maxValue: 5, breakdown: {} };
+  }
+}
+
+/**
+ * Normalize images array
+ */
+function normalizeImages(data: any): Array<{ id: string; url: string; alt: string; isMain: boolean }> {
+  try {
+    if (Array.isArray(data.images) && data.images.length > 0) {
+      return data.images.map((img: any, index: number) => ({
+        id: img.id || img._id || `img-${index}`,
+        url: img.url || img.src || img,
+        alt: img.alt || data.name || `Product image ${index + 1}`,
+        isMain: img.isMain || index === 0,
+      }));
+    }
+
+    // Fallback: create single image from image field
+    if (data.image) {
+      return [{
+        id: '1',
+        url: data.image,
+        alt: data.name || 'Product image',
+        isMain: true,
+      }];
+    }
+
+    return [];
+  } catch (error) {
+    console.error('[VALIDATOR] Error normalizing images:', error);
+    return [];
+  }
+}
+
+/**
+ * Normalize cashback field
+ */
+function normalizeCashback(data: any): { percentage: number; maxAmount?: number } | undefined {
+  try {
+    if (data.cashback && typeof data.cashback === 'object') {
+      return {
+        percentage: data.cashback.percentage || 0,
+        maxAmount: data.cashback.maxAmount || data.cashback.max,
+      };
+    }
+
+    if (data.offers?.cashback) {
+      return {
+        percentage: data.offers.cashback,
+        maxAmount: data.offers.maxCashback,
+      };
+    }
+
+    return undefined;
+  } catch (error) {
+    console.error('[VALIDATOR] Error normalizing cashback:', error);
+    return undefined;
+  }
+}
+
+/**
+ * Normalize availability status
+ */
+function normalizeAvailabilityStatus(data: any): 'in_stock' | 'low_stock' | 'out_of_stock' {
+  try {
+    const status = data.availabilityStatus || data.availability || data.status;
+
+    if (status === 'in_stock' || status === 'available') return 'in_stock';
+    if (status === 'low_stock') return 'low_stock';
+    if (status === 'out_of_stock' || status === 'unavailable') return 'out_of_stock';
+
+    // Check inventory
+    if (data.inventory || data.stock) {
+      const stock = data.inventory?.quantity || data.inventory?.stock || data.stock;
+      const lowThreshold = data.inventory?.lowStockThreshold || 10;
+
+      if (stock === 0) return 'out_of_stock';
+      if (stock <= lowThreshold) return 'low_stock';
+      return 'in_stock';
+    }
+
+    // Default to in_stock
+    return 'in_stock';
+  } catch (error) {
+    console.error('[VALIDATOR] Error normalizing availability:', error);
+    return 'in_stock';
+  }
+}
+
+/**
+ * Normalize inventory field
+ */
+function normalizeInventory(data: any): { stock: number; lowStockThreshold?: number } | undefined {
+  try {
+    if (data.inventory && typeof data.inventory === 'object') {
+      return {
+        stock: data.inventory.quantity || data.inventory.stock || 0,
+        lowStockThreshold: data.inventory.lowStockThreshold,
+      };
+    }
+
+    if (typeof data.stock === 'number') {
+      return {
+        stock: data.stock,
+      };
+    }
+
+    return undefined;
+  } catch (error) {
+    console.error('[VALIDATOR] Error normalizing inventory:', error);
+    return undefined;
+  }
+}
+
+/**
+ * Normalize location field
+ */
+function normalizeLocation(data: any): any {
+  try {
+    if (data.location && typeof data.location === 'object') {
+      return {
+        address: data.location.address || data.location.street || '',
+        city: data.location.city || '',
+        distance: data.location.distance || undefined,
+      };
+    }
+
+    if (data.address && typeof data.address === 'object') {
+      return {
+        address: data.address.street || '',
+        city: data.address.city || '',
+        distance: data.distance,
+      };
+    }
+
+    return undefined;
+  } catch (error) {
+    console.error('[VALIDATOR] Error normalizing location:', error);
+    return undefined;
+  }
+}
+
+/**
+ * Validate critical fields exist in response
+ */
+export function validateCriticalFields(data: any, requiredFields: string[]): boolean {
+  for (const field of requiredFields) {
+    if (!(field in data) || data[field] === undefined || data[field] === null) {
+      console.warn(`[VALIDATOR] Missing critical field: ${field}`);
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Normalize ID field (_id → id)
+ */
+export function normalizeId(data: any): string | null {
+  return data.id || data._id || null;
+}

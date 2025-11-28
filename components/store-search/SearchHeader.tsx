@@ -13,12 +13,13 @@ import { ThemedText } from '@/components/ThemedText';
 import { SearchHeaderProps } from '@/types/store-search';
 import { COLORS, TYPOGRAPHY, SPACING, DEFAULTS } from '@/constants/search-constants';
 
-const SearchHeader: React.FC<SearchHeaderProps> = ({
+const SearchHeader: React.FC<SearchHeaderProps & { title?: string }> = ({
   query,
   onQueryChange,
   onBack,
   placeholder = DEFAULTS.SEARCH_PLACEHOLDER,
   isLoading = false,
+  title,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -59,7 +60,9 @@ const SearchHeader: React.FC<SearchHeaderProps> = ({
 
         {/* Page Title */}
         <View style={styles.titleContainer}>
-          <ThemedText style={styles.title}>Store list page</ThemedText>
+          <ThemedText style={styles.title} numberOfLines={1}>
+            {title || 'Store list page'}
+          </ThemedText>
         </View>
 
         {/* Right spacing */}

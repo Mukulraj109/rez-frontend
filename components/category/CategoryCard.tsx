@@ -13,6 +13,8 @@ import { ThemedText } from '@/components/ThemedText';
 import { CategoryItem } from '@/types/category.types';
 import { useCart } from '@/contexts/CartContext';
 import { showToast } from '@/components/common/ToastManager';
+import { normalizeProductPrice, normalizeProductRating } from '@/utils/productDataNormalizer';
+import { formatPrice } from '@/utils/priceFormatter';
 
 interface CategoryCardProps {
   item: CategoryItem;
@@ -154,32 +156,21 @@ export default function CategoryCard({
 
   // Render price information
   const renderPrice = () => {
-    if (!item.price) return null;
+    const normalizedPrice = normalizeProductPrice(item);
 
-    // Safely convert prices to numbers
-    const currentPrice = typeof item.price.current === 'number' 
-      ? item.price.current 
-      : (typeof item.price.current === 'string' 
-        ? parseFloat(item.price.current) || 0 
-        : 0);
-    
-    const originalPrice = typeof item.price.original === 'number'
-      ? item.price.original
-      : (typeof item.price.original === 'string'
-        ? parseFloat(item.price.original) || 0
-        : 0);
-    
-    const hasDiscount = originalPrice > 0 && originalPrice > currentPrice;
-    const currency = typeof item.price.currency === 'string' ? item.price.currency : '₹';
+    if (normalizedPrice.current === null) return null;
+
+    const currency = typeof item.price?.currency === 'string' ? item.price.currency : 'INR';
+    const hasDiscount = normalizedPrice.original !== null && normalizedPrice.original > normalizedPrice.current;
 
     return (
       <View style={styles.priceContainer}>
         <ThemedText style={styles.currentPrice}>
-          {currency}{currentPrice.toFixed(0)}
+          {formatPrice(normalizedPrice.current, currency, false)}
         </ThemedText>
-        {hasDiscount && (
+        {hasDiscount && normalizedPrice.original !== null && (
           <ThemedText style={styles.originalPrice}>
-            {currency}{originalPrice.toFixed(0)}
+            {formatPrice(normalizedPrice.original, currency, false)}
           </ThemedText>
         )}
       </View>
@@ -188,18 +179,12 @@ export default function CategoryCard({
 
   // Render rating information
   const renderRating = () => {
-    if (!item.rating) return null;
+    const normalizedRating = normalizeProductRating(item);
 
-    // Safely convert rating value to number
-    const ratingValue = typeof item.rating.value === 'number' 
-      ? item.rating.value 
-      : (typeof item.rating.value === 'string' 
-        ? parseFloat(item.rating.value) || 0 
-        : 0);
-    
-    const formattedRating = ratingValue > 0 ? ratingValue.toFixed(1) : '0.0';
-    const maxValue = typeof item.rating.maxValue === 'number' ? item.rating.maxValue : 5;
-    const count = typeof item.rating.count === 'number' ? item.rating.count : 0;
+    if (normalizedRating.value === null) return null;
+
+    const formattedRating = normalizedRating.value.toFixed(1);
+    const maxValue = typeof item.rating?.maxValue === 'number' ? item.rating.maxValue : 5;
 
     return (
       <View style={styles.ratingContainer}>
@@ -212,9 +197,9 @@ export default function CategoryCard({
             /{maxValue}
           </ThemedText>
         )}
-        {count > 0 && (
+        {normalizedRating.count !== null && normalizedRating.count > 0 && (
           <ThemedText style={styles.ratingCount}>
-            ({count})
+            ({normalizedRating.count})
           </ThemedText>
         )}
       </View>

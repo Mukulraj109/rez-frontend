@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
@@ -117,6 +117,7 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
   const subscribedStores = useRef<Set<string>>(new Set());
 
   // Initialize socket connection
+  // FIXED: Properly cleanup event listeners to prevent memory leaks
   useEffect(() => {
     const socketUrl = getSocketUrl();
     const socketConfig = { ...DEFAULT_CONFIG, ...config };
@@ -134,9 +135,9 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
 
       socketRef.current = socket;
 
-      // Connection event handlers
-      socket.on(SocketEvents.CONNECT, () => {
-
+      // Define all event handlers in an object for easy cleanup
+      const handleConnect = () => {
+        console.log('🔌 [SocketContext] Connected to socket server');
         setSocketState(prev => ({
           ...prev,
           connected: true,
@@ -145,40 +146,38 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
           lastConnected: new Date(),
           reconnectAttempts: 0,
         }));
-
-        // Re-subscribe to products and stores after reconnection
         resubscribeAll();
-      });
+      };
 
-      socket.on(SocketEvents.DISCONNECT, (reason) => {
-
+      const handleDisconnect = (reason: string) => {
+        console.log('🔌 [SocketContext] Disconnected:', reason);
         setSocketState(prev => ({
           ...prev,
           connected: false,
           reconnecting: reason === 'io server disconnect' ? false : true,
         }));
-      });
+      };
 
-      socket.on(SocketEvents.CONNECT_ERROR, (error) => {
+      const handleConnectError = (error: Error) => {
         console.error('🔌 [SocketContext] Connection error:', error.message);
         setSocketState(prev => ({
           ...prev,
           error: error.message,
           reconnecting: true,
         }));
-      });
+      };
 
-      socket.on(SocketEvents.RECONNECT_ATTEMPT, (attemptNumber) => {
-
+      const handleReconnectAttempt = (attemptNumber: number) => {
+        console.log(`🔌 [SocketContext] Reconnection attempt ${attemptNumber}`);
         setSocketState(prev => ({
           ...prev,
           reconnecting: true,
           reconnectAttempts: attemptNumber,
         }));
-      });
+      };
 
-      socket.on(SocketEvents.RECONNECT, (attemptNumber) => {
-
+      const handleReconnect = (attemptNumber: number) => {
+        console.log(`🔌 [SocketContext] Reconnected after ${attemptNumber} attempts`);
         setSocketState(prev => ({
           ...prev,
           connected: true,
@@ -187,100 +186,33 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
           lastConnected: new Date(),
           reconnectAttempts: 0,
         }));
-      });
+      };
 
-      socket.on(SocketEvents.RECONNECT_ERROR, (error) => {
+      const handleReconnectError = (error: Error) => {
         console.error('🔌 [SocketContext] Reconnection error:', error.message);
         setSocketState(prev => ({
           ...prev,
           error: error.message,
         }));
-      });
+      };
 
-      socket.on(SocketEvents.RECONNECT_FAILED, () => {
+      const handleReconnectFailed = () => {
         console.error('🔌 [SocketContext] Reconnection failed after all attempts');
         setSocketState(prev => ({
           ...prev,
           reconnecting: false,
           error: 'Failed to reconnect after maximum attempts',
         }));
-      });
+      };
 
-      // Stock event handlers (for debugging)
-      socket.on(SocketEvents.STOCK_UPDATED, (payload: StockUpdatePayload) => {
-
-      });
-
-      socket.on(SocketEvents.STOCK_LOW, (payload: LowStockPayload) => {
-
-      });
-
-      socket.on(SocketEvents.STOCK_OUT, (payload: OutOfStockPayload) => {
-
-      });
-
-      socket.on(SocketEvents.PRICE_UPDATED, (payload: PriceUpdatePayload) => {
-
-      });
-
-      socket.on(SocketEvents.PRODUCT_AVAILABILITY, (payload: ProductAvailabilityPayload) => {
-
-      });
-
-      // Flash sale event handlers (for debugging)
-      socket.on(SocketEvents.FLASH_SALE_STARTED, (payload: FlashSaleStartedPayload) => {
-
-      });
-
-      socket.on(SocketEvents.FLASH_SALE_ENDING_SOON, (payload: FlashSaleEndingSoonPayload) => {
-
-      });
-
-      socket.on(SocketEvents.FLASH_SALE_ENDED, (payload: FlashSaleEndedPayload) => {
-
-      });
-
-      socket.on(SocketEvents.FLASH_SALE_STOCK_UPDATED, (payload: FlashSaleStockUpdatedPayload) => {
-
-      });
-
-      socket.on(SocketEvents.FLASH_SALE_STOCK_LOW, (payload: FlashSaleStockLowPayload) => {
-
-      });
-
-      socket.on(SocketEvents.FLASH_SALE_SOLD_OUT, (payload: FlashSaleSoldOutPayload) => {
-
-      });
-
-      // Leaderboard event handlers (for debugging)
-      socket.on(SocketEvents.LEADERBOARD_UPDATE, (payload: any) => {
-
-      });
-
-      socket.on(SocketEvents.LEADERBOARD_USER_SCORED, (payload: any) => {
-
-      });
-
-      socket.on(SocketEvents.LEADERBOARD_RANK_CHANGE, (payload: any) => {
-
-      });
-
-      // Social feed event handlers (for debugging)
-      socket.on(SocketEvents.SOCIAL_NEW_POST, (payload: any) => {
-
-      });
-
-      socket.on(SocketEvents.SOCIAL_LIKE, (payload: any) => {
-
-      });
-
-      socket.on(SocketEvents.SOCIAL_COMMENT, (payload: any) => {
-
-      });
-
-      socket.on(SocketEvents.SOCIAL_FOLLOW, (payload: any) => {
-
-      });
+      // Attach all connection event listeners
+      socket.on(SocketEvents.CONNECT, handleConnect);
+      socket.on(SocketEvents.DISCONNECT, handleDisconnect);
+      socket.on(SocketEvents.CONNECT_ERROR, handleConnectError);
+      socket.on(SocketEvents.RECONNECT_ATTEMPT, handleReconnectAttempt);
+      socket.on(SocketEvents.RECONNECT, handleReconnect);
+      socket.on(SocketEvents.RECONNECT_ERROR, handleReconnectError);
+      socket.on(SocketEvents.RECONNECT_FAILED, handleReconnectFailed);
 
     } catch (error) {
       console.error('🔌 [SocketContext] Failed to initialize socket:', error);
@@ -290,15 +222,21 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       }));
     }
 
-    // Cleanup on unmount
+    // CRITICAL: Cleanup function to prevent memory leaks
     return () => {
-      if (socketRef.current) {
+      console.log('🔌 [SocketContext] Cleaning up socket connection');
 
+      if (socketRef.current) {
+        // Remove ALL listeners to prevent memory leaks
+        // Use removeAllListeners() to clear all event listeners at once
+        socketRef.current.removeAllListeners();
+
+        // Disconnect socket
         socketRef.current.disconnect();
         socketRef.current = null;
       }
     };
-  }, []);
+  }, []); // Empty deps - only run once
 
   // Re-subscribe to all products and stores after reconnection
   const resubscribeAll = useCallback(() => {
@@ -513,7 +451,8 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
     subscribedStores.current.delete(storeId);
   }, []);
 
-  const contextValue: SocketContextType = {
+  // OPTIMIZED: Memoize context value to prevent unnecessary re-renders
+  const contextValue: SocketContextType = useMemo(() => ({
     socket: socketRef.current,
     state: socketState,
     connect,
@@ -536,7 +475,29 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
     unsubscribeFromProduct,
     subscribeToStore,
     unsubscribeFromStore,
-  };
+  }), [
+    socketState,
+    connect,
+    disconnect,
+    onStockUpdate,
+    onLowStock,
+    onOutOfStock,
+    onPriceUpdate,
+    onProductAvailability,
+    onConnect,
+    onDisconnect,
+    onError,
+    onFlashSaleStarted,
+    onFlashSaleEndingSoon,
+    onFlashSaleEnded,
+    onFlashSaleStockUpdated,
+    onFlashSaleStockLow,
+    onFlashSaleSoldOut,
+    subscribeToProduct,
+    unsubscribeFromProduct,
+    subscribeToStore,
+    unsubscribeFromStore,
+  ]);
 
   return (
     <SocketContext.Provider value={contextValue}>

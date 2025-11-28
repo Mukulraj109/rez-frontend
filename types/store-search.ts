@@ -30,13 +30,26 @@ export interface StoreResult {
   storeName: string;
   rating: number;
   reviewCount: number;
-  distance: number;
+  distance: number | null;
   location: string;
   isOpen: boolean;
   hasOnlineDelivery: boolean;
   hasFreeShipping: boolean;
-  estimatedDelivery?: string;
-  storeImage?: string;
+  estimatedDelivery?: string | null;
+  storeImage?: string | null;
+  logo?: string | null;
+  description?: string;
+  deliveryCategories?: {
+    fastDelivery?: boolean;
+    budgetFriendly?: boolean;
+    ninetyNineStore?: boolean;
+    premium?: boolean;
+    organic?: boolean;
+    alliance?: boolean;
+    lowestPrice?: boolean;
+    mall?: boolean;
+    cashStore?: boolean;
+  };
   products: ProductItem[];
   totalProductsFound: number;
 }

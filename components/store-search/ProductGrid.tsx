@@ -1,21 +1,26 @@
-import React from 'react';
+import React, { useCallback, memo } from 'react';
 import {
   View,
   StyleSheet,
   Dimensions,
+  FlatList,
+  ListRenderItemInfo,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
-import { ProductGridProps } from '@/types/store-search';
+import { ProductGridProps, ProductItem } from '@/types/store-search';
 import ProductCard from './ProductCard';
-import { 
-  COLORS, 
-  TYPOGRAPHY, 
-  SPACING, 
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
   BORDER_RADIUS,
-  PRODUCT_GRID 
+  PRODUCT_GRID
 } from '@/constants/search-constants';
 
-const ProductGrid: React.FC<ProductGridProps> = ({
+// Estimated card height for getItemLayout optimization
+const ESTIMATED_CARD_HEIGHT = 220; // Approximate height of a product card row
+
+const ProductGrid: React.FC<ProductGridProps> = memo(({
   products,
   store,
   onProductSelect,
@@ -30,34 +35,31 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
   const styles = createStyles(screenWidth, columns);
 
-  // Render products in grid
-  const renderProductGrid = () => {
-    const rows = [];
-    for (let i = 0; i < productsToShow.length; i += columns) {
-      const rowProducts = productsToShow.slice(i, i + columns);
-      rows.push(
-        <View key={i} style={styles.row}>
-          {rowProducts.map((product, index) => (
-            <View key={product.productId} style={styles.productContainer}>
-              <ProductCard
-                product={product}
-                store={store}
-                onPress={onProductSelect}
-                size="medium"
-              />
-            </View>
-          ))}
-          
-          {/* Fill remaining slots in row with empty space */}
-          {rowProducts.length < columns && (
-            <View style={[styles.productContainer, { opacity: 0 }]} />
-          )}
-        </View> 
-      );
-    }
-    return rows;
-  };
+  // Memoized render function for FlatList items
+  const renderItem = useCallback(({ item }: ListRenderItemInfo<ProductItem>) => (
+    <View style={styles.productContainer}>
+      <ProductCard
+        product={item}
+        store={store}
+        onPress={onProductSelect}
+        size="medium"
+      />
+    </View>
+  ), [store, onProductSelect, styles.productContainer]);
 
+  // Memoized key extractor
+  const keyExtractor = useCallback((item: ProductItem) =>
+    item.productId || String(Math.random()),
+  []);
+
+  // Optimized getItemLayout for instant scrolling
+  const getItemLayout = useCallback((data: any, index: number) => ({
+    length: ESTIMATED_CARD_HEIGHT,
+    offset: ESTIMATED_CARD_HEIGHT * Math.floor(index / columns),
+    index,
+  }), [columns]);
+
+  // Empty state
   if (products.length === 0) {
     return (
       <View style={styles.emptyContainer}>
@@ -70,10 +72,23 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Product Grid */}
-      <View style={styles.grid}>
-        {renderProductGrid()}
-      </View>
+      {/* Virtualized Product Grid with FlatList */}
+      <FlatList
+        data={productsToShow}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        numColumns={columns}
+        key={columns} // Force re-render if columns change
+        scrollEnabled={false} // Parent ScrollView handles scrolling
+        showsVerticalScrollIndicator={false}
+        columnWrapperStyle={columns > 1 ? styles.row : undefined}
+        contentContainerStyle={styles.grid}
+        initialNumToRender={maxItems} // Only render visible items initially
+        maxToRenderPerBatch={columns * 2} // Render 2 rows at a time
+        windowSize={3} // Keep 3 screens of content in memory
+        removeClippedSubviews={true} // Unmount off-screen items (Android optimization)
+        getItemLayout={getItemLayout}
+      />
 
       {/* Show More Products Indicator */}
       {remainingCount > 0 && (
@@ -85,7 +100,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
       )}
     </View>
   );
-};
+});
 
 const createStyles = (screenWidth: number, columns: number) => {
   const isTablet = screenWidth > 768;

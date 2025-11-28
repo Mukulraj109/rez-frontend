@@ -313,14 +313,25 @@ export const refundTransaction = async (transactionId: string, reason: string): 
 };
 
 // Helper Functions
-export const formatCurrency = (amount: number, currency: string = 'WC'): string => {
+export const formatCurrency = (amount: number | null | undefined, currency: string = 'WC'): string => {
+  // Validate amount
+  if (amount == null || typeof amount !== 'number' || isNaN(amount)) {
+    return currency === 'RC' ? '0 RC' : '₹0.00';
+  }
+
   if (currency === 'RC') {
     return `${amount} RC`;
   }
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(amount);
+
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(amount);
+  } catch (error) {
+    // Fallback for invalid currency
+    return `₹${amount.toFixed(2)}`;
+  }
 };
 
 export const getTransactionIcon = (type: TransactionType): string => {
@@ -350,8 +361,18 @@ export const getStatusColor = (status: TransactionStatus): string => {
   return colorMap[status] || '#6B7280';
 };
 
-export const formatTransactionDate = (dateString: string): string => {
+export const formatTransactionDate = (dateString: string | null | undefined): string => {
+  if (!dateString) {
+    return 'Unknown date';
+  }
+
   const date = new Date(dateString);
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    return 'Invalid date';
+  }
+
   const now = new Date();
   const diffTime = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));

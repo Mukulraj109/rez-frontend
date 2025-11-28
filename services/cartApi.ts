@@ -1,8 +1,18 @@
 // Cart API Service
 // Handles shopping cart operations and management
+// Enhanced with comprehensive error handling, validation, and logging
 
 import apiClient, { ApiResponse } from './apiClient';
+import { withRetry, createErrorResponse, getUserFriendlyErrorMessage, logApiRequest, logApiResponse } from '@/utils/apiUtils';
+import {
+  CartItem as UnifiedCartItem,
+  Cart as UnifiedCart,
+  toCartItem,
+  validateCartItem as validateUnifiedCartItem,
+  isCartItemAvailable
+} from '@/types/unified';
 
+// Keep the old CartItem interface for backwards compatibility during migration
 export interface CartItem {
   _id: string;
   product: {
@@ -113,6 +123,9 @@ export interface Cart {
   updatedAt: string;
 }
 
+// Export unified Cart types for new code
+export { UnifiedCartItem, UnifiedCart };
+
 export interface AddToCartRequest {
   productId: string;
   quantity: number;
@@ -128,7 +141,7 @@ export interface AddToCartRequest {
     location?: string;
     date?: string;
     time?: string;
-    [key: string]: any; // Allow additional metadata fields
+    [key: string]: any;
   };
 }
 
@@ -148,66 +161,402 @@ export interface ShippingEstimate {
   description?: string;
 }
 
+/**
+ * Validates cart data structure
+ */
+function validateCart(cart: any): boolean {
+  if (!cart || typeof cart !== 'object') {
+    console.warn('[CART API] Invalid cart data: not an object');
+    return false;
+  }
+
+  if (!cart._id) {
+    console.warn('[CART API] Cart missing _id field');
+    return false;
+  }
+
+  if (!Array.isArray(cart.items)) {
+    console.warn('[CART API] Cart items is not an array');
+    return false;
+  }
+
+  if (!cart.totals || typeof cart.totals !== 'object') {
+    console.warn('[CART API] Cart missing totals object');
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validates cart item data structure
+ */
+function validateCartItem(item: any): boolean {
+  if (!item || typeof item !== 'object') {
+    return false;
+  }
+
+  if (!item.product || !item.product._id) {
+    console.warn('[CART API] Cart item missing product information');
+    return false;
+  }
+
+  if (typeof item.quantity !== 'number' || item.quantity < 1) {
+    console.warn('[CART API] Cart item has invalid quantity');
+    return false;
+  }
+
+  return true;
+}
+
 class CartService {
-  // Get current user's cart
+  /**
+   * Get current user's cart
+   */
   async getCart(): Promise<ApiResponse<Cart>> {
+    const startTime = Date.now();
 
-    return apiClient.get('/cart');
+    try {
+      logApiRequest('GET', '/cart');
+
+      const response = await withRetry(
+        () => apiClient.get<Cart>('/cart'),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/cart', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateCart(response.data)) {
+          console.error('[CART API] Cart validation failed');
+          return {
+            success: false,
+            error: 'Invalid cart data received from server',
+            message: 'Cart data validation failed',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error fetching cart:', error);
+      return createErrorResponse(error, 'Failed to load cart. Please try again.');
+    }
   }
 
-  // Add item to cart
+  /**
+   * Add item to cart
+   */
   async addToCart(data: AddToCartRequest): Promise<ApiResponse<Cart>> {
+    const startTime = Date.now();
 
-    return apiClient.post('/cart/add', data);
+    try {
+      // Validate input
+      if (!data.productId) {
+        return {
+          success: false,
+          error: 'Product ID is required',
+          message: 'Product ID is required',
+        };
+      }
+
+      if (!data.quantity || data.quantity < 1) {
+        return {
+          success: false,
+          error: 'Valid quantity is required',
+          message: 'Please specify a valid quantity',
+        };
+      }
+
+      logApiRequest('POST', '/cart/add', data);
+
+      const response = await withRetry(
+        () => apiClient.post<Cart>('/cart/add', data),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', '/cart/add', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateCart(response.data)) {
+          console.error('[CART API] Cart validation failed after adding item');
+          return {
+            success: false,
+            error: 'Invalid cart data received after adding item',
+            message: 'Failed to add item to cart',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error adding to cart:', error);
+      return createErrorResponse(
+        error,
+        'Failed to add item to cart. Please try again.'
+      );
+    }
   }
 
-  // Update cart item quantity
+  /**
+   * Update cart item quantity
+   */
   async updateCartItem(
     productId: string,
     data: UpdateCartItemRequest,
     variant?: { type: string; value: string }
   ): Promise<ApiResponse<Cart>> {
+    const startTime = Date.now();
 
-    const url = variant
-      ? `/cart/item/${productId}/${encodeURIComponent(JSON.stringify(variant))}`
-      : `/cart/item/${productId}`;
-    return apiClient.put(url, data);
+    try {
+      // Validate input
+      if (!productId) {
+        return {
+          success: false,
+          error: 'Product ID is required',
+          message: 'Product ID is required',
+        };
+      }
+
+      if (!data.quantity || data.quantity < 0) {
+        return {
+          success: false,
+          error: 'Valid quantity is required',
+          message: 'Please specify a valid quantity',
+        };
+      }
+
+      const url = variant
+        ? `/cart/item/${productId}/${encodeURIComponent(JSON.stringify(variant))}`
+        : `/cart/item/${productId}`;
+
+      logApiRequest('PUT', url, data);
+
+      const response = await withRetry(
+        () => apiClient.put<Cart>(url, data),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('PUT', url, response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateCart(response.data)) {
+          console.error('[CART API] Cart validation failed after updating item');
+          return {
+            success: false,
+            error: 'Invalid cart data received after update',
+            message: 'Failed to update cart item',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error updating cart item:', error);
+      return createErrorResponse(
+        error,
+        'Failed to update cart item. Please try again.'
+      );
+    }
   }
 
-  // Remove item from cart
-  async removeCartItem(productId: string, variant?: { type: string; value: string }): Promise<ApiResponse<Cart>> {
+  /**
+   * Remove item from cart
+   */
+  async removeCartItem(
+    productId: string,
+    variant?: { type: string; value: string }
+  ): Promise<ApiResponse<Cart>> {
+    const startTime = Date.now();
 
-    const url = variant
-      ? `/cart/item/${productId}/${encodeURIComponent(JSON.stringify(variant))}`
-      : `/cart/item/${productId}`;
-    return apiClient.delete(url);
+    try {
+      // Validate input
+      if (!productId) {
+        return {
+          success: false,
+          error: 'Product ID is required',
+          message: 'Product ID is required',
+        };
+      }
+
+      const url = variant
+        ? `/cart/item/${productId}/${encodeURIComponent(JSON.stringify(variant))}`
+        : `/cart/item/${productId}`;
+
+      logApiRequest('DELETE', url);
+
+      const response = await withRetry(
+        () => apiClient.delete<Cart>(url),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('DELETE', url, response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateCart(response.data)) {
+          console.error('[CART API] Cart validation failed after removing item');
+          return {
+            success: false,
+            error: 'Invalid cart data received after removal',
+            message: 'Failed to remove cart item',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error removing cart item:', error);
+      return createErrorResponse(
+        error,
+        'Failed to remove item from cart. Please try again.'
+      );
+    }
   }
 
-  // Clear entire cart
+  /**
+   * Clear entire cart
+   */
   async clearCart(): Promise<ApiResponse<{ message: string }>> {
+    const startTime = Date.now();
 
-    return apiClient.delete('/cart/clear');
+    try {
+      logApiRequest('DELETE', '/cart/clear');
+
+      const response = await withRetry(
+        () => apiClient.delete<{ message: string }>('/cart/clear'),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('DELETE', '/cart/clear', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error clearing cart:', error);
+      return createErrorResponse(error, 'Failed to clear cart. Please try again.');
+    }
   }
 
-  // Apply coupon to cart
+  /**
+   * Apply coupon to cart
+   */
   async applyCoupon(data: ApplyCouponRequest): Promise<ApiResponse<Cart>> {
+    const startTime = Date.now();
 
-    return apiClient.post('/cart/coupon', data);
+    try {
+      // Validate input
+      if (!data.couponCode || data.couponCode.trim() === '') {
+        return {
+          success: false,
+          error: 'Coupon code is required',
+          message: 'Please enter a coupon code',
+        };
+      }
+
+      logApiRequest('POST', '/cart/coupon', data);
+
+      const response = await withRetry(
+        () => apiClient.post<Cart>('/cart/coupon', data),
+        { maxRetries: 1 } // Don't retry coupon applications
+      );
+
+      logApiResponse('POST', '/cart/coupon', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateCart(response.data)) {
+          console.error('[CART API] Cart validation failed after applying coupon');
+          return {
+            success: false,
+            error: 'Invalid cart data received after applying coupon',
+            message: 'Failed to apply coupon',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error applying coupon:', error);
+      return createErrorResponse(error, 'Failed to apply coupon. Please try again.');
+    }
   }
 
-  // Remove coupon from cart
+  /**
+   * Remove coupon from cart
+   */
   async removeCoupon(): Promise<ApiResponse<Cart>> {
+    const startTime = Date.now();
 
-    return apiClient.delete('/cart/coupon');
+    try {
+      logApiRequest('DELETE', '/cart/coupon');
+
+      const response = await withRetry(
+        () => apiClient.delete<Cart>('/cart/coupon'),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('DELETE', '/cart/coupon', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateCart(response.data)) {
+          console.error('[CART API] Cart validation failed after removing coupon');
+          return {
+            success: false,
+            error: 'Invalid cart data received after removing coupon',
+            message: 'Failed to remove coupon',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error removing coupon:', error);
+      return createErrorResponse(error, 'Failed to remove coupon. Please try again.');
+    }
   }
 
-  // Get cart summary
+  /**
+   * Get cart summary
+   */
   async getCartSummary(): Promise<ApiResponse<Cart>> {
+    const startTime = Date.now();
 
-    return apiClient.get('/cart/summary');
+    try {
+      logApiRequest('GET', '/cart/summary');
+
+      const response = await withRetry(
+        () => apiClient.get<Cart>('/cart/summary'),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/cart/summary', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateCart(response.data)) {
+          console.error('[CART API] Cart summary validation failed');
+          return {
+            success: false,
+            error: 'Invalid cart summary data',
+            message: 'Failed to load cart summary',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error fetching cart summary:', error);
+      return createErrorResponse(error, 'Failed to load cart summary. Please try again.');
+    }
   }
 
-  // Validate cart items (check availability, prices)
+  /**
+   * Validate cart items (check availability, prices)
+   */
   async validateCart(): Promise<ApiResponse<{
     valid: boolean;
     issues: Array<{
@@ -218,85 +567,330 @@ class CartService {
       availableQuantity?: number;
     }>;
   }>> {
+    const startTime = Date.now();
 
-    return apiClient.get('/cart/validate');
+    try {
+      logApiRequest('GET', '/cart/validate');
+
+      const response = await withRetry(
+        () => apiClient.get<{
+          valid: boolean;
+          issues: Array<{
+            itemId: string;
+            type: 'out_of_stock' | 'price_change' | 'unavailable';
+            message: string;
+            currentPrice?: number;
+            availableQuantity?: number;
+          }>;
+        }>('/cart/validate'),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/cart/validate', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error validating cart:', error);
+      return createErrorResponse(error, 'Failed to validate cart. Please try again.');
+    }
   }
 
-  // Get shipping estimates (placeholder - not yet implemented in backend)
+  /**
+   * Get shipping estimates
+   */
   async getShippingEstimates(
     zipCode?: string,
     country?: string
   ): Promise<ApiResponse<ShippingEstimate[]>> {
-
-    // This endpoint is not yet implemented in backend
-    return Promise.reject(new Error('Shipping estimates not yet implemented'));
+    try {
+      console.warn('[CART API] Shipping estimates not yet implemented in backend');
+      return {
+        success: false,
+        error: 'Shipping estimates not yet implemented',
+        message: 'This feature is coming soon',
+      };
+    } catch (error: any) {
+      console.error('[CART API] Error getting shipping estimates:', error);
+      return createErrorResponse(error, 'Failed to get shipping estimates');
+    }
   }
 
-  // Move item to wishlist (placeholder - not yet implemented in backend)
+  /**
+   * Move item to wishlist
+   */
   async moveToWishlist(productId: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      if (!productId) {
+        return {
+          success: false,
+          error: 'Product ID is required',
+          message: 'Product ID is required',
+        };
+      }
 
-    // This endpoint is not yet implemented in backend
-    return Promise.reject(new Error('Move to wishlist not yet implemented'));
+      console.warn('[CART API] Move to wishlist not yet implemented in backend');
+      return {
+        success: false,
+        error: 'Move to wishlist not yet implemented',
+        message: 'This feature is coming soon',
+      };
+    } catch (error: any) {
+      console.error('[CART API] Error moving to wishlist:', error);
+      return createErrorResponse(error, 'Failed to move item to wishlist');
+    }
   }
 
-  // Save cart for later (placeholder - not yet implemented in backend)
+  /**
+   * Save cart for later
+   */
   async saveCartForLater(): Promise<ApiResponse<{ message: string }>> {
-
-    // This endpoint is not yet implemented in backend
-    return Promise.reject(new Error('Save cart for later not yet implemented'));
+    try {
+      console.warn('[CART API] Save cart for later not yet implemented in backend');
+      return {
+        success: false,
+        error: 'Save cart for later not yet implemented',
+        message: 'This feature is coming soon',
+      };
+    } catch (error: any) {
+      console.error('[CART API] Error saving cart for later:', error);
+      return createErrorResponse(error, 'Failed to save cart for later');
+    }
   }
 
-  // Merge guest cart with user cart (placeholder - not yet implemented in backend)
+  /**
+   * Merge guest cart with user cart
+   */
   async mergeCart(guestCartId: string): Promise<ApiResponse<Cart>> {
+    try {
+      if (!guestCartId) {
+        return {
+          success: false,
+          error: 'Guest cart ID is required',
+          message: 'Guest cart ID is required',
+        };
+      }
 
-    // This endpoint is not yet implemented in backend
-    return Promise.reject(new Error('Cart merge not yet implemented'));
+      console.warn('[CART API] Cart merge not yet implemented in backend');
+      return {
+        success: false,
+        error: 'Cart merge not yet implemented',
+        message: 'This feature is coming soon',
+      };
+    } catch (error: any) {
+      console.error('[CART API] Error merging cart:', error);
+      return createErrorResponse(error, 'Failed to merge cart');
+    }
   }
 
-  // Get cart summary for checkout (use existing summary endpoint)
+  /**
+   * Get cart summary for checkout
+   */
   async getCheckoutSummary(): Promise<ApiResponse<{
     items: CartItem[];
     summary: Cart['totals'];
     shippingRequired: boolean;
     taxCalculated: boolean;
   }>> {
+    const startTime = Date.now();
 
-    return this.getCartSummary() as any; // Use cart summary for now
+    try {
+      logApiRequest('GET', '/cart/summary (checkout)');
+
+      // Use cart summary endpoint
+      const response = await this.getCartSummary();
+
+      logApiResponse('GET', '/cart/summary (checkout)', response, Date.now() - startTime);
+
+      if (response.success && response.data) {
+        // Transform to checkout summary format
+        return {
+          success: true,
+          data: {
+            items: response.data.items,
+            summary: response.data.totals,
+            shippingRequired: true,
+            taxCalculated: response.data.totals.tax > 0,
+          },
+        };
+      }
+
+      return response as any;
+    } catch (error: any) {
+      console.error('[CART API] Error getting checkout summary:', error);
+      return createErrorResponse(error, 'Failed to load checkout summary');
+    }
   }
 
-  // Lock item at current price
+  /**
+   * Lock item at current price
+   */
   async lockItem(data: {
     productId: string;
     quantity?: number;
     variant?: { type: string; value: string };
     lockDurationHours?: number;
   }): Promise<ApiResponse<{ cart: Cart; message: string }>> {
+    const startTime = Date.now();
 
-    return apiClient.post('/cart/lock', data);
+    try {
+      // Validate input
+      if (!data.productId) {
+        return {
+          success: false,
+          error: 'Product ID is required',
+          message: 'Product ID is required',
+        };
+      }
+
+      logApiRequest('POST', '/cart/lock', data);
+
+      const response = await withRetry(
+        () => apiClient.post<{ cart: Cart; message: string }>('/cart/lock', data),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', '/cart/lock', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data?.cart) {
+        if (!validateCart(response.data.cart)) {
+          console.error('[CART API] Cart validation failed after locking item');
+          return {
+            success: false,
+            error: 'Invalid cart data after locking item',
+            message: 'Failed to lock item',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error locking item:', error);
+      return createErrorResponse(error, 'Failed to lock item. Please try again.');
+    }
   }
 
-  // Get locked items
-  async getLockedItems(): Promise<ApiResponse<{ lockedItems: any[] }>> {
+  /**
+   * Get locked items
+   */
+  async getLockedItems(): Promise<ApiResponse<{ lockedItems: LockedItem[] }>> {
+    const startTime = Date.now();
 
-    return apiClient.get('/cart/locked');
+    try {
+      logApiRequest('GET', '/cart/locked');
+
+      const response = await withRetry(
+        () => apiClient.get<{ lockedItems: LockedItem[] }>('/cart/locked'),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/cart/locked', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error fetching locked items:', error);
+      return createErrorResponse(error, 'Failed to load locked items');
+    }
   }
 
-  // Unlock item
+  /**
+   * Unlock item
+   */
   async unlockItem(
     productId: string,
     variant?: { type: string; value: string }
   ): Promise<ApiResponse<Cart>> {
+    const startTime = Date.now();
 
-    return apiClient.delete(`/cart/lock/${productId}`, variant ? { variant } : undefined);
+    try {
+      // Validate input
+      if (!productId) {
+        return {
+          success: false,
+          error: 'Product ID is required',
+          message: 'Product ID is required',
+        };
+      }
+
+      logApiRequest('DELETE', `/cart/lock/${productId}`);
+
+      const response = await withRetry(
+        () => apiClient.delete<Cart>(
+          `/cart/lock/${productId}`,
+          variant ? { variant } : undefined
+        ),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('DELETE', `/cart/lock/${productId}`, response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateCart(response.data)) {
+          console.error('[CART API] Cart validation failed after unlocking item');
+          return {
+            success: false,
+            error: 'Invalid cart data after unlocking item',
+            message: 'Failed to unlock item',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error unlocking item:', error);
+      return createErrorResponse(error, 'Failed to unlock item');
+    }
   }
 
-  // Move locked item to cart
+  /**
+   * Move locked item to cart
+   */
   async moveLockedToCart(
     productId: string,
     variant?: { type: string; value: string }
   ): Promise<ApiResponse<Cart>> {
+    const startTime = Date.now();
 
-    return apiClient.post(`/cart/lock/${productId}/move-to-cart`, variant ? { variant } : {});
+    try {
+      // Validate input
+      if (!productId) {
+        return {
+          success: false,
+          error: 'Product ID is required',
+          message: 'Product ID is required',
+        };
+      }
+
+      logApiRequest('POST', `/cart/lock/${productId}/move-to-cart`);
+
+      const response = await withRetry(
+        () => apiClient.post<Cart>(
+          `/cart/lock/${productId}/move-to-cart`,
+          variant ? { variant } : {}
+        ),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', `/cart/lock/${productId}/move-to-cart`, response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateCart(response.data)) {
+          console.error('[CART API] Cart validation failed after moving locked item');
+          return {
+            success: false,
+            error: 'Invalid cart data after moving locked item',
+            message: 'Failed to move locked item to cart',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error moving locked item to cart:', error);
+      return createErrorResponse(error, 'Failed to move locked item to cart');
+    }
   }
 }
 

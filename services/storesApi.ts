@@ -2,7 +2,16 @@
 // Handles store listings, details, and management
 
 import apiClient, { ApiResponse } from './apiClient';
+import { validateStore, validateStoreArray } from '@/utils/responseValidators';
+import {
+  Store as UnifiedStore,
+  toStore,
+  validateStore as validateUnifiedStore,
+  isStoreOpen,
+  isStoreVerified
+} from '@/types/unified';
 
+// Keep the old Store interface for backwards compatibility during migration
 export interface Store {
   id: string;
   name: string;
@@ -77,6 +86,9 @@ export interface Store {
   createdAt: string;
   updatedAt: string;
 }
+
+// Export unified Store type for new code
+export { UnifiedStore };
 
 export interface StoresQuery {
   page?: number;
@@ -165,17 +177,203 @@ class StoresService {
 
   // Get single store by ID
   async getStoreById(storeId: string): Promise<ApiResponse<Store>> {
-    return apiClient.get(`/stores/${storeId}`);
+    try {
+      const response = await apiClient.get<any>(`/stores/${storeId}`);
+
+      // Validate and normalize store data using unified types
+      if (response.success && response.data) {
+        // Extract store from nested structure (API returns { store: {...}, products: [...], productsCount: ... })
+        const storeData = (response.data as any).store || response.data;
+        
+        if (!storeData) {
+          return {
+            success: false,
+            error: 'Store not found',
+            message: 'Store data not found in response',
+          };
+        }
+
+        // Debug: Log raw store data from API
+        console.log('📦 [STORES API] Raw store data from backend:', {
+          hasDescription: !!storeData.description,
+          hasContact: !!storeData.contact,
+          hasOperationalInfo: !!storeData.operationalInfo,
+          hasBanner: !!storeData.banner,
+          hasLogo: !!storeData.logo,
+          hasImage: !!storeData.image,
+          banner: storeData.banner,
+          logo: storeData.logo,
+          image: storeData.image,
+          contact: storeData.contact,
+          operationalInfo: storeData.operationalInfo,
+          description: storeData.description,
+        });
+
+        try {
+          // Convert to unified Store format
+          const unifiedStore = toStore(storeData);
+          
+          // Debug: Log after conversion
+          console.log('🔄 [STORES API] After toStore conversion:', {
+            hasDescription: !!unifiedStore.description,
+            hasContact: !!unifiedStore.contact,
+            hasOperationalInfo: !!unifiedStore.operationalInfo,
+            hasBanner: !!(unifiedStore as any).banner,
+            hasLogo: !!(unifiedStore as any).logo,
+            hasImage: !!(unifiedStore as any).image,
+            banner: (unifiedStore as any).banner,
+            logo: (unifiedStore as any).logo,
+            image: (unifiedStore as any).image,
+            contact: unifiedStore.contact,
+            operationalInfo: unifiedStore.operationalInfo,
+            description: unifiedStore.description,
+          });
+
+          // Validate using unified validator
+          const validation = validateUnifiedStore(unifiedStore);
+          if (validation.valid) {
+            // Preserve all original fields that might be lost in conversion
+            // The toStore() function converts some fields but we need to keep the original structure
+            const finalStoreData = {
+              ...unifiedStore,
+              // Preserve original fields that toStore() might not handle correctly
+              description: storeData.description || unifiedStore.description || '',
+              contact: storeData.contact || unifiedStore.contact,
+              operationalInfo: storeData.operationalInfo || undefined, // Keep original operationalInfo structure
+              // Preserve the raw location object with all fields (state, pincode, etc.)
+              location: storeData.location || unifiedStore.location,
+              // Preserve banner and logo fields explicitly
+              banner: storeData.banner || (unifiedStore as any).banner || '',
+              logo: storeData.logo || (unifiedStore as any).logo || '',
+              image: storeData.image || storeData.banner || (unifiedStore as any).image || (unifiedStore as any).banner || '',
+              // Also preserve any other fields that might be useful
+              tags: storeData.tags || unifiedStore.tags || [],
+              deliveryCategories: storeData.deliveryCategories,
+              offers: storeData.offers,
+              createdAt: storeData.createdAt,
+              updatedAt: storeData.updatedAt,
+            };
+            
+            // Debug: Log final store data
+            console.log('✅ [STORES API] Final store data with preserved fields:', {
+              hasBanner: !!finalStoreData.banner,
+              hasLogo: !!finalStoreData.logo,
+              hasImage: !!finalStoreData.image,
+              banner: finalStoreData.banner,
+              logo: finalStoreData.logo,
+              image: finalStoreData.image,
+            });
+            
+            return {
+              ...response,
+              data: finalStoreData as any, // Cast to Store for backwards compatibility
+            };
+          } else {
+            console.warn('⚠️ [STORES API] Store validation failed for ID:', storeId, validation.errors);
+            // Return raw data with preserved fields if validation fails but data exists
+            const fallbackData = {
+              ...storeData,
+              // Ensure we have at least the basic structure
+              description: storeData.description || '',
+              contact: storeData.contact || undefined,
+              operationalInfo: storeData.operationalInfo || undefined,
+            };
+            return {
+              ...response,
+              data: fallbackData as any,
+            };
+          }
+        } catch (conversionError: any) {
+          console.warn('⚠️ [STORES API] Store conversion failed for ID:', storeId, conversionError);
+          // Fallback to old validation or return raw data
+          const validatedStore = validateStore(storeData);
+          if (validatedStore) {
+            return {
+              ...response,
+              data: validatedStore as Store,
+            };
+          } else {
+            // Return raw data as fallback
+            return {
+              ...response,
+              data: storeData as any,
+            };
+          }
+        }
+      }
+
+      return {
+        success: false,
+        error: 'Store not found',
+        message: 'No store data in response',
+      };
+    } catch (error: any) {
+      console.error('❌ [STORES API] Error fetching store by ID:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch store',
+        message: error?.message || 'Failed to fetch store',
+      };
+    }
   }
 
   // Get store by slug
   async getStoreBySlug(slug: string): Promise<ApiResponse<Store>> {
-    return apiClient.get(`/stores/slug/${slug}`);
+    try {
+      const response = await apiClient.get<Store>(`/stores/slug/${slug}`);
+
+      // Validate and normalize store data
+      if (response.success && response.data) {
+        const validatedStore = validateStore(response.data);
+        if (validatedStore) {
+          return {
+            ...response,
+            data: validatedStore as Store,
+          };
+        } else {
+          console.warn('⚠️ [STORES API] Store validation failed for slug:', slug);
+          return {
+            success: false,
+            error: 'Store validation failed',
+            message: 'Invalid store data received from server',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [STORES API] Error fetching store by slug:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch store',
+        message: error?.message || 'Failed to fetch store',
+      };
+    }
   }
 
   // Get featured stores
   async getFeaturedStores(limit: number = 10): Promise<ApiResponse<Store[]>> {
-    return apiClient.get('/stores/featured', { limit });
+    try {
+      const response = await apiClient.get<Store[]>('/stores/featured', { limit });
+
+      // Validate and normalize store array
+      if (response.success && response.data && Array.isArray(response.data)) {
+        const validatedStores = validateStoreArray(response.data);
+        return {
+          ...response,
+          data: validatedStores as Store[],
+        };
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [STORES API] Error fetching featured stores:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch featured stores',
+        message: error?.message || 'Failed to fetch featured stores',
+      };
+    }
   }
 
   // Get stores near location
@@ -314,7 +512,35 @@ class StoresService {
       ratingBreakdown: Record<number, number>;
     };
   }>> {
-    return apiClient.get(`/stores/${storeId}/reviews`, query);
+    console.log('🌐 [storesApi] Fetching store reviews');
+    console.log('  📌 Store ID:', storeId);
+    console.log('  🔍 Query Params:', JSON.stringify(query, null, 2));
+    
+    const response = await apiClient.get(`/stores/${storeId}/reviews`, query);
+    
+    console.log('🌐 [storesApi] API Response Received:');
+    console.log('  ✅ Success:', response.success);
+    console.log('  📦 Full Response:', JSON.stringify(response, null, 2));
+    
+    if (response.success && response.data) {
+      console.log('  📝 Reviews Count:', response.data.reviews?.length || 0);
+      console.log('  📊 Summary:', JSON.stringify(response.data.summary, null, 2));
+      console.log('  📄 Pagination:', JSON.stringify(response.data.pagination, null, 2));
+      
+      // Log each review's user data
+      if (response.data.reviews && response.data.reviews.length > 0) {
+        response.data.reviews.forEach((review: any, index: number) => {
+          console.log(`  👤 Review ${index + 1} User Data:`, {
+            userId: review.user?.id,
+            userName: review.user?.name,
+            userAvatar: review.user?.avatar,
+            fullUserObject: JSON.stringify(review.user, null, 2),
+          });
+        });
+      }
+    }
+    
+    return response;
   }
 
   // Add store review
@@ -434,56 +660,45 @@ class StoresService {
    */
   async getFeaturedForHomepage(limit: number = 10): Promise<any[]> {
     try {
-      console.log(`🏪 [STORES API] Fetching ${limit} featured stores for homepage...`);
-      console.log(`🌐 [STORES API] API URL: ${process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5001/api'}/stores/featured`);
-
       const response = await apiClient.get('/stores/featured', { limit });
 
-      console.log('📊 [STORES API] Featured stores response:', {
-        success: response.success,
-        hasData: !!response.data,
-        isArray: Array.isArray(response.data),
-        count: response.data?.length || 0,
-        message: response.message,
-        error: response.error
-      });
-
       if (response.success && response.data && Array.isArray(response.data)) {
-        console.log(`✅ [STORES API] Successfully fetched ${response.data.length} featured stores from backend`);
+
+        // Validate and normalize stores first
+        const validatedStores = validateStoreArray(response.data);
 
         // Transform backend store data to frontend StoreItem format
-        const stores = response.data.map((store: any) => {
-          console.log(`   📍 Store: ${store.name} (ID: ${store._id})`);
+        const stores = validatedStores.map((store: any) => {
+          // Handle banner field - can be array or string
+          let imageField: string | string[] = '';
+          const bannerData = store.banner;
+          
+          if (bannerData) {
+            // If banner is an array, use the first image for the image field
+            // but also preserve the banner array for the StoreCard component
+            if (Array.isArray(bannerData) && bannerData.length > 0) {
+              imageField = bannerData[0]; // First banner for image field
+            } else if (typeof bannerData === 'string') {
+              imageField = bannerData;
+            }
+          } else if (store.image) {
+            imageField = store.image;
+          }
+          
           return {
-            id: store._id,
-            type: 'store',
-            title: store.name,
-            name: store.name,
-            image: store.image || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=200&fit=crop',
-            description: store.description,
-            logo: store.logo || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=100&h=100&fit=crop',
-            rating: {
-              value: store.ratings?.average || 4.5,
-              count: store.ratings?.count || 0,
-              maxValue: 5
-            },
-            cashback: {
-              percentage: store.offers?.cashback || 10,
-              maxAmount: store.offers?.maxCashback || 500
-            },
-            category: this.determineCategory(store.deliveryCategories),
-            location: {
-              address: store.location?.address || 'Location',
-              city: store.location?.city || 'City',
-              distance: this.calculateDisplayDistance(store.location?.coordinates)
-            },
+            ...store,
+            // Ensure ID is set (handle both _id and id)
+            id: store.id || store._id,
+            // Map banner to image field for HomepageSectionItem interface
+            image: imageField,
+            // CRITICAL: Explicitly preserve banner array for StoreCard component
+            // Don't overwrite if it's already an array
+            banner: bannerData || (Array.isArray(store.image) ? store.image : (store.image || '')),
+            // Add any additional transformations needed for homepage display
             isTrending: true, // Featured stores are considered trending
-            deliveryTime: store.operationalInfo?.deliveryTime || '30-45 mins',
-            minimumOrder: store.operationalInfo?.minimumOrder || 299
           };
         });
 
-        console.log(`✅ [STORES API] Transformed ${stores.length} stores with real ObjectIds`);
         return stores;
       }
 

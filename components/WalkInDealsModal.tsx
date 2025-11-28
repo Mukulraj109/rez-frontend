@@ -9,6 +9,7 @@ import {
   Animated,
   ActivityIndicator,
   Text,
+  ScrollView,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,29 +79,125 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
       if (response.success && response.data) {
         const fetchedDeals = response.data.deals || [];
         // Transform API deals to match Deal interface
-        const transformedDeals = fetchedDeals.map((deal: any) => ({
-          id: deal.id,
-          title: deal.title,
-          discountType: deal.discountType === 'bogo' ? 'fixed' : deal.discountType,
-          discountValue: deal.discountValue,
-          minimumBill: deal.minPurchase || 0,
-          maxDiscount: deal.maxDiscount,
-          isOfflineOnly: deal.type === 'walk_in',
-          terms: deal.terms || [],
-          isActive: deal.isActive,
-          validUntil: new Date(deal.validUntil),
-          category: deal.category || 'instant-discount',
-          description: deal.description,
-          priority: deal.priority || 1,
-          usageLimit: deal.usageLimit,
-          usageCount: deal.usedCount || 0,
-          applicableProducts: deal.applicableProducts || [],
-          badge: deal.badge || {
-            text: `${deal.discountValue}%`,
-            backgroundColor: '#E5E7EB',
-            textColor: '#374151'
+        const transformedDeals = fetchedDeals.map((deal: any) => {
+          // Determine discount type and value
+          let discountType: 'percentage' | 'fixed' = 'percentage';
+          let discountValue = 0;
+          
+          if (deal.type === 'cashback') {
+            discountType = 'percentage';
+            discountValue = deal.cashbackPercentage || 0;
+          } else if (deal.type === 'discount' || deal.type === 'walk_in') {
+            // For discount/walk_in, check if we have originalPrice and discountedPrice
+            if (deal.originalPrice && deal.discountedPrice) {
+              const discountAmount = deal.originalPrice - deal.discountedPrice;
+              discountValue = Math.round((discountAmount / deal.originalPrice) * 100);
+              discountType = 'percentage';
+            } else if (deal.cashbackPercentage) {
+              discountValue = deal.cashbackPercentage;
+              discountType = 'percentage';
+            } else {
+              discountValue = 0;
+            }
+          } else {
+            discountValue = deal.cashbackPercentage || 0;
           }
-        }));
+
+          // Generate badge text based on deal type and values
+          let badgeText = '';
+          if (deal.originalPrice && deal.discountedPrice) {
+            const discountAmount = deal.originalPrice - deal.discountedPrice;
+            const discountPercent = Math.round((discountAmount / deal.originalPrice) * 100);
+            badgeText = `${discountPercent}% OFF`;
+          } else if (deal.cashbackPercentage > 0) {
+            badgeText = `${deal.cashbackPercentage}% Cashback`;
+          } else if (discountValue > 0) {
+            badgeText = `${discountValue}% OFF`;
+          } else {
+            badgeText = 'Special Deal';
+          }
+
+          // Map category to DealCategory
+          const categoryMap: Record<string, string> = {
+            'mega': 'instant-discount',
+            'student': 'first-time',
+            'new_arrival': 'instant-discount',
+            'trending': 'instant-discount',
+            'food': 'instant-discount',
+            'fashion': 'instant-discount',
+            'electronics': 'instant-discount',
+            'general': 'instant-discount',
+          };
+          const mappedCategory = categoryMap[deal.category] || 'instant-discount';
+
+          // Build terms array from restrictions and other fields
+          const terms: string[] = [];
+          if (deal.restrictions?.minOrderValue) {
+            terms.push(`Minimum order: ₹${deal.restrictions.minOrderValue}`);
+          }
+          if (deal.restrictions?.maxDiscountAmount) {
+            terms.push(`Max discount: ₹${deal.restrictions.maxDiscountAmount}`);
+          }
+          if (deal.restrictions?.usageLimitPerUser) {
+            terms.push(`Limit: ${deal.restrictions.usageLimitPerUser} per user`);
+          }
+          if (deal.restrictions?.usageLimit) {
+            terms.push(`Total limit: ${deal.restrictions.usageLimit} uses`);
+          }
+          if (deal.restrictions?.applicableOn && Array.isArray(deal.restrictions.applicableOn) && deal.restrictions.applicableOn.length > 0) {
+            terms.push(`Applicable on: ${deal.restrictions.applicableOn.join(', ')}`);
+          }
+          if (deal.description) {
+            // Add description as additional context if no other terms
+            if (terms.length === 0) {
+              terms.push(deal.description);
+            }
+          }
+
+          // Determine badge color based on deal type
+          let badgeBgColor = '#E5E7EB';
+          let badgeTextColor = '#374151';
+          if (deal.metadata?.featured || deal.type === 'mega') {
+            badgeBgColor = '#FEF3C7';
+            badgeTextColor = '#92400E';
+          } else if (deal.type === 'cashback') {
+            badgeBgColor = '#D1FAE5';
+            badgeTextColor = '#065F46';
+          } else if (deal.type === 'walk_in') {
+            badgeBgColor = '#DBEAFE';
+            badgeTextColor = '#1E40AF';
+          }
+
+          return {
+            id: deal._id || deal.id,
+            title: deal.title,
+            discountType,
+            discountValue,
+            minimumBill: deal.restrictions?.minOrderValue || deal.minPurchase || 0,
+            maxDiscount: deal.restrictions?.maxDiscountAmount || deal.maxDiscount,
+            isOfflineOnly: deal.type === 'walk_in',
+            terms: terms.length > 0 ? terms : (deal.restrictions?.applicableOn || []),
+            isActive: deal.validity?.isActive !== false && new Date(deal.validity?.endDate || deal.validUntil || Date.now()) > new Date(),
+            validUntil: new Date(deal.validity?.endDate || deal.validUntil || Date.now()),
+            category: mappedCategory as any,
+            description: deal.description || deal.subtitle || '',
+            priority: deal.metadata?.priority || deal.priority || 1,
+            usageLimit: deal.restrictions?.usageLimit || deal.usageLimit,
+            usageCount: deal.usageCount || 0,
+            applicableProducts: deal.restrictions?.applicableOn || deal.applicableProducts || [],
+            badge: deal.badge || {
+              text: badgeText,
+              backgroundColor: badgeBgColor,
+              textColor: badgeTextColor
+            },
+            // Additional fields for display
+            image: deal.image,
+            subtitle: deal.subtitle,
+            originalPrice: deal.originalPrice,
+            discountedPrice: deal.discountedPrice,
+            featured: deal.metadata?.featured || false,
+          };
+        });
 
         setApiDeals(transformedDeals);
         setDealCount(response.data.totalCount || transformedDeals.length);
@@ -195,99 +292,119 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
                   <Ionicons name="close" size={20} color="#555" />
                 </TouchableOpacity>
 
-                <View style={styles.header}>
-                  <ThemedText style={styles.headerTitle}>Walk-in Deals</ThemedText>
-                  <ThemedText style={styles.headerSubtitle}>
-                    {dealCount > 0 ? `${dealCount} deals available` : 'Available offers for this store'}
-                  </ThemedText>
-                </View>
+                <ScrollView 
+                  style={styles.scrollView}
+                  contentContainerStyle={styles.scrollContent}
+                  showsVerticalScrollIndicator={true}
+                  bounces={true}
+                >
+                  <View style={styles.header}>
+                    <View style={styles.headerContent}>
+                      <Ionicons name="pricetag" size={24} color="#7C3AED" style={styles.headerIcon} />
+                      <View style={styles.headerTextContainer}>
+                        <ThemedText style={styles.headerTitle}>Walk-in Deals</ThemedText>
+                        <ThemedText style={styles.headerSubtitle}>
+                          {dealCount > 0 ? `${dealCount} deals available` : 'Available offers for this store'}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  </View>
 
-                {/* Filter Tabs */}
-                <View style={styles.filterContainer}>
-                  <TouchableOpacity
-                    style={[styles.filterTab, filterType === 'all' && styles.filterTabActive]}
-                    onPress={() => handleFilterChange('all')}
-                  >
-                    <Text style={[styles.filterTabText, filterType === 'all' && styles.filterTabTextActive]}>
-                      All
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.filterTab, filterType === 'walk_in' && styles.filterTabActive]}
-                    onPress={() => handleFilterChange('walk_in')}
-                  >
-                    <Text style={[styles.filterTabText, filterType === 'walk_in' && styles.filterTabTextActive]}>
-                      Walk-in
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.filterTab, filterType === 'online' && styles.filterTabActive]}
-                    onPress={() => handleFilterChange('online')}
-                  >
-                    <Text style={[styles.filterTabText, filterType === 'online' && styles.filterTabTextActive]}>
-                      Online
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.filterTab, filterType === 'cashback' && styles.filterTabActive]}
-                    onPress={() => handleFilterChange('cashback')}
-                  >
-                    <Text style={[styles.filterTabText, filterType === 'cashback' && styles.filterTabTextActive]}>
-                      Cashback
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.filterTab, filterType === 'combo' && styles.filterTabActive]}
-                    onPress={() => handleFilterChange('combo')}
-                  >
-                    <Text style={[styles.filterTabText, filterType === 'combo' && styles.filterTabTextActive]}>
-                      Combos
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Error State */}
-                {error && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle" size={20} color="#EF4444" />
-                    <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity style={styles.retryButton} onPress={handleRefreshDeals}>
-                      <Text style={styles.retryButtonText}>Retry</Text>
+                  {/* Filter Tabs */}
+                  <View style={styles.filterContainer}>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.filterScrollContent}
+                    >
+                    <TouchableOpacity
+                      style={[styles.filterTab, filterType === 'all' && styles.filterTabActive]}
+                      onPress={() => handleFilterChange('all')}
+                    >
+                      <Text style={[styles.filterTabText, filterType === 'all' && styles.filterTabTextActive]}>
+                        All
+                      </Text>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterTab, filterType === 'walk_in' && styles.filterTabActive]}
+                      onPress={() => handleFilterChange('walk_in')}
+                    >
+                      <Text style={[styles.filterTabText, filterType === 'walk_in' && styles.filterTabTextActive]}>
+                        Walk-in
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterTab, filterType === 'online' && styles.filterTabActive]}
+                      onPress={() => handleFilterChange('online')}
+                    >
+                      <Text style={[styles.filterTabText, filterType === 'online' && styles.filterTabTextActive]}>
+                        Online
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterTab, filterType === 'cashback' && styles.filterTabActive]}
+                      onPress={() => handleFilterChange('cashback')}
+                    >
+                      <Text style={[styles.filterTabText, filterType === 'cashback' && styles.filterTabTextActive]}>
+                        Cashback
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterTab, filterType === 'combo' && styles.filterTabActive]}
+                      onPress={() => handleFilterChange('combo')}
+                    >
+                      <Text style={[styles.filterTabText, filterType === 'combo' && styles.filterTabTextActive]}>
+                        Combos
+                      </Text>
+                    </TouchableOpacity>
+                    </ScrollView>
                   </View>
-                )}
 
-                {/* Empty State */}
-                {!isLoadingDeals && !error && activeDeals.length === 0 && (
-                  <View style={styles.emptyContainer}>
-                    <Ionicons name="gift-outline" size={64} color="#D1D5DB" />
-                    <Text style={styles.emptyTitle}>No deals available right now</Text>
-                    <Text style={styles.emptySubtitle}>Check back later for exciting offers!</Text>
-                  </View>
-                )}
+                  {/* Error State */}
+                  {error && (
+                    <View style={styles.errorContainer}>
+                      <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                      <Text style={styles.errorText}>{error}</Text>
+                      <TouchableOpacity style={styles.retryButton} onPress={handleRefreshDeals}>
+                        <Text style={styles.retryButtonText}>Retry</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
-                {/* Deals List */}
-                {!error && activeDeals.length > 0 && (
-                  <View style={styles.listContainer}>
-                    <DealList
-                      deals={activeDeals}
-                      selectedDeals={selectedDeals}
-                      onAddDeal={handleAddDeal}
-                      onRemoveDeal={handleRemoveDeal}
-                      onMoreDetails={handleMoreDetails}
-                      isLoading={isLoadingDeals}
-                      onRefresh={handleRefreshDeals}
-                      showFilters={true}
-                    />
-                  </View>
-                )}
+                  {/* Empty State */}
+                  {!isLoadingDeals && !error && activeDeals.length === 0 && (
+                    <View style={styles.emptyContainer}>
+                      <View style={styles.emptyIconContainer}>
+                        <Ionicons name="gift-outline" size={72} color="#7C3AED" />
+                      </View>
+                      <Text style={styles.emptyTitle}>No deals available right now</Text>
+                      <Text style={styles.emptySubtitle}>Check back later for exciting offers!</Text>
+                    </View>
+                  )}
 
-                {/* Loading Skeleton */}
-                {isLoadingDeals && activeDeals.length === 0 && (
-                  <View style={styles.listContainer}>
-                    <DealsListSkeleton count={4} />
-                  </View>
-                )}
+                  {/* Deals List */}
+                  {!error && activeDeals.length > 0 && (
+                    <View style={styles.listContainer}>
+                      <DealList
+                        deals={activeDeals}
+                        selectedDeals={selectedDeals}
+                        onAddDeal={handleAddDeal}
+                        onRemoveDeal={handleRemoveDeal}
+                        onMoreDetails={handleMoreDetails}
+                        isLoading={isLoadingDeals}
+                        onRefresh={handleRefreshDeals}
+                        showFilters={true}
+                      />
+                    </View>
+                  )}
+
+                  {/* Loading Skeleton */}
+                  {isLoadingDeals && activeDeals.length === 0 && (
+                    <View style={styles.listContainer}>
+                      <DealsListSkeleton count={4} />
+                    </View>
+                  )}
+                </ScrollView>
               </View>
             </Animated.View>
           </TouchableWithoutFeedback>
@@ -326,81 +443,119 @@ const createStyles = (screenData: { width: number; height: number }) => {
     },
     modal: {
       backgroundColor: '#fff',
-      borderRadius: isTabletOrLarge ? 0 : 20,
+      borderTopLeftRadius: isTabletOrLarge ? 0 : 24,
+      borderTopRightRadius: isTabletOrLarge ? 0 : 24,
       width: '100%',
       maxHeight: maxModalHeight,
       minHeight: isSmallScreen ? 300 : 400,
-      padding: modalPadding,
+      padding: 0, // Remove padding from modal, add to scrollView
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      elevation: 6,
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 16,
+      elevation: 8,
+      overflow: 'hidden', // Ensure content doesn't overflow
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: modalPadding,
+      paddingBottom: isSmallScreen ? modalPadding + 40 : modalPadding + 50, // Extra padding at bottom for savings preview
     },
     closeButton: {
       position: 'absolute',
-      top: modalPadding - 4,
-      right: modalPadding - 4,
-      backgroundColor: '#f2f2f2',
+      top: modalPadding + 4,
+      right: modalPadding + 4,
+      backgroundColor: '#F3F4F6',
       borderRadius: 20,
-      width: isSmallScreen ? 28 : 32,
-      height: isSmallScreen ? 28 : 32,
+      width: isSmallScreen ? 36 : 40,
+      height: isSmallScreen ? 36 : 40,
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
     },
     header: {
-      marginTop: isSmallScreen ? 16 : 24,
-      marginBottom: isSmallScreen ? 16 : 20,
-      alignItems: 'center',
-      paddingHorizontal: isSmallScreen ? 12 : 20,
-      paddingTop: 8,
+      marginTop: isSmallScreen ? 8 : 12,
+      marginBottom: isSmallScreen ? 20 : 24,
+      paddingHorizontal: isSmallScreen ? 8 : 12,
       zIndex: 1,
     },
+    headerContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingRight: isSmallScreen ? 40 : 48, // Space for close button
+    },
+    headerIcon: {
+      marginRight: 12,
+    },
+    headerTextContainer: {
+      flex: 1,
+      alignItems: 'flex-start',
+    },
     headerTitle: {
-      fontSize: isSmallScreen ? 18 : isTabletOrLarge ? 24 : 20,
+      fontSize: isSmallScreen ? 22 : isTabletOrLarge ? 28 : 24,
       fontWeight: '700',
-      color: '#111',
-      marginBottom: 6,
-      textAlign: 'center',
+      color: '#111827',
+      marginBottom: 4,
+      letterSpacing: -0.5,
     },
     headerSubtitle: {
-      fontSize: isSmallScreen ? 13 : isTabletOrLarge ? 16 : 14,
-      color: '#666',
-      textAlign: 'center',
+      fontSize: isSmallScreen ? 13 : isTabletOrLarge ? 15 : 14,
+      color: '#6B7280',
       lineHeight: isSmallScreen ? 18 : 20,
     },
     filterContainer: {
-      flexDirection: 'row',
-      paddingHorizontal: isSmallScreen ? 8 : 12,
-      paddingVertical: 12,
-      gap: 8,
+      marginBottom: 16,
+      paddingBottom: 12,
       borderBottomWidth: 1,
-      borderBottomColor: '#F1F5F9',
-      marginBottom: 12,
+      borderBottomColor: '#E5E7EB',
+    },
+    filterScrollContent: {
+      paddingHorizontal: isSmallScreen ? 8 : 12,
+      gap: 10,
+      alignItems: 'center',
     },
     filterTab: {
-      paddingHorizontal: isSmallScreen ? 10 : 14,
-      paddingVertical: 8,
-      borderRadius: 20,
-      backgroundColor: '#F8FAFC',
-      borderWidth: 1,
-      borderColor: '#E2E8F0',
-      minHeight: 36,
+      paddingHorizontal: isSmallScreen ? 14 : 18,
+      paddingVertical: 10,
+      borderRadius: 24,
+      backgroundColor: '#F9FAFB',
+      borderWidth: 1.5,
+      borderColor: '#E5E7EB',
+      minHeight: 40,
       justifyContent: 'center',
       alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
     },
     filterTabActive: {
       backgroundColor: '#7C3AED',
       borderColor: '#7C3AED',
+      shadowColor: '#7C3AED',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
     },
     filterTabText: {
       fontSize: isSmallScreen ? 12 : 13,
       fontWeight: '600',
-      color: '#64748B',
+      color: '#6B7280',
+      letterSpacing: 0.2,
     },
     filterTabTextActive: {
       color: '#FFFFFF',
+      fontWeight: '700',
     },
     listContainer: { flex: 1, marginTop: 0, paddingTop: 8 },
     errorContainer: {
@@ -434,22 +589,32 @@ const createStyles = (screenData: { width: number; height: number }) => {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingVertical: 60,
-      paddingHorizontal: 20,
+      paddingVertical: 80,
+      paddingHorizontal: 32,
+    },
+    emptyIconContainer: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: '#F3F4F6',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 24,
     },
     emptyTitle: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: '#374151',
-      marginTop: 16,
+      fontSize: 20,
+      fontWeight: '700',
+      color: '#111827',
       marginBottom: 8,
       textAlign: 'center',
+      letterSpacing: -0.3,
     },
     emptySubtitle: {
-      fontSize: 14,
+      fontSize: 15,
       color: '#6B7280',
       textAlign: 'center',
-      lineHeight: 20,
+      lineHeight: 22,
+      paddingHorizontal: 20,
     },
     loadingContainer: {
       flex: 1,

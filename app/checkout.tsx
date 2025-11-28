@@ -21,6 +21,7 @@ import { useCheckout } from '@/hooks/useCheckout';
 import { useCartValidation } from '@/hooks/useCartValidation';
 import StockWarningBanner from '@/components/cart/StockWarningBanner';
 import CartValidation from '@/components/cart/CartValidation';
+import CardOffersSection from '@/components/cart/CardOffersSection';
 import { showToast } from '@/components/common/ToastManager';
 
 const { width } = Dimensions.get('window');
@@ -271,6 +272,19 @@ export default function CheckoutPage() {
             The selected store is 3 km away from your current location. Please confirm.
           </ThemedText>
         </View>
+
+        {/* Card Offers Section */}
+        {state.billSummary?.totalPayable && state.billSummary.totalPayable > 0 && (
+          <CardOffersSection
+            storeId={state.selectedStore?.id || state.selectedStore?._id}
+            orderValue={state.billSummary.totalPayable}
+            compact={true}
+            onOfferApplied={(offer) => {
+              // Offer applied - will be handled at payment
+              console.log('Card offer applied at checkout:', offer);
+            }}
+          />
+        )}
 
         {/* Apply Promocode Section */}
         <View style={styles.section}>
@@ -604,6 +618,18 @@ export default function CheckoutPage() {
               </View>
             )}
 
+            {/* Card Offer Discount */}
+            {((state as any).appliedCardOffer || (state.billSummary as any)?.cardOfferDiscount) && (
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: '#8B5CF6' }]}>
+                  Card Offer Discount
+                </ThemedText>
+                <ThemedText style={[styles.summaryValue, { color: '#8B5CF6' }]}>
+                  -₹{((state.billSummary as any)?.cardOfferDiscount || 0).toFixed(0)}
+                </ThemedText>
+              </View>
+            )}
+
             {(state.billSummary?.coinDiscount || 0) > 0 && (
               <View style={styles.summaryRow}>
                 <ThemedText style={[styles.summaryLabel, { color: '#8B5CF6' }]}>
@@ -661,7 +687,16 @@ export default function CheckoutPage() {
             styles.paybillButton,
             (state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout) && styles.disabledButton
           ]}
-          onPress={handlers.handlePayBillPayment}
+          onPress={() => {
+            // ✅ FIX: Add error handling wrapper
+            try {
+              console.log('💳 [CHECKOUT] Attempting PayBill payment');
+              handlers.handlePayBillPayment();
+            } catch (error) {
+              console.error('❌ [CHECKOUT] PayBill payment error:', error);
+              Alert.alert('Payment Error', 'Unable to process PayBill payment. Please try again.');
+            }
+          }}
           activeOpacity={0.7}
           disabled={state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
           accessibilityLabel={state.loading
@@ -697,7 +732,16 @@ export default function CheckoutPage() {
             styles.loadWalletButton,
             (state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout) && styles.disabledButton
           ]}
-          onPress={handlers.handleWalletPayment}
+          onPress={() => {
+            // ✅ FIX: Add error handling wrapper
+            try {
+              console.log('👛 [CHECKOUT] Attempting wallet payment');
+              handlers.handleWalletPayment();
+            } catch (error) {
+              console.error('❌ [CHECKOUT] Wallet payment error:', error);
+              Alert.alert('Payment Error', 'Unable to process wallet payment. Please try again.');
+            }
+          }}
           activeOpacity={0.7}
           disabled={state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
           accessibilityLabel={state.loading
@@ -726,7 +770,16 @@ export default function CheckoutPage() {
             styles.codButton,
             (state.loading || !canCheckout) && styles.disabledButton
           ]}
-          onPress={handlers.handleCODPayment}
+          onPress={() => {
+            // ✅ FIX: Add error handling wrapper
+            try {
+              console.log('💵 [CHECKOUT] Attempting COD payment');
+              handlers.handleCODPayment();
+            } catch (error) {
+              console.error('❌ [CHECKOUT] COD payment error:', error);
+              Alert.alert('Order Error', 'Unable to place COD order. Please try again.');
+            }
+          }}
           activeOpacity={0.7}
           disabled={state.loading || !canCheckout}
           accessibilityLabel={state.loading

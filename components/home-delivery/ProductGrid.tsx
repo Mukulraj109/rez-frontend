@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useCallback, memo } from 'react';
 import {
   View,
   FlatList,
   StyleSheet,
   ActivityIndicator,
   Dimensions,
+  ListRenderItemInfo,
 } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -13,7 +14,10 @@ import { ProductGridProps, HomeDeliveryProduct } from '@/types/home-delivery.typ
 
 const { width } = Dimensions.get('window');
 
-export function ProductGrid({
+// Estimated card height for getItemLayout optimization
+const ESTIMATED_CARD_HEIGHT = 280;
+
+export const ProductGrid = memo(function ProductGrid({
   products,
   loading,
   onProductPress,
@@ -24,7 +28,7 @@ export function ProductGrid({
 }: ProductGridProps) {
   const cardWidth = (width - 64) / numColumns; // Account for padding and gaps
 
-  const renderProductCard = ({ item }: { item: HomeDeliveryProduct }) => (
+  const renderProductCard = useCallback(({ item }: ListRenderItemInfo<HomeDeliveryProduct>) => (
     <View style={[styles.cardContainer, { width: cardWidth }]}>
       <HomeDeliveryProductCard
         product={item}
@@ -33,7 +37,7 @@ export function ProductGrid({
         showDeliveryTime={true}
       />
     </View>
-  );
+  ), [cardWidth, onProductPress]);
 
   const renderEmptyState = () => (
     <View
@@ -76,11 +80,19 @@ export function ProductGrid({
     );
   };
 
-  const handleEndReached = () => {
+  const handleEndReached = useCallback(() => {
     if (hasMore && !loading) {
       onLoadMore();
     }
-  };
+  }, [hasMore, loading, onLoadMore]);
+
+  const keyExtractor = useCallback((item: HomeDeliveryProduct) => item.id, []);
+
+  const getItemLayout = useCallback((data: any, index: number) => ({
+    length: ESTIMATED_CARD_HEIGHT,
+    offset: ESTIMATED_CARD_HEIGHT * Math.floor(index / numColumns),
+    index,
+  }), [numColumns]);
 
   if (loading && products.length === 0) {
     return (
@@ -101,8 +113,9 @@ export function ProductGrid({
       <FlatList
         data={products}
         renderItem={renderProductCard}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         numColumns={numColumns}
+        key={numColumns} // Force re-render if columns change
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.contentContainer,
@@ -116,15 +129,16 @@ export function ProductGrid({
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.3}
         removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        windowSize={3}
+        initialNumToRender={6}
+        getItemLayout={getItemLayout}
         accessibilityLabel={`Product grid. ${products.length} products available`}
         accessibilityRole="list"
       />
     </View>
 );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

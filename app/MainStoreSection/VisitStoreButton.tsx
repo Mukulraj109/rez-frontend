@@ -2,7 +2,18 @@ import React, { useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated, Dimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from '@/components/ThemedText';
+import {
+  Colors,
+  Spacing,
+  Shadows,
+  BorderRadius,
+  Typography,
+  IconSize,
+  Timing,
+  Gradients,
+} from '@/constants/DesignSystem';
 
 interface VisitStoreButtonProps {
   title?: string;
@@ -24,6 +35,9 @@ export default function VisitStoreButton({
   const handlePress = () => {
     if (disabled || loading) return;
 
+    // Haptic feedback
+    triggerImpact('Medium');
+
     // Add press animation (disabled on iOS to prevent conflicts)
     if (Platform.OS === 'ios') {
       // Quick scale without animation
@@ -33,12 +47,12 @@ export default function VisitStoreButton({
       Animated.sequence([
         Animated.timing(scaleAnim, {
           toValue: 0.96,
-          duration: 100,
+          duration: Timing.fast,
           useNativeDriver: true,
         }),
         Animated.timing(scaleAnim, {
           toValue: 1,
-          duration: 100,
+          duration: Timing.fast,
           useNativeDriver: true,
         }),
       ]).start();
@@ -48,9 +62,9 @@ export default function VisitStoreButton({
   };
 
   const getGradientColors = (): [string, string, ...string[]] => {
-    if (disabled) return ['#D1D5DB', '#9CA3AF'];
-    if (loading) return ['#A78BFA', '#8B5CF6'];
-    return ['#8B5CF6', '#7C3AED', '#6366f1'];
+    if (disabled) return [Colors.gray[300], Colors.gray[400]];
+    if (loading) return [Colors.primary[400], Colors.primary[600]];
+    return Gradients.purplePrimary as [string, string, ...string[]];
   };
 
   return (
@@ -81,21 +95,21 @@ export default function VisitStoreButton({
             <View style={styles.buttonContent}>
               {/* Store Icon */}
               {!loading && (
-                <Ionicons 
-                  name="storefront" 
-                  size={isSmallScreen ? 20 : 22} 
-                  color="#FFFFFF" 
+                <Ionicons
+                  name="storefront"
+                  size={isSmallScreen ? IconSize.md : IconSize.lg}
+                  color={Colors.text.white}
                   style={styles.storeIcon}
                 />
               )}
-              
+
               {/* Loading Spinner */}
               {loading && (
                 <Animated.View style={styles.loadingSpinner}>
-                  <Ionicons 
-                    name="refresh" 
-                    size={isSmallScreen ? 20 : 22} 
-                    color="#FFFFFF"
+                  <Ionicons
+                    name="refresh"
+                    size={isSmallScreen ? IconSize.md : IconSize.lg}
+                    color={Colors.text.white}
                   />
                 </Animated.View>
               )}
@@ -116,25 +130,19 @@ export default function VisitStoreButton({
 }
 
 const styles = StyleSheet.create({
+  // Modern Container with Safe Area
   container: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+    backgroundColor: Colors.background.primary,
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? 30 : Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -3,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 6,
+    borderTopColor: Colors.gray[100],
+    ...Shadows.medium,
   },
   iosContainer: {
     paddingBottom: 34, // Extra padding for iOS home indicator
@@ -142,21 +150,16 @@ const styles = StyleSheet.create({
   buttonWrapper: {
     width: '100%',
   },
+
+  // Modern Button with Purple Shadow
   button: {
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    ...Shadows.purpleMedium,
   },
   gradientButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingHorizontal: Spacing['2xl'] - 8,
+    paddingVertical: Spacing.base,
     minHeight: 52,
     justifyContent: 'center',
     alignItems: 'center',
@@ -167,14 +170,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   storeIcon: {
-    marginRight: 12,
+    marginRight: Spacing.md,
   },
   loadingSpinner: {
-    marginRight: 12,
+    marginRight: Spacing.md,
   },
+
+  // Modern Typography
   buttonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: Colors.text.white,
+    ...Typography.h4,
     letterSpacing: 0.5,
     textAlign: 'center',
   },

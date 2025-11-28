@@ -292,13 +292,16 @@ export default function App() {
         setIsLoadingPoints(true);
         const walletResponse = await walletApi.getBalance();
 
-        if (walletResponse.success && walletResponse.data) {
-          const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
-          const actualWalletCoins = wasilCoin?.amount || 0;
+        // ✅ FIX: Add comprehensive null/undefined checks for wallet data
+        if (walletResponse?.success && walletResponse?.data && Array.isArray(walletResponse.data.coins)) {
+          const wasilCoin = walletResponse.data.coins.find((c: any) => c?.type === 'wasil');
+          const actualWalletCoins = typeof wasilCoin?.amount === 'number' && !isNaN(wasilCoin.amount)
+            ? wasilCoin.amount
+            : 0;
           console.log('✅ [STORE] Loaded wallet balance:', actualWalletCoins);
           setUserPoints(actualWalletCoins);
         } else {
-          console.warn('⚠️ [STORE] Could not get wallet balance');
+          console.warn('⚠️ [STORE] Could not get wallet balance - invalid response format');
           setUserPoints(0);
         }
       } catch (error) {
@@ -402,13 +405,14 @@ export default function App() {
               }}
               activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
               delayPressIn={Platform.OS === 'ios' ? 50 : 0}
-              accessibilityLabel={`Loyalty points: ${isLoadingPoints ? 'Loading' : userPoints.toLocaleString()}`}
+              accessibilityLabel={`Loyalty points: ${isLoadingPoints ? 'Loading' : (typeof userPoints === 'number' ? userPoints.toLocaleString() : '0')}`}
               accessibilityRole="button"
               accessibilityHint="Double tap to view your loyalty points and rewards"
             >
               <Ionicons name="star" size={16} color="#FFD700" />
               <ThemedText allowFontScaling={false} style={styles.coinsText}>
-                {isLoadingPoints ? '...' : userPoints.toLocaleString()}
+                {/* ✅ FIX: Add type check for userPoints before formatting */}
+                {isLoadingPoints ? '...' : (typeof userPoints === 'number' ? userPoints.toLocaleString() : '0')}
               </ThemedText>
             </TouchableOpacity>
 

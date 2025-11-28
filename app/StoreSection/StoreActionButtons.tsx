@@ -1,27 +1,38 @@
-// StoreActionButtons.tsx - Component with Buy, Lock, Booking buttons
-import React, { useState, useCallback, useMemo } from 'react';
-import { 
-  View, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Dimensions, 
+// StoreActionButtons.tsx - Modernized with Design System & Haptics
+import React, { useState, useCallback, useMemo, useRef } from 'react';
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
   ActivityIndicator,
-  Alert 
+  Alert,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from '@/components/ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { StoreActionButtonsProps } from '@/types/store-actions';
-import { 
-  createButtonConfigs, 
-  getButtonLayout 
+import {
+  createButtonConfigs,
+  getButtonLayout
 } from '@/utils/store-action-logic';
-import { 
-  createInitialButtonState, 
+import {
+  createInitialButtonState,
   ButtonStateManager,
-  createButtonHandler 
+  createButtonHandler
 } from '@/utils/button-state-manager';
+import {
+  Colors,
+  Spacing,
+  Shadows,
+  BorderRadius,
+  Typography,
+  IconSize,
+  Timing,
+} from '@/constants/DesignSystem';
 
 export default function StoreActionButtons({
   storeType,
@@ -47,6 +58,20 @@ export default function StoreActionButtons({
 
   const { width } = Dimensions.get('window');
   const backgroundColor = useThemeColor({}, 'background');
+
+  // Animation refs for each button type
+  const buyScaleAnim = useRef(new Animated.Value(1)).current;
+  const lockScaleAnim = useRef(new Animated.Value(1)).current;
+  const bookingScaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Animation helper
+  const animateScale = (animValue: Animated.Value, toValue: number) => {
+    Animated.spring(animValue, {
+      toValue,
+      useNativeDriver: true,
+      ...Timing.springBouncy,
+    }).start();
+  };
 
   // Dynamic button text based on product data
   const dynamicBuyText = customBuyText ||
@@ -98,10 +123,13 @@ export default function StoreActionButtons({
     [buttonConfigs.length, width]
   );
 
-  // Enhanced button press handler
+  // Enhanced button press handler with haptic feedback
   const handleButtonPress = useCallback((buttonId: 'buy' | 'lock' | 'booking') => {
     const config = buttonConfigs.find(c => c.id === buttonId);
     if (!config) return;
+
+    // Haptic feedback
+    triggerImpact('Medium');
 
     // Create enhanced handler with state management
     const enhancedHandler = createButtonHandler(
@@ -109,13 +137,16 @@ export default function StoreActionButtons({
       async () => {
         try {
           await config.onPress();
-          // Show success feedback
+          // Show success feedback with haptic
+          triggerNotification('Success');
           Alert.alert(
             'Success',
             `${config.title} action completed successfully!`,
             [{ text: 'OK' }]
           );
         } catch (error) {
+          // Error feedback with haptic
+          triggerNotification('Error');
           // Error will be handled by createButtonHandler
           throw error;
         }
@@ -125,33 +156,51 @@ export default function StoreActionButtons({
     enhancedHandler();
   }, [buttonConfigs, stateManager]);
 
-  // Render individual button
+  // Get animation ref based on button ID
+  const getAnimRef = (buttonId: string) => {
+    switch (buttonId) {
+      case 'buy': return buyScaleAnim;
+      case 'lock': return lockScaleAnim;
+      case 'booking': return bookingScaleAnim;
+      default: return buyScaleAnim;
+    }
+  };
+
+  // Render individual button with animation
   const renderButton = useCallback((config: typeof buttonConfigs[0]) => {
     const isCurrentlyLoading = buttonState.loadingStates[config.id];
     const hasError = buttonState.errorStates[config.id] !== null;
     const isAnyLoading = stateManager.hasAnyLoading();
     const shouldDisable = !config.isEnabled || isAnyLoading;
+    const scaleAnim = getAnimRef(config.id);
 
     return (
-      <TouchableOpacity
+      <Animated.View
         key={config.id}
-        style={[
-          styles.buttonContainer,
-          { width: layout.buttonWidth },
-          shouldDisable && styles.buttonDisabled,
-          buttonStyle,
-        ]}
-        onPress={() => handleButtonPress(config.id)}
-        disabled={shouldDisable}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel={`${config.title} button`}
-        accessibilityState={{ 
-          disabled: shouldDisable, 
-          busy: isCurrentlyLoading 
+        style={{
+          transform: [{ scale: scaleAnim }],
+          width: layout.buttonWidth,
         }}
-        accessibilityHint={`${config.title} this item`}
       >
+        <TouchableOpacity
+          style={[
+            styles.buttonContainer,
+            shouldDisable && styles.buttonDisabled,
+            buttonStyle,
+          ]}
+          onPress={() => handleButtonPress(config.id)}
+          onPressIn={() => animateScale(scaleAnim, 0.96)}
+          onPressOut={() => animateScale(scaleAnim, 1)}
+          disabled={shouldDisable}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`${config.title} button`}
+          accessibilityState={{
+            disabled: shouldDisable,
+            busy: isCurrentlyLoading
+          }}
+          accessibilityHint={`${config.title} this item`}
+        >
         <LinearGradient
           colors={shouldDisable ? ['#9CA3AF', '#6B7280'] as const : config.backgroundColor as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
@@ -169,12 +218,12 @@ export default function StoreActionButtons({
             ) : (
               <Ionicons
                 name={(config.id === 'lock' && !config.isEnabled) ? 'lock-closed' : config.iconName as any}
-                size={20}
-                color="#FFFFFF"
+                size={IconSize.md}
+                color={Colors.text.white}
                 style={styles.buttonIcon}
               />
             )}
-            
+
             {/* Button text */}
             <ThemedText
               style={[
@@ -189,9 +238,10 @@ export default function StoreActionButtons({
             </ThemedText>
           </View>
         </LinearGradient>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
     );
-  }, [buttonState, stateManager, layout.buttonWidth, handleButtonPress, buttonStyle, textStyle]);
+  }, [buttonState, stateManager, layout.buttonWidth, handleButtonPress, buttonStyle, textStyle, buyScaleAnim, lockScaleAnim, bookingScaleAnim, animateScale]);
 
   // Don't render if no buttons are visible
   if (buttonConfigs.length === 0) {
@@ -215,24 +265,20 @@ export default function StoreActionButtons({
 }
 
 const styles = StyleSheet.create({
+  // Modern Container
   container: {
-    paddingVertical: 20,
-    paddingTop: 24,
-    paddingBottom: 20,
+    paddingVertical: Spacing.lg,
+    paddingTop: Spacing['2xl'] - 8,
+    paddingBottom: Spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  // Modern Button with Shadows
   buttonContainer: {
-    borderRadius: 14,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    ...Shadows.medium,
     height: 56,
   },
   buttonDisabled: {
@@ -240,7 +286,7 @@ const styles = StyleSheet.create({
   },
   buttonGradient: {
     paddingVertical: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: Spacing.base,
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
@@ -255,8 +301,10 @@ const styles = StyleSheet.create({
   buttonIcon: {
     marginRight: 2,
   },
+
+  // Modern Typography
   buttonText: {
-    fontSize: 15,
+    ...Typography.bodyLarge,
     fontWeight: '700',
     letterSpacing: 0.3,
     textAlign: 'center',

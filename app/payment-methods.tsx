@@ -21,8 +21,22 @@ const { width } = Dimensions.get('window');
 export default function PaymentMethodsPage() {
   const router = useRouter();
   const { state, handlers } = useCheckout();
+  const { state: cartState } = useCart();
   const [showUPIInput, setShowUPIInput] = useState(false);
   const [upiId, setUpiId] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+
+  // Get store ID from cart items
+  const storeId = cartState.items[0]?.store?.id || state.store?.id;
+  const orderValue = state.billSummary?.totalPayable || 0;
+
+  // Auto-apply card offer when card number is entered
+  const { appliedOffer, validateAndApplyBestOffer } = useCardOfferAutoApply({
+    storeId,
+    orderValue,
+    cardNumber,
+    enabled: true,
+  });
 
   const recentMethods = [
     { id: 'paytm', name: 'Paytm', icon: '₹' },
@@ -156,6 +170,16 @@ export default function PaymentMethodsPage() {
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Credit & Debit cards</ThemedText>
           
+          {/* Show applied card offer if available */}
+          {appliedOffer && (
+            <View style={styles.appliedOfferBanner}>
+              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              <ThemedText style={styles.appliedOfferText}>
+                Card offer applied! Save {appliedOffer.type === 'percentage' ? `${appliedOffer.value}%` : `₹${appliedOffer.value}`}
+              </ThemedText>
+            </View>
+          )}
+          
           <TouchableOpacity style={styles.cardOption}>
             <View style={styles.cardLeft}>
               <View style={styles.visaIcon}>
@@ -168,7 +192,16 @@ export default function PaymentMethodsPage() {
             </View>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.paymentOption}>
+          <TouchableOpacity 
+            style={styles.paymentOption}
+            onPress={() => {
+              // When user adds/enters card, trigger validation
+              // In real implementation, this would be triggered when card number is entered
+              if (cardNumber && cardNumber.length >= 13) {
+                validateAndApplyBestOffer(cardNumber);
+              }
+            }}
+          >
             <View style={styles.paymentOptionLeft}>
               <View style={styles.addCardIcon}>
                 <Ionicons name="add" size={20} color="#8B5CF6" />

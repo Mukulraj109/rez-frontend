@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import {
   TouchableOpacity,
   StyleSheet,
-  Image,
-  View
+  View,
+  FlatList,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,8 +15,23 @@ import { ThemedView } from '@/components/ThemedView';
 import { StoreCardProps } from '@/types/homepage.types';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import QuickActions from '@/components/store/QuickActions';
+import FastImage from '@/components/common/FastImage';
 
-export default function StoreCard({
+// Custom comparison function for React.memo
+const arePropsEqual = (prevProps: any, nextProps: any) => {
+  return (
+    prevProps.store.id === nextProps.store.id &&
+    prevProps.width === nextProps.width &&
+    prevProps.variant === nextProps.variant &&
+    prevProps.showQuickActions === nextProps.showQuickActions &&
+    prevProps.store.rating?.value === nextProps.store.rating?.value &&
+    prevProps.store.rating?.count === nextProps.store.rating?.count &&
+    prevProps.store.isNew === nextProps.store.isNew &&
+    prevProps.store.isTrending === nextProps.store.isTrending
+  );
+};
+
+function StoreCard({
   store,
   onPress,
   width = 280,
@@ -34,25 +52,231 @@ export default function StoreCard({
   const textSecondary = useThemeColor({ light: '#6B7280', dark: '#9CA3AF' }, 'text');
   const borderColor = useThemeColor({ light: '#E5E7EB', dark: '#374151' }, 'border');
   const primaryColor = useThemeColor({}, 'tint');
-  const renderRating = () => {
+  
+  // State for banner slider
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const autoScrollPausedRef = useRef(false);
+  
+  // Helper function to get banners (array or single)
+  // Check both image and banner fields, prioritize banner if available
+  const getBanners = useCallback((): string[] => {
+    const storeAny = store as any;
+    
+    // Check banner first (most common field name for multiple images)
+    let bannerData = storeAny.banner;
+    
+    // If banner is not available or is empty, check image
+    if (!bannerData || (Array.isArray(bannerData) && bannerData.length === 0)) {
+      bannerData = storeAny.image || store.image;
+    }
+    
+    if (!bannerData) {
+      return [];
+    }
+    
+    // Handle array case
+    if (Array.isArray(bannerData)) {
+      const validUrls = bannerData.filter((url: any) => {
+        if (typeof url === 'string' && url.trim().length > 0) {
+          return true;
+        }
+        // Handle object with url property
+        if (url && typeof url === 'object' && url.url) {
+          return true;
+        }
+        return false;
+      }).map((url: any) => {
+        // Extract URL from object if needed
+        if (url && typeof url === 'object' && url.url) {
+          return url.url;
+        }
+        return url;
+      });
+      
+      return validUrls;
+    }
+    
+    // Handle string case
+    if (typeof bannerData === 'string' && bannerData.trim().length > 0) {
+      return [bannerData];
+    }
+    
+    return [];
+  }, [store]);
+  
+  const banners = getBanners();
+  const flatListRef = useRef<FlatList<string> | null>(null);
+  
+  // Reset banner index when store changes
+  useEffect(() => {
+    setCurrentBannerIndex(0);
+    if (flatListRef.current && banners.length > 1) {
+      // Use scrollToOffset for more reliable scrolling
+      flatListRef.current.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [store.id, banners]);
+  
+  // Auto-scroll banner slider every 5 seconds
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    if (!width || width <= 0) return; // Ensure width is valid
+    
+    let intervalId: NodeJS.Timeout | null = null;
+    
+    // Small delay to ensure FlatList is mounted and rendered
+    const startTimeout = setTimeout(() => {
+      // Verify FlatList is ready
+      if (!flatListRef.current) {
+        return; // FlatList not ready, skip setting up interval
+      }
+      
+      intervalId = setInterval(() => {
+        // Skip auto-scroll if paused (user is interacting)
+        if (autoScrollPausedRef.current) {
+          return;
+        }
+        
+        // Ensure ref is still available
+        if (!flatListRef.current) {
+          return;
+        }
+        
+        setCurrentBannerIndex((prevIndex) => {
+          const nextIndex = (prevIndex + 1) % banners.length;
+          if (flatListRef.current) {
+            // Mark as auto-scrolling to prevent pause
+            isAutoScrollingRef.current = true;
+            
+            // Try scrollToIndex first (works better with pagingEnabled)
+            try {
+              flatListRef.current.scrollToIndex({ 
+                index: nextIndex, 
+                animated: true 
+              });
+            } catch (error) {
+              // Fallback: use scrollToOffset if scrollToIndex fails
+              try {
+                const offset = nextIndex * width;
+                flatListRef.current.scrollToOffset({ 
+                  offset, 
+                  animated: true 
+                });
+              } catch (offsetError) {
+                // If both fail, reset flag
+                isAutoScrollingRef.current = false;
+              }
+            }
+          }
+          return nextIndex;
+        });
+      }, 5000); // 5 seconds
+    }, 1000); // Wait 1 second for FlatList to be fully ready
+    
+    return () => {
+      clearTimeout(startTimeout);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [banners.length, width]);
+  
+  // Track if scroll is from user interaction
+  const isUserScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isAutoScrollingRef = useRef(false);
+  
+  // Handle banner scroll
+  const handleBannerScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const scrollPosition = event.nativeEvent.contentOffset.x;
+    const index = Math.round(scrollPosition / width);
+    setCurrentBannerIndex(index);
+    
+    // Only pause if this is user-initiated scroll (not programmatic auto-scroll)
+    if (isUserScrollingRef.current && !isAutoScrollingRef.current) {
+      // Pause auto-scroll when user manually scrolls
+      autoScrollPausedRef.current = true;
+      
+      // Clear existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      
+      // Resume after 10 seconds of no interaction
+      scrollTimeoutRef.current = setTimeout(() => {
+        autoScrollPausedRef.current = false;
+        isUserScrollingRef.current = false;
+      }, 10000);
+    }
+    
+    // Reset auto-scroll flag after a short delay
+    if (isAutoScrollingRef.current) {
+      setTimeout(() => {
+        isAutoScrollingRef.current = false;
+      }, 1000);
+    }
+  }, [width]);
+  
+  // Handle scroll begin (user starts scrolling)
+  const handleScrollBeginDrag = useCallback(() => {
+    isUserScrollingRef.current = true;
+    autoScrollPausedRef.current = true;
+  }, []);
+  
+  // Handle scroll end (user stops scrolling)
+  const handleScrollEndDrag = useCallback(() => {
+    // Keep paused for a bit, then resume
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      autoScrollPausedRef.current = false;
+      isUserScrollingRef.current = false;
+    }, 10000);
+  }, []);
+  
+  // Render banner item
+  const renderBannerItem = useCallback(({ item: bannerUrl }: { item: string }) => {
+    return (
+      <View style={{ width, height: 140 }}>
+        <FastImage
+          source={{ uri: bannerUrl }}
+          style={[styles.image, { width, height: 140 }]}
+          resizeMode="cover"
+          showLoader={true}
+        />
+      </View>
+    );
+  }, [width]);
+
+  // Memoize the formatted rating value
+  const formattedRating = useMemo(() => {
+    return typeof store.rating.value === 'number'
+      ? store.rating.value.toFixed(1)
+      : store.rating.value;
+  }, [store.rating.value]);
+
+  // Memoize the derived store type
+  const derivedStoreType = useMemo(() => {
+    return storeType || (store.category === 'Restaurant' ? 'RESTAURANT' : 'PRODUCT');
+  }, [storeType, store.category]);
+
+  const renderRating = useMemo(() => {
     return (
       <View style={styles.ratingContainer}>
         <Ionicons name="star" size={16} color="#F59E0B" />
         <ThemedText style={[styles.ratingText, { color: textColor }]}>
-          {typeof store.rating.value === 'number'
-            ? store.rating.value.toFixed(1)
-            : store.rating.value}
+          {formattedRating}
         </ThemedText>
         <ThemedText style={[styles.ratingCount, { color: textSecondary }]}>
           ({store.rating.count})
         </ThemedText>
       </View>
     );
-  };
+  }, [formattedRating, store.rating.count, textColor, textSecondary]);
 
-  const renderBadges = () => {
+  const renderBadges = useMemo(() => {
     const badges = [];
-    
+
     if (store.isNew) {
       badges.push(
         <View key="new" style={[styles.badge, styles.newBadge]}>
@@ -60,7 +284,7 @@ export default function StoreCard({
         </View>
       );
     }
-    
+
     if (store.isTrending) {
       badges.push(
         <View key="trending" style={[styles.badge, styles.trendingBadge]}>
@@ -74,32 +298,109 @@ export default function StoreCard({
         {badges}
       </View>
     ) : null;
-  };
+  }, [store.isNew, store.isTrending]);
+
+  // Memoize the onPress callback
+  const handlePress = useCallback(() => {
+    try {
+      onPress(store);
+    } catch (error) {
+      console.error('Store card press error:', error);
+    }
+  }, [onPress, store]);
+
+  // Memoize location data
+  const locationProps = useMemo(() => {
+    return store.location ? {
+      address: store.location.address,
+      city: store.location.city,
+    } : undefined;
+  }, [store.location]);
 
   return (
     <TouchableOpacity
       style={[styles.container, { width }]}
-      onPress={() => {
-        try {
-          onPress(store);
-        } catch (error) {
-          console.error('Store card press error:', error);
-        }
-      }}
+      onPress={handlePress}
       activeOpacity={0.8}
       delayPressIn={0}
       delayPressOut={0}
     >
       <ThemedView style={styles.card}>
-        {/* Store Image */}
+        {/* Store Image/Banner Slider */}
         <View style={styles.imageContainer}>
-          <Image 
-            source={{ uri: store.image }} 
-            style={styles.image}
-            resizeMode="cover"
-            fadeDuration={0}
-          />
-          {renderBadges()}
+          {banners.length > 0 ? (
+            <>
+              {banners.length > 1 ? (
+                <>
+                  <FlatList
+                    ref={flatListRef}
+                    data={banners}
+                    renderItem={renderBannerItem}
+                    keyExtractor={(item, index) => `banner-${store.id || store.name}-${index}`}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={handleBannerScroll}
+                    onScrollBeginDrag={handleScrollBeginDrag}
+                    onScrollEndDrag={handleScrollEndDrag}
+                    onMomentumScrollEnd={(event) => {
+                      // Update index when scroll ends
+                      const scrollPosition = event.nativeEvent.contentOffset.x;
+                      const index = Math.round(scrollPosition / width);
+                      setCurrentBannerIndex(index);
+                    }}
+                    scrollEventThrottle={16}
+                    snapToInterval={width}
+                    decelerationRate="fast"
+                    getItemLayout={(data, index) => ({
+                      length: width,
+                      offset: width * index,
+                      index,
+                    })}
+                    onScrollToIndexFailed={(info) => {
+                      // Handle scroll to index failure - scroll to offset instead
+                      const wait = new Promise(resolve => setTimeout(resolve, 500));
+                      wait.then(() => {
+                        if (flatListRef.current) {
+                          const offset = info.index * width;
+                          flatListRef.current.scrollToOffset({ 
+                            offset, 
+                            animated: true 
+                          });
+                        }
+                      });
+                    }}
+                    style={{ width: '100%', height: 140 }}
+                    contentContainerStyle={{ height: 140 }}
+                  />
+                  {/* Pagination Dots */}
+                  <View style={styles.paginationContainer}>
+                    {banners.map((_, idx) => (
+                      <View
+                        key={idx}
+                        style={[
+                          styles.paginationDot,
+                          idx === currentBannerIndex && styles.paginationDotActive,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <FastImage
+                  source={{ uri: banners[0] }}
+                  style={styles.image}
+                  resizeMode="cover"
+                  showLoader={true}
+                />
+              )}
+            </>
+          ) : (
+            <View style={[styles.image, styles.placeholderImage]}>
+              <Ionicons name="storefront-outline" size={48} color="#9CA3AF" />
+            </View>
+          )}
+          {renderBadges}
         </View>
 
         {/* Store Details */}
@@ -108,9 +409,9 @@ export default function StoreCard({
             <ThemedText style={styles.name} numberOfLines={1}>
               {store.name}
             </ThemedText>
-            {renderRating()}
+            {renderRating}
           </View>
-          
+
           <ThemedText style={styles.description} numberOfLines={2}>
             {store.description}
           </ThemedText>
@@ -125,7 +426,7 @@ export default function StoreCard({
                 </ThemedText>
               </View>
             )}
-            
+
             {store.deliveryTime && (
               <View style={styles.deliveryContainer}>
                 <Ionicons name="time-outline" size={14} color="#6B7280" />
@@ -157,12 +458,9 @@ export default function StoreCard({
               <QuickActions
                 storeId={store.id}
                 storeName={store.name}
-                storeType={storeType || (store.category === 'Restaurant' ? 'RESTAURANT' : 'PRODUCT')}
+                storeType={derivedStoreType}
                 contact={contact}
-                location={store.location ? {
-                  address: store.location.address,
-                  city: store.location.city,
-                } : undefined}
+                location={locationProps}
                 hasMenu={storeType === 'RESTAURANT' || store.category === 'Restaurant'}
                 allowBooking={storeType === 'SERVICE' || storeType === 'HYBRID'}
                 variant="compact"
@@ -176,6 +474,8 @@ export default function StoreCard({
     </TouchableOpacity>
   );
 }
+
+export default React.memo(StoreCard, arePropsEqual);
 
 const styles = StyleSheet.create({
   container: {
@@ -199,11 +499,38 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     height: 140,
+    width: '100%',
     backgroundColor: '#F3F4F6',
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
     height: '100%',
+  },
+  placeholderImage: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  paginationContainer: {
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  paginationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  paginationDotActive: {
+    width: 16,
+    backgroundColor: '#FFFFFF',
   },
   badgesContainer: {
     position: 'absolute',

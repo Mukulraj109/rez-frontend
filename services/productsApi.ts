@@ -3,7 +3,15 @@
 
 import apiClient, { ApiResponse } from './apiClient';
 import { ProductItem, RecommendationItem } from '@/types/homepage.types';
+import { validateProduct, validateProductArray } from '@/utils/responseValidators';
+import {
+  Product as UnifiedProduct,
+  toProduct,
+  validateProduct as validateUnifiedProduct,
+  isProductAvailable
+} from '@/types/unified';
 
+// Keep the old Product interface for backwards compatibility during migration
 export interface Product {
   id: string;
   name: string;
@@ -60,6 +68,9 @@ export interface Product {
   createdAt: string;
   updatedAt: string;
 }
+
+// Export unified Product type for new code
+export { UnifiedProduct }
 
 export interface ProductsQuery {
   page?: number;
@@ -127,12 +138,118 @@ class ProductsService {
 
   // Get single product by ID
   async getProductById(id: string): Promise<ApiResponse<Product>> {
-    return apiClient.get(`/products/${id}`);
+    try {
+      const response = await apiClient.get<Product>(`/products/${id}`);
+
+      // Validate and normalize product data using unified types
+      if (response.success && response.data) {
+        try {
+          // Convert to unified Product format
+          const unifiedProduct = toProduct(response.data);
+
+          // Validate using unified validator
+          const validation = validateUnifiedProduct(unifiedProduct);
+          if (validation.valid) {
+            return {
+              ...response,
+              data: unifiedProduct as any, // Cast to Product for backwards compatibility
+            };
+          } else {
+            console.warn('⚠️ [PRODUCTS API] Product validation failed for ID:', id, validation.errors);
+            return {
+              success: false,
+              error: 'Product validation failed',
+              message: `Invalid product data: ${validation.errors.map(e => e.message).join(', ')}`,
+            };
+          }
+        } catch (conversionError: any) {
+          console.warn('⚠️ [PRODUCTS API] Product conversion failed for ID:', id, conversionError);
+          // Fallback to old validation
+          const validatedProduct = validateProduct(response.data);
+          if (validatedProduct) {
+            return {
+              ...response,
+              data: validatedProduct as Product,
+            };
+          } else {
+            return {
+              success: false,
+              error: 'Product validation failed',
+              message: 'Invalid product data received from server',
+            };
+          }
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [PRODUCTS API] Error fetching product by ID:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch product',
+        message: error?.message || 'Failed to fetch product',
+      };
+    }
   }
 
   // Get featured products
   async getFeaturedProducts(limit: number = 10): Promise<ApiResponse<Product[]>> {
-    return apiClient.get('/products/featured', { limit });
+    try {
+      const response = await apiClient.get<Product[]>('/products/featured', { limit });
+
+      // Validate and normalize product array using unified types
+      if (response.success && response.data && Array.isArray(response.data)) {
+        try {
+          // Convert each product to unified format
+          const unifiedProducts = response.data.map(toProduct);
+
+          // Validate all products
+          const allValid = unifiedProducts.every(product => {
+            const validation = validateUnifiedProduct(product);
+            if (!validation.valid) {
+              console.warn('⚠️ [PRODUCTS API] Product validation failed:', product.id, validation.errors);
+            }
+            return validation.valid;
+          });
+
+          if (allValid) {
+            return {
+              ...response,
+              data: unifiedProducts as any, // Cast for backwards compatibility
+            };
+          }
+
+          // If some products failed, filter to only valid ones
+          const validProducts = unifiedProducts.filter(product => {
+            const validation = validateUnifiedProduct(product);
+            return validation.valid;
+          });
+
+          console.warn(`⚠️ [PRODUCTS API] Returning ${validProducts.length}/${unifiedProducts.length} valid products`);
+          return {
+            ...response,
+            data: validProducts as any,
+          };
+        } catch (conversionError) {
+          console.warn('⚠️ [PRODUCTS API] Product conversion failed, using fallback validation', conversionError);
+          // Fallback to old validation
+          const validatedProducts = validateProductArray(response.data);
+          return {
+            ...response,
+            data: validatedProducts as Product[],
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [PRODUCTS API] Error fetching featured products:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch featured products',
+        message: error?.message || 'Failed to fetch featured products',
+      };
+    }
   }
 
   // Search products
@@ -174,22 +291,41 @@ class ProductsService {
       const response = await apiClient.get<ProductItem[]>(`/products/${productId}/related`, { limit });
 
       if (response.success && response.data && Array.isArray(response.data)) {
-        return response;
+        // Validate and normalize related products
+        const validatedProducts = validateProductArray(response.data);
+        return {
+          success: true,
+          data: validatedProducts,
+          message: response.message,
+        };
       }
 
-      // If API fails, return mock data for development
-      console.warn('⚠️ Using mock related products data');
+      // If API response is not successful, return error
+      if (!response.success) {
+        console.warn('⚠️ [PRODUCTS API] Related products API error:', response.error);
+        // Don't return mock data on API errors in production
+        return {
+          success: false,
+          error: response.error || 'Failed to fetch related products',
+          message: response.error || 'Failed to fetch related products',
+          data: [], // Return empty array instead of undefined
+        };
+      }
+
+      // If API returns invalid data structure
       return {
-        success: true,
-        data: this.getMockRelatedProducts(productId, limit),
-        message: 'Mock related products loaded',
+        success: false,
+        error: 'Invalid response format',
+        message: 'Invalid response format from server',
+        data: [],
       };
-    } catch (error) {
-      console.warn('⚠️ API unavailable, using mock related products:', error);
+    } catch (error: any) {
+      console.error('❌ [PRODUCTS API] Error fetching related products:', error);
       return {
-        success: true,
-        data: this.getMockRelatedProducts(productId, limit),
-        message: 'Mock related products loaded',
+        success: false,
+        error: error?.message || 'Failed to fetch related products',
+        message: error?.message || 'Failed to fetch related products',
+        data: [],
       };
     }
   }
@@ -248,8 +384,10 @@ class ProductsService {
       const response = await apiClient.get('/products/featured', { limit });
 
       if (response.success && response.data && Array.isArray(response.data)) {
+        // Validate and normalize products first
+        const validatedProducts = validateProductArray(response.data);
 
-        const recommendations = response.data.map((product: any) => ({
+        const recommendations = validatedProducts.map((product: ProductItem) => ({
           ...product,
           recommendationReason: this.generateRecommendationReason(product),
           recommendationScore: Math.random() * 0.5 + 0.5, // Generate score between 0.5-1.0
@@ -277,8 +415,9 @@ class ProductsService {
       const response = await apiClient.get('/products/new-arrivals', { limit });
 
       if (response.success && response.data && Array.isArray(response.data)) {
-
-        return response.data;
+        // Validate and normalize products
+        const validatedProducts = validateProductArray(response.data);
+        return validatedProducts;
       }
 
       console.warn('⚠️ [PRODUCTS API] Invalid new arrivals response structure:', response);
@@ -344,11 +483,23 @@ class ProductsService {
         console.warn(`⚠️ Invalid MongoDB ObjectId format: ${productId}`);
         return null;
       }
-      
+
       const response = await apiClient.get<ProductItem & { similarProducts?: ProductItem[] }>(`/products/${productId}`);
-      
+
       if (response.success && response.data) {
-        return response.data;
+        // Validate and normalize product
+        const validatedProduct = validateProduct(response.data);
+
+        if (validatedProduct) {
+          // Validate similar products if they exist
+          const result: ProductItem & { similarProducts?: ProductItem[] } = validatedProduct;
+
+          if (response.data.similarProducts && Array.isArray(response.data.similarProducts)) {
+            result.similarProducts = validateProductArray(response.data.similarProducts);
+          }
+
+          return result;
+        }
       }
 
       throw new Error(response.message || 'Failed to fetch product details');

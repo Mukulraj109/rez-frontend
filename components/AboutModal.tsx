@@ -15,6 +15,7 @@ import { ThemedText } from '@/components/ThemedText';
 
 interface StoreInfo {
   name: string;
+  description?: string;
   establishedYear: number;
   address: {
     doorNo: string;
@@ -24,6 +25,18 @@ interface StoreInfo {
     city: string;
     state: string;
     pinCode: string;
+  };
+  contact?: {
+    phone?: string;
+    email?: string;
+    website?: string;
+    whatsapp?: string;
+  };
+  deliveryInfo?: {
+    deliveryTime?: string;
+    minimumOrder?: number;
+    deliveryFee?: number;
+    freeDeliveryAbove?: number;
   };
   isOpen: boolean;
   categories: string[];
@@ -43,6 +56,7 @@ export default function AboutModal({ visible, onClose, storeData }: AboutModalPr
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const slideAnim = useRef(new Animated.Value(screenData.height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -122,7 +136,51 @@ export default function AboutModal({ visible, onClose, storeData }: AboutModalPr
 
   const formatAddress = () => {
     const { doorNo, floor, street, area, city, state, pinCode } = store.address;
-    return `Door no. ${doorNo} - ${floor}, ${street}, ${area}, ${city}, ${state} ${pinCode}`;
+    
+    // Build address parts, only including non-empty fields
+    const addressParts: string[] = [];
+    
+    // Add door number and floor only if both are present
+    if (doorNo && floor) {
+      addressParts.push(`Door no. ${doorNo} - ${floor}`);
+    } else if (doorNo) {
+      addressParts.push(`Door no. ${doorNo}`);
+    } else if (floor) {
+      addressParts.push(floor);
+    }
+    
+    // Add street address
+    if (street) {
+      addressParts.push(street);
+    }
+    
+    // Add area/landmark
+    if (area) {
+      addressParts.push(area);
+    }
+    
+    // Add city
+    if (city) {
+      addressParts.push(city);
+    }
+    
+    // Add state and pincode
+    const statePinParts: string[] = [];
+    if (state) {
+      statePinParts.push(state);
+    }
+    if (pinCode) {
+      statePinParts.push(pinCode);
+    }
+    
+    // Combine all parts
+    let formattedAddress = addressParts.join(', ');
+    if (statePinParts.length > 0) {
+      formattedAddress += (addressParts.length > 0 ? ', ' : '') + statePinParts.join(' ');
+    }
+    
+    // Fallback if nothing is available
+    return formattedAddress || 'Address not available';
   };
 
   return (
@@ -167,11 +225,22 @@ export default function AboutModal({ visible, onClose, storeData }: AboutModalPr
                   <View style={styles.section}>
                     <ThemedText style={styles.sectionTitle}>About</ThemedText>
                     <ThemedText style={styles.establishedText}>Est. Year - {store.establishedYear}</ThemedText>
+                    
+                    {/* Store Description */}
+                    {store.description && (
+                      <ThemedText style={styles.descriptionText}>{store.description}</ThemedText>
+                    )}
+                    
                     <ThemedText style={styles.addressText}>{formatAddress()}</ThemedText>
-                    <ThemedText style={styles.stateText}>
-                      India State - {store.address.state}, Area/City - {store.address.city}, Pin/Zip Code -{' '}
-                      {store.address.pinCode}
-                    </ThemedText>
+                    {(store.address.state || store.address.city || store.address.pinCode) && (
+                      <ThemedText style={styles.stateText}>
+                        {[
+                          store.address.state && `State - ${store.address.state}`,
+                          store.address.city && `City - ${store.address.city}`,
+                          store.address.pinCode && `Pin Code - ${store.address.pinCode}`
+                        ].filter(Boolean).join(', ')}
+                      </ThemedText>
+                    )}
 
                     <TouchableOpacity
                       style={styles.openNowButton}
@@ -182,6 +251,68 @@ export default function AboutModal({ visible, onClose, storeData }: AboutModalPr
                       <ThemedText style={styles.openNowText}>Open now</ThemedText>
                     </TouchableOpacity>
                   </View>
+
+                  {/* Contact Information Section */}
+                  {store.contact && (store.contact.phone || store.contact.email || store.contact.website || store.contact.whatsapp) && (
+                    <View style={styles.section}>
+                      <ThemedText style={styles.sectionTitle}>Contact</ThemedText>
+                      {store.contact.phone && (
+                        <View style={styles.contactRow}>
+                          <Ionicons name="call-outline" size={16} color="#7C3AED" />
+                          <ThemedText style={styles.contactText}>{store.contact.phone}</ThemedText>
+                        </View>
+                      )}
+                      {store.contact.email && (
+                        <View style={styles.contactRow}>
+                          <Ionicons name="mail-outline" size={16} color="#7C3AED" />
+                          <ThemedText style={styles.contactText}>{store.contact.email}</ThemedText>
+                        </View>
+                      )}
+                      {store.contact.website && (
+                        <View style={styles.contactRow}>
+                          <Ionicons name="globe-outline" size={16} color="#7C3AED" />
+                          <ThemedText style={styles.contactText}>{store.contact.website}</ThemedText>
+                        </View>
+                      )}
+                      {store.contact.whatsapp && (
+                        <View style={styles.contactRow}>
+                          <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
+                          <ThemedText style={styles.contactText}>{store.contact.whatsapp}</ThemedText>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Delivery Information Section */}
+                  {store.deliveryInfo && (store.deliveryInfo.deliveryTime || store.deliveryInfo.minimumOrder !== undefined || store.deliveryInfo.deliveryFee !== undefined || store.deliveryInfo.freeDeliveryAbove !== undefined) && (
+                    <View style={styles.section}>
+                      <ThemedText style={styles.sectionTitle}>Delivery</ThemedText>
+                      {store.deliveryInfo.deliveryTime && (
+                        <View style={styles.deliveryRow}>
+                          <Ionicons name="time-outline" size={16} color="#7C3AED" />
+                          <ThemedText style={styles.deliveryText}>Delivery Time: {store.deliveryInfo.deliveryTime}</ThemedText>
+                        </View>
+                      )}
+                      {store.deliveryInfo.minimumOrder !== undefined && (
+                        <View style={styles.deliveryRow}>
+                          <Ionicons name="cash-outline" size={16} color="#7C3AED" />
+                          <ThemedText style={styles.deliveryText}>Minimum Order: ₹{store.deliveryInfo.minimumOrder}</ThemedText>
+                        </View>
+                      )}
+                      {store.deliveryInfo.deliveryFee !== undefined && (
+                        <View style={styles.deliveryRow}>
+                          <Ionicons name="bicycle-outline" size={16} color="#7C3AED" />
+                          <ThemedText style={styles.deliveryText}>Delivery Fee: ₹{store.deliveryInfo.deliveryFee}</ThemedText>
+                        </View>
+                      )}
+                      {store.deliveryInfo.freeDeliveryAbove !== undefined && (
+                        <View style={styles.deliveryRow}>
+                          <Ionicons name="gift-outline" size={16} color="#10B981" />
+                          <ThemedText style={styles.deliveryText}>Free Delivery Above: ₹{store.deliveryInfo.freeDeliveryAbove}</ThemedText>
+                        </View>
+                      )}
+                    </View>
+                  )}
 
                   {/* Products Section */}
                   <View style={styles.section}>
@@ -274,21 +405,49 @@ const createStyles = (screenData: { width: number; height: number }) => {
       marginBottom: 8,
       color: '#111',
     },
-    establishedText: {
-      fontSize: 14,
-      color: '#666',
-      marginBottom: 8,
-    },
-    addressText: {
-      fontSize: 14,
-      color: '#444',
-      marginBottom: 4,
-    },
-    stateText: {
-      fontSize: 14,
-      color: '#444',
-      marginBottom: 16,
-    },
+  establishedText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: '#444',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#444',
+    marginBottom: 4,
+  },
+  stateText: {
+    fontSize: 14,
+    color: '#444',
+    marginBottom: 16,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 8,
+  },
+  contactText: {
+    fontSize: 14,
+    color: '#444',
+    flex: 1,
+  },
+  deliveryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 8,
+  },
+  deliveryText: {
+    fontSize: 14,
+    color: '#444',
+    flex: 1,
+  },
     openNowButton: {
       backgroundColor: '#50C2C9',
       borderRadius: 30,

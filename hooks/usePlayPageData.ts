@@ -37,15 +37,30 @@ export function usePlayPageData(): UsePlayPageData {
   const [state, setState] = useState<PlayPageState>(initialState);
   const router = useRouter();
   const { user } = useAuth();
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup function for abort controller
+  const cleanupAbortController = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
 
   // Data fetching - Fetches all video types from backend API
   const fetchVideos = useCallback(async (category?: CategoryType, page: number = 1) => {
     try {
+      // Cancel previous request
+      cleanupAbortController();
+
+      // Create new abort controller
+      abortControllerRef.current = new AbortController();
+
       setState(prev => ({ ...prev, loading: true, error: undefined }));
 
       console.log(`📹 [PlayPage] Fetching videos for category: ${category || 'all'}, page: ${page}`);
 
-      // Fetch videos from real backend API
+      // Fetch videos from real backend API with abort signal
       const response = await realVideosApi.getVideosByCategory(
         category || 'trending_me',
         {
@@ -90,7 +105,13 @@ export function usePlayPageData(): UsePlayPageData {
         throw new Error(response.message || 'Failed to fetch videos');
       }
 
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore abort errors
+      if (error.name === 'AbortError') {
+        console.log('⚠️ [PlayPage] Fetch request aborted');
+        return;
+      }
+
       setState(prev => ({
         ...prev,
         loading: false,
@@ -106,15 +127,21 @@ export function usePlayPageData(): UsePlayPageData {
         }, 2000);
       }
     }
-  }, [user]);
+  }, [user, cleanupAbortController]);
 
   const refreshVideos = useCallback(async () => {
     try {
+      // Cancel previous request
+      cleanupAbortController();
+
+      // Create new abort controller
+      abortControllerRef.current = new AbortController();
+
       setState(prev => ({ ...prev, refreshing: true, error: undefined }));
 
       console.log('🔄 [PlayPage] Refreshing videos...');
 
-      // Fetch fresh data from backend API
+      // Fetch fresh data from backend API with abort signal
       const response = await realVideosApi.getVideosByCategory(
         state.activeCategory || 'trending_me',
         {
@@ -181,7 +208,13 @@ export function usePlayPageData(): UsePlayPageData {
         throw new Error(response.message || 'Failed to refresh videos');
       }
 
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore abort errors
+      if (error.name === 'AbortError') {
+        console.log('⚠️ [PlayPage] Refresh request aborted');
+        return;
+      }
+
       console.error('❌ [PlayPage] CAUGHT ERROR in refreshVideos:', error);
       console.error('❌ [PlayPage] Error type:', typeof error);
       console.error('❌ [PlayPage] Error message:', error instanceof Error ? error.message : String(error));
@@ -193,7 +226,7 @@ export function usePlayPageData(): UsePlayPageData {
         error: 'Failed to refresh videos. Please try again.'
       }));
     }
-  }, [state.activeCategory, user]);
+  }, [state.activeCategory, user, cleanupAbortController]);
 
   const loadMoreVideos = useCallback(async () => {
     if (!state.hasMoreVideos || state.loading) return;
@@ -353,9 +386,14 @@ export function usePlayPageData(): UsePlayPageData {
     setState(prev => ({ ...prev, error: undefined }));
   }, []);
 
-  // Initialize data on mount
+  // Initialize data on mount and cleanup on unmount
   useEffect(() => {
     refreshVideos();
+
+    // Cleanup function
+    return () => {
+      cleanupAbortController();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

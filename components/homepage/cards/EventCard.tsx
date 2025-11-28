@@ -1,47 +1,75 @@
-import React from 'react';
-import { 
-  TouchableOpacity, 
-  StyleSheet, 
-  Image, 
-  View 
+import React, { useMemo, useCallback } from 'react';
+import {
+  TouchableOpacity,
+  StyleSheet,
+  View
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { EventCardProps } from '@/types/homepage.types';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import FastImage from '@/components/common/FastImage';
 
-export default function EventCard({ 
-  event, 
-  onPress, 
-  width = 280 
+// Custom comparison function for React.memo
+const arePropsEqual = (prevProps: EventCardProps, nextProps: EventCardProps) => {
+  return (
+    prevProps.event.id === nextProps.event.id &&
+    prevProps.width === nextProps.width &&
+    prevProps.event.title === nextProps.event.title &&
+    prevProps.event.date === nextProps.event.date &&
+    prevProps.event.price.amount === nextProps.event.price.amount &&
+    prevProps.event.isOnline === nextProps.event.isOnline
+  );
+};
+
+function EventCard({
+  event,
+  onPress,
+  width = 280
 }: EventCardProps) {
   const backgroundColor = useThemeColor({}, 'background');
   const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#1F2937' }, 'background');
   const textColor = useThemeColor({}, 'text');
   const textSecondary = useThemeColor({ light: '#6B7280', dark: '#9CA3AF' }, 'text');
   const borderColor = useThemeColor({ light: '#E5E7EB', dark: '#374151' }, 'border');
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
 
-  const formatPrice = () => {
+  // Memoize date formatting
+  const formattedDate = useMemo(() => {
+    const date = new Date(event.date);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  }, [event.date]);
+
+  // Memoize price formatting
+  const formattedPrice = useMemo(() => {
     if (event.price.isFree) {
       return 'Free';
     }
     return `${event.price.currency}${event.price.amount}`;
-  };
+  }, [event.price.isFree, event.price.currency, event.price.amount]);
 
-  const eventLabel = `${event.title}. ${event.subtitle}. ${formatDate(event.date)}${event.time ? ` at ${event.time}` : ''}. ${event.isOnline ? 'Online event' : event.location}. Price: ${formatPrice()}. Category: ${event.category}`;
+  // Memoize accessibility label
+  const eventLabel = useMemo(() => {
+    return `${event.title}. ${event.subtitle}. ${formattedDate}${event.time ? ` at ${event.time}` : ''}. ${event.isOnline ? 'Online event' : event.location}. Price: ${formattedPrice}. Category: ${event.category}`;
+  }, [event.title, event.subtitle, formattedDate, event.time, event.isOnline, event.location, formattedPrice, event.category]);
+
+  // Memoize the onPress callback
+  const handlePress = useCallback(() => {
+    onPress(event);
+  }, [onPress, event]);
+
+  // Memoize price badge background color
+  const priceBadgeColor = useMemo(() => {
+    return event.price.isFree ? '#10B981' : '#8B5CF6';
+  }, [event.price.isFree]);
 
   return (
     <TouchableOpacity
       style={[styles.container, { width }]}
-      onPress={() => onPress(event)}
+      onPress={handlePress}
       activeOpacity={0.95}
       accessibilityLabel={eventLabel}
       accessibilityRole="button"
@@ -54,12 +82,11 @@ export default function EventCard({
           accessibilityLabel={`Event image for ${event.title}`}
           accessibilityRole="image"
         >
-          <Image
-            source={{ uri: event.image }}
+          <FastImage
+            source={event.image}
             style={styles.image}
             resizeMode="cover"
-            fadeDuration={0}
-            accessible={false}
+            showLoader={true}
           />
           {/* Image Overlay Gradient */}
           <LinearGradient
@@ -77,11 +104,11 @@ export default function EventCard({
           )}
           {/* Price Badge on Image */}
           <View
-            style={[styles.priceBadge, { backgroundColor: event.price.isFree ? '#10B981' : '#8B5CF6' }]}
-            accessibilityLabel={`Event price: ${formatPrice()}`}
+            style={[styles.priceBadge, { backgroundColor: priceBadgeColor }]}
+            accessibilityLabel={`Event price: ${formattedPrice}`}
             accessibilityRole="text"
           >
-            <ThemedText style={styles.priceBadgeText}>{formatPrice()}</ThemedText>
+            <ThemedText style={styles.priceBadgeText}>{formattedPrice}</ThemedText>
           </View>
         </View>
 
@@ -90,7 +117,7 @@ export default function EventCard({
           <ThemedText style={[styles.title, { color: textColor }]} numberOfLines={2}>
             {event.title}
           </ThemedText>
-          
+
           <ThemedText style={[styles.subtitle, { color: textSecondary }]} numberOfLines={1}>
             {event.subtitle}
           </ThemedText>
@@ -104,7 +131,7 @@ export default function EventCard({
 
             <View style={styles.dateContainer}>
               <ThemedText style={[styles.date, { color: textColor }]}>
-                📅 {formatDate(event.date)}
+                📅 {formattedDate}
               </ThemedText>
               {event.time && (
                 <ThemedText style={[styles.time, { color: textSecondary }]}>
@@ -123,8 +150,10 @@ export default function EventCard({
         </View>
       </ThemedView>
     </TouchableOpacity>
-);
+  );
 }
+
+export default React.memo(EventCard, arePropsEqual);
 
 const styles = StyleSheet.create({
   container: {

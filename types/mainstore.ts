@@ -10,6 +10,7 @@ export interface MainStoreProduct {
   distance: string;
   isOpen: boolean;
   images: ProductImage[];
+  logo?: string; // Store logo for circular display
   cashbackPercentage: string;
   storeName: string;
   storeId: string;

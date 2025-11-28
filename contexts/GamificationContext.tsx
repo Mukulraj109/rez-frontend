@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback, useRef, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import achievementApi, { Achievement, AchievementProgress } from '@/services/achievementApi';
 import pointsApi, { PointsBalance, PointTransaction } from '@/services/pointsApi';
@@ -228,6 +228,10 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
   const [state, dispatch] = useReducer(gamificationReducer, initialState);
   const { state: authState } = useAuth();
 
+  // CRITICAL: Queue for coin operations to prevent race conditions
+  const coinOperationQueue = useRef<Array<() => Promise<void>>>([]);
+  const isProcessingCoins = useRef(false);
+
   // Helper Functions - Define before useEffects
   // Check cache validity
   const isCacheValid = useCallback(async (): Promise<boolean> => {
@@ -257,6 +261,42 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
       console.error('[GAMIFICATION] Error saving to cache:', error);
     }
   }, [state.achievements, state.coinBalance, state.challenges, state.dailyStreak, state.lastLoginDate]);
+
+  // CRITICAL: Queue processing function for atomic coin operations
+  const processCoinQueue = useCallback(async () => {
+    if (isProcessingCoins.current) return;
+    isProcessingCoins.current = true;
+
+    while (coinOperationQueue.current.length > 0) {
+      const operation = coinOperationQueue.current.shift();
+      if (operation) {
+        try {
+          await operation();
+        } catch (error) {
+          console.error('[GAMIFICATION] Coin operation failed:', error);
+        }
+      }
+    }
+
+    isProcessingCoins.current = false;
+  }, []);
+
+  const queueCoinOperation = useCallback((operation: () => Promise<void>): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      coinOperationQueue.current.push(async () => {
+        try {
+          await operation();
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      if (!isProcessingCoins.current) {
+        processCoinQueue();
+      }
+    });
+  }, [processCoinQueue]);
 
   // NEW: Sync coins from wallet (SINGLE SOURCE OF TRUTH)
   const syncCoinsFromWallet = useCallback(async () => {
@@ -427,71 +467,76 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
     }
   }, [state.featureFlags.ENABLE_ACHIEVEMENTS, state.achievements]);
 
-  // ✅ UPDATED: Award coins via coin sync service (syncs to wallet)
+  // ✅ UPDATED: Award coins via operation queue (prevents race conditions)
   const awardCoins = useCallback(async (amount: number, reason: string) => {
     if (!state.featureFlags.ENABLE_COINS) return;
 
-    try {
-      console.log(`💰 [GAMIFICATION] Awarding ${amount} coins: ${reason}`);
+    return queueCoinOperation(async () => {
+      try {
+        console.log(`💰 [GAMIFICATION] Awarding ${amount} coins: ${reason}`);
 
-      // Use coin sync service to award coins (syncs to wallet automatically)
-      const syncResult = await coinSyncService.syncGamificationReward(
-        amount,
-        'bonus',
-        { reason, timestamp: new Date().toISOString() }
-      );
+        // Use coin sync service to award coins (syncs to wallet automatically)
+        const syncResult = await coinSyncService.syncGamificationReward(
+          amount,
+          'bonus',
+          { reason, timestamp: new Date().toISOString() }
+        );
 
-      if (syncResult.success) {
-        // Update local state optimistically
-        dispatch({ type: 'COINS_EARNED', payload: amount });
+        if (syncResult.success) {
+          // Update local state
+          dispatch({ type: 'COINS_EARNED', payload: amount });
 
-        // Refresh from wallet (single source of truth)
-        await syncCoinsFromWallet();
+          // Refresh from wallet (single source of truth)
+          await syncCoinsFromWallet();
 
-        // Also check for coin-related achievements
-        await triggerAchievementCheck('COINS_EARNED', { amount, reason });
+          // Also check for coin-related achievements
+          await triggerAchievementCheck('COINS_EARNED', { amount, reason });
 
-        console.log(`✅ [GAMIFICATION] Coins awarded and synced to wallet: ${syncResult.newWalletBalance}`);
-      } else {
-        throw new Error(syncResult.error || 'Failed to sync coins to wallet');
+          console.log(`✅ [GAMIFICATION] Coins awarded and synced to wallet: ${syncResult.newWalletBalance}`);
+        } else {
+          throw new Error(syncResult.error || 'Failed to sync coins to wallet');
+        }
+      } catch (error) {
+        console.error('[GAMIFICATION] Error awarding coins:', error);
+        throw error;
       }
-    } catch (error) {
-      console.error('[GAMIFICATION] Error awarding coins:', error);
-    }
-  }, [state.featureFlags.ENABLE_COINS, syncCoinsFromWallet, triggerAchievementCheck]);
+    });
+  }, [state.featureFlags.ENABLE_COINS, queueCoinOperation, syncCoinsFromWallet, triggerAchievementCheck]);
 
-  // ✅ UPDATED: Spend coins via coin sync service (syncs to wallet)
+  // ✅ UPDATED: Spend coins via operation queue (prevents race conditions)
   const spendCoins = useCallback(async (amount: number, reason: string) => {
     if (!state.featureFlags.ENABLE_COINS) return;
 
-    try {
-      console.log(`💸 [GAMIFICATION] Spending ${amount} coins: ${reason}`);
+    return queueCoinOperation(async () => {
+      try {
+        console.log(`💸 [GAMIFICATION] Spending ${amount} coins: ${reason}`);
 
-      if (state.coinBalance.total < amount) {
-        throw new Error('Insufficient coin balance');
+        if (state.coinBalance.total < amount) {
+          throw new Error('Insufficient coin balance');
+        }
+
+        // Use coin sync service to spend coins (syncs to wallet automatically)
+        const syncResult = await coinSyncService.spendCoins(amount, reason, {
+          timestamp: new Date().toISOString(),
+        });
+
+        if (syncResult.success) {
+          // Update local state
+          dispatch({ type: 'COINS_SPENT', payload: amount });
+
+          // Refresh from wallet (single source of truth)
+          await syncCoinsFromWallet();
+
+          console.log(`✅ [GAMIFICATION] Coins spent and synced to wallet: ${syncResult.newWalletBalance}`);
+        } else {
+          throw new Error(syncResult.error || 'Failed to sync coin spending to wallet');
+        }
+      } catch (error) {
+        console.error('[GAMIFICATION] Error spending coins:', error);
+        throw error;
       }
-
-      // Use coin sync service to spend coins (syncs to wallet automatically)
-      const syncResult = await coinSyncService.spendCoins(amount, reason, {
-        timestamp: new Date().toISOString(),
-      });
-
-      if (syncResult.success) {
-        // Update local state
-        dispatch({ type: 'COINS_SPENT', payload: amount });
-
-        // Refresh from wallet (single source of truth)
-        await syncCoinsFromWallet();
-
-        console.log(`✅ [GAMIFICATION] Coins spent and synced to wallet: ${syncResult.newWalletBalance}`);
-      } else {
-        throw new Error(syncResult.error || 'Failed to sync coin spending to wallet');
-      }
-    } catch (error) {
-      console.error('[GAMIFICATION] Error spending coins:', error);
-      throw error;
-    }
-  }, [state.featureFlags.ENABLE_COINS, state.coinBalance.total, syncCoinsFromWallet]);
+    });
+  }, [state.featureFlags.ENABLE_COINS, state.coinBalance.total, queueCoinOperation, syncCoinsFromWallet]);
 
   // Update daily streak
   const updateDailyStreak = useCallback(async () => {
@@ -586,7 +631,8 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
   const hasUnshownAchievements = pendingAchievements.length > 0;
   const canEarnCoins = state.featureFlags.ENABLE_COINS;
 
-  const contextValue: GamificationContextType = {
+  // OPTIMIZED: Memoize context value to prevent unnecessary re-renders
+  const contextValue: GamificationContextType = useMemo(() => ({
     state,
     actions: {
       loadGamificationData,
@@ -606,7 +652,23 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
       hasUnshownAchievements,
       canEarnCoins,
     },
-  };
+  }), [
+    state,
+    loadGamificationData,
+    syncCoinsFromWallet,
+    triggerAchievementCheck,
+    awardCoins,
+    spendCoins,
+    updateDailyStreak,
+    markAchievementAsShown,
+    refreshAchievements,
+    clearError,
+    unlockedCount,
+    completionPercentage,
+    pendingAchievements,
+    hasUnshownAchievements,
+    canEarnCoins,
+  ]);
 
   return (
     <GamificationContext.Provider value={contextValue}>

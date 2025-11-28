@@ -767,9 +767,10 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
           <View style={styles.priceInfo}>
             <Text style={styles.priceLabel}>Entry Fee</Text>
             <Text style={styles.priceValue}>
-              {eventDetails.price.isFree
+              {/* ✅ FIX: Add null checks for price access */}
+              {eventDetails.price?.isFree
                 ? "Free Entry"
-                : `${eventDetails.price.currency}${eventDetails.price.amount}`}
+                : `${eventDetails.price?.currency || '₹'}${eventDetails.price?.amount ?? 0}`}
             </Text>
           </View>
           <View style={styles.eventTypeBadge}>
@@ -936,7 +937,12 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
           loading={isLoading}
           disabled={!!error}
           isOnline={eventDetails.isOnline}
-          price={{ ...eventDetails.price, isFree: eventDetails.price.isFree ?? false }}
+          price={{
+            // ✅ FIX: Safely spread price with defaults
+            amount: eventDetails.price?.amount ?? 0,
+            currency: eventDetails.price?.currency || '₹',
+            isFree: eventDetails.price?.isFree ?? false
+          }}
           hasSelectedSlot={!eventDetails.isOnline ? !!selectedSlot : true}
         />
       </View>

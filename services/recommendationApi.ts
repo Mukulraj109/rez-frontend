@@ -124,14 +124,16 @@ class RecommendationService {
    */
   async getPersonalizedRecommendations(
     limit: number = 10,
-    excludeProducts: string[] = []
+    excludeProducts?: string[]
   ): Promise<ApiResponse<PersonalizedRecommendationsResponse>> {
     try {
+      // Build params object, only include excludeProducts if it has values
+      const params: Record<string, any> = { limit };
+      if (excludeProducts && excludeProducts.length > 0) {
+        params.excludeProducts = excludeProducts.join(',');
+      }
 
-      const response = await apiClient.get('/recommendations/products/personalized', {
-        limit,
-        excludeProducts: excludeProducts.join(',')
-      });
+      const response = await apiClient.get('/recommendations/products/personalized', params);
 
       if (response.success && response.data) {
 

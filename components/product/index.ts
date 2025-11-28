@@ -17,3 +17,22 @@ export { default as CashbackRewardsCard } from './CashbackRewardsCard';
 export { default as DeliveryInformation } from './DeliveryInformation';
 export { default as VariantOptionButton } from './VariantOptionButton';
 export { default as StockBadge } from './StockBadge';
+
+// Phase 3.2 - Critical E-commerce Components
+export { default as SpecificationsTable } from './SpecificationsTable';
+export { default as DeliveryEstimator } from './DeliveryEstimator';
+export { default as VariantSelector } from './VariantSelector';
+export { default as TrustBadges } from './TrustBadges';
+export { default as StockIndicator } from './StockIndicator';
+export { default as RecentlyViewed } from './RecentlyViewed';
+
+// Phase 4.2 - Product Comparison (Agent 2)
+export { default as ProductComparison } from './ProductComparison';
+
+// Phase 4.3 - Expert Reviews Feature
+export { default as ExpertReviews } from './ExpertReviews';
+export { default as ExpertReviewsSummary } from './ExpertReviewsSummary';
+
+// Phase 4.1 - Q&A and Customer Photos
+export { default as QASection } from './QASection';
+export { default as CustomerPhotos } from './CustomerPhotos';

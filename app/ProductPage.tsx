@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ScrollView, StyleSheet, View, Modal, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, View, Modal, TouchableOpacity, Alert, ActivityIndicator, Platform, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '@/components/ThemedView';
@@ -18,6 +18,7 @@ import CombinedSection78 from './StoreSection/CombinedSection78';
 import ReviewList from '@/components/reviews/ReviewList';
 import ReviewForm from '@/components/reviews/ReviewForm';
 import AddedToCartModal from '@/components/cart/AddedToCartModal';
+import RelatedProductsSection from '@/components/product/RelatedProductsSection';
 import homepageDataService from '@/services/homepageDataService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -139,22 +140,64 @@ export default function StorePage() {
   const [lockedItemId, setLockedItemId] = useState<string | null>(null);
   const fetchedProductIdRef = useRef<string | null>(null);
 
+  // Responsive breakpoints
+  const screenWidth = Dimensions.get('window').width;
+  const isWeb = Platform.OS === 'web';
+  const isTablet = screenWidth >= 768;
+  const isDesktop = screenWidth >= 1024;
+
   // Function to fetch backend data for a product
   const fetchBackendData = async (productId: string) => {
+    console.log('🔍 [ProductPage] fetchBackendData called with ID:', productId);
     setIsLoadingBackend(true);
     setError(null);
     try {
       // Import productsApi dynamically to avoid circular dependencies
       const { default: productsApi } = await import('@/services/productsApi');
-      
+
       // Fetch product details from backend
+      console.log('📡 [ProductPage] Calling API: getProductById(' + productId + ')');
       const response = await productsApi.getProductById(productId);
-      
+
       if (response.success && response.data) {
         const productData = response.data;
+        console.log('✅ [ProductPage] Backend returned product:', productData.name || productData.title);
+        console.log('💰 [ProductPage] Backend price:', productData.pricing?.selling || productData.price?.current);
         
         // Update cardData with real backend data using the correct structure
         const productType = (productData as any).productType || 'product';
+
+        // Determine correct price: prioritize price.current over pricing.selling if price object exists
+        const actualPrice = (productData as any).price?.current ||
+                           (productData as any).pricing?.selling ||
+                           0;
+        const actualOriginalPrice = (productData as any).price?.original ||
+                                   (productData as any).pricing?.compare ||
+                                   undefined;
+        const actualDiscount = (productData as any).price?.discount ||
+                              (productData as any).pricing?.discount ||
+                              0;
+
+        // Determine correct rating: prioritize rating.value over ratings.average if rating object exists
+        const actualRatingValue = (productData as any).rating?.value ||
+                                 productData.ratings?.average ||
+                                 0;
+        const actualReviewCount = (productData as any).rating?.count ||
+                                 productData.ratings?.count ||
+                                 0;
+
+        console.log('🔍 [ProductPage] Price resolution:');
+        console.log('   - price.current:', (productData as any).price?.current);
+        console.log('   - pricing.selling:', (productData as any).pricing?.selling);
+        console.log('   - Using price:', actualPrice);
+
+        console.log('🔍 [ProductPage] Rating resolution:');
+        console.log('   - rating.value:', (productData as any).rating?.value);
+        console.log('   - ratings.average:', productData.ratings?.average);
+        console.log('   - Using rating:', actualRatingValue);
+        console.log('   - rating.count:', (productData as any).rating?.count);
+        console.log('   - ratings.count:', productData.ratings?.count);
+        console.log('   - Using count:', actualReviewCount);
 
         const updatedCardData: DynamicCardData = {
           id: (productData as any)._id || productData.id,
@@ -162,16 +205,16 @@ export default function StorePage() {
           title: productData.name || (productData as any).title,
           name: productData.name,
           description: productData.description,
-          price: (productData as any).pricing?.selling || (productData as any).price?.current || 0,
-          originalPrice: (productData as any).pricing?.compare || (productData as any).price?.original,
-          rating: productData.ratings?.average || (productData as any).rating?.value || 0,
-          reviewCount: productData.ratings?.count || (productData as any).rating?.count || 0,
+          price: actualPrice,
+          originalPrice: actualOriginalPrice,
+          rating: actualRatingValue,
+          reviewCount: actualReviewCount,
           ratings: productData.ratings, // Full ratings object
           category: (productData.category as any)?.name || (productData.category as any) || 'General',
           merchant: productData.store?.name || (productData as any).merchant || 'Store',
           image: (productData.images?.[0] as any)?.url || (productData as any).image,
           images: (productData.images as any)?.map((img: any) => img.url || img) || [],
-          discount: (productData as any).pricing?.discount || (productData as any).price?.discount || 0,
+          discount: actualDiscount,
           isAvailable: (productData as any).inventory?.isAvailable || (productData as any).availabilityStatus === 'in_stock',
           availabilityStatus: (productData as any).inventory?.isAvailable ? 'in_stock' : 'out_of_stock',
           stock: (productData as any).inventory?.stock || 0,
@@ -281,45 +324,60 @@ export default function StorePage() {
   useEffect(() => {
     // Only process if we have the required params and haven't already processed this cardId
     if (params.cardId && params.cardType && fetchedProductIdRef.current !== params.cardId) {
-      // Create card data from URL parameters
-      const cardDataFromParams: DynamicCardData = {
-        id: params.cardId as string,
-        title: 'Product Details',
-        description: 'Loading product information...',
-        category: params.category as string || 'general',
-        type: params.cardType as string
-      };
-      
-      setCardData(cardDataFromParams);
-      setIsDynamic(true);
-      fetchedProductIdRef.current = params.cardId as string;
 
-      // Fetch backend data for the product
-      fetchBackendData(params.cardId as string);
-    } else if (params.cardData && params.cardId && params.cardType) {
-      try {
-        // Parse and use the passed card data immediately for fast display
-        const parsedData = JSON.parse(params.cardData as string);
-        setCardData(parsedData);
-        setIsDynamic(true);
-        fetchedProductIdRef.current = params.cardId as string;
+      // Check if we have cardData passed from navigation
+      if (params.cardData) {
+        try {
+          // Parse and use the passed card data immediately for fast display
+          const parsedData = JSON.parse(params.cardData as string);
+          console.log('✅ [ProductPage] Received cardData for product:', parsedData.id || parsedData.title);
+          console.log('📦 [ProductPage] Card price:', parsedData.price, 'Card title:', parsedData.title);
 
-        // Also fetch latest backend data in background to ensure freshness
-        console.log('✅ [ProductPage] Using passed cardData and fetching latest from backend');
-        fetchBackendData(params.cardId as string);
-      } catch (error) {
-        console.error('❌ [ProductPage] Failed to parse card data:', error);
-        setIsDynamic(false);
+          setCardData(parsedData);
+          setIsDynamic(true);
+          fetchedProductIdRef.current = params.cardId as string;
 
-        // Fallback: try to fetch from backend with just cardId
-        if (params.cardId) {
+          // Also fetch latest backend data in background to ensure freshness
+          console.log('🔄 [ProductPage] Fetching backend data for product ID:', params.cardId);
+          fetchBackendData(params.cardId as string);
+        } catch (error) {
+          console.error('❌ [ProductPage] Failed to parse card data:', error);
+
+          // Fallback: Create basic card data and fetch from backend
+          const cardDataFromParams: DynamicCardData = {
+            id: params.cardId as string,
+            title: 'Product Details',
+            description: 'Loading product information...',
+            category: params.category as string || 'general',
+            type: params.cardType as string
+          };
+
+          setCardData(cardDataFromParams);
+          setIsDynamic(true);
+          fetchedProductIdRef.current = params.cardId as string;
           fetchBackendData(params.cardId as string);
         }
+      } else {
+        // No cardData passed - fetch from backend only
+        console.log('⚠️ [ProductPage] No cardData passed, fetching from backend for ID:', params.cardId);
+
+        const cardDataFromParams: DynamicCardData = {
+          id: params.cardId as string,
+          title: 'Product Details',
+          description: 'Loading product information...',
+          category: params.category as string || 'general',
+          type: params.cardType as string
+        };
+
+        setCardData(cardDataFromParams);
+        setIsDynamic(true);
+        fetchedProductIdRef.current = params.cardId as string;
+        fetchBackendData(params.cardId as string);
       }
     } else {
       setIsDynamic(false);
     }
-  }, [params.cardId, params.cardType, params.category]);
+  }, [params.cardId, params.cardType, params.category, params.cardData]);
 
   // Determine store type from backend productType (defaults to PRODUCT)
   const storeType = cardData?.productType === 'service' ? 'SERVICE' : 'PRODUCT';
@@ -424,11 +482,21 @@ export default function StorePage() {
     }
   };
 
+  // Content max width for web
+  const MAX_CONTENT_WIDTH = isDesktop ? 1200 : undefined;
+
   return (
     <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Pass dynamic data to components */}
-        <StoreHeader
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={isWeb ? styles.webScrollContent : undefined}
+      >
+        <View style={[
+          styles.contentWrapper,
+          MAX_CONTENT_WIDTH && { maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center', width: '100%' }
+        ]}>
+          {/* Pass dynamic data to components */}
+          <StoreHeader
           dynamicData={isDynamic ? cardData : null}
           cardType={params.cardType as string}
         />
@@ -504,6 +572,24 @@ export default function StorePage() {
           cardType={params.cardType as string}
         />
 
+        {/* Related Products Section */}
+        {isDynamic && cardData && (cardData.id || cardData._id) && (
+          <View style={styles.relatedProductsSection}>
+            <RelatedProductsSection
+              productId={cardData.id || cardData._id!}
+              title="You May Also Like"
+              type="similar"
+              limit={6}
+              onProductPress={(productId) => {
+                router.push({
+                  pathname: '/ProductPage',
+                  params: { cardId: productId, cardType: 'product' }
+                } as any);
+              }}
+            />
+          </View>
+        )}
+
         {/* Reviews Section */}
         <View style={styles.reviewsSection}>
           <View style={styles.reviewsSectionHeader}>
@@ -533,6 +619,7 @@ export default function StorePage() {
               currentUserId={authState.user?.id}
             />
           )}
+        </View>
         </View>
       </ScrollView>
 
@@ -592,6 +679,21 @@ export default function StorePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  webScrollContent: {
+    paddingBottom: Platform.OS === 'web' ? 40 : 20,
+  },
+  contentWrapper: {
+    flex: 1,
+  },
+  relatedProductsSection: {
+    marginTop: 24,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderRadius: 18,
+    marginHorizontal: 16,
   },
   reviewsSection: {
     marginTop: 24,

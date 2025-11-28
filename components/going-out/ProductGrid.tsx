@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, memo } from 'react';
 import {
   View,
   FlatList,
@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Dimensions,
   RefreshControl,
+  ListRenderItemInfo,
 } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -16,7 +17,7 @@ const { width: screenWidth } = Dimensions.get('window');
 const PADDING = 16;
 const GAP = 16;
 
-export function ProductGrid({
+export const ProductGrid = memo(function ProductGrid({
   products,
   loading,
   onProductPress,
@@ -29,7 +30,7 @@ export function ProductGrid({
 }: ProductGridProps) {
   const cardWidth = (screenWidth - (PADDING * 2) - (GAP * (numColumns - 1))) / numColumns;
 
-  const renderProduct = ({ item, index }: { item: any; index: number }) => (
+  const renderProduct = useCallback(({ item, index }: ListRenderItemInfo<any>) => (
     <View
       style={[
         styles.productContainer,
@@ -47,7 +48,7 @@ export function ProductGrid({
         isInWishlist={wishlist.includes(item.id)}
       />
     </View>
-  );
+  ), [cardWidth, onProductPress, onToggleWishlist, wishlist, numColumns]);
 
   const renderLoadingFooter = () => {
     if (!loading || !hasMore) return null;
@@ -94,25 +95,28 @@ export function ProductGrid({
     </View>
   );
 
-  const handleEndReached = () => {
+  const handleEndReached = useCallback(() => {
     if (hasMore && !loading && onLoadMore) {
       onLoadMore();
     }
-  };
+  }, [hasMore, loading, onLoadMore]);
 
-  const getItemLayout = (_: any, index: number) => ({
+  const keyExtractor = useCallback((item: any) => item.id, []);
+
+  const getItemLayout = useCallback((_: any, index: number) => ({
     length: 380 + GAP, // Card height + gap
     offset: (380 + GAP) * Math.floor(index / numColumns),
     index,
-  });
+  }), [numColumns]);
 
   return (
     <View style={styles.container}>
       <FlatList
         data={products}
         renderItem={renderProduct}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         numColumns={numColumns}
+        key={numColumns} // Force re-render if columns change
         contentContainerStyle={styles.listContainer}
         columnWrapperStyle={numColumns > 1 ? styles.row : undefined}
         showsVerticalScrollIndicator={false}
@@ -125,7 +129,7 @@ export function ProductGrid({
         removeClippedSubviews={true}
         maxToRenderPerBatch={6}
         initialNumToRender={6}
-        windowSize={10}
+        windowSize={3}
         scrollEventThrottle={16}
         bounces={true}
         bouncesZoom={false}
@@ -147,7 +151,7 @@ export function ProductGrid({
       )}
     </View>
 );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

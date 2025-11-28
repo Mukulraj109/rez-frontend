@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme as useNativeColorScheme } from 'react-native';
 
@@ -212,20 +212,15 @@ export function AppProvider({ children }: AppProviderProps) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const nativeColorScheme = useNativeColorScheme();
 
-  // Load settings on mount
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  // Use ref to prevent duplicate loading
+  const isLoadingRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Save settings whenever they change
-  useEffect(() => {
-    if (state.lastUpdated) {
-      saveSettings();
-    }
-  }, [state.settings]);
-
-  // Actions
-  const loadSettings = async () => {
+  // Actions - Memoized with useCallback
+  const loadSettings = useCallback(async () => {
+    // Prevent duplicate loads
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
     try {
       dispatch({ type: 'APP_LOADING', payload: true });
       
@@ -240,123 +235,151 @@ export function AppProvider({ children }: AppProviderProps) {
       dispatch({ type: 'SET_FIRST_LAUNCH', payload: isFirstLaunch });
       dispatch({ type: 'APP_LOADED', payload: settings });
     } catch (error) {
-      dispatch({ 
-        type: 'APP_ERROR', 
-        payload: error instanceof Error ? error.message : 'Failed to load settings' 
+      dispatch({
+        type: 'APP_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to load settings'
       });
+    } finally {
+      isLoadingRef.current = false;
     }
-  };
+  }, []);
 
-  const saveSettings = async () => {
+  const saveSettings = useCallback(async () => {
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.APP_SETTINGS, JSON.stringify(state.settings));
     } catch (error) {
       console.error('Failed to save settings:', error);
     }
-  };
+  }, [state.settings]);
 
-  const updateSettings = async (settings: Partial<AppSettings>) => {
+  const updateSettings = useCallback(async (settings: Partial<AppSettings>) => {
     try {
       dispatch({ type: 'UPDATE_SETTINGS', payload: settings });
     } catch (error) {
-      dispatch({ 
-        type: 'APP_ERROR', 
-        payload: error instanceof Error ? error.message : 'Failed to update settings' 
+      dispatch({
+        type: 'APP_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to update settings'
       });
     }
-  };
+  }, []);
 
-  const setColorScheme = async (scheme: ColorScheme) => {
+  const setColorScheme = useCallback(async (scheme: ColorScheme) => {
     try {
       dispatch({ type: 'SET_COLOR_SCHEME', payload: scheme });
     } catch (error) {
-      dispatch({ 
-        type: 'APP_ERROR', 
-        payload: error instanceof Error ? error.message : 'Failed to update color scheme' 
+      dispatch({
+        type: 'APP_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to update color scheme'
       });
     }
-  };
+  }, []);
 
-  const setLanguage = async (language: Language) => {
+  const setLanguage = useCallback(async (language: Language) => {
     try {
       dispatch({ type: 'SET_LANGUAGE', payload: language });
     } catch (error) {
-      dispatch({ 
-        type: 'APP_ERROR', 
-        payload: error instanceof Error ? error.message : 'Failed to update language' 
+      dispatch({
+        type: 'APP_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to update language'
       });
     }
-  };
+  }, []);
 
-  const updateNotifications = async (notifications: Partial<AppSettings['notifications']>) => {
+  const updateNotifications = useCallback(async (notifications: Partial<AppSettings['notifications']>) => {
     try {
       dispatch({ type: 'UPDATE_NOTIFICATIONS', payload: notifications });
     } catch (error) {
-      dispatch({ 
-        type: 'APP_ERROR', 
-        payload: error instanceof Error ? error.message : 'Failed to update notifications' 
+      dispatch({
+        type: 'APP_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to update notifications'
       });
     }
-  };
+  }, []);
 
-  const updatePrivacy = async (privacy: Partial<AppSettings['privacy']>) => {
+  const updatePrivacy = useCallback(async (privacy: Partial<AppSettings['privacy']>) => {
     try {
       dispatch({ type: 'UPDATE_PRIVACY', payload: privacy });
     } catch (error) {
-      dispatch({ 
-        type: 'APP_ERROR', 
-        payload: error instanceof Error ? error.message : 'Failed to update privacy settings' 
+      dispatch({
+        type: 'APP_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to update privacy settings'
       });
     }
-  };
+  }, []);
 
-  const updatePreferences = async (preferences: Partial<AppSettings['preferences']>) => {
+  const updatePreferences = useCallback(async (preferences: Partial<AppSettings['preferences']>) => {
     try {
       dispatch({ type: 'UPDATE_PREFERENCES', payload: preferences });
     } catch (error) {
-      dispatch({ 
-        type: 'APP_ERROR', 
-        payload: error instanceof Error ? error.message : 'Failed to update preferences' 
+      dispatch({
+        type: 'APP_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to update preferences'
       });
     }
-  };
+  }, []);
 
-  const resetSettings = async () => {
+  const resetSettings = useCallback(async () => {
     try {
       dispatch({ type: 'RESET_SETTINGS' });
       await AsyncStorage.removeItem(STORAGE_KEYS.APP_SETTINGS);
     } catch (error) {
-      dispatch({ 
-        type: 'APP_ERROR', 
-        payload: error instanceof Error ? error.message : 'Failed to reset settings' 
+      dispatch({
+        type: 'APP_ERROR',
+        payload: error instanceof Error ? error.message : 'Failed to reset settings'
       });
     }
-  };
+  }, []);
 
-  const clearError = () => {
+  const clearError = useCallback(() => {
     dispatch({ type: 'CLEAR_ERROR' });
-  };
+  }, []);
 
-  const markAppAsLaunched = async () => {
+  const markAppAsLaunched = useCallback(async () => {
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.FIRST_LAUNCH, 'false');
       dispatch({ type: 'SET_FIRST_LAUNCH', payload: false });
     } catch (error) {
       console.error('Failed to mark app as launched:', error);
     }
-  };
+  }, []);
 
-  // Computed values
-  const effectiveColorScheme: 'light' | 'dark' = 
-    state.settings.colorScheme === 'auto' 
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
+
+  // Save settings whenever they change (debounced)
+  useEffect(() => {
+    if (state.lastUpdated) {
+      // Clear previous timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      // Debounce save operation
+      saveTimeoutRef.current = setTimeout(() => {
+        saveSettings();
+      }, 500);
+    }
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [state.settings, state.lastUpdated, saveSettings]);
+
+  // Computed values - Memoized
+  const effectiveColorScheme: 'light' | 'dark' = useMemo(
+    () => state.settings.colorScheme === 'auto'
       ? (nativeColorScheme ?? 'light')
-      : state.settings.colorScheme;
+      : state.settings.colorScheme,
+    [state.settings.colorScheme, nativeColorScheme]
+  );
 
-  const isFirstTime = state.isFirstLaunch;
+  const isFirstTime = useMemo(() => state.isFirstLaunch, [state.isFirstLaunch]);
 
-  const formattedCurrency = (amount: number): string => {
+  const formattedCurrency = useCallback((amount: number): string => {
     const { currency } = state.settings.preferences;
-    
+
     const formatters: Record<string, Intl.NumberFormat> = {
       INR: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }),
       USD: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }),
@@ -365,9 +388,10 @@ export function AppProvider({ children }: AppProviderProps) {
 
     const formatter = formatters[currency] || formatters.INR;
     return formatter.format(amount);
-  };
+  }, [state.settings.preferences]);
 
-  const contextValue: AppContextType = {
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue: AppContextType = useMemo(() => ({
     state,
     actions: {
       loadSettings,
@@ -386,7 +410,22 @@ export function AppProvider({ children }: AppProviderProps) {
       isFirstTime,
       formattedCurrency,
     },
-  };
+  }), [
+    state,
+    loadSettings,
+    updateSettings,
+    setColorScheme,
+    setLanguage,
+    updateNotifications,
+    updatePrivacy,
+    updatePreferences,
+    resetSettings,
+    clearError,
+    markAppAsLaunched,
+    effectiveColorScheme,
+    isFirstTime,
+    formattedCurrency,
+  ]);
 
   return (
     <AppContext.Provider value={contextValue}>

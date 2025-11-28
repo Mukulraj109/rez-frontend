@@ -1,7 +1,7 @@
 // Wishlist Context
 // Manages user's wishlist items with add/remove functionality
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import wishlistApi from '@/services/wishlistApi';
 import { useSocket } from '@/contexts/SocketContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -196,11 +196,12 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
     }
   };
 
-  const isInWishlist = (productId: string): boolean => {
+  const isInWishlist = useCallback((productId: string): boolean => {
     return wishlistItems.some(item => item.productId === productId);
-  };
+  }, [wishlistItems]);
 
-  const addToWishlist = async (item: Omit<WishlistItem, 'id' | 'addedAt'>): Promise<void> => {
+  // OPTIMIZED: Optimistic update for instant UI feedback
+  const addToWishlist = useCallback(async (item: Omit<WishlistItem, 'id' | 'addedAt'>): Promise<void> => {
     try {
       setError(null);
 
@@ -209,50 +210,69 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
         throw new Error('Item already in wishlist');
       }
 
-      // First, get the user's wishlists to find the default/first one
-      const wishlistsResponse = await wishlistApi.getWishlists(1, 1);
-      let wishlistId: string | undefined;
+      // Create optimistic item
+      const optimisticItem: WishlistItem = {
+        ...item,
+        id: `temp-${Date.now()}`,
+        addedAt: new Date().toISOString(),
+      };
 
-      if (wishlistsResponse.data && wishlistsResponse.data.wishlists && wishlistsResponse.data.wishlists.length > 0) {
-        wishlistId = wishlistsResponse.data.wishlists[0].id || (wishlistsResponse.data.wishlists[0] as any)._id;
-      } else {
-        // Create a default wishlist if none exists
-        const newWishlistResponse = await wishlistApi.createWishlist({
-          name: 'My Wishlist',
-          description: 'Default wishlist',
-          isPublic: false
+      // Update UI immediately (optimistic)
+      setWishlistItems(prev => [...prev, optimisticItem]);
+
+      // API call in background
+      try {
+        const wishlistsResponse = await wishlistApi.getWishlists(1, 1);
+        let wishlistId: string | undefined;
+
+        if (wishlistsResponse.data && wishlistsResponse.data.wishlists && wishlistsResponse.data.wishlists.length > 0) {
+          wishlistId = wishlistsResponse.data.wishlists[0].id || (wishlistsResponse.data.wishlists[0] as any)._id;
+        } else {
+          const newWishlistResponse = await wishlistApi.createWishlist({
+            name: 'My Wishlist',
+            description: 'Default wishlist',
+            isPublic: false
+          });
+          wishlistId = newWishlistResponse.data?.id || (newWishlistResponse.data as any)?._id;
+        }
+
+        if (!wishlistId) {
+          throw new Error('Failed to get or create wishlist');
+        }
+
+        const response = await wishlistApi.addToWishlist({
+          itemType: 'product',
+          itemId: item.productId,
+          wishlistId,
+          notes: `Added ${item.productName}`,
+          priority: 'medium',
+          tags: [item.category]
         });
-        wishlistId = newWishlistResponse.data?.id || (newWishlistResponse.data as any)?._id;
+
+        // Replace temp item with real item
+        if (response.data) {
+          setWishlistItems(prev => prev.map(i =>
+            i.id === optimisticItem.id
+              ? { ...i, id: response.data.id || (response.data as any)._id }
+              : i
+          ));
+        } else {
+          throw new Error('Failed to add item to wishlist');
+        }
+      } catch (apiError) {
+        // Rollback on error
+        setWishlistItems(prev => prev.filter(i => i.id !== optimisticItem.id));
+        throw apiError;
       }
-
-      if (!wishlistId) {
-        throw new Error('Failed to get or create wishlist');
-      }
-
-      // Add item to backend wishlist using the correct endpoint
-      const response = await wishlistApi.addToWishlist({
-        itemType: 'product',
-        itemId: item.productId,
-        wishlistId,
-        notes: `Added ${item.productName}`,
-        priority: 'medium',
-        tags: [item.category]
-      });
-
-      if (!response.data) {
-        throw new Error('Failed to add item to wishlist');
-      }
-
-      // Reload wishlist to get the updated data with proper population
-      await loadWishlist();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add to wishlist';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  };
+  }, [isInWishlist]);
 
-  const removeFromWishlist = async (productId: string): Promise<void> => {
+  // OPTIMIZED: Optimistic update for instant UI feedback
+  const removeFromWishlist = useCallback(async (productId: string): Promise<void> => {
     try {
       setError(null);
 
@@ -262,51 +282,53 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
         throw new Error('Item not found in wishlist');
       }
 
-      // Get the wishlist ID
-      const wishlistsResponse = await wishlistApi.getWishlists(1, 1);
-      if (!wishlistsResponse.data || !wishlistsResponse.data.wishlists || wishlistsResponse.data.wishlists.length === 0) {
-        throw new Error('Wishlist not found');
-      }
-
-      const wishlistId = wishlistsResponse.data.wishlists[0].id || (wishlistsResponse.data.wishlists[0] as any)._id;
-
-      // Remove from backend using the correct endpoint: DELETE /wishlist/:wishlistId/items/:itemId
-      await wishlistApi.removeFromWishlist(itemToRemove.id);
-
-      // Optimistically update UI
+      // Update UI immediately (optimistic)
       setWishlistItems(prev => prev.filter(item => item.productId !== productId));
+
+      // API call in background
+      try {
+        const wishlistsResponse = await wishlistApi.getWishlists(1, 1);
+        if (!wishlistsResponse.data || !wishlistsResponse.data.wishlists || wishlistsResponse.data.wishlists.length === 0) {
+          throw new Error('Wishlist not found');
+        }
+
+        await wishlistApi.removeFromWishlist(itemToRemove.id);
+      } catch (apiError) {
+        // Rollback on error
+        setWishlistItems(prev => [...prev, itemToRemove]);
+        throw apiError;
+      }
     } catch (err) {
       const errorMessage = 'Failed to remove from wishlist';
       setError(errorMessage);
-      // Reload wishlist to sync state
-      await loadWishlist();
       throw new Error(errorMessage);
     }
-  };
+  }, [wishlistItems]);
 
-  const clearWishlist = async (): Promise<void> => {
+  const clearWishlist = useCallback(async (): Promise<void> => {
     try {
       setError(null);
-      
+
       // Get default wishlist and clear it
       const response = await wishlistApi.getDefaultWishlist();
       if (response.data) {
         await wishlistApi.clearWishlist(response.data.id);
       }
-      
+
       setWishlistItems([]);
     } catch (err) {
       const errorMessage = 'Failed to clear wishlist';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  };
+  }, []);
 
-  const getWishlistCount = (): number => {
+  const getWishlistCount = useCallback((): number => {
     return wishlistItems.length;
-  };
+  }, [wishlistItems]);
 
-  const contextValue: WishlistContextType = {
+  // OPTIMIZED: Memoize context value to prevent unnecessary re-renders
+  const contextValue: WishlistContextType = useMemo(() => ({
     wishlistItems,
     isInWishlist,
     addToWishlist,
@@ -315,7 +337,16 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
     getWishlistCount,
     isLoading,
     error,
-  };
+  }), [
+    wishlistItems,
+    isInWishlist,
+    addToWishlist,
+    removeFromWishlist,
+    clearWishlist,
+    getWishlistCount,
+    isLoading,
+    error,
+  ]);
 
   return (
     <WishlistContext.Provider value={contextValue}>

@@ -16,6 +16,7 @@ import {
   STORE_STATUS 
 } from '@/constants/search-constants';
 import { formatDistance, getStoreStatusText, getStoreStatusColor } from '@/utils/mock-store-search-data';
+import { storeSearchService } from '@/services/storeSearchService';
 
 const StoreInfo: React.FC<StoreInfoProps> = ({
   store,
@@ -77,18 +78,38 @@ const StoreInfo: React.FC<StoreInfoProps> = ({
       {/* Store Name and Rating Row */}
       <View style={styles.headerRow}>
         <View style={styles.storeNameContainer}>
-          <ThemedText style={styles.storeName} numberOfLines={1}>
+          <ThemedText style={styles.storeName} numberOfLines={2}>
             {store.storeName}
           </ThemedText>
           
-          {/* Rating */}
-          <View style={styles.ratingContainer}>
-            <View style={styles.starsContainer}>
-              {renderRating(store.rating)}
-            </View>
-            <ThemedText style={styles.ratingText}>
-              {store.rating.toFixed(1)}
+          {/* Store Description */}
+          {store.description && (
+            <ThemedText style={styles.storeDescription} numberOfLines={2}>
+              {store.description}
             </ThemedText>
+          )}
+          
+          {/* Rating and Review Count */}
+          <View style={styles.ratingRow}>
+            {(store.rating > 0 || store.reviewCount > 0) ? (
+              <View style={styles.ratingContainer}>
+                <View style={styles.starsContainer}>
+                  {renderRating(store.rating || 0)}
+                </View>
+                <ThemedText style={styles.ratingText}>
+                  {(store.rating || 0).toFixed(1)}
+                </ThemedText>
+                {store.reviewCount > 0 && (
+                  <ThemedText style={styles.reviewCountText}>
+                    ({store.reviewCount})
+                  </ThemedText>
+                )}
+              </View>
+            ) : (
+              <ThemedText style={styles.noRatingText}>
+                No ratings yet
+              </ThemedText>
+            )}
           </View>
         </View>
 
@@ -98,18 +119,22 @@ const StoreInfo: React.FC<StoreInfoProps> = ({
       {/* Store Details Row */}
       {showFullInfo && (
         <View style={styles.detailsRow}>
-          {/* Distance */}
-          <View style={styles.detailItem}>
-            <Ionicons
-              name="location-outline"
-              size={14}
-              color={COLORS.GRAY_500}
-              style={styles.detailIcon}
-            />
-            <ThemedText style={styles.detailText}>
-              {formatDistance(store.distance)}, {store.location}
+          {/* Distance and Location */}
+          {(store.distance !== undefined || store.location) && (
+            <View style={styles.detailItem}>
+              <Ionicons
+                name="location-outline"
+                size={14}
+                color={COLORS.GRAY_500}
+                style={styles.detailIcon}
+              />
+            <ThemedText style={styles.detailText} numberOfLines={1}>
+              {store.distance !== null && store.distance !== undefined && store.distance > 0 
+                ? `${formatDistance(store.distance)}, ` 
+                : ''}{store.location || 'Location not available'}
             </ThemedText>
-          </View>
+            </View>
+          )}
 
           {/* Status */}
           <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
@@ -133,23 +158,57 @@ const StoreInfo: React.FC<StoreInfoProps> = ({
               </ThemedText>
             </View>
           )}
+
+          {/* Estimated Delivery Time */}
+          {store.estimatedDelivery && (
+            <View style={styles.deliveryTimeBadge}>
+              <Ionicons
+                name="time-outline"
+                size={12}
+                color={COLORS.PRIMARY}
+                style={styles.deliveryIcon}
+              />
+              <ThemedText style={styles.deliveryTimeText}>
+                {store.estimatedDelivery}
+              </ThemedText>
+            </View>
+          )}
         </View>
       )}
 
-      {/* Free Shipping Badge */}
+      {/* Delivery Categories Badges */}
+      {showFullInfo && store.deliveryCategories && (
+        <View style={styles.categoriesRow}>
+          {Object.entries(store.deliveryCategories).map(([key, value]) => {
+            if (!value) return null;
+            const categoryInfo = storeSearchService.getCategoryDisplayInfo(key);
+            return (
+              <View key={key} style={styles.categoryBadge}>
+                <ThemedText style={styles.categoryBadgeText}>
+                  {categoryInfo.icon} {categoryInfo.name}
+                </ThemedText>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Shipping and Delivery Info */}
       {showFullInfo && (
         <View style={styles.shippingRow}>
-          <View style={styles.freeShippingBadge}>
-            <Ionicons
-              name="car-outline"
-              size={14}
-              color={COLORS.SUCCESS}
-              style={styles.shippingIcon}
-            />
-            <ThemedText style={styles.freeShippingText}>
-              Free Shipping
-            </ThemedText>
-          </View>
+          {store.hasFreeShipping && (
+            <View style={styles.freeShippingBadge}>
+              <Ionicons
+                name="car-outline"
+                size={14}
+                color={COLORS.SUCCESS}
+                style={styles.shippingIcon}
+              />
+              <ThemedText style={styles.freeShippingText}>
+                Free Shipping
+              </ThemedText>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -195,9 +254,26 @@ const createStyles = (screenWidth: number) => {
       marginBottom: SPACING.XS,
       letterSpacing: -0.3, // Tighter letter spacing for modern typography
     },
+    storeDescription: {
+      fontSize: TYPOGRAPHY.FONT_SIZE_SM,
+      fontWeight: TYPOGRAPHY.FONT_WEIGHT_NORMAL,
+      color: COLORS.TEXT_SECONDARY,
+      marginTop: SPACING.XS,
+      marginBottom: SPACING.XS,
+      lineHeight: 18,
+    },
+    ratingRow: {
+      marginTop: SPACING.XS,
+    },
     ratingContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+    },
+    noRatingText: {
+      fontSize: TYPOGRAPHY.FONT_SIZE_XS,
+      fontWeight: TYPOGRAPHY.FONT_WEIGHT_NORMAL,
+      color: COLORS.TEXT_SECONDARY,
+      fontStyle: 'italic',
     },
     starsContainer: {
       flexDirection: 'row',
@@ -211,6 +287,14 @@ const createStyles = (screenWidth: number) => {
       fontSize: TYPOGRAPHY.FONT_SIZE_SM,
       fontWeight: TYPOGRAPHY.FONT_WEIGHT_SEMIBOLD,
       color: COLORS.TEXT_SECONDARY,
+      marginLeft: SPACING.XS,
+    },
+    reviewCountText: {
+      fontSize: TYPOGRAPHY.FONT_SIZE_XS,
+      fontWeight: TYPOGRAPHY.FONT_WEIGHT_NORMAL,
+      color: COLORS.TEXT_SECONDARY,
+      marginLeft: SPACING.XS,
+      opacity: 0.7,
     },
     infoButton: {
       padding: SPACING.XS,
@@ -285,6 +369,40 @@ const createStyles = (screenWidth: number) => {
     freeShippingText: {
       fontSize: TYPOGRAPHY.FONT_SIZE_SM,
       color: COLORS.SUCCESS,
+      fontWeight: TYPOGRAPHY.FONT_WEIGHT_SEMIBOLD,
+    },
+    deliveryTimeBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: `${COLORS.PRIMARY}15`,
+      paddingHorizontal: SPACING.SM,
+      paddingVertical: SPACING.XS,
+      borderRadius: BORDER_RADIUS.MD,
+      marginRight: SPACING.SM,
+      marginBottom: SPACING.XS,
+    },
+    deliveryTimeText: {
+      fontSize: TYPOGRAPHY.FONT_SIZE_SM,
+      color: COLORS.PRIMARY,
+      fontWeight: TYPOGRAPHY.FONT_WEIGHT_MEDIUM,
+    },
+    categoriesRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: SPACING.SM,
+      gap: SPACING.XS,
+    },
+    categoryBadge: {
+      backgroundColor: `${COLORS.PRIMARY}15`,
+      paddingHorizontal: SPACING.SM,
+      paddingVertical: SPACING.XS,
+      borderRadius: BORDER_RADIUS.MD,
+      borderWidth: 1,
+      borderColor: `${COLORS.PRIMARY}30`,
+    },
+    categoryBadgeText: {
+      fontSize: TYPOGRAPHY.FONT_SIZE_XS,
+      color: COLORS.PRIMARY,
       fontWeight: TYPOGRAPHY.FONT_WEIGHT_SEMIBOLD,
     },
   });

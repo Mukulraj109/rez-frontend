@@ -2,7 +2,8 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import 'react-native-reanimated';
 
@@ -25,13 +26,16 @@ import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import { GamificationProvider } from '@/contexts/GamificationContext';
 import { OfflineQueueProvider } from '@/contexts/OfflineQueueContext';
 import { ToastProvider } from '@/contexts/ToastContext';
+import { RecommendationProvider } from '@/contexts/RecommendationContext';
 import ToastManager from '@/components/common/ToastManager';
 import BottomNavigation from '@/components/navigation/BottomNavigation';
 import { billUploadAnalytics } from '@/services/billUploadAnalytics';
 import { errorReporter } from '@/utils/errorReporter';
 import apiClient from '@/services/apiClient';
-import { API_CONFIG, APP_CONFIG } from '@/config/env';
+import { API_CONFIG, APP_CONFIG, getApiUrl, EXTERNAL_SERVICES, FEATURE_FLAGS } from '@/config/env';
 import { CrossPlatformAlertProvider } from '@/components/common/CrossPlatformAlert';
+import cacheWarmingService from '@/services/cacheWarmingService';
+import cacheService from '@/services/cacheService';
 // import AuthDebugger from '@/components/common/AuthDebugger';
 
 /**
@@ -45,11 +49,45 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+  const appState = useRef<AppStateStatus>(AppState.currentState);
+  const [cacheWarmed, setCacheWarmed] = useState(false);
 
   // Initialize app services on mount
   useEffect(() => {
     initializeApp();
   }, []);
+
+  // Monitor app state for cache warming
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      const previousState = appState.current;
+      appState.current = nextAppState;
+
+      // App came to foreground
+      if (previousState.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('📱 [APP] App came to foreground, refreshing stale cache...');
+        cacheWarmingService.refreshStaleCache().catch(error => {
+          console.error('❌ [APP] Failed to refresh stale cache:', error);
+        });
+      }
+
+      // App went to background
+      if (previousState === 'active' && nextAppState.match(/inactive|background/)) {
+        console.log('📱 [APP] App went to background');
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Start cache warming after initialization
+  useEffect(() => {
+    if (loaded && !cacheWarmed) {
+      startCacheWarming();
+    }
+  }, [loaded, cacheWarmed]);
 
   /**
    * Initialize app-level services and monitoring
@@ -59,19 +97,46 @@ export default function RootLayout() {
       console.log('🚀 [APP] Initializing application services...');
 
       // 1. Configure API Client
-      apiClient.setBaseURL(API_CONFIG.baseUrl);
-      console.log('✅ [APP] API Client configured:', API_CONFIG.baseUrl);
+      // Use environment-based URL or fallback to baseUrl
+      const apiUrl = API_CONFIG.baseUrl || getApiUrl() || 'http://localhost:5001/api';
+      apiClient.setBaseURL(apiUrl);
+      console.log('✅ [APP] API Client configured:', apiUrl);
+      console.log('   Environment:', APP_CONFIG.environment);
+      console.log('   Dev URL:', API_CONFIG.devUrl);
+      console.log('   Prod URL:', API_CONFIG.prodUrl);
 
       // 2. Initialize Error Reporter
       errorReporter.setAppVersion(APP_CONFIG.version);
-      errorReporter.setEnabled(true);
-      console.log('✅ [APP] Error Reporter initialized');
+      
+      // Enable error reporting based on environment and feature flag
+      const shouldEnableErrorReporting = Boolean(
+        EXTERNAL_SERVICES.analytics.sentry || 
+        FEATURE_FLAGS.enableCrashReporting ||
+        APP_CONFIG.environment === 'production'
+      );
+      
+      errorReporter.setEnabled(shouldEnableErrorReporting);
+      
+      if (shouldEnableErrorReporting) {
+        console.log('✅ [APP] Error Reporter initialized and enabled');
+        if (EXTERNAL_SERVICES.analytics.sentry) {
+          console.log('   Sentry DSN configured');
+        } else {
+          console.warn('   ⚠️ Sentry DSN not configured - errors will be logged locally only');
+        }
+      } else {
+        console.log('ℹ️ [APP] Error Reporter initialized but disabled (development mode)');
+      }
 
       // 3. Initialize Analytics
       // Note: Analytics flush interval is already configured in billUploadAnalytics constructor (30s)
       console.log('✅ [APP] Analytics initialized');
 
-      // 4. Setup Network Monitoring
+      // 4. Initialize Cache Warming Service
+      await cacheWarmingService.initialize();
+      console.log('✅ [APP] Cache warming service initialized');
+
+      // 5. Setup Network Monitoring
       const unsubscribe = NetInfo.addEventListener(state => {
         const isConnected = state.isConnected ?? false;
         console.log(`📡 [APP] Network status changed: ${isConnected ? 'ONLINE' : 'OFFLINE'}`);
@@ -108,6 +173,28 @@ export default function RootLayout() {
         error instanceof Error ? error : new Error('App initialization failed'),
         { context: 'RootLayout.initializeApp' }
       );
+    }
+  };
+
+  /**
+   * Start cache warming process
+   */
+  const startCacheWarming = async () => {
+    try {
+      console.log('🔥 [APP] Starting cache warming...');
+
+      // Start warming in background (non-blocking)
+      cacheWarmingService.startWarming().then(() => {
+        setCacheWarmed(true);
+        const stats = cacheWarmingService.getStats();
+        console.log('✅ [APP] Cache warming complete!', stats);
+      }).catch(error => {
+        console.error('❌ [APP] Cache warming failed:', error);
+        setCacheWarmed(true); // Mark as done even if failed
+      });
+
+    } catch (error) {
+      console.error('❌ [APP] Failed to start cache warming:', error);
     }
   };
 
@@ -174,7 +261,8 @@ export default function RootLayout() {
                                   <NotificationProvider>
                                     <SecurityProvider>
                                       <AppPreferencesProvider>
-                                        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                                        <RecommendationProvider>
+                                          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
                   {/* App Entry Point */}
                   <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -315,9 +403,10 @@ export default function RootLayout() {
                 {/* Debug component for development */}
                 {/* {process.env.NODE_ENV === 'development' && <AuthDebugger />} */}
 
-                                      </ThemeProvider>
-                                    </AppPreferencesProvider>
-                                  </SecurityProvider>
+                                          </ThemeProvider>
+                                        </RecommendationProvider>
+                                      </AppPreferencesProvider>
+                                    </SecurityProvider>
                                 </NotificationProvider>
                               </WishlistProvider>
                             </ProfileProvider>

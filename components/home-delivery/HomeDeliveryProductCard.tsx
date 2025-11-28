@@ -10,6 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
 import { HomeDeliveryProductCardProps } from '@/types/home-delivery.types';
+import { normalizeProductPrice, normalizeProductRating } from '@/utils/productDataNormalizer';
+import { formatPrice } from '@/utils/priceFormatter';
 
 export function HomeDeliveryProductCard({
   product,
@@ -19,23 +21,32 @@ export function HomeDeliveryProductCard({
   compact = false,
 }: HomeDeliveryProductCardProps) {
   const [imageError, setImageError] = React.useState(false);
-  const discountPercentage = product.price.discount || 0;
+
+  // Normalize price and rating using utility functions
+  const normalizedPrice = normalizeProductPrice(product);
+  const normalizedRating = normalizeProductRating(product);
+
+  const discountPercentage = normalizedPrice.discount || 0;
   const hasDiscount = discountPercentage > 0;
 
   // Build comprehensive accessibility label
   const buildAccessibilityLabel = () => {
+    const currentPrice = normalizedPrice.current;
+    const originalPrice = normalizedPrice.original;
+    const ratingValue = normalizedRating.value;
+
     const parts = [
-      product.name,
+      product.name || 'Product',
       product.brand ? `by ${product.brand}` : '',
-      `Price ${product.price.currency}${product.price.current}`,
-      product.price.original ? `was ${product.price.currency}${product.price.original}` : '',
+      currentPrice !== null ? `Price ${product.price?.currency || 'INR'}${currentPrice}` : '',
+      originalPrice !== null ? `was ${product.price?.currency || 'INR'}${originalPrice}` : '',
       hasDiscount ? `${discountPercentage}% off` : '',
-      product.rating ? `Rated ${product.rating.value} stars` : '',
-      showCashback ? `Up to ${product.cashback.percentage}% cashback` : '',
-      showDeliveryTime ? `Delivery in ${product.deliveryTime}` : '',
-      product.shipping.freeShippingEligible ? 'Free shipping available' : '',
+      ratingValue !== null ? `Rated ${ratingValue} stars` : '',
+      showCashback && product.cashback?.percentage ? `Up to ${product.cashback.percentage}% cashback` : '',
+      showDeliveryTime && product.deliveryTime ? `Delivery in ${product.deliveryTime}` : '',
+      product.shipping?.freeShippingEligible ? 'Free shipping available' : '',
       product.isNew ? 'New product' : '',
-      `From ${product.store.name}`,
+      product.store?.name ? `From ${product.store.name}` : '',
     ];
     return parts.filter(Boolean).join('. ');
   };
@@ -84,7 +95,7 @@ export function HomeDeliveryProductCard({
         )}
         
         {/* Free Shipping Badge */}
-        {product.shipping.freeShippingEligible && (
+        {product.shipping?.freeShippingEligible && (
           <View style={styles.shippingBadge}>
             <Ionicons name="car-outline" size={12} color="#059669" />
             <ThemedText style={styles.shippingText}>Free</ThemedText>
@@ -109,31 +120,31 @@ export function HomeDeliveryProductCard({
         {/* Price Section */}
         <View style={styles.priceSection}>
           <View style={styles.priceContainer}>
-            <ThemedText style={styles.currentPrice}>
-              {product.price.currency}{product.price.current}
-            </ThemedText>
-            {product.price.original && (
+            {normalizedPrice.current !== null && (
+              <ThemedText style={styles.currentPrice}>
+                {formatPrice(normalizedPrice.current, product.price?.currency || 'INR', false)}
+              </ThemedText>
+            )}
+            {normalizedPrice.original !== null && (
               <ThemedText style={styles.originalPrice}>
-                {product.price.currency}{product.price.original}
+                {formatPrice(normalizedPrice.original, product.price?.currency || 'INR', false)}
               </ThemedText>
             )}
           </View>
-          
+
           {/* Rating */}
-          {product.rating && (
+          {normalizedRating.value !== null && (
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={12} color="#F59E0B" />
               <ThemedText style={styles.ratingText}>
-                {typeof product.rating.value === 'number'
-                  ? product.rating.value.toFixed(1)
-                  : product.rating.value}
+                {normalizedRating.value.toFixed(1)}
               </ThemedText>
             </View>
           )}
         </View>
         
         {/* Cashback */}
-        {showCashback && (
+        {showCashback && product.cashback?.percentage && (
           <View style={styles.cashbackContainer}>
             <Ionicons name="gift-outline" size={14} color="#059669" />
             <ThemedText style={styles.cashbackText}>
@@ -143,7 +154,7 @@ export function HomeDeliveryProductCard({
         )}
         
         {/* Delivery Time */}
-        {showDeliveryTime && (
+        {showDeliveryTime && product.deliveryTime && (
           <View style={styles.deliveryContainer}>
             <Ionicons name="time-outline" size={12} color="#6B7280" />
             <ThemedText style={styles.deliveryText}>
@@ -153,12 +164,14 @@ export function HomeDeliveryProductCard({
         )}
         
         {/* Store Info */}
-        <View style={styles.storeContainer}>
-          <Ionicons name="storefront-outline" size={12} color="#6B7280" />
-          <ThemedText style={styles.storeText} numberOfLines={1}>
-            {product.store.name}
-          </ThemedText>
-        </View>
+        {product.store?.name && (
+          <View style={styles.storeContainer}>
+            <Ionicons name="storefront-outline" size={12} color="#6B7280" />
+            <ThemedText style={styles.storeText} numberOfLines={1}>
+              {product.store.name}
+            </ThemedText>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
 );

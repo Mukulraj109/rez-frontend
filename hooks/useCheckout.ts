@@ -1103,6 +1103,10 @@ export const useCheckout = (): UseCheckoutReturn => {
                          (state.coinSystem.storePromoCoin.used || 0),
       };
 
+      // Auto-apply card offer if available (will be validated when card is entered in Razorpay)
+      // The offer will be applied via the CardOffersSection component or when card is validated
+      const appliedCardOffer = (state as any).appliedCardOffer;
+
       // Create Razorpay payment
       await createRazorpayPayment({
         amount: totalPayable,
@@ -1112,11 +1116,50 @@ export const useCheckout = (): UseCheckoutReturn => {
           itemCount: state.items.length,
           couponCode: state.appliedPromoCode?.code || '',
           coinsUsed: JSON.stringify(coinsUsed),
+          cardOfferId: appliedCardOffer?._id || '',
         },
         userInfo,
         onSuccess: async (paymentResponse) => {
 
           try {
+            // Auto-apply card offer if card payment was used
+            let appliedCardOffer = null;
+            if (paymentResponse.paymentMethod === 'card' || paymentResponse.paymentMethod?.includes('card')) {
+              try {
+                const discountsApi = await import('@/services/discountsApi');
+                const storeId = state.store.id;
+                const orderValue = state.billSummary.totalPayable;
+                
+                // Get best card offer for this store
+                const cardOffersResponse = await discountsApi.getCardOffers({
+                  storeId,
+                  orderValue,
+                  page: 1,
+                  limit: 1,
+                });
+                
+                if (cardOffersResponse.success && cardOffersResponse.data?.discounts?.[0]) {
+                  const bestOffer = cardOffersResponse.data.discounts[0];
+                  
+                  // Validate eligibility
+                  if (orderValue >= bestOffer.minOrderValue) {
+                    // Apply the offer
+                    const applyResponse = await discountsApi.applyCardOffer({
+                      discountId: bestOffer._id,
+                    });
+                    
+                    if (applyResponse.success) {
+                      appliedCardOffer = bestOffer;
+                      console.log('✅ [Checkout] Card offer auto-applied:', bestOffer.name);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error('⚠️ [Checkout] Error auto-applying card offer:', err);
+                // Non-critical error, continue with order
+              }
+            }
+
             // Create order after successful payment
             const orderData = mapFrontendCheckoutToBackendOrder({
               deliveryAddress: { name: 'Customer', phone: '0000000000', addressLine1: state.store.name, city: 'City', state: 'State', pincode: '000000' },
@@ -1130,6 +1173,18 @@ export const useCheckout = (): UseCheckoutReturn => {
             (orderData as any).razorpayOrderId = paymentResponse.orderId;
             (orderData as any).transactionId = paymentResponse.transactionId;
             (orderData as any).coinsUsed = coinsUsed;
+            
+            // Attach card offer if applied
+            if (appliedCardOffer) {
+              (orderData as any).cardOfferId = appliedCardOffer._id;
+              const discountAmount = appliedCardOffer.type === 'percentage'
+                ? Math.round((orderValue * appliedCardOffer.value) / 100)
+                : appliedCardOffer.value;
+              (orderData as any).cardOfferDiscount = Math.min(
+                discountAmount,
+                appliedCardOffer.maxDiscountAmount || discountAmount
+              );
+            }
 
             const orderResponse = await ordersService.createOrder(orderData);
 

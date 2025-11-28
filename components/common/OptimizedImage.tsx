@@ -28,6 +28,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
 import imagePreloadService, { PreloadPriority } from '@/services/imagePreloadService';
+import imageCacheService from '@/services/imageCacheService';
+import {
+  getImageQualityProfile,
+  getOptimizedImageUrl,
+  getBlurPlaceholderUrl,
+  detectWebPSupport,
+  NetworkType,
+  ImageContext,
+} from '@/config/imageQuality';
 
 interface OptimizedImageProps {
   source: string | { uri: string };
@@ -51,6 +60,9 @@ interface OptimizedImageProps {
   componentId?: string;
   enableMemoryCache?: boolean;
   preload?: boolean;
+  context?: ImageContext;
+  enableWebP?: boolean;
+  enableDiskCache?: boolean;
 }
 
 const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -75,12 +87,17 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   componentId,
   enableMemoryCache = true,
   preload = false,
+  context = ImageContext.CARD,
+  enableWebP = true,
+  enableDiskCache = true,
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [shouldLoad, setShouldLoad] = useState(!lazy || priority);
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [networkQuality, setNetworkQuality] = useState<'wifi' | 'cellular' | 'offline'>('wifi');
+  const [cachedImageUri, setCachedImageUri] = useState<string | null>(null);
+  const [supportsWebP] = useState(detectWebPSupport());
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const thumbnailFadeAnim = useRef(new Animated.Value(1)).current;
   const mountedRef = useRef(true);
@@ -126,18 +143,36 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   }, [quality, networkQuality]);
 
   /**
-   * Preload image if requested
+   * Load from disk cache and preload image if requested
    */
   useEffect(() => {
-    if (preload && !lazy) {
+    const loadImage = async () => {
       const uri = typeof source === 'string' ? source : source.uri;
-      const preloadPriority = priority
-        ? PreloadPriority.CRITICAL
-        : PreloadPriority.HIGH;
 
-      imagePreloadService.preload(uri, preloadPriority, componentId);
-    }
-  }, [preload, lazy, source, priority, componentId]);
+      // Try to get from cache first
+      if (enableDiskCache) {
+        const cached = await imageCacheService.get(uri);
+        if (cached !== uri) {
+          setCachedImageUri(cached);
+        }
+      }
+
+      // Preload if requested
+      if (preload && !lazy) {
+        const preloadPriority = priority
+          ? PreloadPriority.CRITICAL
+          : PreloadPriority.HIGH;
+
+        if (enableDiskCache) {
+          await imageCacheService.preload(uri, preloadPriority);
+        } else {
+          await imagePreloadService.preload(uri, preloadPriority, componentId);
+        }
+      }
+    };
+
+    loadImage();
+  }, [preload, lazy, source, priority, componentId, enableDiskCache]);
 
   /**
    * Handle lazy loading with improved timing
@@ -159,56 +194,41 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   }, [lazy, priority, shouldLoad]);
 
   /**
-   * Get optimized image URL with smart parameters
+   * Get network type from quality
+   */
+  const getNetworkType = (): NetworkType => {
+    if (networkQuality === 'offline') return NetworkType.OFFLINE;
+    if (networkQuality === 'wifi') return NetworkType.WIFI;
+    return NetworkType.CELLULAR_4G; // Default to 4G for cellular
+  };
+
+  /**
+   * Get optimized image URL with smart parameters using new config
    */
   const getOptimizedUrl = (url: string, isThumbnail = false): string => {
-    // For external CDN URLs, add optimization parameters
-    if (url.includes('cloudinary.com')) {
-      // Cloudinary optimization
-      const quality_map = {
-        low: 'q_40',
-        medium: 'q_65',
-        high: 'q_85',
-        auto: 'q_auto'
-      };
-      const q = quality_map[effectiveQuality];
+    const dpr = Platform.OS === 'web'
+      ? (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1)
+      : 1;
 
-      // Use smaller dimensions for thumbnails
-      const targetWidth = isThumbnail ? Math.floor((width || 200) * 0.3) : width;
-      const targetHeight = isThumbnail ? Math.floor((height || 200) * 0.3) : height;
+    // Use quality config for optimization
+    const imageContext = isThumbnail ? ImageContext.PREVIEW : context;
 
-      const w = targetWidth ? `w_${targetWidth}` : '';
-      const h = targetHeight ? `h_${targetHeight}` : '';
-
-      // Add responsive sizing
-      const dpr = Platform.OS === 'web' ?
-        (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1) :
-        1;
-      const dprParam = dpr > 1 ? `dpr_${Math.min(dpr, 2).toFixed(1)}` : '';
-
-      const params = [q, w, h, dprParam, 'f_auto', 'c_fill'].filter(Boolean).join(',');
-
-      // Insert before /upload/
-      return url.replace('/upload/', `/upload/${params}/`);
+    // Determine format based on WebP support
+    let format: 'webp' | 'jpeg' | 'png' | 'auto' = 'auto';
+    if (enableWebP && supportsWebP) {
+      format = 'webp';
+    } else {
+      format = 'jpeg';
     }
 
-    // For imgix CDN
-    if (url.includes('imgix.net')) {
-      const params = new URLSearchParams();
-
-      if (width) params.set('w', width.toString());
-      if (height) params.set('h', height.toString());
-      params.set('auto', 'format,compress');
-      params.set('fit', 'crop');
-
-      const quality_map = { low: '40', medium: '65', high: '85', auto: '75' };
-      params.set('q', quality_map[effectiveQuality]);
-
-      return `${url}?${params.toString()}`;
-    }
-
-    // For other URLs, return as-is
-    return url;
+    return getOptimizedImageUrl(url, {
+      context: imageContext,
+      width: isThumbnail ? Math.floor((width || 200) * 0.3) : width,
+      height: isThumbnail ? Math.floor((height || 200) * 0.3) : height,
+      format,
+      networkType: getNetworkType(),
+      dpr,
+    });
   };
 
   /**
@@ -221,6 +241,11 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
     if (!shouldLoad && placeholder) {
       return { uri: placeholder };
+    }
+
+    // Use cached URI if available
+    if (cachedImageUri) {
+      return { uri: cachedImageUri, cache };
     }
 
     if (typeof source === 'string') {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import {
   View,
   Image,
@@ -11,16 +11,16 @@ import { ThemedText } from '@/components/ThemedText';
 import { ProductCardProps } from '@/types/store-search';
 import DiscountBadge from './DiscountBadge';
 import PaymentIndicator from './PaymentIndicator';
-import { 
-  COLORS, 
-  TYPOGRAPHY, 
-  SPACING, 
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
   BORDER_RADIUS,
   SHADOWS,
-  PRODUCT_GRID 
+  PRODUCT_GRID
 } from '@/constants/search-constants';
 
-const ProductCard: React.FC<ProductCardProps> = ({
+const ProductCard: React.FC<ProductCardProps> = memo(({
   product,
   store,
   onPress,
@@ -30,15 +30,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const screenWidth = Dimensions.get('window').width;
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (onPress) {
       onPress(product, store);
     }
-  };
+  }, [onPress, product, store]);
 
-  const handleImageError = () => {
+  const handleImageError = useCallback(() => {
     setImageError(true);
-  };
+  }, []);
 
   // Calculate dimensions based on size
   const getSizeDimensions = () => {
@@ -170,7 +170,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       </View>
     </TouchableOpacity>
   );
-};
+});
 
 const createStyles = (
   dimensions: { width: number; height: number },

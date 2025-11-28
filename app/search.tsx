@@ -112,16 +112,24 @@ export default function SearchPage() {
   const handleResultPress = async (result: SearchResult, position: number) => {
     await actions.handleResultPress(result, position);
 
+    // Safely extract ID with fallback
+    const resultId = result.id || result.productId || result.storeId || '';
+
+    if (!resultId) {
+      console.warn('[SEARCH] No valid ID found for result:', result);
+      return;
+    }
+
     if (result.category === 'Store') {
       // Navigate to MainStorePage with storeId to show store view
-
-      router.push(`/MainStorePage?storeId=${result.id}`);
+      router.push(`/MainStorePage?storeId=${resultId}`);
     } else {
-      // Navigate to product page
+      // Navigate to ProductPage with proper params
       router.push({
-        pathname: '/product/[id]' as any,
+        pathname: '/ProductPage' as any,
         params: {
-          id: result.id
+          cardId: resultId,
+          cardType: 'product'
         }
       });
     }

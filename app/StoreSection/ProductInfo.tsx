@@ -173,7 +173,11 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
           <View style={styles.locationRow}>
             <Ionicons name="location" size={14} color="#7C3AED" />
             <Text style={styles.locationText}>
-              {dynamicData?.store?.location?.address || dynamicData?.store?.location?.city || dynamicData?.location || "Location not available"}
+              {dynamicData?.store?.location?.address ||
+               dynamicData?.store?.location?.city ||
+               (typeof dynamicData?.location === 'string' ? dynamicData.location :
+                typeof dynamicData?.location === 'object' ? (dynamicData.location.address || dynamicData.location.city || "Location not available") :
+                "Location not available")}
             </Text>
             {dynamicData?.store && (
               <View style={styles.openBadge}>
@@ -232,6 +236,25 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
           <TouchableOpacity
             style={styles.reviewCTACard}
             onPress={() => {
+              // Extract cashback values with safe fallback
+              const getCashbackPercentage = () => {
+                return dynamicData?.cashback?.percentage ||
+                       dynamicData?.computedCashback?.percentage ||
+                       dynamicData?.analytics?.cashback?.percentage ||
+                       0;
+              };
+
+              const getCashbackAmount = () => {
+                return dynamicData?.cashback?.maxAmount ||
+                       dynamicData?.cashback?.amount ||
+                       dynamicData?.computedCashback?.amount ||
+                       dynamicData?.analytics?.cashback?.amount ||
+                       0;
+              };
+
+              const cashbackPercentage = getCashbackPercentage();
+              const cashbackAmount = getCashbackAmount();
+
               // Pass product data to ReviewPage
               router.push({
                 pathname: '/ReviewPage',
@@ -240,8 +263,8 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
                   productTitle: productTitle,
                   productImage: dynamicData?.image || dynamicData?.images?.[0] || '',
                   productPrice: productPrice,
-                  cashbackPercentage: dynamicData?.computedCashback?.percentage || dynamicData?.cashback?.percentage || dynamicData?.analytics?.cashback?.percentage || 0,
-                  cashbackAmount: dynamicData?.computedCashback?.amount || dynamicData?.cashback?.maxAmount || dynamicData?.analytics?.cashback?.amount || 0,
+                  cashbackPercentage: cashbackPercentage,
+                  cashbackAmount: cashbackAmount,
                 }
               } as any);
             }}
@@ -255,14 +278,14 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
                 <View style={styles.reviewTextContent}>
                   <Text style={styles.reviewMainText}>Write a review</Text>
                   <Text style={styles.reviewSubText}>
-                    Earn {dynamicData?.computedCashback?.percentage || dynamicData?.cashback?.percentage || dynamicData?.analytics?.cashback?.percentage || 0}% cashback instantly
+                    Earn {dynamicData?.cashback?.percentage || dynamicData?.computedCashback?.percentage || dynamicData?.analytics?.cashback?.percentage || 0}% cashback instantly
                   </Text>
                 </View>
               </View>
               <View style={styles.cashbackBadge}>
                 <Ionicons name="wallet-outline" size={16} color="#10B981" />
                 <Text style={styles.cashbackText}>
-                  ₹{dynamicData?.computedCashback?.amount || dynamicData?.cashback?.maxAmount || dynamicData?.analytics?.cashback?.amount || 0}
+                  ₹{dynamicData?.cashback?.maxAmount || dynamicData?.cashback?.amount || dynamicData?.computedCashback?.amount || dynamicData?.analytics?.cashback?.amount || 0}
                 </Text>
               </View>
             </View>

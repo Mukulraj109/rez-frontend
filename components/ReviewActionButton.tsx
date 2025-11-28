@@ -8,12 +8,14 @@ interface ReviewActionButtonProps {
   onPress ? : () => void;
   disabled?: boolean;
   loading?: boolean;
+  hasReviewed?: boolean;
 }
 
 const ReviewActionButton: React.FC<ReviewActionButtonProps> = ({
   onPress,
   disabled = false,
   loading = false,
+  hasReviewed = false,
 }) => {
   return (
     <TouchableOpacity
@@ -36,7 +38,7 @@ const ReviewActionButton: React.FC<ReviewActionButtonProps> = ({
             style={styles.icon}
           />
           <ThemedText style={[styles.text, disabled && styles.disabledText]}>
-            {loading ? 'Loading...' : 'Write a review & earn'}
+            {loading ? 'Loading...' : hasReviewed ? 'You have already reviewed this store' : 'Write a review & earn'}
           </ThemedText>
           <Ionicons
             name="gift-outline"

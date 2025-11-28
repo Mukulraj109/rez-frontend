@@ -4,20 +4,22 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { HorizontalScrollSectionProps } from '@/types/homepage.types';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import SectionSkeleton from './skeletons/SectionSkeleton';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-export default function HorizontalScrollSection({
+// Memoize the component to prevent unnecessary re-renders
+const HorizontalScrollSection = React.memo(function HorizontalScrollSection({
   section,
   onRefresh,
   renderCard,
   cardWidth = 280,
   spacing = 16,
   showIndicator = true,
-  extraData,
-}: HorizontalScrollSectionProps) {
+  isLoading = false,
+}: HorizontalScrollSectionProps & { isLoading?: boolean }) {
   const [refreshing, setRefreshing] = React.useState(false);
-  
+
   const primaryColor = useThemeColor({}, 'tint');
   const textColor = useThemeColor({}, 'text');
   const backgroundColor = useThemeColor({}, 'background');
@@ -35,6 +37,29 @@ export default function HorizontalScrollSection({
     }
   };
 
+  // Determine card type from section type for skeleton loader
+  const getCardType = () => {
+    const sectionType = section.type?.toLowerCase();
+    if (sectionType?.includes('store')) return 'store';
+    if (sectionType?.includes('event')) return 'event';
+    if (sectionType?.includes('product')) return 'product';
+    if (sectionType?.includes('recommendation')) return 'recommendation';
+    return 'product'; // default
+  };
+
+  // Show skeleton loader if loading or no items yet
+  if (isLoading || !section.items || section.items.length === 0) {
+    return (
+      <SectionSkeleton
+        cardType={getCardType()}
+        cardWidth={cardWidth}
+        spacing={spacing}
+        numCards={4}
+        showIndicator={showIndicator}
+      />
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       {/* Section Header */}
@@ -43,64 +68,67 @@ export default function HorizontalScrollSection({
         <View style={[styles.titleAccent, { backgroundColor: primaryColor }]} />
       </ThemedView>
 
-      {/* Horizontal Scroll Content */}
-      {Platform.OS === 'web' ? (
-        <FlatList
-          data={section.items}
-          horizontal
-          showsHorizontalScrollIndicator={showIndicator}
-          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing }]}
-          style={styles.webFlatListContainer}
-          removeClippedSubviews={false}
-          scrollEventThrottle={16}
-          decelerationRate="normal"
-          extraData={extraData}
-          renderItem={({ item, index }) => (
-            <View
-              style={[
-                styles.cardContainer,
-                { width: cardWidth, marginRight: index === section.items.length - 1 ? 0 : spacing },
-              ]}
-            >
-              {renderCard(item)}
-            </View>
-          )}
-          keyExtractor={(item) => item.id}
-          getItemLayout={(data, index) => (
-            { length: cardWidth + spacing, offset: (cardWidth + spacing) * index, index }
-          )}
-        />
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={showIndicator}
-          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing }]}
-          removeClippedSubviews={false}
-          scrollEventThrottle={16}
-          decelerationRate="normal"
-          nestedScrollEnabled={false}
-        >
-          {section.items.map((item, index) => (
-            <View
-              key={item.id}
-              style={[
-                styles.cardContainer,
-                { width: cardWidth, marginRight: index === section.items.length - 1 ? 0 : spacing },
-              ]}
-            >
-              {renderCard(item)}
-            </View>
-          ))}
-        </ScrollView>
-      )}
+      {/* Horizontal Scroll Content - Optimized FlatList for all platforms */}
+      <FlatList
+        data={section.items}
+        horizontal
+        showsHorizontalScrollIndicator={showIndicator}
+        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing }]}
+        style={Platform.OS === 'web' ? styles.webFlatListContainer : undefined}
+        // Performance optimizations
+        removeClippedSubviews={Platform.OS !== 'web'} // Enable on native for better performance
+        maxToRenderPerBatch={5} // Render 5 items per batch
+        updateCellsBatchingPeriod={50} // Update every 50ms
+        initialNumToRender={4} // Only render 4 items initially
+        windowSize={5} // Keep 5 screens worth of items in memory
+        scrollEventThrottle={16}
+        decelerationRate="normal"
+        getItemLayout={(data, index) => ({
+          length: cardWidth + spacing,
+          offset: (cardWidth + spacing) * index,
+          index
+        })}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item, index }) => (
+          <View
+            style={[
+              styles.cardContainer,
+              { width: cardWidth, marginRight: index === section.items.length - 1 ? 0 : spacing },
+            ]}
+          >
+            {renderCard(item)}
+          </View>
+        )}
+      />
 
       {/* Optional iOS Always-visible Scroll Indicator */}
       {Platform.OS === 'ios' && showIndicator && (
         <View style={[styles.fakeIndicator, { backgroundColor: primaryColor }]} />
       )}
     </ThemedView>
-);
-}
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function for React.memo
+  // Only re-render if section items actually changed (deep comparison of IDs)
+  if (prevProps.section.id !== nextProps.section.id) return false;
+  if (prevProps.section.items.length !== nextProps.section.items.length) return false;
+  if (prevProps.isLoading !== nextProps.isLoading) return false;
+
+  // Check if item IDs changed
+  const prevIds = prevProps.section.items.map(item => item.id).join(',');
+  const nextIds = nextProps.section.items.map(item => item.id).join(',');
+  if (prevIds !== nextIds) return false;
+
+  // Check if other props changed
+  if (prevProps.cardWidth !== nextProps.cardWidth) return false;
+  if (prevProps.spacing !== nextProps.spacing) return false;
+  if (prevProps.showIndicator !== nextProps.showIndicator) return false;
+
+  // If all checks pass, props are equal - skip re-render
+  return true;
+});
+
+export default HorizontalScrollSection;
 
 const styles = StyleSheet.create({
   container: {

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatPrice } from '@/utils/priceFormatter';
 
 interface AddedToCartModalProps {
   visible: boolean;
@@ -54,7 +55,10 @@ export default function AddedToCartModal({
     }
   }, [visible]);
 
-  const displayTotal = cartTotal || product.price * (product.quantity || 1);
+  const safePrice = typeof product.price === 'number' ? product.price : 0;
+  const safeQuantity = typeof product.quantity === 'number' ? product.quantity : 1;
+  const calculatedTotal = safePrice * safeQuantity;
+  const displayTotal = typeof cartTotal === 'number' ? cartTotal : calculatedTotal;
 
   return (
     <Modal
@@ -122,11 +126,13 @@ export default function AddedToCartModal({
             </View>
             <View style={styles.productDetails}>
               <Text style={styles.productName} numberOfLines={2}>
-                {product.name}
+                {product.name || 'Product'}
               </Text>
-              <Text style={styles.productPrice}>₹{product.price.toFixed(2)}</Text>
-              {product.quantity && product.quantity > 1 && (
-                <Text style={styles.productQuantity}>Qty: {product.quantity}</Text>
+              <Text style={styles.productPrice}>
+                {formatPrice(safePrice, 'INR') || '₹0.00'}
+              </Text>
+              {safeQuantity > 1 && (
+                <Text style={styles.productQuantity}>Qty: {safeQuantity}</Text>
               )}
             </View>
           </View>
@@ -135,7 +141,9 @@ export default function AddedToCartModal({
           <View style={styles.summaryContainer}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal:</Text>
-              <Text style={styles.summaryValue}>₹{displayTotal.toFixed(2)}</Text>
+              <Text style={styles.summaryValue}>
+                {formatPrice(displayTotal, 'INR') || '₹0.00'}
+              </Text>
             </View>
             <View style={styles.deliveryInfo}>
               <Ionicons name="checkmark-circle" size={16} color="#10B981" />

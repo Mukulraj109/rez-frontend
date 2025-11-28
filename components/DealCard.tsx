@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { DealCardProps } from '@/types/deals';
 import { calculateDealDiscount } from '@/utils/deal-validation';
+import FastImage from '@/components/common/FastImage';
 
 export default function DealCard({ 
   deal, 
@@ -188,31 +189,71 @@ export default function DealCard({
         activeOpacity={0.9}
         style={styles.cardContent}
       >
-        {/* Deal Priority Indicator */}
-        {deal.priority <= 2 && (
-          <View style={styles.priorityBadge}>
-            <Ionicons name="star" size={12} color="#FFD700" />
-            <ThemedText style={styles.priorityText}>Featured</ThemedText>
+        {/* Deal Image */}
+        {deal.image && (
+          <View style={styles.dealImageContainer}>
+            <FastImage
+              source={deal.image}
+              style={styles.dealImage}
+              resizeMode="cover"
+            />
+            <View style={styles.imageOverlay}>
+              {/* Deal Priority Indicator */}
+              {deal.priority <= 2 && (
+                <View style={styles.priorityBadge}>
+                  <Ionicons name="star" size={12} color="#FFD700" />
+                  <ThemedText style={styles.priorityText}>Featured</ThemedText>
+                </View>
+              )}
+
+              {/* Discount Badge */}
+              <View style={[styles.discountBadge, badgeStyle]}>
+                <ThemedText style={[styles.discountText, badgeTextStyle]}>
+                  {deal.badge?.text || `Save ${deal.discountValue}%`}
+                </ThemedText>
+              </View>
+
+              {/* Expiry Warning */}
+              {isExpiringSoon() && (
+                <View style={styles.expiryWarning}>
+                  <Ionicons name="time-outline" size={12} color="#EF4444" />
+                  <ThemedText style={styles.expiryText}>{timeLeft}</ThemedText>
+                </View>
+              )}
+            </View>
           </View>
         )}
 
-        {/* Discount Badge */}
-        <View style={[styles.discountBadge, badgeStyle]}>
-          <ThemedText style={[styles.discountText, badgeTextStyle]}>
-            {deal.badge?.text || `Save ${deal.discountValue}%`}
-          </ThemedText>
-        </View>
+        {/* Badges without image */}
+        {!deal.image && (
+          <>
+            {/* Deal Priority Indicator */}
+            {deal.priority <= 2 && (
+              <View style={styles.priorityBadge}>
+                <Ionicons name="star" size={12} color="#FFD700" />
+                <ThemedText style={styles.priorityText}>Featured</ThemedText>
+              </View>
+            )}
 
-        {/* Expiry Warning */}
-        {isExpiringSoon() && (
-          <View style={styles.expiryWarning}>
-            <Ionicons name="time-outline" size={12} color="#EF4444" />
-            <ThemedText style={styles.expiryText}>{timeLeft}</ThemedText>
-          </View>
+            {/* Discount Badge */}
+            <View style={[styles.discountBadge, badgeStyle]}>
+              <ThemedText style={[styles.discountText, badgeTextStyle]}>
+                {deal.badge?.text || `Save ${deal.discountValue}%`}
+              </ThemedText>
+            </View>
+
+            {/* Expiry Warning */}
+            {isExpiringSoon() && (
+              <View style={styles.expiryWarning}>
+                <Ionicons name="time-outline" size={12} color="#EF4444" />
+                <ThemedText style={styles.expiryText}>{timeLeft}</ThemedText>
+              </View>
+            )}
+          </>
         )}
 
         {/* Main Content */}
-        <View style={styles.dealContent}>
+        <View style={[styles.dealContent, deal.image && styles.dealContentWithImage]}>
           <ThemedText style={styles.dealTitle}>{deal.title}</ThemedText>
           
           {deal.description && (
@@ -280,7 +321,7 @@ export default function DealCard({
             {
               maxHeight: previewAnim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, 120],
+                outputRange: [0, 160], // Increased height for better visibility
               }),
               opacity: previewAnim,
             }
@@ -375,16 +416,16 @@ const createStyles = (screenWidth: number) => {
   return StyleSheet.create({
     card: {
       backgroundColor: '#fff',
-      borderRadius: isSmallScreen ? 16 : 20, // Larger border radius for modern look
-      marginBottom: 18, // Slightly increased vertical margin
-      marginHorizontal: isSmallScreen ? 8 : 12, // Increased horizontal margin for less compact look
+      borderRadius: isSmallScreen ? 16 : 20,
+      marginBottom: 16,
+      marginHorizontal: 0, // Full width - no horizontal margin
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      elevation: 6,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
       borderWidth: 1,
-      borderColor: '#F1F5F9',
+      borderColor: '#E5E7EB',
       overflow: 'hidden',
     },
     cardSelected: {
@@ -394,22 +435,43 @@ const createStyles = (screenWidth: number) => {
       shadowOpacity: 0.15,
     },
     cardContent: {
-      padding: cardPadding,
+      padding: 0, // Remove padding from cardContent, add to specific sections
       position: 'relative',
-      minHeight: isSmallScreen ? 220 : 240, // Increased minimum height for better spacing
+    },
+    dealImageContainer: {
+      width: '100%',
+      height: isSmallScreen ? 180 : 200,
+      position: 'relative',
+      backgroundColor: '#F3F4F6',
+    },
+    dealImage: {
+      width: '100%',
+      height: '100%',
+    },
+    imageOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      padding: isSmallScreen ? 12 : 16,
     },
     priorityBadge: {
       position: 'absolute',
-      top: cardPadding - 4,
-      left: cardPadding - 4,
+      top: isSmallScreen ? 12 : 16,
+      left: isSmallScreen ? 12 : 16,
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: '#FEF3C7',
-      paddingHorizontal: isSmallScreen ? 6 : 8,
-      paddingVertical: 3,
-      borderRadius: 10,
+      paddingHorizontal: isSmallScreen ? 8 : 10,
+      paddingVertical: 4,
+      borderRadius: 12,
       zIndex: 5,
-      maxWidth: screenWidth * 0.3, // Limit width to prevent overflow
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
     },
     priorityText: {
       fontSize: isSmallScreen ? 9 : 10,
@@ -419,13 +481,17 @@ const createStyles = (screenWidth: number) => {
     },
     discountBadge: {
       position: 'absolute',
-      top: cardPadding - 4,
-      right: cardPadding - 4,
-      borderRadius: 8,
-      paddingHorizontal: isSmallScreen ? 8 : 12,
-      paddingVertical: isSmallScreen ? 4 : 6,
+      top: isSmallScreen ? 12 : 16,
+      right: isSmallScreen ? 12 : 16,
+      borderRadius: 12,
+      paddingHorizontal: isSmallScreen ? 10 : 14,
+      paddingVertical: isSmallScreen ? 5 : 7,
       zIndex: 3,
-      maxWidth: screenWidth * 0.35, // Limit width to prevent overflow
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 3,
     },
     defaultBadge: {
       backgroundColor: '#E5E7EB',
@@ -439,16 +505,20 @@ const createStyles = (screenWidth: number) => {
     },
     expiryWarning: {
       position: 'absolute',
-      top: cardPadding + 26, // Position below discount badge to avoid overlap
-      right: cardPadding - 4,
+      top: isSmallScreen ? 50 : 58, // Position below discount badge to avoid overlap
+      right: isSmallScreen ? 12 : 16,
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: '#FEE2E2',
-      paddingHorizontal: isSmallScreen ? 6 : 8,
-      paddingVertical: 3,
-      borderRadius: 10,
+      paddingHorizontal: isSmallScreen ? 8 : 10,
+      paddingVertical: 4,
+      borderRadius: 12,
       zIndex: 4,
-      maxWidth: screenWidth * 0.4, // Limit width to prevent overflow
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
     },
     expiryText: {
       fontSize: isSmallScreen ? 9 : 10,
@@ -457,9 +527,12 @@ const createStyles = (screenWidth: number) => {
       marginLeft: 3,
     },
     dealContent: {
-      paddingTop: isSmallScreen ? 32 : 40, // Adjust top padding based on badge height
-      paddingRight: rightPadding, // Responsive right padding
-      paddingBottom: 8,
+      paddingTop: isSmallScreen ? 20 : 24,
+      paddingBottom: 16,
+      paddingHorizontal: isSmallScreen ? 16 : 20,
+    },
+    dealContentWithImage: {
+      paddingTop: 16, // Less padding when image is present
     },
     dealTitle: {
       fontSize: isSmallScreen ? 16 : 18,
@@ -544,11 +617,14 @@ const createStyles = (screenWidth: number) => {
     previewPanel: {
       backgroundColor: '#F8FAFC',
       borderRadius: 12,
-      marginBottom: 12,
+      marginHorizontal: isSmallScreen ? 16 : 20,
+      marginBottom: 16,
       overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
     },
     previewContent: {
-      padding: 12,
+      padding: isSmallScreen ? 14 : 16,
     },
     previewTitle: {
       fontSize: 13,
@@ -587,7 +663,8 @@ const createStyles = (screenWidth: number) => {
       fontWeight: '700',
     },
     termsContainer: {
-      marginBottom: 20,
+      marginBottom: 16,
+      marginHorizontal: isSmallScreen ? 16 : 20,
     },
     termRow: {
       flexDirection: 'row',
@@ -610,19 +687,19 @@ const createStyles = (screenWidth: number) => {
     },
     actionButton: {
       backgroundColor: '#8B5CF6',
-      borderRadius: 12,
-      paddingVertical: isSmallScreen ? 12 : 14,
+      borderRadius: 0, // Full width button
+      paddingVertical: isSmallScreen ? 16 : 18,
       paddingHorizontal: isSmallScreen ? 16 : 20,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       shadowColor: '#8B5CF6',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 4,
-      marginTop: 16,
-      minHeight: 44, // Ensure minimum touch target
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+      marginTop: 0,
+      minHeight: 56, // Larger touch target
     },
     actionButtonSelected: {
       backgroundColor: '#10B981',

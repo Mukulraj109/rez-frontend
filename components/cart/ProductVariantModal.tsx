@@ -70,6 +70,27 @@ export default function ProductVariantModal({
     new Set(variants.filter(v => v.color).map(v => v.color))
   );
 
+  // Safely get product price with fallback
+  // Backend can send: price.current/original OR pricing.selling/original OR pricing.basePrice/salePrice
+  const pricing = (product as any).pricing;
+  const priceObj = product.price;
+
+  const productPrice =
+    priceObj?.current ||
+    pricing?.selling ||
+    pricing?.salePrice ||
+    pricing?.base ||
+    (priceObj as any) ||
+    (product as any).price ||
+    0;
+
+  const productOriginalPrice =
+    priceObj?.original ||
+    pricing?.original ||
+    pricing?.basePrice ||
+    pricing?.mrp ||
+    productPrice;
+
   // Generate mock variants if none provided
   const mockVariants: ProductVariant[] = variants.length > 0 ? variants : [
     {
@@ -78,7 +99,7 @@ export default function ProductVariantModal({
       color: 'Black',
       colorHex: '#000000',
       sku: `${product.id}-S-BLK`,
-      price: product.price.current,
+      price: productPrice,
       stock: 10,
       available: true,
     },
@@ -88,7 +109,7 @@ export default function ProductVariantModal({
       color: 'Black',
       colorHex: '#000000',
       sku: `${product.id}-M-BLK`,
-      price: product.price.current,
+      price: productPrice,
       stock: 15,
       available: true,
     },
@@ -98,7 +119,7 @@ export default function ProductVariantModal({
       color: 'Black',
       colorHex: '#000000',
       sku: `${product.id}-L-BLK`,
-      price: product.price.current,
+      price: productPrice,
       stock: 5,
       available: true,
     },
@@ -108,7 +129,7 @@ export default function ProductVariantModal({
       color: 'Black',
       colorHex: '#000000',
       sku: `${product.id}-XL-BLK`,
-      price: product.price.current,
+      price: productPrice,
       stock: 0,
       available: false,
     },
@@ -118,7 +139,7 @@ export default function ProductVariantModal({
       color: 'White',
       colorHex: '#FFFFFF',
       sku: `${product.id}-M-WHT`,
-      price: product.price.current,
+      price: productPrice,
       stock: 20,
       available: true,
     },
@@ -128,7 +149,7 @@ export default function ProductVariantModal({
       color: 'Blue',
       colorHex: '#3B82F6',
       sku: `${product.id}-L-BLU`,
-      price: product.price.current + 100,
+      price: productPrice + 100,
       stock: 8,
       available: true,
     },
@@ -288,14 +309,14 @@ export default function ProductVariantModal({
                 <Text style={styles.productBrand}>{product.brand}</Text>
                 <View style={styles.priceRow}>
                   <Text style={styles.currentPrice}>
-                    ₹{selectedVariant?.price || product.price.current}
+                    ₹{selectedVariant?.price || productPrice}
                   </Text>
-                  {product.price.original && product.price.original > product.price.current && (
+                  {productOriginalPrice && productOriginalPrice > productPrice && (
                     <>
-                      <Text style={styles.originalPrice}>₹{product.price.original}</Text>
+                      <Text style={styles.originalPrice}>₹{productOriginalPrice}</Text>
                       <View style={styles.discountBadge}>
                         <Text style={styles.discountText}>
-                          {product.price.discount}% OFF
+                          {priceObj?.discount || Math.round(((productOriginalPrice - productPrice) / productOriginalPrice) * 100)}% OFF
                         </Text>
                       </View>
                     </>

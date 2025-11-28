@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -6,9 +6,20 @@ import {
   TouchableOpacity,
   Platform,
   GestureResponderEvent,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { triggerImpact } from "@/utils/haptics";
 import { ThemedText } from "@/components/ThemedText";
+import {
+  Colors,
+  Spacing,
+  Shadows,
+  BorderRadius,
+  Typography,
+  IconSize,
+  Timing,
+} from "@/constants/DesignSystem";
 
 interface CashbackOfferProps {
   percentage?: string;        // e.g. "10%" or "10"
@@ -28,88 +39,132 @@ export default function CashbackOffer({
   const { width } = Dimensions.get("window");
   const isSmallScreen = width < 360 || compact;
 
+  // Animation ref for micro-interactions
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
   // ensure percentage always ends with % (allow "10" or "10%")
   const pct = percentage.toString().trim().endsWith("%")
     ? percentage.toString().trim()
     : `${percentage}%`;
 
+  // Handlers with haptic feedback & animations
+  const handlePressIn = () => {
+    triggerImpact('Light');
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      ...Timing.springBouncy,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      ...Timing.springBouncy,
+    }).start();
+  };
+
+  const handlePress = (e: GestureResponderEvent) => {
+    triggerImpact('Medium');
+    if (onPress) onPress(e);
+  };
+
   const Container: React.ComponentType<any> = onPress ? TouchableOpacity : View;
 
-  return (
-    <Container
-      activeOpacity={0.85}
-      onPress={onPress}
-      style={[
-        styles.wrapper,
-        isSmallScreen && styles.wrapperCompact,
-        onPress && styles.pressable,
-      ]}
-      accessibilityRole={onPress ? "button" : "text"}
-      accessibilityLabel={`${title} ${pct} offer`}
-      accessibilityHint={onPress ? "Double tap to view cashback details" : undefined}
-    >
-      <View style={[styles.card, isSmallScreen && styles.cardCompact]}>
-        {showIcon && (
-          <View style={[styles.iconWrap, isSmallScreen && styles.iconWrapCompact]}>
-            <View style={styles.iconBg}>
-              <Ionicons name="cash-outline" size={16} color="#7C3AED" />
-            </View>
+  const content = (
+    <View style={[styles.card, isSmallScreen && styles.cardCompact]}>
+      {showIcon && (
+        <View style={[styles.iconWrap, isSmallScreen && styles.iconWrapCompact]}>
+          <View style={styles.iconBg}>
+            <Ionicons name="cash-outline" size={IconSize.sm} color={Colors.primary[700]} />
           </View>
-        )}
-
-        <View style={styles.textWrap}>
-          <ThemedText style={[styles.title, isSmallScreen && styles.titleCompact]}>
-            {title}{" "}
-            <ThemedText style={[styles.percentage, isSmallScreen && styles.percentageCompact]}>
-              {pct}
-            </ThemedText>
-          </ThemedText>
         </View>
+      )}
+
+      <View style={styles.textWrap}>
+        <ThemedText style={[styles.title, isSmallScreen && styles.titleCompact]}>
+          {title}{" "}
+          <ThemedText style={[styles.percentage, isSmallScreen && styles.percentageCompact]}>
+            {pct}
+          </ThemedText>
+        </ThemedText>
       </View>
-    </Container>
-);
+    </View>
+  );
+
+  if (onPress) {
+    return (
+      <Animated.View
+        style={[
+          styles.wrapper,
+          isSmallScreen && styles.wrapperCompact,
+          { transform: [{ scale: scaleAnim }] },
+        ]}
+      >
+        <Container
+          activeOpacity={0.7}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          onPress={handlePress}
+          style={[onPress && styles.pressable]}
+          accessibilityRole="button"
+          accessibilityLabel={`${title} ${pct} offer`}
+          accessibilityHint="Double tap to view cashback details"
+        >
+          {content}
+        </Container>
+      </Animated.View>
+    );
+  }
+
+  return (
+    <View
+      style={[styles.wrapper, isSmallScreen && styles.wrapperCompact]}
+      accessibilityRole="text"
+      accessibilityLabel={`${title} ${pct} offer`}
+    >
+      {content}
+    </View>
+  );
 }
 
 /* ===========================
-   Styles — modern/pixel-clean
+   Styles — Modern Design System
    =========================== */
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: "transparent", // outer container keeps layout consistent in page
+    backgroundColor: "transparent",
   },
   wrapperCompact: {
     // shrink outer spacing for tighter layouts
   },
   pressable: {
-    // prevents ripple overflow on Android within rounded card
     overflow: "hidden",
-    borderRadius: 12,
+    borderRadius: BorderRadius.md,
   },
 
+  // Modern Card with Purple Tint
   card: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    backgroundColor: "#F3EFFA", // soft lilac background
+    backgroundColor: Colors.background.purpleLight,
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: "#EAE6FF",
-    // subtle elevation/shadow
-    shadowColor: "#7C3AED",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: Platform.select({ ios: 0.03, android: 0.06 }),
-    shadowRadius: 10,
-    elevation: 3,
+    borderColor: Colors.primary[100],
+    ...Shadows.purpleSubtle,
   },
 
   cardCompact: {
-    paddingVertical: 8,
+    paddingVertical: Spacing.sm,
     paddingHorizontal: 10,
     borderRadius: 10,
   },
 
+  // Modern Icon Container
   iconWrap: {
     marginRight: 10,
     width: 34,
@@ -122,15 +177,15 @@ const styles = StyleSheet.create({
   iconWrapCompact: {
     width: 30,
     height: 30,
-    marginRight: 8,
-    borderRadius: 8,
+    marginRight: Spacing.sm,
+    borderRadius: BorderRadius.sm,
   },
 
   iconBg: {
     width: 30,
     height: 30,
-    borderRadius: 8,
-    backgroundColor: "#F6EEFF", // lighter lilac background for icon
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.primary[50],
     justifyContent: "center",
     alignItems: "center",
   },
@@ -140,10 +195,11 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
 
+  // Modern Typography
   title: {
-    fontSize: 14,
+    ...Typography.body,
     fontWeight: "600",
-    color: "#4B5563",
+    color: Colors.gray[600],
   },
 
   titleCompact: {
@@ -151,9 +207,9 @@ const styles = StyleSheet.create({
   },
 
   percentage: {
-    color: "#6D28D9", // rich purple
+    color: Colors.primary[700],
     fontWeight: "800",
-    fontSize: 14,
+    ...Typography.body,
   },
 
   percentageCompact: {

@@ -8,6 +8,7 @@ import {
   Dimensions,
   Animated,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +20,6 @@ import ReviewTabs from '@/components/ReviewTabs';
 import ReviewCard from '@/components/ReviewCard';
 import UGCGrid from '@/components/UGCGrid';
 import { ReviewModalProps, TabType } from '@/types/reviews';
-import { mockUGCContent } from '@/utils/mock-reviews-data';
 
 export default function ReviewModal({
   visible,
@@ -30,10 +30,48 @@ export default function ReviewModal({
   totalReviews,
   ratingBreakdown,
   reviews,
-  onWriteReview
+  onWriteReview,
+  onLikeReview,
+  onReportReview,
+  onHelpfulReview,
+  ugcContent = [],
+  ugcLoading = false,
 }: ReviewModalProps) {
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [activeTab, setActiveTab] = useState<TabType>('reviews');
+
+  // Log props when modal becomes visible
+  useEffect(() => {
+    if (visible) {
+      console.log('🎯 [ReviewModal] Modal Opened with Props:');
+      console.log('  📌 Store Name:', storeName);
+      console.log('  📌 Store ID:', storeId);
+      console.log('  ⭐ Average Rating:', averageRating);
+      console.log('  📊 Total Reviews:', totalReviews);
+      console.log('  📈 Rating Breakdown:', JSON.stringify(ratingBreakdown, null, 2));
+      console.log('  📝 Reviews Count:', reviews?.length || 0);
+      console.log('  📝 Reviews Data:', JSON.stringify(reviews, null, 2));
+      console.log('  🖼️ UGC Content Count:', ugcContent?.length || 0);
+      console.log('  🖼️ UGC Loading:', ugcLoading);
+      
+      // Log each review in detail
+      if (reviews && reviews.length > 0) {
+        reviews.forEach((review, index) => {
+          console.log(`  📄 Review ${index + 1}:`, {
+            id: review.id,
+            userId: review.userId,
+            userName: review.userName,
+            userAvatar: review.userAvatar,
+            moderationStatus: review.moderationStatus,
+            rating: review.rating,
+            reviewText: review.reviewText,
+            date: review.date,
+            images: review.images?.length || 0,
+          });
+        });
+      }
+    }
+  }, [visible, storeName, storeId, averageRating, totalReviews, ratingBreakdown, reviews, ugcContent, ugcLoading]);
 
   const slideAnim = useRef(new Animated.Value(screenData.height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -161,7 +199,11 @@ export default function ReviewModal({
 
                 {/* Action */}
                 <View style={styles.actionSection}>
-                  <ReviewActionButton onPress={onWriteReview} />
+                  <ReviewActionButton 
+                    onPress={onWriteReview} 
+                    disabled={!onWriteReview}
+                    hasReviewed={!onWriteReview}
+                  />
                 </View>
 
                 {/* Tabs */}
@@ -169,28 +211,49 @@ export default function ReviewModal({
                   activeTab={activeTab}
                   onTabChange={handleTabChange}
                   reviewCount={totalReviews}
-                  ugcCount={mockUGCContent.length}
+                  ugcCount={ugcContent.length}
                 />
 
                 {/* Content */}
                 {activeTab === 'reviews' ? (
                   <View style={styles.reviewListContainer}>
-                    {reviews.map((review) => (
-                      <ReviewCard
-                        key={review.id}
-                        review={review}
-                        onLike={() => {}}
-                        onReport={() => {}}
-                        onHelpful={() => {}}
-                      />
-                    ))}
+                    {reviews.length === 0 ? (
+                      <View style={styles.emptyState}>
+                        <ThemedText style={styles.emptyStateText}>
+                          No reviews yet. Be the first to review this store!
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      reviews.map((review) => (
+                        <ReviewCard
+                          key={review.id}
+                          review={review}
+                          onLike={onLikeReview ? () => onLikeReview(review.id) : undefined}
+                          onReport={onReportReview ? () => onReportReview(review.id) : undefined}
+                          onHelpful={onHelpfulReview ? () => onHelpfulReview(review.id) : undefined}
+                        />
+                      ))
+                    )}
                   </View>
                 ) : (
-                  <UGCGrid
-                    ugcContent={mockUGCContent}
-                    onContentPress={() => {}}
-                    onLikeContent={() => {}}
-                  />
+                  ugcLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="large" color="#7C3AED" />
+                      <ThemedText style={styles.loadingText}>Loading UGC content...</ThemedText>
+                    </View>
+                  ) : ugcContent.length === 0 ? (
+                    <View style={styles.emptyState}>
+                      <ThemedText style={styles.emptyStateText}>
+                        No user-generated content yet.
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <UGCGrid
+                      ugcContent={ugcContent}
+                      onContentPress={() => {}}
+                      onLikeContent={() => {}}
+                    />
+                  )
                 )}
               </ScrollView>
             </Animated.View>
@@ -293,6 +356,26 @@ const createStyles = (screenData: { width: number; height: number }) => {
     },
     reviewListContainer: {
       gap: 12,
+    },
+    emptyState: {
+      padding: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyStateText: {
+      fontSize: 16,
+      color: '#6B7280',
+      textAlign: 'center',
+    },
+    loadingContainer: {
+      padding: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 14,
+      color: '#6B7280',
     },
   });
 };

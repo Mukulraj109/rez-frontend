@@ -13,7 +13,7 @@ export interface Discount {
   value: number;
   minOrderValue: number;
   maxDiscountAmount?: number;
-  applicableOn: 'bill_payment' | 'all' | 'specific_products' | 'specific_categories';
+  applicableOn: 'bill_payment' | 'card_payment' | 'all' | 'specific_products' | 'specific_categories';
   validFrom: string;
   validUntil: string;
   usageLimit?: number;
@@ -25,6 +25,19 @@ export interface Discount {
     displayText?: string;
     icon?: string;
     backgroundColor?: string;
+    cardImageUrl?: string;
+    bankLogoUrl?: string;
+    offerBadge?: string;
+  };
+  // Card Offer Specific Fields
+  paymentMethod?: 'upi' | 'card' | 'all';
+  cardType?: 'credit' | 'debit' | 'all';
+  bankNames?: string[];
+  cardBins?: string[];
+  restrictions?: {
+    isOfflineOnly?: boolean;
+    notValidAboveStoreDiscount?: boolean;
+    singleVoucherPerBill?: boolean;
   };
   discountAmount?: number;
   canApply?: boolean;
@@ -138,12 +151,20 @@ class DiscountsApi {
 
   /**
    * Get bill payment discounts
+   * Phase 2: Added storeId parameter for store-specific filtering
    */
-  async getBillPaymentDiscounts(orderValue?: number): Promise<ApiResponse<Discount[]>> {
+  async getBillPaymentDiscounts(
+    orderValue?: number,
+    storeId?: string
+  ): Promise<ApiResponse<Discount[]>> {
     try {
+      const params: any = {};
+      if (orderValue !== undefined) params.orderValue = orderValue;
+      if (storeId) params.storeId = storeId;
+      
       const response = await apiClient.get<Discount[]>(
         '/discounts/bill-payment',
-        orderValue ? { orderValue } : undefined
+        Object.keys(params).length > 0 ? params : undefined
       );
       return response;
     } catch (error) {
@@ -210,6 +231,65 @@ class DiscountsApi {
       return response;
     } catch (error) {
       console.error(`[DISCOUNTS API] Error fetching discount analytics ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get card offers for a store
+   */
+  async getCardOffers(params?: {
+    storeId?: string;
+    orderValue?: number;
+    cardType?: 'credit' | 'debit' | 'all';
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{ discounts: Discount[]; total: number; page: number; limit: number }>> {
+    try {
+      const queryParams: any = {
+        applicableOn: 'card_payment', // Card offers use card_payment, not bill_payment
+        paymentMethod: 'card',
+        ...params,
+      };
+
+      const response = await apiClient.get<any>('/discounts', queryParams);
+      return response;
+    } catch (error) {
+      console.error('[DISCOUNTS API] Error fetching card offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Validate card for offers
+   */
+  async validateCardForOffers(data: {
+    cardNumber: string;
+    storeId: string;
+    orderValue: number;
+  }): Promise<ApiResponse<{ eligible: boolean; offers: Discount[]; bestOffer?: Discount }>> {
+    try {
+      const response = await apiClient.post<any>('/discounts/card-offers/validate', data);
+      return response;
+    } catch (error) {
+      console.error('[DISCOUNTS API] Error validating card:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Apply card offer
+   */
+  async applyCardOffer(data: {
+    discountId: string;
+    orderId?: string;
+    cardLast4?: string;
+  }): Promise<ApiResponse<{ success: boolean; discountAmount: number }>> {
+    try {
+      const response = await apiClient.post<any>('/discounts/card-offers/apply', data);
+      return response;
+    } catch (error) {
+      console.error('[DISCOUNTS API] Error applying card offer:', error);
       throw error;
     }
   }

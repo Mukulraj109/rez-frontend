@@ -52,7 +52,7 @@ describe('navigationHelper', () => {
     });
 
     it('should normalize routes to strings', () => {
-      expect(normalizeRoute('/home')).toBe('/home');
+      expect(normalizeRoute('/home' as any)).toBe('/home');
       expect(normalizeRoute({ pathname: '/home' } as any)).toBe('/home');
     });
   });
@@ -89,10 +89,10 @@ describe('navigationHelper', () => {
 
   describe('routesEqual', () => {
     it('should compare routes correctly', () => {
-      expect(routesEqual('/home', '/home')).toBe(true);
-      expect(routesEqual('/home/', '/home')).toBe(true);
-      expect(routesEqual('//home', '/home')).toBe(true);
-      expect(routesEqual('/home', '/profile')).toBe(false);
+      expect(routesEqual('/home' as any, '/home' as any)).toBe(true);
+      expect(routesEqual('/home/' as any, '/home' as any)).toBe(true);
+      expect(routesEqual('//home' as any, '/home' as any)).toBe(true);
+      expect(routesEqual('/home' as any, '/profile' as any)).toBe(false);
     });
   });
 

@@ -1,13 +1,17 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useRef, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
-import authService, { User, AuthResponse } from '@/services/authApi';
+import authService, { User, AuthResponse, UnifiedUser } from '@/services/authApi';
 import apiClient from '@/services/apiClient';
 import * as authStorage from '@/utils/authStorage';
+import {
+  User as UnifiedUserType,
+  toUser,
+  validateUser,
+  isUserVerified
+} from '@/types/unified';
 
-// Use types from backend service
-// interface User is imported from dummyBackend
-
+// Use types from unified type system
 interface AuthState {
   user: User | null;
   isLoading: boolean;
@@ -118,6 +122,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [shouldRedirectToSignIn, setShouldRedirectToSignIn] = React.useState(false);
   const router = useRouter();
   const segments = useSegments();
+
+  // Refs to prevent race conditions
+  const isRefreshingToken = useRef(false);
+  const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
+  const pendingRefreshCallbacks = useRef<Array<(success: boolean) => void>>([]);
 
   // Set up API client callbacks
   useEffect(() => {
@@ -588,116 +597,141 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const tryRefreshToken = async (): Promise<boolean> => {
-    try {
-
-      const refreshToken = await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-      
-      if (refreshToken) {
-
-        const response = await authService.refreshToken(refreshToken);
-
-        // Check if API returned an error
-        if (!response.success) {
-          console.warn('❌ [REFRESH TOKEN] Token refresh failed:', response.error);
-          throw new Error(response.error || 'Token refresh failed');
-        }
-
-        // Update stored tokens
-        if (!response.data || !response.data.tokens) {
-          throw new Error('Invalid response data from server');
-        }
-        
-        await AsyncStorage.multiSet([
-          [STORAGE_KEYS.ACCESS_TOKEN, response.data.tokens.accessToken],
-          [STORAGE_KEYS.REFRESH_TOKEN, response.data.tokens.refreshToken],
-        ]);
-
-        // Set auth token in API client
-        authService.setAuthToken(response.data.tokens.accessToken);
-        apiClient.setAuthToken(response.data.tokens.accessToken);
-
-        // Get user data safely
-        const userJson = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-        let storedUser = null;
-        
-        if (userJson && userJson !== 'undefined') {
-          try {
-            storedUser = JSON.parse(userJson);
-          } catch (parseError) {
-            console.error('🔄 [REFRESH TOKEN] Error parsing stored user data:', parseError);
-            // Clear corrupt data
-            await AsyncStorage.removeItem(STORAGE_KEYS.USER);
-            storedUser = null;
-          }
-        }
-
-        if (storedUser) {
-          dispatch({ 
-            type: 'AUTH_SUCCESS', 
-            payload: { user: storedUser, token: response.data.tokens.accessToken } 
-          });
-          return true; // Success
-        } else {
-          console.warn('⚠️ [REFRESH TOKEN] No stored user data after refresh');
-          dispatch({ type: 'AUTH_LOGOUT' });
-          return false; // Failed - no user data
-        }
-      } else {
-        console.warn('⚠️ [REFRESH TOKEN] No refresh token available');
-        // Don't immediately logout - maybe the user is still valid
-        // Just log the warning and let the current state persist
-
-        return false; // No refresh token available
-      }
-    } catch (error: any) {
-      console.warn('❌ [REFRESH TOKEN] Token refresh failed:', error);
-      // Don't immediately logout on refresh failure - could be network issue
-      // Only logout if it's a 401/403 (invalid refresh token)
-      const errorMessage = error?.message?.toLowerCase() || '';
-      const isInvalidToken = error?.response?.status === 401 ||
-                            error?.response?.status === 403 ||
-                            errorMessage.includes('401') ||
-                            errorMessage.includes('403') ||
-                            errorMessage.includes('invalid') ||
-                            errorMessage.includes('expired');
-
-      if (isInvalidToken) {
-
-        // Clear all stored auth data
-        await AsyncStorage.multiRemove([
-          STORAGE_KEYS.ACCESS_TOKEN,
-          STORAGE_KEYS.REFRESH_TOKEN,
-          STORAGE_KEYS.USER
-        ]).catch(console.error);
-
-        // Clear API client token
-        apiClient.setAuthToken(null);
-        authService.setAuthToken(null);
-
-        // Dispatch logout with error so navigation guard knows to redirect
-        dispatch({ type: 'AUTH_FAILURE', payload: 'Session expired. Please sign in again.' });
-
-        // Set redirect flag to trigger navigation guard
-        setShouldRedirectToSignIn(true);
-
-        // Also try immediate redirect (in case it works)
-
-        try {
-          router.replace('/sign-in');
-        } catch (navError) {
-          console.error('⚠️ [REFRESH TOKEN] Immediate navigation failed, will use guard:', navError);
-        }
-        
-        return false; // Failed - invalid token
-      } else {
-
-        return false; // Failed - network error
-      }
+  const tryRefreshToken = useCallback(async (): Promise<boolean> => {
+    // If already refreshing, return the existing promise
+    if (isRefreshingToken.current && refreshPromiseRef.current) {
+      console.log('🔄 [AUTH] Token refresh already in progress, waiting...');
+      return refreshPromiseRef.current;
     }
-  };
 
-  const contextValue: AuthContextType = {
+    // Mark as refreshing
+    isRefreshingToken.current = true;
+
+    // Create refresh promise
+    const refreshPromise = (async () => {
+      try {
+        console.log('🔄 [AUTH] Starting token refresh...');
+        const refreshToken = await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+
+        if (refreshToken) {
+          console.log('🔄 [AUTH] Calling refresh token API...');
+          const response = await authService.refreshToken(refreshToken);
+
+          // Check if API returned an error
+          if (!response.success) {
+            console.warn('❌ [REFRESH TOKEN] Token refresh failed:', response.error);
+            throw new Error(response.error || 'Token refresh failed');
+          }
+
+          // Update stored tokens
+          if (!response.data || !response.data.tokens) {
+            throw new Error('Invalid response data from server');
+          }
+
+          await AsyncStorage.multiSet([
+            [STORAGE_KEYS.ACCESS_TOKEN, response.data.tokens.accessToken],
+            [STORAGE_KEYS.REFRESH_TOKEN, response.data.tokens.refreshToken],
+          ]);
+
+          // Set auth token in API client
+          authService.setAuthToken(response.data.tokens.accessToken);
+          apiClient.setAuthToken(response.data.tokens.accessToken);
+
+          // Get user data safely
+          const userJson = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+          let storedUser = null;
+
+          if (userJson && userJson !== 'undefined') {
+            try {
+              storedUser = JSON.parse(userJson);
+            } catch (parseError) {
+              console.error('🔄 [REFRESH TOKEN] Error parsing stored user data:', parseError);
+              // Clear corrupt data
+              await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+              storedUser = null;
+            }
+          }
+
+          if (storedUser) {
+            dispatch({
+              type: 'AUTH_SUCCESS',
+              payload: { user: storedUser, token: response.data.tokens.accessToken }
+            });
+            console.log('✅ [AUTH] Token refreshed successfully');
+            return true; // Success
+          } else {
+            console.warn('⚠️ [REFRESH TOKEN] No stored user data after refresh');
+            dispatch({ type: 'AUTH_LOGOUT' });
+            return false; // Failed - no user data
+          }
+        } else {
+          console.warn('⚠️ [REFRESH TOKEN] No refresh token available');
+          return false; // No refresh token available
+        }
+      } catch (error: any) {
+        console.warn('❌ [REFRESH TOKEN] Token refresh failed:', error);
+        // Don't immediately logout on refresh failure - could be network issue
+        // Only logout if it's a 401/403 (invalid refresh token)
+        const errorMessage = error?.message?.toLowerCase() || '';
+        const isInvalidToken = error?.response?.status === 401 ||
+                              error?.response?.status === 403 ||
+                              errorMessage.includes('401') ||
+                              errorMessage.includes('403') ||
+                              errorMessage.includes('invalid') ||
+                              errorMessage.includes('expired');
+
+        if (isInvalidToken) {
+          console.log('🚨 [AUTH] Invalid token, logging out...');
+          // Clear all stored auth data
+          await AsyncStorage.multiRemove([
+            STORAGE_KEYS.ACCESS_TOKEN,
+            STORAGE_KEYS.REFRESH_TOKEN,
+            STORAGE_KEYS.USER
+          ]).catch(console.error);
+
+          // Clear API client token
+          apiClient.setAuthToken(null);
+          authService.setAuthToken(null);
+
+          // Dispatch logout with error so navigation guard knows to redirect
+          dispatch({ type: 'AUTH_FAILURE', payload: 'Session expired. Please sign in again.' });
+
+          // Set redirect flag to trigger navigation guard
+          setShouldRedirectToSignIn(true);
+
+          // Also try immediate redirect (in case it works)
+          try {
+            router.replace('/sign-in');
+          } catch (navError) {
+            console.error('⚠️ [REFRESH TOKEN] Immediate navigation failed, will use guard:', navError);
+          }
+
+          return false; // Failed - invalid token
+        } else {
+          console.log('⚠️ [AUTH] Network error during token refresh');
+          return false; // Failed - network error
+        }
+      } finally {
+        // Reset refreshing flag
+        isRefreshingToken.current = false;
+        refreshPromiseRef.current = null;
+
+        // Resolve all pending callbacks
+        const callbacks = pendingRefreshCallbacks.current;
+        pendingRefreshCallbacks.current = [];
+        const success = !(error instanceof Error);
+        callbacks.forEach(cb => cb(success));
+      }
+    })();
+
+    // Store promise for subsequent calls
+    refreshPromiseRef.current = refreshPromise;
+
+    return refreshPromise;
+  }, [router]);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue: AuthContextType = useMemo(() => ({
     state,
     actions: {
       sendOTP,
@@ -711,7 +745,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       clearError,
       checkAuthStatus,
     },
-  };
+  }), [
+    state,
+    sendOTP,
+    login,
+    register,
+    verifyOTP,
+    logout,
+    forceLogout,
+    updateProfile,
+    completeOnboarding,
+    clearError,
+    checkAuthStatus,
+  ]);
 
   return (
     <AuthContext.Provider value={contextValue}>

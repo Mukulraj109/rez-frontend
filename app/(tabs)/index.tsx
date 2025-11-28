@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import {
   View,
   ScrollView,
@@ -14,6 +14,7 @@ import {
   Animated,
   Modal,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,20 +39,33 @@ import {
   HomepageSectionItem,
 } from '@/types/homepage.types';
 import { useProfile, useProfileMenu } from '@/contexts/ProfileContext';
-import ProfileMenuModal from '@/components/profile/ProfileMenuModal';
 import { profileMenuSections } from '@/data/profileData';
-import VoucherNavButton from '@/components/voucher/VoucherNavButton';
 import { GreetingDisplay, LocationDisplay } from '@/components/location';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import authService from '@/services/authApi';
-import NavigationShortcuts from '@/components/navigation/NavigationShortcuts';
-import QuickAccessFAB from '@/components/navigation/QuickAccessFAB';
-import FeatureHighlights from '@/components/homepage/FeatureHighlights';
 import TierBadge from '@/components/subscription/TierBadge';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import NotificationBell from '@/components/common/NotificationBell';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+
+// Lazy-loaded components (below-the-fold)
+const ProfileMenuModal = React.lazy(() => import('@/components/profile/ProfileMenuModal'));
+const VoucherNavButton = React.lazy(() => import('@/components/voucher/VoucherNavButton'));
+const NavigationShortcuts = React.lazy(() => import('@/components/navigation/NavigationShortcuts'));
+const QuickAccessFAB = React.lazy(() => import('@/components/navigation/QuickAccessFAB'));
+const FeatureHighlights = React.lazy(() => import('@/components/homepage/FeatureHighlights'));
+
+// Fallback components for Suspense boundaries
+const BelowFoldFallback = () => (
+  <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+    <ActivityIndicator size="small" color="#8B5CF6" />
+  </View>
+);
+
+const ModalFallback = () => null; // No loader for modals
+
+const FABFallback = () => null; // No loader for FAB
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -67,25 +81,37 @@ export default function HomeScreen() {
   const [userPoints, setUserPoints] = React.useState(0);
   const [userStats, setUserStats] = React.useState<any>(null);
   const [syncStatus, setSyncStatus] = React.useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+  const [isLoadingStats, setIsLoadingStats] = React.useState(false);
+  const [interactionsComplete, setInteractionsComplete] = React.useState(false); // Deferred render flag
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
+  const statsLoadedRef = React.useRef(false); // Prevent redundant loads
 
   // Initialize push notifications
   usePushNotifications();
 
-  // Load user points and statistics
+  // Defer heavy renders until after animations complete
   React.useEffect(() => {
-    if (authState.user) {
+    const handle = InteractionManager.runAfterInteractions(() => {
+      setInteractionsComplete(true);
+    });
 
+    return () => handle.cancel();
+  }, []);
+
+  // Load user points and statistics (optimized with cache check)
+  React.useEffect(() => {
+    if (authState.user && !statsLoadedRef.current && !isLoadingStats && interactionsComplete) {
+      statsLoadedRef.current = true;
       loadUserStatistics();
-    } else {
-
     }
-  }, [authState.user]);
+  }, [authState.user, interactionsComplete]);
 
   const loadUserStatistics = async () => {
-    try {
+    if (isLoadingStats) return; // Prevent concurrent calls
 
+    try {
+      setIsLoadingStats(true);
       // Loading user statistics
       const response = await authService.getUserStatistics();
       if (response.success && response.data) {
@@ -172,6 +198,8 @@ export default function HomeScreen() {
       // Fallback to wallet data
       const loyaltyPoints = authState.user?.wallet?.totalEarned || authState.user?.wallet?.balance || 0;
       setUserPoints(loyaltyPoints);
+    } finally {
+      setIsLoadingStats(false);
     }
   };
 
@@ -189,14 +217,17 @@ export default function HomeScreen() {
 
   const handleRefresh = React.useCallback(
     async () => {
-
       setRefreshing(true);
       try {
+        // Refresh sections first (visual feedback)
         await actions.refreshAllSections();
-        // Also refresh user statistics
-        if (authState.user) {
 
-          await loadUserStatistics();
+        // Refresh user statistics in background (non-blocking)
+        if (authState.user) {
+          statsLoadedRef.current = false; // Allow reload
+          loadUserStatistics().catch(err => {
+            console.error('Failed to refresh stats:', err);
+          });
         }
       } catch (error) {
         console.error('❌ [HOME] Failed to refresh homepage:', error);
@@ -242,7 +273,8 @@ export default function HomeScreen() {
     router.push(`/category/${categorySlug}` as any);
   };
 
-  const renderEventCard = (item: HomepageSectionItem) => {
+  // Memoize card renderers to prevent unnecessary re-renders
+  const renderEventCard = React.useCallback((item: HomepageSectionItem) => {
     const event = item as EventItem;
     return (
       <EventCard
@@ -254,9 +286,9 @@ export default function HomeScreen() {
         }}
       />
     );
-  };
+  }, [actions, handleItemPress]);
 
-  const renderRecommendationCard = (item: HomepageSectionItem) => {
+  const renderRecommendationCard = React.useCallback((item: HomepageSectionItem) => {
     const recommendation = item as RecommendationItem;
     return (
       <RecommendationCard
@@ -272,9 +304,9 @@ export default function HomeScreen() {
         }}
       />
     );
-  };
+  }, [actions, handleItemPress, handleAddToCart]);
 
-  const renderStoreCard = (item: HomepageSectionItem, sectionId: string) => {
+  const renderStoreCard = React.useCallback((item: HomepageSectionItem, sectionId: string) => {
     const store = item as StoreItem;
     return (
       <StoreCard
@@ -286,9 +318,9 @@ export default function HomeScreen() {
         }}
       />
     );
-  };
+  }, [actions, handleItemPress]);
 
-  const renderBrandedStoreCard = (item: HomepageSectionItem) => {
+  const renderBrandedStoreCard = React.useCallback((item: HomepageSectionItem) => {
     const store = item as BrandedStoreItem;
     return (
       <BrandedStoreCard
@@ -301,17 +333,13 @@ export default function HomeScreen() {
         width={200}
       />
     );
-  };
+  }, [actions, handleItemPress]);
 
-  const renderProductCard = (item: HomepageSectionItem) => {
+  const renderProductCard = React.useCallback((item: HomepageSectionItem) => {
     const product = item as ProductItem;
-    const productId = product.id;
-    const cartItem = cartState.items.find(i => i.id === productId);
-    const inCart = cartItem ? cartItem.quantity : 0;
 
     return (
       <ProductCard
-        key={`${productId}-${inCart}`}
         product={product}
         onPress={productItem => {
           actions.trackSectionView('new_arrivals');
@@ -324,7 +352,7 @@ export default function HomeScreen() {
         }}
       />
     );
-  };
+  }, [actions, handleItemPress, handleAddToCart]);
 
   return (
     <ScrollView
@@ -691,14 +719,20 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Online Voucher Button */}
-        <VoucherNavButton variant="minimal" style={{ marginBottom: 20 }} />
+        {/* Online Voucher Button - Lazy Loaded */}
+        <Suspense fallback={<BelowFoldFallback />}>
+          <VoucherNavButton variant="minimal" style={{ marginBottom: 20 }} />
+        </Suspense>
 
-        {/* Navigation Shortcuts */}
-        <NavigationShortcuts />
+        {/* Navigation Shortcuts - Lazy Loaded */}
+        <Suspense fallback={<BelowFoldFallback />}>
+          <NavigationShortcuts />
+        </Suspense>
 
-        {/* Feature Highlights */}
-        <FeatureHighlights />
+        {/* Feature Highlights - Lazy Loaded */}
+        <Suspense fallback={<BelowFoldFallback />}>
+          <FeatureHighlights />
+        </Suspense>
 
         {/* Going Out Section */}
         <View style={viewStyles.section}>
@@ -856,53 +890,58 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Sections from state */}
-        {state.sections
-          .filter(section => section.items && section.items.length > 0)
-          .map(section => (
-            <HorizontalScrollSection
-              key={`${section.id}-${cartState.items.length}`}
-              section={section}
-              onItemPress={item => handleItemPress(section.id, item)}
-              onRefresh={() => actions.refreshSection(section.id)}
-              renderCard={item => {
-                switch (section.type) {
-                  case 'events':
-                    return renderEventCard(item);
-                  case 'recommendations':
-                    return renderRecommendationCard(item);
-                  case 'stores':
-                    return renderStoreCard(item, section.id);
-                  case 'branded_stores':
-                    return renderBrandedStoreCard(item);
-                  case 'products':
-                    return renderProductCard(item);
-                  default:
-                    return renderStoreCard(item, section.id);
+        {/* Sections from state - Progressive loading with memoization */}
+        {React.useMemo(() => {
+          return state.sections
+            .filter(section => section.items && section.items.length > 0)
+            .map(section => (
+              <HorizontalScrollSection
+                key={section.id}
+                section={section}
+                onItemPress={item => handleItemPress(section.id, item)}
+                onRefresh={() => actions.refreshSection(section.id)}
+                renderCard={item => {
+                  switch (section.type) {
+                    case 'events':
+                      return renderEventCard(item);
+                    case 'recommendations':
+                      return renderRecommendationCard(item);
+                    case 'stores':
+                      return renderStoreCard(item, section.id);
+                    case 'branded_stores':
+                      return renderBrandedStoreCard(item);
+                    case 'products':
+                      return renderProductCard(item);
+                    default:
+                      return renderStoreCard(item, section.id);
+                  }
+                }}
+                cardWidth={
+                  section.id === 'new_arrivals' ? 180 :
+                  section.id === 'just_for_you' ? 230 :
+                  section.type === 'branded_stores' ? 200 : 280
                 }
-              }}
-              cardWidth={
-                section.id === 'new_arrivals' ? 180 :
-                section.id === 'just_for_you' ? 230 :
-                section.type === 'branded_stores' ? 200 : 280
-              }
-              spacing={
-                section.id === 'new_arrivals' ? 12 :
-                section.id === 'just_for_you' ? 12 : 16
-              }
-              showIndicator={false}
-              extraData={cartState.items}
-            />
-          ))}
+                spacing={
+                  section.id === 'new_arrivals' ? 12 :
+                  section.id === 'just_for_you' ? 12 : 16
+                }
+                showIndicator={false}
+              />
+            ));
+        }, [state.sections, handleItemPress, actions, renderEventCard, renderRecommendationCard, renderStoreCard, renderBrandedStoreCard, renderProductCard])}
       </View>
 
-      {/* Profile Menu Modal */}
+      {/* Profile Menu Modal - Lazy Loaded */}
       {user && (
-        <ProfileMenuModal visible={isModalVisible} onClose={hideModal} user={user} menuSections={profileMenuSections} onMenuItemPress={handleMenuItemPress} />
+        <Suspense fallback={<ModalFallback />}>
+          <ProfileMenuModal visible={isModalVisible} onClose={hideModal} user={user} menuSections={profileMenuSections} onMenuItemPress={handleMenuItemPress} />
+        </Suspense>
       )}
 
-      {/* Quick Access FAB */}
-      <QuickAccessFAB />
+      {/* Quick Access FAB - Lazy Loaded */}
+      <Suspense fallback={<FABFallback />}>
+        <QuickAccessFAB />
+      </Suspense>
     </ScrollView>
   );
 }

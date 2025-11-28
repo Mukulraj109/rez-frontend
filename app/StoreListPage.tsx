@@ -115,34 +115,102 @@ const StoreListPage: React.FC = () => {
     query: searchQuery,
     totalResults: stores.length,
     totalStores: stores.length,
-    stores: stores.map(store => ({
+    stores: stores.map((store, storeIndex) => {
+      console.log(`\n🏪 [STORE ${storeIndex}] Processing store:`, store.name);
+      console.log('📦 Products count:', store.products?.length || 0);
+
+      if (store.products && store.products.length > 0) {
+        const firstProduct = store.products[0];
+        console.log('📱 First product raw data:', {
+          name: firstProduct.name,
+          price: firstProduct.price,
+          priceType: typeof firstProduct.price,
+          rating: firstProduct.rating,
+          ratingType: typeof firstProduct.rating,
+        });
+      }
+
+      return {
       storeId: store._id,
-      storeName: store.name,
+      storeName: store.name || 'Unnamed Store',
       rating: store.ratings?.average || 0,
       reviewCount: store.ratings?.count || 0,
-      distance: store.distance || 0,
-      location: store.location?.city || store.location?.address || '',
-      isOpen: store.isActive || false,
-      hasOnlineDelivery: true,
+      distance: store.distance !== undefined ? store.distance : null,
+      location: store.location?.city || store.location?.address || 'Location not available',
+      isOpen: store.isActive !== false, // Default to true if not specified
+      hasOnlineDelivery: true, // Assume online delivery is available
       hasFreeShipping: store.operationalInfo?.freeDeliveryAbove ? true : false,
-      estimatedDelivery: store.operationalInfo?.deliveryTime,
-      storeImage: store.banner,
-      products: (store.products || []).map(product => ({
-        productId: product._id,
-        name: product.name || product.title || '',
-        description: '',
-        price: product.price?.current || 0,
-        originalPrice: product.price?.original,
-        discountPercentage: product.price?.discount,
-        imageUrl: product.image || 'https://via.placeholder.com/150',
-        imageAlt: product.name || product.title,
-        hasRezPay: false,
-        inStock: product.inventory?.isAvailable || true,
-        rating: typeof product.rating?.value === 'string' ? parseFloat(product.rating.value) : product.rating?.value || 0,
-        reviewCount: product.rating?.count || 0,
-      })),
+      estimatedDelivery: store.operationalInfo?.deliveryTime || null,
+      storeImage: store.banner || null, // Banner for main display
+      logo: store.logo || null, // Logo for overlay
+      description: store.description || '',
+      deliveryCategories: store.deliveryCategories || {},
+      products: (store.products || []).map(product => {
+        // Handle both old and new product data structures
+        // New structure from backend transformation: { price: number, originalPrice: number, rating: number }
+        // Old structure: { price: { current, original }, rating: { value, count } }
+        const isNewStructure = typeof product.price === 'number';
+
+        // Safe price extraction with fallback
+        const getPrice = () => {
+          if (isNewStructure) {
+            return typeof product.price === 'number' ? product.price : 0;
+          }
+          return typeof product.price?.current === 'number' ? product.price.current : 0;
+        };
+
+        // Safe rating extraction with fallback
+        const getRating = () => {
+          if (isNewStructure) {
+            return typeof product.rating === 'number' ? product.rating : 0;
+          }
+          if (typeof product.rating?.value === 'number') {
+            return product.rating.value;
+          }
+          if (typeof product.rating?.value === 'string') {
+            const parsed = parseFloat(product.rating.value);
+            return isNaN(parsed) ? 0 : parsed;
+          }
+          return 0;
+        };
+
+        const transformedProduct = {
+          productId: product._id || product.productId || '',
+          name: product.name || product.title || '',
+          description: product.description || '',
+          price: getPrice(),
+          originalPrice: isNewStructure ? (product.originalPrice || null) : (product.price?.original || null),
+          discountPercentage: isNewStructure ? (product.discountPercentage || null) : (product.price?.discount || null),
+          imageUrl: product.imageUrl || product.image || 'https://via.placeholder.com/150',
+          imageAlt: product.imageAlt || product.name || product.title || 'Product image',
+          hasRezPay: product.hasRezPay !== undefined ? product.hasRezPay : false,
+          inStock: product.inStock !== undefined ? product.inStock : (product.inventory?.isAvailable !== undefined ? product.inventory.isAvailable : true),
+          category: product.category || '',
+          subcategory: product.subcategory || '',
+          brand: product.brand || '',
+          rating: getRating(),
+          reviewCount: isNewStructure ? (product.reviewCount || 0) : (product.rating?.count || 0),
+          sizes: Array.isArray(product.sizes) ? product.sizes : [],
+          colors: Array.isArray(product.colors) ? product.colors : [],
+          tags: Array.isArray(product.tags) ? product.tags : [],
+        };
+
+        // Log the transformation result for first product
+        if (product === store.products[0]) {
+          console.log('✅ Transformed first product:', {
+            name: transformedProduct.name,
+            price: transformedProduct.price,
+            priceType: typeof transformedProduct.price,
+            rating: transformedProduct.rating,
+            ratingType: typeof transformedProduct.rating,
+          });
+        }
+
+        return transformedProduct;
+      }),
       totalProductsFound: store.products?.length || 0,
-    })),
+    };
+    }),
     filters: availableFilters,
     pagination: {
       page: 1,
@@ -215,8 +283,21 @@ const StoreListPage: React.FC = () => {
 
   // Handle product selection
   const handleProductSelect = useCallback((product: ProductItem, store: StoreResult) => {
-    // Navigate to product details page
-    router.push(`/product/${product.productId}?storeId=${store.storeId}`);
+    console.log('🔧 [STORE LIST] Navigating to ProductPage:', {
+      productId: product.productId,
+      storeId: store.storeId
+    });
+
+    // Navigate to ProductPage (comprehensive product page)
+    // ✅ FIX: Use 'id' parameter instead of 'cardId' for consistency
+    router.push({
+      pathname: '/ProductPage',
+      params: {
+        id: product.productId,  // ✅ Changed from cardId to id
+        cardType: 'product',
+        storeId: store.storeId,
+      },
+    } as any);
   }, [router]);
 
   // Handle store selection
@@ -258,6 +339,7 @@ const StoreListPage: React.FC = () => {
             onQueryChange={handleSearchQueryChange}
             onBack={handleBack}
             isLoading={isLoading}
+            title={params.title ? decodeURIComponent(params.title as string) : undefined}
           />
 
           {/* Filter Chips and Sort */}

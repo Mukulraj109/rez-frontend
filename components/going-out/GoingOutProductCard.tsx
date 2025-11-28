@@ -11,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
 import { GoingOutProductCardProps } from '@/types/going-out.types';
+import { normalizeProductPrice, normalizeProductRating } from '@/utils/productDataNormalizer';
+import { formatPrice } from '@/utils/priceFormatter';
 
 export function GoingOutProductCard({
   product,
@@ -24,22 +26,12 @@ export function GoingOutProductCard({
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
+  // Normalize price and rating using utility functions
+  const normalizedPrice = normalizeProductPrice(product);
+  const normalizedRating = normalizeProductRating(product);
 
   const getDiscountPercentage = () => {
-    if (product.price.discount) {
-      return product.price.discount;
-    }
-    if (product.price.original && product.price.original > product.price.current) {
-      return Math.round(((product.price.original - product.price.current) / product.price.original) * 100);
-    }
-    return 0;
+    return normalizedPrice.discount || 0;
   };
 
   const handlePress = () => {
@@ -77,18 +69,23 @@ export function GoingOutProductCard({
       parts.push(`by ${product.brand}`);
     }
 
-    if (product.rating) {
-      parts.push(`${product.rating.value} stars with ${product.rating.count} reviews`);
+    if (normalizedRating.value !== null && normalizedRating.count !== null) {
+      parts.push(`${normalizedRating.value} stars with ${normalizedRating.count} reviews`);
     }
 
-    parts.push(formatPrice(product.price.current));
+    if (normalizedPrice.current !== null) {
+      const formattedPrice = formatPrice(normalizedPrice.current, 'INR', false);
+      if (formattedPrice) parts.push(formattedPrice);
+    }
 
-    if (product.price.original && product.price.original > product.price.current) {
-      const discount = getDiscountPercentage();
+    const discount = getDiscountPercentage();
+    if (discount > 0) {
       parts.push(`${discount}% off`);
     }
 
-    parts.push(`${product.cashback.percentage}% cashback available`);
+    if (product.cashback?.percentage) {
+      parts.push(`${product.cashback.percentage}% cashback available`);
+    }
 
     if (product.availabilityStatus === 'out_of_stock') {
       parts.push('Out of stock');
@@ -147,16 +144,18 @@ export function GoingOutProductCard({
           )}
           
           {/* Cashback Badge */}
-          <LinearGradient
-            colors={['#8B5CF6', '#A855F7']}
-            style={styles.cashbackBadge}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <ThemedText style={styles.cashbackText}>
-              Upto {product.cashback.percentage}% cash back
-            </ThemedText>
-          </LinearGradient>
+          {product.cashback?.percentage && (
+            <LinearGradient
+              colors={['#8B5CF6', '#A855F7']}
+              style={styles.cashbackBadge}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <ThemedText style={styles.cashbackText}>
+                Upto {product.cashback.percentage}% cash back
+              </ThemedText>
+            </LinearGradient>
+          )}
 
           {/* New Badge */}
           {product.isNew && (
@@ -207,28 +206,30 @@ export function GoingOutProductCard({
           )}
 
           {/* Rating */}
-          {product.rating && (
+          {normalizedRating.value !== null && (
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={12} color="#F59E0B" />
               <ThemedText style={styles.ratingText}>
-                {typeof product.rating.value === 'number'
-                  ? product.rating.value.toFixed(1)
-                  : product.rating.value}
+                {normalizedRating.value.toFixed(1)}
               </ThemedText>
-              <ThemedText style={styles.ratingCount}>
-                ({product.rating.count})
-              </ThemedText>
+              {normalizedRating.count !== null && normalizedRating.count > 0 && (
+                <ThemedText style={styles.ratingCount}>
+                  ({normalizedRating.count})
+                </ThemedText>
+              )}
             </View>
           )}
 
           {/* Price */}
           <View style={styles.priceContainer}>
-            <ThemedText style={styles.currentPrice}>
-              {formatPrice(product.price.current)}
-            </ThemedText>
-            {product.price.original && product.price.original > product.price.current && (
+            {normalizedPrice.current !== null && (
+              <ThemedText style={styles.currentPrice}>
+                {formatPrice(normalizedPrice.current, 'INR', false)}
+              </ThemedText>
+            )}
+            {normalizedPrice.original !== null && normalizedPrice.current !== null && normalizedPrice.original > normalizedPrice.current && (
               <ThemedText style={styles.originalPrice}>
-                {formatPrice(product.price.original)}
+                {formatPrice(normalizedPrice.original, 'INR', false)}
               </ThemedText>
             )}
           </View>

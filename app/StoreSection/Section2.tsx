@@ -1,11 +1,24 @@
-import React from "react";
-import { View, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, Linking, Alert } from "react-native";
+import React, { useRef, useState } from "react";
+import { View, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, Linking, Platform, Animated } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from "@/components/ThemedText";
+import { platformAlert } from "@/utils/platformAlert";
+import ContactModal from "@/components/store/ContactModal";
+import {
+  Colors,
+  Spacing,
+  Shadows,
+  BorderRadius,
+  Typography,
+  IconSize,
+  Timing,
+} from "@/constants/DesignSystem";
 
 interface ActionButtonProps {
   label: string;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
 }
 
 interface Section2Props {
@@ -13,6 +26,7 @@ interface Section2Props {
     store?: {
       phone?: string;
       contact?: string;
+      email?: string;
       location?: {
         lat?: number;
         lng?: number;
@@ -21,68 +35,106 @@ interface Section2Props {
     };
     id?: string;
     _id?: string;
+    name?: string;
+    title?: string;
+    contact?: {
+      phone?: string;
+      email?: string;
+    };
   } | null;
   cardType?: string;
 }
 
 const actions: ActionButtonProps[] = [
-  { label: "Call", icon: "📞" },
-  { label: "Product", icon: "📦" },
-  { label: "Location", icon: "📍" },
+  { label: "Call", icon: "call-outline" },
+  { label: "Product", icon: "cube-outline" },
+  { label: "Location", icon: "location-outline" },
 ];
 
 export default function Section2({ dynamicData, cardType }: Section2Props){
   const router = useRouter();
+  const [showContactModal, setShowContactModal] = useState(false);
 
-  const handleCall = async () => {
-    try {
-      const phoneNumber = dynamicData?.store?.phone || dynamicData?.store?.contact;
-      if (!phoneNumber) {
-        Alert.alert('No Phone Number', 'Store contact information is not available');
-        return;
-      }
+  // Animation refs for each button
+  const button1ScaleAnim = useRef(new Animated.Value(1)).current;
+  const button2ScaleAnim = useRef(new Animated.Value(1)).current;
+  const button3ScaleAnim = useRef(new Animated.Value(1)).current;
 
-      const url = `tel:${phoneNumber}`;
-      const canOpen = await Linking.canOpenURL(url);
+  // Animation helper
+  const animateScale = (animValue: Animated.Value, toValue: number) => {
+    Animated.spring(animValue, {
+      toValue,
+      useNativeDriver: true,
+      ...Timing.springBouncy,
+    }).start();
+  };
 
-      if (canOpen) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert('Error', 'Unable to make phone calls on this device');
-      }
-    } catch (error) {
-      console.error('Call error:', error);
-      Alert.alert('Error', 'Unable to initiate call');
+  // Get animation ref by index
+  const getAnimRef = (index: number) => {
+    switch (index) {
+      case 0: return button1ScaleAnim;
+      case 1: return button2ScaleAnim;
+      case 2: return button3ScaleAnim;
+      default: return button1ScaleAnim;
     }
   };
 
+  const handleCall = () => {
+    // Haptic feedback
+    triggerImpact('Medium');
+    
+    // Get contact info from multiple possible locations
+    const phone = dynamicData?.store?.phone || 
+                  dynamicData?.store?.contact || 
+                  dynamicData?.contact?.phone;
+    const email = dynamicData?.store?.email || 
+                  dynamicData?.contact?.email;
+    const storeName = dynamicData?.name || dynamicData?.title;
+    
+    if (!phone && !email) {
+      platformAlert('No Contact Info', 'Store contact information is not available');
+      return;
+    }
+    
+    // Show beautiful contact modal instead of directly calling
+    setShowContactModal(true);
+  };
+
   const handleProduct = () => {
+    // Haptic feedback
+    triggerImpact('Medium');
+
     try {
-      const productId = dynamicData?.id || dynamicData?._id;
-      if (!productId) {
-        Alert.alert('Error', 'Product information not available');
+      // Get storeId from dynamicData
+      const storeId = dynamicData?.id || dynamicData?._id;
+      const storeName = dynamicData?.name || dynamicData?.title;
+      
+      if (!storeId) {
+        platformAlert('Error', 'Store information not available');
         return;
       }
 
-      // Navigate to product details or product list
+      // Navigate to store products page
       router.push({
-        pathname: '/ProductPage',
+        pathname: '/StoreProductsPage',
         params: {
-          cardId: productId,
-          cardType: cardType || 'product'
+          storeId: storeId,
+          storeName: storeName,
         }
       } as any);
     } catch (error) {
-      console.error('Product navigation error:', error);
-      Alert.alert('Error', 'Unable to view product details');
+      platformAlert('Error', 'Unable to view store products');
     }
   };
 
   const handleLocation = async () => {
+    // Haptic feedback
+    triggerImpact('Medium');
+
     try {
       const location = dynamicData?.store?.location;
       if (!location) {
-        Alert.alert('No Location', 'Store location information is not available');
+        platformAlert('No Location', 'Store location information is not available');
         return;
       }
 
@@ -90,13 +142,22 @@ export default function Section2({ dynamicData, cardType }: Section2Props){
       let url: string;
 
       if (lat && lng) {
-        // Open in maps app with coordinates
-        url = `geo:${lat},${lng}?q=${lat},${lng}(Store)`;
+        // Platform-specific URL schemes for maps
+        url = Platform.select({
+          ios: `maps:0,0?q=${lat},${lng}`, // Apple Maps on iOS
+          android: `geo:${lat},${lng}?q=${lat},${lng}(Store)`, // Google Maps on Android
+          default: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, // Web fallback
+        }) as string;
       } else if (address) {
-        // Open with address
-        url = `geo:0,0?q=${encodeURIComponent(address)}`;
+        // Open with address - platform specific
+        const encodedAddress = encodeURIComponent(address);
+        url = Platform.select({
+          ios: `maps:0,0?q=${encodedAddress}`, // Apple Maps on iOS
+          android: `geo:0,0?q=${encodedAddress}`, // Google Maps on Android
+          default: `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, // Web fallback
+        }) as string;
       } else {
-        Alert.alert('No Location', 'Store location details are incomplete');
+        platformAlert('No Location', 'Store location details are incomplete');
         return;
       }
 
@@ -104,15 +165,14 @@ export default function Section2({ dynamicData, cardType }: Section2Props){
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        // Fallback to Google Maps web
+        // Universal fallback to Google Maps web (works on all platforms)
         const mapsUrl = lat && lng
           ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
           : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || '')}`;
         await Linking.openURL(mapsUrl);
       }
     } catch (error) {
-      console.error('Location error:', error);
-      Alert.alert('Error', 'Unable to open location');
+      platformAlert('Error', 'Unable to open location');
     }
   };
 
@@ -129,64 +189,121 @@ export default function Section2({ dynamicData, cardType }: Section2Props){
     }
   };
 
+  // Get contact info for modal
+  const phone = dynamicData?.store?.phone || 
+                dynamicData?.store?.contact || 
+                dynamicData?.contact?.phone;
+  const email = dynamicData?.store?.email || 
+                dynamicData?.contact?.email;
+  const storeName = dynamicData?.name || dynamicData?.title;
+
   return (
-    <View
-      style={styles.container}
-      accessibilityRole="region"
-      accessibilityLabel="Store action buttons"
-    >
-      <View style={styles.buttonRow}>
-        {actions.map((action, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.button}
-            activeOpacity={0.8}
-            onPress={getHandler(action.label)}
-            accessibilityRole="button"
-            accessibilityLabel={`${action.label} store`}
-            accessibilityHint={`Double tap to ${action.label.toLowerCase()} this store`}
-          >
-            <ThemedText style={styles.buttonText}>
-              {action.icon} {action.label}
-            </ThemedText>
-          </TouchableOpacity>
-        ))}
+    <>
+      <View
+        style={styles.container}
+        accessibilityLabel="Store action buttons"
+      >
+        <View style={styles.buttonRow}>
+          {actions.map((action, index) => {
+            const scaleAnim = getAnimRef(index);
+            return (
+              <Animated.View
+                key={index}
+                style={[
+                  styles.buttonWrapper,
+                  { transform: [{ scale: scaleAnim }] }
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.button}
+                  activeOpacity={0.8}
+                  onPress={getHandler(action.label)}
+                  onPressIn={() => animateScale(scaleAnim, 0.95)}
+                  onPressOut={() => animateScale(scaleAnim, 1)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${action.label} store`}
+                  accessibilityHint={`Double tap to ${action.label.toLowerCase()} this store`}
+                >
+                  <Ionicons
+                    name={action.icon}
+                    size={IconSize.lg}
+                    color={Colors.primary[600]}
+                    style={styles.buttonIcon}
+                  />
+                  <ThemedText style={styles.buttonText}>
+                    {action.label}
+                  </ThemedText>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </View>
       </View>
-    </View>
+
+      {/* Contact Modal */}
+      <ContactModal
+        visible={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        phone={phone}
+        email={email}
+        storeName={storeName}
+      />
+    </>
   );
 }
 
 interface Styles {
   container: ViewStyle;
   buttonRow: ViewStyle;
+  buttonWrapper: ViewStyle;
   button: ViewStyle;
+  buttonIcon: ViewStyle;
   buttonText: TextStyle;
 }
 
 const styles = StyleSheet.create<Styles>({
+  // Modern Container
   container: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.base,
+    backgroundColor: Colors.background.primary,
   },
+
+  // Modern Button Row
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 10,
+    gap: Spacing.md - 2,
   },
-  button: {
+
+  buttonWrapper: {
     flex: 1,
+  },
+
+  // Modern Button with Purple Border
+  button: {
     borderWidth: 1.5,
-    borderColor: "#6c63ff",
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderColor: Colors.primary[600],
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.md - 2,
+    paddingHorizontal: Spacing.sm,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.background.primary,
+    ...Shadows.purpleSubtle,
+    flexDirection: "column",
+    gap: Spacing.xs,
   },
+
+  buttonIcon: {
+    marginBottom: 2,
+  },
+
+  // Modern Typography
   buttonText: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#6c63ff",
+    ...Typography.caption,
+    fontWeight: "600",
+    color: Colors.primary[600],
+    textAlign: "center",
   },
 });

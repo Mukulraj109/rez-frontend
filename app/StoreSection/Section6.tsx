@@ -1,10 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, memo, useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Animated } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import storeVouchersApi from '@/services/storeVouchersApi';
+import { platformAlert } from '@/utils/platformAlert';
+import { RetryButton } from '@/components/common/RetryButton';
+import {
+  Colors,
+  Spacing,
+  Shadows,
+  BorderRadius,
+  Typography,
+  IconSize,
+  Timing,
+} from '@/constants/DesignSystem';
 
 interface Section6Props {
   dynamicData?: {
@@ -21,22 +33,61 @@ interface Section6Props {
   cardType?: string;
 }
 
-export default function Section6({ dynamicData, cardType }: Section6Props) {
+export default memo(function Section6({ dynamicData, cardType }: Section6Props) {
   const router = useRouter();
   const [showDetails, setShowDetails] = useState(false);
   const [isAddingVoucher, setIsAddingVoucher] = useState(false);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
+  const [voucherCount, setVoucherCount] = useState<number | null>(null);
 
   const storeId = dynamicData?.store?.id || dynamicData?.store?._id;
   const storeName = dynamicData?.store?.name;
+
+  // Animation refs
+  const expandButtonScaleAnim = useRef(new Animated.Value(1)).current;
+  const outletsButtonScaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Animation helper
+  const animateScale = (animValue: Animated.Value, toValue: number) => {
+    Animated.spring(animValue, {
+      toValue,
+      useNativeDriver: true,
+      ...Timing.springBouncy,
+    }).start();
+  };
+
+  useEffect(() => {
+    if (storeId) {
+      fetchVoucherCount();
+    }
+  }, [storeId]);
 
   useEffect(() => {
     if (storeId && showDetails) {
       fetchVouchers();
     }
   }, [storeId, showDetails]);
+
+  const fetchVoucherCount = async () => {
+    if (!storeId) return;
+
+    try {
+      const response = await storeVouchersApi.getStoreVouchers(storeId, {
+        page: 1,
+        limit: 100, // Get all vouchers to count
+      });
+
+      if (response.success && response.data?.vouchers) {
+        setVoucherCount(response.data.vouchers.length);
+      } else {
+        setVoucherCount(0);
+      }
+    } catch (error) {
+      setVoucherCount(0);
+    }
+  };
 
   const fetchVouchers = async () => {
     if (!storeId) return;
@@ -51,29 +102,47 @@ export default function Section6({ dynamicData, cardType }: Section6Props) {
 
       if (response.success && response.data?.vouchers) {
         setVouchers(response.data.vouchers);
+        // Update count from detailed fetch as well
+        setVoucherCount(response.data.vouchers.length);
         // Auto-select first voucher if available
         if (response.data.vouchers.length > 0) {
           setSelectedVoucher(response.data.vouchers[0]);
         }
       }
     } catch (error) {
-      console.error('Error fetching vouchers:', error);
+      // Silent fail - show empty state
     } finally {
       setLoading(false);
     }
   };
 
+  const getVoucherTitle = () => {
+    if (voucherCount === null) {
+      return 'Vouchers for store visit';
+    }
+    if (voucherCount === 0) {
+      return 'No vouchers available';
+    }
+    if (voucherCount === 1) {
+      return '1 Voucher for store visit';
+    }
+    return `${voucherCount} Vouchers for store visit`;
+  };
+
   const handleAddVoucher = async () => {
+    // Haptic feedback on claim
+    triggerImpact('Medium');
+
     try {
       setIsAddingVoucher(true);
 
       if (!storeId) {
-        Alert.alert('Error', 'Store information not available');
+        platformAlert('Error', 'Store information not available');
         return;
       }
 
       if (!selectedVoucher) {
-        Alert.alert('Error', 'No voucher selected');
+        platformAlert('Error', 'No voucher selected');
         return;
       }
 
@@ -81,24 +150,30 @@ export default function Section6({ dynamicData, cardType }: Section6Props) {
       const response = await storeVouchersApi.claimVoucher(selectedVoucher._id);
 
       if (response.success) {
-        Alert.alert(
+        // Success haptic
+        triggerNotification('Success');
+
+        platformAlert(
           'Voucher Claimed!',
-          `Store visit voucher for ${storeName || 'this store'} has been added to your account`,
-          [{ text: 'OK' }]
+          `Store visit voucher for ${storeName || 'this store'} has been added to your account`
         );
-        
+
         // Refresh vouchers to show updated status
         await fetchVouchers();
+        await fetchVoucherCount();
 
         // Close the details panel after successful add
         setShowDetails(false);
       } else {
-        Alert.alert('Error', response.error || 'Unable to claim voucher');
+        // Error haptic
+        triggerNotification('Error');
+        platformAlert('Error', response.error || 'Unable to claim voucher');
       }
     } catch (error: any) {
-      console.error('Add voucher error:', error);
+      // Error haptic
+      triggerNotification('Error');
       const errorMessage = error?.response?.data?.message || error?.message || 'Unable to add voucher. Please try again.';
-      Alert.alert('Error', errorMessage);
+      platformAlert('Error', errorMessage);
     } finally {
       setIsAddingVoucher(false);
     }
@@ -112,7 +187,7 @@ export default function Section6({ dynamicData, cardType }: Section6Props) {
     >
       <View
         style={styles.card}
-        accessibilityLabel="10 vouchers for store visit available"
+        accessibilityLabel={`${getVoucherTitle()} available`}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -120,53 +195,75 @@ export default function Section6({ dynamicData, cardType }: Section6Props) {
             style={styles.mainTitle}
             accessibilityRole="header"
           >
-            10 Vouchers for store visit
+            {getVoucherTitle()}
           </ThemedText>
           <View style={styles.percentContainer} accessibilityElementsHidden>
             <ThemedText style={styles.percentIcon}>%</ThemedText>
           </View>
         </View>
 
-        {/* Bottom Action */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          style={styles.expandButton}
-          onPress={() => {
-            if (storeId) {
-              router.push({
-                pathname: '/OutletsPage',
-                params: {
-                  storeId: storeId,
-                  storeName: storeName || 'Store'
-                }
-              } as any);
-            } else {
-              setShowDetails(!showDetails);
-            }
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={storeId ? `View all outlets for ${storeName || 'store'}` : 'View voucher details'}
-          accessibilityHint={storeId ? 'Double tap to see store outlet locations' : 'Double tap to expand voucher information'}
-        >
-          <ThemedText style={styles.expandText}>View all outlet</ThemedText>
-          <Ionicons name="chevron-forward" size={18} color="#6c63ff" />
-        </TouchableOpacity>
+        {/* Bottom Actions */}
+        <View style={styles.actionButtonsRow}>
+          {/* View Vouchers Button */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.expandButton}
+            onPress={() => setShowDetails(!showDetails)}
+            accessibilityRole="button"
+            accessibilityLabel="View available vouchers"
+            accessibilityHint="Double tap to see voucher details"
+          >
+            <ThemedText style={styles.expandText}>
+              {showDetails ? 'Hide vouchers' : 'View vouchers'}
+            </ThemedText>
+            <Ionicons
+              name={showDetails ? "chevron-up" : "chevron-down"}
+              size={18}
+              color="#6c63ff"
+            />
+          </TouchableOpacity>
+
+          {/* View Outlets Button (only if storeId exists) */}
+          {storeId && (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.outletsButton}
+              onPress={() => {
+                router.push({
+                  pathname: '/outletspage',
+                  params: {
+                    storeId: storeId,
+                    storeName: storeName || 'Store'
+                  }
+                } as any);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`View all outlets for ${storeName || 'store'}`}
+              accessibilityHint="Double tap to see store outlet locations"
+            >
+              <Ionicons name="location-outline" size={18} color="#6c63ff" />
+              <ThemedText style={styles.outletsButtonText}>View outlets</ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Voucher Details Card - Shown when expanded */}
       {showDetails && (
-        <View style={styles.voucherDetailsCard}>
+        <ScrollView style={styles.voucherDetailsCard} showsVerticalScrollIndicator={false}>
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#8B5CF6" />
               <ThemedText style={styles.loadingText}>Loading vouchers...</ThemedText>
             </View>
-          ) : selectedVoucher ? (
+          ) : vouchers.length > 0 ? (
+            vouchers.map((voucher, index) => (
+            <View key={voucher._id || index} style={styles.voucherItemCard}>
             <>
               {/* Save Badge */}
               <View style={styles.saveBadge}>
                 <ThemedText style={styles.saveBadgeText}>
-                  Save {selectedVoucher.discountType === 'percentage' ? selectedVoucher.discountValue + '%' : '₹' + selectedVoucher.discountValue}
+                  Save {voucher.discountType === 'percentage' ? voucher.discountValue + '%' : '₹' + voucher.discountValue}
                 </ThemedText>
               </View>
 
@@ -176,17 +273,17 @@ export default function Section6({ dynamicData, cardType }: Section6Props) {
               </View>
 
               {/* Title */}
-              <ThemedText style={styles.voucherTitle}>{selectedVoucher.name}</ThemedText>
+              <ThemedText style={styles.voucherTitle}>{voucher.name}</ThemedText>
 
               {/* Minimum Bill */}
               <View style={styles.minimumBillRow}>
                 <ThemedText style={styles.minimumBillLabel}>Minimum bill:</ThemedText>
-                <ThemedText style={styles.minimumBillValue}>₹{selectedVoucher.minBillAmount}</ThemedText>
+                <ThemedText style={styles.minimumBillValue}>₹{voucher.minBillAmount}</ThemedText>
               </View>
 
               {/* Info Link */}
               <TouchableOpacity style={styles.infoRow}>
-                {selectedVoucher.restrictions?.isOfflineOnly && (
+                {voucher.restrictions?.isOfflineOnly && (
                   <>
                     <ThemedText style={styles.infoText}>Offline Only</ThemedText>
                     <View style={styles.divider} />
@@ -198,13 +295,13 @@ export default function Section6({ dynamicData, cardType }: Section6Props) {
 
               {/* Restrictions */}
               <View style={styles.restrictionsContainer}>
-                {selectedVoucher.restrictions?.notValidAboveStoreDiscount && (
+                {voucher.restrictions?.notValidAboveStoreDiscount && (
                   <View style={styles.restrictionRow}>
                     <View style={styles.bulletPoint} />
                     <ThemedText style={styles.restrictionText}>Not valid above store discount</ThemedText>
                   </View>
                 )}
-                {selectedVoucher.restrictions?.singleVoucherPerBill && (
+                {voucher.restrictions?.singleVoucherPerBill && (
                   <View style={styles.restrictionRow}>
                     <View style={styles.bulletPoint} />
                     <ThemedText style={styles.restrictionText}>Single voucher per bill</ThemedText>
@@ -213,82 +310,97 @@ export default function Section6({ dynamicData, cardType }: Section6Props) {
               </View>
 
               {/* Claim Status */}
-              {selectedVoucher.isAssigned && (
+              {voucher.isAssigned && (
                 <View style={styles.claimedBadge}>
                   <ThemedText style={styles.claimedText}>Already Claimed</ThemedText>
                 </View>
               )}
 
               {/* Add Button */}
-              {!selectedVoucher.isAssigned && (
+              {!voucher.isAssigned && (
                 <TouchableOpacity
                   style={styles.addButtonWrapper}
                   activeOpacity={0.8}
-                  onPress={handleAddVoucher}
-                  disabled={isAddingVoucher || !selectedVoucher.canRedeem}
+                  onPress={() => {
+                    setSelectedVoucher(voucher);
+                    handleAddVoucher();
+                  }}
+                  disabled={isAddingVoucher || !voucher.canRedeem}
                   accessibilityRole="button"
-                  accessibilityLabel={`Claim ${selectedVoucher.name} voucher. Minimum bill ${selectedVoucher.minBillAmount} rupees`}
+                  accessibilityLabel={`Claim ${voucher.name} voucher. Minimum bill ${voucher.minBillAmount} rupees`}
                   accessibilityHint="Double tap to claim this voucher for your account"
-                  accessibilityState={{ disabled: isAddingVoucher || !selectedVoucher.canRedeem, busy: isAddingVoucher }}
+                  accessibilityState={{ disabled: isAddingVoucher || !voucher.canRedeem, busy: isAddingVoucher }}
                 >
                   <LinearGradient
                     colors={['#8B5CF6', '#7C3AED']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={[styles.addButton, (isAddingVoucher || !selectedVoucher.canRedeem) && styles.addButtonDisabled]}
+                    style={[styles.addButton, (isAddingVoucher || !voucher.canRedeem) && styles.addButtonDisabled]}
                   >
                     <ThemedText style={styles.addButtonText}>
-                      {isAddingVoucher ? 'Claiming...' : selectedVoucher.canRedeem ? 'Claim Voucher' : 'Not Available'}
+                      {isAddingVoucher ? 'Claiming...' : voucher.canRedeem ? 'Claim Voucher' : 'Not Available'}
                     </ThemedText>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
             </>
+            </View>
+            ))
           ) : (
             <View style={styles.noVouchersContainer}>
               <ThemedText style={styles.noVouchersText}>No vouchers available for this store</ThemedText>
+              <RetryButton
+                onRetry={fetchVouchers}
+                label="Retry"
+                variant="secondary"
+                size="small"
+                style={{ marginTop: 16 }}
+              />
             </View>
           )}
-        </View>
+        </ScrollView>
       )}
     </View>
 );
-}
+});
 
 const styles = StyleSheet.create({
+  // Modern Container
   container: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: Spacing['2xl'] - 4,
+    paddingVertical: Spacing.base,
+    backgroundColor: Colors.background.primary,
   },
+
+  // Modern Card
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: Colors.background.primary,
+    borderRadius: BorderRadius['2xl'],
+    padding: Spacing.lg + 2,
+    ...Shadows.subtle,
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: Spacing.md,
   },
+
+  // Modern Typography
   mainTitle: {
-    fontSize: 16,
+    ...Typography.h4,
     fontWeight: '600',
-    color: '#333333',
+    color: Colors.text.primary,
     flex: 1,
-    paddingRight: 10,
+    paddingRight: Spacing.md - 2,
   },
+
   percentContainer: {
     backgroundColor: '#fff3cd',
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: BorderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -299,127 +411,156 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#f39c12',
   },
+
+  // Modern Action Buttons
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Spacing.sm + 2,
+    gap: Spacing.base,
+  },
   expandButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 6,
+    flex: 1,
   },
   expandText: {
-    fontSize: 14,
-    color: '#6c63ff',
-    marginRight: 4,
+    ...Typography.body,
+    color: Colors.primary[600],
+    marginRight: Spacing.xs,
     fontWeight: '500',
   },
-  // Voucher Details Card Styles
+  outletsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary[50],
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.xs,
+  },
+  outletsButtonText: {
+    ...Typography.body,
+    color: Colors.primary[600],
+    fontWeight: '600',
+  },
+  // Modern Voucher Details
   voucherDetailsCard: {
-    marginTop: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: Spacing.lg,
+    maxHeight: 500,
+  },
+  voucherItemCard: {
+    backgroundColor: Colors.background.primary,
+    borderRadius: BorderRadius['2xl'],
+    padding: Spacing['2xl'] - 4,
+    marginBottom: Spacing.base,
+    ...Shadows.medium,
     position: 'relative',
   },
+
   saveBadge: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: Spacing.lg,
+    right: Spacing.lg,
     backgroundColor: '#10B981',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: BorderRadius.full,
   },
   saveBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    ...Typography.caption,
+    color: Colors.text.white,
     fontWeight: '700',
   },
+
   voucherIconContainer: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: BorderRadius.full,
     backgroundColor: '#FEF3C7',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.base,
   },
   voucherTitle: {
-    fontSize: 18,
+    ...Typography.h3,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
+    color: Colors.gray[900],
+    marginBottom: Spacing.base,
   },
+
   minimumBillRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.base,
   },
   minimumBillLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginRight: 8,
+    ...Typography.body,
+    color: Colors.gray[600],
+    marginRight: Spacing.sm,
   },
   minimumBillValue: {
-    fontSize: 16,
+    ...Typography.h4,
     fontWeight: '700',
-    color: '#111827',
+    color: Colors.gray[900],
   },
+
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: Spacing.lg,
   },
   infoText: {
-    fontSize: 13,
-    color: '#8B5CF6',
+    ...Typography.body,
+    color: Colors.primary[600],
     fontWeight: '500',
   },
   divider: {
     width: 1,
     height: 12,
-    backgroundColor: '#D1D5DB',
-    marginHorizontal: 8,
+    backgroundColor: Colors.gray[300],
+    marginHorizontal: Spacing.sm,
   },
   moreDetailsText: {
-    fontSize: 13,
-    color: '#8B5CF6',
+    ...Typography.body,
+    color: Colors.primary[600],
     fontWeight: '500',
   },
   infoIcon: {
-    marginLeft: 4,
+    marginLeft: Spacing.xs,
   },
+
   restrictionsContainer: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
+    backgroundColor: Colors.background.secondary,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.base,
+    marginBottom: Spacing.lg,
   },
   restrictionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   bulletPoint: {
     width: 4,
     height: 4,
-    borderRadius: 2,
-    backgroundColor: '#6B7280',
-    marginRight: 8,
+    borderRadius: BorderRadius.xs,
+    backgroundColor: Colors.gray[600],
+    marginRight: Spacing.sm,
   },
   restrictionText: {
-    fontSize: 12,
-    color: '#6B7280',
+    ...Typography.caption,
+    color: Colors.gray[600],
     flex: 1,
   },
+
   addButtonWrapper: {
-    borderRadius: 12,
+    borderRadius: BorderRadius.md,
     overflow: 'hidden',
   },
   addButton: {
-    paddingVertical: 14,
+    paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -427,40 +568,43 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   addButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    ...Typography.h4,
+    color: Colors.text.white,
     fontWeight: '700',
   },
+
   loadingContainer: {
-    paddingVertical: 40,
+    paddingVertical: Spacing['3xl'] + 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7280',
+    ...Typography.body,
+    marginTop: Spacing.base,
+    color: Colors.gray[600],
   },
+
   noVouchersContainer: {
-    paddingVertical: 40,
+    paddingVertical: Spacing['3xl'] + 8,
     alignItems: 'center',
   },
   noVouchersText: {
-    fontSize: 14,
-    color: '#6B7280',
+    ...Typography.body,
+    color: Colors.gray[600],
     textAlign: 'center',
   },
+
   claimedBadge: {
     backgroundColor: '#10B981',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    paddingVertical: Spacing.base,
+    paddingHorizontal: Spacing['2xl'] - 4,
+    borderRadius: BorderRadius.md,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.base,
   },
   claimedText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    ...Typography.body,
+    color: Colors.text.white,
     fontWeight: '600',
   },
 });

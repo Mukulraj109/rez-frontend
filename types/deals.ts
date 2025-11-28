@@ -16,6 +16,12 @@ export interface Deal {
   usageCount?: number; // How many times it has been used
   applicableProducts?: string[]; // Product categories this deal applies to
   badge?: DealBadge; // Visual badge information
+  // Additional fields from API
+  image?: string;
+  subtitle?: string;
+  originalPrice?: number;
+  discountedPrice?: number;
+  featured?: boolean;
 }
 
 export type DealCategory = 

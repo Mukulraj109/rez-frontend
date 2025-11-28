@@ -36,6 +36,8 @@ export default function TransactionCard({
 
   const statusColor = getStatusColor(transaction.status);
   const isDebit = transaction.type === 'PAYMENT';
+  const safeAmount = typeof transaction.amount === 'number' ? transaction.amount : 0;
+  const safeCurrency = transaction.currency || 'RC';
   
   return (
     <TouchableOpacity
@@ -43,7 +45,7 @@ export default function TransactionCard({
       onPress={handlePress}
       activeOpacity={0.7}
       disabled={!onPress}
-      accessibilityLabel={`Transaction: ${transaction.title}. Amount: ${isDebit ? 'Debit' : 'Credit'} ${formatCurrency(transaction.amount, transaction.currency)}. ${transaction.merchantName ? `Merchant: ${transaction.merchantName}. ` : ''}Status: ${transaction.status.toLowerCase()}${showDate ? `. Date: ${formatTransactionDate(transaction.date)}` : ''}`}
+      accessibilityLabel={`Transaction: ${transaction.title || 'Transaction'}. Amount: ${isDebit ? 'Debit' : 'Credit'} ${formatCurrency(safeAmount, safeCurrency)}. ${transaction.merchantName ? `Merchant: ${transaction.merchantName}. ` : ''}Status: ${transaction.status?.toLowerCase() || 'unknown'}${showDate ? `. Date: ${formatTransactionDate(transaction.date)}` : ''}`}
       accessibilityRole="button"
       accessibilityHint={onPress ? "Double tap to view transaction details" : undefined}
     >
@@ -71,7 +73,7 @@ export default function TransactionCard({
         <View style={styles.topRow}>
           <View style={styles.titleContainer}>
             <ThemedText style={styles.title} numberOfLines={1}>
-              {transaction.title}
+              {transaction.title || 'Transaction'}
             </ThemedText>
             {transaction.merchantName && (
               <ThemedText style={styles.merchantName} numberOfLines={1}>
@@ -79,13 +81,13 @@ export default function TransactionCard({
               </ThemedText>
             )}
           </View>
-          
+
           <View style={styles.amountContainer}>
             <ThemedText style={[
               styles.amount,
               { color: isDebit ? '#EF4444' : '#10B981' }
             ]}>
-              {isDebit ? '-' : '+'}{formatCurrency(transaction.amount, transaction.currency)}
+              {isDebit ? '-' : '+'}{formatCurrency(safeAmount, safeCurrency)}
             </ThemedText>
           </View>
         </View>
@@ -93,7 +95,7 @@ export default function TransactionCard({
         <View style={styles.bottomRow}>
           <View style={styles.descriptionContainer}>
             <ThemedText style={styles.description} numberOfLines={1}>
-              {transaction.description}
+              {transaction.description || 'No description'}
             </ThemedText>
             {showDate && (
               <ThemedText style={styles.date}>
@@ -101,7 +103,7 @@ export default function TransactionCard({
               </ThemedText>
             )}
           </View>
-          
+
           <View style={styles.statusContainer}>
             <View style={[
               styles.statusBadge,
@@ -115,7 +117,7 @@ export default function TransactionCard({
                 styles.statusText,
                 { color: statusColor }
               ]}>
-                {transaction.status.toLowerCase().replace('_', ' ')}
+                {(transaction.status || 'UNKNOWN').toLowerCase().replace('_', ' ')}
               </ThemedText>
             </View>
           </View>

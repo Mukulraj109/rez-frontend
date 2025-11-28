@@ -169,7 +169,6 @@ export interface HorizontalScrollSectionProps {
   cardWidth?: number;
   spacing?: number;
   showIndicator?: boolean;
-  extraData?: any;
 }
 
 export interface EventCardProps {
@@ -227,6 +226,26 @@ export interface HomepageApiResponse {
 export interface SectionApiResponse {
   section: HomepageSection;
   timestamp: string;
+}
+
+// NEW: Batch API Response Types
+export interface HomepageBatchResponse {
+  success: boolean;
+  data: {
+    sections: {
+      events: EventItem[];
+      justForYou: ProductItem[];
+      newArrivals: ProductItem[];
+      trendingStores: StoreItem[];
+      offers: ProductItem[];
+      flashSales: ProductItem[];
+    };
+    metadata: {
+      cached: boolean;
+      timestamp: string;
+    };
+  };
+  error?: string;
 }
 
 // Hook Return Types

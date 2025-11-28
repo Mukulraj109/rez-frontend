@@ -750,6 +750,314 @@ class CacheService {
 
     console.log(`✅ [CACHE] Migration complete: ${migrated}/${keys.length} entries migrated`);
   }
+
+  /**
+   * Smart Cache Invalidation Strategies
+   */
+
+  /**
+   * Invalidate cache entries by pattern matching
+   * @param pattern - Glob-like pattern (e.g., "products:*", "homepage:*")
+   */
+  async invalidatePattern(pattern: string): Promise<number> {
+    await this.ensureInitialized();
+
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+    const keysToInvalidate: string[] = [];
+
+    this.cacheIndex.forEach((entry, key) => {
+      if (regex.test(key)) {
+        keysToInvalidate.push(key);
+      }
+    });
+
+    console.log(`💾 [CACHE] Invalidating ${keysToInvalidate.length} entries matching pattern: ${pattern}`);
+
+    for (const key of keysToInvalidate) {
+      await this.remove(key);
+    }
+
+    return keysToInvalidate.length;
+  }
+
+  /**
+   * Invalidate cache entries by dependency
+   * @param dependencies - Map of cache keys to dependent keys
+   */
+  async invalidateDependencies(key: string, dependencies: string[]): Promise<void> {
+    await this.ensureInitialized();
+
+    console.log(`💾 [CACHE] Invalidating dependencies for: ${key}`);
+
+    // Invalidate the main key
+    await this.remove(key);
+
+    // Invalidate all dependent keys
+    for (const dependentKey of dependencies) {
+      await this.remove(dependentKey);
+    }
+
+    console.log(`💾 [CACHE] Invalidated ${dependencies.length} dependent entries`);
+  }
+
+  /**
+   * Invalidate cache entries by event
+   * Event-based invalidation for specific user actions
+   */
+  async invalidateByEvent(event: CacheInvalidationEvent): Promise<void> {
+    await this.ensureInitialized();
+
+    console.log(`💾 [CACHE] Invalidating cache for event: ${event.type}`);
+
+    switch (event.type) {
+      case 'cart:add':
+      case 'cart:remove':
+      case 'cart:update':
+      case 'cart:clear':
+        // Invalidate cart-related caches
+        await this.invalidatePattern('cart:*');
+        await this.invalidatePattern('checkout:*');
+        // Also invalidate homepage "Just for You" (recommendations may change)
+        await this.remove('homepage:justForYou');
+        break;
+
+      case 'order:placed':
+        // Invalidate cart, checkout, and order-related caches
+        await this.invalidatePattern('cart:*');
+        await this.invalidatePattern('checkout:*');
+        await this.invalidatePattern('orders:*');
+        // Invalidate user stats
+        await this.invalidatePattern('userStats:*');
+        // Invalidate homepage sections (they may show different data)
+        await this.invalidatePattern('homepage:*');
+        break;
+
+      case 'product:purchased':
+        // Invalidate product and homepage caches
+        await this.invalidatePattern('products:*');
+        await this.invalidatePattern('homepage:*');
+        if (event.productId) {
+          await this.remove(`product:${event.productId}`);
+        }
+        break;
+
+      case 'user:login':
+      case 'user:logout':
+        // Clear all user-specific caches
+        await this.invalidatePattern('cart:*');
+        await this.invalidatePattern('wishlist:*');
+        await this.invalidatePattern('orders:*');
+        await this.invalidatePattern('userStats:*');
+        await this.invalidatePattern('profile:*');
+        break;
+
+      case 'profile:updated':
+        // Invalidate profile and related caches
+        await this.invalidatePattern('profile:*');
+        await this.invalidatePattern('userStats:*');
+        break;
+
+      case 'wishlist:add':
+      case 'wishlist:remove':
+        // Invalidate wishlist caches
+        await this.invalidatePattern('wishlist:*');
+        break;
+
+      case 'refresh:pull':
+        // User pulled to refresh - invalidate current screen caches
+        if (event.screen) {
+          await this.invalidatePattern(`${event.screen}:*`);
+        }
+        break;
+
+      default:
+        console.warn(`💾 [CACHE] Unknown event type: ${event.type}`);
+    }
+  }
+
+  /**
+   * Check if cache entry is stale (older than 50% of TTL)
+   */
+  async isStale(key: string): Promise<boolean> {
+    await this.ensureInitialized();
+
+    const entry = this.cacheIndex.get(key);
+
+    if (!entry) {
+      return true; // Not in cache = stale
+    }
+
+    const age = Date.now() - entry.timestamp;
+    const staleness = age / entry.ttl;
+
+    return staleness > 0.5;
+  }
+
+  /**
+   * Get all stale cache entries
+   */
+  async getStaleEntries(): Promise<string[]> {
+    await this.ensureInitialized();
+
+    const staleKeys: string[] = [];
+
+    for (const [key, entry] of this.cacheIndex.entries()) {
+      const age = Date.now() - entry.timestamp;
+      const staleness = age / entry.ttl;
+
+      if (staleness > 0.5) {
+        staleKeys.push(key);
+      }
+    }
+
+    return staleKeys;
+  }
+
+  /**
+   * Background refresh for stale entries
+   * Returns a promise that resolves with the fresh data
+   */
+  async backgroundRefresh<T>(
+    key: string,
+    fetchFn: () => Promise<T>,
+    options: CacheOptions = {}
+  ): Promise<void> {
+    await this.ensureInitialized();
+
+    try {
+      // Fetch fresh data in background
+      const freshData = await fetchFn();
+
+      // Update cache
+      await this.set(key, freshData, options);
+
+      console.log(`💾 [CACHE] Background refresh complete for: ${key}`);
+    } catch (error) {
+      console.error(`❌ [CACHE] Background refresh failed for: ${key}`, error);
+    }
+  }
+
+  /**
+   * Invalidate all entries modified before a specific date
+   */
+  async invalidateBefore(date: Date): Promise<number> {
+    await this.ensureInitialized();
+
+    const timestamp = date.getTime();
+    const keysToInvalidate: string[] = [];
+
+    this.cacheIndex.forEach((entry, key) => {
+      if (entry.timestamp < timestamp) {
+        keysToInvalidate.push(key);
+      }
+    });
+
+    console.log(`💾 [CACHE] Invalidating ${keysToInvalidate.length} entries before ${date.toISOString()}`);
+
+    for (const key of keysToInvalidate) {
+      await this.remove(key);
+    }
+
+    return keysToInvalidate.length;
+  }
+
+  /**
+   * Invalidate entries by tag/category
+   */
+  async invalidateByTag(tag: string): Promise<number> {
+    await this.ensureInitialized();
+
+    // Extract tag from key (format: "tag:category:id")
+    const keysToInvalidate: string[] = [];
+
+    this.cacheIndex.forEach((entry, key) => {
+      const parts = key.split(':');
+      if (parts[0] === tag) {
+        keysToInvalidate.push(key);
+      }
+    });
+
+    console.log(`💾 [CACHE] Invalidating ${keysToInvalidate.length} entries with tag: ${tag}`);
+
+    for (const key of keysToInvalidate) {
+      await this.remove(key);
+    }
+
+    return keysToInvalidate.length;
+  }
+
+  /**
+   * Warm cache with pre-specified keys
+   * Useful for preloading critical data on app start
+   */
+  async warmCacheWithKeys(keysAndFetchers: Array<{ key: string; fetchFn: () => Promise<any>; options?: CacheOptions }>): Promise<void> {
+    await this.ensureInitialized();
+
+    console.log(`💾 [CACHE] Warming cache with ${keysAndFetchers.length} keys...`);
+
+    const promises = keysAndFetchers.map(async ({ key, fetchFn, options }) => {
+      try {
+        // Check if already cached and valid
+        const exists = await this.has(key);
+        if (exists) {
+          console.log(`💾 [CACHE] Key already cached: ${key}`);
+          return;
+        }
+
+        // Fetch and cache
+        const data = await fetchFn();
+        await this.set(key, data, options);
+        console.log(`💾 [CACHE] Warmed cache for: ${key}`);
+      } catch (error) {
+        console.error(`❌ [CACHE] Failed to warm cache for: ${key}`, error);
+      }
+    });
+
+    await Promise.all(promises);
+    console.log('✅ [CACHE] Cache warming complete');
+  }
+
+  /**
+   * Get or set pattern - returns cached value or fetches and caches
+   */
+  async getOrSet<T>(
+    key: string,
+    fetchFn: () => Promise<T>,
+    options: CacheOptions = {}
+  ): Promise<T> {
+    await this.ensureInitialized();
+
+    const cached = await this.get<T>(key);
+    if (cached !== null) {
+      return cached;
+    }
+
+    const fresh = await fetchFn();
+    await this.set(key, fresh, options);
+    return fresh;
+  }
+}
+
+/**
+ * Cache invalidation event types
+ */
+export interface CacheInvalidationEvent {
+  type:
+    | 'cart:add'
+    | 'cart:remove'
+    | 'cart:update'
+    | 'cart:clear'
+    | 'order:placed'
+    | 'product:purchased'
+    | 'user:login'
+    | 'user:logout'
+    | 'profile:updated'
+    | 'wishlist:add'
+    | 'wishlist:remove'
+    | 'refresh:pull';
+  productId?: string;
+  userId?: string;
+  screen?: string;
 }
 
 export default new CacheService();
