@@ -20,7 +20,8 @@
     "verify:production": "ts-node scripts/verify-production-readiness.ts",
     "check:backend": "node scripts/check-backend.js",
     "build:render": "npx expo export --platform web",
-    "serve:render": "npx serve dist"
+    "serve:render": "npx serve dist",
+    "serve:web": "npx serve dist"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.3",
