@@ -121,6 +121,19 @@ class OutletsApi {
   ): Promise<ApiResponse<{ outlets: Outlet[]; total: number }>> {
     try {
       const response = await apiClient.get<any>(`/outlets/store/${storeId}`, params);
+
+      // Normalize response - backend returns data as array directly
+      // Component expects { outlets: [], total: number }
+      if (response.success && Array.isArray(response.data)) {
+        return {
+          ...response,
+          data: {
+            outlets: response.data,
+            total: response.meta?.pagination?.total || response.data.length,
+          },
+        };
+      }
+
       return response;
     } catch (error) {
       console.error(`[OUTLETS API] Error fetching outlets for store ${storeId}:`, error);

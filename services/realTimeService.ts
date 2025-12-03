@@ -53,7 +53,7 @@ const STORAGE_KEYS = {
 
 // Default configuration
 const DEFAULT_CONFIG: RealTimeConfig = {
-  url: __DEV__ ? 'ws://localhost:5001' : 'wss://rez-backend-vvhl.onrender.com',
+  url: __DEV__ ? 'ws://localhost:5001' : 'wss://api.rezapp.com/ws',
   reconnectInterval: 5000, // 5 seconds
   maxReconnectAttempts: 10,
   heartbeatInterval: 30000, // 30 seconds

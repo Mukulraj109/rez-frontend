@@ -275,10 +275,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Verify storage (debug)
       const storedToken = await authStorage.getAuthToken();
       const storedUser = await authStorage.getUser();
-      console.log('🔐 [AUTH PROVIDER] Auth data stored successfully', {
-        hasToken: !!storedToken,
-        hasUser: !!storedUser,
-      });
 
       // Set auth token in API client (authService sets it in apiClient)
 
@@ -288,10 +284,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const apiClient = require('@/services/apiClient').default;
       apiClient.setAuthToken(response.data.tokens.accessToken);
 
-      console.log('🔐 [AUTH PROVIDER] Token set verification', {
-        apiClientHasToken: !!apiClient.getAuthToken(),
-        tokenPreview: response.data.tokens.accessToken.substring(0, 30) + '...'
-      });
 
       dispatch({ type: 'AUTH_SUCCESS', payload: { user: response.data.user, token: response.data.tokens.accessToken } });
 
@@ -514,20 +506,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const storedToken = await authStorage.getAuthToken();
       const storedUser = await authStorage.getUser();
 
-      console.log('🔍 [AUTH CHECK] Checking stored auth...', {
-        hasToken: !!storedToken,
-        hasUser: !!storedUser,
-      });
 
       if (storedToken && storedUser) {
         // Set auth token in API client FIRST (critical for transaction page)
         authService.setAuthToken(storedToken);
-        console.log('🔐 [AUTH PROVIDER] Token restored:', storedToken?.substring(0, 30) + '...');
 
         // Also ensure apiClient has the token (import and set directly)
         const apiClient = require('@/services/apiClient').default;
         apiClient.setAuthToken(storedToken);
-        console.log('🔐 [AUTH PROVIDER] ApiClient token set:', storedToken?.substring(0, 30) + '...');
 
         // For better UX, restore auth state immediately and validate in background
 
@@ -600,7 +586,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const tryRefreshToken = useCallback(async (): Promise<boolean> => {
     // If already refreshing, return the existing promise
     if (isRefreshingToken.current && refreshPromiseRef.current) {
-      console.log('🔄 [AUTH] Token refresh already in progress, waiting...');
       return refreshPromiseRef.current;
     }
 
@@ -610,11 +595,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Create refresh promise
     const refreshPromise = (async () => {
       try {
-        console.log('🔄 [AUTH] Starting token refresh...');
         const refreshToken = await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
 
         if (refreshToken) {
-          console.log('🔄 [AUTH] Calling refresh token API...');
           const response = await authService.refreshToken(refreshToken);
 
           // Check if API returned an error
@@ -657,7 +640,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
               type: 'AUTH_SUCCESS',
               payload: { user: storedUser, token: response.data.tokens.accessToken }
             });
-            console.log('✅ [AUTH] Token refreshed successfully');
             return true; // Success
           } else {
             console.warn('⚠️ [REFRESH TOKEN] No stored user data after refresh');
@@ -681,7 +663,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                               errorMessage.includes('expired');
 
         if (isInvalidToken) {
-          console.log('🚨 [AUTH] Invalid token, logging out...');
           // Clear all stored auth data
           await AsyncStorage.multiRemove([
             STORAGE_KEYS.ACCESS_TOKEN,
@@ -708,7 +689,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           return false; // Failed - invalid token
         } else {
-          console.log('⚠️ [AUTH] Network error during token refresh');
           return false; // Failed - network error
         }
       } finally {

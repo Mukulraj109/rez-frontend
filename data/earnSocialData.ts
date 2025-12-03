@@ -11,6 +11,7 @@ import socialMediaApi from '@/services/socialMediaApi';
 
 export const EarnSocialData = {
   // Initial state for the earn social media page
+  // NOTE: All values are initialized to 0/empty - real data is fetched from backend
   initialState: {
     currentStep: 'overview',
     instagramUrl: '',
@@ -19,10 +20,10 @@ export const EarnSocialData = {
     error: null,
     success: false,
     earnings: {
-      pendingAmount: 85,
-      totalEarned: 420,
-      cashbackRate: 5,
-      currentBalance: 1660,
+      pendingAmount: 0,
+      totalEarned: 0,
+      cashbackRate: 5, // Fixed 5% rate
+      currentBalance: 0,
       estimatedCrediting: '48 hours'
     },
     uploadProgress: 0,
@@ -71,35 +72,16 @@ export const EarnSocialData = {
     }
   ] as StepCard[],
 
-  // Mock existing posts
-  mockPosts: [
-    {
-      id: 'post_001',
-      url: 'https://instagram.com/p/abc123',
-      status: 'approved',
-      submittedAt: new Date('2024-01-15'),
-      cashbackAmount: 25,
-      platform: 'instagram',
-      thumbnailUrl: 'https://picsum.photos/200/200?random=1'
-    },
-    {
-      id: 'post_002', 
-      url: 'https://instagram.com/p/def456',
-      status: 'pending',
-      submittedAt: new Date('2024-01-20'),
-      cashbackAmount: 15,
-      platform: 'instagram',
-      thumbnailUrl: 'https://picsum.photos/200/200?random=2'
-    }
-  ] as SocialMediaPost[],
+  // Mock posts removed - all data fetched from backend
+  mockPosts: [] as SocialMediaPost[],
 
   // API endpoints connected to real backend
   api: {
     // Validate Instagram URL (client-side validation only, backend validates too)
     validateInstagramUrl: async (url: string): Promise<{ isValid: boolean; error?: string }> => {
       try {
-        // Instagram URL validation - supports posts and reels with optional username
-        const instagramUrlPattern = /^https?:\/\/(www\.)?instagram\.com\/([\w.]+\/)?(p|reel|instagramreel)\/[a-zA-Z0-9_-]+\/?(\?.*)?$/;
+        // Instagram URL validation - supports posts (/p/), reels (/reel/ and /reels/) with optional username
+        const instagramUrlPattern = /^https?:\/\/(www\.)?instagram\.com\/([\w.]+\/)?(p|reel|reels|instagramreel)\/[a-zA-Z0-9_-]+\/?(\?.*)?$/;
         const isValid = instagramUrlPattern.test(url);
 
         if (!isValid) {
@@ -208,7 +190,8 @@ export const EarnSocialData = {
   helpers: {
     validateInstagramUrl: (url: string): boolean => {
       if (!url || typeof url !== 'string') return false;
-      const pattern = /^https?:\/\/(www\.)?instagram\.com\/([\w.]+\/)?(p|reel|instagramreel)\/[a-zA-Z0-9_-]+\/?(\?.*)?$/;
+      // Supports /p/, /reel/, and /reels/ URLs
+      const pattern = /^https?:\/\/(www\.)?instagram\.com\/([\w.]+\/)?(p|reel|reels|instagramreel)\/[a-zA-Z0-9_-]+\/?(\?.*)?$/;
       return pattern.test(url.trim());
     },
 

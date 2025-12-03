@@ -133,6 +133,7 @@ export const useWallet = ({
       const walletData: WalletData = {
         userId: userId || 'unknown',
         totalBalance: backendData.balance.total,
+        availableBalance: backendData.balance.available, // Actual wallet balance (excludes paybill)
         currency: backendData.currency,
         formattedTotalBalance: `${backendData.currency} ${backendData.balance.total}`,
         coins: coins,
@@ -262,6 +263,7 @@ export const useWallet = ({
       const walletData: WalletData = {
         userId: userId || 'unknown',
         totalBalance: backendData.balance.total,
+        availableBalance: backendData.balance.available, // Actual wallet balance (excludes paybill)
         currency: backendData.currency,
         formattedTotalBalance: `${backendData.currency} ${backendData.balance.total}`,
         coins: coins,

@@ -33,7 +33,7 @@ export default function MainStorePage() {
   return (
     <ScrollView>
       {/* ABOVE THE FOLD - Load immediately */}
-      <Section1 /> {/* Store header */}
+      <StoreGallerySection storeId={storeId} /> {/* Store gallery - real API data */}
       <Section2 /> {/* Store info */}
       <Section3 products={products} /> {/* Product grid - critical */}
 

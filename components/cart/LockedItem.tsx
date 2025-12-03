@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -6,11 +6,11 @@ import {
   Image,
   Animated,
   Dimensions,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
+import { showAlert } from '@/components/common/CrossPlatformAlert';
 
 interface LockedItemProps {
   item: {
@@ -29,6 +29,13 @@ interface LockedItemProps {
     expiresAt: Date;
     notes?: string;
     productId?: string;
+    // Paid lock fields
+    lockFee?: number;
+    lockFeePercentage?: number;
+    lockDuration?: number;
+    paymentMethod?: 'wallet' | 'paybill' | 'upi';
+    lockPaymentStatus?: 'pending' | 'paid' | 'refunded' | 'forfeited' | 'applied';
+    isPaidLock?: boolean;
   };
   onMoveToCart: (id: string, productId: string) => void;
   onUnlock: (id: string, productId: string) => void;
@@ -45,13 +52,66 @@ export default function LockedItem({
   const isSmallScreen = width < 360;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Calculate time remaining
-  const now = new Date();
-  const timeRemaining = item.expiresAt.getTime() - now.getTime();
-  const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
-  const minutesRemaining = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-  const isExpired = timeRemaining <= 0;
+  // Live countdown state
+  const [timeLeft, setTimeLeft] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+    isExpired: false,
+    isUrgent: false,
+    isCritical: false,
+  });
+
+  // Calculate time remaining with live updates
+  useEffect(() => {
+    const calculateTime = () => {
+      const now = new Date();
+      const expiresAt = new Date(item.expiresAt);
+      const remaining = expiresAt.getTime() - now.getTime();
+
+      if (remaining <= 0) {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, isExpired: true, isUrgent: false, isCritical: false });
+        return;
+      }
+
+      const hours = Math.floor(remaining / (1000 * 60 * 60));
+      const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+      const isUrgent = remaining < 24 * 60 * 60 * 1000; // Less than 24 hours
+      const isCritical = remaining < 60 * 60 * 1000; // Less than 1 hour
+
+      setTimeLeft({ hours, minutes, seconds, isExpired: false, isUrgent, isCritical });
+    };
+
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
+    return () => clearInterval(interval);
+  }, [item.expiresAt]);
+
+  // Pulse animation for urgent timer
+  useEffect(() => {
+    if (timeLeft.isCritical && !timeLeft.isExpired) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.05,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+    return () => pulseAnim.setValue(1);
+  }, [timeLeft.isCritical, timeLeft.isExpired]);
+
+  const { hours: hoursRemaining, minutes: minutesRemaining, seconds: secondsRemaining, isExpired } = timeLeft;
 
   const handleUnlock = () => {
     if (showAnimation) {
@@ -91,6 +151,42 @@ export default function LockedItem({
     });
   };
 
+  // Get timer color based on urgency
+  const getTimerColor = () => {
+    if (isExpired) return { bg: '#FEE2E2', text: '#DC2626', icon: '#EF4444' };
+    if (timeLeft.isCritical) return { bg: '#FEE2E2', text: '#DC2626', icon: '#EF4444' };
+    if (timeLeft.isUrgent) return { bg: '#FEF3C7', text: '#D97706', icon: '#F59E0B' };
+    return { bg: '#D1FAE5', text: '#059669', icon: '#10B981' };
+  };
+
+  const timerColors = getTimerColor();
+
+  // Format time display
+  const formatTime = () => {
+    if (isExpired) return 'Lock Expired';
+    if (hoursRemaining > 0) {
+      return `${hoursRemaining}h ${minutesRemaining}m ${secondsRemaining}s`;
+    }
+    return `${minutesRemaining}m ${secondsRemaining}s`;
+  };
+
+  // Handle cancel lock with confirmation
+  const handleCancelLock = () => {
+    const message = item.isPaidLock
+      ? `Your lock deposit of ₹${item.lockFee} will be refunded to your ${item.paymentMethod === 'wallet' ? 'Wallet' : 'account'}. Continue?`
+      : 'Are you sure you want to cancel this lock?';
+
+    showAlert(
+      'Cancel Lock',
+      message,
+      [
+        { text: 'No', style: 'cancel' },
+        { text: 'Yes, Cancel', style: 'destructive', onPress: () => handleUnlock() },
+      ],
+      'warning'
+    );
+  };
+
   return (
     <Animated.View
       style={[
@@ -103,7 +199,28 @@ export default function LockedItem({
         isExpired && styles.expiredContainer,
       ]}
     >
-      <TouchableOpacity activeOpacity={0.9} style={styles.itemContainer}>
+      {/* Price Locked Header Banner */}
+      <LinearGradient
+        colors={isExpired ? ['#EF4444', '#DC2626'] : ['#8B5CF6', '#7C3AED']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerBanner}
+      >
+        <View style={styles.headerBannerContent}>
+          <Ionicons name="lock-closed" size={16} color="#fff" />
+          <ThemedText style={styles.headerBannerText}>
+            {isExpired ? 'LOCK EXPIRED' : 'PRICE LOCKED'}
+          </ThemedText>
+          {item.isPaidLock && !isExpired && (
+            <View style={styles.paidBadge}>
+              <Ionicons name="checkmark-circle" size={12} color="#fff" />
+              <ThemedText style={styles.paidBadgeText}>PAID</ThemedText>
+            </View>
+          )}
+        </View>
+      </LinearGradient>
+
+      <View style={styles.itemContainer}>
         {/* Product Image */}
         <View style={styles.imageContainer}>
           {item.image ? (
@@ -117,35 +234,25 @@ export default function LockedItem({
               <Ionicons name="image-outline" size={32} color="#9CA3AF" />
             </View>
           )}
-          {/* Lock Badge */}
-          <View style={styles.lockBadge}>
-            <Ionicons name="lock-closed" size={12} color="#fff" />
+          {/* Quantity Badge on Image */}
+          <View style={styles.quantityOverlay}>
+            <ThemedText style={styles.quantityOverlayText}>×{item.quantity}</ThemedText>
           </View>
         </View>
 
         {/* Product Details */}
         <View style={styles.detailsContainer}>
-          <View style={styles.headerRow}>
-            <View style={styles.nameContainer}>
-              <ThemedText style={styles.productName} numberOfLines={2}>
-                {item.name}
-              </ThemedText>
-              {item.store && (
-                <ThemedText style={styles.storeName} numberOfLines={1}>
-                  {item.store}
-                </ThemedText>
-              )}
-            </View>
-
-            {/* Delete Icon */}
-            <TouchableOpacity
-              onPress={handleUnlock}
-              style={styles.deleteButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="close-circle" size={24} color="#EF4444" />
-            </TouchableOpacity>
+          <View style={styles.nameRow}>
+            <ThemedText style={styles.productName} numberOfLines={2}>
+              {item.name}
+            </ThemedText>
           </View>
+
+          {item.store && (
+            <ThemedText style={styles.storeName} numberOfLines={1}>
+              {item.store}
+            </ThemedText>
+          )}
 
           {/* Variant */}
           {item.variant && item.variant.type && (
@@ -156,84 +263,172 @@ export default function LockedItem({
             </View>
           )}
 
-          {/* Timer */}
-          <View style={[styles.timerContainer, isExpired && styles.expiredTimer]}>
-            <Ionicons
-              name="time-outline"
-              size={14}
-              color={isExpired ? '#EF4444' : '#F59E0B'}
-            />
-            <ThemedText style={[styles.timerText, isExpired && styles.expiredTimerText]}>
-              {isExpired
-                ? 'Expired'
-                : `${hoursRemaining}h ${minutesRemaining}m remaining`}
-            </ThemedText>
-          </View>
-
-          {/* Price and Actions */}
-          <View style={styles.bottomRow}>
-            <View style={styles.priceContainer}>
-              <ThemedText style={styles.price}>₹{item.price}</ThemedText>
-              {item.originalPrice && item.originalPrice > item.price && (
-                <ThemedText style={styles.originalPrice}>
-                  ₹{item.originalPrice}
+          {/* Price Row - Show remaining price for paid locks */}
+          <View style={styles.priceRow}>
+            {item.isPaidLock && item.lockFee ? (
+              <>
+                <ThemedText style={styles.price}>
+                  ₹{((item.price * item.quantity) - item.lockFee).toLocaleString()}
                 </ThemedText>
-              )}
-              <View style={styles.quantityBadge}>
-                <ThemedText style={styles.quantityText}>Qty: {item.quantity}</ThemedText>
-              </View>
-            </View>
-
-            {/* Move to Cart Button */}
-            {!isExpired && (
-              <TouchableOpacity
-                onPress={handleMoveToCart}
-                style={styles.moveButtonWrapper}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#8B5CF6', '#7C3AED']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.moveButton}
-                >
-                  <Ionicons name="cart" size={16} color="#fff" />
-                  <ThemedText style={styles.moveButtonText}>Move to Cart</ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
+                <ThemedText style={styles.originalPrice}>
+                  ₹{(item.price * item.quantity).toLocaleString()}
+                </ThemedText>
+              </>
+            ) : (
+              <>
+                <ThemedText style={styles.price}>₹{(item.price * item.quantity).toLocaleString()}</ThemedText>
+                {item.originalPrice && item.originalPrice > item.price && (
+                  <ThemedText style={styles.originalPrice}>
+                    ₹{(item.originalPrice * item.quantity).toLocaleString()}
+                  </ThemedText>
+                )}
+              </>
             )}
           </View>
+
+          {/* Paid Lock Deposit Info */}
+          {item.isPaidLock && item.lockFee && (
+            <View style={styles.depositContainer}>
+              <Ionicons name="checkmark-circle" size={14} color="#059669" />
+              <ThemedText style={styles.depositText}>
+                ₹{item.lockFee} already paid ({item.lockFeePercentage}% deposit)
+              </ThemedText>
+            </View>
+          )}
         </View>
-      </TouchableOpacity>
+      </View>
+
+      {/* Timer Section */}
+      <Animated.View
+        style={[
+          styles.timerSection,
+          { backgroundColor: timerColors.bg },
+          timeLeft.isCritical && { transform: [{ scale: pulseAnim }] }
+        ]}
+      >
+        <View style={styles.timerContent}>
+          <Ionicons name="time" size={18} color={timerColors.icon} />
+          <View style={styles.timerTextContainer}>
+            <ThemedText style={[styles.timerLabel, { color: timerColors.text }]}>
+              {isExpired ? 'Expired' : 'Time Remaining'}
+            </ThemedText>
+            <ThemedText style={[styles.timerValue, { color: timerColors.text }]}>
+              {formatTime()}
+            </ThemedText>
+          </View>
+        </View>
+        {!isExpired && item.isPaidLock && (
+          <View style={styles.securedBadge}>
+            <Ionicons name="shield-checkmark" size={14} color="#059669" />
+            <ThemedText style={styles.securedText}>Price Secured</ThemedText>
+          </View>
+        )}
+      </Animated.View>
+
+      {/* Action Buttons */}
+      <View style={styles.actionButtons}>
+        {!isExpired ? (
+          <>
+            <TouchableOpacity
+              onPress={handleCancelLock}
+              style={styles.cancelButton}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close" size={18} color="#6B7280" />
+              <ThemedText style={styles.cancelButtonText}>Cancel Lock</ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleMoveToCart}
+              style={styles.purchaseButtonWrapper}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#8B5CF6', '#7C3AED']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.purchaseButton}
+              >
+                <Ionicons name="cart" size={18} color="#fff" />
+                <ThemedText style={styles.purchaseButtonText}>
+                  {item.isPaidLock ? 'Complete Purchase' : 'Move to Cart'}
+                </ThemedText>
+              </LinearGradient>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity
+            onPress={handleCancelLock}
+            style={styles.removeExpiredButton}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trash" size={18} color="#DC2626" />
+            <ThemedText style={styles.removeExpiredText}>Remove Expired Lock</ThemedText>
+          </TouchableOpacity>
+        )}
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 10,
     borderRadius: 16,
     backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 5,
+    overflow: 'hidden',
   },
   expiredContainer: {
-    opacity: 0.6,
+    opacity: 0.7,
+  },
+  headerBanner: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  headerBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerBannerText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  paidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginLeft: 'auto',
+  },
+  paidBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   itemContainer: {
     flexDirection: 'row',
-    padding: 12,
+    padding: 14,
+    paddingTop: 12,
   },
   imageContainer: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: 14,
   },
   productImage: {
-    width: 90,
-    height: 90,
+    width: 85,
+    height: 85,
     borderRadius: 12,
     backgroundColor: '#F3F4F6',
   },
@@ -241,43 +436,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  lockBadge: {
+  quantityOverlay: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: '#F59E0B',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  quantityOverlayText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
   },
   detailsContainer: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  nameRow: {
     marginBottom: 4,
-  },
-  nameContainer: {
-    flex: 1,
-    marginRight: 8,
   },
   productName: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 2,
+    lineHeight: 20,
   },
   storeName: {
     fontSize: 12,
     color: '#6B7280',
-  },
-  deleteButton: {
-    padding: 2,
+    marginBottom: 6,
   },
   variantContainer: {
     backgroundColor: '#F3F4F6',
@@ -285,80 +474,144 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     alignSelf: 'flex-start',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   variantText: {
     fontSize: 11,
     color: '#6B7280',
   },
-  timerContainer: {
+  priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  expiredTimer: {
-    backgroundColor: '#FEE2E2',
-  },
-  timerText: {
-    fontSize: 12,
-    color: '#D97706',
-    fontWeight: '500',
-    marginLeft: 4,
-  },
-  expiredTimerText: {
-    color: '#DC2626',
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
   },
   price: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
-    marginRight: 6,
   },
   originalPrice: {
     fontSize: 14,
     color: '#9CA3AF',
     textDecorationLine: 'line-through',
-    marginRight: 8,
   },
-  quantityBadge: {
-    backgroundColor: '#E5E7EB',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  depositContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
+    alignSelf: 'flex-start',
   },
-  quantityText: {
+  depositText: {
+    fontSize: 12,
+    color: '#059669',
+    fontWeight: '600',
+  },
+  timerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 14,
+    marginBottom: 10,
+    borderRadius: 10,
+  },
+  timerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  timerTextContainer: {
+    gap: 2,
+  },
+  timerLabel: {
     fontSize: 11,
-    color: '#4B5563',
     fontWeight: '500',
   },
-  moveButtonWrapper: {
+  timerValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  securedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  securedText: {
+    fontSize: 11,
+    color: '#059669',
+    fontWeight: '600',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    paddingTop: 4,
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    flex: 0.4,
+  },
+  cancelButtonText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  purchaseButtonWrapper: {
+    flex: 0.6,
     borderRadius: 10,
     overflow: 'hidden',
   },
-  moveButton: {
+  purchaseButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 6,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
   },
-  moveButtonText: {
+  purchaseButtonText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  removeExpiredButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: '#FEE2E2',
+    flex: 1,
+  },
+  removeExpiredText: {
+    fontSize: 14,
+    color: '#DC2626',
     fontWeight: '600',
   },
 });

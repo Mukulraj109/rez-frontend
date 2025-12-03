@@ -142,6 +142,13 @@ export default function CartPage() {
       const response = await cartApi.getLockedItems();
       if (response.success && response.data) {
         const formattedLockedItems = response.data.lockedItems.map((item: any) => {
+          console.log('🔒 [CART] Raw locked item from API:', {
+            id: item._id,
+            isPaidLock: item.isPaidLock,
+            lockFee: item.lockFee,
+            lockFeePercentage: item.lockFeePercentage,
+            lockPaymentStatus: item.lockPaymentStatus,
+          });
           const productId = item.product?._id || item.product;
           const lockedAt = new Date(item.lockedAt);
           const expiresAt = new Date(item.expiresAt);
@@ -172,6 +179,12 @@ export default function CartPage() {
             lockDuration,
             status,
             notes: item.notes,
+            // Paid lock fields
+            lockFee: item.lockFee,
+            lockFeePercentage: item.lockFeePercentage,
+            paymentMethod: item.paymentMethod,
+            lockPaymentStatus: item.lockPaymentStatus,
+            isPaidLock: item.isPaidLock,
           };
         });
         setLockedProducts(formattedLockedItems);

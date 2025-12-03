@@ -77,6 +77,20 @@ export interface Store {
     closed: boolean;
   }>;
   tags: string[];
+  // Action buttons configuration for ProductPage
+  actionButtons?: {
+    enabled: boolean;
+    buttons: Array<{
+      id: 'call' | 'product' | 'location' | 'custom';
+      enabled: boolean;
+      label?: string;
+      destination?: {
+        type: 'phone' | 'url' | 'maps' | 'internal';
+        value: string;
+      };
+      order?: number;
+    }>;
+  };
   status: 'active' | 'pending' | 'suspended' | 'inactive';
   verification: {
     isVerified: boolean;
@@ -765,5 +779,8 @@ class StoresService {
 
 // Create singleton instance
 const storesService = new StoresService();
+
+// Named export for compatibility
+export { storesService as storesApi };
 
 export default storesService;

@@ -33,7 +33,7 @@ const StoreProductGrid = memo(function StoreProductGrid({
       onProductPress(product);
     } else {
       // Default navigation to product detail page
-      router.push(`/product/${product.id}`);
+      router.push(`/ProductPage?cardId=${product.id}&cardType=product` as any);
     }
   }, [onProductPress, router]);
 

@@ -313,3 +313,34 @@ export function formatProductPrice(price: number): string {
     maximumFractionDigits: 0,
   }).format(price);
 }
+
+/**
+ * Get normalized product ID
+ * Handles both MongoDB _id and frontend id formats
+ *
+ * @param product - Product with either _id or id field
+ * @returns The product ID as a string
+ *
+ * @example
+ * const productId = getProductId(product); // Works with both _id and id
+ */
+export function getProductId(product: { _id?: string; id?: string } | UnifiedProduct): string {
+  return product._id || product.id || '';
+}
+
+/**
+ * Check if two products are the same
+ * Compares using normalized IDs
+ *
+ * @param productA - First product
+ * @param productB - Second product
+ * @returns true if products have the same ID
+ */
+export function isSameProduct(
+  productA: { _id?: string; id?: string },
+  productB: { _id?: string; id?: string }
+): boolean {
+  const idA = getProductId(productA);
+  const idB = getProductId(productB);
+  return idA !== '' && idB !== '' && idA === idB;
+}

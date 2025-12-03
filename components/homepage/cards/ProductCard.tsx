@@ -17,6 +17,7 @@ import RatingStars from '@/components/reviews/RatingStars';
 import { useStockStatus } from '@/hooks/useStockStatus';
 import { useStockNotifications } from '@/hooks/useStockNotifications';
 import { useToast } from '@/hooks/useToast';
+import { getProductId } from '@/types/product-unified.types';
 
 function ProductCard({
   product,
@@ -39,8 +40,8 @@ function ProductCard({
     lowStockThreshold,
   });
 
-  // Memoize product ID to avoid recalculation
-  const productId = useMemo(() => product._id || product.id, [product._id, product.id]);
+  // Memoize product ID to avoid recalculation - use helper for consistency
+  const productId = useMemo(() => getProductId(product), [product._id, product.id]);
 
   // Check if product is in cart and get quantity - ONLY for THIS product
   const { cartItem, quantityInCart, isInCart } = useMemo(() => {
@@ -452,8 +453,8 @@ function ProductCard({
 // Memoize the component with a custom comparison function
 // Only re-render when THIS product's data or cart quantity changes
 const MemoizedProductCard = memo(ProductCard, (prevProps, nextProps) => {
-  // If product ID changed, re-render
-  if ((prevProps.product._id || prevProps.product.id) !== (nextProps.product._id || nextProps.product.id)) {
+  // If product ID changed, re-render - use helper for consistency
+  if (getProductId(prevProps.product) !== getProductId(nextProps.product)) {
     return false;
   }
 

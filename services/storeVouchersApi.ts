@@ -107,6 +107,19 @@ class StoreVouchersApi {
   ): Promise<ApiResponse<{ vouchers: StoreVoucher[]; total: number }>> {
     try {
       const response = await apiClient.get<any>(`/store-vouchers/store/${storeId}`, params);
+
+      // Normalize response - backend returns data as array directly
+      // Component expects { vouchers: [], total: number }
+      if (response.success && Array.isArray(response.data)) {
+        return {
+          ...response,
+          data: {
+            vouchers: response.data,
+            total: response.meta?.pagination?.total || response.data.length,
+          },
+        };
+      }
+
       return response;
     } catch (error) {
       console.error(`[STORE VOUCHERS API] Error fetching vouchers for store ${storeId}:`, error);

@@ -1,530 +1,456 @@
-// UGCDetailScreen.tsx
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, Dimensions, ScrollView, Platform, ActivityIndicator, Text, Share } from 'react-native';
+// UGCDetailScreen.tsx - Modern TikTok/Reels Style Video Player
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Dimensions,
+  Platform,
+  ActivityIndicator,
+  Text,
+  Animated,
+  StatusBar,
+  ScrollView,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
-import { ThemedText } from '@/components/ThemedText';
-import ProductCarousel from '@/components/ugc/ProductCarousel';
-import VideoControls from '@/components/ugc/VideoControls';
-import SocialActions from '@/components/ugc/SocialActions';
-import CreatorInfo from '@/components/ugc/CreatorInfo';
-import useProductInteraction from '@/hooks/useProductInteraction';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { showAlert } from '@/utils/alert';
 import ReportModal from '@/components/ugc/ReportModal';
-import ReportToast from '@/components/common/ReportToast';
-import { useVideoReport } from '@/hooks/useVideoReport';
 import { ReportReason } from '@/types/report.types';
 import { realVideosApi, Video as VideoType } from '@/services/realVideosApi';
+import wishlistApi from '@/services/wishlistApi';
+import useProductInteraction from '@/hooks/useProductInteraction';
+import { shouldCountView, recordView } from '@/utils/viewTracker';
 
-type ProductCard = {
-  id: string;
-  title: string;
-  price: string;
-  rating?: number;
-  cashbackText?: string;
-  image: string;
-};
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-type UGCItem = {
-  id: string;
-  videoUrl?: string;
-  uri?: string;
-  viewCount: string;
-  description: string;
-  tag?: string;
-  productCards?: ProductCard[];
-  products?: any[]; // Tagged products from backend
-  likes?: number;
-  comments?: number;
-  shares?: number;
-};
-
-// Fallback video URL for when backend video URL fails (404)
+// Fallback video URL
 const FALLBACK_VIDEO_URL = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
 
 export default function UGCDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const videoRef = useRef<Video | null>(null);
+
+  // Animation refs
+  const likeScale = useRef(new Animated.Value(1)).current;
+  const heartOpacity = useRef(new Animated.Value(0)).current;
+  const playPauseOpacity = useRef(new Animated.Value(0)).current;
+
+  // View tracking ref - prevents counting same video multiple times in a session
+  const viewTrackedRef = useRef<Set<string>>(new Set());
+
+  // State
   const [ready, setReady] = useState(false);
   const [isFocused, setIsFocused] = useState(true);
-  const [productsLoading, setProductsLoading] = useState(false);
   const [videoError, setVideoError] = useState(false);
-
-  // Backend API state
   const [video, setVideo] = useState<VideoType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Debug and parse params on mount
-  useEffect(() => {
-    console.log('🔍 [UGCDetailScreen] Component mounted');
-    console.log('🔍 [UGCDetailScreen] All params:', params);
-    console.log('🔍 [UGCDetailScreen] params.id:', params.id);
-    console.log('🔍 [UGCDetailScreen] params.item:', params.item);
-
-    // If item is passed as JSON string, parse it and use directly
-    if (params.item && typeof params.item === 'string') {
-      try {
-        const parsedItem = JSON.parse(params.item);
-        console.log('✅ [UGCDetailScreen] Parsed item from params:', parsedItem);
-
-        // Use the passed video data directly instead of fetching
-        setVideo(parsedItem as any);
-        setLoading(false);
-        console.log('✅ [UGCDetailScreen] Using passed video data, skipping API fetch');
-      } catch (err) {
-        console.error('❌ [UGCDetailScreen] Failed to parse item param:', err);
-      }
-    }
-  }, []);
-
-  // Report functionality state
-  const [reportModalVisible, setReportModalVisible] = useState(false);
-  const [isReported, setIsReported] = useState(false);
-
   // Video controls state
   const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [showControls, setShowControls] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  // Video aspect ratio detection - determines resize mode
+  const [videoAspectRatio, setVideoAspectRatio] = useState<'vertical' | 'horizontal' | 'square'>('vertical');
+
+  // Track if styles have been applied (for smooth transition)
+  const [stylesApplied, setStylesApplied] = useState(false);
 
   // Social features state
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
-  const [sharesCount, setSharesCount] = useState(0);
+  const [viewsCount, setViewsCount] = useState(0);
 
-  // Toast state for report feedback
-  const [toastConfig, setToastConfig] = useState<{
-    visible: boolean;
-    type: 'success' | 'error';
-    message: string;
-  }>({
-    visible: false,
-    type: 'success',
-    message: '',
-  });
+  // Report state
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [isReported, setIsReported] = useState(false);
 
-  // Auth context for checking user login status
+  // Contexts
   const { state: authState } = useAuth();
-
-  // Cart context for cart badge
   const { state: cartState } = useCart();
 
-  // Product interaction hook
+  // Product interaction
   const { addToCart, navigateToProduct } = useProductInteraction({
-    onSuccess: (message) => {
-      console.log('Success:', message);
-      // Could show a toast notification here
-    },
-    onError: (error) => {
-      console.error('Error:', error);
-      // Could show an error toast here
-    },
+    onSuccess: (message) => console.log('Success:', message),
+    onError: (error) => console.error('Error:', error),
   });
 
-  // Fetch video data from backend (only if not already loaded from params.item)
+  // Parse params and fetch video
+  useEffect(() => {
+    if (params.item && typeof params.item === 'string') {
+      try {
+        const parsedItem = JSON.parse(params.item);
+        setVideo(parsedItem as any);
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to parse item param:', err);
+      }
+    }
+  }, []);
+
+  // Fetch video from API
   useEffect(() => {
     const fetchVideo = async () => {
       try {
         setLoading(true);
         setError(null);
         const videoId = params.id as string;
-        console.log('🎬 [UGCDetailScreen] Fetching video with ID:', videoId);
         const response = await realVideosApi.getVideoById(videoId);
-        console.log('📦 [UGCDetailScreen] Full API response:', response);
-        console.log('📦 [UGCDetailScreen] response.success:', response?.success);
-        console.log('📦 [UGCDetailScreen] response.data:', response?.data);
 
-        // Handle different response structures
         let videoData = null;
-
         if (response && response.success !== false) {
-          // Try to extract video from various possible structures
-          if (response.data && response.data.video) {
-            // Structure: { success: true, data: { video: {...} } }
-            videoData = response.data.video;
-            console.log('✅ [UGCDetailScreen] Found video in response.data.video');
-          } else if (response.video) {
-            // Structure: { video: {...} }
-            videoData = response.video;
-            console.log('✅ [UGCDetailScreen] Found video in response.video');
-          } else if (response.data && response.data._id) {
-            // Structure: { data: Video }
-            videoData = response.data;
-            console.log('✅ [UGCDetailScreen] Found video in response.data');
-          } else if (response._id) {
-            // Structure: Video (direct)
-            videoData = response;
-            console.log('✅ [UGCDetailScreen] Response is the video object');
-          }
+          if (response.data?.video) videoData = response.data.video;
+          else if (response.video) videoData = response.video;
+          else if (response.data?._id || response.data?.id) videoData = response.data;
+          else if (response._id || response.id) videoData = response;
         }
 
-        if (videoData && videoData._id) {
-          console.log('📦 [UGCDetailScreen] Extracted video data keys:', Object.keys(videoData));
-          console.log('🛍️ [UGCDetailScreen] Products in video:', videoData.products?.length || 0);
-          console.log('🎥 [UGCDetailScreen] Video URL:', videoData.videoUrl);
-          console.log('🖼️ [UGCDetailScreen] Thumbnail:', videoData.thumbnail);
-          console.log('🎬 [UGCDetailScreen] Video ID:', videoData._id);
-          console.log('📝 [UGCDetailScreen] Description:', videoData.description);
-          console.log('🔍 [UGCDetailScreen] Has videoUrl:', !!videoData.videoUrl);
-          console.log('🔍 [UGCDetailScreen] VideoUrl type:', typeof videoData.videoUrl);
-
-          setVideo(videoData);
-          console.log('✅ [UGCDetailScreen] Video state set successfully');
-
-          if (videoData.products && videoData.products.length > 0) {
-            console.log('✅ [UGCDetailScreen] Video has products:', videoData.products.length);
-            videoData.products.forEach((product: any, index: number) => {
-              console.log(`   Product ${index + 1}: ${product.name || product.title} (ID: ${product._id})`);
-            });
-          } else {
-            console.warn('⚠️ [UGCDetailScreen] Video has no products');
-          }
+        const extractedVideoId = videoData?._id || videoData?.id;
+        if (videoData && extractedVideoId) {
+          const normalizedVideo = {
+            ...videoData,
+            _id: extractedVideoId,
+            products: videoData.products || videoData.relatedProducts || [],
+          };
+          setVideo(normalizedVideo);
         } else {
-          console.error('❌ [UGCDetailScreen] Could not extract video from response');
-          console.error('Response structure:', JSON.stringify(response, null, 2));
           setError('Video not found');
         }
       } catch (err) {
-        console.error('❌ Error fetching video:', err);
+        console.error('Error fetching video:', err);
         setError('Failed to load video');
       } finally {
         setLoading(false);
       }
     };
 
-    // Only fetch if we have params.id and don't already have video data from params.item
     if (params.id && !video) {
       fetchVideo();
     }
   }, [params.id]);
 
-  // Initialize engagement data from video
+  // Get the store ID to use for follow - prioritize store over creator
+  const getFollowableStoreId = useCallback(() => {
+    if (!video) return null;
+    // Priority: video.store > video.storeId > creator.storeId > creator.store > creator.id
+    return video.store?.id || video.store?._id ||
+           (video as any).storeId ||
+           video.creator?.storeId || (video.creator as any)?.store?.id || (video.creator as any)?.store?._id ||
+           video.creator?.id || video.creator?._id;
+  }, [video]);
+
+  // Initialize engagement data
   useEffect(() => {
     if (video) {
-      // Handle both formats: engagement.likes array and video.likes number
-      if (video.engagement?.likes) {
-        if (Array.isArray(video.engagement.likes)) {
-          setIsLiked(video.engagement.likes.includes(authState.user?.id || '') || false);
-          setLikesCount(video.engagement.likes.length);
-        } else {
-          setLikesCount(Number(video.engagement.likes) || 0);
-        }
-      } else if (video.likes !== undefined) {
-        // Play page format: video.likes is a number
-        setLikesCount(Number(video.likes) || 0);
-      }
+      const likes = video.metrics?.likes || video.engagement?.likes;
+      setLikesCount(Array.isArray(likes) ? likes.length : (Number(likes) || 0));
+      setViewsCount(video.metrics?.views || video.engagement?.views || 0);
+      setIsLiked(video.engagement?.liked || false);
+      setIsBookmarked(video.engagement?.bookmarked || false);
 
-      if (video.engagement?.shares !== undefined) {
-        setSharesCount(video.engagement.shares);
-      } else if (video.shares !== undefined) {
-        // Play page format: video.shares is a number
-        setSharesCount(Number(video.shares) || 0);
+      // Check follow status for the store (using wishlistApi)
+      const storeIdToCheck = getFollowableStoreId();
+      if (storeIdToCheck && authState.isAuthenticated) {
+        wishlistApi.checkWishlistStatus('store', storeIdToCheck)
+          .then(response => {
+            if (response.success && response.data) {
+              setIsFollowing(response.data.inWishlist || false);
+            }
+          })
+          .catch(() => {
+            // Silently fail - keep default state
+          });
       }
-
-      console.log(`💖 Engagement: ${likesCount} likes, ${sharesCount} shares, isLiked: ${isLiked}`);
-      // TODO: Check if user follows creator
-      // TODO: Check if user bookmarked video
     }
-  }, [video, authState.user]);
+  }, [video, authState.isAuthenticated, getFollowableStoreId]);
 
-  // Handle focus state for video playback
+  // Focus handling
   useFocusEffect(
-    React.useCallback(() => {
-      console.log('🎯 Screen focused');
+    useCallback(() => {
       setIsFocused(true);
+      StatusBar.setHidden(true);
+
+      // Re-check follow status when screen comes into focus (might have changed in another screen)
+      const storeIdToCheck = getFollowableStoreId();
+      if (storeIdToCheck && authState.isAuthenticated) {
+        wishlistApi.checkWishlistStatus('store', storeIdToCheck)
+          .then(response => {
+            if (response.success && response.data) {
+              setIsFollowing(response.data.inWishlist || false);
+            }
+          })
+          .catch(() => {});
+      }
+
       return () => {
-        console.log('🎯 Screen unfocused');
         setIsFocused(false);
+        StatusBar.setHidden(false);
       };
-    }, [])
+    }, [getFollowableStoreId, authState.isAuthenticated])
   );
 
-  // Update playback when focus or playing state changes
+  // Playback control - only pause when screen loses focus
   useEffect(() => {
     const updatePlayback = async () => {
-      try {
-        if (videoRef.current && ready) {
-          const shouldBePlayingNow = isFocused && isPlaying;
-          console.log(`🎮 Playback update: isFocused=${isFocused}, isPlaying=${isPlaying}, shouldPlay=${shouldBePlayingNow}`);
-
-          if (shouldBePlayingNow) {
-            await videoRef.current.playAsync();
-          } else {
+      if (videoRef.current && ready) {
+        try {
+          if (!isFocused) {
+            // Only pause when navigating away from screen
             await videoRef.current.pauseAsync();
+          } else if (isFocused && !isPlaying) {
+            // Resume only if user hasn't manually paused
           }
+        } catch (err) {
+          console.log('Playback control error:', err);
         }
-      } catch (error) {
-        console.warn('⚠️ Video playback update error:', error);
       }
     };
-
     updatePlayback();
-  }, [isFocused, isPlaying, ready]);
+  }, [isFocused, ready]);
 
-  const { width } = Dimensions.get('window');
+  // Force play when video loads
+  useEffect(() => {
+    const startPlayback = async () => {
+      if (videoRef.current && ready && video?.videoUrl) {
+        try {
+          await videoRef.current.playAsync();
+          setIsPlaying(true);
+        } catch (err) {
+          console.log('Auto-play error:', err);
+        }
+      }
+    };
+    startPlayback();
+  }, [ready, video?.videoUrl]);
 
-  // Transform product data for ProductCarousel
+  // Track if we've already detected the aspect ratio
+  const aspectRatioDetected = useRef(false);
+
+  // Web fallback: Try to get video dimensions from the DOM element
+  useEffect(() => {
+    if (Platform.OS === 'web' && ready && !aspectRatioDetected.current) {
+      // Try immediately and then again after a short delay
+      const detectDimensions = () => {
+        try {
+          const videoElements = document.querySelectorAll('video');
+          for (const videoEl of videoElements) {
+            if (videoEl.videoWidth && videoEl.videoHeight && videoEl.videoWidth > 0) {
+              aspectRatioDetected.current = true;
+              if (videoEl.videoWidth > videoEl.videoHeight) {
+                setVideoAspectRatio('horizontal');
+              } else if (videoEl.videoHeight > videoEl.videoWidth) {
+                setVideoAspectRatio('vertical');
+              }
+              return true;
+            }
+          }
+          return false;
+        } catch (e) {
+          return false;
+        }
+      };
+
+      // Try immediately and then quickly retry
+      if (!detectDimensions()) {
+        // If not found, try again with faster intervals
+        const timer1 = setTimeout(detectDimensions, 30);
+        const timer2 = setTimeout(detectDimensions, 80);
+        const timer3 = setTimeout(detectDimensions, 150);
+        const timer4 = setTimeout(detectDimensions, 300);
+        return () => {
+          clearTimeout(timer1);
+          clearTimeout(timer2);
+          clearTimeout(timer3);
+          clearTimeout(timer4);
+        };
+      }
+    }
+  }, [ready]);
+
+  // Web: Apply object-fit style directly to video elements for horizontal videos
+  useEffect(() => {
+    if (Platform.OS === 'web' && videoAspectRatio === 'horizontal') {
+      let intervalId: NodeJS.Timeout;
+      let attempts = 0;
+      const maxAttempts = 50;
+
+      const applyContainStyle = () => {
+        try {
+          const videoElements = document.querySelectorAll('video');
+          attempts++;
+
+          // For horizontal videos: background (index 0) = cover, main (index 1) = contain
+          if (videoElements.length >= 2) {
+            videoElements.forEach((videoEl, index) => {
+              if (index === 0) {
+                // Background video - should be cover (blurred) and fill entire screen
+                videoEl.style.setProperty('object-fit', 'cover', 'important');
+                videoEl.style.setProperty('width', '150%', 'important');
+                videoEl.style.setProperty('height', '150%', 'important');
+                videoEl.style.setProperty('transform', 'scale(1.5)', 'important');
+                videoEl.style.setProperty('filter', 'blur(15px)', 'important');
+                videoEl.style.setProperty('top', '-25%', 'important');
+                videoEl.style.setProperty('left', '-25%', 'important');
+                videoEl.style.setProperty('position', 'absolute', 'important');
+              } else {
+                // Main video - should be contain (full video visible)
+                videoEl.style.setProperty('object-fit', 'contain', 'important');
+                videoEl.style.setProperty('width', '100%', 'important');
+                videoEl.style.setProperty('height', '100%', 'important');
+                videoEl.style.setProperty('filter', 'none', 'important');
+              }
+            });
+            // Found and styled both videos, stop checking
+            if (intervalId) clearInterval(intervalId);
+            setStylesApplied(true);
+          } else if (videoElements.length === 1) {
+            // Only main video, apply contain
+            videoElements[0].style.setProperty('object-fit', 'contain', 'important');
+          }
+
+          // Stop after max attempts
+          if (attempts >= maxAttempts && intervalId) {
+            clearInterval(intervalId);
+          }
+        } catch (e) {
+          // Silently handle errors
+        }
+      };
+
+      // Apply immediately and keep checking with interval
+      applyContainStyle();
+      intervalId = setInterval(applyContainStyle, 100);
+
+      return () => {
+        if (intervalId) clearInterval(intervalId);
+      };
+    }
+  }, [videoAspectRatio, ready]);
+
+  // Transform products
   const products = useMemo(() => {
     if (!video?.products) return [];
-
     return video.products.map(product => {
-      // Handle both backend format (pricing object) and play page format (price string)
-      let priceValue = 0;
-      let originalPrice = 0;
-
-      // ✅ FIX: Check for pricing.selling (food products like Butter Chicken, Biryani)
-      if (product.pricing?.selling !== undefined) {
-        priceValue = product.pricing.selling;
-        originalPrice = product.pricing.mrp || product.pricing.base || priceValue;
-      } else if (product.pricing?.basePrice) {
-        // Backend API format (old)
-        priceValue = product.pricing.basePrice;
-        originalPrice = product.pricing.salePrice || priceValue;
-      } else if (product.pricing?.current) {
-        // New format: pricing object with current/original
-        priceValue = product.pricing.current;
-        originalPrice = product.pricing.original || priceValue;
-      } else if (typeof product.price === 'object' && product.price?.current) {
-        // Direct price object from transformer
-        priceValue = product.price.current;
-        originalPrice = product.price.original || priceValue;
-      } else if (typeof product.price === 'string') {
-        // Play page format - parse string like "₹2,199" or "₹0"
-        const priceStr = String(product.price).replace(/[₹,]/g, '').trim();
-        priceValue = parseInt(priceStr, 10) || 0;
-        originalPrice = priceValue;
-      } else if (typeof product.price === 'number') {
-        priceValue = product.price;
-        originalPrice = priceValue;
-      }
-
-      // Calculate discount percentage if not provided
-      let discount = product.pricing?.discount || product.price?.discount;
-      if (!discount && originalPrice && priceValue && originalPrice > priceValue) {
-        discount = Math.round(((originalPrice - priceValue) / originalPrice) * 100);
-      }
-
-      console.log(`📦 [UGCDetailScreen] Product: ${product.title}, Price: ${priceValue}, Original: ${originalPrice}, Discount: ${discount}%`);
-
+      const price = product.pricing?.selling || product.pricing?.basePrice || product.price || 0;
+      const image = product.thumbnail || product.image || product.images?.[0] || '';
       return {
         ...product,
-        // Ensure we have both id and _id for compatibility
         id: product.id || product._id,
         _id: product._id || product.id,
-        // Ensure we have name field (fallback to title)
-        name: product.name || product.title || 'Unknown Product',
-        title: product.title || product.name || 'Unknown Product',
-        price: {
-          current: priceValue,
-          original: originalPrice,
-          discount: discount || 0,
-          currency: '₹'
-        },
-        availabilityStatus: product.inventory?.isAvailable !== false ? 'in_stock' : 'out_of_stock',
-        inventory: {
-          isAvailable: product.inventory?.isAvailable !== false,
-          stock: product.inventory?.stock || 0
-        },
-        store: product.store
+        name: product.name || product.title || 'Product',
+        title: product.title || product.name || 'Product',
+        image,
+        price: typeof price === 'number' ? price : 0,
       };
     });
   }, [video]);
 
-  const hasProducts = products.length > 0;
+  // Double tap to like animation
+  const handleDoubleTap = useCallback(() => {
+    if (!isLiked) {
+      handleLike();
+    }
+    // Show heart animation
+    Animated.sequence([
+      Animated.timing(heartOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(600),
+      Animated.timing(heartOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, [isLiked]);
 
-  // Debug products
-  React.useEffect(() => {
-    console.log('🛍️ [UGCDetailScreen] Products count:', products.length);
-    console.log('🛍️ [UGCDetailScreen] Has products:', hasProducts);
-
-    // Log ALL products with their IDs
-    products.forEach((product, index) => {
-      console.log(`🛍️ [UGCDetailScreen] Product ${index}:`, {
-        id: product.id,
-        _id: product._id,
-        title: product.title,
-        name: product.name,
-        price: product.price
-      });
-    });
-  }, [products, hasProducts]);
-
-  /**
-   * Handle product card press
-   * Now passes complete product object for better ProductPage navigation
-   */
-  const handleProductPress = (product: any) => {
-    console.log('🔍 [UGCDetailScreen] Product pressed:', product);
-    console.log('🔍 [UGCDetailScreen] Product._id:', product._id);
-    console.log('🔍 [UGCDetailScreen] Product.id:', product.id);
-    console.log('🔍 [UGCDetailScreen] Product.title:', product.title);
-    console.log('🔍 [UGCDetailScreen] Product data:', JSON.stringify(product, null, 2));
-
-    const productId = product._id || product.id;
-    console.log('🔍 [UGCDetailScreen] Extracted productId:', productId);
-
-    if (productId) {
-      console.log('✅ [UGCDetailScreen] Navigating to product with full data');
-      // Pass the complete product object for better navigation
-      navigateToProduct(product, 'ugc_video');
+  // Video press - toggle play/pause
+  const lastTap = useRef<number>(0);
+  const handleVideoPress = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      handleDoubleTap();
     } else {
-      console.error('❌ [UGCDetailScreen] No product ID found!');
-    }
-  };
-
-  /**
-   * Handle add to cart
-   */
-  const handleAddToCart = async (product: any) => {
-    await addToCart(product, 1);
-  };
-
-  /**
-   * Handle play/pause toggle
-   */
-  const handlePlayPause = async () => {
-    if (!videoRef.current) return;
-
-    if (isPlaying) {
-      await videoRef.current.pauseAsync();
-      setIsPlaying(false);
-    } else {
-      await videoRef.current.playAsync();
-      setIsPlaying(true);
-    }
-  };
-
-  /**
-   * Handle mute toggle
-   */
-  const handleMuteToggle = async () => {
-    if (!videoRef.current) return;
-    setIsMuted(!isMuted);
-    await videoRef.current.setIsMutedAsync(!isMuted);
-  };
-
-  /**
-   * Handle video press to show/hide controls
-   */
-  const handleVideoPress = () => {
-    setShowControls(!showControls);
-    // Auto-hide controls after 3 seconds
-    setTimeout(() => setShowControls(false), 3000);
-  };
-
-  /**
-   * Handle playback status updates
-   */
-  const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (status.isLoaded) {
-      const progress = (status.positionMillis / (status.durationMillis || 1)) * 100;
-      setProgress(progress);
-      setIsPlaying(status.isPlaying);
-
-      // Debug logging (only log every 10% progress to avoid spam)
-      if (Math.floor(progress) % 10 === 0 && progress > 0) {
-        console.log(`📊 Playback: ${Math.floor(progress)}%, Playing: ${status.isPlaying}, Position: ${Math.floor(status.positionMillis / 1000)}s / ${Math.floor((status.durationMillis || 0) / 1000)}s`);
-      }
-    } else if ('error' in status) {
-      console.error('❌ Playback error in status update:', status.error);
-    }
-  };
-
-  /**
-   * Handle report button press
-   * Checks if user is authenticated before showing report modal
-   */
-  const handleReportPress = () => {
-    if (!authState.isAuthenticated || !authState.user) {
-      showAlert(
-        'Sign In Required',
-        'Please sign in to report videos',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Sign In',
-            onPress: () => router.push('/sign-in')
+      // Actually toggle video playback
+      if (videoRef.current) {
+        try {
+          if (isPlaying) {
+            await videoRef.current.pauseAsync();
+            setIsPlaying(false);
+          } else {
+            await videoRef.current.playAsync();
+            setIsPlaying(true);
           }
-        ]
-      );
-      return;
+        } catch (err) {
+          // Silently handle toggle errors
+        }
+      }
+      // Show play/pause indicator
+      Animated.sequence([
+        Animated.timing(playPauseOpacity, { toValue: 1, duration: 100, useNativeDriver: true }),
+        Animated.delay(500),
+        Animated.timing(playPauseOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
     }
+    lastTap.current = now;
+  }, [handleDoubleTap, isPlaying]);
 
-    if (isReported) {
-      showAlert('Already Reported', 'You have already reported this video.');
-      return;
-    }
+  // Track if we're currently restarting to prevent multiple restarts
+  const isRestartingRef = useRef(false);
 
-    setReportModalVisible(true);
-  };
+  // Playback status - handles looping like Reels/TikTok
+  const handlePlaybackStatusUpdate = async (status: AVPlaybackStatus) => {
+    if (!status.isLoaded) return;
 
-  /**
-   * Handle report submission
-   * Called by ReportModal when user submits a report
-   */
-  const handleReportSubmit = async (reason: ReportReason, details?: string) => {
-    try {
-      if (!video) {
-        throw new Error('Video not found');
+    const prog = (status.positionMillis / (status.durationMillis || 1)) * 100;
+    setProgress(prog);
+    setCurrentTime(status.positionMillis);
+    setDuration(status.durationMillis || 0);
+    setIsPlaying(status.isPlaying);
+
+    // Auto-loop: Check if video reached the end (position-based for web compatibility)
+    const isAtEnd = status.durationMillis &&
+                    status.durationMillis > 0 &&
+                    status.positionMillis >= status.durationMillis - 500; // Within 500ms of end
+
+    if ((status.didJustFinish || isAtEnd) && !isRestartingRef.current && videoRef.current) {
+      isRestartingRef.current = true;
+
+      try {
+        // For web: directly manipulate HTML5 video element
+        if (Platform.OS === 'web') {
+          const videoElements = document.querySelectorAll('video');
+          const mainVideo = videoElements[videoElements.length - 1];
+          if (mainVideo) {
+            mainVideo.currentTime = 0;
+            mainVideo.play().catch(() => {
+              mainVideo.muted = true;
+              mainVideo.play().catch(() => {});
+            });
+          }
+        } else {
+          await videoRef.current.setPositionAsync(0);
+          await videoRef.current.playAsync();
+        }
+      } catch (err) {
+        // Silently handle replay errors
       }
 
-      const response = await realVideosApi.reportVideo(video._id, reason, details);
-
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to submit report');
-      }
-
-      // Success - report submitted
-      return Promise.resolve();
-    } catch (error: any) {
-      // Error - pass it up to the modal
-      throw error;
+      // Reset flag after a short delay
+      setTimeout(() => {
+        isRestartingRef.current = false;
+      }, 1000);
     }
   };
 
-  /**
-   * Handle successful report submission
-   * Called by ReportModal after report is submitted
-   */
-  const handleReportSuccess = () => {
-    setReportModalVisible(false);
-    setIsReported(true);
-
-    // Show success toast
-    setToastConfig({
-      visible: true,
-      type: 'success',
-      message: "Thank you for your report. We'll review it shortly.",
-    });
-  };
-
-  /**
-   * Handle report error
-   * Called by ReportModal if report submission fails
-   */
-  const handleReportError = (error: string) => {
-    // Show error toast
-    setToastConfig({
-      visible: true,
-      type: 'error',
-      message: error || 'Failed to submit report. Please try again.',
-    });
-  };
-
-  /**
-   * Social Action Handlers
-   */
-
-  // Like handler
+  // Social Actions
   const handleLike = async () => {
     if (!authState.isAuthenticated) {
       showAlert('Sign In Required', 'Please sign in to like videos', [
@@ -534,48 +460,32 @@ export default function UGCDetailScreen() {
       return;
     }
 
+    // Animate
+    Animated.sequence([
+      Animated.timing(likeScale, { toValue: 1.4, duration: 100, useNativeDriver: true }),
+      Animated.timing(likeScale, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start();
+
     try {
-      if (!video) return;
+      if (!video?._id) return;
+      const newLikedState = !isLiked;
+      setIsLiked(newLikedState);
+      setLikesCount(prev => newLikedState ? prev + 1 : Math.max(0, prev - 1));
+
       const response = await realVideosApi.toggleVideoLike(video._id);
       if (response.success) {
-        setIsLiked(response.data.isLiked || response.data.liked);
-        setLikesCount(response.data.totalLikes || response.data.likeCount);
+        setIsLiked(response.data.isLiked ?? response.data.liked);
+        setLikesCount(response.data.totalLikes ?? response.data.likeCount);
       }
     } catch (error) {
-      console.error('Error liking video:', error);
+      setIsLiked(!isLiked);
+      setLikesCount(prev => isLiked ? prev + 1 : Math.max(0, prev - 1));
     }
   };
 
-  // Comment handler
-  const handleComment = () => {
-    // TODO: Navigate to comments page (to be implemented)
-    console.log('Navigate to comments');
-    // router.push(`/comments/${video._id}`);
-  };
-
-  // Share handler
-  const handleShare = async () => {
-    try {
-      if (!video) return;
-      const result = await Share.share({
-        message: `Check out this video: ${video.title || video.description}`,
-        url: `https://yourapp.com/video/${video._id}`,
-        title: video.title || 'Amazing Video',
-      });
-
-      if (result.action === Share.sharedAction) {
-        setSharesCount(prev => prev + 1);
-        // TODO: Track share in backend
-      }
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
-  };
-
-  // Bookmark handler
   const handleBookmark = async () => {
     if (!authState.isAuthenticated) {
-      showAlert('Sign In Required', 'Please sign in to bookmark videos', [
+      showAlert('Sign In Required', 'Please sign in to save videos', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Sign In', onPress: () => router.push('/sign-in') }
       ]);
@@ -583,23 +493,25 @@ export default function UGCDetailScreen() {
     }
 
     try {
-      // TODO: Implement bookmark API
-      setIsBookmarked(!isBookmarked);
-      console.log('Bookmark toggled');
+      if (!video?._id) return;
+      const previousState = isBookmarked;
+      setIsBookmarked(!previousState);
+
+      const response = await realVideosApi.toggleBookmark(video._id);
+
+      if (response?.success && response?.data) {
+        setIsBookmarked(response.data.isBookmarked);
+      } else if (response?.data?.isBookmarked !== undefined) {
+        setIsBookmarked(response.data.isBookmarked);
+      }
+      // If API fails silently, keep the optimistic update
     } catch (error) {
-      console.error('Error bookmarking:', error);
+      // Revert on error
+      setIsBookmarked(isBookmarked);
+      console.error('Bookmark error:', error);
     }
   };
 
-  // Creator press handler
-  const handleCreatorPress = () => {
-    if (!video?.creator) return;
-    // TODO: Navigate to creator profile
-    console.log('Navigate to creator profile:', video.creator._id);
-    // router.push(`/profile/${video.creator._id}`);
-  };
-
-  // Follow handler
   const handleFollow = async () => {
     if (!authState.isAuthenticated) {
       showAlert('Sign In Required', 'Please sign in to follow creators', [
@@ -609,57 +521,95 @@ export default function UGCDetailScreen() {
       return;
     }
 
+    // Use the same store ID as the check - this ensures consistency
+    const storeIdToFollow = getFollowableStoreId();
+    if (!storeIdToFollow) return;
+
+    // Optimistic update
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+
     try {
-      // TODO: Implement follow API
-      setIsFollowing(!isFollowing);
-      console.log('Follow toggled');
+      if (wasFollowing) {
+        // Unfollow - use wishlistApi (backend supports this)
+        const response = await wishlistApi.removeFromWishlist('store', storeIdToFollow);
+        if (!response.success) {
+          throw new Error(response.message || 'Failed to unfollow');
+        }
+      } else {
+        // Follow - use wishlistApi (backend supports this)
+        const creatorName = video?.creator?.name || video?.creator?.username || 'this creator';
+        const response = await wishlistApi.addToWishlist({
+          itemType: 'store',
+          itemId: storeIdToFollow,
+          notes: `Following ${creatorName}`,
+          priority: 'medium',
+        });
+        if (!response.success) {
+          throw new Error(response.message || 'Failed to follow');
+        }
+      }
     } catch (error) {
-      console.error('Error following:', error);
+      // Revert on error
+      setIsFollowing(wasFollowing);
+      showAlert('Error', wasFollowing ? 'Failed to unfollow' : 'Failed to follow');
     }
   };
 
-  // Track video view when video loads
+  const handleMuteToggle = async () => {
+    if (videoRef.current) {
+      setIsMuted(!isMuted);
+      await videoRef.current.setIsMutedAsync(!isMuted);
+    }
+  };
+
+  // Track view - YouTube-like behavior with 4-hour cooldown
   useEffect(() => {
-    if (video && ready) {
-      trackVideoView();
-    }
-  }, [video, ready]);
+    const trackVideoView = async () => {
+      if (!video || !ready || !video._id) return;
 
-  const trackVideoView = async () => {
-    try {
-      if (!video) return;
-      // TODO: Implement view tracking API
-      // await realVideosApi.trackVideoView(video._id);
-      console.log('Video view tracked:', video._id);
-    } catch (error) {
-      console.error('Error tracking view:', error);
-    }
+      // Check if we've already tracked this video in this component instance
+      if (viewTrackedRef.current.has(video._id)) return;
+
+      // Check if cooldown period has passed (YouTube-like)
+      const canCount = await shouldCountView(video._id);
+
+      // Mark as tracked for this component instance (prevents duplicate API calls)
+      viewTrackedRef.current.add(video._id);
+
+      if (canCount) {
+        try {
+          await realVideosApi.trackView(video._id);
+          await recordView(video._id);
+          setViewsCount(prev => prev + 1);
+        } catch (error) {
+          // Silently handle view tracking errors
+        }
+      }
+    };
+
+    trackVideoView();
+  }, [video?._id, ready]);
+
+  // Format numbers
+  const formatCount = (num: number): string => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
   };
 
-  // Format view count
-  const formattedViewCount = useMemo(() => {
-    // Handle both formats: engagement.views and viewCount string
-    if (video?.viewCount && typeof video.viewCount === 'string') {
-      // Play page format: already formatted like "67.3K"
-      return video.viewCount;
-    }
-
-    const views = video?.engagement?.views || 0;
-    if (views >= 100000) {
-      return (views / 100000).toFixed(1) + 'L';
-    }
-    if (views >= 1000) {
-      return (views / 1000).toFixed(1) + 'K';
-    }
-    return views.toString();
-  }, [video]);
+  // Creator info
+  const creatorName = video?.creator?.profile
+    ? `${video.creator.profile.firstName || ''} ${video.creator.profile.lastName || ''}`.trim()
+    : video?.creator?.name || 'Creator';
+  const creatorAvatar = video?.creator?.profile?.avatar || video?.creator?.avatar;
 
   // Loading state
   if (loading) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#6F45FF" />
-        <ThemedText style={styles.loadingText}>Loading video...</ThemedText>
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#8B5CF6" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -667,214 +617,313 @@ export default function UGCDetailScreen() {
   // Error state
   if (error || !video) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <Ionicons name="videocam-off-outline" size={64} color="#9CA3AF" />
-        <ThemedText style={styles.errorText}>{error || 'Video not found'}</ThemedText>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          accessibilityHint="Double tap to return to previous screen"
-        >
-          <Text style={styles.backButtonText}>Go Back</Text>
+      <View style={styles.container}>
+        <Ionicons name="videocam-off-outline" size={64} color="#6B7280" />
+        <Text style={styles.errorText}>{error || 'Video not found'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => router.back()}>
+          <Text style={styles.retryButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // Log video state before rendering
-  console.log('🎬 [RENDER] About to render video player');
-  console.log('🎬 [RENDER] video object exists:', !!video);
-  console.log('🎬 [RENDER] video.videoUrl:', video?.videoUrl);
-  console.log('🎬 [RENDER] videoError:', videoError);
-  console.log('🎬 [RENDER] isFocused:', isFocused);
-  console.log('🎬 [RENDER] isPlaying:', isPlaying);
-  console.log('🎬 [RENDER] ready:', ready);
-
   return (
     <View style={styles.container}>
-      {/* Video Player */}
-      {video.videoUrl ? (
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          onPress={handleVideoPress}
-          activeOpacity={1}
-          accessible={true}
-          accessibilityLabel={`Video: ${video.description || video.title}. Double tap to show or hide controls`}
-          accessibilityRole="button"
-          accessibilityHint="Double tap to show or hide video controls"
-        >
-          <Video
-            ref={videoRef}
-            source={{ uri: videoError ? FALLBACK_VIDEO_URL : video.videoUrl }}
-            style={StyleSheet.absoluteFill}
-            resizeMode={ResizeMode.COVER}
-            isLooping
-            shouldPlay={isFocused && isPlaying}
-            isMuted={isMuted}
-            useNativeControls={false}
-            onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-            onLoad={() => {
-              console.log('✅ Video onLoad fired - Video component ready');
-              console.log('📹 Currently using URL:', videoError ? FALLBACK_VIDEO_URL : video.videoUrl);
-              setReady(true);
-              setVideoError(false); // Video loaded successfully
-              if (Platform.OS === 'web' && videoRef.current) {
-                console.log('🌐 Web platform detected, calling playAsync()');
-                videoRef.current.playAsync().catch((err) => {
-                  console.error('❌ Web playAsync error:', err);
-                });
-              }
-            }}
-            onError={(error) => {
-              console.error('❌ Video onError fired:', error);
-              console.error('🔴 Failed to load video:', video.videoUrl);
-              console.log('🔄 Switching to fallback video:', FALLBACK_VIDEO_URL);
-              setVideoError(true);
-            }}
-          />
-        </TouchableOpacity>
-      ) : (
+      {/* Background Video - Only shown for horizontal videos (blurred background effect) */}
+      {videoAspectRatio === 'horizontal' && (
         <>
-          <Image source={{ uri: video.thumbnail }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-          <View style={{ position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -50 }, { translateY: -50 }], backgroundColor: 'rgba(0,0,0,0.7)', padding: 20, borderRadius: 10 }}>
-            <ThemedText style={{ color: '#FFF', fontSize: 14 }}>⚠️ No video URL available</ThemedText>
-          </View>
+          <Video
+            key="bg-video-horizontal"
+            source={{ uri: videoError ? FALLBACK_VIDEO_URL : video.videoUrl }}
+            style={[
+              StyleSheet.absoluteFill,
+              styles.backgroundVideo,
+              Platform.OS === 'web' && {
+                // @ts-ignore - web-only style
+                filter: 'blur(15px)',
+                transform: 'scale(1.5)',
+                width: '150%',
+                height: '150%',
+                top: '-25%',
+                left: '-25%',
+              },
+            ]}
+            resizeMode={ResizeMode.COVER}
+            isLooping={true}
+            shouldPlay={true}
+            isMuted={true}
+            useNativeControls={false}
+          />
+          {/* Dark overlay to dim background */}
+          <View style={styles.darkOverlay} />
         </>
       )}
 
-      {/* Video Error Warning */}
-      {videoError && (
-        <View style={styles.videoErrorBanner}>
-          <Ionicons name="warning" size={16} color="#F59E0B" />
-          <ThemedText style={styles.videoErrorText}>
-            Original video unavailable. Playing sample video.
-          </ThemedText>
+
+      {/* Main Video Player - Dynamic resize mode based on aspect ratio */}
+      <TouchableOpacity
+        style={StyleSheet.absoluteFill}
+        onPress={handleVideoPress}
+        activeOpacity={1}
+      >
+        <Video
+          key={`video-${videoAspectRatio}`}
+          ref={videoRef}
+          source={{ uri: videoError ? FALLBACK_VIDEO_URL : video.videoUrl }}
+          style={StyleSheet.absoluteFill}
+          resizeMode={videoAspectRatio === 'horizontal' ? ResizeMode.CONTAIN : ResizeMode.COVER}
+          isLooping={true}
+          shouldPlay={true}
+          isMuted={isMuted}
+          useNativeControls={false}
+          onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+          onLoad={async (status: any) => {
+            setReady(true);
+            setVideoError(false);
+
+            // Detect video aspect ratio - try multiple sources
+            let width = 0;
+            let height = 0;
+
+            // Try naturalSize first (native)
+            if (status.naturalSize) {
+              width = status.naturalSize.width;
+              height = status.naturalSize.height;
+            }
+            // Try direct width/height (web fallback)
+            else if (status.width && status.height) {
+              width = status.width;
+              height = status.height;
+            }
+
+            if (width > 0 && height > 0) {
+              if (height > width) {
+                setVideoAspectRatio('vertical');
+              } else if (width > height) {
+                setVideoAspectRatio('horizontal');
+              } else {
+                setVideoAspectRatio('square');
+              }
+            }
+
+            // Force play after load
+            if (videoRef.current) {
+              try {
+                await videoRef.current.playAsync();
+                setIsPlaying(true);
+              } catch (e) {
+                // Silently handle play errors
+              }
+            }
+
+            // Web: Set loop attribute directly on HTML5 video element
+            if (Platform.OS === 'web') {
+              setTimeout(() => {
+                const videoElements = document.querySelectorAll('video');
+                videoElements.forEach((videoEl) => {
+                  videoEl.loop = true;
+                });
+              }, 100);
+            }
+          }}
+          onReadyForDisplay={(event: any) => {
+            // Try to get dimensions from readyForDisplay event (web)
+            if (event?.naturalSize || event?.nativeEvent?.naturalSize) {
+              const size = event.naturalSize || event.nativeEvent?.naturalSize;
+              if (size?.width && size?.height) {
+                if (size.height > size.width) {
+                  setVideoAspectRatio('vertical');
+                } else if (size.width > size.height) {
+                  setVideoAspectRatio('horizontal');
+                }
+              }
+            }
+          }}
+          onError={() => {
+            setVideoError(true);
+          }}
+        />
+        {/* Transparent overlay to capture taps on web */}
+        <View
+          style={StyleSheet.absoluteFill}
+          pointerEvents="box-only"
+        />
+      </TouchableOpacity>
+
+      {/* Play/Pause Indicator */}
+      <Animated.View style={[styles.playPauseIndicator, { opacity: playPauseOpacity }]}>
+        <View style={styles.playPauseCircle}>
+          <Ionicons name={isPlaying ? 'pause' : 'play'} size={50} color="#FFF" />
         </View>
-      )}
+      </Animated.View>
 
-      {/* Top Gradient - Lighter for better video visibility */}
+      {/* Double Tap Heart Animation */}
+      <Animated.View style={[styles.heartAnimation, { opacity: heartOpacity }]}>
+        <Ionicons name="heart" size={120} color="#EF4444" />
+      </Animated.View>
+
+      {/* Top Gradient */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.3)', 'transparent']}
-        style={[StyleSheet.absoluteFill, { height: 140 }]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
+        colors={['rgba(0,0,0,0.6)', 'transparent']}
+        style={styles.topGradient}
+        pointerEvents="none"
       />
 
-      {/* Bottom Gradient - Very subtle for video visibility */}
+      {/* Bottom Gradient */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)']}
-        style={[StyleSheet.absoluteFill, { top: '65%' }]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
+        colors={['transparent', 'rgba(0,0,0,0.8)']}
+        style={styles.bottomGradient}
+        pointerEvents="none"
       />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.iconPill}
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-        >
-          <Ionicons name="chevron-back" size={20} color="#111827" />
+      {/* Top Bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
 
-        <View style={styles.headerRight}>
-          {/* Cart Button */}
-          <TouchableOpacity
-            style={[styles.iconPill, { backgroundColor: '#FFFFFFE6', marginRight: 8 }]}
-            onPress={() => router.push('/CartPage')}
-            accessibilityLabel={`View cart${cartState.items.length > 0 ? `. ${cartState.items.length} items in cart` : ''}`}
-            accessibilityRole="button"
-            accessibilityHint="Double tap to view shopping cart"
-          >
-            <Ionicons name="cart-outline" size={18} color="#111827" />
+        <View style={styles.topBarRight}>
+          <TouchableOpacity style={styles.topBarButton} onPress={handleMuteToggle}>
+            <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={22} color="#FFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.topBarButton} onPress={() => router.push('/CartPage')}>
+            <Ionicons name="bag-outline" size={22} color="#FFF" />
             {cartState.items.length > 0 && (
               <View style={styles.cartBadge}>
                 <Text style={styles.cartBadgeText}>{cartState.items.length}</Text>
               </View>
             )}
           </TouchableOpacity>
-
-          {/* View Count */}
-          <View
-            style={[styles.iconPill, { backgroundColor: '#FFFFFFE6' }]}
-            accessible={true}
-            accessibilityLabel={`${formattedViewCount} views`}
-            accessibilityRole="text"
-          >
-            <Ionicons name="eye" size={14} color="#111827" />
-            <ThemedText style={{ marginLeft: 6, fontWeight: '700', color: '#111827' }}>
-              {formattedViewCount}
-            </ThemedText>
-          </View>
         </View>
       </View>
 
-      {/* Video Info Section - Horizontal Layout */}
-      <View style={styles.videoInfoSection}>
-        {/* Left Side: Caption and Hashtag */}
-        <View style={styles.captionContainer}>
-          <View
-            style={styles.captionBlock}
-            accessible={true}
-            accessibilityLabel={`Caption: ${video.description || video.title}${video.hashtags && video.hashtags.length > 0 ? `. Hashtag: ${video.hashtags[0]}` : ''}`}
-            accessibilityRole="text"
-          >
-            <ThemedText style={styles.captionText} numberOfLines={1}>
-              {video.description || video.title}
-            </ThemedText>
-            {video.hashtags && video.hashtags.length > 0 && (
-              <View style={styles.tagPill}>
-                <ThemedText style={styles.tagText}>#{video.hashtags[0]}</ThemedText>
-              </View>
-            )}
-          </View>
+      {/* Right Side Social Actions */}
+      <View style={styles.socialActions}>
+        {/* Creator Avatar */}
+        <View style={styles.creatorAvatarContainer}>
+          <TouchableOpacity onPress={() => console.log('Go to profile')}>
+            <Image
+              source={{ uri: creatorAvatar || 'https://via.placeholder.com/50' }}
+              style={styles.creatorAvatar}
+            />
+          </TouchableOpacity>
+          {!isFollowing && (
+            <TouchableOpacity style={styles.followBadge} onPress={handleFollow}>
+              <Ionicons name="add" size={12} color="#FFF" />
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Right Side: Product Count Badge */}
-        {hasProducts && (
-          <View
-            style={styles.productCountBadge}
-            accessible={true}
-            accessibilityLabel={`${products.length} ${products.length === 1 ? 'product' : 'products'} tagged`}
-            accessibilityRole="text"
-          >
-            <Ionicons name="bag-outline" size={14} color="#FFFFFF" />
-            <ThemedText style={styles.productCountText}>
-              {products.length}
-            </ThemedText>
+        {/* Like */}
+        <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+          <Animated.View style={{ transform: [{ scale: likeScale }] }}>
+            <Ionicons
+              name={isLiked ? 'heart' : 'heart-outline'}
+              size={32}
+              color={isLiked ? '#EF4444' : '#FFF'}
+            />
+          </Animated.View>
+          <Text style={styles.actionCount}>{formatCount(likesCount)}</Text>
+        </TouchableOpacity>
+
+        {/* Bookmark */}
+        <TouchableOpacity style={styles.actionButton} onPress={handleBookmark}>
+          <Ionicons
+            name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+            size={30}
+            color={isBookmarked ? '#FBBF24' : '#FFF'}
+          />
+        </TouchableOpacity>
+
+        {/* More Options */}
+        <TouchableOpacity style={styles.actionButton} onPress={() => setReportModalVisible(true)}>
+          <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Bottom Content */}
+      <View style={styles.bottomContent}>
+        {/* Creator Info */}
+        <View style={styles.creatorInfo}>
+          <Text style={styles.creatorName}>@{creatorName.toLowerCase().replace(/\s+/g, '_')}</Text>
+          {isFollowing ? (
+            <View style={styles.followingBadge}>
+              <Text style={styles.followingText}>Following</Text>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.followButton} onPress={handleFollow}>
+              <Text style={styles.followButtonText}>Follow</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Caption */}
+        <Text style={styles.caption} numberOfLines={2}>
+          {video.description || video.title}
+        </Text>
+
+        {/* Tags */}
+        {video.hashtags && video.hashtags.length > 0 && (
+          <View style={styles.tagsContainer}>
+            {video.hashtags.slice(0, 3).map((tag: string, index: number) => (
+              <Text key={index} style={styles.tag}>#{tag}</Text>
+            ))}
+          </View>
+        )}
+
+        {/* Products Section - Horizontal Scroll */}
+        {products.length > 0 && (
+          <View style={styles.productsSection}>
+            <View style={styles.productsHeader}>
+              <Ionicons name="bag-handle" size={14} color="#FFF" />
+              <Text style={styles.productsTitle}>Shop Products</Text>
+              <View style={styles.productsBadge}>
+                <Text style={styles.productsBadgeText}>{products.length}</Text>
+              </View>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.productsList}
+            >
+              {products.map((product: any, index: number) => (
+                <TouchableOpacity
+                  key={product.id || index}
+                  style={styles.productCard}
+                  onPress={() => navigateToProduct(product, 'ugc_video')}
+                  activeOpacity={0.8}
+                >
+                  <Image source={{ uri: product.image }} style={styles.productImage} />
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productName} numberOfLines={1}>{product.name}</Text>
+                    <View style={styles.productPriceRow}>
+                      <Text style={styles.productPrice}>
+                        {typeof product.price === 'number' ? `₹${product.price}` : product.price}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.addToCartButton}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          addToCart(product, 1);
+                        }}
+                      >
+                        <Ionicons name="add" size={14} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         )}
       </View>
 
-      {/* Product Carousel */}
-      {hasProducts && (
-        <View
-          style={styles.productCarouselContainer}
-          accessible={false}
-          accessibilityLabel={`${products.length} tagged ${products.length === 1 ? 'product' : 'products'}`}
-        >
-          <ProductCarousel
-            products={products}
-            title="" // No title for cleaner look
-            onProductPress={handleProductPress}
-            onAddToCart={handleAddToCart}
-            loading={productsLoading}
-            showAddButton={true}
-            cardWidth={140}
-          />
-        </View>
-      )}
-
-      {/* Debug: Show if no products */}
-      {!hasProducts && (
-        <View style={{ position: 'absolute', bottom: 20, left: 20, backgroundColor: 'rgba(255,0,0,0.5)', padding: 10 }}>
-          <Text style={{ color: '#fff' }}>No products available</Text>
-        </View>
-      )}
+      {/* Progress Bar */}
+      <View style={styles.progressBarContainer}>
+        <View style={[styles.progressBar, { width: `${progress}%` }]} />
+      </View>
 
       {/* Report Modal */}
       <ReportModal
@@ -882,98 +931,129 @@ export default function UGCDetailScreen() {
         onClose={() => setReportModalVisible(false)}
         videoId={video._id}
         videoTitle={video.description || video.title}
-        onReportSuccess={handleReportSuccess}
-      />
-
-      {/* Report Toast */}
-      <ReportToast
-        visible={toastConfig.visible}
-        type={toastConfig.type}
-        message={toastConfig.message}
-        onDismiss={() => setToastConfig((prev) => ({ ...prev, visible: false }))}
+        onReportSuccess={() => {
+          setReportModalVisible(false);
+          setIsReported(true);
+        }}
       />
     </View>
   );
-}
-
-/**
- * Format large numbers (e.g., 1000 -> 1K, 1000000 -> 1M)
- */
-function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M';
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K';
-  }
-  return num.toString();
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
-  },
-
-  // Video Error Banner
-  videoErrorBanner: {
-    position: 'absolute',
-    top: 70,
-    left: 16,
-    right: 16,
-    backgroundColor: 'rgba(245, 158, 11, 0.9)',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    zIndex: 5,
+    ...(Platform.OS === 'web' && { overflow: 'hidden' as const }),
   },
-  videoErrorText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+  backgroundVideo: {
+    opacity: 0.7,
+    transform: [{ scale: 1.5 }],
+  },
+  darkOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  loadingText: {
+    color: '#9CA3AF',
+    marginTop: 16,
+    fontSize: 16,
+  },
+  errorText: {
+    color: '#9CA3AF',
+    marginTop: 16,
+    fontSize: 16,
+  },
+  retryButton: {
+    marginTop: 20,
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  retryButtonText: {
+    color: '#FFF',
     fontWeight: '600',
-    flex: 1,
   },
 
-  // Header Styles
-  header: {
+  // Overlays
+  topGradient: {
     position: 'absolute',
-    top: 14,
-    left: 14,
-    right: 14,
-    flexDirection: 'row',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 150,
+  },
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: SCREEN_HEIGHT * 0.5,
+  },
+
+  // Play/Pause Indicator
+  playPauseIndicator: {
+    position: 'absolute',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
     zIndex: 10,
   },
-  headerRight: {
-    flexDirection: 'row',
+  playPauseCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  iconPill: {
-    flexDirection: 'row',
+
+  // Heart Animation
+  heartAnimation: {
+    position: 'absolute',
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    height: 32,
-    borderRadius: 18,
+    zIndex: 10,
   },
-  cartButton: {
-    backgroundColor: '#FFFFFFE6',
-    marginRight: 8,
-    paddingHorizontal: 10,
-    height: 32,
-    borderRadius: 18,
+
+  // Top Bar
+  topBar: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    position: 'relative',
+    paddingHorizontal: 16,
+    zIndex: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topBarRight: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  topBarButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cartBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
+    top: -2,
+    right: -2,
     backgroundColor: '#EF4444',
     borderRadius: 10,
     minWidth: 18,
@@ -987,121 +1067,197 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Video Info Section - Horizontal Layout
-  videoInfoSection: {
+  // Social Actions (Right Side)
+  socialActions: {
+    position: 'absolute',
+    right: 12,
+    bottom: Platform.OS === 'ios' ? 280 : 260, // Moved up further to avoid bottom nav bar
+    alignItems: 'center',
+    gap: 20,
+    zIndex: 20,
+  },
+  creatorAvatarContainer: {
+    marginBottom: 10,
+  },
+  creatorAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  followBadge: {
+    position: 'absolute',
+    bottom: -8,
+    left: '50%',
+    marginLeft: -12,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#000',
+  },
+  actionButton: {
+    alignItems: 'center',
+  },
+  actionCount: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+
+  // Bottom Content
+  bottomContent: {
     position: 'absolute',
     left: 12,
-    right: 12,
-    bottom: 300, // Moved up more to prevent overlap with product carousel
+    right: 60,
+    bottom: Platform.OS === 'ios' ? 100 : 80, // Moved up further to avoid bottom nav bar
+    zIndex: 20,
+  },
+  creatorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  creatorName: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  followButton: {
+    marginLeft: 12,
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  followButtonText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  followingBadge: {
+    marginLeft: 12,
+    borderWidth: 1,
+    borderColor: '#FFF',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  followingText: {
+    color: '#FFF',
+    fontSize: 12,
+  },
+  caption: {
+    color: '#FFF',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  tag: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Products Section
+  productsSection: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    padding: 10,
+    backdropFilter: 'blur(10px)',
+  },
+  productsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  productsTitle: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  productsBadge: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  productsBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  productsList: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingRight: 4,
+  },
+  productCard: {
+    width: 120,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10,
+    padding: 8,
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: '100%',
+    height: 70,
+    borderRadius: 8,
+    backgroundColor: '#333',
+    marginBottom: 6,
+  },
+  productInfo: {
+    flex: 1,
+  },
+  productName: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  productPriceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
   },
-  captionContainer: {
-    flex: 1,
-    marginRight: 8,
-  },
-  captionBlock: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  captionText: {
-    color: '#FFFFFF',
+  productPrice: {
+    color: '#10B981',
     fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-    flex: 1,
-  },
-  tagPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  tagText: {
-    color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 10,
-    letterSpacing: 0.2,
   },
-  productCountBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(111, 69, 255, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: '#6F45FF',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 5,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-  },
-  productCountText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-  },
-
-  // Product Carousel Container
-  productCarouselContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 60, // Add spacing for bottom navigation (tab bar is ~50px + 10px buffer)
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-
-  // Loading/Error states
-  centered: {
+  addToCartButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#8B5CF6',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
   },
-  loadingText: {
-    color: '#6B7280',
-    marginTop: 16,
-    fontSize: 16,
+
+  // Progress Bar
+  progressBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
-  errorText: {
-    color: '#EF4444',
-    marginTop: 16,
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  backButton: {
-    marginTop: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    backgroundColor: '#6F45FF',
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#FFF',
   },
 });

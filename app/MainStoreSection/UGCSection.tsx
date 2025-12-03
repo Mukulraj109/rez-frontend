@@ -23,6 +23,7 @@ import {
   RefreshControl,
   ScrollView,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
@@ -30,6 +31,7 @@ import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from '@/components/ThemedText';
 import { ShimmerSkeleton } from '@/components/ui';
 import ugcApi, { UGCMedia } from '@/services/ugcApi';
+import { realVideosApi } from '@/services/realVideosApi';
 import {
   Colors,
   Spacing,
@@ -522,6 +524,16 @@ export default function UGCSection({
     fetchUGCContent();
   }, [fetchUGCContent]);
 
+  // Refresh content when screen comes into focus (sync state after navigating back)
+  useFocusEffect(
+    useCallback(() => {
+      // Only refetch if we already have content (not initial load)
+      if (ugcContent.length > 0 || (propImages && propImages.length > 0)) {
+        fetchUGCContent(true); // Silent refresh
+      }
+    }, [fetchUGCContent, ugcContent.length, propImages])
+  );
+
   // Handle pull-to-refresh
   const handleRefresh = useCallback(() => {
     fetchUGCContent(true);
@@ -594,10 +606,10 @@ export default function UGCSection({
         )
       );
 
-      // Call API
-      const response = await ugcApi.toggleBookmark(item.id);
+      // Call real videos API for bookmark
+      const response = await realVideosApi.toggleBookmark(item.id);
 
-      if (!response.success) {
+      if (!response.success && !response.data) {
         // Revert on failure
         setUgcContent(prev =>
           prev.map(ugc =>
@@ -606,7 +618,20 @@ export default function UGCSection({
               : ugc
           )
         );
-        console.error('❌ [UGC SECTION] Failed to toggle bookmark:', response.error);
+        console.error('❌ [UGC SECTION] Failed to toggle bookmark');
+      } else {
+        // Update with actual state from server
+        const newBookmarkState = response.data?.isBookmarked;
+        if (newBookmarkState !== undefined) {
+          setUgcContent(prev =>
+            prev.map(ugc =>
+              ugc.id === item.id
+                ? { ...ugc, isBookmarked: newBookmarkState }
+                : ugc
+            )
+          );
+        }
+        console.log('✅ [UGC SECTION] Bookmark toggled:', newBookmarkState);
       }
     } catch (err) {
       console.error('❌ [UGC SECTION] Error toggling bookmark:', err);

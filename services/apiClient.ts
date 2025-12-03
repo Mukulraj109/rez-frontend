@@ -80,7 +80,6 @@ class ApiClient {
     }
 
     if (!this.refreshTokenCallback) {
-      console.warn('⚠️ [API CLIENT] No refresh token callback set');
       return false;
     }
 
@@ -89,10 +88,8 @@ class ApiClient {
 
     try {
       const success = await this.refreshPromise;
-      console.log(`✅ [API CLIENT] Token refresh ${success ? 'succeeded' : 'failed'}`);
       return success;
     } catch (error) {
-      console.error('❌ [API CLIENT] Token refresh error:', error);
       return false;
     } finally {
       this.isRefreshing = false;
@@ -115,16 +112,6 @@ class ApiClient {
     const url = `${this.baseURL}${endpoint}`;
     const requestHeaders = { ...this.defaultHeaders, ...headers };
 
-    console.log('\n┌─────────────────────────────────────────┐');
-    console.log('│        API CLIENT REQUEST               │');
-    console.log('└─────────────────────────────────────────┘');
-    console.log('🌐 URL:', url);
-    console.log('📤 Method:', method);
-    console.log('📋 Headers:', JSON.stringify(requestHeaders, null, 2));
-    console.log('📦 Body:', body ? JSON.stringify(body, null, 2) : 'none');
-    console.log('⏱️  Timeout:', timeout + 'ms');
-    console.log('─────────────────────────────────────────');
-
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -146,23 +133,13 @@ class ApiClient {
         }
       }
 
-      console.log('🚀 [API CLIENT] Sending request...');
       const response = await fetch(url, config);
       clearTimeout(timeoutId);
 
-      console.log('\n📥 [API CLIENT] Response received:');
-      console.log('Status:', response.status, response.statusText);
-      console.log('OK:', response.ok);
-      console.log('Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
-
       const responseData = await response.json();
-      console.log('Response Data:', JSON.stringify(responseData, null, 2));
 
       if (!response.ok) {
-        console.error('❌ [API CLIENT] Request failed (non-200 status)');
-        console.error('Error message:', responseData.message || response.statusText);
-        console.error('Status code:', response.status);
-        console.error('Response:', responseData);
+        console.error(`[API] ${method} ${endpoint} failed:`, response.status, responseData.message || response.statusText);
 
         // Handle 401 Unauthorized - try to refresh token
         if (response.status === 401 && this.authToken) {
@@ -170,36 +147,18 @@ class ApiClient {
           const errorMessage = responseData.message?.toLowerCase() || '';
           const isTokenExpired = errorMessage.includes('expired') || errorMessage.includes('invalid') || errorMessage.includes('jwt') || errorMessage.includes('token');
 
-          console.log('⚠️ [API CLIENT] 401 Unauthorized detected', {
-            hasToken: !!this.authToken,
-            errorMessage: responseData.message,
-            isTokenExpired,
-            hasRefreshCallback: !!this.refreshTokenCallback,
-          });
-
           // Only try to refresh if we have a refresh callback and token appears expired
           if (isTokenExpired && this.refreshTokenCallback) {
-            console.log('🔄 [API CLIENT] Attempting token refresh...');
-
             const refreshSuccess = await this.handleTokenRefresh();
             if (refreshSuccess) {
-              console.log('✅ [API CLIENT] Token refreshed successfully, retrying request...');
               // Retry the original request with new token
               return this.makeRequest<T>(endpoint, options);
             } else {
-              console.error('❌ [API CLIENT] Token refresh failed');
               // Only logout if refresh explicitly failed
               if (this.logoutCallback) {
-                console.log('🚪 [API CLIENT] Triggering logout callback (refresh failed)');
                 this.logoutCallback();
               }
             }
-          } else {
-            // Don't automatically logout on 401 - just return the error
-            // Let the calling code decide what to do
-            console.warn('⚠️ [API CLIENT] 401 error but NOT logging out automatically');
-            console.warn('Reason: Either no refresh callback or error is not token-related');
-            console.warn('Error message:', responseData.message);
           }
         }
 
@@ -210,9 +169,6 @@ class ApiClient {
         };
       }
 
-      console.log('✅ [API CLIENT] Request successful');
-      console.log('└─────────────────────────────────────────┘\n');
-
       return {
         success: true,
         data: responseData.data || responseData,
@@ -221,26 +177,7 @@ class ApiClient {
       };
 
     } catch (error) {
-      console.error('\n❌❌❌ [API CLIENT] REQUEST EXCEPTION ❌❌❌');
-      console.error('URL:', url);
-      console.error('Method:', method);
-      console.error('Error type:', error?.constructor?.name);
-      console.error('Error message:', error instanceof Error ? error.message : 'Unknown');
-      console.error('Full error:', error);
-
-      // Parse connection error for better diagnostics
-      if (isConnectionError(error)) {
-        const connectionError = parseConnectionError(error);
-        console.error('\n📋 [API CLIENT] Connection Error Details:');
-        console.error('Type:', connectionError.type);
-        console.error('Message:', connectionError.message);
-        console.error('Suggestions:');
-        connectionError.suggestions.forEach((suggestion, index) => {
-          console.error(`  ${index + 1}. ${suggestion}`);
-        });
-      }
-
-      console.error('└─────────────────────────────────────────┘\n');
+      console.error(`[API] ${method} ${endpoint} error:`, error instanceof Error ? error.message : 'Unknown');
 
       if (error instanceof Error) {
         if (error.name === 'AbortError') {

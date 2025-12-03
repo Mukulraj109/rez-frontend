@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
-  Alert,
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,11 +13,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from '@/components/ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { StoreActionButtonsProps } from '@/types/store-actions';
+import { StoreActionButtonsProps, ActionButtonId } from '@/types/store-actions';
 import {
   createButtonConfigs,
-  getButtonLayout
+  createButtonConfigsFromStore,
+  getButtonLayout,
+  ButtonErrorCallback
 } from '@/utils/store-action-logic';
+import InfoModal from '@/components/common/InfoModal';
+import ContactModal from '@/components/store/ContactModal';
+import { useRouter } from 'expo-router';
 import {
   createInitialButtonState,
   ButtonStateManager,
@@ -34,8 +38,15 @@ import {
   Timing,
 } from '@/constants/DesignSystem';
 
+interface ExtendedStoreActionButtonsProps extends StoreActionButtonsProps {
+  // Control which button group to show: 'all' | 'buy-lock' | 'store-actions'
+  buttonGroup?: 'all' | 'buy-lock' | 'store-actions';
+}
+
 export default function StoreActionButtons({
   storeType,
+  storeActionConfig,
+  storeData,
   onBuyPress,
   onLockPress,
   onBookingPress,
@@ -54,15 +65,51 @@ export default function StoreActionButtons({
   buttonStyle,
   textStyle,
   dynamicData,
-}: StoreActionButtonsProps) {
+  buttonGroup = 'all',
+}: ExtendedStoreActionButtonsProps) {
 
   const { width } = Dimensions.get('window');
   const backgroundColor = useThemeColor({}, 'background');
+  const router = useRouter();
 
-  // Animation refs for each button type
+  // Modal state for showing info/error messages
+  const [modalState, setModalState] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    icon: 'information-circle' | 'call' | 'location' | 'cube' | 'alert-circle';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    icon: 'information-circle',
+  });
+
+  // Error callback for action buttons
+  const handleActionError: ButtonErrorCallback = useCallback((title, message, icon) => {
+    setModalState({
+      visible: true,
+      title,
+      message,
+      icon: icon || 'alert-circle',
+    });
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModalState(prev => ({ ...prev, visible: false }));
+  }, []);
+
+  // Contact Modal state for Call button
+  const [showContactModal, setShowContactModal] = useState(false);
+
+  // Animation refs for each button type (including store action buttons)
   const buyScaleAnim = useRef(new Animated.Value(1)).current;
   const lockScaleAnim = useRef(new Animated.Value(1)).current;
   const bookingScaleAnim = useRef(new Animated.Value(1)).current;
+  const callScaleAnim = useRef(new Animated.Value(1)).current;
+  const productScaleAnim = useRef(new Animated.Value(1)).current;
+  const locationScaleAnim = useRef(new Animated.Value(1)).current;
+  const customScaleAnim = useRef(new Animated.Value(1)).current;
 
   // Animation helper
   const animateScale = (animValue: Animated.Value, toValue: number) => {
@@ -91,8 +138,14 @@ export default function StoreActionButtons({
     [buttonState]
   );
 
-  // Generate button configurations based on props
-  const buttonConfigs = useMemo(() =>
+  // Generate store action button configurations (Call, Product, Location) from store config
+  const storeActionButtonConfigs = useMemo(() => {
+    // Always use default config if no storeActionConfig - shows Call, Product, Location buttons
+    return createButtonConfigsFromStore(storeActionConfig, storeData, router, handleActionError);
+  }, [storeActionConfig, storeData, router, handleActionError]);
+
+  // Generate default button configurations (Buy, Lock, Booking) based on props
+  const defaultButtonConfigs = useMemo(() =>
     createButtonConfigs({
       storeType,
       onBuyPress,
@@ -117,6 +170,22 @@ export default function StoreActionButtons({
     ]
   );
 
+  // Combine store action buttons with default buttons based on buttonGroup prop
+  const buttonConfigs = useMemo(() => {
+    switch (buttonGroup) {
+      case 'buy-lock':
+        // Only show Buy, Lock, Booking buttons
+        return defaultButtonConfigs as any[];
+      case 'store-actions':
+        // Only show Call, Product, Location buttons
+        return storeActionButtonConfigs as any[];
+      case 'all':
+      default:
+        // Show all buttons - store actions first, then buy/lock
+        return [...storeActionButtonConfigs, ...defaultButtonConfigs] as any[];
+    }
+  }, [storeActionButtonConfigs, defaultButtonConfigs, buttonGroup]);
+
   // Get layout configuration
   const layout = useMemo(() => 
     getButtonLayout(buttonConfigs.length, width), 
@@ -124,30 +193,37 @@ export default function StoreActionButtons({
   );
 
   // Enhanced button press handler with haptic feedback
-  const handleButtonPress = useCallback((buttonId: 'buy' | 'lock' | 'booking') => {
+  const handleButtonPress = useCallback((buttonId: string) => {
     const config = buttonConfigs.find(c => c.id === buttonId);
     if (!config) return;
 
-    // Haptic feedback
+    // Haptic feedback on press
     triggerImpact('Medium');
 
-    // Create enhanced handler with state management
+    // Special handling for Call button - show ContactModal
+    if (buttonId === 'call') {
+      setShowContactModal(true);
+      return;
+    }
+
+    // For other store action buttons (product, location, custom),
+    // just call onPress directly - they handle their own logic
+    if (['product', 'location', 'custom'].includes(buttonId)) {
+      config.onPress();
+      return;
+    }
+
+    // For buy/lock/booking buttons, use state management
     const enhancedHandler = createButtonHandler(
-      buttonId,
+      buttonId as 'buy' | 'lock' | 'booking',
       async () => {
         try {
           await config.onPress();
-          // Show success feedback with haptic
+          // Success haptic feedback only - parent handles alerts/modals
           triggerNotification('Success');
-          Alert.alert(
-            'Success',
-            `${config.title} action completed successfully!`,
-            [{ text: 'OK' }]
-          );
         } catch (error) {
-          // Error feedback with haptic
+          // Error haptic feedback
           triggerNotification('Error');
-          // Error will be handled by createButtonHandler
           throw error;
         }
       },
@@ -162,6 +238,10 @@ export default function StoreActionButtons({
       case 'buy': return buyScaleAnim;
       case 'lock': return lockScaleAnim;
       case 'booking': return bookingScaleAnim;
+      case 'call': return callScaleAnim;
+      case 'product': return productScaleAnim;
+      case 'location': return locationScaleAnim;
+      case 'custom': return customScaleAnim;
       default: return buyScaleAnim;
     }
   };
@@ -241,7 +321,7 @@ export default function StoreActionButtons({
         </TouchableOpacity>
       </Animated.View>
     );
-  }, [buttonState, stateManager, layout.buttonWidth, handleButtonPress, buttonStyle, textStyle, buyScaleAnim, lockScaleAnim, bookingScaleAnim, animateScale]);
+  }, [buttonState, stateManager, layout.buttonWidth, handleButtonPress, buttonStyle, textStyle, buyScaleAnim, lockScaleAnim, bookingScaleAnim, callScaleAnim, productScaleAnim, locationScaleAnim, customScaleAnim, animateScale]);
 
   // Don't render if no buttons are visible
   if (buttonConfigs.length === 0) {
@@ -249,19 +329,40 @@ export default function StoreActionButtons({
   }
 
   return (
-    <View style={[
-      styles.container,
-      { 
-        backgroundColor,
-        paddingHorizontal: layout.containerPadding,
-        gap: layout.buttonGap,
-        flexDirection: layout.flexDirection,
-      },
-      containerStyle,
-    ]}>
-      {buttonConfigs.map(renderButton)}
-    </View>
-);
+    <>
+      <View style={[
+        styles.container,
+        {
+          backgroundColor,
+          paddingHorizontal: layout.containerPadding,
+          gap: layout.buttonGap,
+          flexDirection: layout.flexDirection,
+        },
+        containerStyle,
+      ]}>
+        {buttonConfigs.map(renderButton)}
+      </View>
+
+      {/* Info Modal for action button feedback */}
+      <InfoModal
+        visible={modalState.visible}
+        title={modalState.title}
+        message={modalState.message}
+        icon={modalState.icon}
+        onClose={closeModal}
+        autoCloseDelay={3000}
+      />
+
+      {/* Contact Modal for Call button */}
+      <ContactModal
+        visible={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        phone={storeData?.phone}
+        email={undefined}
+        storeName={storeData?.storeName || storeData?.name}
+      />
+    </>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -29,6 +29,7 @@ interface WishlistContextType {
   removeFromWishlist: (productId: string) => Promise<void>;
   clearWishlist: () => Promise<void>;
   getWishlistCount: () => number;
+  refreshWishlist: () => Promise<void>;
   isLoading: boolean;
   error: string | null;
 }
@@ -327,6 +328,13 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
     return wishlistItems.length;
   }, [wishlistItems]);
 
+  // Refresh wishlist from backend - useful when external changes occur (e.g., wishlist page deletes)
+  const refreshWishlist = useCallback(async (): Promise<void> => {
+    if (authState.isAuthenticated) {
+      await loadWishlist();
+    }
+  }, [authState.isAuthenticated]);
+
   // OPTIMIZED: Memoize context value to prevent unnecessary re-renders
   const contextValue: WishlistContextType = useMemo(() => ({
     wishlistItems,
@@ -335,6 +343,7 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
     removeFromWishlist,
     clearWishlist,
     getWishlistCount,
+    refreshWishlist,
     isLoading,
     error,
   }), [
@@ -344,6 +353,7 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
     removeFromWishlist,
     clearWishlist,
     getWishlistCount,
+    refreshWishlist,
     isLoading,
     error,
   ]);

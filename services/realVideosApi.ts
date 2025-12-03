@@ -159,7 +159,28 @@ export const realVideosApi = {
    * Like/Unlike a video (requires authentication)
    */
   async toggleVideoLike(videoId: string): Promise<ApiResponse<{ liked: boolean; likeCount: number; isLiked?: boolean; totalLikes?: number }>> {
-    return apiClient.post(`/videos/${videoId}/like`).then(response => response as ApiResponse<{ liked: boolean; likeCount: number; isLiked?: boolean; totalLikes?: number }>);
+    console.log('❤️ [VIDEOS API] Toggling like for video:', videoId);
+    const response = await apiClient.post(`/videos/${videoId}/like`);
+    console.log('❤️ [VIDEOS API] Like response:', response.data);
+    return response.data as ApiResponse<{ liked: boolean; likeCount: number; isLiked?: boolean; totalLikes?: number }>;
+  },
+
+  /**
+   * Bookmark/Unbookmark a video (requires authentication)
+   */
+  async toggleBookmark(videoId: string): Promise<ApiResponse<{ videoId: string; isBookmarked: boolean; totalBookmarks: number }>> {
+    console.log('🔖 [VIDEOS API] Toggling bookmark for video:', videoId);
+    const response = await apiClient.post(`/videos/${videoId}/bookmark`);
+    console.log('🔖 [VIDEOS API] Bookmark response:', response.data);
+    return response.data as ApiResponse<{ videoId: string; isBookmarked: boolean; totalBookmarks: number }>;
+  },
+
+  /**
+   * Track video view (optional authentication)
+   */
+  async trackView(videoId: string): Promise<ApiResponse<{ videoId: string; views: number }>> {
+    const response = await apiClient.post(`/videos/${videoId}/view`);
+    return response.data as ApiResponse<{ videoId: string; views: number }>;
   },
 
   /**

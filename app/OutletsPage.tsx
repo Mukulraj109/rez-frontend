@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
+  Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -8,12 +9,14 @@ import {
   Linking,
   Platform,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
+import { LinearGradient } from 'expo-linear-gradient';
 import outletsApi, { Outlet } from '@/services/outletsApi';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function OutletsPage() {
   const params = useLocalSearchParams();
@@ -72,7 +75,6 @@ export default function OutletsPage() {
   const handleNavigate = (outlet: Outlet) => {
     const [lng, lat] = outlet.location.coordinates;
     const label = encodeURIComponent(outlet.name);
-    const address = encodeURIComponent(outlet.address);
     let url = '';
     if (Platform.OS === 'ios') {
       url = `maps:0,0?q=${label}@${lat},${lng}`;
@@ -85,7 +87,6 @@ export default function OutletsPage() {
         if (supported) {
           return Linking.openURL(url);
         } else {
-          // Fallback to Google Maps web
           const webUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
           return Linking.openURL(webUrl);
         }
@@ -97,114 +98,226 @@ export default function OutletsPage() {
   };
 
   const getCurrentDayHours = (outlet: Outlet) => {
-    const days = [
-      'sunday',
-      'monday',
-      'tuesday',
-      'wednesday',
-      'thursday',
-      'friday',
-      'saturday',
-    ];
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const today = new Date().getDay();
     const dayName = days[today];
-    
+
     const hours = outlet.openingHours?.find(
       (h) => h.day.toLowerCase() === dayName
     );
 
-    if (!hours || hours.isClosed) return 'Closed today';
-    return `Open ${hours.open} - ${hours.close}`;
+    if (!hours || hours.isClosed) return { isOpen: false, text: 'Closed today' };
+
+    // Check if currently open
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const isOpen = currentTime >= hours.open && currentTime <= hours.close;
+
+    return {
+      isOpen,
+      text: `${hours.open} - ${hours.close}`,
+      opensAt: hours.open,
+      closesAt: hours.close
+    };
   };
 
-  if (loading) {
-    return (
-      <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={24} color="#111827" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Store Outlets</ThemedText>
-          <View style={styles.placeholder} />
-        </View>
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours, 10);
+    const suffix = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${displayHour}:${minutes} ${suffix}`;
+  };
 
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
-          <ThemedText style={styles.loadingText}>Loading outlets...</ThemedText>
-        </View>
-      </ThemedView>
-    );
-  }
-
-  if (error) {
-    return (
-      <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={24} color="#111827" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Store Outlets</ThemedText>
-          <View style={styles.placeholder} />
-        </View>
-
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-          <ThemedText style={styles.errorTitle}>Oops!</ThemedText>
-          <ThemedText style={styles.errorMessage}>{error}</ThemedText>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchOutlets} activeOpacity={0.8}>
-            <Ionicons name="refresh-outline" size={20} color="#fff" />
-            <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
-          </TouchableOpacity>
-        </View>
-      </ThemedView>
-    );
-  }
-
-  return (
-    <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
-
-      {/* Header */}
+  // Render Header
+  const renderHeader = () => (
+    <LinearGradient
+      colors={['#10B981', '#059669']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.headerGradient}
+    >
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
           activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          accessibilityHint="Navigate to previous screen"
         >
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <ThemedText
-          style={styles.headerTitle}
-          accessibilityRole="header"
-        >
-          {storeName ? `${storeName} Outlets` : 'Store Outlets'}
-        </ThemedText>
-        <View style={styles.placeholder} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>
+            {storeName ? `${storeName}` : 'Store Outlets'}
+          </Text>
+          <Text style={styles.headerSubtitle}>
+            {totalCount} {totalCount === 1 ? 'Location' : 'Locations'} Available
+          </Text>
+        </View>
+        <View style={styles.headerRight}>
+          <View style={styles.locationIconBg}>
+            <Ionicons name="location" size={20} color="#10B981" />
+          </View>
+        </View>
       </View>
+    </LinearGradient>
+  );
 
-      {/* Outlet Count */}
-      <View
-        style={styles.countBanner}
-        accessibilityLabel={`${totalCount} ${totalCount === 1 ? 'outlet' : 'outlets'} found`}
-        accessibilityRole="summary"
-      >
-        <ThemedText style={styles.countText}>
-          {totalCount} {totalCount === 1 ? 'Outlet' : 'Outlets'} Found
-        </ThemedText>
+  // Render Outlet Card
+  const renderOutletCard = (outlet: Outlet, index: number) => {
+    const hoursInfo = getCurrentDayHours(outlet);
+
+    return (
+      <View key={outlet._id} style={styles.outletCard}>
+        {/* Card Header */}
+        <View style={styles.cardHeader}>
+          <View style={styles.outletIconContainer}>
+            <LinearGradient
+              colors={['#10B981', '#059669']}
+              style={styles.outletIconGradient}
+            >
+              <Ionicons name="storefront" size={24} color="#FFFFFF" />
+            </LinearGradient>
+          </View>
+          <View style={styles.outletHeaderInfo}>
+            <Text style={styles.outletName} numberOfLines={1}>{outlet.name}</Text>
+            <View style={[
+              styles.statusBadge,
+              { backgroundColor: hoursInfo.isOpen ? '#ECFDF5' : '#FEF2F2' }
+            ]}>
+              <View style={[
+                styles.statusDot,
+                { backgroundColor: hoursInfo.isOpen ? '#10B981' : '#EF4444' }
+              ]} />
+              <Text style={[
+                styles.statusText,
+                { color: hoursInfo.isOpen ? '#10B981' : '#EF4444' }
+              ]}>
+                {hoursInfo.isOpen ? 'Open Now' : 'Closed'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.indexBadge}>
+            <Text style={styles.indexText}>{index + 1}</Text>
+          </View>
+        </View>
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Info Section */}
+        <View style={styles.infoSection}>
+          {/* Address */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconBg}>
+              <Ionicons name="location-outline" size={16} color="#10B981" />
+            </View>
+            <Text style={styles.infoText} numberOfLines={2}>{outlet.address}</Text>
+          </View>
+
+          {/* Phone */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconBg}>
+              <Ionicons name="call-outline" size={16} color="#3B82F6" />
+            </View>
+            <Text style={styles.infoText}>{outlet.phone}</Text>
+          </View>
+
+          {/* Hours */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconBg}>
+              <Ionicons name="time-outline" size={16} color="#F59E0B" />
+            </View>
+            <View style={styles.hoursContainer}>
+              <Text style={styles.hoursLabel}>Today's Hours:</Text>
+              <Text style={[
+                styles.hoursValue,
+                { color: hoursInfo.isOpen ? '#10B981' : '#EF4444' }
+              ]}>
+                {hoursInfo.text === 'Closed today'
+                  ? hoursInfo.text
+                  : `${formatTime(hoursInfo.opensAt || '09:00')} - ${formatTime(hoursInfo.closesAt || '21:00')}`
+                }
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.callButton}
+            onPress={() => handleCall(outlet.phone)}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#10B981', '#059669']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.callButtonGradient}
+            >
+              <Ionicons name="call" size={18} color="#FFFFFF" />
+              <Text style={styles.callButtonText}>Call Now</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navigateButton}
+            onPress={() => handleNavigate(outlet)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="navigate" size={18} color="#10B981" />
+            <Text style={styles.navigateButtonText}>Get Directions</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+    );
+  };
 
-      {/* Outlets List */}
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        {renderHeader()}
+        <View style={styles.loadingContainer}>
+          <View style={styles.loadingSpinner}>
+            <ActivityIndicator size="large" color="#10B981" />
+          </View>
+          <Text style={styles.loadingText}>Finding nearby outlets...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        {renderHeader()}
+        <View style={styles.errorContainer}>
+          <View style={styles.errorIconBg}>
+            <Ionicons name="cloud-offline-outline" size={48} color="#EF4444" />
+          </View>
+          <Text style={styles.errorTitle}>Connection Error</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchOutlets} activeOpacity={0.8}>
+            <LinearGradient
+              colors={['#10B981', '#059669']}
+              style={styles.retryButtonGradient}
+            >
+              <Ionicons name="refresh" size={20} color="#FFFFFF" />
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      {renderHeader()}
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -212,124 +325,110 @@ export default function OutletsPage() {
       >
         {outlets.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="location-outline" size={64} color="#D1D5DB" />
-            <ThemedText style={styles.emptyTitle}>No Outlets Found</ThemedText>
-            <ThemedText style={styles.emptyText}>
-              This store doesn't have any outlets listed yet.
-            </ThemedText>
+            <LinearGradient
+              colors={['#D1FAE5', '#A7F3D0']}
+              style={styles.emptyIconBg}
+            >
+              <Ionicons name="location-outline" size={56} color="#10B981" />
+            </LinearGradient>
+            <Text style={styles.emptyTitle}>No Outlets Found</Text>
+            <Text style={styles.emptyText}>
+              This store doesn't have any outlet locations listed yet. Please check back later.
+            </Text>
+            <TouchableOpacity
+              style={styles.backToStoreButton}
+              onPress={() => router.back()}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-back" size={18} color="#10B981" />
+              <Text style={styles.backToStoreText}>Back to Store</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          outlets.map((outlet, index) => (
-            <View
-              key={outlet._id}
-              style={styles.outletCard}
-              accessibilityRole="region"
-              accessibilityLabel={`Outlet ${index + 1}. ${outlet.name}. ${outlet.address}. ${getCurrentDayHours(outlet)}`}
-            >
-              {/* Outlet Number Badge */}
-              <View style={styles.outletBadge} accessibilityElementsHidden>
-                <ThemedText style={styles.outletBadgeText}>{index + 1}</ThemedText>
-              </View>
-
-              {/* Outlet Name */}
-              <ThemedText
-                style={styles.outletName}
-                accessibilityRole="header"
-              >
-                {outlet.name}
-              </ThemedText>
-
-              {/* Address */}
-              <View style={styles.outletSection}>
-                <Ionicons name="location-outline" size={20} color="#6B7280" />
-                <ThemedText style={styles.outletAddress}>
-                  {outlet.address}
-                </ThemedText>
-              </View>
-
-              {/* Contact */}
-              <View style={styles.outletSection}>
-                <Ionicons name="call-outline" size={20} color="#6B7280" />
-                <ThemedText style={styles.outletContact}>{outlet.phone}</ThemedText>
-              </View>
-
-              {/* Opening Hours Today */}
-              <View style={styles.outletSection}>
-                <Ionicons name="time-outline" size={20} color="#6B7280" />
-                <ThemedText style={styles.outletHours}>{getCurrentDayHours(outlet)}</ThemedText>
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={styles.callButton}
-                  onPress={() => handleCall(outlet.phone)}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Call ${outlet.name} at ${outlet.phone}`}
-                  accessibilityHint="Double tap to call this outlet"
+          <>
+            {/* Quick Stats */}
+            <View style={styles.statsContainer}>
+              <View style={styles.statCard}>
+                <LinearGradient
+                  colors={['#10B981', '#059669']}
+                  style={styles.statIconBg}
                 >
-                  <Ionicons name="call" size={18} color="#fff" />
-                  <ThemedText style={styles.callButtonText}>Call</ThemedText>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.navigateButton}
-                  onPress={() => handleNavigate(outlet)}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Navigate to ${outlet.name}`}
-                  accessibilityHint="Double tap to open maps and navigate"
+                  <Ionicons name="location" size={18} color="#FFFFFF" />
+                </LinearGradient>
+                <Text style={styles.statValue}>{totalCount}</Text>
+                <Text style={styles.statLabel}>Outlets</Text>
+              </View>
+              <View style={styles.statCard}>
+                <LinearGradient
+                  colors={['#3B82F6', '#1D4ED8']}
+                  style={styles.statIconBg}
                 >
-                  <Ionicons name="navigate" size={18} color="#8B5CF6" />
-                  <ThemedText style={styles.navigateButtonText}>Navigate</ThemedText>
-                </TouchableOpacity>
+                  <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                </LinearGradient>
+                <Text style={styles.statValue}>
+                  {outlets.filter(o => getCurrentDayHours(o).isOpen).length}
+                </Text>
+                <Text style={styles.statLabel}>Open Now</Text>
               </View>
             </View>
-          ))
+
+            {/* Outlet Cards */}
+            {outlets.map((outlet, index) => renderOutletCard(outlet, index))}
+          </>
         )}
+
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </ThemedView>
-);
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
+  },
+  headerGradient: {
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 20,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingTop: Platform.OS === 'ios' ? 60 : 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    marginLeft: 12,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: '#FFFFFF',
   },
-  placeholder: {
+  headerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
+  },
+  headerRight: {
+    marginLeft: 12,
+  },
+  locationIconBg: {
     width: 40,
-  },
-  countBanner: {
-    backgroundColor: '#EDE9FE',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-  },
-  countText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#7C3AED',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,
@@ -343,10 +442,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 32,
   },
+  loadingSpinner: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#D1FAE5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
   loadingText: {
-    marginTop: 16,
     fontSize: 16,
     color: '#6B7280',
+    fontWeight: '500',
   },
   errorContainer: {
     flex: 1,
@@ -354,11 +462,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 32,
   },
+  errorIconBg: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
   errorTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#DC2626',
-    marginTop: 16,
+    color: '#1F2937',
     marginBottom: 8,
   },
   errorMessage: {
@@ -366,112 +482,239 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     marginBottom: 24,
+    lineHeight: 22,
   },
   retryButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  retryButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    gap: 10,
   },
   retryButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 60,
+    paddingHorizontal: 24,
+  },
+  emptyIconBg: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
+    color: '#1F2937',
+    marginBottom: 12,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#6B7280',
     textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 28,
   },
-  outletCard: {
+  backToStoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 8,
+  },
+  backToStoreText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+
+  // Stats Section
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  statCard: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+    padding: 16,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
-    position: 'relative',
   },
-  outletBadge: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: '#8B5CF6',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  statIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 10,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+
+  // Outlet Card
+  outletCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  cardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  outletBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+  outletIconContainer: {
+    marginRight: 14,
+  },
+  outletIconGradient: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  outletHeaderInfo: {
+    flex: 1,
   },
   outletName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 16,
-    paddingRight: 40,
+    color: '#1F2937',
+    marginBottom: 6,
   },
-  outletSection: {
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    gap: 5,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  indexBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  indexText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 16,
+  },
+  infoSection: {
+    gap: 12,
+  },
+  infoRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
-    gap: 10,
   },
-  outletAddress: {
+  infoIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#6B7280',
+    color: '#4B5563',
     lineHeight: 20,
+    paddingTop: 5,
   },
-  outletContact: {
+  hoursContainer: {
     flex: 1,
-    fontSize: 14,
-    color: '#6B7280',
+    paddingTop: 5,
   },
-  outletHours: {
-    flex: 1,
+  hoursLabel: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 2,
+  },
+  hoursValue: {
     fontSize: 14,
-    color: '#10B981',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 16,
+    marginTop: 20,
   },
   callButton: {
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  callButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10B981',
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 14,
     gap: 8,
   },
   callButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -480,13 +723,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EDE9FE',
-    paddingVertical: 12,
-    borderRadius: 10,
+    backgroundColor: '#D1FAE5',
+    paddingVertical: 14,
+    borderRadius: 12,
     gap: 8,
   },
   navigateButtonText: {
-    color: '#8B5CF6',
+    color: '#10B981',
     fontSize: 14,
     fontWeight: '600',
   },

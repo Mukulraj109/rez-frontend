@@ -101,15 +101,31 @@ export function toProduct(data: any): Product {
       ? {
           id: data.store.id || data.store._id,
           name: data.store.name,
+          slug: data.store.slug,
           logo: data.store.logo,
-          image: data.store.image,
-          rating: data.store.rating?.average || data.store.rating,
-          ratingCount: data.store.rating?.count,
-          location: data.store.location?.city || data.store.location,
-          deliveryTime: data.store.deliveryTime,
-          minimumOrder: data.store.minimumOrder,
-          isVerified: data.store.verified,
-          isOpen: data.store.status?.isOpen || data.store.isOpen,
+          image: data.store.image || data.store.banner,
+          // Handle both 'rating' and 'ratings' (backend uses 'ratings')
+          rating: data.store.ratings?.average || data.store.rating?.average || data.store.rating,
+          ratingCount: data.store.ratings?.count || data.store.rating?.count,
+          // Preserve full location object for address, city, coordinates
+          location: data.store.location && typeof data.store.location === 'object'
+            ? {
+                address: data.store.location.address,
+                city: data.store.location.city,
+                state: data.store.location.state,
+                pincode: data.store.location.pincode,
+                coordinates: data.store.location.coordinates,
+                deliveryRadius: data.store.location.deliveryRadius,
+                landmark: data.store.location.landmark,
+              }
+            : data.store.location, // Fallback to string if that's what was passed
+          deliveryTime: data.store.deliveryTime || data.store.operationalInfo?.deliveryTime,
+          minimumOrder: data.store.minimumOrder || data.store.operationalInfo?.minimumOrder,
+          isVerified: data.store.verified || data.store.isVerified,
+          isOpen: data.store.status?.isOpen || data.store.isOpen || data.store.isCurrentlyOpen,
+          // Preserve additional store data
+          contact: data.store.contact,
+          operationalInfo: data.store.operationalInfo,
         }
       : undefined,
     cashback: data.cashback
@@ -150,23 +166,36 @@ export function toProduct(data: any): Product {
  * Convert price data to ProductPrice
  */
 export function toProductPrice(data: any): ProductPrice {
+  // Handle price as direct number OR as object with various structures
+  // Also check pricing object (backend may return pricing.selling, pricing.basePrice, etc.)
+  const priceField = data.price;
+  const pricingField = data.pricing;
+
   const current =
-    data.price?.current ||
-    data.price?.selling ||
-    data.price?.salePrice ||
-    data.price ||
+    (typeof priceField === 'number' ? priceField : null) ||
+    priceField?.current ||
+    priceField?.selling ||
+    priceField?.salePrice ||
+    pricingField?.selling ||
+    pricingField?.salePrice ||
+    pricingField?.basePrice ||
     data.sellingPrice ||
     0;
 
   const original =
-    data.price?.original ||
-    data.price?.compare ||
-    data.price?.basePrice ||
-    data.originalPrice ||
+    (typeof data.originalPrice === 'number' ? data.originalPrice : null) ||
+    priceField?.original ||
+    priceField?.compare ||
+    priceField?.basePrice ||
+    pricingField?.compare ||
+    pricingField?.mrp ||
+    pricingField?.basePrice ||
+    data.originalPrice?.original ||
     data.mrp;
 
   const discount =
     data.price?.discount ||
+    data.pricing?.discount ||
     data.discount ||
     (original && current < original
       ? Math.round(((original - current) / original) * 100)

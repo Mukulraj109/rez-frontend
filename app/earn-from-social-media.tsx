@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -9,24 +9,61 @@ import {
   Dimensions,
   TextInput,
   ActivityIndicator,
-  Alert,
   Text,
+  RefreshControl,
 } from 'react-native';
+import { showAlert } from '@/components/common/CrossPlatformAlert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useEarnFromSocialMedia } from '@/hooks/useEarnFromSocialMedia';
 import EarnSocialData from '@/data/earnSocialData';
+import ordersService, { Order } from '@/services/ordersApi';
+import socialMediaApi, { SocialPost } from '@/services/socialMediaApi';
+import CashbackInfoModal from '@/components/earnings/CashbackInfoModal';
+import CompletedOrderCard from '@/components/earnings/CompletedOrderCard';
+
+// Type for tracking submission status per order
+interface OrderSubmissionMap {
+  [orderId: string]: {
+    status: 'pending' | 'approved' | 'rejected' | 'credited';
+    postId: string;
+  };
+}
 
 const { width } = Dimensions.get('window');
 
-export default function EarnFromSocialMediaPage() {
+type PageStep = 'orders_list' | 'url_input' | 'uploading' | 'success' | 'error';
 
+interface SelectedOrderInfo {
+  orderId: string;
+  orderNumber: string;
+  productName: string;
+  productImage?: string;
+  storeName: string;
+  totalAmount: number;
+  cashbackAmount: number;
+}
+
+export default function EarnFromSocialMediaPage() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // Extract product context from params
+  // State for new flow
+  const [currentStep, setCurrentStep] = useState<PageStep>('orders_list');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [orderSubmissions, setOrderSubmissions] = useState<OrderSubmissionMap>({});
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<SelectedOrderInfo | null>(null);
+  const [urlInput, setUrlInput] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  // Extract product context from params (for direct product links)
   const productContext = {
     productId: params.productId as string | undefined,
     productName: params.productName as string | undefined,
@@ -36,142 +73,302 @@ export default function EarnFromSocialMediaPage() {
     storeName: params.storeName as string | undefined,
   };
 
-  const { state, handlers } = useEarnFromSocialMedia(productContext.productId);
-  const [urlInput, setUrlInput] = useState('');
+  const { handlers } = useEarnFromSocialMedia(productContext.productId);
 
-  React.useEffect(() => {
+  // Fetch completed orders and existing social media submissions
+  const fetchCompletedOrders = useCallback(async () => {
+    try {
+      console.log('📦 [EARN SOCIAL] Fetching completed orders and submissions...');
 
-    if (productContext.productId) {
+      // Fetch both orders and existing social media posts in parallel
+      const [ordersResponse, postsResponse] = await Promise.all([
+        ordersService.getOrders({ status: 'delivered' }),
+        socialMediaApi.getUserPosts({ limit: 100 }) // Get all user's submissions
+      ]);
 
+      // Process orders
+      if (ordersResponse.success && ordersResponse.data?.orders) {
+        const deliveredOrders = ordersResponse.data.orders.filter(
+          (order) => order.status === 'delivered'
+        );
+        setOrders(deliveredOrders);
+        console.log(`✅ [EARN SOCIAL] Fetched ${deliveredOrders.length} delivered orders`);
+      } else {
+        console.warn('⚠️ [EARN SOCIAL] No orders found');
+        setOrders([]);
+      }
+
+      // Build submission map from existing posts
+      const submissionsMap: OrderSubmissionMap = {};
+      if (postsResponse.posts && postsResponse.posts.length > 0) {
+        postsResponse.posts.forEach((post: SocialPost) => {
+          if (post.order) {
+            submissionsMap[post.order] = {
+              status: post.status,
+              postId: post._id
+            };
+          }
+        });
+        console.log(`✅ [EARN SOCIAL] Found ${Object.keys(submissionsMap).length} existing submissions`);
+      }
+      setOrderSubmissions(submissionsMap);
+
+    } catch (err) {
+      console.error('❌ [EARN SOCIAL] Error fetching orders:', err);
+      setOrders([]);
+      setOrderSubmissions({});
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
+  useEffect(() => {
+    fetchCompletedOrders();
+  }, [fetchCompletedOrders]);
+
+  // Handle refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchCompletedOrders();
+  }, [fetchCompletedOrders]);
+
+  // Handle "Earn" button press on order card
+  const handleEarnPress = (order: Order) => {
+    const firstItem = order.items?.[0];
+    const totalAmount = order.totals?.total || 0;
+
+    setSelectedOrder({
+      orderId: order._id || order.id,
+      orderNumber: order.orderNumber,
+      productName: firstItem?.product?.name || 'Product',
+      productImage: firstItem?.product?.images?.[0]?.url,
+      storeName: firstItem?.product?.store?.name || 'Store',
+      totalAmount,
+      cashbackAmount: (totalAmount * 5) / 100,
+    });
+    setModalVisible(true);
+  };
+
+  // Handle "Upload" button press in modal
+  const handleUploadPress = () => {
+    setModalVisible(false);
+    setCurrentStep('url_input');
+  };
+
+  // Handle URL submission
   const handleSubmitUrl = async () => {
+    console.log('========================================');
+    console.log('📤 [EARN SOCIAL] SUBMIT URL START');
+    console.log('========================================');
+    console.log('📤 [EARN SOCIAL] URL:', urlInput);
+    console.log('📤 [EARN SOCIAL] Selected Order:', selectedOrder?.orderId);
+
     if (!urlInput.trim()) {
-      Alert.alert('Error', 'Please enter an Instagram post URL');
+      console.log('❌ [EARN SOCIAL] Empty URL');
+      showAlert('Error', 'Please enter an Instagram post URL', undefined, 'error');
       return;
     }
 
-    // Import validators
+    if (!selectedOrder?.orderId) {
+      console.log('❌ [EARN SOCIAL] No order selected');
+      showAlert('Error', 'Please select an order first', undefined, 'error');
+      return;
+    }
+
     try {
+      console.log('📤 [EARN SOCIAL] Importing validators...');
       const { validators } = await import('@/services/socialMediaApi');
+      console.log('📤 [EARN SOCIAL] Validators imported:', !!validators);
 
-      // Validate URL format before submitting
+      // Validate URL format
       const validation = validators.validatePostUrl('instagram', urlInput.trim());
-      if (!validation.isValid) {
+      console.log('📤 [EARN SOCIAL] Validation result:', validation);
 
-        Alert.alert('Invalid URL', validation.error || 'Please enter a valid Instagram post URL');
-        return; // ✅ Stop execution here
+      if (!validation.isValid) {
+        console.log('❌ [EARN SOCIAL] Invalid URL:', validation.error);
+        showAlert('Invalid URL', validation.error || 'Please enter a valid Instagram post URL', undefined, 'error');
+        return;
       }
 
-      handlers.handleUrlChange(urlInput);
-      await handlers.handleSubmit();
+      console.log('✅ [EARN SOCIAL] URL valid, proceeding to upload...');
+      setSubmitting(true);
+      setCurrentStep('uploading');
+      setUploadProgress(0);
 
-    } catch (error) {
-      console.error('❌ [EARN SOCIAL] Validation error:', error);
-      Alert.alert('Error', 'Failed to validate URL. Please try again.');
-      return; // ✅ Stop execution on error
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 300);
+
+      // IMPORTANT: Submit directly with the correct orderId
+      console.log('📤 [EARN SOCIAL] Calling socialMediaApi.submitPost with orderId:', selectedOrder.orderId);
+      const response = await socialMediaApi.submitPost({
+        platform: 'instagram',
+        postUrl: urlInput.trim(),
+        orderId: selectedOrder.orderId, // Pass the correct order ID!
+      });
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      console.log('✅ [EARN SOCIAL] Post submitted successfully:', JSON.stringify(response, null, 2));
+
+      // Update local state to reflect the new submission (with defensive checks)
+      const postId = response?.post?.id || response?.id || 'unknown';
+      console.log('📤 [EARN SOCIAL] Extracted postId:', postId);
+
+      setOrderSubmissions(prev => ({
+        ...prev,
+        [selectedOrder.orderId]: {
+          status: 'pending',
+          postId: postId
+        }
+      }));
+
+      setCurrentStep('success');
+    } catch (err: any) {
+      console.error('❌ [EARN SOCIAL] Submission error:', err);
+      setError(err.message || 'Failed to submit post. Please try again.');
+      setCurrentStep('error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  // Handle retry
+  const handleRetry = () => {
+    setError(null);
+    setUrlInput('');
+    setCurrentStep('url_input');
+  };
+
+  // Handle go back
+  const handleGoBack = () => {
+    if (currentStep === 'orders_list') {
+      router.back();
+    } else {
+      setCurrentStep('orders_list');
+      setSelectedOrder(null);
+      setUrlInput('');
+      setError(null);
+    }
+  };
+
+  // Render step indicator
   const renderStepIndicator = (stepNumber: number, isActive: boolean, isCompleted: boolean) => (
-    <View style={[
-      styles.stepIndicator,
-      isActive && styles.stepIndicatorActive,
-      isCompleted && styles.stepIndicatorCompleted
-    ]}>
+    <View
+      style={[
+        styles.stepIndicator,
+        isActive && styles.stepIndicatorActive,
+        isCompleted && styles.stepIndicatorCompleted,
+      ]}
+    >
       {isCompleted ? (
         <Ionicons name="checkmark" size={16} color="white" />
       ) : (
-        <ThemedText style={[
-          styles.stepNumber,
-          isActive && styles.stepNumberActive
-        ]}>
+        <ThemedText style={[styles.stepNumber, isActive && styles.stepNumberActive]}>
           {stepNumber}
         </ThemedText>
       )}
     </View>
   );
 
-  const renderOverviewStep = () => (
-    <>
-      {/* Product Context (if available) */}
-      {productContext.productName && (
-        <View style={styles.productContextCard}>
-          <View style={styles.productContextHeader}>
-            <Ionicons name="cube-outline" size={20} color="#8B5CF6" />
-            <ThemedText style={styles.productContextTitle}>Earning for:</ThemedText>
-          </View>
-          <ThemedText style={styles.productName}>{productContext.productName}</ThemedText>
-          {productContext.storeName && (
-            <ThemedText style={styles.storeName}>from {productContext.storeName}</ThemedText>
-          )}
-          {productContext.productPrice && (
-            <ThemedText style={styles.productPrice}>
-              ₹{productContext.productPrice} • 5% cashback = ₹{(productContext.productPrice * 0.05).toFixed(2)}
-            </ThemedText>
-          )}
+  // Render orders list
+  const renderOrdersList = () => (
+    <ScrollView
+      style={styles.ordersContainer}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#8B5CF6']} />
+      }
+    >
+      {/* Header Info */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoIconContainer}>
+          <Ionicons name="gift-outline" size={24} color="#8B5CF6" />
         </View>
-      )}
-
-      {/* Cashback Information Cards */}
-      <View style={styles.cardsContainer}>
-        {/* Main Cashback Card */}
-        <View style={styles.cashbackCard}>
-          <View style={styles.cashbackBadge}>
-            <ThemedText style={styles.cashbackText}>CASH BACK</ThemedText>
-            <ThemedText style={styles.cashbackPercentage}>5%</ThemedText>
-          </View>
-          <View style={styles.coinIcons}>
-            <Text style={styles.coin}>💰</Text>
-            <Text style={styles.coin}>🪙</Text>
-          </View>
-          <ThemedText style={styles.cardDescription}>
-            Buy anything and share it on Instagram. We'll give you 5% cash back in the form of coins.
-          </ThemedText>
-        </View>
-
-        {/* Share to Get Coins Card */}
-        <View style={styles.shareCard}>
-          <View style={styles.shareIllustration}>
-            <Text style={styles.phoneIcon}>📱</Text>
-            <View style={styles.socialIcons}>
-              <Text style={styles.heartIcon}>💜</Text>
-              <Text style={styles.heartIcon}>💜</Text>
-              <Text style={styles.heartIcon}>💜</Text>
-            </View>
-          </View>
-          <ThemedText style={styles.shareTitle}>Share to get coins</ThemedText>
-          <ThemedText style={styles.shareDescription}>
-            We'll credit your account within 48 hours. Use your coins to buy more things.
+        <View style={styles.infoContent}>
+          <ThemedText style={styles.infoTitle}>Earn Cashback</ThemedText>
+          <ThemedText style={styles.infoDescription}>
+            Share your delivered orders on Instagram and earn 5% cashback in coins!
           </ThemedText>
         </View>
       </View>
 
-      {/* Upload Button */}
-      <TouchableOpacity
-        style={styles.uploadButton}
-        onPress={handlers.handleStartUpload}
-        activeOpacity={0.8}
-        accessibilityLabel="Upload post"
-        accessibilityRole="button"
-        accessibilityHint="Start uploading your Instagram post for cashback"
-      >
-        <LinearGradient
-          colors={EarnSocialData.ui.gradients.primary as any}
-          style={styles.uploadButtonGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <ThemedText style={styles.uploadButtonText}>Upload</ThemedText>
-        </LinearGradient>
-      </TouchableOpacity>
-    </>
+      {/* Orders List */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ThemedText style={styles.loadingText}>Loading your orders...</ThemedText>
+        </View>
+      ) : orders.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="bag-outline" size={64} color="#D1D5DB" />
+          <ThemedText style={styles.emptyTitle}>No Delivered Orders</ThemedText>
+          <ThemedText style={styles.emptyDescription}>
+            Complete orders to earn cashback by sharing on Instagram!
+          </ThemedText>
+          <TouchableOpacity
+            style={styles.shopNowButton}
+            onPress={() => router.push('/')}
+            activeOpacity={0.8}
+          >
+            <ThemedText style={styles.shopNowText}>Shop Now</ThemedText>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.ordersList}>
+          <ThemedText style={styles.ordersTitle}>
+            Your Delivered Orders ({orders.length})
+          </ThemedText>
+          {orders.map((order) => {
+            const orderId = order._id || order.id;
+            const submission = orderSubmissions[orderId];
+            return (
+              <CompletedOrderCard
+                key={orderId}
+                order={order}
+                onEarnPress={handleEarnPress}
+                submissionStatus={submission?.status || null}
+              />
+            );
+          })}
+        </View>
+      )}
+
+      <View style={styles.bottomSpace} />
+    </ScrollView>
   );
 
+  // Render URL input step
   const renderUrlInputStep = () => (
-    <>
-      {/* Step Process */}
+    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Selected Order Context */}
+      {selectedOrder && (
+        <View style={styles.selectedOrderCard}>
+          <View style={styles.selectedOrderHeader}>
+            <Ionicons name="receipt-outline" size={20} color="#8B5CF6" />
+            <ThemedText style={styles.selectedOrderTitle}>Earning for:</ThemedText>
+          </View>
+          <ThemedText style={styles.selectedOrderName}>{selectedOrder.productName}</ThemedText>
+          <ThemedText style={styles.selectedStoreName}>
+            Order #{selectedOrder.orderNumber} • {selectedOrder.storeName}
+          </ThemedText>
+          <ThemedText style={styles.selectedCashback}>
+            ₹{selectedOrder.totalAmount.toFixed(2)} • 5% cashback = ₹
+            {selectedOrder.cashbackAmount.toFixed(2)}
+          </ThemedText>
+        </View>
+      )}
+
+      {/* Steps Container */}
       <View style={styles.stepsContainer}>
         {/* Step 1 */}
         <View style={styles.stepCard}>
@@ -201,7 +398,7 @@ export default function EarnFromSocialMediaPage() {
             <ThemedText style={styles.stepTitle}>Step 2: Submit your post</ThemedText>
           </View>
           <ThemedText style={styles.stepSubtitle}>Instagram Post URL</ThemedText>
-          
+
           {/* URL Input */}
           <View style={styles.urlInputContainer}>
             <TextInput
@@ -223,38 +420,45 @@ export default function EarnFromSocialMediaPage() {
         style={styles.uploadButton}
         onPress={handleSubmitUrl}
         activeOpacity={0.8}
-        disabled={state.loading}
-        accessibilityLabel={state.loading ? "Uploading post" : "Upload post"}
+        disabled={submitting}
+        accessibilityLabel={submitting ? 'Uploading post' : 'Upload post'}
         accessibilityRole="button"
-        accessibilityState={{ disabled: state.loading, busy: state.loading }}
-        accessibilityHint="Submits your Instagram post URL for verification"
+        accessibilityState={{ disabled: submitting, busy: submitting }}
       >
         <LinearGradient
           colors={EarnSocialData.ui.gradients.primary as any}
-          style={styles.uploadButtonGradient}
+          style={[styles.uploadButtonGradient, { pointerEvents: 'none' } as any]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
-          {state.loading ? (
+          {submitting ? (
             <ActivityIndicator color="white" size="small" />
           ) : (
-            <ThemedText style={styles.uploadButtonText}>Upload</ThemedText>
+            <ThemedText style={[styles.uploadButtonText, { pointerEvents: 'none' } as any]}>Upload</ThemedText>
           )}
         </LinearGradient>
       </TouchableOpacity>
-    </>
+
+      <View style={styles.bottomText}>
+        <ThemedText style={styles.getCashbackText}>Get Cashback</ThemedText>
+      </View>
+
+      <View style={styles.bottomSpace} />
+    </ScrollView>
   );
 
+  // Render uploading step
   const renderUploadingStep = () => (
     <View style={styles.uploadingContainer}>
       <View style={styles.uploadProgress}>
         <ActivityIndicator size="large" color={EarnSocialData.ui.colors.primary} />
         <ThemedText style={styles.uploadingText}>Uploading your post...</ThemedText>
-        <ThemedText style={styles.progressText}>{state.uploadProgress}%</ThemedText>
+        <ThemedText style={styles.progressText}>{uploadProgress}%</ThemedText>
       </View>
     </View>
   );
 
+  // Render success step
   const renderSuccessStep = () => (
     <View style={styles.successContainer}>
       <View style={styles.successIcon}>
@@ -262,47 +466,50 @@ export default function EarnFromSocialMediaPage() {
       </View>
       <ThemedText style={styles.successTitle}>Post Submitted Successfully!</ThemedText>
       <ThemedText style={styles.successDescription}>
-        Your post is under review. You'll receive cashback within 48 hours.
+        Your post is under review. The merchant will verify within 24 hours.{'\n'}
+        You'll receive {selectedOrder?.cashbackAmount.toFixed(0) || '0'} REZ Coins once approved.
       </ThemedText>
       <TouchableOpacity
         style={styles.doneButton}
-        onPress={handlers.handleGoBack}
+        onPress={() => {
+          setCurrentStep('orders_list');
+          setSelectedOrder(null);
+          setUrlInput('');
+        }}
         activeOpacity={0.8}
         accessibilityLabel="Done"
         accessibilityRole="button"
-        accessibilityHint="Returns to previous screen"
       >
         <ThemedText style={styles.doneButtonText}>Done</ThemedText>
       </TouchableOpacity>
     </View>
   );
 
+  // Render error step
   const renderErrorStep = () => (
     <View style={styles.errorContainer}>
       <View style={styles.errorIcon}>
         <Ionicons name="alert-circle" size={80} color={EarnSocialData.ui.colors.error} />
       </View>
       <ThemedText style={styles.errorTitle}>Upload Failed</ThemedText>
-      <ThemedText style={styles.errorDescription}>{state.error}</ThemedText>
+      <ThemedText style={styles.errorDescription}>{error}</ThemedText>
       <View style={styles.errorActions}>
         <TouchableOpacity
           style={styles.retryButton}
-          onPress={handlers.handleRetry}
+          onPress={handleRetry}
           activeOpacity={0.8}
           accessibilityLabel="Try again"
           accessibilityRole="button"
-          accessibilityHint="Retry uploading your post"
         >
           <Ionicons name="refresh-outline" size={20} color="#fff" />
           <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.cancelButton}
-          onPress={handlers.handleGoBack}
+          onPress={handleGoBack}
           activeOpacity={0.8}
           accessibilityLabel="Go back"
           accessibilityRole="button"
-          accessibilityHint="Returns to previous screen"
         >
           <ThemedText style={styles.cancelButtonText}>Go Back</ThemedText>
         </TouchableOpacity>
@@ -310,8 +517,9 @@ export default function EarnFromSocialMediaPage() {
     </View>
   );
 
+  // Render content based on current step
   const renderContent = () => {
-    switch (state.currentStep) {
+    switch (currentStep) {
       case 'url_input':
         return renderUrlInputStep();
       case 'uploading':
@@ -321,17 +529,17 @@ export default function EarnFromSocialMediaPage() {
       case 'error':
         return renderErrorStep();
       default:
-        return renderOverviewStep();
+        return renderOrdersList();
     }
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
-      
+
       {/* Header */}
-      <LinearGradient 
-        colors={EarnSocialData.ui.gradients.primary as any} 
+      <LinearGradient
+        colors={EarnSocialData.ui.gradients.primary as any}
         style={styles.header}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -339,34 +547,33 @@ export default function EarnFromSocialMediaPage() {
         <View style={styles.headerContent}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={handlers.handleGoBack}
+            onPress={handleGoBack}
             activeOpacity={0.8}
             hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             accessibilityLabel="Go back"
             accessibilityRole="button"
-            accessibilityHint="Returns to previous screen"
           >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          
+
           <ThemedText style={styles.headerTitle}>Earn from social media</ThemedText>
-          
+
           <View style={styles.headerRight} />
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {renderContent()}
-        
-        {/* Bottom Cashback Text */}
-        <View style={styles.bottomText}>
-          <ThemedText style={styles.getCashbackText}>Get Cashback</ThemedText>
-        </View>
-        
-        <View style={styles.bottomSpace} />
-      </ScrollView>
+      {/* Main Content */}
+      <View style={styles.mainContent}>{renderContent()}</View>
+
+      {/* Cashback Info Modal */}
+      <CashbackInfoModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onUpload={handleUploadPress}
+        orderInfo={selectedOrder}
+      />
     </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({
@@ -374,7 +581,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  
+
   // Header Styles
   header: {
     paddingTop: Platform.OS === 'android' ? 40 : 50,
@@ -407,109 +614,160 @@ const styles = StyleSheet.create({
   headerRight: {
     width: 40,
   },
-  
-  // Content
+
+  // Main Content
+  mainContent: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
   content: {
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
-  
-  // Cards Container
-  cardsContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    gap: 16,
+
+  // Orders Container
+  ordersContainer: {
+    flex: 1,
   },
-  
-  // Cashback Card
-  cashbackCard: {
-    backgroundColor: '#E6E6FA',
+
+  // Info Card
+  infoCard: {
+    flexDirection: 'row',
+    backgroundColor: '#F3E8FF',
+    margin: 20,
+    padding: 16,
     borderRadius: 16,
-    padding: 20,
-    position: 'relative',
-    minHeight: 150,
-  },
-  cashbackBadge: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  cashbackText: {
-    color: 'white',
+  infoIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 16,
     fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  infoDescription: {
     fontSize: 14,
-  },
-  cashbackPercentage: {
-    color: 'white',
-    fontWeight: '700',
-    fontSize: 18,
-  },
-  coinIcons: {
-    position: 'absolute',
-    right: 20,
-    top: 20,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  coin: {
-    fontSize: 24,
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: '#374151',
-    marginTop: 16,
+    color: '#6B7280',
     lineHeight: 20,
   },
-  
-  // Share Card
-  shareCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
+
+  // Loading State
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    minHeight: 150,
+    paddingVertical: 60,
   },
-  shareIllustration: {
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+
+  // Empty State
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    paddingVertical: 60,
+    paddingHorizontal: 40,
   },
-  phoneIcon: {
-    fontSize: 40,
-    marginBottom: 8,
-  },
-  socialIcons: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  heartIcon: {
-    fontSize: 16,
-  },
-  shareTitle: {
-    fontSize: 16,
+  emptyTitle: {
+    fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: '#374151',
+    marginTop: 16,
     marginBottom: 8,
-    textAlign: 'center',
   },
-  shareDescription: {
+  emptyDescription: {
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 24,
   },
-  
+  shopNowButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  shopNowText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+
+  // Orders List
+  ordersList: {
+    paddingHorizontal: 20,
+  },
+  ordersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 16,
+  },
+
+  // Selected Order Card
+  selectedOrderCard: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#8B5CF6',
+  },
+  selectedOrderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  selectedOrderTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  selectedOrderName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  selectedStoreName: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  selectedCashback: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#10B981',
+  },
+
   // Steps Container
   stepsContainer: {
     paddingHorizontal: 20,
     paddingTop: 20,
     gap: 20,
   },
-  
+
   // Step Card
   stepCard: {
     backgroundColor: 'white',
@@ -555,7 +813,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 12,
   },
-  
+
   // Step Illustration
   stepIllustration: {
     alignItems: 'center',
@@ -599,7 +857,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#F59E0B',
   },
-  
+
   // URL Input
   urlInputContainer: {
     marginTop: 8,
@@ -616,7 +874,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     textAlignVertical: 'top',
   },
-  
+
   // Upload Button
   uploadButton: {
     marginHorizontal: 20,
@@ -635,7 +893,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'white',
   },
-  
+
   // Uploading State
   uploadingContainer: {
     flex: 1,
@@ -657,7 +915,7 @@ const styles = StyleSheet.create({
     color: '#8B5CF6',
     fontWeight: '600',
   },
-  
+
   // Success State
   successContainer: {
     flex: 1,
@@ -694,7 +952,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'white',
   },
-  
+
   // Error State
   errorContainer: {
     flex: 1,
@@ -751,7 +1009,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
   },
-  
+
   // Bottom Text
   bottomText: {
     alignItems: 'center',
@@ -762,49 +1020,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
   },
-  
-  // Bottom Space
-  bottomSpace: {
-    height: 40,
-  },
 
-  // Product Context Card
-  productContextCard: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 20,
-    marginTop: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#8B5CF6',
-  },
-  productContextHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  productContextTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8B5CF6',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  productName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  storeName: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  productPrice: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#10B981',
+  // Bottom Space - account for bottom tab navigation
+  bottomSpace: {
+    height: 100,
   },
 });

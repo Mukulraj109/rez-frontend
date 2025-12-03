@@ -103,23 +103,19 @@ export default function CardOffersSection({
 
   const handleApplyOffer = useCallback(async (offer: Discount) => {
     triggerImpact('Medium');
-    
+
     try {
-      // Apply offer via cart context
-      if (cartActions && typeof cartActions.applyCoupon === 'function' && offer.code) {
-        await cartActions.applyCoupon(offer.code);
-      } else if (cartActions && typeof (cartActions as any).setCardOffer === 'function') {
-        await (cartActions as any).setCardOffer(offer);
-      }
-      
+      // Set applied offer locally
       setAppliedOffer(offer);
+
+      // Notify parent component
       if (onOfferApplied) {
         onOfferApplied(offer);
       }
     } catch (error) {
       console.error('Error applying card offer:', error);
     }
-  }, [onOfferApplied, cartActions]);
+  }, [onOfferApplied]);
 
   // Don't show if no offers or no store
   if (!storeId || (!loading && cardOffers.length === 0 && !appliedOffer)) {

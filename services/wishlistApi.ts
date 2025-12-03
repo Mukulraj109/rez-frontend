@@ -5,10 +5,28 @@
 import apiClient, { ApiResponse } from './apiClient';
 import { withRetry, createErrorResponse, getUserFriendlyErrorMessage, logApiRequest, logApiResponse } from '@/utils/apiUtils';
 
+// Discount snapshot interface - stores deal info at save time
+export interface DiscountSnapshot {
+  discountId: string;
+  name: string;
+  description?: string;
+  type: 'percentage' | 'fixed' | 'flat';
+  value: number;
+  minOrderValue?: number;
+  maxDiscount?: number;
+  validFrom?: string;
+  validUntil?: string;
+  storeId: string;
+  storeName?: string;
+  productId?: string;
+  productName?: string;
+  savedAt: string;
+}
+
 export interface WishlistItem {
   id: string;
   userId: string;
-  itemType: 'product' | 'video' | 'store' | 'project';
+  itemType: 'product' | 'video' | 'store' | 'project' | 'discount';
   itemId: string;
   item: {
     id: string;
@@ -27,6 +45,7 @@ export interface WishlistItem {
   isPublic: boolean;
   addedAt: string;
   updatedAt: string;
+  discountSnapshot?: DiscountSnapshot; // For saved deals
 }
 
 export interface Wishlist {
@@ -104,6 +123,8 @@ export interface AddToWishlistRequest {
   notes?: string;
   priority?: WishlistItem['priority'];
   tags?: string[];
+  // For discount items - optional client-side snapshot data
+  discountSnapshot?: Partial<DiscountSnapshot>;
 }
 
 export interface WishlistAnalytics {
@@ -186,9 +207,9 @@ function validateWishlistItem(item: any): boolean {
     return false;
   }
 
-  // Backend uses capitalized itemType: 'Product', 'Store', 'Video'
-  // Frontend uses lowercase: 'product', 'store', 'video', 'project'
-  const validItemTypes = ['product', 'video', 'store', 'project', 'Product', 'Store', 'Video', 'Project'];
+  // Backend uses capitalized itemType: 'Product', 'Store', 'Video', 'Discount'
+  // Frontend uses lowercase: 'product', 'store', 'video', 'project', 'discount'
+  const validItemTypes = ['product', 'video', 'store', 'project', 'discount', 'Product', 'Store', 'Video', 'Project', 'Discount'];
   if (!item.itemType || !validItemTypes.includes(item.itemType)) {
     console.warn('[WISHLIST API] Wishlist item has invalid itemType:', item.itemType);
     return false;
@@ -325,11 +346,11 @@ class WishlistService {
         };
       }
 
-      if (!['product', 'video', 'store', 'project'].includes(data.itemType)) {
+      if (!['product', 'video', 'store', 'project', 'discount'].includes(data.itemType)) {
         return {
           success: false,
           error: 'Invalid item type',
-          message: 'Item type must be product, video, store, or project',
+          message: 'Item type must be product, video, store, project, or discount',
         };
       }
 
@@ -388,14 +409,21 @@ class WishlistService {
       }
 
       // Now add item to the wishlist using the correct endpoint
+      const requestBody: any = {
+        itemType: data.itemType,
+        itemId: data.itemId,
+        notes: data.notes,
+        priority: data.priority || 'medium',
+        tags: data.tags || []
+      };
+
+      // Include discount snapshot for discount items
+      if (data.itemType === 'discount' && data.discountSnapshot) {
+        requestBody.discountSnapshot = data.discountSnapshot;
+      }
+
       const response = await withRetry(
-        () => apiClient.post<WishlistItem>(`/wishlist/${wishlistId}/items`, {
-          itemType: data.itemType,
-          itemId: data.itemId,
-          notes: data.notes,
-          priority: data.priority || 'medium',
-          tags: data.tags || []
-        }),
+        () => apiClient.post<WishlistItem>(`/wishlist/${wishlistId}/items`, requestBody),
         { maxRetries: 2 }
       );
 
@@ -553,11 +581,11 @@ class WishlistService {
         };
       }
 
-      if (!['product', 'video', 'store', 'project'].includes(itemType)) {
+      if (!['product', 'video', 'store', 'project', 'discount'].includes(itemType)) {
         return {
           success: false,
           error: 'Invalid item type',
-          message: 'Item type must be product, video, store, or project',
+          message: 'Item type must be product, video, store, project, or discount',
         };
       }
 

@@ -5,7 +5,8 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
@@ -122,9 +123,11 @@ export default function ReviewList({
               <ThemedText style={styles.ratingNumber}>
                 {ratingStats.average.toFixed(1)}
               </ThemedText>
-              <RatingStars rating={ratingStats.average} size={20} />
+              <View style={styles.starsContainer}>
+                <RatingStars rating={ratingStats.average} size={20} />
+              </View>
               <ThemedText style={styles.totalReviews}>
-                Based on {ratingStats.count} reviews
+                {ratingStats.count} verified reviews
               </ThemedText>
             </View>
 
@@ -153,8 +156,7 @@ export default function ReviewList({
                   onPress={() => handleFilterChange(star as FilterRating)}
                   activeOpacity={0.7}
                 >
-                  <ThemedText style={styles.starLabel}>{star}</ThemedText>
-                  <Ionicons name="star" size={14} color="#F59E0B" />
+                  <ThemedText style={styles.starLabel}>{star} ★</ThemedText>
                   <View style={styles.progressBarContainer}>
                     <View style={[styles.progressBar, { width: `${percentage}%` }]} />
                   </View>
@@ -166,65 +168,69 @@ export default function ReviewList({
         </ThemedView>
       )}
 
-      {/* Filters */}
+      {/* Unified Filters (Horizontal Scroll) */}
       <View style={styles.filtersContainer}>
-        {/* Sort Options */}
-        <View style={styles.filterSection}>
-          <ThemedText style={styles.filterLabel}>Sort by:</ThemedText>
-          <View style={styles.filterButtons}>
-            {(['newest', 'helpful', 'highest', 'lowest'] as SortOption[]).map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={[styles.filterButton, sortBy === option && styles.filterButtonActive]}
-                onPress={() => handleSortChange(option)}
-                activeOpacity={0.7}
-              >
-                <ThemedText
-                  style={[styles.filterButtonText, sortBy === option && styles.filterButtonTextActive]}
-                >
-                  {option.charAt(0).toUpperCase() + option.slice(1)}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersScrollContent}
+        >
+          {/* Sort Dropdown Chip */}
+          <TouchableOpacity
+            style={[styles.filterChip, styles.sortChip]}
+            onPress={() => {
+              // Cycle through sort options or show modal (simplified cycling for now)
+              const options: SortOption[] = ['newest', 'helpful', 'highest', 'lowest'];
+              const currentIndex = options.indexOf(sortBy);
+              const nextIndex = (currentIndex + 1) % options.length;
+              handleSortChange(options[nextIndex]);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="swap-vertical" size={16} color="#4B5563" />
+            <ThemedText style={styles.filterChipText}>
+              Sort: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
+            </ThemedText>
+            <Ionicons name="chevron-down" size={12} color="#9CA3AF" />
+          </TouchableOpacity>
 
-        {/* Rating Filter */}
-        <View style={styles.filterSection}>
-          <ThemedText style={styles.filterLabel}>Filter:</ThemedText>
-          <View style={styles.filterButtons}>
-            {(['all', 5, 4, 3, 2, 1] as FilterRating[]).map((rating) => (
-              <TouchableOpacity
-                key={rating}
+          {/* Divider */}
+          <View style={styles.filterDivider} />
+
+          {/* Rating Filter Chips */}
+          {(['all', 5, 4, 3, 2, 1] as FilterRating[]).map((rating) => (
+            <TouchableOpacity
+              key={rating}
+              style={[
+                styles.filterChip,
+                filterRating === rating && styles.filterChipActive
+              ]}
+              onPress={() => handleFilterChange(rating)}
+              activeOpacity={0.7}
+            >
+              <ThemedText
                 style={[
-                  styles.filterButton,
-                  filterRating === rating && styles.filterButtonActive
+                  styles.filterChipText,
+                  filterRating === rating && styles.filterChipTextActive
                 ]}
-                onPress={() => handleFilterChange(rating)}
-                activeOpacity={0.7}
               >
-                <ThemedText
-                  style={[
-                    styles.filterButtonText,
-                    filterRating === rating && styles.filterButtonTextActive
-                  ]}
-                >
-                  {rating === 'all' ? 'All' : `${rating} `}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+                {rating === 'all' ? 'All Reviews' : `${rating} ★`}
+              </ThemedText>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
     </View>
   );
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="star-outline" size={64} color="#D1D5DB" />
+      <View style={styles.emptyIconContainer}>
+        <Ionicons name="chatbubble-ellipses-outline" size={48} color="#8B5CF6" />
+      </View>
       <ThemedText style={styles.emptyTitle}>No Reviews Yet</ThemedText>
       <ThemedText style={styles.emptyText}>
-        Be the first to review this store
+        Share your experience with this product
       </ThemedText>
       {showWriteButton && onWriteReviewPress && (
         <TouchableOpacity
@@ -232,7 +238,8 @@ export default function ReviewList({
           onPress={onWriteReviewPress}
           activeOpacity={0.8}
         >
-          <ThemedText style={styles.emptyButtonText}>Write a Review</ThemedText>
+          <Ionicons name="pencil" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+          <ThemedText style={styles.emptyButtonText}>Write First Review</ThemedText>
         </TouchableOpacity>
       )}
     </View>
@@ -292,7 +299,7 @@ export default function ReviewList({
 const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
   listContentEmpty: {
     flexGrow: 1,
@@ -311,33 +318,39 @@ const styles = StyleSheet.create({
   summaryContainer: {
     backgroundColor: '#FFFFFF',
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
+    borderRadius: 16,
+    marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   summaryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   averageRating: {
     flex: 1,
   },
   ratingNumber: {
-    fontSize: 36,
-    fontWeight: '700',
+    fontSize: 42,
+    fontWeight: '800',
     color: '#111827',
     marginBottom: 4,
+    lineHeight: 48,
+  },
+  starsContainer: {
+    marginBottom: 6,
   },
   totalReviews: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#6B7280',
-    marginTop: 4,
+    fontWeight: '500',
   },
   writeButton: {
     flexDirection: 'row',
@@ -346,7 +359,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B5CF6',
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 100,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   writeButtonText: {
     fontSize: 14,
@@ -354,100 +372,125 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   distributionContainer: {
-    gap: 8,
+    gap: 10,
   },
   distributionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   starLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#111827',
-    width: 12,
+    color: '#4B5563',
+    width: 36,
   },
   progressBarContainer: {
     flex: 1,
     height: 8,
     backgroundColor: '#F3F4F6',
-    borderRadius: 4,
+    borderRadius: 100,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
     backgroundColor: '#F59E0B',
-    borderRadius: 4,
+    borderRadius: 100,
   },
   countLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#9CA3AF',
     width: 32,
     textAlign: 'right',
+    fontWeight: '500',
   },
   filtersContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  filterSection: {
-    marginBottom: 12,
-  },
-  filterLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  filterButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  filtersScrollContent: {
+    paddingRight: 16,
+    alignItems: 'center',
     gap: 8,
   },
-  filterButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+  filterChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 100,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  filterButtonActive: {
+  sortChip: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+    paddingRight: 12,
+  },
+  filterChipActive: {
     backgroundColor: '#8B5CF6',
     borderColor: '#8B5CF6',
   },
-  filterButtonText: {
+  filterChipText: {
     fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: '#4B5563',
+    fontWeight: '600',
   },
-  filterButtonTextActive: {
+  filterChipTextActive: {
     color: '#FFFFFF',
+  },
+  filterDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 4,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#111827',
-    marginTop: 16,
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#6B7280',
     marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
   },
   emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#8B5CF6',
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 100,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   emptyButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#FFFFFF',
     fontWeight: '600',
   },

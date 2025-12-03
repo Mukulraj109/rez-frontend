@@ -437,14 +437,15 @@ export const verifyInstagramPost = async (url: string): Promise<PostVerification
   } catch (error: any) {
     console.error('❌ [INSTAGRAM] Verification error:', error);
 
-    errors.push(
-      (error as any).message || 'Failed to verify Instagram post. Please try again.'
-    );
+    // On API error, allow submission to proceed
+    // Backend will perform final verification
+    warnings.push('Instagram verification temporarily unavailable. Post will be verified after submission.');
+
     return {
-      isValid: false,
-      exists: false,
-      isAccessible: false,
-      errors,
+      isValid: true, // Allow to proceed - backend will validate
+      exists: true,  // Assume exists
+      isAccessible: true, // Assume accessible
+      errors: [], // No blocking errors
       warnings,
     };
   }

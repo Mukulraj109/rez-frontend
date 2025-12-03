@@ -22,6 +22,7 @@ export interface RelatedProduct {
   reviewCount: number;
   brand?: string;
   cashback?: string;
+  category?: string;  // ✅ ADDED
 }
 
 interface UseRelatedProductsProps {
@@ -71,7 +72,7 @@ export const useRelatedProducts = ({
           response = await productsApi.getFrequentlyBoughtTogether(productId, limit);
           break;
         case 'bundles':
-          response = await productsApi.getBundleProducts?.(productId, limit);
+          response = await productsApi.getBundleProducts?.(productId);
           break;
         default:
           throw new Error(`Unknown type: ${type}`);
@@ -85,22 +86,47 @@ export const useRelatedProducts = ({
 
       // Transform backend data to frontend format
       const transformedProducts: RelatedProduct[] = (response.data.products || response.data || []).map((product: any) => {
-        const basePrice = product.pricing?.basePrice || product.price || 0;
-        const salePrice = product.pricing?.salePrice || product.pricing?.basePrice || product.price || 0;
+        // ✅ FIXED: Handle both old, new, and normalized price formats
+        // Normalized format (from validator): price.current
+        // New format from backend: pricing.selling
+        // Old format: pricing.basePrice
+        let sellingPrice = 0;
+        if (typeof product.price === 'object' && product.price !== null) {
+          sellingPrice = product.price.current || 0;
+        } else {
+          sellingPrice = product.price || product.pricing?.selling || product.pricing?.salePrice || product.pricing?.basePrice || 0;
+        }
+
+        let originalPrice = 0;
+        if (typeof product.originalPrice === 'object' && product.originalPrice !== null) {
+          originalPrice = product.originalPrice.current || 0;
+        } else {
+          originalPrice = product.originalPrice || product.pricing?.original || product.pricing?.basePrice || sellingPrice;
+        }
+
+        const discountPercent = product.discount ||
+          (originalPrice > sellingPrice ? Math.round(((originalPrice - sellingPrice) / originalPrice) * 100) : 0);
+
+        console.log('[useRelatedProducts] Transforming product:', {
+          name: product.name,
+          rawPrice: product.price,
+          rawPricing: product.pricing,
+          extractedSelling: sellingPrice,
+          extractedOriginal: originalPrice
+        });
 
         return {
           id: product.id || product._id,
           name: product.name,
-          price: salePrice,
-          originalPrice: basePrice !== salePrice ? basePrice : undefined,
-          discount: basePrice && salePrice
-            ? Math.round(((basePrice - salePrice) / basePrice) * 100)
-            : undefined,
+          price: sellingPrice,  // ✅ FIXED: Now correctly extracts selling price
+          originalPrice: originalPrice !== sellingPrice ? originalPrice : undefined,
+          discount: discountPercent > 0 ? discountPercent : undefined,
           image: product.images?.[0]?.url || product.images?.[0] || product.image || '',
           rating: product.ratings?.average || product.rating || 0,
           reviewCount: product.ratings?.count || product.reviewCount || 0,
           brand: product.store?.name || product.brand || '',
           cashback: product.cashback?.percentage ? `${product.cashback.percentage}% cashback` : undefined,
+          category: product.category || '',  // ✅ ADDED: Include category
         };
       });
 

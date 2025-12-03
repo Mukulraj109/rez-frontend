@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import PayBillCard from '@/components/store/PayBillCard';
 import InstagramCard from './InstagramCard';
 
 interface NewSectionProps {
@@ -36,14 +35,10 @@ export default function NewSection({ dynamicData, cardType }: NewSectionProps) {
         gap: cardGap,
       }
     ]}>
-      <PayBillCard
-        productData={dynamicData}
-        initialAmount=""
-        discountPercentage={20}
-      />
+      {/* PayBillCard removed - Add Money functionality is now in LockPriceModal */}
       <InstagramCard productData={dynamicData} />
     </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({

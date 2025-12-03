@@ -6,6 +6,8 @@ export interface CartItem {
   price: number;
   originalPrice?: number; // Original price before discount
   discountedPrice?: number; // Discounted price if applicable
+  discount?: number; // Lock fee discount (only applies to lockedQuantity items)
+  lockedQuantity?: number; // Number of items that have lock fee applied
   image: string | number; // string for URL, number for require()
   cashback: string;
   category: 'products' | 'service';

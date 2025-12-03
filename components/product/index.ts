@@ -36,3 +36,7 @@ export { default as ExpertReviewsSummary } from './ExpertReviewsSummary';
 // Phase 4.1 - Q&A and Customer Photos
 export { default as QASection } from './QASection';
 export { default as CustomerPhotos } from './CustomerPhotos';
+
+// Error Handling & Loading States
+export { default as ProductPageErrorBoundary } from './ProductPageErrorBoundary';
+export { default as ProductPageSkeleton } from './ProductPageSkeleton';

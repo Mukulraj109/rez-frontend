@@ -378,6 +378,28 @@ class WalletService {
 
     return apiClient.post('/wallet/credit-loyalty-points', data);
   }
+
+  /**
+   * Add test funds to wallet (DEVELOPMENT ONLY)
+   * @param amount Amount to add (default: 1000)
+   * @param type 'wallet' or 'paybill' (default: 'wallet')
+   */
+  async devTopup(amount: number = 1000, type: 'wallet' | 'paybill' = 'wallet'): Promise<ApiResponse<{
+    wallet: {
+      balance: {
+        total: number;
+        available: number;
+        pending: number;
+        paybill: number;
+      };
+      currency: string;
+    };
+    addedAmount: number;
+    type: string;
+  }>> {
+    console.log('🧪 [DEV] Adding test funds:', { amount, type });
+    return apiClient.post('/wallet/dev-topup', { amount, type });
+  }
 }
 
 // Export singleton instance

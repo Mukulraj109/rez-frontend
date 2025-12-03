@@ -1,5 +1,5 @@
-import React, { useState, useEffect, memo, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Animated, Modal, ScrollView } from 'react-native';
+import React, { useState, useEffect, memo } from 'react';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Animated, Modal, ScrollView, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +18,10 @@ import {
   Timing,
 } from '@/constants/DesignSystem';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH * 0.7; // 70% of screen width
+const CARD_MARGIN = 12;
+
 interface Section3Props {
   productPrice?: number;
   storeId?: string;
@@ -25,42 +29,28 @@ interface Section3Props {
 
 export default memo(function Section3({ productPrice = 1000, storeId }: Section3Props) {
   const { actions: cartActions } = useCart();
-  const [discount, setDiscount] = useState<Discount | null>(null);
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-
-  // Animation refs for micro-interactions
-  const cardScaleAnim = useRef(new Animated.Value(1)).current;
-  const buttonScaleAnim = useRef(new Animated.Value(1)).current;
-
-  // Animation helper
-  const animateScale = (animValue: Animated.Value, toValue: number) => {
-    Animated.spring(animValue, {
-      toValue,
-      useNativeDriver: true,
-      ...Timing.springBouncy,
-    }).start();
-  };
+  const [selectedDiscount, setSelectedDiscount] = useState<Discount | null>(null);
 
   useEffect(() => {
     fetchDiscounts();
-  }, [productPrice, storeId]); // Phase 2: Add storeId dependency
+  }, [productPrice, storeId]);
 
   const fetchDiscounts = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Phase 2: Pass storeId to API for store-specific filtering
       const response = await discountsApi.getBillPaymentDiscounts(productPrice, storeId);
 
       if (response.success && response.data && response.data.length > 0) {
-        setDiscount(response.data[0]);
+        setDiscounts(response.data);
       } else {
-        setDiscount(null);
+        setDiscounts([]);
       }
     } catch (error) {
       setError('Unable to load discounts');
@@ -69,26 +59,18 @@ export default memo(function Section3({ productPrice = 1000, storeId }: Section3
     }
   };
 
-  const handleApplyDiscount = async () => {
+  const handleApplyDiscount = async (discount: Discount) => {
     if (!discount) {
-      platformAlert('Error', 'Discount information is not available. Please try again later.');
+      platformAlert('Error', 'Discount information is not available.');
       return;
     }
 
-    // Check if discount is still valid
     const now = new Date();
     const validFrom = new Date(discount.validFrom);
     const validUntil = new Date(discount.validUntil);
 
     if (now < validFrom) {
-      platformAlert(
-        'Not Available Yet',
-        `This discount will be available from ${validFrom.toLocaleDateString('en-IN', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric'
-        })}.`
-      );
+      platformAlert('Not Available Yet', `Available from ${validFrom.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.`);
       return;
     }
 
@@ -102,249 +84,181 @@ export default memo(function Section3({ productPrice = 1000, storeId }: Section3
       return;
     }
 
-    // Haptic feedback on button press
     triggerImpact('Medium');
 
     try {
       setIsApplying(true);
 
-      // Apply discount to cart using CartContext
       if (discount.code) {
-        // If discount has a code, use it as a coupon
-        // Check if cartActions and applyCoupon method exist to prevent crashes
         if (!cartActions || typeof cartActions.applyCoupon !== 'function') {
-          throw new Error('Cart actions not available. Please ensure you are logged in.');
+          throw new Error('Cart actions not available.');
         }
 
-        try {
-          await cartActions.applyCoupon(discount.code);
+        await cartActions.applyCoupon(discount.code);
+        triggerNotification('Success');
 
-          // Success haptic feedback
-          triggerNotification('Success');
-
-          // Success - show confirmation with more details
-          const discountAmount = discount.type === 'percentage' 
-            ? `${discount.value}%` 
-            : `₹${discount.value}`;
-          
-          platformAlert(
-            'Discount Applied!',
-            `${discount.name} has been successfully applied to your cart. You'll save ${discountAmount} on your order!`
-          );
-          
-          // Close modals
-          setShowDetails(false);
-          setShowDetailsModal(false);
-        } catch (couponError: any) {
-          // Error haptic feedback
-          triggerNotification('Error');
-          
-          // Provide more specific error messages
-          let errorMessage = 'Unable to apply discount. Please try again.';
-          
-          if (couponError?.message) {
-            errorMessage = couponError.message;
-          } else if (couponError?.response?.data?.message) {
-            errorMessage = couponError.response.data.message;
-          }
-          
-          platformAlert('Error', errorMessage);
-        }
+        const discountAmount = discount.type === 'percentage' ? `${discount.value}%` : `₹${discount.value}`;
+        platformAlert('Discount Applied!', `You'll save ${discountAmount} on your order!`);
+        setShowDetailsModal(false);
       } else {
-        // For discounts without codes, they're auto-applied at checkout
-        // But we should still validate eligibility
         if (productPrice && productPrice < discount.minOrderValue) {
-          platformAlert(
-            'Minimum Order Required',
-            `This discount requires a minimum order of ₹${discount.minOrderValue}. Your current order value is ₹${productPrice}.`
-          );
+          platformAlert('Minimum Order Required', `Add ₹${discount.minOrderValue - productPrice} more to unlock this discount.`);
           setIsApplying(false);
           return;
         }
 
-        // Info haptic feedback
         triggerNotification('Success');
-        platformAlert(
-          'Discount Available',
-          `This discount will be automatically applied when your order value reaches ₹${discount.minOrderValue} or more.`
-        );
-        setShowDetails(false);
+        platformAlert('Discount Available', `This discount will be automatically applied at checkout.`);
         setShowDetailsModal(false);
       }
     } catch (error: any) {
-      // Error haptic feedback
       triggerNotification('Error');
-      
-      console.error('[Section3] Error applying discount:', error);
-      
-      const errorMessage = error?.message || error?.response?.data?.message || 'Unable to apply discount. Please try again.';
-      platformAlert('Error', errorMessage);
+      platformAlert('Error', error?.message || 'Unable to apply discount.');
     } finally {
       setIsApplying(false);
     }
   };
 
-  const displayText = discount?.metadata?.displayText || discount?.name || 'Get Instant Discount';
-  const discountText = discount
-    ? `${discount.type === 'percentage' ? discount.value + '%' : '₹' + discount.value} Off${discount.applicableOn === 'bill_payment' ? ' on bill payment' : ''}`
-    : '10% Off on bill payment';
-
-  // Handle card press with haptic feedback
-  const handleCardPress = () => {
-    if (!discount) return;
-
+  const openDetailsModal = (discount: Discount) => {
     triggerImpact('Light');
-
-    setShowDetails(!showDetails);
+    setSelectedDiscount(discount);
+    setShowDetailsModal(true);
   };
 
-  return (
-    <View
-      style={styles.container}
-      accessibilityRole="region"
-      accessibilityLabel="Discount offer section"
-    >
-      {/* Compact Card */}
-      <Animated.View style={{ transform: [{ scale: cardScaleAnim }] }}>
-        <TouchableOpacity
-          style={styles.card}
-          activeOpacity={0.85}
-          onPress={handleCardPress}
-          onPressIn={() => animateScale(cardScaleAnim, 0.96)}
-          onPressOut={() => animateScale(cardScaleAnim, 1)}
-          accessibilityRole="button"
-          accessibilityLabel={`${displayText}. ${discountText}${showDetails ? '. Expanded' : ''}`}
-          accessibilityHint={discount ? `Double tap to ${showDetails ? 'collapse' : 'expand'} discount details` : 'Discount not available'}
-          accessibilityState={{ disabled: !discount, expanded: showDetails }}
+  // Render compact discount card for horizontal scroll
+  const renderDiscountCard = (discount: Discount, index: number) => {
+    const meetsMinimum = productPrice >= (discount.minOrderValue || 0);
+    const amountNeeded = (discount.minOrderValue || 0) - productPrice;
+    const discountValue = discount.type === 'percentage' ? `${discount.value}%` : `₹${discount.value}`;
+
+    return (
+      <TouchableOpacity
+        key={discount._id || index}
+        style={[styles.discountCard, !meetsMinimum && styles.discountCardLocked]}
+        activeOpacity={0.9}
+        onPress={() => openDetailsModal(discount)}
+        accessibilityRole="button"
+        accessibilityLabel={`${discount.name}. ${discountValue} off${!meetsMinimum ? `. Add ₹${amountNeeded} more to unlock` : ''}`}
+      >
+        {/* Gradient Background */}
+        <LinearGradient
+          colors={meetsMinimum ? ['#8B5CF6', '#7C3AED'] : ['#6B7280', '#4B5563']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardGradient}
         >
-        <View style={styles.textContainer}>
-          <ThemedText style={styles.title}>{displayText}</ThemedText>
-          {loading ? (
-            <ActivityIndicator size="small" color={Colors.gray[600]} />
-          ) : error ? (
-            <>
-              <ThemedText style={styles.errorText}>{error}</ThemedText>
-              <RetryButton
-                onRetry={fetchDiscounts}
-                label="Retry"
-                variant="ghost"
-                size="small"
-                style={{ marginTop: 8, alignSelf: 'flex-start' }}
-              />
-            </>
-          ) : (
-            <ThemedText style={styles.subtitle}>{discountText}</ThemedText>
+          {/* Discount Badge */}
+          <View style={styles.discountBadge}>
+            <ThemedText style={styles.discountBadgeText}>{discountValue}</ThemedText>
+            <ThemedText style={styles.discountBadgeSubtext}>OFF</ThemedText>
+          </View>
+
+          {/* Lock Icon for Ineligible */}
+          {!meetsMinimum && (
+            <View style={styles.lockBadge}>
+              <Ionicons name="lock-closed" size={14} color="#FFF" />
+            </View>
           )}
-        </View>
 
-        <View style={styles.badge} accessibilityElementsHidden>
-          <ThemedText style={styles.badgeIcon}>⚡</ThemedText>
-        </View>
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* Detailed Discount Card - Shown when expanded */}
-      {showDetails && discount && (
-        <View style={styles.detailsCard}>
-          {/* Save Badge */}
-          <View style={styles.saveBadge}>
-            <ThemedText style={styles.saveBadgeText}>
-              Save {discount.type === 'percentage' ? discount.value + '%' : '₹' + discount.value}
+          {/* Card Content */}
+          <View style={styles.cardContent}>
+            <ThemedText style={styles.cardTitle} numberOfLines={1}>
+              {discount.name}
             </ThemedText>
-          </View>
 
-          {/* Icon */}
-          <View style={styles.iconContainer}>
-            <Ionicons name="flash" size={IconSize.lg} color="#F59E0B" />
-          </View>
+            <View style={styles.minOrderRow}>
+              <Ionicons name="receipt-outline" size={12} color="rgba(255,255,255,0.8)" />
+              <ThemedText style={styles.minOrderText}>
+                Min. ₹{discount.minOrderValue || 0}
+              </ThemedText>
+            </View>
 
-          {/* Title */}
-          <ThemedText style={styles.detailsTitle}>{discount.name}</ThemedText>
-
-          {/* Minimum Bill */}
-          <View style={styles.minimumBillRow}>
-            <ThemedText style={styles.minimumBillLabel}>Minimum bill:</ThemedText>
-            <ThemedText style={styles.minimumBillValue}>₹{discount.minOrderValue || 0}</ThemedText>
-          </View>
-
-          {/* Info Row */}
-          <View style={styles.infoRow}>
-            {discount.restrictions?.isOfflineOnly && (
-              <>
-                <Ionicons name="storefront-outline" size={IconSize.sm} color={Colors.primary[600]} />
-                <ThemedText style={styles.infoText}>Offline Only</ThemedText>
-                <View style={styles.dividerVertical} />
-              </>
-            )}
-            <TouchableOpacity
-              style={styles.moreDetailsButton}
-              onPress={() => {
-                triggerImpact('Light');
-                setShowDetailsModal(true);
-              }}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="View more discount details"
-            >
-              <ThemedText style={styles.moreDetailsText}>More details</ThemedText>
-              <Ionicons name="information-circle-outline" size={IconSize.sm} color={Colors.primary[600]} style={styles.infoIcon} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Restrictions */}
-          <View style={styles.restrictionsContainer}>
-            {discount.restrictions?.notValidAboveStoreDiscount && (
-              <View style={styles.restrictionRow}>
-                <View style={styles.bulletPoint} />
-                <ThemedText style={styles.restrictionText}>Not valid above store discount</ThemedText>
-              </View>
-            )}
-            {discount.restrictions?.singleVoucherPerBill && (
-              <View style={styles.restrictionRow}>
-                <View style={styles.bulletPoint} />
-                <ThemedText style={styles.restrictionText}>Single voucher per bill</ThemedText>
-              </View>
-            )}
-            {discount.usageLimitPerUser && (
-              <View style={styles.restrictionRow}>
-                <View style={styles.bulletPoint} />
-                <ThemedText style={styles.restrictionText}>
-                  Limited to {discount.usageLimitPerUser} use{discount.usageLimitPerUser > 1 ? 's' : ''} per user
+            {!meetsMinimum ? (
+              <View style={styles.unlockRow}>
+                <Ionicons name="add-circle-outline" size={12} color="#FCD34D" />
+                <ThemedText style={styles.unlockText}>
+                  Add ₹{amountNeeded} more
                 </ThemedText>
               </View>
+            ) : (
+              <View style={styles.eligibleRow}>
+                <Ionicons name="checkmark-circle" size={12} color="#34D399" />
+                <ThemedText style={styles.eligibleText}>Ready to use</ThemedText>
+              </View>
             )}
           </View>
 
-          {/* Add Button */}
-          <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
-            <TouchableOpacity
-              style={styles.addButtonWrapper}
-              activeOpacity={0.8}
-              onPress={handleApplyDiscount}
-              onPressIn={() => animateScale(buttonScaleAnim, 0.96)}
-              onPressOut={() => animateScale(buttonScaleAnim, 1)}
-              disabled={isApplying}
-              accessibilityRole="button"
-              accessibilityLabel={`Apply ${discount.name} discount`}
-              accessibilityHint="Double tap to add this discount to your order"
-              accessibilityState={{ disabled: isApplying, busy: isApplying }}
-            >
-              <LinearGradient
-                colors={['#8B5CF6', '#7C3AED']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.addButton, isApplying && styles.addButtonDisabled]}
-              >
-                <ThemedText style={styles.addButtonText}>
-                  {isApplying ? 'Applying...' : 'Add'}
-                </ThemedText>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+          {/* Arrow Icon */}
+          <View style={styles.arrowContainer}>
+            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Ionicons name="flash" size={20} color={Colors.primary[600]} />
+          <ThemedText style={styles.headerTitle}>Mega Sale Offers</ThemedText>
         </View>
-      )}
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={Colors.primary[600]} />
+        </View>
+      </View>
+    );
+  }
 
-      <View style={styles.divider} />
+  // Error state
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Ionicons name="flash" size={20} color={Colors.primary[600]} />
+          <ThemedText style={styles.headerTitle}>Mega Sale Offers</ThemedText>
+        </View>
+        <View style={styles.errorContainer}>
+          <ThemedText style={styles.errorText}>{error}</ThemedText>
+          <RetryButton onRetry={fetchDiscounts} label="Retry" variant="ghost" size="small" />
+        </View>
+      </View>
+    );
+  }
+
+  // No discounts
+  if (discounts.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Section Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.headerIconContainer}>
+            <Ionicons name="flash" size={16} color="#FFF" />
+          </View>
+          <ThemedText style={styles.headerTitle}>Mega Sale Offers</ThemedText>
+          <View style={styles.countBadge}>
+            <ThemedText style={styles.countText}>{discounts.length}</ThemedText>
+          </View>
+        </View>
+      </View>
+
+      {/* Horizontal Scroll of Discount Cards */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        decelerationRate="fast"
+        snapToInterval={CARD_WIDTH + CARD_MARGIN}
+        snapToAlignment="start"
+      >
+        {discounts.map((discount, index) => renderDiscountCard(discount, index))}
+      </ScrollView>
 
       {/* Details Modal */}
       <Modal
@@ -355,314 +269,310 @@ export default memo(function Section3({ productPrice = 1000, storeId }: Section3
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
+            {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle}>Discount Details</ThemedText>
+              <ThemedText style={styles.modalTitle}>Offer Details</ThemedText>
               <TouchableOpacity
                 onPress={() => setShowDetailsModal(false)}
                 style={styles.modalCloseButton}
-                accessibilityLabel="Close modal"
+                accessibilityLabel="Close"
               >
                 <Ionicons name="close" size={24} color={Colors.gray[600]} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {discount && (
-                <>
-                  {/* Discount Title */}
-                  <View style={styles.modalDiscountHeader}>
-                    <View style={styles.modalIconContainer}>
-                      <Ionicons name="flash" size={32} color="#F59E0B" />
+            {selectedDiscount && (
+              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                {/* Offer Header */}
+                <LinearGradient
+                  colors={['#8B5CF6', '#7C3AED']}
+                  style={styles.modalOfferHeader}
+                >
+                  <ThemedText style={styles.modalOfferValue}>
+                    {selectedDiscount.type === 'percentage' ? `${selectedDiscount.value}%` : `₹${selectedDiscount.value}`}
+                  </ThemedText>
+                  <ThemedText style={styles.modalOfferLabel}>OFF</ThemedText>
+                  <ThemedText style={styles.modalOfferName}>{selectedDiscount.name}</ThemedText>
+                </LinearGradient>
+
+                {/* Details Cards */}
+                <View style={styles.modalDetailsSection}>
+                  {/* Min Order */}
+                  <View style={styles.modalDetailRow}>
+                    <View style={styles.modalDetailIcon}>
+                      <Ionicons name="cart-outline" size={18} color={Colors.primary[600]} />
                     </View>
-                    <ThemedText style={styles.modalDiscountTitle}>{discount.name}</ThemedText>
-                    {discount.description && (
-                      <ThemedText style={styles.modalDiscountDescription}>{discount.description}</ThemedText>
-                    )}
+                    <View style={styles.modalDetailContent}>
+                      <ThemedText style={styles.modalDetailLabel}>Minimum Order</ThemedText>
+                      <ThemedText style={styles.modalDetailValue}>₹{selectedDiscount.minOrderValue || 0}</ThemedText>
+                    </View>
                   </View>
 
-                  {/* Discount Value */}
-                  <View style={styles.modalInfoCard}>
-                    <View style={styles.modalInfoRow}>
-                      <ThemedText style={styles.modalInfoLabel}>Discount Value:</ThemedText>
-                      <ThemedText style={styles.modalInfoValue}>
-                        {discount.type === 'percentage' ? `${discount.value}%` : `₹${discount.value}`}
-                      </ThemedText>
-                    </View>
-                    {discount.maxDiscountAmount && (
-                      <View style={styles.modalInfoRow}>
-                        <ThemedText style={styles.modalInfoLabel}>Maximum Discount:</ThemedText>
-                        <ThemedText style={styles.modalInfoValue}>₹{discount.maxDiscountAmount}</ThemedText>
+                  {/* Max Discount */}
+                  {selectedDiscount.maxDiscountAmount && (
+                    <View style={styles.modalDetailRow}>
+                      <View style={styles.modalDetailIcon}>
+                        <Ionicons name="trending-down-outline" size={18} color={Colors.primary[600]} />
                       </View>
-                    )}
-                    <View style={styles.modalInfoRow}>
-                      <ThemedText style={styles.modalInfoLabel}>Minimum Order:</ThemedText>
-                      <ThemedText style={styles.modalInfoValue}>₹{discount.minOrderValue || 0}</ThemedText>
-                    </View>
-                  </View>
-
-                  {/* Validity */}
-                  <View style={styles.modalInfoCard}>
-                    <ThemedText style={styles.modalSectionTitle}>Validity</ThemedText>
-                    <View style={styles.modalInfoRow}>
-                      <ThemedText style={styles.modalInfoLabel}>Valid From:</ThemedText>
-                      <ThemedText style={styles.modalInfoValue}>
-                        {new Date(discount.validFrom).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.modalInfoRow}>
-                      <ThemedText style={styles.modalInfoLabel}>Valid Until:</ThemedText>
-                      <ThemedText style={styles.modalInfoValue}>
-                        {new Date(discount.validUntil).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
-                      </ThemedText>
-                    </View>
-                  </View>
-
-                  {/* Restrictions */}
-                  {(discount.restrictions || discount.usageLimitPerUser) && (
-                    <View style={styles.modalInfoCard}>
-                      <ThemedText style={styles.modalSectionTitle}>Terms & Conditions</ThemedText>
-                      {discount.restrictions?.isOfflineOnly && (
-                        <View style={styles.modalRestrictionRow}>
-                          <Ionicons name="storefront-outline" size={16} color={Colors.primary[600]} />
-                          <ThemedText style={styles.modalRestrictionText}>Available for offline purchases only</ThemedText>
-                        </View>
-                      )}
-                      {discount.restrictions?.notValidAboveStoreDiscount && (
-                        <View style={styles.modalRestrictionRow}>
-                          <Ionicons name="alert-circle-outline" size={16} color={Colors.gray[600]} />
-                          <ThemedText style={styles.modalRestrictionText}>Not valid with other store discounts</ThemedText>
-                        </View>
-                      )}
-                      {discount.restrictions?.singleVoucherPerBill && (
-                        <View style={styles.modalRestrictionRow}>
-                          <Ionicons name="receipt-outline" size={16} color={Colors.gray[600]} />
-                          <ThemedText style={styles.modalRestrictionText}>One voucher per bill</ThemedText>
-                        </View>
-                      )}
-                      {discount.usageLimitPerUser && (
-                        <View style={styles.modalRestrictionRow}>
-                          <Ionicons name="person-outline" size={16} color={Colors.gray[600]} />
-                          <ThemedText style={styles.modalRestrictionText}>
-                            Limited to {discount.usageLimitPerUser} use{discount.usageLimitPerUser > 1 ? 's' : ''} per user
-                          </ThemedText>
-                        </View>
-                      )}
-                      {discount.usageLimit && (
-                        <View style={styles.modalRestrictionRow}>
-                          <Ionicons name="people-outline" size={16} color={Colors.gray[600]} />
-                          <ThemedText style={styles.modalRestrictionText}>
-                            Total usage limit: {discount.usageLimit} ({discount.usedCount || 0} used)
-                          </ThemedText>
-                        </View>
-                      )}
+                      <View style={styles.modalDetailContent}>
+                        <ThemedText style={styles.modalDetailLabel}>Maximum Discount</ThemedText>
+                        <ThemedText style={styles.modalDetailValue}>₹{selectedDiscount.maxDiscountAmount}</ThemedText>
+                      </View>
                     </View>
                   )}
 
-                  {/* Applicable On */}
-                  <View style={styles.modalInfoCard}>
-                    <ThemedText style={styles.modalSectionTitle}>Applicable On</ThemedText>
-                    <ThemedText style={styles.modalInfoValue}>
-                      {discount.applicableOn === 'bill_payment' ? 'Bill Payment' :
-                       discount.applicableOn === 'all' ? 'All Products' :
-                       discount.applicableOn === 'specific_products' ? 'Specific Products' :
-                       discount.applicableOn === 'specific_categories' ? 'Specific Categories' :
-                       discount.applicableOn}
-                    </ThemedText>
+                  {/* Validity */}
+                  <View style={styles.modalDetailRow}>
+                    <View style={styles.modalDetailIcon}>
+                      <Ionicons name="calendar-outline" size={18} color={Colors.primary[600]} />
+                    </View>
+                    <View style={styles.modalDetailContent}>
+                      <ThemedText style={styles.modalDetailLabel}>Valid Until</ThemedText>
+                      <ThemedText style={styles.modalDetailValue}>
+                        {new Date(selectedDiscount.validUntil).toLocaleDateString('en-IN', {
+                          day: 'numeric', month: 'short', year: 'numeric'
+                        })}
+                      </ThemedText>
+                    </View>
                   </View>
-                </>
-              )}
-            </ScrollView>
 
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.modalApplyButton}
-                onPress={() => {
-                  setShowDetailsModal(false);
-                  handleApplyDiscount();
-                }}
-                disabled={isApplying}
-              >
-                <LinearGradient
-                  colors={['#8B5CF6', '#7C3AED']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.modalApplyButtonGradient}
-                >
-                  <ThemedText style={styles.modalApplyButtonText}>
-                    {isApplying ? 'Applying...' : 'Apply Discount'}
-                  </ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+                  {/* Usage Limit */}
+                  {selectedDiscount.usageLimitPerUser && (
+                    <View style={styles.modalDetailRow}>
+                      <View style={styles.modalDetailIcon}>
+                        <Ionicons name="person-outline" size={18} color={Colors.primary[600]} />
+                      </View>
+                      <View style={styles.modalDetailContent}>
+                        <ThemedText style={styles.modalDetailLabel}>Usage Limit</ThemedText>
+                        <ThemedText style={styles.modalDetailValue}>
+                          {selectedDiscount.usageLimitPerUser} per user
+                        </ThemedText>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                {/* Terms */}
+                {(selectedDiscount.restrictions?.singleVoucherPerBill || selectedDiscount.restrictions?.isOfflineOnly) && (
+                  <View style={styles.modalTermsSection}>
+                    <ThemedText style={styles.modalTermsTitle}>Terms & Conditions</ThemedText>
+                    {selectedDiscount.restrictions?.singleVoucherPerBill && (
+                      <View style={styles.modalTermRow}>
+                        <View style={styles.termBullet} />
+                        <ThemedText style={styles.modalTermText}>Single voucher per bill</ThemedText>
+                      </View>
+                    )}
+                    {selectedDiscount.restrictions?.isOfflineOnly && (
+                      <View style={styles.modalTermRow}>
+                        <View style={styles.termBullet} />
+                        <ThemedText style={styles.modalTermText}>Available for offline purchases only</ThemedText>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </ScrollView>
+            )}
+
+            {/* Apply Button */}
+            {selectedDiscount && (
+              <View style={styles.modalFooter}>
+                {productPrice >= (selectedDiscount.minOrderValue || 0) ? (
+                  <TouchableOpacity
+                    style={styles.applyButton}
+                    onPress={() => handleApplyDiscount(selectedDiscount)}
+                    disabled={isApplying}
+                  >
+                    <LinearGradient
+                      colors={['#8B5CF6', '#7C3AED']}
+                      style={styles.applyButtonGradient}
+                    >
+                      <ThemedText style={styles.applyButtonText}>
+                        {isApplying ? 'Applying...' : 'Apply Offer'}
+                      </ThemedText>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.lockedButtonContainer}>
+                    <View style={styles.lockedButton}>
+                      <Ionicons name="lock-closed" size={16} color={Colors.gray[500]} />
+                      <ThemedText style={styles.lockedButtonText}>
+                        Add ₹{(selectedDiscount.minOrderValue || 0) - productPrice} more to unlock
+                      </ThemedText>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         </View>
       </Modal>
     </View>
-);
+  );
 });
 
 const styles = StyleSheet.create({
-  // Modern Container
   container: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.base,
+    paddingVertical: Spacing.md,
     backgroundColor: Colors.background.primary,
   },
 
-  // Modern Card with Purple Tint
-  card: {
+  // Header Styles
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.background.purpleLight,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.lg + 1,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.primary[100],
-    ...Shadows.purpleSubtle,
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
   },
-  textContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-
-  // Modern Typography
-  title: {
-    ...Typography.bodyLarge,
-    fontWeight: '700',
-    color: Colors.primary[600],
-    marginBottom: Spacing.xs,
-    lineHeight: 20,
-  },
-  subtitle: {
-    ...Typography.body,
-    color: Colors.gray[600],
-    lineHeight: 18,
-  },
-  errorText: {
-    ...Typography.caption,
-    color: Colors.error,
-    marginTop: Spacing.xs,
-  },
-
-  // Modern Badge with Purple Shadow
-  badge: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.md,
+  headerIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: Colors.primary[600],
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: Spacing.base,
-    ...Shadows.purpleMedium,
-  },
-  badgeIcon: {
-    fontSize: 22,
-    color: Colors.text.white,
-    lineHeight: 22,
-  },
-
-  // Modern Divider
-  divider: {
-    marginTop: Spacing.md,
-    borderBottomWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: Colors.gray[100],
-    opacity: 0.9,
-  },
-  // Modern Details Card
-  detailsCard: {
-    marginTop: Spacing.lg,
-    backgroundColor: Colors.background.secondary,
-    borderRadius: BorderRadius['2xl'],
-    padding: Spacing['2xl'] - 8,
-    ...Shadows.medium,
-    position: 'relative',
-  },
-  saveBadge: {
-    position: 'absolute',
-    top: Spacing.lg,
-    right: Spacing.lg,
-    backgroundColor: Colors.background.primary,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.sm + 2,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.gray[200],
-  },
-  saveBadgeText: {
-    ...Typography.caption,
-    color: Colors.gray[900],
-    fontWeight: '700',
-  },
-  iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: BorderRadius.full,
-    backgroundColor: '#FEF3C7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.base,
-  },
-  detailsTitle: {
-    ...Typography.h3,
-    fontWeight: '700',
-    color: Colors.primary[600],
-    marginBottom: Spacing.base,
-  },
-  minimumBillRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.base,
-  },
-  minimumBillLabel: {
-    ...Typography.body,
-    color: Colors.gray[600],
     marginRight: Spacing.sm,
   },
-  minimumBillValue: {
+  headerTitle: {
     ...Typography.h4,
     fontWeight: '700',
     color: Colors.gray[900],
   },
-  // Modern Info Row
-  infoRow: {
+  countBadge: {
+    backgroundColor: Colors.primary[100],
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: Spacing.sm,
+  },
+  countText: {
+    ...Typography.caption,
+    fontWeight: '700',
+    color: Colors.primary[600],
+  },
+
+  // Scroll Content
+  scrollContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+  },
+
+  // Discount Card Styles
+  discountCard: {
+    width: CARD_WIDTH,
+    marginRight: CARD_MARGIN,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    ...Shadows.medium,
+  },
+  discountCardLocked: {
+    opacity: 0.85,
+  },
+  cardGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
-    gap: Spacing.sm + 2,
+    padding: Spacing.md,
+    minHeight: 90,
   },
-  infoText: {
-    ...Typography.body,
-    color: Colors.primary[600],
-    fontWeight: '500',
+
+  // Discount Badge
+  discountBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginRight: Spacing.md,
   },
-  dividerVertical: {
-    width: 1,
-    height: 12,
-    backgroundColor: Colors.gray[300],
-    marginHorizontal: Spacing.xs,
+  discountBadgeText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFF',
+    lineHeight: 24,
   },
-  moreDetailsButton: {
+  discountBadgeSubtext: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: 1,
+  },
+
+  // Lock Badge
+  lockBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
+    padding: 4,
+  },
+
+  // Card Content
+  cardContent: {
+    flex: 1,
+  },
+  cardTitle: {
+    ...Typography.bodyLarge,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  minOrderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  minOrderText: {
+    ...Typography.caption,
+    color: 'rgba(255,255,255,0.8)',
+    marginLeft: 4,
+  },
+  unlockRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  moreDetailsText: {
-    ...Typography.body,
-    color: Colors.primary[600],
-    fontWeight: '500',
+  unlockText: {
+    ...Typography.caption,
+    color: '#FCD34D',
+    fontWeight: '600',
+    marginLeft: 4,
   },
-  infoIcon: {
-    marginLeft: Spacing.xs,
+  eligibleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
+  eligibleText: {
+    ...Typography.caption,
+    color: '#34D399',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+
+  // Arrow Container
+  arrowContainer: {
+    marginLeft: Spacing.sm,
+  },
+
+  // Loading & Error States
+  loadingContainer: {
+    height: 90,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    paddingHorizontal: Spacing.lg,
+    alignItems: 'center',
+  },
+  errorText: {
+    ...Typography.caption,
+    color: Colors.error,
+    marginBottom: Spacing.sm,
+  },
+
   // Modal Styles
   modalOverlay: {
     flex: 1,
@@ -673,7 +583,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background.primary,
     borderTopLeftRadius: BorderRadius['2xl'],
     borderTopRightRadius: BorderRadius['2xl'],
-    maxHeight: '90%',
+    maxHeight: '85%',
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
   },
   modalHeader: {
@@ -683,7 +593,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.gray[200],
+    borderBottomColor: Colors.gray[100],
   },
   modalTitle: {
     ...Typography.h3,
@@ -695,137 +605,133 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
   },
-  modalDiscountHeader: {
+
+  // Modal Offer Header
+  modalOfferHeader: {
     alignItems: 'center',
-    marginBottom: Spacing.xl,
+    paddingVertical: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+    marginVertical: Spacing.lg,
   },
-  modalIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: BorderRadius.full,
-    backgroundColor: '#FEF3C7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.base,
+  modalOfferValue: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: '#FFF',
+    lineHeight: 52,
   },
-  modalDiscountTitle: {
-    ...Typography.h3,
+  modalOfferLabel: {
+    fontSize: 14,
     fontWeight: '700',
-    color: Colors.primary[600],
+    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: 2,
     marginBottom: Spacing.sm,
-    textAlign: 'center',
   },
-  modalDiscountDescription: {
+  modalOfferName: {
     ...Typography.body,
-    color: Colors.gray[600],
+    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
   },
-  modalInfoCard: {
-    backgroundColor: Colors.background.secondary,
+
+  // Modal Details Section
+  modalDetailsSection: {
+    backgroundColor: Colors.gray[50],
     borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    padding: Spacing.md,
     marginBottom: Spacing.lg,
   },
-  modalSectionTitle: {
-    ...Typography.h4,
-    fontWeight: '700',
-    color: Colors.gray[900],
-    marginBottom: Spacing.base,
-  },
-  modalInfoRow: {
+  modalDetailRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    paddingVertical: Spacing.sm,
   },
-  modalInfoLabel: {
-    ...Typography.body,
-    color: Colors.gray[600],
+  modalDetailIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  modalDetailContent: {
     flex: 1,
   },
-  modalInfoValue: {
+  modalDetailLabel: {
+    ...Typography.caption,
+    color: Colors.gray[500],
+  },
+  modalDetailValue: {
     ...Typography.body,
     fontWeight: '600',
     color: Colors.gray[900],
-    flex: 1,
-    textAlign: 'right',
   },
-  modalRestrictionRow: {
+
+  // Modal Terms Section
+  modalTermsSection: {
+    marginBottom: Spacing.lg,
+  },
+  modalTermsTitle: {
+    ...Typography.bodyLarge,
+    fontWeight: '600',
+    color: Colors.gray[900],
+    marginBottom: Spacing.sm,
+  },
+  modalTermRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
-  modalRestrictionText: {
+  termBullet: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.gray[400],
+    marginRight: Spacing.sm,
+  },
+  modalTermText: {
     ...Typography.body,
     color: Colors.gray[600],
-    flex: 1,
   },
+
+  // Modal Footer
   modalFooter: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: Colors.gray[200],
+    borderTopColor: Colors.gray[100],
   },
-  modalApplyButton: {
-    borderRadius: BorderRadius.md,
+  applyButton: {
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    marginBottom: Spacing.base,
   },
-  modalApplyButtonGradient: {
-    paddingVertical: Spacing.md,
+  applyButtonGradient: {
+    paddingVertical: Spacing.md + 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalApplyButtonText: {
-    ...Typography.h4,
-    color: Colors.text.white,
+  applyButtonText: {
+    ...Typography.bodyLarge,
+    color: '#FFF',
     fontWeight: '700',
   },
-
-  // Modern Restrictions
-  restrictionsContainer: {
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.base,
-    marginBottom: Spacing.lg,
+  lockedButtonContainer: {
+    alignItems: 'center',
   },
-  restrictionRow: {
+  lockedButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  bulletPoint: {
-    width: 4,
-    height: 4,
-    borderRadius: BorderRadius.xs,
-    backgroundColor: Colors.gray[600],
-    marginRight: Spacing.sm,
-  },
-  restrictionText: {
-    ...Typography.caption,
-    color: Colors.gray[600],
-    flex: 1,
-  },
-
-  // Modern Button
-  addButtonWrapper: {
-    borderRadius: BorderRadius.md,
-    overflow: 'hidden',
-  },
-  addButton: {
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.gray[100],
+    paddingVertical: Spacing.md + 2,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    width: '100%',
   },
-  addButtonDisabled: {
-    opacity: 0.6,
-  },
-  addButtonText: {
-    ...Typography.h4,
-    color: Colors.text.white,
-    fontWeight: '700',
+  lockedButtonText: {
+    ...Typography.body,
+    color: Colors.gray[500],
+    fontWeight: '600',
+    marginLeft: Spacing.sm,
   },
 });

@@ -635,11 +635,6 @@ class AuthService {
     try {
       apiClient.setAuthToken(token);
 
-      if (token) {
-        console.log('[AUTH API] Authentication token set');
-      } else {
-        console.log('[AUTH API] Authentication token cleared');
-      }
     } catch (error) {
       console.error('[AUTH API] Error setting auth token:', error);
     }

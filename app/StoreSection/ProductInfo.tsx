@@ -20,6 +20,31 @@ import useRecommendations from "@/hooks/useRecommendations";
 import SimilarProducts from "@/components/products/SimilarProducts";
 import FrequentlyBoughtTogether from "@/components/products/FrequentlyBoughtTogether";
 import BundleDeals from "@/components/products/BundleDeals";
+import { useLocation } from "@/contexts/LocationContext";
+
+// Haversine formula for distance calculation between two coordinates
+function calculateDistance(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number
+): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10; // Distance in km, rounded to 1 decimal
+}
+
+interface StoreLocation {
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  coordinates?: [number, number]; // [longitude, latitude]
+  deliveryRadius?: number;
+}
 
 interface ProductInfoProps {
   dynamicData?: {
@@ -30,6 +55,20 @@ interface ProductInfoProps {
     category?: string;
     section?: string;
     productType?: 'product' | 'service';
+    store?: {
+      _id?: string;
+      id?: string;
+      name?: string;
+      logo?: string;
+      location?: StoreLocation;
+      operationalInfo?: {
+        deliveryTime?: string;
+      };
+      ratings?: {
+        average?: number;
+        count?: number;
+      };
+    };
     [key: string]: any;
   } | null;
   cardType?: string;
@@ -37,10 +76,30 @@ interface ProductInfoProps {
 
 export default function ProductScreen({ dynamicData, cardType }: ProductInfoProps) {
   const router = useRouter();
+  const { state: locationState } = useLocation();
   const [active, setActive] = useState("visit"); // 'visit' | 'book'
   const translateX = useRef(new Animated.Value(0)).current;
   const containerWidthRef = useRef(0);
   const { width: screenW } = useWindowDimensions();
+
+  // Calculate distance from user to store
+  const getDistanceText = () => {
+    const storeCoords = dynamicData?.store?.location?.coordinates;
+    const userCoords = locationState.currentLocation?.coordinates;
+
+    if (storeCoords && storeCoords.length === 2 && userCoords) {
+      const distance = calculateDistance(
+        userCoords.latitude,
+        userCoords.longitude,
+        storeCoords[1], // latitude (MongoDB stores as [lng, lat])
+        storeCoords[0]  // longitude
+      );
+      return `${distance} km`;
+    }
+    return null;
+  };
+
+  const distanceText = getDistanceText();
 
   // Use dynamic data if available, show loading state if not
   const productTitle = dynamicData?.title || "Loading...";
@@ -172,29 +231,46 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
           {/* Dynamic availability and location */}
           <View style={styles.locationRow}>
             <Ionicons name="location" size={14} color="#7C3AED" />
+            {distanceText ? (
+              <Text style={styles.distanceText}>{distanceText}</Text>
+            ) : null}
             <Text style={styles.locationText}>
-              {dynamicData?.store?.location?.address ||
-               dynamicData?.store?.location?.city ||
-               (typeof dynamicData?.location === 'string' ? dynamicData.location :
-                typeof dynamicData?.location === 'object' ? (dynamicData.location.address || dynamicData.location.city || "Location not available") :
-                "Location not available")}
+              {(() => {
+                // Get location text from store or product
+                const storeLocation = dynamicData?.store?.location;
+                if (storeLocation?.address) {
+                  return storeLocation.city && storeLocation.address !== storeLocation.city
+                    ? `${storeLocation.address}, ${storeLocation.city}`
+                    : storeLocation.address;
+                }
+                if (storeLocation?.city) {
+                  return storeLocation.city;
+                }
+                // Fallback to product location
+                if (typeof dynamicData?.location === 'string') {
+                  return dynamicData.location;
+                }
+                if (typeof dynamicData?.location === 'object' && dynamicData.location) {
+                  return dynamicData.location.address || dynamicData.location.city || "Location not available";
+                }
+                return "Location not available";
+              })()}
             </Text>
-            {dynamicData?.store && (
+            {dynamicData?.store ? (
               <View style={styles.openBadge}>
                 <Text style={styles.openText}>
-                  • {dynamicData.availabilityStatus === 'in_stock' || dynamicData.availabilityStatus === 'low_stock' ? 'in stock' : 'available'}
+                  {dynamicData.availabilityStatus === 'in_stock' || dynamicData.availabilityStatus === 'low_stock' ? '• in stock' : '• available'}
                 </Text>
               </View>
-            )}
-            {(dynamicData?.computedDelivery || dynamicData?.store?.operationalInfo?.deliveryTime || dynamicData?.deliveryInfo?.estimatedDays) && (
-              <>
-                <View style={{ marginLeft: 8 }} />
+            ) : null}
+            {(dynamicData?.computedDelivery || dynamicData?.store?.operationalInfo?.deliveryTime || dynamicData?.deliveryInfo?.estimatedDays) ? (
+              <View style={styles.deliveryTimeRow}>
                 <Ionicons name="time-outline" size={14} color="#6B7280" />
                 <Text style={[styles.locationText, { marginLeft: 4 }]}>
                   {dynamicData?.computedDelivery || dynamicData?.store?.operationalInfo?.deliveryTime || dynamicData?.deliveryInfo?.estimatedDays}
                 </Text>
-              </>
-            )}
+              </View>
+            ) : null}
           </View>
 
           {/* Store Visit Card - For Products */}
@@ -430,8 +506,10 @@ const styles = StyleSheet.create({
     borderRadius: 6, marginLeft: 8
   },
   discountText: { fontSize: 12, fontWeight: "700", color: "#fff" },
-  locationRow: { flexDirection: "row", alignItems: "center",padding: 10 },
-  locationText: { fontSize: 13, marginLeft: 6, color: "#555" },
+  locationRow: { flexDirection: "row", alignItems: "center", padding: 10, flexWrap: "wrap" },
+  locationText: { fontSize: 13, marginLeft: 6, color: "#555", flexShrink: 1 },
+  distanceText: { fontSize: 14, marginLeft: 6, color: "#7C3AED", fontWeight: "700" },
+  deliveryTimeRow: { flexDirection: "row", alignItems: "center", marginLeft: 8 },
   openBadge: {
     marginLeft: 8,
     backgroundColor: "#16A34A",

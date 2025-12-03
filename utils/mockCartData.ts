@@ -155,7 +155,11 @@ export const getItemCount = (items: CartItem[]): number => {
 
 // Locked Products Utility Functions
 export const calculateLockedTotal = (items: LockedProduct[]): number => {
-  return items.reduce((total, item) => total + item.price, 0);
+  return items.reduce((total, item) => {
+    // For paid locks, subtract the lock fee since it's already paid
+    const lockFee = item.isPaidLock && item.lockFee ? item.lockFee : 0;
+    return total + (item.price - lockFee);
+  }, 0);
 };
 
 export const getLockedItemCount = (items: LockedProduct[]): number => {

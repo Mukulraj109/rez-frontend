@@ -36,6 +36,7 @@ export interface WalletTransaction {
 export interface WalletData {
   userId: string;
   totalBalance: number;
+  availableBalance: number; // Actual wallet balance (excludes paybill)
   currency: string;
   formattedTotalBalance: string;
   coins: CoinBalance[];

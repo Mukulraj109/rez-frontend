@@ -57,7 +57,7 @@ export const RelatedProductsSection: React.FC<RelatedProductsSectionProps> = ({
       onProductPress(product.id);
     } else {
       // Navigate to product detail page
-      router.push(`/product/${product.id}` as any);
+      router.push(`/ProductPage?cardId=${product.id}&cardType=product` as any);
     }
   };
 
@@ -142,6 +142,12 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, isFirst, isLast }) => {
+  // Safely parse rating and price as numbers
+  const rating = typeof product.rating === 'number' ? product.rating : parseFloat(product.rating as any) || 0;
+  const price = typeof product.price === 'number' ? product.price : parseFloat(product.price as any) || 0;
+  const originalPrice = typeof product.originalPrice === 'number' ? product.originalPrice : parseFloat(product.originalPrice as any) || 0;
+  const reviewCount = typeof product.reviewCount === 'number' ? product.reviewCount : parseInt(product.reviewCount as any) || 0;
+
   return (
     <TouchableOpacity
       style={[
@@ -174,6 +180,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, isFirst, is
 
       {/* Product Info */}
       <View style={styles.infoContainer}>
+        {/* Category */}
+        {product.category && (
+          <ThemedText style={styles.category} numberOfLines={1}>
+            {product.category}
+          </ThemedText>
+        )}
+
         {/* Brand */}
         {product.brand && (
           <ThemedText style={styles.brand} numberOfLines={1}>
@@ -189,16 +202,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, isFirst, is
         {/* Rating */}
         <View style={styles.ratingRow}>
           <Ionicons name="star" size={12} color="#FFD700" />
-          <ThemedText style={styles.rating}>{product.rating.toFixed(1)}</ThemedText>
-          <ThemedText style={styles.reviewCount}>({product.reviewCount})</ThemedText>
+          <ThemedText style={styles.rating}>{rating.toFixed(1)}</ThemedText>
+          <ThemedText style={styles.reviewCount}>({reviewCount})</ThemedText>
         </View>
 
         {/* Price */}
         <View style={styles.priceRow}>
-          <ThemedText style={styles.price}>₹{product.price.toLocaleString()}</ThemedText>
-          {product.originalPrice && (
+          <ThemedText style={styles.price}>₹{price.toLocaleString()}</ThemedText>
+          {originalPrice > 0 && (
             <ThemedText style={styles.originalPrice}>
-              ₹{product.originalPrice.toLocaleString()}
+              ₹{originalPrice.toLocaleString()}
             </ThemedText>
           )}
         </View>
@@ -351,6 +364,14 @@ const styles = StyleSheet.create({
   // Info
   infoContainer: {
     padding: 12,
+  },
+  category: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   brand: {
     fontSize: 11,

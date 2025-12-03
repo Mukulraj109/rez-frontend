@@ -26,9 +26,6 @@ export async function saveAuthToken(token: string): Promise<void> {
     // On web, also save to localStorage for persistence across redirects
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, token);
-      console.log('✅ [AUTH STORAGE] Token saved to both AsyncStorage and localStorage');
-    } else {
-      console.log('✅ [AUTH STORAGE] Token saved to AsyncStorage');
     }
   } catch (error) {
     console.error('❌ [AUTH STORAGE] Error saving token:', error);
@@ -80,7 +77,6 @@ export async function getAuthToken(): Promise<string | null> {
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
       const localStorageToken = window.localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
       if (localStorageToken) {
-        console.log('✅ [AUTH STORAGE] Token found in localStorage');
         // Sync to AsyncStorage
         await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, localStorageToken);
         return localStorageToken;
@@ -88,13 +84,7 @@ export async function getAuthToken(): Promise<string | null> {
     }
 
     // Fallback to AsyncStorage
-    const token = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-    if (token) {
-      console.log('✅ [AUTH STORAGE] Token found in AsyncStorage');
-    } else {
-      console.log('⚠️ [AUTH STORAGE] No token found');
-    }
-    return token;
+    return await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
   } catch (error) {
     console.error('❌ [AUTH STORAGE] Error getting token:', error);
     return null;
@@ -162,7 +152,6 @@ export async function clearAuthData(): Promise<void> {
       window.localStorage.removeItem(STORAGE_KEYS.USER);
     }
 
-    console.log('✅ [AUTH STORAGE] All auth data cleared');
   } catch (error) {
     console.error('❌ [AUTH STORAGE] Error clearing auth data:', error);
     throw error;
@@ -179,7 +168,6 @@ export async function saveAuthData(accessToken: string, refreshToken: string, us
       saveRefreshToken(refreshToken),
       saveUser(user),
     ]);
-    console.log('✅ [AUTH STORAGE] All auth data saved successfully');
   } catch (error) {
     console.error('❌ [AUTH STORAGE] Error saving auth data:', error);
     throw error;

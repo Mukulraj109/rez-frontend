@@ -112,6 +112,7 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
       }
 
       try {
+        // Use wishlistApi - backend supports this endpoint
         const response = await wishlistApi.checkWishlistStatus('store', storeId);
         if (response.success && response.data?.inWishlist) {
           setIsFollowing(true);
@@ -173,23 +174,25 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
     }
 
     triggerImpact('Medium');
+
+    // Optimistic update
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+    onFollowChange?.(!wasFollowing); // Notify parent immediately
     setIsLoading(true);
 
     try {
-      if (isFollowing) {
-        // Unfollow store
+      if (wasFollowing) {
+        // Unfollow store - use wishlistApi (backend supports this)
         const response = await wishlistApi.removeFromWishlist('store', storeId);
         if (response.success) {
-          setIsFollowing(false);
-          onFollowChange?.(false); // Notify parent
           triggerNotification('Success');
           animateHeart();
         } else {
-          triggerNotification('Error');
-          showAlert('Error', response.message || 'Failed to unfollow store', undefined, 'error');
+          throw new Error(response.message || 'Failed to unfollow');
         }
       } else {
-        // Follow store
+        // Follow store - use wishlistApi (backend supports this)
         const response = await wishlistApi.addToWishlist({
           itemType: 'store',
           itemId: storeId,
@@ -198,8 +201,6 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
         });
 
         if (response.success) {
-          setIsFollowing(true);
-          onFollowChange?.(true); // Notify parent
           triggerNotification('Success');
           animateHeart();
           showAlert(
@@ -209,11 +210,13 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
             'success'
           );
         } else {
-          triggerNotification('Error');
-          showAlert('Error', response.message || 'Failed to follow store', undefined, 'error');
+          throw new Error(response.message || 'Failed to follow');
         }
       }
     } catch (error) {
+      // Revert on error
+      setIsFollowing(wasFollowing);
+      onFollowChange?.(wasFollowing); // Revert parent state
       triggerNotification('Error');
       showAlert('Error', 'Something went wrong. Please try again.', undefined, 'error');
     } finally {

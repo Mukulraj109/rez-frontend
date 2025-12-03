@@ -12,9 +12,15 @@ import cacheService from '@/services/cacheService';
 import {
   CartItem as UnifiedCartItemType,
   toCartItem,
-  validateCartItem,
+  validateCartItem as validateUnifiedCartItem,
   isCartItemAvailable
 } from '@/types/unified';
+import {
+  validateCartItem,
+  validateQuantity,
+  MAX_QUANTITY_PER_ITEM,
+  MIN_QUANTITY,
+} from '@/utils/cartValidation';
 
 // Extended cart item with quantity and selected state
 interface CartItemWithQuantity extends CartItemType {
@@ -75,9 +81,12 @@ const calculateTotals = (items: CartItemWithQuantity[]) => {
   const totalItems = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = selectedItems.reduce((sum, item) => {
     const price = item.discountedPrice || item.originalPrice || 0;
-    return sum + (price * item.quantity);
+    const discount = item.discount || 0; // Lock fee discount (only applies to lockedQuantity items)
+    // Total = (price × quantity) - discount
+    // This ensures: 2 items at ₹10,000 = ₹20,000, minus ₹500 lock fee = ₹19,500
+    return sum + (price * item.quantity) - discount;
   }, 0);
-  
+
   return { totalItems, totalPrice };
 };
 
@@ -103,13 +112,38 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return { ...state, error: action.payload, isLoading: false };
     
     case 'ADD_ITEM': {
+      // Validate cart item structure
+      const itemValidation = validateCartItem(action.payload);
+      if (!itemValidation.valid) {
+        console.error('🛒 [CartReducer] Invalid cart item:', itemValidation.error);
+        return {
+          ...state,
+          error: itemValidation.error || 'Invalid cart item',
+        };
+      }
+
       const existingItem = state.items.find(item => item.id === action.payload.id);
       let newItems: CartItemWithQuantity[];
-      
+
       // Preserve metadata from payload
       const payloadMetadata = (action.payload as any).metadata;
-      
+
       if (existingItem) {
+        // Validate quantity increase
+        const quantityValidation = validateQuantity(
+          1, // Adding 1 more
+          MAX_QUANTITY_PER_ITEM,
+          existingItem.quantity
+        );
+
+        if (!quantityValidation.valid) {
+          console.warn('🛒 [CartReducer] Quantity limit reached:', quantityValidation.error);
+          return {
+            ...state,
+            error: quantityValidation.error || 'Cannot add more items',
+          };
+        }
+
         // Increase quantity if item already exists
         newItems = state.items.map(item =>
           item.id === action.payload.id
@@ -117,6 +151,16 @@ function cartReducer(state: CartState, action: CartAction): CartState {
             : item
         );
       } else {
+        // Validate initial quantity
+        const quantityValidation = validateQuantity(1, MAX_QUANTITY_PER_ITEM, 0);
+        if (!quantityValidation.valid) {
+          console.error('🛒 [CartReducer] Invalid quantity:', quantityValidation.error);
+          return {
+            ...state,
+            error: quantityValidation.error || 'Invalid quantity',
+          };
+        }
+
         // Add new item
         const newItem: CartItemWithQuantity = {
           ...action.payload,
@@ -127,15 +171,16 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         };
         newItems = [...state.items, newItem];
       }
-      
+
       const { totalItems: newTotalItems, totalPrice: newTotalPrice } = calculateTotals(newItems);
-      
+
       return {
         ...state,
         items: newItems,
         totalItems: newTotalItems,
         totalPrice: newTotalPrice,
         lastUpdated: new Date().toISOString(),
+        error: null, // Clear any previous errors
       };
     }
     
@@ -154,32 +199,45 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     
     case 'UPDATE_QUANTITY': {
       const { id, quantity } = action.payload;
-      
+
+      // Allow quantity 0 for removal
       if (quantity <= 0) {
         // Remove item if quantity is 0 or less
         const newItems = state.items.filter(item => item.id !== id);
         const { totalItems: newTotalItems, totalPrice: newTotalPrice } = calculateTotals(newItems);
-        
+
         return {
           ...state,
           items: newItems,
           totalItems: newTotalItems,
           totalPrice: newTotalPrice,
           lastUpdated: new Date().toISOString(),
+          error: null,
         };
       }
-      
+
+      // Validate quantity
+      const quantityValidation = validateQuantity(quantity, MAX_QUANTITY_PER_ITEM, 0);
+      if (!quantityValidation.valid) {
+        console.warn('🛒 [CartReducer] Invalid quantity update:', quantityValidation.error);
+        return {
+          ...state,
+          error: quantityValidation.error || 'Invalid quantity',
+        };
+      }
+
       const newItems = state.items.map(item =>
         item.id === id ? { ...item, quantity } : item
       );
       const { totalItems: newTotalItems, totalPrice: newTotalPrice } = calculateTotals(newItems);
-      
+
       return {
         ...state,
         items: newItems,
         totalItems: newTotalItems,
         totalPrice: newTotalPrice,
         lastUpdated: new Date().toISOString(),
+        error: null,
       };
     }
     
@@ -302,7 +360,8 @@ export function CartProvider({ children }: CartProviderProps) {
               image: item.image,
               originalPrice: item.originalPrice,
               discountedPrice: item.price,
-              discount: item.discount,
+              discount: item.discount, // Lock fee discount
+              lockedQuantity: item.lockedQuantity, // How many items have lock fee applied
               quantity: item.quantity,
               selected: true,
               addedAt: item.addedAt,

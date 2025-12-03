@@ -127,7 +127,7 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
       if (onProductPress) {
         onProductPress(productId, product);
       } else {
-        router.push(`/product/${productId}`);
+        router.push(`/ProductPage?cardId=${productId}&cardType=product` as any);
       }
     },
     [onProductPress, router]

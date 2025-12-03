@@ -24,6 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
 import { GalleryItem } from '@/services/storeGalleryApi';
 import storeGalleryApi from '@/services/storeGalleryApi';
+import productGalleryApi from '@/services/productGalleryApi';
 import ZoomableImage from './ZoomableImage';
 import analyticsService from '@/services/analyticsService';
 import { useGalleryImagePreloader } from './GalleryImagePreloader';
@@ -36,6 +37,7 @@ interface GalleryViewerModalProps {
   initialIndex: number;
   storeId: string;
   onClose: () => void;
+  type?: 'store' | 'product'; // Add type prop
 }
 
 export default function GalleryViewerModal({
@@ -44,6 +46,7 @@ export default function GalleryViewerModal({
   initialIndex,
   storeId,
   onClose,
+  type = 'store', // Default to 'store' for backward compatibility
 }: GalleryViewerModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,22 +77,33 @@ export default function GalleryViewerModal({
       if (items[initialIndex] && !viewedItems.has(items[initialIndex].id)) {
         // Mark as viewed
         setViewedItems(prev => new Set(prev).add(items[initialIndex].id));
-        
-        // Track view and update view count
-        storeGalleryApi.trackView(storeId, items[initialIndex].id).then((newViewCount) => {
-          if (newViewCount > 0) {
-            setViewCounts(prev => ({
-              ...prev,
-              [items[initialIndex].id]: newViewCount,
-            }));
-          }
-        });
-        analyticsService.track('gallery_item_viewed', {
-          storeId,
-          itemId: items[initialIndex].id,
-          itemType: items[initialIndex].type,
-          category: items[initialIndex].category,
-        });
+
+        // Track view and update view count - use appropriate API based on type
+        if (type === 'product') {
+          // Product galleries don't have trackView endpoint yet, just track analytics
+          analyticsService.track('gallery_item_viewed', {
+            productId: storeId,
+            itemId: items[initialIndex].id,
+            itemType: items[initialIndex].type,
+            category: items[initialIndex].category,
+          });
+        } else {
+          // Store gallery
+          storeGalleryApi.trackView(storeId, items[initialIndex].id).then((newViewCount) => {
+            if (newViewCount > 0) {
+              setViewCounts(prev => ({
+                ...prev,
+                [items[initialIndex].id]: newViewCount,
+              }));
+            }
+          });
+          analyticsService.track('gallery_item_viewed', {
+            storeId,
+            itemId: items[initialIndex].id,
+            itemType: items[initialIndex].type,
+            category: items[initialIndex].category,
+          });
+        }
       }
       
       // Initialize view counts from items
@@ -128,23 +142,35 @@ export default function GalleryViewerModal({
       if (item && !viewedItems.has(item.id)) {
         // Mark as viewed
         setViewedItems(prev => new Set(prev).add(item.id));
-        
-        // Track view and update view count
-        storeGalleryApi.trackView(storeId, item.id).then((newViewCount) => {
-          if (newViewCount > 0) {
-            setViewCounts(prev => ({
-              ...prev,
-              [item.id]: newViewCount,
-            }));
-          }
-        });
-        analyticsService.track('gallery_item_viewed', {
-          storeId,
-          itemId: item.id,
-          itemType: item.type,
-          category: item.category,
-          index,
-        });
+
+        // Track view and update view count - use appropriate API based on type
+        if (type === 'product') {
+          // Product galleries don't have trackView endpoint yet, just track analytics
+          analyticsService.track('gallery_item_viewed', {
+            productId: storeId,
+            itemId: item.id,
+            itemType: item.type,
+            category: item.category,
+            index,
+          });
+        } else {
+          // Store gallery
+          storeGalleryApi.trackView(storeId, item.id).then((newViewCount) => {
+            if (newViewCount > 0) {
+              setViewCounts(prev => ({
+                ...prev,
+                [item.id]: newViewCount,
+              }));
+            }
+          });
+          analyticsService.track('gallery_item_viewed', {
+            storeId,
+            itemId: item.id,
+            itemType: item.type,
+            category: item.category,
+            index,
+          });
+        }
       }
     }
   };

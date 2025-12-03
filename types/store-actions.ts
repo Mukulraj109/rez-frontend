@@ -2,12 +2,57 @@
 
 export type StoreType = 'PRODUCT' | 'SERVICE';
 
+// ============================================
+// STORE ACTION BUTTON CONFIGURATION FROM BACKEND
+// ============================================
+
+// Button destination types
+export type ActionButtonDestinationType = 'phone' | 'url' | 'maps' | 'internal';
+
+// Button IDs
+export type ActionButtonId = 'call' | 'product' | 'location' | 'custom';
+
+// Single button configuration from store
+export interface StoreActionButtonConfig {
+  id: ActionButtonId;
+  enabled: boolean;
+  label?: string;
+  destination?: {
+    type: ActionButtonDestinationType;
+    value: string;
+  };
+  order?: number;
+}
+
+// Full action buttons configuration from store
+export interface StoreActionButtonsConfigFromStore {
+  enabled: boolean;
+  buttons: StoreActionButtonConfig[];
+}
+
+// Store data needed for button handlers
+export interface StoreDataForButtons {
+  storeId?: string;
+  storeName?: string;
+  phone?: string;
+  location?: {
+    address?: string;
+    city?: string;
+    coordinates?: [number, number];
+  };
+  name?: string;
+}
+
 export type ButtonState = 'enabled' | 'disabled' | 'loading';
 
 export interface StoreActionButtonsProps {
   // Core configuration
   storeType: StoreType;
-  
+
+  // Store action button configuration from backend
+  storeActionConfig?: StoreActionButtonsConfigFromStore;
+  storeData?: StoreDataForButtons;
+
   // Dynamic data support
   dynamicData?: {
     title?: string;

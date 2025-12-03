@@ -8,8 +8,6 @@ import StoreHeader from './StoreSection/StoreHeader';
 import ProductInfo from './StoreSection/ProductInfo';
 import StoreActionButtons from './StoreSection/StoreActionButtons';
 import NewSection from './StoreSection/NewSection';
-import Section1 from './StoreSection/Section1';
-import Section2 from './StoreSection/Section2';
 import Section3 from './StoreSection/Section3';
 import Section4 from './StoreSection/Section4';
 import Section5 from './StoreSection/Section5';
@@ -19,6 +17,10 @@ import ReviewList from '@/components/reviews/ReviewList';
 import ReviewForm from '@/components/reviews/ReviewForm';
 import AddedToCartModal from '@/components/cart/AddedToCartModal';
 import RelatedProductsSection from '@/components/product/RelatedProductsSection';
+import ProductGallerySection from '@/components/product/ProductGallerySection';
+import LockPriceModal from '@/components/product/LockPriceModal';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { showAlert } from '@/components/common/CrossPlatformAlert';
 import homepageDataService from '@/services/homepageDataService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -29,23 +31,47 @@ interface Store {
   _id?: string;
   id?: string;
   name?: string;
+  slug?: string;
   description?: string;
   logo?: string;
   banner?: string;
   phone?: string;
-  contact?: string;
+  contact?: {
+    phone?: string;
+    email?: string;
+    website?: string;
+    whatsapp?: string;
+  };
   ratings?: {
     average?: number;
     count?: number;
   };
   location?: {
-    lat?: number;
-    lng?: number;
     address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    coordinates?: [number, number]; // [longitude, latitude]
+    deliveryRadius?: number;
+    landmark?: string;
   };
   operationalInfo?: {
     deliveryTime?: string;
     minimumOrder?: number;
+  };
+  // Action buttons configuration for ProductPage
+  actionButtons?: {
+    enabled: boolean;
+    buttons: Array<{
+      id: 'call' | 'product' | 'location' | 'custom';
+      enabled: boolean;
+      label?: string;
+      destination?: {
+        type: 'phone' | 'url' | 'maps' | 'internal';
+        value: string;
+      };
+      order?: number;
+    }>;
   };
 }
 
@@ -127,7 +153,7 @@ export default function StorePage() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const { state: authState } = useAuth();
-  const { state: cartState } = useCart();
+  const { state: cartState, refreshCart } = useCart();
   const [cardData, setCardData] = useState<DynamicCardData | null>(null);
   const [isDynamic, setIsDynamic] = useState(false);
   const [backendData, setBackendData] = useState<DynamicCardData | null>(null);
@@ -138,6 +164,9 @@ export default function StorePage() {
   const [error, setError] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
   const [lockedItemId, setLockedItemId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [showQuantityPicker, setShowQuantityPicker] = useState(false);
+  const [showLockPriceModal, setShowLockPriceModal] = useState(false);
   const fetchedProductIdRef = useRef<string | null>(null);
 
   // Responsive breakpoints
@@ -163,33 +192,46 @@ export default function StorePage() {
         const productData = response.data;
         console.log('✅ [ProductPage] Backend returned product:', productData.name || productData.title);
         console.log('💰 [ProductPage] Backend price:', productData.pricing?.selling || productData.price?.current);
-        
+
         // Update cardData with real backend data using the correct structure
         const productType = (productData as any).productType || 'product';
 
-        // Determine correct price: prioritize price.current over pricing.selling if price object exists
-        const actualPrice = (productData as any).price?.current ||
-                           (productData as any).pricing?.selling ||
-                           0;
-        const actualOriginalPrice = (productData as any).price?.original ||
-                                   (productData as any).pricing?.compare ||
-                                   undefined;
-        const actualDiscount = (productData as any).price?.discount ||
-                              (productData as any).pricing?.discount ||
-                              0;
+        // Determine correct price: check if price is a direct number or an object
+        const priceField = (productData as any).price;
+        const actualPrice = typeof priceField === 'number' ? priceField :
+          (priceField?.current || priceField?.selling ||
+            (productData as any).pricing?.selling ||
+            (productData as any).pricing?.basePrice ||
+            0);
+        const originalPriceField = (productData as any).originalPrice;
+        const actualOriginalPrice = typeof originalPriceField === 'number' ? originalPriceField :
+          (originalPriceField?.original ||
+            (productData as any).price?.original ||
+            (productData as any).pricing?.compare ||
+            (productData as any).pricing?.mrp ||
+            undefined);
+        const actualDiscount = (productData as any).discount ||
+          (productData as any).price?.discount ||
+          (productData as any).pricing?.discount ||
+          0;
 
         // Determine correct rating: prioritize rating.value over ratings.average if rating object exists
         const actualRatingValue = (productData as any).rating?.value ||
-                                 productData.ratings?.average ||
-                                 0;
+          productData.ratings?.average ||
+          0;
         const actualReviewCount = (productData as any).rating?.count ||
-                                 productData.ratings?.count ||
-                                 0;
+          productData.ratings?.count ||
+          0;
 
         console.log('🔍 [ProductPage] Price resolution:');
+        console.log('   - price field type:', typeof priceField);
+        console.log('   - price field value:', priceField);
         console.log('   - price.current:', (productData as any).price?.current);
         console.log('   - pricing.selling:', (productData as any).pricing?.selling);
+        console.log('   - pricing.basePrice:', (productData as any).pricing?.basePrice);
         console.log('   - Using price:', actualPrice);
+        console.log('   - originalPrice field:', originalPriceField);
+        console.log('   - Using originalPrice:', actualOriginalPrice);
 
         console.log('🔍 [ProductPage] Rating resolution:');
         console.log('   - rating.value:', (productData as any).rating?.value);
@@ -198,6 +240,10 @@ export default function StorePage() {
         console.log('   - rating.count:', (productData as any).rating?.count);
         console.log('   - ratings.count:', productData.ratings?.count);
         console.log('   - Using count:', actualReviewCount);
+
+        // Debug: Log store data from backend
+        console.log('🏪 [ProductPage] Backend store data:', productData.store);
+        console.log('📍 [ProductPage] Backend store.location:', productData.store?.location);
 
         const updatedCardData: DynamicCardData = {
           id: (productData as any)._id || productData.id,
@@ -233,6 +279,7 @@ export default function StorePage() {
           deliveryInfo: (productData as any).deliveryInfo,
         };
 
+        console.log('📦 [ProductPage] updatedCardData.store:', updatedCardData.store);
         setCardData(updatedCardData);
 
         setBackendData(productData as any);
@@ -319,7 +366,7 @@ export default function StorePage() {
       checkLockStatus();
     }, [checkLockStatus])
   );
-  
+
   // Parse dynamic card data from navigation params
   useEffect(() => {
     // Only process if we have the required params and haven't already processed this cardId
@@ -389,80 +436,74 @@ export default function StorePage() {
   const handleBuyPress = async () => {
     try {
       if (!cardData?.id && !cardData?._id) {
-        Alert.alert('Error', 'Product information not available');
+        showAlert('Error', 'Product information not available', [{ text: 'OK' }], 'error');
         return;
       }
 
       const productId = cardData.id || cardData._id;
 
-      // Add to cart via API
+      // Add to cart via API with selected quantity
       const cartResponse = await cartApi.addToCart({
         productId: productId!,
-        quantity: 1,
+        quantity: quantity,
         variant: cardData.selectedVariant as any
       });
 
       if (cartResponse.success) {
+        // Refresh cart context to update cart badge/count
+        await refreshCart();
         // Show the added to cart modal
         setShowAddedToCartModal(true);
       } else {
-        Alert.alert('Error', cartResponse.message || 'Failed to add to cart');
+        showAlert('Error', cartResponse.message || 'Failed to add to cart', [{ text: 'OK' }], 'error');
       }
     } catch (error) {
       console.error('Add to cart error:', error);
-      Alert.alert('Error', 'Unable to add to cart. Please try again.');
+      showAlert('Error', 'Unable to add to cart. Please try again.', [{ text: 'OK' }], 'error');
     }
   };
 
   const handleLockPress = async () => {
-    try {
-      if (!cardData?.id && !cardData?._id) {
-        Alert.alert('Error', 'Product information not available');
-        return;
-      }
-
-      const productId = cardData.id || cardData._id;
-
-      // Lock price - lock item in cart at current price
-      const response = await cartApi.lockItem({
-        productId: productId!,
-        quantity: 1,
-        variant: cardData.selectedVariant as any,
-        lockDurationHours: 24
-      });
-
-      if (response.success) {
-        // Find the locked item ID from the response
-        const lockedItem = response.data?.cart?.lockedItems?.find(
-          (item: any) => item.product?._id === productId || item.product === productId
-        );
-        const actualLockedItemId = lockedItem?._id;
-
-        // Update lock state
-        setIsLocked(true);
-        setLockedItemId(actualLockedItemId || productId || null);
-
-        Alert.alert(
-          'Price Locked!',
-          `Price locked at ₹${cardData.price || cardData.pricing?.selling} for 24 hours. Check your cart's locked section to purchase later.`,
-          [
-            { text: 'OK', style: 'cancel' },
-            { text: 'View Cart', onPress: () => router.push('/CartPage') }
-          ]
-        );
-      } else {
-        Alert.alert('Error', response.message || 'Failed to lock price');
-      }
-    } catch (error) {
-      console.error('Lock error:', error);
-      Alert.alert('Error', 'Unable to lock price. Please try again.');
+    // Open the paid lock modal instead of directly locking
+    if (!cardData?.id && !cardData?._id) {
+      showAlert('Error', 'Product information not available', [{ text: 'OK' }], 'error');
+      return;
     }
+
+    // Open the LockPriceModal for paid lock (MakeMyTrip style)
+    setShowLockPriceModal(true);
+  };
+
+  // Handle successful lock with payment
+  const handleLockSuccess = async (lockDetails: {
+    lockFee: number;
+    duration: number;
+    expiresAt: string;
+    message: string;
+  }) => {
+    // Refresh cart context to update locked items count
+    await refreshCart();
+
+    // Update lock state
+    setIsLocked(true);
+    setLockedItemId(cardData?.id || cardData?._id || null);
+
+    // Show success alert using cross-platform modal
+    showAlert(
+      'Price Locked!',
+      lockDetails.message,
+      [
+        { text: 'OK', style: 'cancel' },
+        { text: 'View Cart', onPress: () => router.push('/CartPage') }
+      ],
+      'success'
+    );
   };
 
   const handleBookingPress = async () => {
     try {
       if (!cardData?.store?.id && !cardData?.store?._id) {
-        Alert.alert('Error', 'Store information not available');
+        showAlert('Error', 'Store information not available', [{ text: 'OK' }], 'error');
         return;
       }
 
@@ -478,7 +519,7 @@ export default function StorePage() {
       } as any);
     } catch (error) {
       console.error('Booking error:', error);
-      Alert.alert('Error', 'Unable to open booking. Please try again.');
+      showAlert('Error', 'Unable to open booking. Please try again.', [{ text: 'OK' }], 'error');
     }
   };
 
@@ -497,129 +538,228 @@ export default function StorePage() {
         ]}>
           {/* Pass dynamic data to components */}
           <StoreHeader
-          dynamicData={isDynamic ? cardData : null}
-          cardType={params.cardType as string}
-        />
-        <ProductInfo
-          dynamicData={isDynamic ? { ...cardData, analytics: productAnalytics } : null}
-          cardType={params.cardType as string}
-        />
+            dynamicData={isDynamic ? cardData : null}
+            cardType={params.cardType as string}
+          />
+          <ProductInfo
+            dynamicData={isDynamic ? { ...cardData, analytics: productAnalytics } : null}
+            cardType={params.cardType as string}
+          />
 
-        {/* Loading indicator when fetching backend data */}
-        {isLoadingBackend && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#8B5CF6" />
-            <ThemedText style={styles.loadingText}>Loading product details...</ThemedText>
-          </View>
-        )}
+          {/* Loading indicator when fetching backend data */}
+          {isLoadingBackend && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#8B5CF6" />
+              <ThemedText style={styles.loadingText}>Loading product details...</ThemedText>
+            </View>
+          )}
 
-        {/* Error state with retry */}
-        {error && !isLoadingBackend && (
-          <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
-            <ThemedText style={styles.errorTitle}>Oops! Something went wrong</ThemedText>
-            <ThemedText style={styles.errorMessage}>{error}</ThemedText>
-            <TouchableOpacity style={styles.retryButton} onPress={retryFetch} activeOpacity={0.8}>
-              <Ionicons name="refresh-outline" size={20} color="#fff" />
-              <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
-            </TouchableOpacity>
-          </View>
-        )}
-        
-        {/* Store Action Buttons */}
-        <StoreActionButtons
-          storeType={storeType}
-          onBuyPress={handleBuyPress}
-          onLockPress={handleLockPress}
-          onBookingPress={handleBookingPress}
-          customLockText="Lock Price"
-          customBookingText="Book Service"
-          dynamicData={isDynamic ? cardData : null}
-          isLocked={isLocked}
-        />
+          {/* Error state with retry */}
+          {error && !isLoadingBackend && (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+              <ThemedText style={styles.errorTitle}>Oops! Something went wrong</ThemedText>
+              <ThemedText style={styles.errorMessage}>{error}</ThemedText>
+              <TouchableOpacity style={styles.retryButton} onPress={retryFetch} activeOpacity={0.8}>
+                <Ionicons name="refresh-outline" size={20} color="#fff" />
+                <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
+              </TouchableOpacity>
+            </View>
+          )}
 
-        <NewSection
-          dynamicData={isDynamic ? cardData : null}
-          cardType={params.cardType as string}
-        />
-        <Section1 
-          dynamicData={isDynamic ? cardData : null}
-          cardType={params.cardType as string}
-        />
-        <Section2 
-          dynamicData={isDynamic ? cardData : null}
-          cardType={params.cardType as string}
-        />
-        <Section3
-          productPrice={cardData?.price || cardData?.pricing?.selling || 1000}
-          storeId={cardData?.storeId || cardData?.store?.id || cardData?.store?._id}
-        />
-        <Section4
-          productPrice={cardData?.price || cardData?.pricing?.selling || 1000}
-        />
-        <Section5 
-          dynamicData={isDynamic ? cardData : null}
-          cardType={params.cardType as string}
-        />
-        <Section6 
-          dynamicData={isDynamic ? cardData : null}
-          cardType={params.cardType as string}
-        />
-        
-
-        <CombinedSection78
-          dynamicData={isDynamic ? cardData : null}
-          cardType={params.cardType as string}
-        />
-
-        {/* Related Products Section */}
-        {isDynamic && cardData && (cardData.id || cardData._id) && (
-          <View style={styles.relatedProductsSection}>
-            <RelatedProductsSection
-              productId={cardData.id || cardData._id!}
-              title="You May Also Like"
-              type="similar"
-              limit={6}
-              onProductPress={(productId) => {
-                router.push({
-                  pathname: '/ProductPage',
-                  params: { cardId: productId, cardType: 'product' }
-                } as any);
-              }}
-            />
-          </View>
-        )}
-
-        {/* Reviews Section */}
-        <View style={styles.reviewsSection}>
-          <View style={styles.reviewsSectionHeader}>
-            <ThemedText style={styles.reviewsSectionTitle}>
-              Customer Reviews
-            </ThemedText>
+          {/* Quantity Selector - Amazon/Flipkart style dropdown */}
+          <View style={styles.quantitySelectorContainer}>
+            <ThemedText style={styles.quantityLabel}>Quantity:</ThemedText>
             <TouchableOpacity
-              style={styles.seeAllButton}
-              onPress={() => {
-                const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
-                if (storeId) {
-                  router.push(`/reviews/${storeId}`);
-                }
-              }}
-              activeOpacity={0.7}
+              style={styles.quantityDropdown}
+              onPress={() => setShowQuantityPicker(true)}
             >
-              <ThemedText style={styles.seeAllText}>See All</ThemedText>
-              <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+              <ThemedText style={styles.quantityValue}>{quantity}</ThemedText>
+              <Ionicons name="chevron-down" size={16} color="#7C3AED" />
             </TouchableOpacity>
           </View>
 
-          {(cardData?.storeId || cardData?.store?.id || cardData?.store?._id) && (
-            <ReviewList
-              storeId={cardData.storeId || cardData.store!.id || cardData.store!._id!}
-              onWriteReviewPress={() => setShowReviewForm(true)}
-              showWriteButton={true}
-              currentUserId={authState.user?.id}
+          {/* Quantity Picker Modal */}
+          <Modal
+            visible={showQuantityPicker}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowQuantityPicker(false)}
+          >
+            <TouchableOpacity
+              style={styles.quantityModalOverlay}
+              activeOpacity={1}
+              onPress={() => setShowQuantityPicker(false)}
+            >
+              <View style={styles.quantityModalContent}>
+                <View style={styles.quantityModalHeader}>
+                  <ThemedText style={styles.quantityModalTitle}>Select Quantity</ThemedText>
+                  <TouchableOpacity onPress={() => setShowQuantityPicker(false)}>
+                    <Ionicons name="close" size={24} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.quantityOptionsScroll} showsVerticalScrollIndicator={false}>
+                  {Array.from({ length: Math.min(cardData?.stock || cardData?.inventory?.stock || 10, 10) }, (_, i) => (
+                    <TouchableOpacity
+                      key={i + 1}
+                      style={[
+                        styles.quantityOption,
+                        quantity === i + 1 && styles.quantityOptionSelected
+                      ]}
+                      onPress={() => {
+                        setQuantity(i + 1);
+                        setShowQuantityPicker(false);
+                      }}
+                    >
+                      <ThemedText style={[
+                        styles.quantityOptionText,
+                        quantity === i + 1 && styles.quantityOptionTextSelected
+                      ]}>
+                        {i + 1}
+                      </ThemedText>
+                      {quantity === i + 1 && (
+                        <Ionicons name="checkmark" size={20} color="#7C3AED" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+
+          {/* Buy & Lock Buttons - Above Instagram */}
+          <StoreActionButtons
+            storeType={storeType}
+            onBuyPress={handleBuyPress}
+            onLockPress={handleLockPress}
+            onBookingPress={handleBookingPress}
+            customLockText="Lock Price"
+            customBookingText="Book Service"
+            dynamicData={isDynamic ? cardData : null}
+            isLocked={isLocked}
+            buttonGroup="buy-lock"
+          />
+
+          {/* Instagram Card */}
+          <NewSection
+            dynamicData={isDynamic ? cardData : null}
+            cardType={params.cardType as string}
+          />
+
+          {/* Call, Product, Location Buttons - Below Instagram */}
+          <StoreActionButtons
+            storeType={storeType}
+            storeActionConfig={cardData?.store?.actionButtons}
+            storeData={{
+              storeId: cardData?.store?._id || cardData?.store?.id || cardData?.storeId,
+              storeName: cardData?.store?.name,
+              phone: cardData?.store?.phone || cardData?.store?.contact?.phone,
+              location: cardData?.store?.location,
+              name: cardData?.store?.name,
+            }}
+            dynamicData={isDynamic ? cardData : null}
+            buttonGroup="store-actions"
+          />
+          <Section3
+            productPrice={cardData?.price || cardData?.pricing?.selling || 1000}
+            storeId={cardData?.storeId || cardData?.store?.id || cardData?.store?._id}
+          />
+          <Section4
+            productPrice={cardData?.price || cardData?.pricing?.selling || 1000}
+            storeId={cardData?.storeId || cardData?.store?.id || cardData?.store?._id}
+            onPress={() => {
+              const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
+              const storeName = cardData?.store?.name || 'Store';
+              const orderValue = cardData?.price || cardData?.pricing?.selling || 1000;
+              if (storeId) {
+                router.push(`/CardOffersPage?storeId=${storeId}&storeName=${encodeURIComponent(storeName)}&orderValue=${orderValue}`);
+              }
+            }}
+          />
+          <Section5
+            dynamicData={isDynamic ? cardData : null}
+            cardType={params.cardType as string}
+          />
+          <Section6
+            dynamicData={isDynamic ? cardData : null}
+            cardType={params.cardType as string}
+          />
+
+
+          <CombinedSection78
+            dynamicData={isDynamic ? cardData : null}
+            cardType={params.cardType as string}
+          />
+
+          {/* Product Gallery Section */}
+          {isDynamic && cardData && (cardData.id || cardData._id) && (
+            <ProductGallerySection
+              productId={cardData.id || cardData._id!}
+              variantId={cardData.selectedVariant?.id}
             />
           )}
-        </View>
+
+
+          {/* Related Products Section */}
+          {isDynamic && cardData && (cardData.id || cardData._id) && (
+            <View style={styles.relatedProductsSection}>
+              <ErrorBoundary
+                fallback={
+                  <View style={styles.errorFallback}>
+                    <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
+                    <ThemedText style={styles.errorText}>
+                      Unable to load recommendations
+                    </ThemedText>
+                  </View>
+                }
+              >
+                <RelatedProductsSection
+                  productId={cardData.id || cardData._id!}
+                  title="You May Also Like"
+                  type="similar"
+                  limit={6}
+                  onProductPress={(productId) => {
+                    router.push({
+                      pathname: '/ProductPage',
+                      params: { cardId: productId, cardType: 'product' }
+                    } as any);
+                  }}
+                />
+              </ErrorBoundary>
+            </View>
+          )}
+
+
+          {/* Reviews Section */}
+          <View style={styles.reviewsSection}>
+            <View style={styles.reviewsSectionHeader}>
+              <ThemedText style={styles.reviewsSectionTitle}>
+                Customer Reviews
+              </ThemedText>
+              <TouchableOpacity
+                style={styles.seeAllButton}
+                onPress={() => {
+                  const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
+                  if (storeId) {
+                    router.push(`/reviews/${storeId}`);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={styles.seeAllText}>See All</ThemedText>
+                <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+              </TouchableOpacity>
+            </View>
+
+            {(cardData?.storeId || cardData?.store?.id || cardData?.store?._id) && (
+              <ReviewList
+                storeId={cardData.storeId || cardData.store!.id || cardData.store!._id!}
+                onWriteReviewPress={() => setShowReviewForm(true)}
+                showWriteButton={true}
+                currentUserId={authState.user?.id}
+              />
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -672,6 +812,20 @@ export default function StorePage() {
           cartTotal={(cartState as any).total || 0}
         />
       )}
+
+      {/* Lock Price Modal (MakeMyTrip style) */}
+      {cardData && (
+        <LockPriceModal
+          visible={showLockPriceModal}
+          onClose={() => setShowLockPriceModal(false)}
+          productId={cardData.id || cardData._id || ''}
+          productName={cardData.title || cardData.name || ''}
+          productPrice={cardData.price || cardData.pricing?.selling || 0}
+          quantity={quantity}
+          variant={cardData.selectedVariant as any}
+          onLockSuccess={handleLockSuccess}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -685,6 +839,90 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
+  },
+  quantitySelectorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    gap: 12,
+  },
+  quantityLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  quantityDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#7C3AED',
+    backgroundColor: '#F5F3FF',
+    gap: 8,
+  },
+  quantityValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#7C3AED',
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  quantityModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    width: '80%',
+    maxWidth: 300,
+    maxHeight: 400,
+    overflow: 'hidden',
+  },
+  quantityModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  quantityModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  quantityOptionsScroll: {
+    maxHeight: 300,
+  },
+  quantityOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  quantityOptionSelected: {
+    backgroundColor: '#F5F3FF',
+  },
+  quantityOptionText: {
+    fontSize: 16,
+    color: '#374151',
+  },
+  quantityOptionTextSelected: {
+    color: '#7C3AED',
+    fontWeight: '600',
   },
   relatedProductsSection: {
     marginTop: 24,
@@ -789,5 +1027,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  errorFallback: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    margin: 16,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#DC2626',
+    textAlign: 'center',
   },
 });

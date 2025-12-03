@@ -18,6 +18,7 @@ export interface PaymentRequest {
   amount: number;
   currency: string;
   paymentMethod: string;
+  paymentMethodType: string; // Required by backend: 'credit_card', 'debit_card', 'upi', 'wallet', 'netbanking'
   paymentMethodId?: string;
   userDetails?: {
     name?: string;
@@ -184,6 +185,7 @@ class PaymentService {
       amount,
       currency: 'INR',
       paymentMethod: 'upi',
+      paymentMethodType: 'upi',
       metadata: {
         upiId: upiId || 'user@paytm',
         app: 'paytm'
@@ -197,7 +199,7 @@ class PaymentService {
    * Process card payment
    */
   async processCardPayment(
-    amount: number, 
+    amount: number,
     cardDetails: {
       number: string;
       expiry: string;
@@ -205,13 +207,15 @@ class PaymentService {
       name: string;
     }
   ): Promise<ApiResponse<PaymentResponse>> {
+    const cardType = this.detectCardType(cardDetails.number);
     const paymentRequest: PaymentRequest = {
       amount,
       currency: 'INR',
       paymentMethod: 'card',
+      paymentMethodType: cardType === 'visa' || cardType === 'mastercard' ? 'credit_card' : 'debit_card',
       metadata: {
         cardLast4: cardDetails.number.slice(-4),
-        cardType: this.detectCardType(cardDetails.number)
+        cardType: cardType
       }
     };
 
@@ -226,6 +230,7 @@ class PaymentService {
       amount,
       currency: 'INR',
       paymentMethod: 'wallet',
+      paymentMethodType: 'wallet',
       metadata: {
         walletType
       }
@@ -242,6 +247,7 @@ class PaymentService {
       amount,
       currency: 'INR',
       paymentMethod: 'netbanking',
+      paymentMethodType: 'netbanking',
       metadata: {
         bankCode
       }

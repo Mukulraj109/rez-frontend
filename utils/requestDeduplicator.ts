@@ -287,7 +287,7 @@ export class RequestDeduplicator {
  */
 export const globalDeduplicator = new RequestDeduplicator({
   defaultTimeout: 30000,
-  enableLogging: __DEV__ // Enable logging in development
+  enableLogging: false // Disabled to reduce console noise
 });
 
 /**

@@ -35,7 +35,8 @@ export function mapBackendCartItemToFrontend(backendItem: BackendCartItem): any 
     image: imageUrl,
     price: backendItem.price,
     originalPrice: backendItem.originalPrice || backendItem.price,
-    discount: backendItem.discount || 0,
+    discount: backendItem.discount || 0, // Lock fee discount (only applies to lockedQuantity items)
+    lockedQuantity: (backendItem as any).lockedQuantity || 0, // How many items have lock fee applied
     quantity: backendItem.quantity,
     store: backendItem.store ? {
       id: backendItem.store._id,
@@ -44,8 +45,9 @@ export function mapBackendCartItemToFrontend(backendItem: BackendCartItem): any 
     } : null,
     variant: backendItem.variant,
     addedAt: backendItem.addedAt,
-    // Calculated fields
-    subtotal: backendItem.price * backendItem.quantity,
+    notes: (backendItem as any).notes, // For lock fee notes
+    // Calculated fields - subtract lock fee discount from subtotal
+    subtotal: (backendItem.price * backendItem.quantity) - (backendItem.discount || 0),
     savings: backendItem.originalPrice
       ? (backendItem.originalPrice - backendItem.price) * backendItem.quantity
       : 0,

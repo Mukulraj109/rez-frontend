@@ -1,26 +1,28 @@
-import React, { useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Image, Animated } from 'react-native';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { View, TouchableOpacity, StyleSheet, Image, Animated, ActivityIndicator, Share, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons , MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from '@/components/ThemedText';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { useGamification } from '@/contexts/GamificationContext';
+import { useWishlist } from '@/contexts/WishlistContext';
+import { useAuth } from '@/contexts/AuthContext';
+import wishlistApi from '@/services/wishlistApi';
+import walletApi from '@/services/walletApi';
 import {
   Colors,
   Spacing,
-  Shadows,
   BorderRadius,
-  Typography,
   IconSize,
   Timing,
-  Gradients,
 } from '@/constants/DesignSystem';
 
 interface StoreHeaderProps {
   dynamicData?: {
+    id?: string;
+    _id?: string;
     title?: string;
+    name?: string;
     description?: string;
     image?: string;
     merchant?: string;
@@ -34,21 +36,91 @@ interface StoreHeaderProps {
 
 export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps) {
   const router = useRouter();
-  const backgroundColor = useThemeColor({}, 'background');
-  const surfaceColor = useThemeColor({}, 'surface');
-  const primaryColor = useThemeColor({}, 'primary');
-  const textColor = useThemeColor({}, 'text');
-  const { coinBalance, isLoading: isLoadingPoints } = useGamification();
+  const { refreshWishlist } = useWishlist();
+  const { state: authState } = useAuth();
+
+  // Coin balance state - fetch directly from wallet like homepage does
+  const [coinCount, setCoinCount] = useState(0);
+  const [isLoadingCoins, setIsLoadingCoins] = useState(true);
+
+  // Wishlist state
+  const [isSaved, setIsSaved] = useState(false);
+  const [isWishlistLoading, setIsWishlistLoading] = useState(false);
 
   // Animation refs
   const backScaleAnim = useRef(new Animated.Value(1)).current;
+  const shareScaleAnim = useRef(new Animated.Value(1)).current;
   const cartScaleAnim = useRef(new Animated.Value(1)).current;
   const heartScaleAnim = useRef(new Animated.Value(1)).current;
 
-  // Haptic feedback handlers
+  // Get product ID
+  const productId = dynamicData?.id || dynamicData?._id;
+
+  // Fetch coin balance directly from wallet API (same as homepage)
+  const fetchCoinBalance = useCallback(async () => {
+    try {
+      const walletResponse = await walletApi.getBalance();
+      if (walletResponse.success && walletResponse.data) {
+        const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
+        const actualWalletCoins = wasilCoin?.amount || 0;
+        setCoinCount(actualWalletCoins);
+      }
+    } catch (error) {
+      console.error('Error fetching coin balance:', error);
+    } finally {
+      setIsLoadingCoins(false);
+    }
+  }, []);
+
+  // Fetch coins on mount
+  useEffect(() => {
+    fetchCoinBalance();
+  }, [fetchCoinBalance]);
+
+  // Check wishlist status function
+  const checkWishlistStatus = useCallback(async () => {
+    if (!authState.isAuthenticated || !productId) return;
+
+    try {
+      const response = await wishlistApi.checkWishlistStatus('product', productId);
+      if (response.success && response.data?.inWishlist) {
+        setIsSaved(true);
+        return;
+      }
+      setIsSaved(false);
+    } catch (error) {
+      console.error('Error checking wishlist status:', error);
+      setIsSaved(false);
+    }
+  }, [productId, authState.isAuthenticated]);
+
+  useEffect(() => {
+    checkWishlistStatus();
+  }, [checkWishlistStatus]);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkWishlistStatus();
+    }, [checkWishlistStatus])
+  );
+
+  // Handlers
   const handleBackPress = () => {
     triggerImpact('Medium');
     router.back();
+  };
+
+  const handleSharePress = async () => {
+    triggerImpact('Light');
+    try {
+      const productName = dynamicData?.title || dynamicData?.name || 'Check this out!';
+      await Share.share({
+        message: `Check out ${productName} on our app!`,
+        title: productName,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
   };
 
   const handleCartPress = () => {
@@ -61,10 +133,46 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
     router.push('/CoinPage');
   };
 
-  const handleFavoritePress = () => {
+  const handleFavoritePress = useCallback(async () => {
     triggerImpact('Medium');
-    // Add favorite logic here
-  };
+
+    if (!authState.isAuthenticated) {
+      router.push('/sign-in');
+      return;
+    }
+
+    if (!productId) {
+      console.warn('No product ID available for wishlist');
+      return;
+    }
+
+    setIsWishlistLoading(true);
+
+    try {
+      if (isSaved) {
+        const response = await wishlistApi.removeFromWishlist('product', productId);
+        if (response.success) {
+          setIsSaved(false);
+          triggerNotification('Success');
+          await refreshWishlist();
+        }
+      } else {
+        const response = await wishlistApi.addToWishlist({
+          itemId: productId,
+          itemType: 'product',
+        });
+        if (response.success) {
+          setIsSaved(true);
+          triggerNotification('Success');
+          await refreshWishlist();
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling wishlist:', error);
+    } finally {
+      setIsWishlistLoading(false);
+    }
+  }, [authState.isAuthenticated, productId, isSaved, refreshWishlist, router]);
 
   // Animation helper
   const animateScale = (animValue: Animated.Value, toValue: number) => {
@@ -75,10 +183,7 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
     }).start();
   };
 
-  // Use dynamic data if available, otherwise use defaults
-  const storeTitle = dynamicData?.title || "Featured Store";
-  
-  // Validate image URL - only use if it's a valid URL and not empty
+  // Validate image URL
   const isValidImageUrl = (url: string | undefined): boolean => {
     if (!url || url.trim() === '') return false;
     try {
@@ -88,257 +193,261 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
       return false;
     }
   };
-  
-  const storeImageUrl = isValidImageUrl(dynamicData?.image) 
-    ? dynamicData.image 
-    : null; // No fallback image - show placeholder instead
-  const merchantName = dynamicData?.merchant || "Premium Merchant";
-  const category = dynamicData?.category || "General";
-  
-  // Safely handle rating with proper type checking
-  const rawRating = dynamicData?.rating;
-  const rating = typeof rawRating === 'number' && !isNaN(rawRating) ? rawRating : 4.5;
-  
-  const sectionLabel = cardType === 'just_for_you' ? 'Recommended for You' : 
-                      cardType === 'new_arrivals' ? 'New Arrival' : 'Featured';
-  
+
+  const storeImageUrl = isValidImageUrl(dynamicData?.image) ? dynamicData.image : null;
+
   return (
-    <View style={[styles.container, { backgroundColor }]}>
-      {/* Top gradient overlay */}
-      <LinearGradient
-        colors={['rgba(99, 102, 241, 0.1)', 'rgba(139, 92, 246, 0.05)', 'transparent']}
-        style={styles.gradientOverlay}
-      />
-      
-      {/* Header actions */}
-      <View style={styles.header}>
+    <View style={styles.container}>
+      {/* Header Bar - Above the image */}
+      <View style={styles.headerBar}>
+        {/* Left - Back button */}
         <Animated.View style={{ transform: [{ scale: backScaleAnim }] }}>
           <TouchableOpacity
-            style={[styles.iconButton, { backgroundColor: surfaceColor }]}
+            style={styles.iconBtn}
             onPress={handleBackPress}
-            onPressIn={() => animateScale(backScaleAnim, 0.92)}
+            onPressIn={() => animateScale(backScaleAnim, 0.9)}
             onPressOut={() => animateScale(backScaleAnim, 1)}
             accessibilityLabel="Go back"
             accessibilityRole="button"
-            accessibilityHint="Double tap to return to previous screen"
           >
-            <Ionicons name="arrow-back" size={IconSize.md} color={textColor} />
+            <Ionicons name="arrow-back" size={22} color="#1F2937" />
           </TouchableOpacity>
         </Animated.View>
-        
-        <View style={styles.centerInfo}>
-          <TouchableOpacity
-            style={[styles.ratingBadge, { backgroundColor: primaryColor }]}
-            onPress={handleCoinPress}
-            accessibilityLabel={`Coin balance: ${isLoadingPoints ? 'Loading' : (coinBalance?.total ?? 0).toLocaleString()} coins`}
-            accessibilityRole="button"
-            accessibilityHint="Double tap to view coin details"
-          >
-            <Ionicons name="star" size={IconSize.sm} color="#FFD700" />
-            <ThemedText style={styles.ratingText}>
-              {isLoadingPoints ? '...' : (coinBalance?.total ?? 0).toLocaleString()}
-            </ThemedText>
-          </TouchableOpacity>
-          {/* Dynamic section label */}
-          {dynamicData && (
-            <ThemedText style={[styles.sectionLabel, { color: primaryColor }]}>
-              {sectionLabel}
-            </ThemedText>
-          )}
-          {/* Dynamic category badge */}
-          {dynamicData?.category && (
-            <ThemedText style={[styles.categoryBadge, { backgroundColor: primaryColor + '20' }]}>
-              {category}
-            </ThemedText>
-          )}
-        </View>
-        
-        <View style={styles.rightIcons}>
-          <Animated.View style={{ transform: [{ scale: cartScaleAnim }] }}>
+
+        {/* Center - Coin Badge */}
+        <TouchableOpacity
+          style={styles.coinBadge}
+          onPress={handleCoinPress}
+          activeOpacity={0.8}
+          accessibilityLabel={`${coinCount} coins`}
+          accessibilityRole="button"
+        >
+          <View style={styles.coinIcon}>
+            <Ionicons name="star" size={14} color="#FFFFFF" />
+          </View>
+          <ThemedText style={styles.coinText}>
+            {isLoadingCoins ? '...' : coinCount.toLocaleString()}
+          </ThemedText>
+        </TouchableOpacity>
+
+        {/* Right - Action buttons */}
+        <View style={styles.rightActions}>
+          {/* Share Button */}
+          <Animated.View style={{ transform: [{ scale: shareScaleAnim }] }}>
             <TouchableOpacity
-              style={[styles.iconButton, { backgroundColor: surfaceColor }]}
-              onPress={handleCartPress}
-              onPressIn={() => animateScale(cartScaleAnim, 0.92)}
-              onPressOut={() => animateScale(cartScaleAnim, 1)}
-              accessibilityLabel="Open cart"
+              style={styles.iconBtn}
+              onPress={handleSharePress}
+              onPressIn={() => animateScale(shareScaleAnim, 0.9)}
+              onPressOut={() => animateScale(shareScaleAnim, 1)}
+              accessibilityLabel="Share"
               accessibilityRole="button"
-              accessibilityHint="Double tap to view shopping cart"
             >
-              <Ionicons name="bag-outline" size={IconSize.md} color={textColor} />
+              <Ionicons name="share-outline" size={20} color="#1F2937" />
             </TouchableOpacity>
           </Animated.View>
+
+          {/* Cart Button */}
+          <Animated.View style={{ transform: [{ scale: cartScaleAnim }] }}>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={handleCartPress}
+              onPressIn={() => animateScale(cartScaleAnim, 0.9)}
+              onPressOut={() => animateScale(cartScaleAnim, 1)}
+              accessibilityLabel="Cart"
+              accessibilityRole="button"
+            >
+              <Ionicons name="bag-outline" size={20} color="#1F2937" />
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Heart/Wishlist Button */}
           <Animated.View style={{ transform: [{ scale: heartScaleAnim }] }}>
             <TouchableOpacity
-              style={[styles.iconButton, { backgroundColor: surfaceColor }]}
+              style={[
+                styles.iconBtn,
+                isSaved && styles.heartBtnActive
+              ]}
               onPress={handleFavoritePress}
-              onPressIn={() => animateScale(heartScaleAnim, 0.92)}
+              onPressIn={() => animateScale(heartScaleAnim, 0.9)}
               onPressOut={() => animateScale(heartScaleAnim, 1)}
-              accessibilityLabel="Add to favorites"
+              disabled={isWishlistLoading}
+              accessibilityLabel={isSaved ? "Remove from wishlist" : "Add to wishlist"}
               accessibilityRole="button"
-              accessibilityHint="Double tap to add this item to favorites"
             >
-              <Ionicons name="heart-outline" size={IconSize.md} color={textColor} />
+              {isWishlistLoading ? (
+                <ActivityIndicator size="small" color="#EF4444" />
+              ) : (
+                <Ionicons
+                  name={isSaved ? "heart" : "heart-outline"}
+                  size={20}
+                  color={isSaved ? "#EF4444" : "#1F2937"}
+                />
+              )}
             </TouchableOpacity>
           </Animated.View>
         </View>
       </View>
-      
-      {/* Product / Store image */}
-      <View style={[styles.productImageContainer, { backgroundColor: surfaceColor }]}>
+
+      {/* Product Image - Below the header */}
+      <View style={styles.imageContainer}>
         {storeImageUrl ? (
           <Image
             source={{ uri: storeImageUrl }}
             style={styles.productImage}
             resizeMode="cover"
-            onError={(e) => {
-              // Only log once, don't cause re-renders
-              if (!e.nativeEvent.error) return;
-              console.warn('⚠️ [STORE HEADER] Image load failed:', storeImageUrl);
-            }}
           />
         ) : (
           <View style={styles.placeholderContainer}>
-            <Ionicons name="image-outline" size={64} color={Colors.gray[300]} />
-            <ThemedText style={styles.placeholderText}>No Image Available</ThemedText>
+            <LinearGradient
+              colors={['#F3E8FF', '#EDE9FE']}
+              style={StyleSheet.absoluteFill}
+            />
+            <Ionicons name="image-outline" size={56} color="#A78BFA" />
+            <ThemedText style={styles.placeholderText}>No Image</ThemedText>
           </View>
         )}
+
+        {/* Bottom gradient overlay */}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.4)']}
-          style={styles.imageGradient}
+          style={styles.bottomGradient}
         />
 
-        {/* Brand icon badge */}
-        <View style={[styles.brandBadge, { backgroundColor: 'rgba(255, 255, 255, 0.95)' }]}>
-          <Ionicons name="storefront" size={IconSize.sm} color={primaryColor} />
+        {/* Store Badge - Bottom left */}
+        <View style={styles.storeBadge}>
+          <Ionicons name="storefront" size={18} color="#7C3AED" />
         </View>
       </View>
     </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({
-  container: { position: 'relative' },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-    zIndex: 1,
+  container: {
+    backgroundColor: '#FFFFFF',
   },
 
-  // Modern Header
-  header: {
+  // Header bar - separate from image
+  headerBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.base,
-    paddingTop: 50,
-    zIndex: 2,
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadows.medium,
-  },
-  centerInfo: { alignItems: 'center' },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.sm,
-    borderRadius: 25,
-    ...Shadows.medium,
-    gap: Spacing.xs,
-  },
-  ratingText: {
-    ...Typography.body,
-    fontWeight: '700',
-    color: Colors.text.white,
-  },
-  sectionLabel: {
-    ...Typography.caption,
-    fontWeight: '600',
-    marginTop: Spacing.xs,
-    textAlign: 'center',
-  },
-  categoryBadge: {
-    fontSize: 10,
-    fontWeight: '500',
-    marginTop: 2,
-    textAlign: 'center',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
-  },
-  rightIcons: {
-    flexDirection: 'row',
-    gap: Spacing.md,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 54 : 44,
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
   },
 
-  // Modern Product Image
-  productImageContainer: {
+  // Icon button style
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  heartBtnActive: {
+    backgroundColor: '#FEE2E2',
+  },
+
+  // Coin badge
+  coinBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#7C3AED',
+    borderRadius: 20,
+    paddingRight: 14,
+    paddingLeft: 4,
+    paddingVertical: 4,
+    gap: 6,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  coinIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 215, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  coinText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Right actions
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  // Image container
+  imageContainer: {
     position: 'relative',
     height: 340,
-    marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius['2xl'],
+    marginHorizontal: 16,
+    borderRadius: 20,
     overflow: 'hidden',
-    ...Shadows.strong,
+    backgroundColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
+
   productImage: {
     width: '100%',
     height: '100%',
   },
+
   placeholderContainer: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background.secondary,
   },
+
   placeholderText: {
-    ...Typography.h4,
-    color: Colors.gray[500],
-    marginTop: Spacing.sm,
+    fontSize: 14,
+    color: '#A78BFA',
+    marginTop: 8,
     fontWeight: '500',
   },
-  imageGradient: {
+
+  bottomGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 140,
+    height: 100,
   },
 
-  // Modern Brand Badge
-  brandBadge: {
+  // Store badge
+  storeBadge: {
     position: 'absolute',
-    bottom: Spacing.lg,
-    left: Spacing.lg,
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius['2xl'],
+    bottom: 16,
+    left: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.medium,
-  },
-  textOverlay: {
-    position: 'absolute',
-    bottom: Spacing.lg,
-    left: 80,
-    paddingRight: Spacing.lg,
-  },
-  storeName: {
-    ...Typography.h3,
-    color: Colors.text.white,
-  },
-  storeCategory: {
-    ...Typography.body,
-    color: '#eee',
-    marginTop: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });

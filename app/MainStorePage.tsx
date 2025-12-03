@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { ThemedView } from "@/components/ThemedView";
 import {
   MainStoreHeader,
@@ -29,14 +30,12 @@ import {
   VisitStoreButton,
   StoreProducts,
 } from "./MainStoreSection";
-import Section1 from "./StoreSection/Section1";
 import Section2 from "./StoreSection/Section2";
 import Section3 from "./StoreSection/Section3";
 import Section4 from "./StoreSection/Section4";
 import Section5 from "./StoreSection/Section5";
 import FollowStoreSection from "./StoreSection/FollowStoreSection";
 import Section6 from "./StoreSection/Section6";
-import CombinedSection78 from "./StoreSection/CombinedSection78";
 import ProductInfo from "./StoreSection/ProductInfo";
 import StoreActionButtons from "./StoreSection/StoreActionButtons";
 import { MainStoreProduct, MainStorePageProps, CartItemFromProduct } from "@/types/mainstore";
@@ -56,6 +55,7 @@ import { parsePrice } from '@/utils/priceParser';
 import { platformAlert } from '@/utils/platformAlert';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import wishlistApi from '@/services/wishlistApi';
+import { storesApi } from '@/services/storesApi';
 import { showAlert } from '@/components/common/CrossPlatformAlert';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -428,6 +428,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       }
 
       try {
+        // Use wishlistApi - backend supports this endpoint
         const response = await wishlistApi.checkWishlistStatus('store', storeIdToCheck);
         if (response.success && response.data?.inWishlist) {
           setIsFavorited(true);
@@ -441,6 +442,22 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
 
     checkFollowStatus();
   }, [storeIdParam, storeData?.id, isAuthenticated]);
+
+  // Re-check follow status when screen comes into focus (might have changed in another screen)
+  useFocusEffect(
+    useCallback(() => {
+      const storeIdToCheck = storeIdParam || storeData?.id;
+      if (storeIdToCheck && isAuthenticated) {
+        wishlistApi.checkWishlistStatus('store', storeIdToCheck)
+          .then(response => {
+            if (response.success && response.data) {
+              setIsFavorited(response.data.inWishlist || false);
+            }
+          })
+          .catch(() => {});
+      }
+    }, [storeIdParam, storeData?.id, isAuthenticated])
+  );
 
   // Fetch UGC content when review modal is shown
   useEffect(() => {
@@ -721,13 +738,16 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       return;
     }
 
+    // Optimistic update
+    const wasFollowing = isFavorited;
+    setIsFavorited(!wasFollowing);
     setIsFollowLoading(true);
+
     try {
-      if (isFavorited) {
-        // Unfollow store
+      if (wasFollowing) {
+        // Unfollow store - use wishlistApi (backend supports this)
         const response = await wishlistApi.removeFromWishlist('store', storeIdToUse);
         if (response.success) {
-          setIsFavorited(false);
           showAlert(
             'Unfollowed',
             `You've unfollowed ${productData.title || productData.storeName}.`,
@@ -735,19 +755,17 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
             'info'
           );
         } else {
-          showAlert('Error', response.message || 'Failed to unfollow store', undefined, 'error');
+          throw new Error(response.message || 'Failed to unfollow');
         }
       } else {
-        // Follow store
+        // Follow store - use wishlistApi (backend supports this)
         const response = await wishlistApi.addToWishlist({
           itemType: 'store',
           itemId: storeIdToUse,
           notes: `Following ${productData.title || productData.storeName}`,
           priority: 'medium',
         });
-
         if (response.success) {
-          setIsFavorited(true);
           showAlert(
             'Store Followed!',
             `You're now following ${productData.title || productData.storeName}. You'll see their latest offers in your feed.`,
@@ -755,10 +773,12 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
             'success'
           );
         } else {
-          showAlert('Error', response.message || 'Failed to follow store', undefined, 'error');
+          throw new Error(response.message || 'Failed to follow');
         }
       }
     } catch (error) {
+      // Revert on error
+      setIsFavorited(wasFollowing);
       showAlert('Error', 'Something went wrong. Please try again.', undefined, 'error');
     } finally {
       setIsFollowLoading(false);
@@ -818,8 +838,9 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
   }, []);
 
   const handleImagePress = useCallback((imageId: string) => {
-    platformAlert("Image", imageId);
-  }, []);
+    // Navigate to UGC detail page
+    router.push(`/ugc/${imageId}`);
+  }, [router]);
 
   const handleAddToCart = useCallback(() => {
     const cartItem: CartItemFromProduct = {
@@ -1047,23 +1068,12 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
             </View>
 
             {/* Additional Store Sections */}
-            {/* Store Gallery Section - Replaces old Section1 with real API data */}
-            {storeIdParam ? (
+            {/* Store Gallery Section - Real API data */}
+            {storeIdParam && (
               <View style={styles.sectionCard}>
                 <ErrorBoundary>
                   <StoreGallerySection storeId={storeIdParam} />
                 </ErrorBoundary>
-              </View>
-            ) : (
-              // Fallback to old Section1 if no storeId (for backward compatibility)
-              <View style={styles.sectionCard}>
-                <Section1 dynamicData={isDynamic && storeData ? {
-                  ...storeData,
-                  // Ensure location is properly formatted
-                  location: typeof storeData.location === 'object'
-                    ? (storeData.location as LocationData)
-                    : storeData.location
-                } : null} />
               </View>
             )}
 
@@ -1095,8 +1105,8 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
 
             <View style={styles.sectionCard}>
               <ErrorBoundary>
-                <Section4 
-                  productPrice={parsePrice(productData.price, { fallback: 1000 })} 
+                <Section4
+                  productPrice={parsePrice(productData.price, { fallback: 1000 })}
                   storeId={productData.storeId}
                   onPress={() => {
                     router.push({
@@ -1174,10 +1184,6 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
                 </View>
               );
             })()}
-
-            <View style={styles.sectionCard}>
-              <CombinedSection78 />
-            </View>
 
           </>
         )}

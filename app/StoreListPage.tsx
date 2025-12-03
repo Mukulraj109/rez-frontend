@@ -141,7 +141,7 @@ const StoreListPage: React.FC = () => {
       hasOnlineDelivery: true, // Assume online delivery is available
       hasFreeShipping: store.operationalInfo?.freeDeliveryAbove ? true : false,
       estimatedDelivery: store.operationalInfo?.deliveryTime || null,
-      storeImage: store.banner || null, // Banner for main display
+      storeImage: Array.isArray(store.banner) ? store.banner[0] : store.banner || null, // Banner for main display (use first if array)
       logo: store.logo || null, // Logo for overlay
       description: store.description || '',
       deliveryCategories: store.deliveryCategories || {},

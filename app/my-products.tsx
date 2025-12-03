@@ -285,7 +285,7 @@ const MyProductsPage = () => {
     return (
       <TouchableOpacity
         style={styles.productCard}
-        onPress={() => router.push(`/product/${item.productId}` as any)}
+        onPress={() => router.push(`/ProductPage?cardId=${item.productId}&cardType=product` as any)}
         activeOpacity={0.7}
         accessibilityLabel={productLabel}
         accessibilityRole="button"

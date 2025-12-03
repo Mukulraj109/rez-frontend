@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import paybillApi from '@/services/paybillApi';
+import { showAlert } from '@/components/common/CrossPlatformAlert';
 
 interface PayBillCardProps {
   productData?: any;
@@ -12,6 +14,7 @@ const PayBillCard: React.FC<PayBillCardProps> = ({ productData, discountPercenta
   const [amount, setAmount] = useState('10');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<'card' | 'upi' | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Get store and product info
   const storeName = productData?.store?.name || productData?.merchant || 'this store';
@@ -31,20 +34,53 @@ const PayBillCard: React.FC<PayBillCardProps> = ({ productData, discountPercenta
 
   const handleAddMoney = () => {
     if (numericAmount < 10) {
-      Alert.alert('Invalid Amount', 'Minimum amount is ₹10');
+      showAlert('Invalid Amount', 'Minimum amount is ₹10', [{ text: 'OK' }], 'error');
       return;
     }
     setShowPaymentModal(true);
   };
 
-  const handleMethodSelect = (method: 'card' | 'upi') => {
+  const handleMethodSelect = async (method: 'card' | 'upi') => {
     setSelectedMethod(method);
     setShowPaymentModal(false);
-    // This will trigger platform-specific payment flow
-    Alert.alert(
-      'Payment Method Selected',
-      `Proceeding with ${method.toUpperCase()} payment for ₹${numericAmount}`
-    );
+    setIsLoading(true);
+
+    try {
+      // Call the backend API to add PayBill balance
+      const response = await paybillApi.addBalance({
+        amount: numericAmount,
+        paymentMethod: method,
+        discountPercentage: discountPercentage
+      });
+
+      if (response.success && response.data) {
+        showAlert(
+          'Success!',
+          `₹${response.data.finalAmount} added to PayBill (including ₹${response.data.discount} bonus)`,
+          [{ text: 'OK' }],
+          'success'
+        );
+        // Reset amount after successful topup
+        setAmount('10');
+      } else {
+        showAlert(
+          'Error',
+          response.error || 'Failed to add money to PayBill',
+          [{ text: 'OK' }],
+          'error'
+        );
+      }
+    } catch (error: any) {
+      console.error('PayBill topup error:', error);
+      showAlert(
+        'Error',
+        error.message || 'Something went wrong. Please try again.',
+        [{ text: 'OK' }],
+        'error'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -95,11 +131,16 @@ const PayBillCard: React.FC<PayBillCardProps> = ({ productData, discountPercenta
       </View>
 
       <TouchableOpacity
-        style={styles.addMoneyButton}
+        style={[styles.addMoneyButton, isLoading && styles.addMoneyButtonDisabled]}
         onPress={handleAddMoney}
         activeOpacity={0.8}
+        disabled={isLoading}
       >
-        <Text style={styles.addMoneyButtonText}>Add Money</Text>
+        {isLoading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={styles.addMoneyButtonText}>Add Money</Text>
+        )}
       </TouchableOpacity>
 
       <View style={styles.infoContainer}>
@@ -293,6 +334,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 12,
+  },
+  addMoneyButtonDisabled: {
+    opacity: 0.7,
   },
   addMoneyButtonText: {
     fontSize: 16,

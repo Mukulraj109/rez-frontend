@@ -1,5 +1,5 @@
 // Custom hook for Play Page state management
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Alert, Share, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import {

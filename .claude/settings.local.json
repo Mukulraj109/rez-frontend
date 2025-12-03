@@ -60,7 +60,8 @@
       "Bash(ren:*)",
       "Bash(if exist src dir src)",
       "Bash(nul)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(ls:*)"
     ],
     "defaultMode": "acceptEdits"
   }

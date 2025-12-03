@@ -11,7 +11,19 @@ import {
   isProductAvailable
 } from '@/types/unified';
 
-// Keep the old Product interface for backwards compatibility during migration
+/**
+ * @deprecated Use UnifiedProduct from '@/types/product-unified.types' instead
+ *
+ * This Product interface is kept for backwards compatibility during migration.
+ * It contains verbose structure that doesn't match the actual API responses.
+ *
+ * Migration Guide:
+ * - Replace: import { Product } from '@/services/productsApi'
+ * - With: import { UnifiedProduct } from '@/types/product-unified.types'
+ *
+ * The UnifiedProduct type is more flexible, supports both _id and id,
+ * and better handles API response variations.
+ */
 export interface Product {
   id: string;
   name: string;
@@ -69,8 +81,8 @@ export interface Product {
   updatedAt: string;
 }
 
-// Export unified Product type for new code
-export { UnifiedProduct }
+// Export UnifiedProduct for new code - this is the recommended type to use
+export { UnifiedProduct } from '@/types/product-unified.types';
 
 export interface ProductsQuery {
   page?: number;
@@ -155,7 +167,6 @@ class ProductsService {
               data: unifiedProduct as any, // Cast to Product for backwards compatibility
             };
           } else {
-            console.warn('⚠️ [PRODUCTS API] Product validation failed for ID:', id, validation.errors);
             return {
               success: false,
               error: 'Product validation failed',
@@ -163,7 +174,6 @@ class ProductsService {
             };
           }
         } catch (conversionError: any) {
-          console.warn('⚠️ [PRODUCTS API] Product conversion failed for ID:', id, conversionError);
           // Fallback to old validation
           const validatedProduct = validateProduct(response.data);
           if (validatedProduct) {
@@ -183,7 +193,6 @@ class ProductsService {
 
       return response;
     } catch (error: any) {
-      console.error('❌ [PRODUCTS API] Error fetching product by ID:', error);
       return {
         success: false,
         error: error?.message || 'Failed to fetch product',
@@ -207,7 +216,6 @@ class ProductsService {
           const allValid = unifiedProducts.every(product => {
             const validation = validateUnifiedProduct(product);
             if (!validation.valid) {
-              console.warn('⚠️ [PRODUCTS API] Product validation failed:', product.id, validation.errors);
             }
             return validation.valid;
           });
@@ -225,13 +233,11 @@ class ProductsService {
             return validation.valid;
           });
 
-          console.warn(`⚠️ [PRODUCTS API] Returning ${validProducts.length}/${unifiedProducts.length} valid products`);
           return {
             ...response,
             data: validProducts as any,
           };
         } catch (conversionError) {
-          console.warn('⚠️ [PRODUCTS API] Product conversion failed, using fallback validation', conversionError);
           // Fallback to old validation
           const validatedProducts = validateProductArray(response.data);
           return {
@@ -243,7 +249,6 @@ class ProductsService {
 
       return response;
     } catch (error: any) {
-      console.error('❌ [PRODUCTS API] Error fetching featured products:', error);
       return {
         success: false,
         error: error?.message || 'Failed to fetch featured products',
@@ -302,7 +307,6 @@ class ProductsService {
 
       // If API response is not successful, return error
       if (!response.success) {
-        console.warn('⚠️ [PRODUCTS API] Related products API error:', response.error);
         // Don't return mock data on API errors in production
         return {
           success: false,
@@ -320,7 +324,6 @@ class ProductsService {
         data: [],
       };
     } catch (error: any) {
-      console.error('❌ [PRODUCTS API] Error fetching related products:', error);
       return {
         success: false,
         error: error?.message || 'Failed to fetch related products',
@@ -397,10 +400,8 @@ class ProductsService {
         return recommendations;
       }
 
-      console.warn('⚠️ [PRODUCTS API] Invalid response structure:', response);
       throw new Error(response.message || 'Failed to fetch featured products');
     } catch (error) {
-      console.error('❌ [PRODUCTS API] Error fetching homepage featured products:', error);
       // Return empty array on error to prevent homepage crash
       return [];
     }
@@ -420,10 +421,8 @@ class ProductsService {
         return validatedProducts;
       }
 
-      console.warn('⚠️ [PRODUCTS API] Invalid new arrivals response structure:', response);
       throw new Error(response.message || 'Failed to fetch new arrivals');
     } catch (error) {
-      console.error('❌ [PRODUCTS API] Error fetching homepage new arrivals:', error);
       // Return empty array on error to prevent homepage crash
       return [];
     }
@@ -468,7 +467,6 @@ class ProductsService {
 
       throw new Error(response.message || 'Failed to fetch store products');
     } catch (error) {
-      console.error('❌ Error fetching store products:', error);
       return null;
     }
   }
@@ -480,7 +478,6 @@ class ProductsService {
     try {
       // Validate productId format (MongoDB ObjectIds are 24 hex characters)
       if (!productId || productId.length !== 24 || !/^[0-9a-fA-F]{24}$/.test(productId)) {
-        console.warn(`⚠️ Invalid MongoDB ObjectId format: ${productId}`);
         return null;
       }
 
@@ -506,9 +503,7 @@ class ProductsService {
     } catch (error) {
       // Don't log errors for invalid IDs to avoid spam
       if ((error as any).message?.includes('Invalid MongoDB ObjectId')) {
-        console.warn(`⚠️ Skipping invalid product ID: ${productId}`);
       } else {
-        console.error('❌ Error fetching product details:', error);
       }
       return null;
     }
@@ -527,11 +522,9 @@ class ProductsService {
 
         return true;
       } else {
-        console.warn('⚠️ [PRODUCTS API] Backend responded but with error:', response.message);
         return false;
       }
     } catch (error) {
-      console.warn('⚠️ [PRODUCTS API] Backend not available, falling back to dummy data:', error);
       return false;
     }
   }
@@ -586,362 +579,6 @@ class ProductsService {
     return 'general';
   }
 
-  /**
-   * Get mock related products for development
-   */
-  private getMockRelatedProducts(productId: string, limit: number): ProductItem[] {
-    const mockProducts: ProductItem[] = [
-      {
-        id: 'rel-prod-1',
-        type: 'product',
-        name: 'Premium Wireless Headphones',
-        title: 'Premium Wireless Headphones',
-        brand: 'AudioTech',
-        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500',
-        images: [{ id: '1', url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500', alt: 'Headphones', isMain: true }],
-        price: {
-          current: 4999,
-          original: 6999,
-          currency: 'INR',
-          discount: 29,
-        },
-        category: 'Electronics',
-        subcategory: 'Audio',
-        rating: { value: 4.5, count: 342 },
-        cashback: { percentage: 10, maxAmount: 500 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 50 },
-        tags: ['wireless', 'bluetooth', 'noise-cancelling'],
-        description: 'High-quality wireless headphones with noise cancellation',
-      },
-      {
-        id: 'rel-prod-2',
-        type: 'product',
-        name: 'Smart Fitness Watch',
-        title: 'Smart Fitness Watch',
-        brand: 'FitTrack',
-        image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500',
-        images: [{ id: '2', url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500', alt: 'Watch', isMain: true }],
-        price: {
-          current: 2499,
-          original: 3999,
-          currency: 'INR',
-          discount: 38,
-        },
-        category: 'Electronics',
-        subcategory: 'Wearables',
-        rating: { value: 4.2, count: 189 },
-        cashback: { percentage: 8, maxAmount: 200 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 75 },
-        tags: ['fitness', 'smartwatch', 'health'],
-        description: 'Track your fitness goals with this smart watch',
-      },
-      {
-        id: 'rel-prod-3',
-        type: 'product',
-        name: 'Portable Bluetooth Speaker',
-        title: 'Portable Bluetooth Speaker',
-        brand: 'SoundWave',
-        image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500',
-        images: [{ id: '3', url: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500', alt: 'Speaker', isMain: true }],
-        price: {
-          current: 1999,
-          original: 2999,
-          currency: 'INR',
-          discount: 33,
-        },
-        category: 'Electronics',
-        subcategory: 'Audio',
-        rating: { value: 4.6, count: 521 },
-        cashback: { percentage: 5, maxAmount: 100 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 120 },
-        tags: ['bluetooth', 'portable', 'waterproof'],
-        description: 'Waterproof portable speaker with amazing sound quality',
-      },
-      {
-        id: 'rel-prod-4',
-        type: 'product',
-        name: 'Ergonomic Desk Chair',
-        title: 'Ergonomic Desk Chair',
-        brand: 'ComfortPlus',
-        image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=500',
-        images: [{ id: '4', url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=500', alt: 'Chair', isMain: true }],
-        price: {
-          current: 8999,
-          original: 14999,
-          currency: 'INR',
-          discount: 40,
-        },
-        category: 'Furniture',
-        subcategory: 'Office',
-        rating: { value: 4.7, count: 234 },
-        cashback: { percentage: 12, maxAmount: 1000 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 30 },
-        tags: ['ergonomic', 'office', 'comfort'],
-        description: 'Ergonomic chair designed for long hours of work',
-      },
-      {
-        id: 'rel-prod-5',
-        type: 'product',
-        name: 'LED Desk Lamp',
-        title: 'LED Desk Lamp',
-        brand: 'BrightLight',
-        image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=500',
-        images: [{ id: '5', url: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=500', alt: 'Lamp', isMain: true }],
-        price: {
-          current: 1499,
-          original: 2499,
-          currency: 'INR',
-          discount: 40,
-        },
-        category: 'Home & Living',
-        subcategory: 'Lighting',
-        rating: { value: 4.4, count: 167 },
-        cashback: { percentage: 6, maxAmount: 90 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 85 },
-        tags: ['led', 'desk', 'adjustable'],
-        description: 'Adjustable LED lamp perfect for your workspace',
-      },
-      {
-        id: 'rel-prod-6',
-        type: 'product',
-        name: 'Wireless Mouse & Keyboard Combo',
-        title: 'Wireless Mouse & Keyboard Combo',
-        brand: 'TechPro',
-        image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500',
-        images: [{ id: '6', url: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500', alt: 'Keyboard', isMain: true }],
-        price: {
-          current: 2999,
-          original: 4999,
-          currency: 'INR',
-          discount: 40,
-        },
-        category: 'Electronics',
-        subcategory: 'Accessories',
-        rating: { value: 4.3, count: 412 },
-        cashback: { percentage: 8, maxAmount: 240 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 95 },
-        tags: ['wireless', 'keyboard', 'mouse'],
-        description: 'Wireless keyboard and mouse combo for productivity',
-      },
-      {
-        id: 'rel-prod-7',
-        type: 'product',
-        name: 'USB-C Charging Cable',
-        title: 'USB-C Charging Cable',
-        brand: 'FastCharge',
-        image: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=500',
-        images: [{ id: '7', url: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=500', alt: 'Cable', isMain: true }],
-        price: {
-          current: 399,
-          original: 799,
-          currency: 'INR',
-          discount: 50,
-        },
-        category: 'Electronics',
-        subcategory: 'Accessories',
-        rating: { value: 4.5, count: 892 },
-        cashback: { percentage: 5, maxAmount: 20 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 200 },
-        tags: ['usb-c', 'charging', 'cable'],
-        description: 'Durable USB-C charging cable with fast charging support',
-      },
-      {
-        id: 'rel-prod-8',
-        type: 'product',
-        name: 'Phone Stand Holder',
-        title: 'Phone Stand Holder',
-        brand: 'StandPro',
-        image: 'https://images.unsplash.com/photo-1601524909162-ae8725290836?w=500',
-        images: [{ id: '8', url: 'https://images.unsplash.com/photo-1601524909162-ae8725290836?w=500', alt: 'Stand', isMain: true }],
-        price: {
-          current: 599,
-          original: 999,
-          currency: 'INR',
-          discount: 40,
-        },
-        category: 'Accessories',
-        subcategory: 'Phone Accessories',
-        rating: { value: 4.6, count: 345 },
-        cashback: { percentage: 5, maxAmount: 30 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 150 },
-        tags: ['phone', 'stand', 'holder'],
-        description: 'Adjustable phone stand for hands-free viewing',
-      },
-      {
-        id: 'rel-prod-9',
-        type: 'product',
-        name: 'Laptop Cooling Pad',
-        title: 'Laptop Cooling Pad',
-        brand: 'CoolTech',
-        image: 'https://images.unsplash.com/photo-1625948515291-69613efd103f?w=500',
-        images: [{ id: '9', url: 'https://images.unsplash.com/photo-1625948515291-69613efd103f?w=500', alt: 'Cooling Pad', isMain: true }],
-        price: {
-          current: 1299,
-          original: 1999,
-          currency: 'INR',
-          discount: 35,
-        },
-        category: 'Electronics',
-        subcategory: 'Laptop Accessories',
-        rating: { value: 4.4, count: 278 },
-        cashback: { percentage: 7, maxAmount: 90 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 65 },
-        tags: ['laptop', 'cooling', 'fan'],
-        description: 'Keep your laptop cool with this efficient cooling pad',
-      },
-      {
-        id: 'rel-prod-10',
-        type: 'product',
-        name: 'Webcam HD 1080p',
-        title: 'Webcam HD 1080p',
-        brand: 'CamPro',
-        image: 'https://images.unsplash.com/photo-1633419461186-7d40a38105ec?w=500',
-        images: [{ id: '10', url: 'https://images.unsplash.com/photo-1633419461186-7d40a38105ec?w=500', alt: 'Webcam', isMain: true }],
-        price: {
-          current: 2499,
-          original: 3999,
-          currency: 'INR',
-          discount: 38,
-        },
-        category: 'Electronics',
-        subcategory: 'Video',
-        rating: { value: 4.5, count: 198 },
-        cashback: { percentage: 8, maxAmount: 200 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 45 },
-        tags: ['webcam', '1080p', 'video'],
-        description: 'Crystal clear HD webcam for video calls and streaming',
-      },
-      {
-        id: 'rel-prod-11',
-        type: 'product',
-        name: 'Mechanical Gaming Keyboard',
-        title: 'Mechanical Gaming Keyboard',
-        brand: 'GameKey',
-        image: 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=500',
-        images: [{ id: '11', url: 'https://images.unsplash.com/photo-1595225476474-87563907a212?w=500', alt: 'Gaming Keyboard', isMain: true }],
-        price: {
-          current: 3999,
-          original: 6999,
-          currency: 'INR',
-          discount: 43,
-        },
-        category: 'Gaming',
-        subcategory: 'Peripherals',
-        rating: { value: 4.7, count: 567 },
-        cashback: { percentage: 10, maxAmount: 400 },
-        availabilityStatus: 'low_stock',
-        inventory: { stock: 15, lowStockThreshold: 20 },
-        tags: ['gaming', 'mechanical', 'rgb'],
-        description: 'RGB mechanical keyboard designed for gamers',
-      },
-      {
-        id: 'rel-prod-12',
-        type: 'product',
-        name: 'Monitor Screen Guard',
-        title: 'Monitor Screen Guard',
-        brand: 'ScreenSafe',
-        image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500',
-        images: [{ id: '12', url: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500', alt: 'Screen Guard', isMain: true }],
-        price: {
-          current: 799,
-          original: 1299,
-          currency: 'INR',
-          discount: 38,
-        },
-        category: 'Accessories',
-        subcategory: 'Screen Protection',
-        rating: { value: 4.3, count: 145 },
-        cashback: { percentage: 5, maxAmount: 40 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 110 },
-        tags: ['screen', 'protection', 'monitor'],
-        description: 'Protect your monitor screen from scratches and dust',
-      },
-      {
-        id: 'rel-prod-13',
-        type: 'product',
-        name: 'Backpack with USB Charging Port',
-        title: 'Backpack with USB Charging Port',
-        brand: 'TravelSmart',
-        image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500',
-        images: [{ id: '13', url: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500', alt: 'Backpack', isMain: true }],
-        price: {
-          current: 1899,
-          original: 2999,
-          currency: 'INR',
-          discount: 37,
-        },
-        category: 'Bags',
-        subcategory: 'Backpacks',
-        rating: { value: 4.6, count: 423 },
-        cashback: { percentage: 8, maxAmount: 150 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 80 },
-        tags: ['backpack', 'usb', 'travel'],
-        description: 'Smart backpack with built-in USB charging port',
-      },
-      {
-        id: 'rel-prod-14',
-        type: 'product',
-        name: 'Power Bank 20000mAh',
-        title: 'Power Bank 20000mAh',
-        brand: 'PowerMax',
-        image: 'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=500',
-        images: [{ id: '14', url: 'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=500', alt: 'Power Bank', isMain: true }],
-        price: {
-          current: 1499,
-          original: 2499,
-          currency: 'INR',
-          discount: 40,
-        },
-        category: 'Electronics',
-        subcategory: 'Power',
-        rating: { value: 4.5, count: 678 },
-        cashback: { percentage: 7, maxAmount: 105 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 140 },
-        tags: ['power-bank', 'charging', 'portable'],
-        description: 'High-capacity power bank for all your devices',
-      },
-      {
-        id: 'rel-prod-15',
-        type: 'product',
-        name: 'Cable Organizer Set',
-        title: 'Cable Organizer Set',
-        brand: 'OrganizePro',
-        image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500',
-        images: [{ id: '15', url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500', alt: 'Cable Organizer', isMain: true }],
-        price: {
-          current: 299,
-          original: 599,
-          currency: 'INR',
-          discount: 50,
-        },
-        category: 'Accessories',
-        subcategory: 'Organization',
-        rating: { value: 4.4, count: 234 },
-        cashback: { percentage: 5, maxAmount: 15 },
-        availabilityStatus: 'in_stock',
-        inventory: { stock: 250 },
-        tags: ['organizer', 'cable', 'management'],
-        description: 'Keep your cables neat and organized',
-      },
-    ];
-
-    // Shuffle and return limited number of products
-    const shuffled = mockProducts.sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, limit);
-  }
 }
 
 // Create singleton instance

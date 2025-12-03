@@ -20,7 +20,8 @@ const CONFIG = {
  */
 export interface PayBillTopupRequest {
   amount: number;
-  bonusAmount: number;
+  bonusAmount?: number;
+  discountPercentage?: number; // Backend uses this to calculate bonus (default: 20)
   paymentType: 'card' | 'upi';
   currency?: string;
   storeId?: string;
@@ -32,6 +33,7 @@ export interface PayBillTopupRequest {
     productName?: string;
     autoAddToCart?: boolean;
     platform?: string;
+    purpose?: string;
   };
 }
 
@@ -67,8 +69,10 @@ export interface PaymentConfirmResponse {
     id: string;
     transactionId: string;
     amount: number;
-    bonusAmount: number;
-    totalAmount: number;
+    bonusAmount?: number;
+    discount?: number;
+    totalAmount?: number;
+    finalAmount?: number;
     status: 'completed' | 'failed' | 'pending';
     timestamp: string;
   };
@@ -78,8 +82,10 @@ export interface PaymentConfirmResponse {
     newBalance: number;
     currency: string;
   };
+  paybillBalance?: number; // Backend returns this for PayBill top-ups
   autoCartAdded?: boolean;
   productId?: string;
+  message?: string;
 }
 
 /**
@@ -156,7 +162,7 @@ class WalletPayBillService {
             `${this.baseEndpoint}/create-payment-intent`,
             {
               amount: data.amount,
-              bonusAmount: data.bonusAmount || 0,
+              discountPercentage: data.discountPercentage || 20, // Backend uses this to calculate bonus
               paymentType: data.paymentType,
               currency: data.currency || 'INR',
               metadata: {
@@ -210,10 +216,8 @@ class WalletPayBillService {
       return 'Invalid payment type. Must be card or upi';
     }
 
-    // Store ID validation
-    if (!data.storeId || typeof data.storeId !== 'string') {
-      return 'Store ID is required';
-    }
+    // Store ID is optional - not required for general PayBill topup (e.g., lock fee)
+    // Only required for store-specific wallet operations
 
     return null;
   }
@@ -344,6 +348,7 @@ class WalletPayBillService {
     data: PaymentConfirmRequest
   ): Promise<ApiResponse<PaymentConfirmResponse>> {
     try {
+      console.log('💳 [PayBill API] Confirming payment:', data.paymentIntentId);
 
       if (!data.paymentIntentId) {
         return {
@@ -353,34 +358,50 @@ class WalletPayBillService {
         };
       }
 
+      const requestBody = {
+        paymentIntentId: data.paymentIntentId,
+        paymentMethodId: data.paymentMethodId,
+        timestamp: data.timestamp || new Date().toISOString()
+      };
+      console.log('💳 [PayBill API] Request body:', JSON.stringify(requestBody));
+
       const response = await apiClient.post<PaymentConfirmResponse>(
         `${this.baseEndpoint}/confirm-payment`,
-        {
-          paymentIntentId: data.paymentIntentId,
-          paymentMethodId: data.paymentMethodId,
-          timestamp: data.timestamp || new Date().toISOString()
-        }
+        requestBody
       );
+
+      console.log('💳 [PayBill API] Confirm response success:', response.success);
+      console.log('💳 [PayBill API] Confirm response data:', JSON.stringify(response.data, null, 2));
+
       if (response.success && response.data) {
+        // Log paybillBalance specifically
+        console.log('💳 [PayBill API] PayBill balance in response:', response.data.paybillBalance);
+        console.log('💳 [PayBill API] Wallet data in response:', response.data.wallet);
 
-        // Validate wallet data
-        if (response.data.wallet && typeof response.data.wallet.newBalance === 'number') {
-
-        } else {
-          console.warn('⚠️ Invalid wallet data in response:', response.data.wallet);
+        // Validate wallet data - backend may return wallet.balance.paybill or wallet.newBalance
+        if (response.data.wallet) {
+          const walletData = response.data.wallet as any;
+          if (typeof walletData.newBalance === 'number') {
+            console.log('💳 [PayBill API] Wallet newBalance:', walletData.newBalance);
+          } else if (walletData.balance && typeof walletData.balance.paybill === 'number') {
+            console.log('💳 [PayBill API] Wallet balance.paybill:', walletData.balance.paybill);
+          }
         }
 
         if (response.data.autoCartAdded) {
-
+          console.log('💳 [PayBill API] Auto-cart addition:', response.data.productId);
         }
+      } else {
+        console.error('❌ [PayBill API] Confirm payment failed:', response.error || response.message);
       }
 
       return response;
     } catch (error: any) {
       console.error('❌ [PayBill API] Error confirming payment:', error);
+      console.error('❌ [PayBill API] Error response:', error.response?.data);
       return {
         success: false,
-        error: error.message || 'Failed to confirm payment',
+        error: error.response?.data?.error || error.message || 'Failed to confirm payment',
         message: 'Payment confirmation failed'
       };
     }
@@ -407,8 +428,10 @@ class WalletPayBillService {
 
       }
 
+      // Backend endpoint is /wallet/paybill/balance (without storeId)
+      // The paybill balance is user-specific, not store-specific
       const response = await apiClient.get<StoreWalletBalanceResponse>(
-        `${this.baseEndpoint}/balance/${storeId}`
+        `${this.baseEndpoint}/balance`
       );
       if (response.success && response.data) {
         // Cache the balance

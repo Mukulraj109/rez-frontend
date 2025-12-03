@@ -327,7 +327,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: screenHeight * 0.9,
+    maxHeight: screenHeight * 0.75,
+    minHeight: 400,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
@@ -335,7 +336,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   keyboardView: {
-    maxHeight: screenHeight * 0.9,
+    flex: 1,
+    maxHeight: screenHeight * 0.75,
   },
   header: {
     paddingTop: 8,
@@ -371,8 +373,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
     paddingHorizontal: 20,
+    paddingBottom: 10,
   },
   instructions: {
     fontSize: 15,

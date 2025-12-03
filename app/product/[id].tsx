@@ -18,9 +18,10 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Href } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { useWishlist } from '@/contexts/WishlistContext';
+import { useLocation } from '@/contexts/LocationContext';
 import { useProductReviews } from '@/hooks/useProductReviews';
 import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
 import productsApi from '@/services/productsApi';
@@ -43,8 +44,35 @@ import ProductShareModal from '@/components/product/ProductShareModal';
 import SizeGuideModal from '@/components/product/SizeGuideModal';
 import { useProductAnalytics } from '@/hooks/useProductAnalytics';
 import analyticsService from '@/services/analyticsService';
+import ExpertReviews from '@/components/product/ExpertReviews';
+import CustomerPhotos from '@/components/product/CustomerPhotos';
+import QASection from '@/components/product/QASection';
+import ProductComparison from '@/components/product/ProductComparison';
+import ProductPageErrorBoundary from '@/components/product/ProductPageErrorBoundary';
+import ProductPageSkeleton from '@/components/product/ProductPageSkeleton';
+import {
+  validateAddToCart,
+  validateQuantity,
+  getMaxAvailableQuantity,
+  isProductAvailable,
+  MAX_QUANTITY_PER_ITEM,
+} from '@/utils/cartValidation';
 
 const { width: screenWidth } = Dimensions.get('window');
+
+interface StoreInfo {
+  id: string;
+  name: string;
+  logo?: string;
+  slug?: string;
+  location?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    coordinates?: [number, number]; // [longitude, latitude]
+    deliveryRadius?: number;
+  };
+}
 
 interface ProductDetails {
   id: string;
@@ -63,12 +91,29 @@ interface ProductDetails {
   brand: string;
   tags: string[];
   variants?: IProductVariant[]; // Product variants for selection
+  store?: StoreInfo; // Store information with location
+}
+
+// Haversine formula for distance calculation between two coordinates
+function calculateDistance(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number
+): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10; // Distance in km, rounded to 1 decimal
 }
 
 export default function ProductDetailPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const { state: locationState } = useLocation();
   const [product, setProduct] = useState<ProductDetails | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,6 +125,7 @@ export default function ProductDetailPage() {
   const [showStockNotificationModal, setShowStockNotificationModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showSizeGuideModal, setShowSizeGuideModal] = useState(false);
+  const [comparisonProducts, setComparisonProducts] = useState<any[]>([]);
 
   // Cart context
   const { state: cartState, actions: cartActions } = useCart();
@@ -110,8 +156,6 @@ export default function ProductDetailPage() {
 
   // Debug: Log wallet state
   useEffect(() => {
-    console.log('💰 [ProductPage] Wallet state:', walletState);
-    console.log('💰 [ProductPage] Coin balance:', coinBalance);
   }, [walletState, coinBalance]);
 
   // Use the reviews hook for complete review management
@@ -137,14 +181,12 @@ export default function ProductDetailPage() {
   });
 
   useEffect(() => {
-    console.log('🔍 [ProductPage] Route param ID received:', id);
     loadProductDetails(id as string);
   }, [id]);
 
   // Track product view when product loads
   useEffect(() => {
     if (product) {
-      console.log('📊 [ProductPage] Tracking product view');
       analyticsService.trackProductView({
         productId: product.id,
         productName: product.name,
@@ -158,14 +200,11 @@ export default function ProductDetailPage() {
 
   const loadProductDetails = async (productId: string) => {
     try {
-      console.log('🔍 [ProductPage] Loading product with ID:', productId);
 
       // Fetch product details from backend
       const productResponse = await productsApi.getProductById(productId);
-      console.log('🔍 [ProductPage] Backend response:', productResponse);
 
       if (!productResponse.success || !productResponse.data) {
-        console.error('❌ [PRODUCT PAGE] Failed to load product:', productResponse.message);
         setIsLoading(false);
         return;
       }
@@ -207,9 +246,24 @@ export default function ProductDetailPage() {
         return video.url || video.uri || '';
       }).filter(Boolean) || [];
 
+      // Extract store information with location
+      const storeInfo: StoreInfo | undefined = productData.store ? {
+        id: productData.store._id || productData.store.id || '',
+        name: productData.store.name || 'Unknown Store',
+        logo: productData.store.logo,
+        slug: productData.store.slug,
+        location: productData.store.location ? {
+          address: productData.store.location.address,
+          city: productData.store.location.city,
+          state: productData.store.location.state,
+          coordinates: productData.store.location.coordinates,
+          deliveryRadius: productData.store.location.deliveryRadius,
+        } : undefined,
+      } : undefined;
+
       // Transform backend product data to component format
       const transformedProduct: ProductDetails = {
-        id: productData.id || (productData as any)._id,
+        id: productData.id || (productData as { _id?: string })._id || '',
         name: productData.name,
         price: productPrice,
         originalPrice: productOriginalPrice !== productPrice ? productOriginalPrice : undefined,
@@ -234,12 +288,11 @@ export default function ProductDetailPage() {
         brand: productData.store?.name || 'Unknown',
         tags: productData.tags || [],
         variants: transformedVariants.length > 0 ? transformedVariants : undefined,
+        store: storeInfo, // Include store info with location
       };
 
-      console.log('✅ [ProductPage] Transformed product:', transformedProduct);
       setProduct(transformedProduct);
     } catch (error) {
-      console.error('❌ [PRODUCT PAGE] Error loading product:', error);
       setError('Failed to load product details. Please try again.');
     } finally {
       setIsLoading(false);
@@ -259,38 +312,38 @@ export default function ProductDetailPage() {
     try {
       setIsAddingToCart(true);
 
-      // Validation 1: Check if product has variants and one is selected
-      if (product.variants && product.variants.length > 0 && !selectedVariant) {
-        Alert.alert(
-          'Select Options',
-          'Please select all product options (size, color, etc.) before adding to cart.'
-        );
-        setIsAddingToCart(false);
-        return;
-      }
+      // Get current quantity in cart for this product
+      const currentCartQty = cartActions.getItemQuantity(
+        selectedVariant ? `${product.id}-${selectedVariant._id}` : product.id
+      );
 
-      // Validation 2: Check stock availability
-      const isAvailable = await checkAvailability(quantity);
-      if (!isAvailable) {
+      // Use centralized validation
+      const validation = validateAddToCart(
+        product,
+        quantity,
+        selectedVariant,
+        currentCartQty,
+        {
+          checkStock: true,
+          checkVariants: true,
+          checkQuantityLimits: true,
+        }
+      );
+
+      // If validation fails, show error and return
+      if (!validation.valid) {
         Alert.alert(
-          'Out of Stock',
-          availability?.message || 'This product is currently out of stock.',
+          'Cannot Add to Cart',
+          validation.error || 'Unable to add this item to cart.',
           [{ text: 'OK' }]
         );
         setIsAddingToCart(false);
         return;
       }
 
-      // Validation 3: Check if quantity exceeds max available
-      const maxQty = getMaxQuantity();
-      if (quantity > maxQty) {
-        Alert.alert(
-          'Quantity Not Available',
-          `Only ${maxQty} item${maxQty > 1 ? 's' : ''} available. Please adjust quantity.`,
-          [{ text: 'OK' }]
-        );
-        setIsAddingToCart(false);
-        return;
+      // Show warning if exists (e.g., low stock)
+      if (validation.warning) {
+        console.log('Cart Warning:', validation.warning);
       }
 
       // Build cart item
@@ -319,12 +372,10 @@ export default function ProductDetailPage() {
         availabilityStatus: availability?.status || 'in_stock' as const,
       };
 
-      console.log('🛒 [ProductPage] Adding to cart:', cartItem);
 
       // Add to cart via CartContext
       await cartActions.addItem(cartItem);
 
-      console.log('✅ [ProductPage] Item added to cart successfully');
       
       // Track add to cart event
       analyticsService.trackAddToCart({
@@ -342,7 +393,6 @@ export default function ProductDetailPage() {
 
       setIsAddingToCart(false);
     } catch (error) {
-      console.error('❌ [ProductPage] Error adding to cart:', error);
       Alert.alert(
         'Error',
         'Failed to add item to cart. Please try again.',
@@ -354,7 +404,7 @@ export default function ProductDetailPage() {
 
   const handleBuyNow = () => {
     // Navigate directly to checkout with this product
-    router.push(`/checkout?productId=${product?.id}&quantity=${quantity}` as any);
+    router.push(`/checkout?productId=${product?.id}&quantity=${quantity}` as Href);
   };
 
   const handleWishlist = async () => {
@@ -394,7 +444,6 @@ export default function ProductDetailPage() {
    * Update displayed price, availability, and images based on selected variant
    */
   const handleVariantChange = (variant: IProductVariant | null) => {
-    console.log('🔄 [ProductPage] Variant changed:', variant);
     setSelectedVariant(variant);
 
     if (variant && product) {
@@ -435,13 +484,11 @@ export default function ProductDetailPage() {
    */
   const handleStockNotification = async (email: string, phone?: string) => {
     try {
-      console.log('📧 [ProductPage] Subscribing to stock notification:', { email, phone });
 
       // TODO: Integrate with backend API when available
       // For now, simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      console.log('✅ [ProductPage] Stock notification subscription successful');
 
       // In production, call backend API:
       // await stockNotificationApi.subscribe({
@@ -451,19 +498,12 @@ export default function ProductDetailPage() {
       //   phone,
       // });
     } catch (error) {
-      console.error('❌ [ProductPage] Failed to subscribe to stock notification:', error);
       throw new Error('Failed to subscribe. Please try again later.');
     }
   };
 
   if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ThemedText style={styles.loadingText}>Loading product...</ThemedText>
-        </View>
-      </SafeAreaView>
-    );
+    return <ProductPageSkeleton showVariants={true} showReviews={false} />;
   }
 
   if (!product) {
@@ -484,8 +524,13 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="white" />
+    <ProductPageErrorBoundary
+      productId={id as string}
+      onRetry={() => loadProductDetails(id as string)}
+      onGoBack={handleBackPress}
+    >
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="white" />
       
       {/* Header */}
       <View style={styles.header}>
@@ -498,7 +543,7 @@ export default function ProductDetailPage() {
         {/* Coin Balance Display */}
         <TouchableOpacity
           style={styles.coinButton}
-          onPress={() => router.push('/WalletScreen' as any)}
+          onPress={() => router.push('/WalletScreen' as Href)}
           activeOpacity={0.7}
         >
           <Ionicons name="star" size={16} color="#FFD700" />
@@ -531,7 +576,7 @@ export default function ProductDetailPage() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.headerButton, { position: 'relative' }]}
-            onPress={() => router.push('/CartPage' as any)}
+            onPress={() => router.push('/CartPage' as Href)}
             accessibilityLabel={`Shopping cart. ${cartState.totalItems > 0 ? `${cartState.totalItems} item${cartState.totalItems !== 1 ? 's' : ''} in cart` : 'Cart is empty'}`}
             accessibilityRole="button"
             accessibilityHint="Double tap to view your shopping cart"
@@ -567,6 +612,43 @@ export default function ProductDetailPage() {
           </View>
 
           <ThemedText style={styles.productName}>{product.name}</ThemedText>
+
+          {/* Location & View Store Section */}
+          {product.store && (
+            <View style={styles.locationSection}>
+              <View style={styles.locationInfo}>
+                <Ionicons name="location" size={18} color="#8B5CF6" />
+                <View style={styles.locationTextContainer}>
+                  {/* Calculate and show distance if coordinates available */}
+                  {product.store.location?.coordinates && locationState.currentLocation?.coordinates && (
+                    <ThemedText style={styles.distanceText}>
+                      {calculateDistance(
+                        locationState.currentLocation.coordinates.latitude,
+                        locationState.currentLocation.coordinates.longitude,
+                        product.store.location.coordinates[1], // latitude
+                        product.store.location.coordinates[0]  // longitude
+                      )} km
+                    </ThemedText>
+                  )}
+                  <ThemedText style={styles.locationText}>
+                    {product.store.location?.address || product.store.location?.city || 'Location not available'}
+                    {product.store.location?.city && product.store.location?.address && `, ${product.store.location.city}`}
+                  </ThemedText>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.viewStoreButton}
+                onPress={() => router.push(`/Store?storeId=${product.store?.id}` as Href)}
+                activeOpacity={0.8}
+                accessibilityLabel={`View store ${product.store.name}`}
+                accessibilityRole="button"
+                accessibilityHint="Double tap to view the store page"
+              >
+                <ThemedText style={styles.viewStoreText}>View Store</ThemedText>
+                <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={styles.priceRow}>
             <ThemedText style={styles.price}>₹{product.price.toLocaleString()}</ThemedText>
@@ -662,7 +744,6 @@ export default function ProductDetailPage() {
             image: product.images[0],
           }}
           onAddToCart={async (productIds) => {
-            console.log('🛒 [ProductPage] Adding bundle products to cart:', productIds);
 
             try {
               // Add all selected products to cart
@@ -673,7 +754,6 @@ export default function ProductDetailPage() {
                 } else {
                   // For other products in bundle, we'll need to fetch their details and add
                   // For now, just log - full implementation would fetch product details
-                  console.log('🛒 [ProductPage] Would add product to cart:', prodId);
                   // TODO: Implement bulk add to cart when backend API is ready
                 }
               }
@@ -683,11 +763,10 @@ export default function ProductDetailPage() {
                 `${productIds.length} item${productIds.length > 1 ? 's' : ''} added to your cart!`,
                 [
                   { text: 'Continue Shopping', style: 'cancel' },
-                  { text: 'View Cart', onPress: () => router.push('/CartPage' as any) },
+                  { text: 'View Cart', onPress: () => router.push('/CartPage' as Href) },
                 ]
               );
             } catch (error) {
-              console.error('❌ [ProductPage] Error adding bundle to cart:', error);
               Alert.alert('Error', 'Failed to add items to cart. Please try again.');
             }
           }}
@@ -700,7 +779,6 @@ export default function ProductDetailPage() {
           storeId={product.brand}
           productPrice={product.price}
           onPinCodeChange={(pinCode) => {
-            console.log('📍 [ProductPage] Pin code changed:', pinCode);
           }}
         />
 
@@ -760,16 +838,13 @@ export default function ProductDetailPage() {
               location="India"
               isVerified={true}
               onVisitStore={() => {
-                console.log('🏪 [ProductPage] Visiting store:', product.brand);
-                router.push(`/StoreListPage?storeId=${product.brand}` as any);
+                router.push(`/StoreListPage?storeId=${product.brand}` as Href);
               }}
               onViewProducts={() => {
-                console.log('📦 [ProductPage] Viewing store products:', product.brand);
-                router.push(`/StoreListPage?storeId=${product.brand}&tab=products` as any);
+                router.push(`/StoreListPage?storeId=${product.brand}&tab=products` as Href);
               }}
               onContact={() => {
-                console.log('💬 [ProductPage] Contacting seller:', product.brand);
-                router.push(`/help/chat?storeId=${product.brand}` as any);
+                router.push(`/help/chat?storeId=${product.brand}` as Href);
               }}
             />
           </>
@@ -788,12 +863,101 @@ export default function ProductDetailPage() {
               currentUserId="current-user"
               onRefresh={refreshReviews}
               onLoadMore={loadMoreReviews}
-              onSortChange={setSortBy as any}
-              onFilterChange={setFilterRating as any}
+              onSortChange={(sortOption: string) => setSortBy(sortOption as Parameters<typeof setSortBy>[0])}
+              onFilterChange={(rating: number | null) => setFilterRating(rating as Parameters<typeof setFilterRating>[0])}
               onSubmitReview={submitReview}
               onUpdateReview={updateReview}
               onDeleteReview={deleteReview}
               onMarkHelpful={markHelpful}
+            />
+
+            {/* Expert Reviews Section */}
+            <View style={styles.section}>
+              <ExpertReviews
+                productId={product.id}
+                reviews={[]} // TODO: Fetch expert reviews from backend
+                onMarkHelpful={(reviewId) => {
+                  // TODO: Implement API call to mark expert review as helpful
+                }}
+              />
+            </View>
+
+            {/* Customer Photos Section */}
+            <View style={styles.section}>
+              <CustomerPhotos
+                productId={product.id}
+                photos={[]} // TODO: Fetch customer photos from backend
+                onUploadPhoto={async (photo) => {
+                  // TODO: Implement API call to upload customer photo
+                }}
+                onMarkHelpful={(photoId) => {
+                  // TODO: Implement API call to mark photo as helpful
+                }}
+                enableUpload={true}
+              />
+            </View>
+
+            {/* Q&A Section */}
+            <View style={styles.section}>
+              <QASection
+                productId={product.id}
+                questions={[]} // TODO: Fetch Q&A from backend
+                onAskQuestion={async (question) => {
+                  // TODO: Implement API call to submit question
+                }}
+                onAnswerQuestion={async (questionId, answer) => {
+                  // TODO: Implement API call to submit answer
+                }}
+                onMarkHelpful={(questionId, answerId) => {
+                  // TODO: Implement API call to mark as helpful
+                }}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Product Comparison Section */}
+        {comparisonProducts.length > 0 && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Compare Products</ThemedText>
+            <ProductComparison
+              products={[
+                // Current product
+                {
+                  id: product.id,
+                  name: product.name,
+                  price: product.price,
+                  originalPrice: product.originalPrice,
+                  image: product.images[0],
+                  rating: product.rating,
+                  reviews: product.reviewCount,
+                  brand: product.brand,
+                  specs: product.specifications,
+                  features: product.tags,
+                  discount: product.discount,
+                },
+                // Comparison products
+                ...comparisonProducts,
+              ]}
+              onRemoveProduct={(productId) => {
+                if (productId === product.id) {
+                  // Can't remove current product, just clear comparison
+                  setComparisonProducts([]);
+                } else {
+                  setComparisonProducts(prev => prev.filter(p => p.id !== productId));
+                }
+              }}
+              onAddToCart={(productId) => {
+                if (productId === product.id) {
+                  handleAddToCart();
+                } else {
+                  // TODO: Add other product to cart
+                  Alert.alert('Info', 'Adding comparison products to cart will be available soon!');
+                }
+              }}
+              onViewProduct={(productId) => {
+                router.push(`/ProductPage?cardId=${productId}&cardType=product` as Href);
+              }}
             />
           </View>
         )}
@@ -805,8 +969,7 @@ export default function ProductDetailPage() {
           type="similar"
           limit={6}
           onProductPress={(productId) => {
-            console.log('🔗 [ProductPage] Navigating to product:', productId);
-            router.push(`/product/${productId}` as any);
+            router.push(`/ProductPage?cardId=${productId}&cardType=product` as Href);
           }}
         />
 
@@ -839,10 +1002,17 @@ export default function ProductDetailPage() {
           </ThemedText>
           <TouchableOpacity
             style={styles.quantityButton}
-            onPress={() => setQuantity(quantity + 1)}
+            onPress={() => {
+              const maxAvailable = getMaxAvailableQuantity(product!, selectedVariant);
+              setQuantity(Math.min(quantity + 1, maxAvailable));
+            }}
             accessibilityLabel="Increase quantity"
             accessibilityRole="button"
             accessibilityHint={`Currently ${quantity} items. Double tap to increase quantity`}
+            accessibilityState={{
+              disabled: quantity >= getMaxAvailableQuantity(product!, selectedVariant)
+            }}
+            disabled={quantity >= getMaxAvailableQuantity(product!, selectedVariant)}
           >
             <Ionicons name="add" size={20} color="#333" />
           </TouchableOpacity>
@@ -906,7 +1076,7 @@ export default function ProductDetailPage() {
           onClose={() => setShowAddToCartModal(false)}
           onViewCart={() => {
             setShowAddToCartModal(false);
-            router.push('/CartPage' as any);
+            router.push('/CartPage' as Href);
           }}
           productName={product.name}
           productImage={product.images[0]}
@@ -940,7 +1110,6 @@ export default function ProductDetailPage() {
           productUrl={`https://app.wasil.com/product/${product.id}`}
           referralCode="WASIL123" // TODO: Get from user's referral code
           onShareComplete={(platform) => {
-            console.log('📤 [ProductPage] Product shared via:', platform);
             analyticsService.trackShare({
               productId: product.id,
               platform,
@@ -988,7 +1157,8 @@ export default function ProductDetailPage() {
         />
       )}
     </SafeAreaView>
-);
+    </ProductPageErrorBoundary>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -1133,6 +1303,54 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 12,
     lineHeight: 26,
+  },
+  locationSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8F5FF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8E0F5',
+  },
+  locationInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  locationTextContainer: {
+    marginLeft: 8,
+    flex: 1,
+  },
+  distanceText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#8B5CF6',
+    marginBottom: 2,
+  },
+  locationText: {
+    fontSize: 13,
+    color: '#666',
+    flexWrap: 'wrap',
+  },
+  viewStoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#8B5CF6',
+    marginLeft: 12,
+  },
+  viewStoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B5CF6',
+    marginRight: 4,
   },
   priceRow: {
     flexDirection: 'row',

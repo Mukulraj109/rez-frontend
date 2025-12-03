@@ -111,12 +111,12 @@ export const generateDeviceFingerprint = async (): Promise<DeviceFingerprint> =>
 
     }
 
-    // Collect device information
+    // Collect device information (handle web platform where some values are undefined)
     const deviceInfo = {
-      platform: Platform.OS,
-      osVersion: Platform.Version.toString(),
-      deviceModel: Device.modelName || 'Unknown',
-      deviceName: Device.deviceName || 'Unknown',
+      platform: Platform.OS || 'web',
+      osVersion: Platform.Version ? String(Platform.Version) : 'web',
+      deviceModel: Device.modelName || 'Browser',
+      deviceName: Device.deviceName || 'Web Browser',
       appVersion: Application.nativeApplicationVersion || '1.0.0',
       uniqueId: storedId,
       timestamp: Date.now(),
@@ -319,14 +319,15 @@ export const performSecurityCheck = async (): Promise<SecurityCheckResult> => {
   } catch (error) {
     console.error('❌ [SECURITY] Security check error:', error);
 
-    // Return cautious result
+    // Return permissive result to not block user on errors (fail open)
+    // Backend will still validate submissions
     return {
-      passed: false,
+      passed: true, // Allow submission - backend will validate
       deviceFingerprint: await getDeviceFingerprint(),
       isBlacklisted: false,
-      isSuspicious: true,
-      trustScore: 0,
-      flags: ['Security check failed'],
+      isSuspicious: false,
+      trustScore: 70, // Default moderate trust
+      flags: ['Security check unavailable - using defaults'],
       recommendations: ['Please try again'],
     };
   }

@@ -92,6 +92,55 @@ export interface LockedItem {
   lockedAt: string;
   expiresAt: string;
   notes?: string;
+  // Paid lock fields (MakeMyTrip style)
+  lockFee?: number;
+  lockFeePercentage?: number;
+  lockDuration?: number;
+  paymentMethod?: 'wallet' | 'paybill' | 'upi';
+  paymentTransactionId?: string;
+  lockPaymentStatus?: 'pending' | 'paid' | 'refunded' | 'forfeited' | 'applied';
+  isPaidLock?: boolean;
+}
+
+// Lock with payment request
+export interface LockWithPaymentRequest {
+  productId: string;
+  quantity?: number;
+  variant?: { type: string; value: string };
+  duration: 3; // 3 hours lock only
+  paymentMethod: 'wallet' | 'paybill' | 'upi';
+}
+
+// Lock fee option
+export interface LockFeeOption {
+  duration: number;
+  label: string;
+  percentage: number;
+  fee: number;
+}
+
+// Lock fee options response
+export interface LockFeeOptionsResponse {
+  productId: string;
+  productName: string;
+  productPrice: number;
+  quantity: number;
+  totalPrice: number;
+  lockOptions: LockFeeOption[];
+}
+
+// Lock with payment response
+export interface LockWithPaymentResponse {
+  cart: Cart;
+  lockDetails: {
+    lockFee: number;
+    lockFeePercentage: number;
+    duration: number;
+    expiresAt: string;
+    transactionId: string;
+    paymentMethod: 'wallet' | 'paybill';
+    message: string;
+  };
 }
 
 export interface Cart {
@@ -890,6 +939,105 @@ class CartService {
     } catch (error: any) {
       console.error('[CART API] Error moving locked item to cart:', error);
       return createErrorResponse(error, 'Failed to move locked item to cart');
+    }
+  }
+
+  /**
+   * Get lock fee options for a product (MakeMyTrip style)
+   */
+  async getLockFeeOptions(
+    productId: string,
+    quantity: number = 1
+  ): Promise<ApiResponse<LockFeeOptionsResponse>> {
+    const startTime = Date.now();
+
+    try {
+      if (!productId) {
+        return {
+          success: false,
+          error: 'Product ID is required',
+          message: 'Product ID is required',
+        };
+      }
+
+      logApiRequest('GET', `/cart/lock-fee-options?productId=${productId}&quantity=${quantity}`);
+
+      const response = await withRetry(
+        () => apiClient.get<LockFeeOptionsResponse>(
+          `/cart/lock-fee-options?productId=${productId}&quantity=${quantity}`
+        ),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('GET', '/cart/lock-fee-options', response, Date.now() - startTime);
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error getting lock fee options:', error);
+      return createErrorResponse(error, 'Failed to get lock fee options');
+    }
+  }
+
+  /**
+   * Lock item with payment (MakeMyTrip style)
+   * User pays a percentage of product price to lock it for a duration
+   */
+  async lockItemWithPayment(
+    data: LockWithPaymentRequest
+  ): Promise<ApiResponse<LockWithPaymentResponse>> {
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!data.productId) {
+        return {
+          success: false,
+          error: 'Product ID is required',
+          message: 'Product ID is required',
+        };
+      }
+
+      if (data.duration !== 3) {
+        return {
+          success: false,
+          error: 'Invalid duration',
+          message: 'Please select a valid lock duration (3 hours)',
+        };
+      }
+
+      if (!['wallet', 'paybill', 'upi'].includes(data.paymentMethod)) {
+        return {
+          success: false,
+          error: 'Invalid payment method',
+          message: 'Please select a valid payment method',
+        };
+      }
+
+      logApiRequest('POST', '/cart/lock-with-payment', data);
+
+      const response = await withRetry(
+        () => apiClient.post<LockWithPaymentResponse>('/cart/lock-with-payment', data),
+        { maxRetries: 1 } // Don't retry payment operations
+      );
+
+      logApiResponse('POST', '/cart/lock-with-payment', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data?.cart) {
+        if (!validateCart(response.data.cart)) {
+          console.error('[CART API] Cart validation failed after lock with payment');
+          return {
+            success: false,
+            error: 'Invalid cart data after locking item',
+            message: 'Failed to lock item',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error locking item with payment:', error);
+      return createErrorResponse(error, 'Failed to lock item. Please try again.');
     }
   }
 }

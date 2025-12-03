@@ -11,7 +11,10 @@ interface StoreProductsProps {
 }
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
+// Parent sectionCard has marginHorizontal:16 + paddingHorizontal:20 = 36px each side
+// Plus 12px gap between cards
+// Total to subtract: (36*2) + 12 = 84px
+const CARD_WIDTH = (width - 84) / 2;
 
 export default function StoreProducts({ storeId, storeName }: StoreProductsProps) {
   const router = useRouter();
@@ -87,14 +90,19 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
   };
 
   const handleViewAll = () => {
-    // Navigate to full products list for this store
+    // Navigate to full products page for this store
     router.push({
-      pathname: '/StoreListPage',
+      pathname: '/StoreProductsPage',
       params: {
         storeId,
-        title: `${storeName || 'Store'} Products`
+        storeName: storeName || 'Store'
       }
     } as any);
+  };
+
+  // Format price with comma separator
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('en-IN');
   };
 
   const renderProduct = ({ item }: { item: any }) => {
@@ -109,11 +117,16 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
       ? Math.round(((comparePrice - price) / comparePrice) * 100)
       : 0;
 
+    // Truncate product name for display
+    const displayName = item.name?.length > 30
+      ? item.name.substring(0, 30) + '...'
+      : item.name;
+
     return (
       <TouchableOpacity
         style={styles.productCard}
         onPress={() => handleProductPress(item)}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
       >
         {/* Product Image */}
         <View style={styles.imageContainer}>
@@ -125,7 +138,7 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
             />
           ) : (
             <View style={styles.placeholderImage}>
-              <Ionicons name="image-outline" size={40} color="#CBD5E1" />
+              <Ionicons name="image-outline" size={32} color="#CBD5E1" />
             </View>
           )}
 
@@ -139,27 +152,27 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
 
         {/* Product Info */}
         <View style={styles.productInfo}>
-          <Text style={styles.productName} numberOfLines={2}>
-            {item.name}
+          <Text style={styles.productName} numberOfLines={2} ellipsizeMode="tail">
+            {displayName}
           </Text>
 
-          {/* Rating */}
+          {/* Price Section */}
+          <View style={styles.priceContainer}>
+            <Text style={styles.price}>₹{formatPrice(price)}</Text>
+            {comparePrice && comparePrice > price && (
+              <Text style={styles.comparePrice}>₹{formatPrice(comparePrice)}</Text>
+            )}
+          </View>
+
+          {/* Rating - if available */}
           {item.ratings?.average > 0 && (
             <View style={styles.ratingRow}>
-              <Ionicons name="star" size={12} color="#FBBF24" />
+              <Ionicons name="star" size={11} color="#FBBF24" />
               <Text style={styles.ratingText}>
-                {item.ratings.average.toFixed(1)} ({item.ratings.count})
+                {item.ratings.average.toFixed(1)}
               </Text>
             </View>
           )}
-
-          {/* Price */}
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>₹{price}</Text>
-            {comparePrice && (
-              <Text style={styles.comparePrice}>₹{comparePrice}</Text>
-            )}
-          </View>
         </View>
       </TouchableOpacity>
     );
@@ -204,53 +217,69 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
     );
   }
 
+  // Show only 2 products on MainStorePage if there are more than 2
+  const displayProducts = products.slice(0, 2);
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Store Products</Text>
-        {products.length > 4 && (
-          <TouchableOpacity onPress={handleViewAll} activeOpacity={0.7}>
-            <Text style={styles.viewAll}>View All</Text>
+        {products.length >= 2 && (
+          <TouchableOpacity onPress={handleViewAll} style={styles.viewAllButton} activeOpacity={0.7}>
+            <Text style={styles.viewAll}>View All ({products.length})</Text>
+            <Ionicons name="chevron-forward" size={16} color="#7C3AED" />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Products Grid */}
-      <FlatList
-        data={products.slice(0, 10)}
-        renderItem={renderProduct}
-        keyExtractor={(item) => item._id || item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        scrollEnabled={false}
-        showsVerticalScrollIndicator={false}
-      />
+      {/* Products Row - Show max 2 products */}
+      <View style={styles.productsRow}>
+        {displayProducts.map((product) => (
+          <View key={product._id || product.id}>
+            {renderProduct({ item: product })}
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 12,
+    // No horizontal padding - parent sectionCard already has paddingHorizontal
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 4,
+    marginBottom: 14,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1F2937',
     letterSpacing: -0.3,
   },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
   viewAll: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#7C3AED',
+  },
+  productsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   row: {
     justifyContent: 'space-between',
@@ -258,21 +287,21 @@ const styles = StyleSheet.create({
   },
   productCard: {
     width: CARD_WIDTH,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#F3F4F6',
   },
   imageContainer: {
     width: '100%',
-    height: CARD_WIDTH,
-    backgroundColor: '#F8FAFC',
+    height: CARD_WIDTH * 0.85,
+    backgroundColor: '#F9FAFB',
     position: 'relative',
   },
   productImage: {
@@ -284,56 +313,68 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F3F4F6',
   },
   discountBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#EF4444',
+    backgroundColor: '#DC2626',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
   },
   discountText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#fff',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   productInfo: {
-    padding: 12,
+    padding: 10,
   },
   productName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 6,
-    lineHeight: 18,
-    minHeight: 36,
+    color: '#374151',
+    marginBottom: 8,
+    lineHeight: 17,
+    height: 34,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginTop: 6,
+    backgroundColor: '#FEF9C3',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
   },
   ratingText: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginLeft: 4,
-    fontWeight: '500',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    fontSize: 11,
+    color: '#92400E',
+    marginLeft: 3,
+    fontWeight: '600',
   },
   price: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#7C3AED',
   },
   comparePrice: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     color: '#9CA3AF',
     textDecorationLine: 'line-through',

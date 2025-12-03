@@ -361,6 +361,9 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
         const [achievementsData, coinsData, challengesData, streakData, lastLoginData] = cachedData;
 
         if (achievementsData[1]) {
+          // Always sync coins from wallet (wallet is source of truth)
+          // Don't rely on stale cached coin data
+          await syncCoinsFromWallet();
 
           // Load from cache - simplified version
           dispatch({ type: 'GAMIFICATION_LOADING', payload: false });

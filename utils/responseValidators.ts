@@ -170,21 +170,23 @@ export function validateStoreArray(stores: any[]): any[] {
 
 /**
  * Normalize price field from various API response formats
- * Handles: pricing.basePrice, pricing.salePrice, price.current, price
+ * Handles: pricing.basePrice, pricing.salePrice, pricing.selling, pricing.original, price.current, price
  */
 function normalizePrice(data: any): ProductItem['price'] | null {
   try {
-    // Format 1: pricing object with basePrice/salePrice
+    // Format 1: pricing object with various field names
     if (data.pricing) {
-      const current = data.pricing.salePrice || data.pricing.basePrice;
-      const original = data.pricing.salePrice ? data.pricing.basePrice : undefined;
+      // Support multiple naming conventions: selling/salePrice/basePrice
+      const current = data.pricing.selling || data.pricing.salePrice || data.pricing.basePrice;
+      // Support multiple naming conventions for original price
+      const original = data.pricing.original || (data.pricing.salePrice ? data.pricing.basePrice : undefined);
 
       if (typeof current === 'number') {
         return {
           current,
           original,
           currency: data.pricing.currency || 'INR',
-          discount: original ? Math.round(((original - current) / original) * 100) : undefined,
+          discount: data.pricing.discount || (original ? Math.round(((original - current) / original) * 100) : undefined),
         };
       }
     }
