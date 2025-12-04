@@ -46,7 +46,10 @@ export default function NavigationShortcuts() {
               styles.badge,
               shortcut.badge === 'HOT' ? styles.hotBadge : styles.newBadge
             ]}>
-              <ThemedText style={styles.badgeText}>{shortcut.badge}</ThemedText>
+              <ThemedText style={[
+                styles.badgeText,
+                shortcut.badge === 'HOT' ? styles.hotBadgeText : styles.newBadgeText
+              ]}>{shortcut.badge}</ThemedText>
             </View>
           )}
           <View style={styles.iconContainer}>
@@ -61,7 +64,7 @@ export default function NavigationShortcuts() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'white',
+    backgroundColor: 'transparent',
     paddingVertical: 12,
     marginBottom: 16,
   },
@@ -75,18 +78,20 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#F3F4F6',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   icon: {
     fontSize: 28,
@@ -94,7 +99,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#333',
+    color: '#0B2240',
     textAlign: 'center',
   },
   badge: {
@@ -107,15 +112,20 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   newBadge: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
   },
   hotBadge: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#FFC857',
   },
   badgeText: {
     fontSize: 8,
     fontWeight: '800',
-    color: 'white',
     letterSpacing: 0.5,
+  },
+  newBadgeText: {
+    color: 'white',
+  },
+  hotBadgeText: {
+    color: '#0B2240',
   },
 });

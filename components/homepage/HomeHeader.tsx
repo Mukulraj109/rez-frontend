@@ -23,6 +23,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { GreetingDisplay, LocationDisplay } from '@/components/location';
 import TierBadge from '@/components/subscription/TierBadge';
 import NotificationBell from '@/components/common/NotificationBell';
+import ReZCoin from './ReZCoin';
 
 /**
  * HomeHeader Props Interface
@@ -87,7 +88,12 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
   const router = useRouter();
 
   return (
-    <LinearGradient colors={['#8B5CF6', '#A855F7']} style={headerStyles.header}>
+    <LinearGradient
+      colors={['#00C06A', '#00A16B', '#FFC857']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={headerStyles.header}
+    >
       {/* Header Top Section */}
       <View style={headerStyles.headerTop}>
         {/* Location Display with Expand/Collapse */}
@@ -138,9 +144,10 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
             <TierBadge tier={subscriptionTier} size="small" />
           </TouchableOpacity>
 
-          {/* Loyalty Points */}
-          <TouchableOpacity
-            style={headerStyles.coinsContainer}
+          {/* ReZ Coins - Branded coin display */}
+          <ReZCoin
+            balance={userPoints}
+            size="small"
             onPress={() => {
               if (Platform.OS === 'ios') {
                 setTimeout(() => router.push('/CoinPage'), 50);
@@ -148,15 +155,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
                 router.push('/CoinPage');
               }
             }}
-            activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
-            delayPressIn={Platform.OS === 'ios' ? 50 : 0}
-            accessibilityLabel={`Loyalty points: ${userPoints}`}
-            accessibilityRole="button"
-            accessibilityHint="Double tap to view your loyalty points and rewards"
-          >
-            <Ionicons name="star" size={16} color="#FFD700" />
-            <ThemedText style={textStyles.coinsText}>{userPoints}</ThemedText>
-          </TouchableOpacity>
+          />
 
           {/* Notification Bell */}
           <NotificationBell iconSize={24} iconColor="white" />
@@ -213,7 +212,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
           {/* Full Address Section */}
           <View style={headerStyles.addressSection}>
             <View style={headerStyles.addressHeader}>
-              <Ionicons name="location" size={16} color="#8B5CF6" />
+              <Ionicons name="location" size={16} color="#00796B" />
               <Text style={headerStyles.addressHeaderText}>Current Location</Text>
             </View>
             <LocationDisplay

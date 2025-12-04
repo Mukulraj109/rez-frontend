@@ -32,6 +32,7 @@ import { useWalletAnalytics } from '@/hooks/useWalletAnalytics';
 import walletApi from '@/services/walletApi';
 import { paybillApi } from '@/services/paybillApi';
 import WalletErrorBoundary from '@/components/WalletErrorBoundary';
+import EarningsBreakdown from '@/components/wallet/EarningsBreakdown';
 
 const WalletScreen: React.FC<WalletScreenProps> = ({
   userId = 'user-12345',
@@ -433,7 +434,13 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-         <RechargeWalletCard
+         {/* Partner Earnings Breakdown */}
+        <EarningsBreakdown
+          compact={true}
+          onViewDetails={() => router.push('/(tabs)')}
+        />
+
+        <RechargeWalletCard
   cashbackText="Upto 10% cashback on wallet recharge"
   amountOptions={[120, 500, 1000, 5000, 10000]}
   onAmountSelect={handleAmountSelect}

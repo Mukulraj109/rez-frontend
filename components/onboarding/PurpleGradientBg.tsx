@@ -10,7 +10,7 @@ interface PurpleGradientBgProps {
 export default function PurpleGradientBg({ children, style }: PurpleGradientBgProps) {
   return (
     <LinearGradient
-      colors={['#667eea', '#764ba2']}
+      colors={['#00C06A', '#00796B', '#FFC857']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.gradient, style]}

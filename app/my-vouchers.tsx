@@ -28,9 +28,10 @@ import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { HeaderBackButton } from '@/components/navigation';
 import QRCodeModal from '@/components/vouchers/QRCodeModal';
 import OnlineRedemptionModal from '@/components/voucher/OnlineRedemptionModal';
+import PartnerVouchersSection from '@/components/voucher/PartnerVouchersSection';
 import logger from '@/utils/logger';
 
-type VoucherStatus = 'all' | 'active' | 'used' | 'expired';
+type VoucherStatus = 'all' | 'active' | 'used' | 'expired' | 'partner';
 
 interface CouponMetadata {
   source?: string;
@@ -492,6 +493,7 @@ const MyVouchersPage = () => {
     { key: 'active', label: 'Active' },
     { key: 'used', label: 'Used' },
     { key: 'expired', label: 'Expired' },
+    { key: 'partner', label: 'Partner' },
   ];
 
   if (loading && !refreshing) {
@@ -559,17 +561,32 @@ const MyVouchersPage = () => {
         </View>
       </LinearGradient>
 
-      {/* Vouchers List */}
-      <FlatList
-        data={filteredVouchers}
-        renderItem={renderVoucher}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-        ListEmptyComponent={renderEmptyState}
-      />
+      {/* Vouchers List or Partner Vouchers */}
+      {activeTab === 'partner' ? (
+        <PartnerVouchersSection
+          onVoucherCopied={(code) => {
+            logger.info('Partner voucher copied:', code);
+          }}
+          onApplyVoucher={(code) => {
+            // Navigate to cart with voucher pre-applied
+            router.push({
+              pathname: '/CartPage',
+              params: { voucherCode: code },
+            } as any);
+          }}
+        />
+      ) : (
+        <FlatList
+          data={filteredVouchers}
+          renderItem={renderVoucher}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+          ListEmptyComponent={renderEmptyState}
+        />
+      )}
 
       {/* QR Code Modal */}
       <QRCodeModal

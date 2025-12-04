@@ -44,7 +44,7 @@ export default function RewardTasks({
       case 'review':
         return ['#F59E0B', '#FBBF24'] as const;
       case 'purchase':
-        return ['#8B5CF6', '#A78BFA'] as const;
+        return ['#00C06A', '#00796B'] as const;
       case 'referral':
         return ['#10B981', '#34D399'] as const;
       case 'social':
@@ -227,7 +227,7 @@ export default function RewardTasks({
               onPress={() => handleTaskPress(task)}
             >
               <LinearGradient
-                colors={['#8B5CF6', '#A78BFA']}
+                colors={['#00C06A', '#00796B']}
                 style={styles.claimButtonGradient}
               >
                 <Ionicons name="gift" size={16} color="white" />
@@ -254,7 +254,7 @@ export default function RewardTasks({
       <View style={styles.header}>
         <View style={styles.headerIcon}>
           <LinearGradient
-            colors={['#8B5CF6', '#A78BFA']}
+            colors={['#00C06A', '#00796B']}
             style={styles.headerIconGradient}
           >
             <Ionicons name="trophy" size={20} color="white" />
@@ -282,7 +282,7 @@ export default function RewardTasks({
           <Text style={styles.statLabel}>In Progress</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: '#8B5CF6' }]}>
+          <Text style={[styles.statNumber, { color: '#00C06A' }]}>
             {completedTasks.filter(t => !t.reward.isClaimed).length}
           </Text>
           <Text style={styles.statLabel}>Ready to Claim</Text>
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   },
   progressPercentage: {
     fontSize: 12,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '700',
   },
   progressBar: {
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   rewardValueContainer: {
-    backgroundColor: '#8B5CF620',
+    backgroundColor: '#00C06A20',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   rewardValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   completedRewardValue: {
     color: '#10B981',

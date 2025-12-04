@@ -113,6 +113,31 @@ export interface PartnerEarnings {
   }>;
 }
 
+export interface PartnerTransaction {
+  _id: string;
+  amount: number;
+  type: 'commission' | 'bonus' | 'referral' | 'milestone' | 'task' | 'jackpot';
+  status: 'pending' | 'approved' | 'paid' | 'completed';
+  description: string;
+  source?: string;
+  createdAt: string;
+}
+
+export interface PartnerStats {
+  totalPartners: number;
+  userRank: number;
+  averageOrders: number;
+  topPerformers: Array<{
+    _id: string;
+    name: string;
+    totalOrders: number;
+    currentLevel: {
+      name: string;
+    };
+    avatar?: string;
+  }>;
+}
+
 class PartnerApiService {
   private baseUrl = '/partner';
 
@@ -275,7 +300,7 @@ class PartnerApiService {
   }
 
   /**
-   * Request payout
+   * Request payout (Note: In store credit model, this uses earnings at checkout instead)
    */
   async requestPayout(amount: number, method: string): Promise<ApiResponse<{
     success: boolean;
@@ -284,6 +309,29 @@ class PartnerApiService {
   }>> {
 
     return apiClient.post(`${this.baseUrl}/payout/request`, { amount, method });
+  }
+
+  /**
+   * Get partner statistics and rankings
+   */
+  async getStats(): Promise<ApiResponse<PartnerStats>> {
+    return apiClient.get(`${this.baseUrl}/stats`);
+  }
+
+  /**
+   * Get partner transactions history
+   */
+  async getTransactions(params?: {
+    page?: number;
+    limit?: number;
+    type?: 'all' | 'commission' | 'bonus' | 'referral';
+  }): Promise<ApiResponse<{
+    transactions: PartnerTransaction[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }>> {
+    return apiClient.get(`${this.baseUrl}/earnings`, params);
   }
 }
 

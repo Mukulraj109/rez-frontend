@@ -1,7 +1,7 @@
-// Subscription Plans Page - Production Ready with Toast Notifications
-// Display all subscription tiers with pricing, features, and upgrade options
+// Subscription Plans Page - Premium ReZ Design System
+// Display all subscription tiers with glassmorphism and premium styling
 
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,6 +11,9 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  Platform,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,8 +27,30 @@ import type { SubscriptionTier as TierType, BillingCycle } from '@/types/subscri
 import PaymentSuccessModal from '@/components/subscription/PaymentSuccessModal';
 import StripePaymentModal from '@/components/subscription/StripePaymentModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { Platform } from 'react-native';
 import toast, { Toaster } from 'react-hot-toast';
+
+const { width } = Dimensions.get('window');
+
+// ReZ Brand Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  primaryLight: 'rgba(0, 192, 106, 0.1)',
+  primaryGlow: 'rgba(0, 192, 106, 0.3)',
+  gold: '#FFC857',
+  goldDark: '#FF9F1C',
+  goldLight: 'rgba(255, 200, 87, 0.15)',
+  goldGlow: 'rgba(255, 200, 87, 0.3)',
+  navy: '#0B2240',
+  slate: '#1F2D3D',
+  muted: '#9AA7B2',
+  surface: '#F7FAFC',
+  white: '#FFFFFF',
+  glassWhite: 'rgba(255, 255, 255, 0.85)',
+  glassBorder: 'rgba(255, 255, 255, 0.4)',
+  error: '#EF4444',
+  success: '#10B981',
+};
 
 export default function SubscriptionPlansPage() {
   const router = useRouter();
@@ -36,6 +61,10 @@ export default function SubscriptionPlansPage() {
   const [selectedBilling, setSelectedBilling] = useState<BillingCycle>('monthly');
   const [selectedTier, setSelectedTier] = useState<'premium' | 'vip' | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
+
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
   // Stripe payment states
   const [showStripeModal, setShowStripeModal] = useState(false);
@@ -55,30 +84,41 @@ export default function SubscriptionPlansPage() {
     });
   }, [navigation]);
 
+  // Entrance animation
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
   // Safe navigation function for web compatibility
   const handleGoBack = () => {
     try {
       if (navigation && navigation.canGoBack && navigation.canGoBack()) {
         navigation.goBack();
       } else if (router && router.push) {
-        // Navigate to home if can't go back
         router.push('/');
       } else {
-        // Final fallback - replace current route with home
         router.replace('/');
       }
     } catch (error) {
-      // If all else fails, navigate to home
-
       if (router) {
         router.replace('/');
       }
     }
   };
 
-  // BUG FIX #1: Added empty dependency array to prevent infinite re-renders
   useEffect(() => {
-    // Fetch available plans
     actions.loadSubscription();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -95,24 +135,17 @@ export default function SubscriptionPlansPage() {
       setIsSubscribing(true);
       setSelectedTier(tier);
 
-      console.log('[SUBSCRIPTION] Starting subscription flow for tier:', tier);
-      console.log('[SUBSCRIPTION] Platform:', Platform.OS);
-      console.log('[SUBSCRIPTION] Stripe configured:', stripeApi.isConfigured());
-
-      // Check if Stripe is configured
       if (!stripeApi.isConfigured()) {
-        console.error('[SUBSCRIPTION] Stripe not configured');
         if (Platform.OS === 'web') {
           toast.error('Payment not available. Stripe is not configured properly.');
         } else {
-          Alert.alert('Payment Not Available', 'Stripe is not configured properly.\n\nPlease ensure EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY is set in your .env file.', [{ text: 'OK' }]);
+          Alert.alert('Payment Not Available', 'Stripe is not configured properly.');
         }
         setIsSubscribing(false);
         setSelectedTier(null);
         return;
       }
 
-      // Calculate price based on billing cycle
       const prices = {
         premium: { monthly: 99, yearly: 950 },
         vip: { monthly: 299, yearly: 2850 },
@@ -121,34 +154,21 @@ export default function SubscriptionPlansPage() {
         ? prices[tier].monthly
         : prices[tier].yearly;
 
-      console.log('[SUBSCRIPTION] Amount:', amount, 'INR');
+      const confirmMessage = `Subscribe to ${tier === 'vip' ? 'VIP' : 'Premium'} plan for ${selectedBilling === 'monthly' ? 'monthly' : 'yearly'} billing?\n\nAmount: ₹${amount}`;
 
-      // Show confirmation dialog - Web-compatible version
-      const confirmMessage = `Subscribe to ${tier === 'vip' ? 'VIP' : 'Premium'} plan for ${selectedBilling === 'monthly' ? 'monthly' : 'yearly'} billing?\n\nAmount: ₹${amount}\n\nYou will be redirected to Stripe for secure payment.`;
-
-      console.log('[SUBSCRIPTION] Showing confirmation dialog...');
-
-      // Use window.confirm for web, Alert.alert for native
       if (Platform.OS === 'web') {
         const confirmed = window.confirm(confirmMessage);
-        console.log('[SUBSCRIPTION] User confirmed (web):', confirmed);
 
         if (!confirmed) {
-          console.log('[SUBSCRIPTION] User cancelled');
           setIsSubscribing(false);
           setSelectedTier(null);
           return;
         }
 
-        // User confirmed, proceed with payment
         try {
-          console.log('[SUBSCRIPTION] User confirmed, creating subscription...');
           setProcessingPayment(true);
-
           toast.loading('Creating your subscription...', { id: 'create-subscription' });
 
-          // Call backend to create subscription
-          console.log('[SUBSCRIPTION] Calling API to create subscription...');
           const result = await subscriptionAPI.subscribeToPlan(
             tier,
             selectedBilling,
@@ -156,13 +176,8 @@ export default function SubscriptionPlansPage() {
             promoCode || undefined
           );
 
-          console.log('[SUBSCRIPTION] Backend response:', result);
-          console.log('[SUBSCRIPTION] Result success:', result?.subscription ? 'YES' : 'NO');
-
           if (result && result.subscription) {
             toast.success('Subscription created! Opening payment...', { id: 'create-subscription' });
-
-            // Show payment modal
             setPaymentData({
               subscriptionId: result.subscription._id,
               amount,
@@ -176,77 +191,58 @@ export default function SubscriptionPlansPage() {
             throw new Error('Failed to create subscription');
           }
         } catch (error: any) {
-          console.error('[SUBSCRIPTION] Error:', error);
-          toast.error(error.message || 'Failed to create subscription. Please try again.', { id: 'create-subscription' });
+          toast.error(error.message || 'Failed to create subscription.', { id: 'create-subscription' });
           setIsSubscribing(false);
           setSelectedTier(null);
           setProcessingPayment(false);
         }
       } else {
-        // Native platform - use Alert.alert
-        Alert.alert(
-          'Confirm Subscription',
-          confirmMessage,
-          [
-            {
-              text: 'Cancel',
-              style: 'cancel',
-              onPress: () => {
+        Alert.alert('Confirm Subscription', confirmMessage, [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => {
+              setIsSubscribing(false);
+              setSelectedTier(null);
+            },
+          },
+          {
+            text: 'Proceed to Payment',
+            onPress: async () => {
+              try {
+                setProcessingPayment(true);
+                const result = await subscriptionAPI.subscribeToPlan(
+                  tier,
+                  selectedBilling,
+                  'stripe',
+                  promoCode || undefined
+                );
+
+                if (result && result.subscription) {
+                  setPaymentData({
+                    subscriptionId: result.subscription._id,
+                    amount,
+                    tier,
+                    billingCycle: selectedBilling,
+                  });
+                  setShowStripeModal(true);
+                  setIsSubscribing(false);
+                  setProcessingPayment(false);
+                } else {
+                  throw new Error('Failed to create subscription');
+                }
+              } catch (error: any) {
+                Alert.alert('Subscription Failed', error.message || 'Please try again.');
                 setIsSubscribing(false);
                 setSelectedTier(null);
-              },
+                setProcessingPayment(false);
+              }
             },
-            {
-              text: 'Proceed to Payment',
-              onPress: async () => {
-                try {
-                  console.log('[SUBSCRIPTION] User confirmed, creating subscription...');
-                  setProcessingPayment(true);
-
-                  // Call backend to create subscription
-                  console.log('[SUBSCRIPTION] Calling API to create subscription...');
-                  const result = await subscriptionAPI.subscribeToPlan(
-                    tier,
-                    selectedBilling,
-                    'stripe',
-                    promoCode || undefined
-                  );
-
-                  console.log('[SUBSCRIPTION] Backend response:', result);
-                  console.log('[SUBSCRIPTION] Result success:', result?.subscription ? 'YES' : 'NO');
-
-                  if (result && result.subscription) {
-                    // Show payment modal
-                    setPaymentData({
-                      subscriptionId: result.subscription._id,
-                      amount,
-                      tier,
-                      billingCycle: selectedBilling,
-                    });
-                    setShowStripeModal(true);
-                    setIsSubscribing(false);
-                    setProcessingPayment(false);
-                  } else {
-                    throw new Error('Failed to create subscription');
-                  }
-                } catch (error: any) {
-                  console.error('[SUBSCRIPTION] Error:', error);
-                  Alert.alert(
-                    'Subscription Failed',
-                    error.message || 'Failed to initiate payment. Please try again.'
-                  );
-                  setIsSubscribing(false);
-                  setSelectedTier(null);
-                  setProcessingPayment(false);
-                }
-              },
-            },
-          ]
-        );
+          },
+        ]);
       }
     } catch (error: any) {
-      console.error('[SUBSCRIPTION] Error:', error);
-      const errorMessage = error.message || 'An error occurred. Please try again.';
+      const errorMessage = error.message || 'An error occurred.';
       if (Platform.OS === 'web') {
         toast.error(errorMessage);
       } else {
@@ -258,16 +254,12 @@ export default function SubscriptionPlansPage() {
     }
   };
 
-
-  // Handle success modal close
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
     setPaymentData(null);
   };
 
-  // Handle Stripe payment modal callbacks
   const handlePaymentSuccess = () => {
-    console.log('[PAYMENT] Payment successful');
     setShowStripeModal(false);
     setSelectedTier(null);
     setPaymentData(null);
@@ -276,17 +268,14 @@ export default function SubscriptionPlansPage() {
       toast.success('Payment successful! Your subscription is now active.', { duration: 5000 });
     }
 
-    // Reload subscription data
     actions.loadSubscription(true);
 
-    // Show success modal
     if (paymentData) {
       setShowSuccessModal(true);
     }
   };
 
   const handlePaymentClose = () => {
-    console.log('[PAYMENT] Payment modal closed');
     setShowStripeModal(false);
     setSelectedTier(null);
     setIsSubscribing(false);
@@ -294,7 +283,6 @@ export default function SubscriptionPlansPage() {
   };
 
   const handlePaymentError = (error: Error) => {
-    console.error('[PAYMENT] Payment error:', error);
     setShowStripeModal(false);
     setSelectedTier(null);
     setIsSubscribing(false);
@@ -307,7 +295,6 @@ export default function SubscriptionPlansPage() {
     }
   };
 
-  // Handle promo code application
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) {
       if (Platform.OS === 'web') {
@@ -318,9 +305,7 @@ export default function SubscriptionPlansPage() {
       return;
     }
 
-    // Determine which tier to validate for (if user hasn't selected yet, default to premium)
     const tierToValidate: 'premium' | 'vip' = selectedTier || 'premium';
-
     setValidatingPromo(true);
 
     if (Platform.OS === 'web') {
@@ -338,7 +323,7 @@ export default function SubscriptionPlansPage() {
         setPromoValid(true);
         setPromoDiscount(response.data.discount);
         setFinalPrice(response.data.finalPrice);
-        const successMsg = response.data.message || `Promo code applied! You saved ₹${response.data.discount}`;
+        const successMsg = response.data.message || `Promo applied! You saved ₹${response.data.discount}`;
         if (Platform.OS === 'web') {
           toast.success(successMsg, { id: 'validate-promo' });
         } else {
@@ -360,218 +345,258 @@ export default function SubscriptionPlansPage() {
       setPromoDiscount(0);
       setFinalPrice(null);
       if (Platform.OS === 'web') {
-        toast.error('Failed to validate promo code. Please try again.', { id: 'validate-promo' });
+        toast.error('Failed to validate promo code.', { id: 'validate-promo' });
       } else {
-        Alert.alert('Error', 'Failed to validate promo code. Please try again.');
+        Alert.alert('Error', 'Failed to validate promo code.');
       }
     } finally {
       setValidatingPromo(false);
     }
   };
 
-  // Handle subscription cancellation
-  const handleManageSubscription = () => {
-    Alert.alert(
-      'Manage Subscription',
-      'Choose an action:',
-      [
-        {
-          text: 'Cancel Subscription',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Cancel Subscription',
-              'Are you sure you want to cancel? You will lose all benefits at the end of your billing period.',
-              [
-                { text: 'Keep Subscription', style: 'cancel' },
-                {
-                  text: 'Cancel',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      await subscriptionAPI.cancelSubscription();
-                      Alert.alert('Cancelled', 'Your subscription has been cancelled');
-                      await actions.loadSubscription(true);
-                    } catch (error: any) {
-                      Alert.alert('Error', error.message || 'Failed to cancel subscription');
-                    }
-                  },
-                },
-              ]
-            );
-          },
-        },
-        { text: 'Close', style: 'cancel' },
-      ]
-    );
-  };
-
   // Render feature item
   const renderFeature = (feature: string, included: boolean) => (
     <View style={styles.featureRow} key={feature}>
-      <Ionicons
-        name={included ? 'checkmark-circle' : 'close-circle-outline'}
-        size={20}
-        color={included ? '#10B981' : '#D1D5DB'}
-      />
+      <View style={[styles.featureIcon, included && styles.featureIconActive]}>
+        <Ionicons
+          name={included ? 'checkmark' : 'close'}
+          size={14}
+          color={included ? COLORS.white : COLORS.muted}
+        />
+      </View>
       <ThemedText style={[styles.featureText, !included && styles.featureTextDisabled]}>
         {feature}
       </ThemedText>
     </View>
   );
 
-  // Render plan card
+  // Render plan card with premium glassmorphism
   const renderPlanCard = (
     tier: TierType,
     name: string,
     price: number,
     yearlyPrice: number,
     features: string[],
-    color: string,
+    gradientColors: string[],
     icon: string,
     popular?: boolean
   ) => {
     const isCurrentTier = currentTier === tier;
     const displayPrice = selectedBilling === 'monthly' ? price : Math.floor(yearlyPrice / 12);
     const isUpgrade = tier === 'premium' || tier === 'vip';
+    const isVIP = tier === 'vip';
+    const isPremium = tier === 'premium';
 
     return (
-      <View style={styles.planCard}>
+      <Animated.View
+        style={[
+          styles.planCardWrapper,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
         {popular && (
-          <View style={styles.popularBadge}>
+          <LinearGradient
+            colors={[COLORS.gold, COLORS.goldDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.popularBadge}
+          >
+            <Ionicons name="star" size={12} color={COLORS.navy} />
             <ThemedText style={styles.popularText}>MOST POPULAR</ThemedText>
-          </View>
+          </LinearGradient>
         )}
 
-        <LinearGradient colors={[color, `${color}99`] as any} style={styles.planHeader}>
-          <Ionicons name={icon as any} size={40} color="#FFFFFF" />
-          <ThemedText style={styles.planName}>{name}</ThemedText>
-          {isCurrentTier && (
-            <View style={styles.currentBadge}>
-              <ThemedText style={styles.currentBadgeText}>Current Plan</ThemedText>
-            </View>
-          )}
-        </LinearGradient>
+        <View style={[styles.planCard, popular && styles.planCardPopular]}>
+          {/* Card Shine Effect */}
+          <View style={styles.cardShine} />
 
-        <View style={styles.planBody}>
-          <View style={styles.priceContainer}>
-            <ThemedText style={styles.currency}>₹</ThemedText>
-            <ThemedText style={styles.price}>{displayPrice}</ThemedText>
-            <ThemedText style={styles.period}>/month</ThemedText>
+          {/* Plan Header */}
+          <LinearGradient
+            colors={gradientColors as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.planHeader}
+          >
+            <View style={styles.planIconContainer}>
+              <Ionicons name={icon as any} size={28} color={COLORS.white} />
+            </View>
+            <ThemedText style={styles.planName}>{name}</ThemedText>
+            {isCurrentTier && (
+              <View style={styles.currentBadge}>
+                <Ionicons name="checkmark-circle" size={14} color={COLORS.white} />
+                <ThemedText style={styles.currentBadgeText}>Current</ThemedText>
+              </View>
+            )}
+          </LinearGradient>
+
+          {/* Plan Body */}
+          <View style={styles.planBody}>
+            {/* Price */}
+            <View style={styles.priceContainer}>
+              <ThemedText style={styles.currency}>₹</ThemedText>
+              <ThemedText style={styles.price}>{displayPrice}</ThemedText>
+              <ThemedText style={styles.period}>/month</ThemedText>
+            </View>
+
+            {selectedBilling === 'yearly' && yearlyPrice > 0 && (
+              <View style={styles.savingsContainer}>
+                <Ionicons name="pricetag" size={14} color={COLORS.primary} />
+                <ThemedText style={styles.yearlyNote}>
+                  Save {Math.round(((price * 12 - yearlyPrice) / (price * 12)) * 100)}% — ₹{yearlyPrice}/year
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Features */}
+            <View style={styles.featuresContainer}>
+              {features.map((feature) => renderFeature(feature, true))}
+            </View>
+
+            {/* CTA Button */}
+            {tier === 'free' ? (
+              <View style={styles.freeButton}>
+                <ThemedText style={styles.freeButtonText}>Current Plan</ThemedText>
+              </View>
+            ) : isCurrentTier ? (
+              <View style={styles.activeButton}>
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                <ThemedText style={styles.activeButtonText}>Active</ThemedText>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => handleSubscribe(tier as 'premium' | 'vip')}
+                disabled={isSubscribing}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={isVIP ? [COLORS.gold, COLORS.goldDark] : [COLORS.primary, COLORS.primaryDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.upgradeButton}
+                >
+                  {isSubscribing && selectedTier === tier ? (
+                    <ActivityIndicator color={isVIP ? COLORS.navy : COLORS.white} />
+                  ) : (
+                    <>
+                      <ThemedText style={[styles.upgradeButtonText, isVIP && styles.vipButtonText]}>
+                        {isUpgrade ? 'Upgrade Now' : 'Downgrade'}
+                      </ThemedText>
+                      <Ionicons
+                        name="arrow-forward"
+                        size={18}
+                        color={isVIP ? COLORS.navy : COLORS.white}
+                      />
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
           </View>
-
-          {selectedBilling === 'yearly' && yearlyPrice > 0 && (
-            <ThemedText style={styles.yearlyNote}>
-              Billed annually at ₹{yearlyPrice} (Save {Math.round(((price * 12 - yearlyPrice) / (price * 12)) * 100)}%)
-            </ThemedText>
-          )}
-
-          <View style={styles.featuresContainer}>
-            {features.map((feature) => renderFeature(feature, true))}
-          </View>
-
-          {tier === 'free' ? (
-            <View style={styles.freeButton}>
-              <ThemedText style={styles.freeButtonText}>Current Plan</ThemedText>
-            </View>
-          ) : isCurrentTier ? (
-            <View style={styles.currentButton}>
-              <ThemedText style={styles.currentButtonText}>Active</ThemedText>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={[styles.upgradeButton, { backgroundColor: color }]}
-              onPress={() => handleSubscribe(tier as 'premium' | 'vip')}
-              disabled={isSubscribing}
-              accessibilityLabel={isSubscribing && selectedTier === tier ? 'Processing subscription' : `${isUpgrade ? 'Upgrade' : 'Downgrade'} to ${name} plan`}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: isSubscribing, busy: isSubscribing && selectedTier === tier }}
-              accessibilityHint={`Double tap to ${isUpgrade ? 'upgrade' : 'downgrade'} to the ${name} plan`}
-            >
-              {isSubscribing && selectedTier === tier ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <>
-                  <ThemedText style={styles.upgradeButtonText}>
-                    {isUpgrade ? 'Upgrade Now' : 'Downgrade'}
-                  </ThemedText>
-                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                </>
-              )}
-            </TouchableOpacity>
-          )}
         </View>
-      </View>
+      </Animated.View>
     );
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+
+      {/* Premium Glassmorphism Background */}
+      <LinearGradient
+        colors={[COLORS.surface, '#E8F5E9', COLORS.surface]}
+        style={styles.backgroundGradient}
+      />
+
+      {/* Decorative Orbs */}
+      <View style={[styles.decorativeOrb, styles.orbPrimary]} />
 
       {/* Header */}
-      <LinearGradient colors={['#8B5CF6', '#7C3AED'] as const} style={styles.header}>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
         <View style={styles.headerContainer}>
-          <TouchableOpacity
-            onPress={handleGoBack}
-            style={styles.backButton}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            accessibilityHint="Double tap to return to previous screen"
-          >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+            <View style={styles.backButtonInner}>
+              <Ionicons name="arrow-back" size={22} color={COLORS.white} />
+            </View>
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Choose Your Plan</ThemedText>
           <View style={styles.headerRight} />
         </View>
+
+        {/* Header Subtitle */}
+        <ThemedText style={styles.headerSubtitle}>
+          Unlock premium rewards and exclusive benefits
+        </ThemedText>
       </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Billing Toggle */}
-        <View style={styles.billingToggleContainer}>
-          <TouchableOpacity
-            style={[
-              styles.billingOption,
-              selectedBilling === 'monthly' && styles.billingOptionActive,
-            ]}
-            onPress={() => setSelectedBilling('monthly')}
-            accessibilityLabel={`Monthly billing. ${selectedBilling === 'monthly' ? 'Selected' : ''}`}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: selectedBilling === 'monthly' }}
-            accessibilityHint="Double tap to select monthly billing cycle"
-          >
-            <ThemedText
+        <View style={styles.billingToggleWrapper}>
+          <View style={styles.billingToggleContainer}>
+            <TouchableOpacity
               style={[
-                styles.billingOptionText,
-                selectedBilling === 'monthly' && styles.billingOptionTextActive,
+                styles.billingOption,
+                selectedBilling === 'monthly' && styles.billingOptionActive,
               ]}
+              onPress={() => setSelectedBilling('monthly')}
             >
-              Monthly
-            </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.billingOption,
-              selectedBilling === 'yearly' && styles.billingOptionActive,
-            ]}
-            onPress={() => setSelectedBilling('yearly')}
-            accessibilityLabel={`Yearly billing. Save 20%. ${selectedBilling === 'yearly' ? 'Selected' : ''}`}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: selectedBilling === 'yearly' }}
-            accessibilityHint="Double tap to select yearly billing cycle and save 20 percent"
-          >
-            <ThemedText
+              {selectedBilling === 'monthly' && (
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryDark]}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
+              )}
+              <ThemedText
+                style={[
+                  styles.billingOptionText,
+                  selectedBilling === 'monthly' && styles.billingOptionTextActive,
+                ]}
+              >
+                Monthly
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[
-                styles.billingOptionText,
-                selectedBilling === 'yearly' && styles.billingOptionTextActive,
+                styles.billingOption,
+                selectedBilling === 'yearly' && styles.billingOptionActive,
               ]}
+              onPress={() => setSelectedBilling('yearly')}
             >
-              Yearly
-            </ThemedText>
-            <View style={styles.saveBadge}>
-              <ThemedText style={styles.saveText}>Save 20%</ThemedText>
-            </View>
-          </TouchableOpacity>
+              {selectedBilling === 'yearly' && (
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryDark]}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                />
+              )}
+              <ThemedText
+                style={[
+                  styles.billingOptionText,
+                  selectedBilling === 'yearly' && styles.billingOptionTextActive,
+                ]}
+              >
+                Yearly
+              </ThemedText>
+              <View style={styles.saveBadge}>
+                <ThemedText style={styles.saveText}>-20%</ThemedText>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Promo Code Section */}
@@ -579,18 +604,17 @@ export default function SubscriptionPlansPage() {
           <TouchableOpacity
             style={styles.promoToggle}
             onPress={() => setShowPromoInput(!showPromoInput)}
-            accessibilityLabel={showPromoInput ? 'Hide promo code input' : 'Show promo code input'}
-            accessibilityRole="button"
-            accessibilityHint={`Double tap to ${showPromoInput ? 'hide' : 'show'} promo code field`}
           >
-            <Ionicons name="pricetag-outline" size={20} color="#8B5CF6" />
+            <View style={styles.promoIconContainer}>
+              <Ionicons name="pricetag" size={18} color={COLORS.primary} />
+            </View>
             <ThemedText style={styles.promoToggleText}>
               {showPromoInput ? 'Hide Promo Code' : 'Have a Promo Code?'}
             </ThemedText>
             <Ionicons
               name={showPromoInput ? 'chevron-up' : 'chevron-down'}
               size={20}
-              color="#8B5CF6"
+              color={COLORS.primary}
             />
           </TouchableOpacity>
 
@@ -601,32 +625,30 @@ export default function SubscriptionPlansPage() {
                 value={promoCode}
                 onChangeText={setPromoCode}
                 placeholder="Enter promo code"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={COLORS.muted}
                 autoCapitalize="characters"
-                accessibilityLabel="Promo code input"
-                accessibilityHint="Enter your promotional code here"
               />
               <TouchableOpacity
-                style={styles.promoApplyButton}
                 onPress={handleApplyPromo}
                 disabled={validatingPromo}
-                accessibilityLabel={validatingPromo ? 'Validating promo code' : 'Apply promo code'}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: validatingPromo, busy: validatingPromo }}
-                accessibilityHint="Double tap to apply the promo code"
               >
-                {validatingPromo ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <ThemedText style={styles.promoApplyText}>Apply</ThemedText>
-                )}
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryDark]}
+                  style={styles.promoApplyButton}
+                >
+                  {validatingPromo ? (
+                    <ActivityIndicator color={COLORS.white} size="small" />
+                  ) : (
+                    <ThemedText style={styles.promoApplyText}>Apply</ThemedText>
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           )}
 
           {promoValid && promoDiscount > 0 && (
             <View style={styles.promoApplied}>
-              <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
               <ThemedText style={styles.promoAppliedText}>
                 Promo applied! You saved ₹{promoDiscount}
               </ThemedText>
@@ -648,7 +670,7 @@ export default function SubscriptionPlansPage() {
               'Email support',
               'Basic wishlist',
             ],
-            '#6B7280',
+            ['#9CA3AF', '#6B7280'],
             'person-outline'
           )}
 
@@ -660,13 +682,13 @@ export default function SubscriptionPlansPage() {
             950,
             [
               '2x cashback on all orders',
-              'Free delivery on orders above ₹500',
+              'Free delivery on ₹500+ orders',
               'Priority customer support',
               'Exclusive deals & early access',
               'Unlimited wishlists',
               'Birthday & anniversary offers',
             ],
-            '#8B5CF6',
+            [COLORS.primary, COLORS.primaryDark],
             'star',
             true
           )}
@@ -686,41 +708,56 @@ export default function SubscriptionPlansPage() {
               'Early flash sale access (1 hour)',
               'All Premium benefits',
             ],
-            '#F59E0B',
+            [COLORS.gold, COLORS.goldDark],
             'diamond'
           )}
         </View>
 
         {/* Comparison Table */}
         <View style={styles.comparisonSection}>
-          <ThemedText style={styles.comparisonTitle}>Feature Comparison</ThemedText>
+          <View style={styles.comparisonHeader}>
+            <Ionicons name="grid-outline" size={20} color={COLORS.primary} />
+            <ThemedText style={styles.comparisonTitle}>Feature Comparison</ThemedText>
+          </View>
+
           <View style={styles.comparisonTable}>
-            <View style={styles.comparisonRow}>
-              <ThemedText style={styles.comparisonFeature}>Cashback Rate</ThemedText>
-              <ThemedText style={styles.comparisonValue}>1x</ThemedText>
-              <ThemedText style={styles.comparisonValue}>2x</ThemedText>
-              <ThemedText style={styles.comparisonValue}>3x</ThemedText>
+            <View style={styles.comparisonTableHeader}>
+              <ThemedText style={styles.comparisonHeaderText}>Feature</ThemedText>
+              <ThemedText style={styles.comparisonHeaderText}>Free</ThemedText>
+              <ThemedText style={[styles.comparisonHeaderText, { color: COLORS.primary }]}>
+                Premium
+              </ThemedText>
+              <ThemedText style={[styles.comparisonHeaderText, { color: COLORS.gold }]}>
+                VIP
+              </ThemedText>
             </View>
-            <View style={styles.comparisonRow}>
-              <ThemedText style={styles.comparisonFeature}>Free Delivery</ThemedText>
-              <Ionicons name="close" size={16} color="#EF4444" />
-              <Ionicons name="checkmark" size={16} color="#10B981" />
-              <Ionicons name="checkmark" size={16} color="#10B981" />
-            </View>
-            <View style={styles.comparisonRow}>
-              <ThemedText style={styles.comparisonFeature}>Priority Support</ThemedText>
-              <Ionicons name="close" size={16} color="#EF4444" />
-              <Ionicons name="checkmark" size={16} color="#10B981" />
-              <Ionicons name="checkmark" size={16} color="#10B981" />
-            </View>
-            <View style={styles.comparisonRow}>
-              <ThemedText style={styles.comparisonFeature}>Personal Shopper</ThemedText>
-              <Ionicons name="close" size={16} color="#EF4444" />
-              <Ionicons name="close" size={16} color="#EF4444" />
-              <Ionicons name="checkmark" size={16} color="#10B981" />
-            </View>
+
+            {[
+              { name: 'Cashback Rate', values: ['1x', '2x', '3x'] },
+              { name: 'Free Delivery', values: [false, true, true] },
+              { name: 'Priority Support', values: [false, true, true] },
+              { name: 'Personal Shopper', values: [false, false, true] },
+            ].map((row, index) => (
+              <View key={row.name} style={[styles.comparisonRow, index % 2 === 0 && styles.comparisonRowAlt]}>
+                <ThemedText style={styles.comparisonFeature}>{row.name}</ThemedText>
+                {row.values.map((value, i) => (
+                  <View key={i} style={styles.comparisonCell}>
+                    {typeof value === 'string' ? (
+                      <ThemedText style={styles.comparisonValue}>{value}</ThemedText>
+                    ) : value ? (
+                      <View style={styles.checkIcon}>
+                        <Ionicons name="checkmark" size={14} color={COLORS.white} />
+                      </View>
+                    ) : (
+                      <Ionicons name="close" size={18} color={COLORS.error} />
+                    )}
+                  </View>
+                ))}
+              </View>
+            ))}
           </View>
         </View>
+
       </ScrollView>
 
       {/* Stripe Payment Modal */}
@@ -750,19 +787,37 @@ export default function SubscriptionPlansPage() {
 
       {/* Toast Notifications (Web Only) */}
       {Platform.OS === 'web' && <Toaster position="top-center" />}
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.surface,
+    overflow: 'hidden',
+  },
+  backgroundGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  decorativeOrb: {
+    position: 'absolute',
+    borderRadius: 200,
+    opacity: 0.3,
+  },
+  orbPrimary: {
+    width: 300,
+    height: 300,
+    backgroundColor: COLORS.primaryGlow,
+    top: -100,
+    right: -100,
   },
   header: {
-    paddingTop: StatusBar.currentHeight || 50,
-    paddingBottom: 20,
+    paddingTop: Platform.OS === 'ios' ? 56 : 50,
+    paddingBottom: 24,
     paddingHorizontal: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerContainer: {
     flexDirection: 'row',
@@ -770,110 +825,282 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   backButton: {
-    padding: 8,
+    padding: 4,
+  },
+  backButtonInner: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    fontFamily: 'Poppins-Bold',
     flex: 1,
     textAlign: 'center',
   },
   headerRight: {
-    width: 40,
+    width: 48,
+  },
+  headerSubtitle: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    fontFamily: 'Inter-Regular',
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingTop: 20,
+    paddingBottom: 90,
+  },
+  billingToggleWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
   billingToggleContainer: {
     flexDirection: 'row',
-    margin: 20,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 12,
+    backgroundColor: COLORS.glassWhite,
+    borderRadius: 16,
     padding: 4,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(11, 34, 64, 0.08)',
+      },
+    }),
   },
   billingOption: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     position: 'relative',
+    overflow: 'hidden',
   },
   billingOptionActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    // Gradient applied via LinearGradient
   },
   billingOptionText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#6B7280',
+    color: COLORS.slate,
+    fontFamily: 'Inter-SemiBold',
   },
   billingOptionTextActive: {
-    color: '#111827',
+    color: COLORS.white,
   },
   saveBadge: {
     position: 'absolute',
-    top: -8,
+    top: 2,
     right: 8,
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.gold,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
   },
   saveText: {
-    color: '#FFFFFF',
+    color: COLORS.navy,
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    fontFamily: 'Inter-SemiBold',
+  },
+  promoSection: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: COLORS.glassWhite,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(11, 34, 64, 0.08)',
+      },
+    }),
+  },
+  promoToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  promoIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  promoToggleText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+    fontFamily: 'Inter-SemiBold',
+  },
+  promoInputContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  promoInput: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: COLORS.navy,
+    backgroundColor: COLORS.white,
+    fontFamily: 'Inter-Regular',
+  },
+  promoApplyButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    justifyContent: 'center',
+  },
+  promoApplyText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+  promoApplied: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  promoAppliedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.success,
+    fontFamily: 'Inter-SemiBold',
   },
   plansContainer: {
     paddingHorizontal: 20,
   },
-  planCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+  planCardWrapper: {
     marginBottom: 20,
+  },
+  planCard: {
+    backgroundColor: COLORS.glassWhite,
+    borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0 8px 24px rgba(11, 34, 64, 0.12)',
+      },
+    }),
+  },
+  planCardPopular: {
+    borderColor: 'rgba(255, 200, 87, 0.5)',
+    borderWidth: 2,
+  },
+  cardShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    transform: [{ skewY: '-5deg' }],
+    opacity: 0.5,
   },
   popularBadge: {
-    backgroundColor: '#F59E0B',
-    paddingVertical: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 6,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   popularText: {
-    color: '#FFFFFF',
+    color: COLORS.navy,
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: 1,
+    fontFamily: 'Inter-SemiBold',
   },
   planHeader: {
     padding: 24,
     alignItems: 'center',
   },
+  planIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   planName: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 12,
+    fontWeight: '700',
+    fontFamily: 'Poppins-Bold',
   },
   currentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
   },
   currentBadgeText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
   planBody: {
     padding: 24,
@@ -886,25 +1113,40 @@ const styles = StyleSheet.create({
   },
   currency: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
+    color: COLORS.navy,
     marginTop: 8,
+    fontFamily: 'Poppins-Bold',
   },
   price: {
     fontSize: 48,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '800',
+    color: COLORS.navy,
+    fontFamily: 'Poppins-Bold',
   },
   period: {
     fontSize: 16,
-    color: '#6B7280',
-    marginTop: 20,
+    color: COLORS.muted,
+    marginTop: 24,
+    fontFamily: 'Inter-Regular',
+  },
+  savingsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 16,
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignSelf: 'center',
   },
   yearlyNote: {
-    fontSize: 12,
-    color: '#10B981',
-    textAlign: 'center',
-    marginBottom: 16,
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
   featuresContainer: {
     marginVertical: 20,
@@ -912,153 +1154,163 @@ const styles = StyleSheet.create({
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  featureIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.muted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  featureIconActive: {
+    backgroundColor: COLORS.primary,
   },
   featureText: {
     fontSize: 14,
-    color: '#374151',
-    marginLeft: 12,
+    color: COLORS.slate,
     flex: 1,
+    fontFamily: 'Inter-Regular',
   },
   featureTextDisabled: {
-    color: '#9CA3AF',
+    color: COLORS.muted,
   },
   upgradeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     gap: 8,
   },
   upgradeButtonText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    fontFamily: 'Inter-SemiBold',
   },
-  currentButton: {
-    backgroundColor: '#E5E7EB',
+  vipButtonText: {
+    color: COLORS.navy,
+  },
+  activeButton: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.primaryLight,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
-  currentButtonText: {
-    color: '#6B7280',
+  activeButtonText: {
+    color: COLORS.primary,
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
   freeButton: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(156, 163, 175, 0.1)',
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(156, 163, 175, 0.2)',
   },
   freeButtonText: {
-    color: '#9CA3AF',
+    color: COLORS.muted,
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
   comparisonSection: {
     margin: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: COLORS.glassWhite,
+    borderRadius: 20,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(11, 34, 64, 0.08)',
+      },
+    }),
+  },
+  comparisonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 20,
   },
   comparisonTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 16,
+    fontWeight: '700',
+    color: COLORS.navy,
+    fontFamily: 'Poppins-Bold',
   },
   comparisonTable: {
-    gap: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  comparisonTableHeader: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  comparisonHeaderText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.navy,
+    textAlign: 'center',
+    fontFamily: 'Inter-SemiBold',
   },
   comparisonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  comparisonRowAlt: {
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
   },
   comparisonFeature: {
-    flex: 2,
-    fontSize: 14,
-    color: '#374151',
-  },
-  comparisonValue: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
+    fontSize: 13,
+    color: COLORS.slate,
+    fontFamily: 'Inter-Regular',
   },
-  promoSection: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  promoToggle: {
-    flexDirection: 'row',
+  comparisonCell: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
-  },
-  promoToggleText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#8B5CF6',
-  },
-  promoInputContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
-  promoInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#111827',
-  },
-  promoApplyButton: {
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
     justifyContent: 'center',
   },
-  promoApplyText: {
-    color: '#FFFFFF',
+  comparisonValue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: COLORS.navy,
+    fontFamily: 'Inter-SemiBold',
   },
-  promoApplied: {
-    flexDirection: 'row',
+  checkIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: COLORS.success,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#DCFCE7',
-    borderRadius: 8,
-  },
-  promoAppliedText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#10B981',
   },
 });

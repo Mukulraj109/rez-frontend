@@ -2,9 +2,11 @@ import React, { useMemo, useCallback } from 'react';
 import {
   TouchableOpacity,
   StyleSheet,
-  View
+  View,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { EventCardProps } from '@/types/homepage.types';
@@ -63,7 +65,12 @@ function EventCard({
 
   // Memoize price badge background color
   const priceBadgeColor = useMemo(() => {
-    return event.price.isFree ? '#10B981' : '#8B5CF6';
+    return event.price.isFree ? '#FFC857' : '#00C06A'; // Sun Gold for free, Primary Green for paid
+  }, [event.price.isFree]);
+
+  // Memoize price badge text color
+  const priceBadgeTextColor = useMemo(() => {
+    return event.price.isFree ? '#0B2240' : '#FFFFFF'; // Midnight Navy for free, White for paid
   }, [event.price.isFree]);
 
   return (
@@ -108,13 +115,13 @@ function EventCard({
             accessibilityLabel={`Event price: ${formattedPrice}`}
             accessibilityRole="text"
           >
-            <ThemedText style={styles.priceBadgeText}>{formattedPrice}</ThemedText>
+            <ThemedText style={[styles.priceBadgeText, { color: priceBadgeTextColor }]}>{formattedPrice}</ThemedText>
           </View>
         </View>
 
         {/* Event Details */}
         <View style={styles.content}>
-          <ThemedText style={[styles.title, { color: textColor }]} numberOfLines={2}>
+          <ThemedText style={[styles.title, { color: '#0B2240' }]} numberOfLines={2}>
             {event.title}
           </ThemedText>
 
@@ -124,26 +131,31 @@ function EventCard({
 
           <View style={styles.metaInfo}>
             <View style={styles.locationContainer}>
+              <Ionicons name="location" size={16} color="#00C06A" style={styles.icon} />
               <ThemedText style={[styles.location, { color: textSecondary }]}>
-                📍 {event.isOnline ? 'Online Event' : event.location}
+                {event.isOnline ? 'Online Event' : event.location}
               </ThemedText>
             </View>
 
             <View style={styles.dateContainer}>
-              <ThemedText style={[styles.date, { color: textColor }]}>
-                📅 {formattedDate}
+              <Ionicons name="calendar" size={16} color="#00C06A" style={styles.icon} />
+              <ThemedText style={[styles.date, { color: '#0B2240' }]}>
+                {formattedDate}
               </ThemedText>
               {event.time && (
-                <ThemedText style={[styles.time, { color: textSecondary }]}>
-                  🕐 {event.time}
-                </ThemedText>
+                <>
+                  <Ionicons name="time" size={16} color="#00C06A" style={styles.icon} />
+                  <ThemedText style={[styles.time, { color: textSecondary }]}>
+                    {event.time}
+                  </ThemedText>
+                </>
               )}
             </View>
           </View>
 
           {/* Category Badge */}
-          <View style={[styles.categoryBadge, { backgroundColor: `${textSecondary}15`, borderColor }]}>
-            <ThemedText style={[styles.categoryText, { color: textSecondary }]}>
+          <View style={[styles.categoryBadge, { backgroundColor: '#00796B', borderColor: '#00796B' }]}>
+            <ThemedText style={[styles.categoryText, { color: '#FFFFFF' }]}>
               {event.category}
             </ThemedText>
           </View>
@@ -161,17 +173,17 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   card: {
-    borderRadius: 20,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: '#0B2240',
     shadowOffset: {
       width: 0,
-      height: 8,
+      height: 4,
     },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
   },
   imageContainer: {
     position: 'relative',
@@ -193,13 +205,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     left: 16,
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    shadowColor: '#000',
+    shadowColor: '#0B2240',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 4,
   },
@@ -217,14 +229,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    shadowColor: '#000',
+    shadowColor: '#0B2240',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 4,
   },
   priceBadgeText: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
   },
@@ -253,6 +264,9 @@ const styles = StyleSheet.create({
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  icon: {
+    marginRight: 4,
   },
   location: {
     fontSize: 14,

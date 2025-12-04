@@ -52,7 +52,7 @@ export const PartnerCard: React.FC<PartnerCardProps> = ({
       {/* Partner Info Section */}
       <View style={styles.partnerInfo}>
         <View style={styles.partnerIcon}>
-          <Ionicons name="star" size={20} color="#8B5CF6" />
+          <Ionicons name="star" size={20} color="#00C06A" />
         </View>
         <View>
           <ThemedText style={styles.partnerLevel}>Partner</ThemedText>
@@ -77,7 +77,7 @@ export const PartnerCard: React.FC<PartnerCardProps> = ({
 
       {/* Chevron Arrow */}
       <View style={styles.partnerArrow}>
-        <Ionicons name="chevron-forward" size={20} color="#8B5CF6" />
+        <Ionicons name="chevron-forward" size={20} color="#00C06A" />
       </View>
     </TouchableOpacity>
   );
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     marginHorizontal: 6,
   },
   partnerArrow: {

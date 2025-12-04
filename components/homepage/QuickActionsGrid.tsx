@@ -162,8 +162,9 @@ const styles = StyleSheet.create({
   },
   actionValue: {
     fontSize: 12,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
 });
 

@@ -10,72 +10,92 @@
 // ============================================================================
 
 export const Colors = {
-  // Primary Purple Palette (Standardized to #7C3AED)
+  // Primary Green Palette (ReZ Green: #00C06A)
   primary: {
-    50: '#FAF5FF',
-    100: '#F3E8FF',
-    200: '#E9D5FF',
-    300: '#D8B4FE',
-    400: '#C084FC',
-    500: '#A855F7',
-    600: '#9333EA',
-    700: '#7C3AED', // PRIMARY - Use this everywhere
-    800: '#6D28D9',
-    900: '#581C87',
+    50: '#E6F9F0',
+    100: '#C0F0D9',
+    200: '#99E6C2',
+    300: '#73DCAB',
+    400: '#4DD294',
+    500: '#26C97D',
+    600: '#00C06A', // PRIMARY - ReZ Green
+    700: '#00A159',
+    800: '#008248',
+    900: '#006337',
   },
 
-  // Neutral Grays
-  gray: {
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#6B7280',
-    600: '#4B5563',
-    700: '#374151',
-    800: '#1F2937',
-    900: '#111827',
+  // Secondary Teal Palette (Deep Teal: #00796B)
+  secondary: {
+    50: '#E0F2F1',
+    100: '#B2DFDB',
+    200: '#80CBC4',
+    300: '#4DB6AC',
+    400: '#26A69A',
+    500: '#009688',
+    600: '#00897B',
+    700: '#00796B', // ACCENT - Deep Teal
+    800: '#00695C',
+    900: '#004D40',
   },
+
+  // Neutral Grays (Midnight Navy based)
+  gray: {
+    50: '#F7FAFC', // Surface
+    100: '#F0F4F8',
+    200: '#D9E2EC',
+    300: '#BCCCDC',
+    400: '#9AA7B2', // Cool Gray 1
+    500: '#829AB1',
+    600: '#627D98',
+    700: '#486581',
+    800: '#334E68',
+    900: '#1F2D3D', // Slate 1
+  },
+
+  // Brand Neutrals
+  midnightNavy: '#0B2240', // Brand Dark
 
   // Semantic Colors
-  success: '#10B981',
-  error: '#EF4444',
-  warning: '#F59E0B',
-  info: '#3B82F6',
+  success: '#2ECC71',
+  error: '#E74C3C',
+  warning: '#FF9F1C',
+  info: '#00796B',
+  gold: '#FFC857', // Sun Gold
 
   // Background Colors
   background: {
     primary: '#FFFFFF',
-    secondary: '#F9FAFB',
-    tertiary: '#F3F4F6',
-    purple: '#FAF5FF',
-    purpleLight: '#F6F3FB',
+    secondary: '#F7FAFC', // App background
+    tertiary: '#F0F4F8',
+    green: '#E6F9F0',
+    greenLight: '#F0FDF4',
   },
 
   // Text Colors
   text: {
-    primary: '#111827',
-    secondary: '#6B7280',
-    tertiary: '#9CA3AF',
+    primary: '#0B2240', // Midnight Navy
+    secondary: '#1F2D3D', // Slate 1
+    tertiary: '#9AA7B2', // Cool Gray 1
     white: '#FFFFFF',
-    purple: '#7C3AED',
+    green: '#00C06A',
+    teal: '#00796B',
+    gold: '#FFC857',
   },
 
   // Border Colors
   border: {
-    light: '#F3F4F6',
-    medium: '#E5E7EB',
-    dark: '#D1D5DB',
-    purple: '#E9D5FF',
+    light: '#F0F4F8',
+    medium: '#D9E2EC',
+    dark: '#BCCCDC',
+    green: '#C0F0D9',
   },
 
   // Overlay Colors
   overlay: {
-    light: 'rgba(0, 0, 0, 0.1)',
-    medium: 'rgba(0, 0, 0, 0.3)',
-    dark: 'rgba(0, 0, 0, 0.5)',
-    darker: 'rgba(0, 0, 0, 0.7)',
+    light: 'rgba(11, 34, 64, 0.1)',
+    medium: 'rgba(11, 34, 64, 0.3)',
+    dark: 'rgba(11, 34, 64, 0.5)',
+    darker: 'rgba(11, 34, 64, 0.7)',
   },
 } as const;
 
@@ -84,20 +104,30 @@ export const Colors = {
 // ============================================================================
 
 export const Gradients = {
-  // Purple Gradients
-  purplePrimary: ['#8B5CF6', '#7C3AED'],
-  purpleDeep: ['#7C3AED', '#6D28D9'],
-  purpleLight: ['#C084FC', '#A855F7'],
-  purpleVertical: ['#FAF5FF', '#F3E8FF'],
+  // Green Gradients (Primary)
+  primary: ['#00C06A', '#00A16B'], // ReZ Green Gradient
+  primaryVertical: ['#E6F9F0', '#FFFFFF'],
+
+  // Gold Gradients (Rewards)
+  gold: ['#FFC857', '#FFB300'],
+
+  // Brand Gradient (Hero)
+  brand: ['#00C06A', '#00A16B', '#FFC857'], // Green to Gold
+
+  // Legacy mappings for backward compatibility (mapped to new colors)
+  purplePrimary: ['#00C06A', '#00A16B'],
+  purpleDeep: ['#00796B', '#004D40'],
+  purpleLight: ['#4DD294', '#26C97D'],
+  purpleVertical: ['#E6F9F0', '#FFFFFF'],
 
   // Overlay Gradients
-  overlayBottom: ['transparent', 'rgba(0, 0, 0, 0.7)'],
-  overlayTop: ['rgba(0, 0, 0, 0.7)', 'transparent'],
-  overlayFull: ['rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.7)'],
+  overlayBottom: ['transparent', 'rgba(11, 34, 64, 0.7)'],
+  overlayTop: ['rgba(11, 34, 64, 0.7)', 'transparent'],
+  overlayFull: ['rgba(11, 34, 64, 0.3)', 'rgba(11, 34, 64, 0.7)'],
 
   // Shimmer Gradient (for skeleton loaders)
-  shimmer: ['#E5E7EB', '#F3F4F6', '#EDE9FE', '#F3F4F6', '#E5E7EB'],
-  shimmerDark: ['#374151', '#4B5563', '#374151'],
+  shimmer: ['#F0F4F8', '#F7FAFC', '#E6F9F0', '#F7FAFC', '#F0F4F8'],
+  shimmerDark: ['#1F2D3D', '#334E68', '#1F2D3D'],
 } as const;
 
 // ============================================================================
@@ -140,7 +170,7 @@ export const BorderRadius = {
 export const Shadows = {
   // Subtle - For small elements, badges
   subtle: {
-    shadowColor: Colors.gray[900],
+    shadowColor: Colors.midnightNavy,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -149,25 +179,25 @@ export const Shadows = {
 
   // Medium - For cards, buttons
   medium: {
-    shadowColor: Colors.gray[900],
+    shadowColor: Colors.midnightNavy,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOpacity: 0.08, // Slightly softer
+    shadowRadius: 12, // More spread
     elevation: 4,
   },
 
   // Strong - For modals, important elements
   strong: {
-    shadowColor: Colors.gray[900],
+    shadowColor: Colors.midnightNavy,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
     elevation: 8,
   },
 
-  // Purple-tinted shadows for primary elements
+  // Green-tinted shadows for primary elements (mapped from purple)
   purpleSubtle: {
-    shadowColor: Colors.primary[700],
+    shadowColor: Colors.primary[600],
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
@@ -175,7 +205,7 @@ export const Shadows = {
   },
 
   purpleMedium: {
-    shadowColor: Colors.primary[700],
+    shadowColor: Colors.primary[600],
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -183,7 +213,7 @@ export const Shadows = {
   },
 
   purpleStrong: {
-    shadowColor: Colors.primary[700],
+    shadowColor: Colors.primary[600],
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -211,6 +241,7 @@ export const Typography = {
     lineHeight: 40,
     fontWeight: '800' as const,
     letterSpacing: -0.5,
+    // fontFamily: 'Poppins-Bold', // Assuming fonts are loaded
   },
 
   // Headings
@@ -219,24 +250,28 @@ export const Typography = {
     lineHeight: 36,
     fontWeight: '700' as const,
     letterSpacing: -0.4,
+    // fontFamily: 'Poppins-Bold',
   },
   h2: {
     fontSize: 24,
     lineHeight: 32,
-    fontWeight: '700' as const,
+    fontWeight: '600' as const,
     letterSpacing: -0.3,
+    // fontFamily: 'Poppins-SemiBold',
   },
   h3: {
     fontSize: 20,
     lineHeight: 28,
     fontWeight: '600' as const,
     letterSpacing: -0.2,
+    // fontFamily: 'Poppins-SemiBold',
   },
   h4: {
     fontSize: 18,
     lineHeight: 24,
     fontWeight: '600' as const,
     letterSpacing: 0,
+    // fontFamily: 'Poppins-SemiBold',
   },
 
   // Body text
@@ -245,18 +280,21 @@ export const Typography = {
     lineHeight: 24,
     fontWeight: '400' as const,
     letterSpacing: 0,
+    // fontFamily: 'Inter-Regular',
   },
   body: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '400' as const,
     letterSpacing: 0,
+    // fontFamily: 'Inter-Regular',
   },
   bodySmall: {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '400' as const,
     letterSpacing: 0,
+    // fontFamily: 'Inter-Regular',
   },
 
   // Labels & Buttons
@@ -265,22 +303,25 @@ export const Typography = {
     lineHeight: 20,
     fontWeight: '600' as const,
     letterSpacing: 0.2,
+    // fontFamily: 'Inter-SemiBold',
   },
   labelSmall: {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '600' as const,
     letterSpacing: 0.3,
+    // fontFamily: 'Inter-SemiBold',
   },
   button: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '700' as const,
+    fontSize: 14, // Updated from 16 to 14 per TASK.md
+    lineHeight: 20,
+    fontWeight: '600' as const,
     letterSpacing: 0.5,
+    // fontFamily: 'Inter-SemiBold',
   },
   buttonSmall: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '600' as const,
     letterSpacing: 0.3,
   },
@@ -407,16 +448,16 @@ export const Glass = {
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   dark: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(11, 34, 64, 0.3)',
     backdropFilter: 'blur(20px)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  purple: {
-    backgroundColor: 'rgba(124, 58, 237, 0.1)',
+  purple: { // Mapped to Green
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     backdropFilter: 'blur(10px)',
     borderWidth: 1,
-    borderColor: 'rgba(124, 58, 237, 0.2)',
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
 } as const;
 
@@ -473,7 +514,7 @@ export const getPurpleShadow = (level: 'subtle' | 'medium' | 'strong' = 'medium'
 /**
  * Get text color by variant
  */
-export const getTextColor = (variant: 'primary' | 'secondary' | 'tertiary' | 'white' | 'purple' = 'primary') => {
+export const getTextColor = (variant: 'primary' | 'secondary' | 'tertiary' | 'white' | 'green' | 'teal' | 'gold' = 'primary') => {
   return Colors.text[variant];
 };
 

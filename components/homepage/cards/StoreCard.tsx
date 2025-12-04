@@ -7,6 +7,7 @@ import {
   Dimensions,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -263,16 +264,16 @@ function StoreCard({
   const renderRating = useMemo(() => {
     return (
       <View style={styles.ratingContainer}>
-        <Ionicons name="star" size={16} color="#F59E0B" />
-        <ThemedText style={[styles.ratingText, { color: textColor }]}>
+        <Ionicons name="star" size={16} color="#FFC857" />
+        <ThemedText style={[styles.ratingText, { color: '#0B2240' }]}>
           {formattedRating}
         </ThemedText>
-        <ThemedText style={[styles.ratingCount, { color: textSecondary }]}>
+        <ThemedText style={[styles.ratingCount, { color: '#666' }]}>
           ({store.rating.count})
         </ThemedText>
       </View>
     );
-  }, [formattedRating, store.rating.count, textColor, textSecondary]);
+  }, [formattedRating, store.rating.count]);
 
   const renderBadges = useMemo(() => {
     const badges = [];
@@ -287,9 +288,15 @@ function StoreCard({
 
     if (store.isTrending) {
       badges.push(
-        <View key="trending" style={[styles.badge, styles.trendingBadge]}>
+        <LinearGradient
+          key="trending"
+          colors={['#00C06A', '#00796B']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.badge, styles.trendingBadge]}
+        >
           <ThemedText style={styles.trendingBadgeText}>🔥 Trending</ThemedText>
-        </View>
+        </LinearGradient>
       );
     }
 
@@ -420,7 +427,7 @@ function StoreCard({
           <View style={styles.locationInfo}>
             {store.location && (
               <View style={styles.locationContainer}>
-                <Ionicons name="location-outline" size={14} color="#6B7280" />
+                <Ionicons name="location-outline" size={14} color="#666" />
                 <ThemedText style={styles.locationText}>
                   {store.location.distance || store.location.city}
                 </ThemedText>
@@ -429,7 +436,7 @@ function StoreCard({
 
             {store.deliveryTime && (
               <View style={styles.deliveryContainer}>
-                <Ionicons name="time-outline" size={14} color="#6B7280" />
+                <Ionicons name="time-outline" size={14} color="#666" />
                 <ThemedText style={styles.deliveryText}>
                   {store.deliveryTime}
                 </ThemedText>
@@ -487,14 +494,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0B2240',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0px 8px 24px rgba(11, 34, 64, 0.08)',
+      },
+    }),
   },
   imageContainer: {
     position: 'relative',
@@ -545,7 +560,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   newBadge: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C06A',
   },
   newBadgeText: {
     color: '#FFFFFF',
@@ -553,7 +568,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   trendingBadge: {
-    backgroundColor: '#F59E0B',
+    // Gradient background applied via LinearGradient
   },
   trendingBadgeText: {
     color: '#FFFFFF',
@@ -572,7 +587,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: '#0B2240',
     flex: 1,
     marginRight: 8,
   },
@@ -584,11 +599,11 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: '#0B2240',
   },
   ratingCount: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#666',
   },
   description: {
     fontSize: 14,
@@ -609,7 +624,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#666',
   },
   deliveryContainer: {
     flexDirection: 'row',
@@ -618,7 +633,7 @@ const styles = StyleSheet.create({
   },
   deliveryText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#666',
   },
   footer: {
     flexDirection: 'row',
@@ -626,14 +641,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cashbackContainer: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#FFC857',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
   cashbackText: {
     fontSize: 12,
-    color: '#4F46E5',
+    color: '#0B2240',
     fontWeight: '600',
   },
   minOrderText: {

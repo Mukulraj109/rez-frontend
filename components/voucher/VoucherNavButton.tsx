@@ -54,7 +54,7 @@ export default function VoucherNavButton({
         accessibilityRole="button"
         accessibilityHint="Double tap to view online vouchers"
       >
-        <Ionicons name="ticket" size={20} color="#8B5CF6" />
+        <Ionicons name="ticket" size={22} color="#FFC857" />
         {showText && (
           <ThemedText style={styles.minimalText}>Online Vouchers</ThemedText>
         )}
@@ -193,17 +193,22 @@ const styles = StyleSheet.create({
   minimalButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'white',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: 8,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
+    gap: 12,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
   },
   minimalText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0B2240',
   },
 });

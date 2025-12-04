@@ -119,7 +119,7 @@ export default function JackpotTimeline({
       <View style={styles.header}>
         <View style={styles.trophyContainer}>
           <LinearGradient
-            colors={['#FFD700', '#FFA500']}
+            colors={['#FFC857', '#FF9F1C']}
             style={styles.trophyGradient}
           >
             <Ionicons name="trophy" size={24} color="white" />
@@ -143,7 +143,7 @@ export default function JackpotTimeline({
         {/* Progress Line */}
         <View style={styles.timelineLine}>
           <LinearGradient
-            colors={['#8B5CF6', '#A78BFA']}
+            colors={['#00C06A', '#00796B']}
             style={[styles.timelineProgress, { width: `${Math.min(progressPercentage, 100)}%` }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   },
   progressAmount: {
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   progressSubtext: {
     fontSize: 12,
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     top: 48,
   },
   activeMilestoneMarker: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
   },
   nextMilestoneMarker: {
     backgroundColor: '#10B981',
@@ -311,8 +311,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   activeMilestoneCard: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
+    borderColor: '#00C06A',
   },
   nextMilestoneCard: {
     backgroundColor: '#10B981',
@@ -381,8 +381,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   activeArrow: {
-    borderTopColor: '#8B5CF6',
-    borderBottomColor: '#8B5CF6',
+    borderTopColor: '#00C06A',
+    borderBottomColor: '#00C06A',
   },
   nextArrow: {
     borderTopColor: '#10B981',

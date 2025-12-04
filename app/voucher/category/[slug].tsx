@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -9,28 +9,63 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { Brand } from '@/types/voucher.types';
 import realVouchersApi from '@/services/realVouchersApi';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-// Category icon and color mapping
-const CATEGORY_INFO: { [key: string]: { icon: string; color: string; backgroundColor: string } } = {
-  beauty: { icon: '💄', color: '#EC4899', backgroundColor: '#FCE7F3' },
-  electronics: { icon: '📱', color: '#3B82F6', backgroundColor: '#DBEAFE' },
-  entertainment: { icon: '🎬', color: '#8B5CF6', backgroundColor: '#EDE9FE' },
-  fashion: { icon: '👗', color: '#EC4899', backgroundColor: '#FCE7F3' },
-  food: { icon: '🍔', color: '#10B981', backgroundColor: '#D1FAE5' },
-  grocery: { icon: '🛒', color: '#F59E0B', backgroundColor: '#FEF3C7' },
-  groceries: { icon: '🛒', color: '#F59E0B', backgroundColor: '#FEF3C7' },
-  shopping: { icon: '🛍️', color: '#EF4444', backgroundColor: '#FEE2E2' },
-  travel: { icon: '✈️', color: '#06B6D4', backgroundColor: '#CFFAFE' },
-  sports: { icon: '⚽', color: '#14B8A6', backgroundColor: '#CCFBF1' },
+// ReZ Premium Color System from TASK.md
+const COLORS = {
+  // Primary
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  primaryLight: 'rgba(0, 192, 106, 0.1)',
+  primaryGlow: 'rgba(0, 192, 106, 0.3)',
+
+  // Gold (rewards)
+  gold: '#FFC857',
+  goldDark: '#FF9F1C',
+  goldLight: 'rgba(255, 200, 87, 0.15)',
+  goldGlow: 'rgba(255, 200, 87, 0.3)',
+
+  // Navy (text)
+  navy: '#0B2240',
+  slate: '#1F2D3D',
+  muted: '#9AA7B2',
+
+  // Surface
+  surface: '#F7FAFC',
+  white: '#FFFFFF',
+
+  // Glass
+  glassWhite: 'rgba(255, 255, 255, 0.7)',
+  glassBorder: 'rgba(255, 255, 255, 0.4)',
+  glassHighlight: 'rgba(255, 255, 255, 0.6)',
+
+  // Status
+  error: '#EF4444',
+  star: '#F59E0B',
+};
+
+// Category icon and color mapping - Updated with ReZ colors
+const CATEGORY_INFO: { [key: string]: { icon: string; gradient: string[]; bgColor: string } } = {
+  beauty: { icon: '💄', gradient: ['#EC4899', '#DB2777'], bgColor: 'rgba(236, 72, 153, 0.1)' },
+  electronics: { icon: '📱', gradient: ['#3B82F6', '#2563EB'], bgColor: 'rgba(59, 130, 246, 0.1)' },
+  entertainment: { icon: '🎬', gradient: ['#8B5CF6', '#7C3AED'], bgColor: 'rgba(139, 92, 246, 0.1)' },
+  fashion: { icon: '👗', gradient: ['#F472B6', '#EC4899'], bgColor: 'rgba(244, 114, 182, 0.1)' },
+  food: { icon: '🍔', gradient: [COLORS.primary, COLORS.primaryDark], bgColor: COLORS.primaryLight },
+  grocery: { icon: '🛒', gradient: ['#F59E0B', '#D97706'], bgColor: 'rgba(245, 158, 11, 0.1)' },
+  groceries: { icon: '🛒', gradient: ['#F59E0B', '#D97706'], bgColor: 'rgba(245, 158, 11, 0.1)' },
+  shopping: { icon: '🛍️', gradient: ['#EF4444', '#DC2626'], bgColor: 'rgba(239, 68, 68, 0.1)' },
+  travel: { icon: '✈️', gradient: ['#06B6D4', '#0891B2'], bgColor: 'rgba(6, 182, 212, 0.1)' },
+  sports: { icon: '⚽', gradient: ['#14B8A6', '#0D9488'], bgColor: 'rgba(20, 184, 166, 0.1)' },
 };
 
 export default function VoucherCategoryPage() {
@@ -41,8 +76,36 @@ export default function VoucherCategoryPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const headerScale = useRef(new Animated.Value(0.95)).current;
+
   const categoryInfo = slug ? CATEGORY_INFO[slug.toLowerCase()] : null;
   const categoryName = slug ? slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ') : 'Category';
+
+  useEffect(() => {
+    // Entrance animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.spring(headerScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   useEffect(() => {
     if (slug) {
@@ -60,17 +123,15 @@ export default function VoucherCategoryPage() {
       const brandsRes = await realVouchersApi.getVoucherBrands({
         category: slug.toLowerCase(),
         page: 1,
-        limit: 50 // Backend API max limit is 50
+        limit: 50
       });
 
       if (!brandsRes.success || !brandsRes.data) {
-        console.error('❌ [VOUCHER CATEGORY] Failed to load brands:', brandsRes);
         setError('Failed to load brands. Please try again.');
         setBrands([]);
         return;
       }
 
-      // Transform backend data to match frontend types
       const transformedBrands: Brand[] = brandsRes.data.map((brand: any) => ({
         id: brand._id,
         name: brand.name,
@@ -87,7 +148,6 @@ export default function VoucherCategoryPage() {
         offers: [],
       }));
 
-      // Sort by featured first, then by cashback rate
       transformedBrands.sort((a, b) => {
         if (a.featured && !b.featured) return -1;
         if (!a.featured && b.featured) return 1;
@@ -96,7 +156,6 @@ export default function VoucherCategoryPage() {
 
       setBrands(transformedBrands);
     } catch (error) {
-      console.error('❌ [VOUCHER CATEGORY] Error loading brands:', error);
       setError('Failed to load brands. Please try again.');
       setBrands([]);
     } finally {
@@ -115,97 +174,161 @@ export default function VoucherCategoryPage() {
   };
 
   const renderHeader = () => (
-    <LinearGradient 
-      colors={['#8B5CF6', '#7C3AED']} 
-      style={styles.header}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      <View style={styles.headerContent}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-        >
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        
-        <View style={styles.headerTitleContainer}>
-          {categoryInfo && (
-            <View style={[styles.categoryIconBadge, { backgroundColor: categoryInfo.backgroundColor }]}>
-              <ThemedText style={styles.categoryIconText}>{categoryInfo.icon}</ThemedText>
-            </View>
-          )}
-          <ThemedText style={styles.headerTitle}>{categoryName}</ThemedText>
-        </View>
-        
-        <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={styles.headerActionButton}
-            onPress={() => {/* TODO: Share */}}
+    <Animated.View style={{ transform: [{ scale: headerScale }] }}>
+      <LinearGradient
+        colors={categoryInfo?.gradient || [COLORS.primary, COLORS.primaryDark]}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Decorative orbs */}
+        <View style={styles.headerOrb1} />
+        <View style={styles.headerOrb2} />
+
+        {/* Glass overlay */}
+        <View style={styles.headerGlassOverlay} />
+
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
             activeOpacity={0.8}
           >
-            <Ionicons name="share-outline" size={20} color="white" />
+            <View style={styles.glassButton}>
+              <Ionicons name="arrow-back" size={22} color={COLORS.white} />
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.headerTitleContainer}>
+            {categoryInfo && (
+              <View style={styles.categoryIconBadge}>
+                <ThemedText style={styles.categoryIconText}>{categoryInfo.icon}</ThemedText>
+              </View>
+            )}
+            <ThemedText style={styles.headerTitle}>{categoryName}</ThemedText>
+          </View>
+
+          <TouchableOpacity
+            style={styles.glassButton}
+            onPress={() => {/* Share */}}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="share-outline" size={20} color={COLORS.white} />
           </TouchableOpacity>
         </View>
-      </View>
-      
-      <ThemedText style={styles.headerSubtitle}>
-        {brands.length} {brands.length === 1 ? 'brand' : 'brands'} available
-      </ThemedText>
-    </LinearGradient>
+
+        <View style={styles.headerSubtitleContainer}>
+          <View style={styles.countBadge}>
+            <ThemedText style={styles.countText}>
+              {brands.length} {brands.length === 1 ? 'brand' : 'brands'} available
+            </ThemedText>
+          </View>
+        </View>
+      </LinearGradient>
+    </Animated.View>
   );
 
-  const renderBrandCard = (brand: Brand) => (
-    <TouchableOpacity
+  const renderBrandCard = (brand: Brand, index: number) => (
+    <Animated.View
       key={brand.id}
-      style={styles.brandCard}
-      onPress={() => handleBrandSelect(brand)}
-      activeOpacity={0.8}
+      style={{
+        opacity: fadeAnim,
+        transform: [
+          { translateY: slideAnim },
+          { scale: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }
+        ],
+      }}
     >
-      <View style={styles.brandHeader}>
-        <View style={[styles.brandLogo, { backgroundColor: brand.backgroundColor || '#F3F4F6' }]}>
-          <ThemedText style={[styles.brandLogoText, { color: brand.logoColor || '#000' }]}>
-            {brand.logo}
-          </ThemedText>
-        </View>
-        <View style={styles.brandInfo}>
-          <View style={styles.brandNameRow}>
-            <ThemedText style={styles.brandName}>{brand.name}</ThemedText>
-            {brand.featured && (
-              <View style={styles.featuredBadge}>
-                <ThemedText style={styles.featuredText}>Featured</ThemedText>
+      <TouchableOpacity
+        style={[
+          styles.brandCard,
+          Platform.OS === 'web' && {
+            boxShadow: '0 8px 32px rgba(11, 34, 64, 0.08), 0 2px 8px rgba(11, 34, 64, 0.04)',
+          }
+        ]}
+        onPress={() => handleBrandSelect(brand)}
+        activeOpacity={0.9}
+      >
+        {/* Glass shine effect */}
+        <View style={styles.cardShine} />
+
+        <View style={styles.brandHeader}>
+          {/* Premium Logo Container */}
+          <View style={styles.logoWrapper}>
+            <LinearGradient
+              colors={[brand.backgroundColor || '#F3F4F6', (brand.backgroundColor || '#F3F4F6') + 'CC']}
+              style={styles.brandLogo}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <ThemedText style={[styles.brandLogoText, { color: brand.logoColor || COLORS.navy }]}>
+                {brand.logo}
+              </ThemedText>
+            </LinearGradient>
+          </View>
+
+          <View style={styles.brandInfo}>
+            <View style={styles.brandNameRow}>
+              <ThemedText style={styles.brandName} numberOfLines={1}>{brand.name}</ThemedText>
+              {brand.featured && (
+                <LinearGradient
+                  colors={[COLORS.gold, COLORS.goldDark]}
+                  style={styles.featuredBadge}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <ThemedText style={styles.featuredText}>Featured</ThemedText>
+                </LinearGradient>
+              )}
+            </View>
+
+            {/* Cashback with icon */}
+            <View style={styles.cashbackRow}>
+              <View style={styles.cashbackIconContainer}>
+                <Ionicons name="gift" size={12} color={COLORS.primary} />
+              </View>
+              <ThemedText style={styles.brandCashback}>
+                Cashback upto {brand.cashbackRate || 0}%
+              </ThemedText>
+            </View>
+
+            {/* Rating with premium styling */}
+            {brand.rating && brand.rating > 0 && (
+              <View style={styles.brandRating}>
+                <View style={styles.starContainer}>
+                  <Ionicons name="star" size={12} color={COLORS.gold} />
+                </View>
+                <ThemedText style={styles.ratingText}>{brand.rating.toFixed(1)}</ThemedText>
+                <ThemedText style={styles.ratingCount}>{brand.reviewCount || '0 users'}</ThemedText>
               </View>
             )}
           </View>
-          <ThemedText style={styles.brandCashback}>
-            Cashback upto {brand.cashbackRate || 0}%
-          </ThemedText>
-          {brand.rating && brand.rating > 0 && (
-            <View style={styles.brandRating}>
-              <Ionicons name="star" size={14} color="#F59E0B" />
-              <ThemedText style={styles.ratingText}>{brand.rating.toFixed(1)}</ThemedText>
-              <ThemedText style={styles.ratingCount}>{brand.reviewCount || '0 users'}</ThemedText>
-            </View>
-          )}
+
+          {/* Arrow with glass effect */}
+          <View style={styles.arrowContainer}>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
+          </View>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-      </View>
-      {brand.description && (
-        <ThemedText style={styles.brandDescription} numberOfLines={2}>
-          {brand.description}
-        </ThemedText>
-      )}
-    </TouchableOpacity>
+
+        {brand.description && (
+          <View style={styles.descriptionContainer}>
+            <ThemedText style={styles.brandDescription} numberOfLines={2}>
+              {brand.description}
+            </ThemedText>
+          </View>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
   );
 
   const renderContent = () => {
     if (loading && !refreshing) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
-          <ThemedText style={styles.loadingText}>Loading brands...</ThemedText>
+          <View style={styles.loaderWrapper}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+          <ThemedText style={styles.loadingText}>Fetching brands...</ThemedText>
         </View>
       );
     }
@@ -213,13 +336,20 @@ export default function VoucherCategoryPage() {
     if (error) {
       return (
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <View style={styles.errorIconContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+          </View>
           <ThemedText style={styles.errorText}>{error}</ThemedText>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={loadCategoryBrands}
-          >
-            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+          <TouchableOpacity onPress={loadCategoryBrands} activeOpacity={0.9}>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              style={styles.retryButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="refresh" size={18} color={COLORS.white} />
+              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       );
@@ -228,7 +358,9 @@ export default function VoucherCategoryPage() {
     if (brands.length === 0) {
       return (
         <View style={styles.emptyContainer}>
-          <Ionicons name="receipt-outline" size={64} color="#9CA3AF" />
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="receipt-outline" size={56} color={COLORS.muted} />
+          </View>
           <ThemedText style={styles.emptyTitle}>No brands found</ThemedText>
           <ThemedText style={styles.emptyText}>
             There are no voucher brands available in this category yet.
@@ -239,31 +371,44 @@ export default function VoucherCategoryPage() {
 
     return (
       <View style={styles.brandsList}>
-        {brands.map((brand) => renderBrandCard(brand))}
+        {brands.map((brand, index) => renderBrandCard(brand, index))}
       </View>
     );
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
-      
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+      {/* Premium Gradient Background */}
+      <LinearGradient
+        colors={['#E8F5E9', '#E0F2F1', '#F5F5F5', '#E8F5E9']}
+        style={styles.backgroundGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.bgOrb1} />
+        <View style={styles.bgOrb2} />
+      </LinearGradient>
+
       {renderHeader()}
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            colors={['#8B5CF6']}
-            tintColor="#8B5CF6"
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+            progressBackgroundColor={COLORS.white}
           />
         }
       >
         {renderContent()}
-        
+
         <View style={styles.bottomSpace} />
       </ScrollView>
     </View>
@@ -273,189 +418,288 @@ export default function VoucherCategoryPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
   },
-  
+
+  // Premium Background
+  backgroundGradient: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  bgOrb1: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: COLORS.primaryGlow,
+    top: height * 0.3,
+    right: -80,
+    opacity: 0.3,
+  },
+  bgOrb2: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: COLORS.goldGlow,
+    bottom: 100,
+    left: -50,
+    opacity: 0.25,
+  },
+
   // Header
   header: {
-    paddingTop: Platform.OS === 'android' ? 40 : 50,
-    paddingBottom: 20,
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
+    paddingBottom: 24,
     paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
+    position: 'relative',
+    overflow: 'hidden',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerOrb1: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    top: -50,
+    right: -30,
+  },
+  headerOrb2: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    bottom: -30,
+    left: 30,
+  },
+  headerGlassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 16,
+    zIndex: 1,
   },
-  backButton: {
+  backButton: {},
+  glassButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   headerTitleContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 12,
+    marginHorizontal: 16,
   },
   categoryIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  categoryIconText: {
-    fontSize: 18,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: 'white',
-    textAlign: 'center',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  headerActionButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    marginTop: 4,
+  categoryIconText: {
+    fontSize: 20,
   },
-  
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.white,
+    letterSpacing: -0.3,
+  },
+  headerSubtitleContainer: {
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  countBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  countText: {
+    fontSize: 13,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+
   // Content
   content: {
     flex: 1,
-    backgroundColor: '#FAFBFC',
   },
-  
+  scrollContent: {
+    paddingTop: 8,
+  },
+
   // Loading
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
+  },
+  loaderWrapper: {
+    width: 70,
+    height: 70,
+    borderRadius: 20,
+    backgroundColor: COLORS.glassWhite,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 15,
+    color: COLORS.muted,
+    fontWeight: '500',
   },
-  
+
   // Error
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
     paddingHorizontal: 32,
   },
+  errorIconContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 24,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   errorText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#EF4444',
+    fontSize: 15,
+    color: COLORS.slate,
     textAlign: 'center',
     marginBottom: 24,
+    lineHeight: 22,
   },
   retryButton: {
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 8,
   },
   retryButtonText: {
-    color: 'white',
-    fontSize: 16,
+    color: COLORS.white,
+    fontSize: 15,
     fontWeight: '600',
   },
-  
+
   // Empty
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
     paddingHorizontal: 32,
   },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 28,
+    backgroundColor: COLORS.glassWhite,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+  },
   emptyTitle: {
-    marginTop: 16,
     fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: '700',
+    color: COLORS.navy,
     marginBottom: 8,
+    letterSpacing: -0.3,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 14,
+    color: COLORS.muted,
     textAlign: 'center',
+    lineHeight: 20,
   },
-  
+
   // Brands List
   brandsList: {
     padding: 20,
+    paddingTop: 12,
   },
-  
-  // Brand Card
+
+  // Brand Card - Premium Glass Style
   brandCard: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.glassWhite,
     borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
+    padding: 18,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderColor: COLORS.glassBorder,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cardShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    transform: [{ skewY: '-3deg' }],
+    marginTop: -20,
   },
   brandHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+  },
+  logoWrapper: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   brandLogo: {
-    width: 56,
-    height: 56,
+    width: 58,
+    height: 58,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    marginRight: 14,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   brandLogoText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 24,
   },
   brandInfo: {
     flex: 1,
@@ -463,55 +707,91 @@ const styles = StyleSheet.create({
   brandNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   brandName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginRight: 8,
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.navy,
+    letterSpacing: -0.2,
   },
   featuredBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 8,
   },
   featuredText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#F59E0B',
+    fontWeight: '700',
+    color: COLORS.navy,
+    letterSpacing: 0.3,
+  },
+  cashbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 6,
+  },
+  cashbackIconContainer: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   brandCashback: {
     fontSize: 14,
-    color: '#8B5CF6',
-    fontWeight: '500',
-    marginBottom: 4,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   brandRating: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
+  starContainer: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    backgroundColor: COLORS.goldLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   ratingText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#111827',
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.navy,
   },
   ratingCount: {
     fontSize: 12,
-    color: '#6B7280',
+    color: COLORS.muted,
+    marginLeft: 2,
+  },
+  arrowContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  descriptionContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
   },
   brandDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-    marginTop: 8,
+    fontSize: 13,
+    color: COLORS.muted,
+    lineHeight: 19,
   },
-  
+
   // Bottom Space
   bottomSpace: {
-    height: 40,
+    height: 60,
   },
 });
-

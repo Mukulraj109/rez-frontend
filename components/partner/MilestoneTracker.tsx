@@ -172,7 +172,7 @@ export default function MilestoneTracker({
               onPress={() => handleClaimPress(milestone)}
             >
               <LinearGradient
-                colors={['#8B5CF6', '#A78BFA'] as const}
+                colors={['#00C06A', '#00796B'] as const}
                 style={styles.claimButtonGradient}
               >
                 <Text style={styles.claimButtonText}>Claim Now</Text>
@@ -202,7 +202,7 @@ export default function MilestoneTracker({
       <View style={styles.header}>
         <View style={styles.headerIcon}>
           <LinearGradient
-            colors={['#8B5CF6', '#A78BFA'] as const}
+            colors={['#00C06A', '#00796B'] as const}
             style={styles.headerIconGradient}
           >
             <Ionicons name="ribbon" size={20} color="white" />
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   },
   summaryHighlight: {
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   completedMilestonesContainer: {
     flexDirection: 'row',
@@ -318,8 +318,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDF4',
   },
   nextMilestoneCard: {
-    borderColor: '#8B5CF6',
-    backgroundColor: '#F5F3FF',
+    borderColor: '#00C06A',
+    backgroundColor: '#F0FDF4',
   },
   lockedMilestoneCard: {
     borderColor: '#D1D5DB',
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
   },
   nextOrderBadge: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
   },
   orderBadgeText: {
     fontSize: 16,
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 14,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
     marginBottom: 6,
   },
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 2,
   },
   rewardContainer: {

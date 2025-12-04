@@ -155,7 +155,7 @@ export default function OffersGrid({
             style={styles.termsButton}
             onPress={() => handleTermsPress(offer)}
           >
-            <Ionicons name="document-text-outline" size={12} color="#8B5CF6" />
+            <Ionicons name="document-text-outline" size={12} color="#00C06A" />
             <Text style={styles.termsButtonText}>Terms & Conditions</Text>
           </TouchableOpacity>
         </View>
@@ -173,7 +173,7 @@ export default function OffersGrid({
               onPress={() => handleClaimPress(offer)}
             >
               <LinearGradient
-                colors={['#8B5CF6', '#A78BFA']}
+                colors={['#00C06A', '#00796B']}
                 style={styles.claimButtonGradient}
               >
                 <Ionicons name="gift" size={16} color="white" />
@@ -208,7 +208,7 @@ export default function OffersGrid({
       <View style={styles.header}>
         <View style={styles.headerIcon}>
           <LinearGradient
-            colors={['#8B5CF6', '#A78BFA']}
+            colors={['#00C06A', '#00796B']}
             style={styles.headerIconGradient}
           >
             <Ionicons name="gift" size={20} color="white" />
@@ -248,7 +248,7 @@ export default function OffersGrid({
 
         <View style={styles.statCard}>
           <LinearGradient
-            colors={['#8B5CF6', '#A78BFA']}
+            colors={['#00C06A', '#00796B']}
             style={styles.statCardGradient}
           >
             <Ionicons name="star" size={20} color="white" />
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   },
   termsButtonText: {
     fontSize: 11,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '500',
     marginLeft: 4,
   },

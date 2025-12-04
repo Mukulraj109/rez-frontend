@@ -976,7 +976,7 @@ export default function BillUploadPage() {
             <ScrollView style={styles.merchantList}>
               {isLoadingMerchants ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#FF6B35" />
+                  <ActivityIndicator size="large" color="#00C06A" />
                   <Text style={styles.loadingText}>Loading merchants...</Text>
                 </View>
               ) : (
@@ -998,7 +998,7 @@ export default function BillUploadPage() {
                           selectMerchant(tempMerchant);
                         }}
                       >
-                        <Ionicons name="add-circle" size={20} color="#FF6B35" />
+                        <Ionicons name="add-circle" size={20} color="#00C06A" />
                         <Text style={styles.addMerchantButtonText}>
                           Add &quot;{merchantSearchQuery}&quot;
                         </Text>
@@ -1058,7 +1058,7 @@ export default function BillUploadPage() {
                             selectMerchant(tempMerchant);
                           }}
                         >
-                          <Ionicons name="help-circle-outline" size={20} color="#FF6B35" />
+                          <Ionicons name="help-circle-outline" size={20} color="#00C06A" />
                           <Text style={styles.cantFindMerchantText}>
                             Can&apos;t find your merchant? Add manually
                           </Text>
@@ -1082,7 +1082,7 @@ export default function BillUploadPage() {
     <Modal visible={showProgressModal} transparent animationType="fade">
       <View style={styles.progressModalContainer}>
         <View style={styles.progressModalContent}>
-          <ActivityIndicator size="large" color="#FF6B35" />
+          <ActivityIndicator size="large" color="#00C06A" />
           <Text style={styles.progressModalTitle}>Uploading Bill</Text>
           <Text style={styles.progressModalSubtitle}>
             {billUploadHook.percentComplete > 0
@@ -1124,7 +1124,7 @@ export default function BillUploadPage() {
       <View style={styles.infoModalContainer}>
         <View style={styles.infoModalContent}>
           <View style={styles.infoModalHeader}>
-            <Ionicons name="information-circle" size={32} color="#FF6B35" />
+            <Ionicons name="information-circle" size={32} color="#00C06A" />
             <Text style={styles.infoModalTitle}>Bill Upload Tips</Text>
           </View>
           <ScrollView style={styles.infoModalBody}>
@@ -1212,7 +1212,7 @@ export default function BillUploadPage() {
 
         {/* Info Banner */}
         <View style={styles.infoBanner}>
-          <Ionicons name="gift" size={24} color="#FF6B35" />
+          <Ionicons name="gift" size={24} color="#00C06A" />
           <Text style={styles.infoBannerText}>
             Upload offline bills to earn up to 20% cashback!
           </Text>
@@ -1275,10 +1275,10 @@ export default function BillUploadPage() {
                 disabled={isCheckingQuality}
               >
                 {isCheckingQuality ? (
-                  <ActivityIndicator size="large" color="#FF6B35" />
+                  <ActivityIndicator size="large" color="#00C06A" />
                 ) : (
                   <>
-                    <Ionicons name="camera" size={40} color="#FF6B35" />
+                    <Ionicons name="camera" size={40} color="#00C06A" />
                     <Text style={styles.uploadOptionText}>Take Photo</Text>
                   </>
                 )}
@@ -1290,10 +1290,10 @@ export default function BillUploadPage() {
                 disabled={isCheckingQuality}
               >
                 {isCheckingQuality ? (
-                  <ActivityIndicator size="large" color="#FF6B35" />
+                  <ActivityIndicator size="large" color="#00C06A" />
                 ) : (
                   <>
-                    <Ionicons name="images" size={40} color="#FF6B35" />
+                    <Ionicons name="images" size={40} color="#00C06A" />
                     <Text style={styles.uploadOptionText}>Choose from Gallery</Text>
                   </>
                 )}
@@ -1344,7 +1344,7 @@ export default function BillUploadPage() {
           >
             {formData.merchantName ? (
               <View style={styles.selectedMerchantContainer}>
-                <Ionicons name="storefront" size={20} color="#FF6B35" />
+                <Ionicons name="storefront" size={20} color="#00C06A" />
                 <Text style={styles.selectedMerchant}>{formData.merchantName}</Text>
               </View>
             ) : (
@@ -1525,8 +1525,8 @@ export default function BillUploadPage() {
           )}
         </TouchableOpacity>
 
-        {/* Bottom spacing */}
-        <View style={{ height: 40 }} />
+        {/* Bottom spacing for navigation */}
+        <View style={{ height: 100 }} />
       </Animated.ScrollView>
 
       {/* Merchant Selector Modal */}
@@ -1591,16 +1591,19 @@ const styles = StyleSheet.create({
   infoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF4ED',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     padding: 16,
     margin: 16,
     borderRadius: 12,
     gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   infoBannerText: {
     flex: 1,
     fontSize: 14,
-    color: '#FF6B35',
+    color: '#00C06A',
+    fontWeight: '500',
     lineHeight: 20,
   },
   section: {
@@ -1622,12 +1625,12 @@ const styles = StyleSheet.create({
   },
   uploadOption: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
     padding: 24,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#FF6B35',
+    borderColor: '#00C06A',
     borderStyle: 'dashed',
   },
   uploadOptionText: {
@@ -1788,22 +1791,25 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flexDirection: 'row',
-    backgroundColor: '#FF6B35',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#00C06A',
+    padding: 18,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 16,
     gap: 8,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: '#00C06A',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 8,
       },
       android: {
-        elevation: 4,
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0 4px 16px rgba(0, 192, 106, 0.3)',
       },
     }),
   },
@@ -1902,7 +1908,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#00C06A',
   },
 
   // Modal styles
@@ -1984,7 +1990,7 @@ const styles = StyleSheet.create({
   },
   merchantCashback: {
     fontSize: 12,
-    color: '#FF6B35',
+    color: '#00C06A',
     fontWeight: '600',
   },
   loadingContainer: {
@@ -2052,7 +2058,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#00C06A',
   },
   cancelUploadButton: {
     marginTop: 16,
@@ -2109,7 +2115,7 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   infoModalCloseButton: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: '#00C06A',
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
@@ -2179,18 +2185,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF4ED',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     padding: 14,
     borderRadius: 8,
     marginTop: 16,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#FF6B35',
+    borderColor: '#00C06A',
     borderStyle: 'dashed',
   },
   addMerchantButtonText: {
     fontSize: 14,
-    color: '#FF6B35',
+    color: '#00C06A',
     fontWeight: '600',
   },
 

@@ -32,6 +32,32 @@ import {
 import { anonymizeEmail } from '@/utils/privacy';
 import ShareModal from '@/components/referral/ShareModal';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { REFERRAL_TIERS } from '@/types/referral.types';
+
+// Helper to get next tier info based on current referrals
+const getNextTierInfo = (currentReferrals: number) => {
+  const tiers = Object.entries(REFERRAL_TIERS).sort(
+    (a, b) => a[1].referralsRequired - b[1].referralsRequired
+  );
+
+  for (const [tierKey, tierData] of tiers) {
+    if (currentReferrals < tierData.referralsRequired) {
+      return {
+        target: tierData.referralsRequired,
+        nextTier: tierData.name,
+        tierKey,
+      };
+    }
+  }
+
+  // User is at max tier
+  const lastTier = tiers[tiers.length - 1];
+  return {
+    target: lastTier[1].referralsRequired,
+    nextTier: lastTier[1].name,
+    tierKey: lastTier[0],
+  };
+};
 
 const ReferralPageContent = () => {
   const router = useRouter();
@@ -262,8 +288,8 @@ const ReferralPageContent = () => {
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
-        <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
+        <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
+        <LinearGradient colors={['#00C06A', '#00796B']} style={styles.header}>
           <View style={styles.headerContent}>
             <TouchableOpacity
               style={styles.backButton}
@@ -294,7 +320,7 @@ const ReferralPageContent = () => {
             </>
           ) : (
             <>
-              <ActivityIndicator size="large" color="#8B5CF6" />
+              <ActivityIndicator size="large" color="#00C06A" />
               <Text style={styles.loadingText}>Loading referral data...</Text>
             </>
           )}
@@ -328,13 +354,13 @@ const ReferralPageContent = () => {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#8B5CF6']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00C06A']} />
         }
       >
         {/* Referral Code Card */}
         <View style={styles.codeCard}>
           <View style={styles.codeHeader}>
-            <Ionicons name="gift" size={32} color="#8B5CF6" />
+            <Ionicons name="gift" size={32} color="#00C06A" />
             <ThemedText style={styles.codeTitle}>Your Referral Code</ThemedText>
           </View>
 
@@ -461,7 +487,7 @@ const ReferralPageContent = () => {
           accessibilityHint="Opens the full referral dashboard with tier progression and leaderboard"
         >
           <LinearGradient
-            colors={['#8B5CF6', '#7C3AED']}
+            colors={['#00C06A', '#00796B']}
             style={styles.dashboardButtonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -495,7 +521,7 @@ const ReferralPageContent = () => {
                     </View>
                   </View>
                   <View style={styles.historyReward}>
-                    <Ionicons name="cash-outline" size={16} color="#8B5CF6" />
+                    <Ionicons name="cash-outline" size={16} color="#00C06A" />
                     <Text style={styles.rewardText}>
                       {item.rewardStatus === 'credited'
                         ? `Earned ₹${item.rewardAmount}`
@@ -536,11 +562,14 @@ const ReferralPageContent = () => {
         onClose={() => setShareModalVisible(false)}
         currentTierProgress={
           stats
-            ? {
-                current: stats.totalReferrals || 0,
-                target: 5, // Next tier target (can be dynamic based on current tier)
-                nextTier: 'PRO',
-              }
+            ? (() => {
+                const nextTierInfo = getNextTierInfo(stats.totalReferrals || 0);
+                return {
+                  current: stats.totalReferrals || 0,
+                  target: nextTierInfo.target,
+                  nextTier: nextTierInfo.nextTier,
+                };
+              })()
             : undefined
         }
       />

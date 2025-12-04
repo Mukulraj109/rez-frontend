@@ -4,7 +4,8 @@ import {
   Pressable,
   StyleSheet,
   Image,
-  View
+  View,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
@@ -284,7 +285,7 @@ function ProductCard({
             <Ionicons
               name={isInWishlist(productId) ? "heart" : "heart-outline"}
               size={20}
-              color={isInWishlist(productId) ? "#EF4444" : "#FFFFFF"}
+              color={isInWishlist(productId) ? "#00C06A" : "#FFFFFF"}
             />
           </TouchableOpacity>
         </View>
@@ -374,7 +375,7 @@ function ProductCard({
                   accessibilityHint="Double tap to subscribe to notifications when this product is available"
                   accessibilityState={{ disabled: subscribing[productId] }}
                 >
-                  <Ionicons name="notifications-outline" size={18} color="#8B5CF6" />
+                  <Ionicons name="notifications-outline" size={18} color="#00C06A" />
                   <ThemedText style={styles.notifyMeText}>
                     {subscribing[productId] ? 'Subscribing...' : 'Notify Me'}
                   </ThemedText>
@@ -495,16 +496,24 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0B2240',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0px 8px 24px rgba(11, 34, 64, 0.08)',
+      },
+    }),
     height: 320,
   },
   imageContainer: {
@@ -561,10 +570,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   discountBadge: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#FFC857',
   },
   discountBadgeText: {
-    color: '#FFFFFF',
+    color: '#0B2240',
     fontSize: 10,
     fontWeight: '700',
   },
@@ -581,7 +590,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     fontSize: 10,
-    color: '#8B5CF6',
+    color: '#00796B',
     fontWeight: '600',
     marginBottom: 4,
     textTransform: 'uppercase',
@@ -590,7 +599,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#111827',
+    color: '#0B2240',
     marginBottom: 6,
     lineHeight: 18,
     minHeight: 36,
@@ -605,7 +614,7 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#111827',
+    color: '#0B2240',
   },
   ratingCount: {
     fontSize: 10,
@@ -620,7 +629,7 @@ const styles = StyleSheet.create({
   currentPrice: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#111827',
+    color: '#0B2240',
   },
   originalPrice: {
     fontSize: 12,
@@ -635,7 +644,7 @@ const styles = StyleSheet.create({
   },
   cashbackContainer: {
     alignSelf: 'flex-start',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#FFF9E6',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -643,7 +652,7 @@ const styles = StyleSheet.create({
   },
   cashbackText: {
     fontSize: 11,
-    color: '#4F46E5',
+    color: '#0B2240',
     fontWeight: '600',
   },
   lowStockContainer: {
@@ -677,7 +686,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -691,7 +700,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 4,
@@ -720,7 +729,7 @@ const styles = StyleSheet.create({
   },
   addToCartButtonDisabled: {
     opacity: 0.5,
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#80E0B5',
   },
   notifyMeButton: {
     flexDirection: 'row',
@@ -732,11 +741,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
   },
   notifyMeText: {
     fontSize: 13,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
   },
   notifyMeButtonDisabled: {

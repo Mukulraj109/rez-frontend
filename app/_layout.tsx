@@ -7,6 +7,17 @@ import { AppState, AppStateStatus } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import 'react-native-reanimated';
 
+// Brand fonts for ReZ identity
+import {
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+} from '@expo-google-fonts/inter';
+
 import { useColorScheme } from '@/hooks/useColorScheme';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { AppProvider } from '@/contexts/AppContext';
@@ -48,6 +59,12 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    // ReZ Brand Fonts
+    'Poppins-SemiBold': Poppins_600SemiBold,
+    'Poppins-Bold': Poppins_700Bold,
+    'Inter-Regular': Inter_400Regular,
+    'Inter-Medium': Inter_500Medium,
+    'Inter-SemiBold': Inter_600SemiBold,
   });
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const [cacheWarmed, setCacheWarmed] = useState(false);

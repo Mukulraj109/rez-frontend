@@ -28,7 +28,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ faq, isExpanded, onToggle
   const getCategoryColor = (category: FAQItem['category']) => {
     switch (category) {
       case 'general':
-        return '#8B5CF6';
+        return '#00C06A';
       case 'transactions':
         return '#10B981';
       case 'rewards':
@@ -111,7 +111,7 @@ export default function FAQAccordion({ faqs, onContactPress }: FAQAccordionProps
 
   const categories = [
     { key: 'all', name: 'All', icon: 'apps-outline', color: '#6B7280' },
-    { key: 'general', name: 'General', icon: 'information-circle-outline', color: '#8B5CF6' },
+    { key: 'general', name: 'General', icon: 'information-circle-outline', color: '#00C06A' },
     { key: 'transactions', name: 'Transactions', icon: 'card-outline', color: '#10B981' },
     { key: 'rewards', name: 'Rewards', icon: 'gift-outline', color: '#F59E0B' },
     { key: 'levels', name: 'Levels', icon: 'trophy-outline', color: '#EF4444' },
@@ -145,7 +145,7 @@ export default function FAQAccordion({ faqs, onContactPress }: FAQAccordionProps
       <View style={styles.header}>
         <View style={styles.headerIcon}>
           <LinearGradient
-            colors={['#8B5CF6', '#A78BFA']}
+            colors={['#00C06A', '#00796B']}
             style={styles.headerIconGradient}
           >
             <Ionicons name="help-circle" size={20} color="white" />
@@ -207,7 +207,7 @@ export default function FAQAccordion({ faqs, onContactPress }: FAQAccordionProps
             accessibilityRole="button"
             accessibilityHint="Double tap to expand all FAQ items"
           >
-            <Ionicons name="chevron-down-circle-outline" size={16} color="#8B5CF6" />
+            <Ionicons name="chevron-down-circle-outline" size={16} color="#00C06A" />
             <Text style={styles.controlButtonText}>Expand All</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -217,7 +217,7 @@ export default function FAQAccordion({ faqs, onContactPress }: FAQAccordionProps
             accessibilityRole="button"
             accessibilityHint="Double tap to collapse all FAQ items"
           >
-            <Ionicons name="chevron-up-circle-outline" size={16} color="#8B5CF6" />
+            <Ionicons name="chevron-up-circle-outline" size={16} color="#00C06A" />
             <Text style={styles.controlButtonText}>Collapse All</Text>
           </TouchableOpacity>
         </View>
@@ -259,7 +259,7 @@ export default function FAQAccordion({ faqs, onContactPress }: FAQAccordionProps
         accessibilityHint="Double tap to chat with support"
       >
         <LinearGradient
-          colors={['#8B5CF6', '#A78BFA']}
+          colors={['#00C06A', '#00796B']}
           style={styles.contactButtonGradient}
         >
           <View style={styles.contactButtonContent}>
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   selectedCategoryButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
   },
   categoryButtonText: {
     fontSize: 12,
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   },
   controlButtonText: {
     fontSize: 12,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '500',
     marginLeft: 4,
   },
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   expandedAccordionItem: {
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
     backgroundColor: '#F8FAFC',
   },
   accordionHeader: {

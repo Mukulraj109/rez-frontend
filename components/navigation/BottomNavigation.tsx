@@ -137,7 +137,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
               <Ionicons
                 name={tab.icon as any}
                 size={24}
-                color={tab.isActive ? '#8B5CF6' : '#0F0F0F'}
+                color={tab.isActive ? '#00C06A' : '#0F0F0F'}
               />
               <View style={styles.tabLabel}>
                 <View style={[
@@ -146,7 +146,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
                 ]}>
                   <Text style={[
                     styles.labelText,
-                    { color: tab.isActive ? '#8B5CF6' : '#0F0F0F' }
+                    { color: tab.isActive ? '#00C06A' : '#0F0F0F' }
                   ]}>
                     {tab.name}
                   </Text>
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   activeLabelContainer: {
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
   },
   labelText: {
     fontSize: 12,

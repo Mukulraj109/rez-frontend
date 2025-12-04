@@ -28,6 +28,9 @@ import {
   ProductCard,
   BrandedStoreCard,
   RecommendationCard,
+  ReZCoin,
+  CategoryTabBar,
+  StickySearchHeader,
 } from '@/components/homepage';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import {
@@ -59,7 +62,7 @@ const FeatureHighlights = React.lazy(() => import('@/components/homepage/Feature
 // Fallback components for Suspense boundaries
 const BelowFoldFallback = () => (
   <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-    <ActivityIndicator size="small" color="#8B5CF6" />
+    <ActivityIndicator size="small" color="#00C06A" />
   </View>
 );
 
@@ -83,8 +86,10 @@ export default function HomeScreen() {
   const [syncStatus, setSyncStatus] = React.useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
   const [isLoadingStats, setIsLoadingStats] = React.useState(false);
   const [interactionsComplete, setInteractionsComplete] = React.useState(false); // Deferred render flag
+  const [selectedCategory, setSelectedCategory] = React.useState('for-you'); // Category tab state
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
+  const scrollY = React.useRef(new Animated.Value(0)).current; // For sticky header
   const statsLoadedRef = React.useRef(false); // Prevent redundant loads
 
   // Initialize push notifications
@@ -116,26 +121,26 @@ export default function HomeScreen() {
       const response = await authService.getUserStatistics();
       if (response.success && response.data) {
         setUserStats(response.data);
-        
+
         // Calculate loyalty points based on the documentation:
         // Shop: 1 point per ₹10 spent
         // Review: 50 points per review
         // Refer: 200 points per referral
         // Video: 100 points per video
-        
+
         const stats = response.data;
         const shopPoints = Math.floor((stats.orders?.totalSpent || 0) / 10); // 1 point per ₹10
         const reviewPoints = 0; // Reviews not available in current API response
         const referralPoints = (stats.user?.totalReferrals || 0) * 200; // 200 points per referral
         const videoPoints = (stats.videos?.totalCreated || 0) * 100; // 100 points per video
-        
+
         const totalLoyaltyPoints = shopPoints + reviewPoints + referralPoints + videoPoints;
 
         // NEW: Sync loyalty points with wallet
         try {
           const walletApi = (await import('@/services/walletApi')).default;
           const walletResponse = await walletApi.getBalance();
-          
+
           if (walletResponse.success && walletResponse.data) {
             const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
             const actualWalletCoins = wasilCoin?.amount || 0;
@@ -145,7 +150,7 @@ export default function HomeScreen() {
               const difference = totalLoyaltyPoints - actualWalletCoins;
 
               setSyncStatus('syncing');
-              
+
               const creditResponse = await walletApi.creditLoyaltyPoints({
                 amount: difference,
                 source: {
@@ -160,7 +165,7 @@ export default function HomeScreen() {
                   }
                 }
               });
-              
+
               if (creditResponse.success && creditResponse.data) {
 
                 // Display the synced wallet coins
@@ -264,7 +269,7 @@ export default function HomeScreen() {
   const handleGoingOutViewAll = () => {
     router.push('/going-out');
   };
-  
+
   const handleHomeDeliveryViewAll = () => {
     router.push('/home-delivery');
   };
@@ -355,15 +360,37 @@ export default function HomeScreen() {
   }, [actions, handleItemPress, handleAddToCart]);
 
   return (
-    <ScrollView
-      style={viewStyles.container}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#8B5CF6" colors={['#8B5CF6']} />
-      }
-    >
+    <View style={viewStyles.mainContainer}>
+      {/* Sticky Search Header with Glass Effect */}
+      <StickySearchHeader
+        scrollY={scrollY}
+        showThreshold={280}
+        onSearchPress={handleSearchPress}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+      />
+
+      <Animated.ScrollView
+        style={viewStyles.container}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#00C06A" colors={['#00C06A']} />
+        }
+      >
       {/* Header */}
-      <LinearGradient colors={['#8B5CF6', '#A855F7']} style={viewStyles.header}>
+      <LinearGradient
+        colors={['#00C06A', '#00A16B', '#FFC857']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={viewStyles.header}
+      >
         <View style={viewStyles.headerTop}>
           <Pressable
             style={viewStyles.locationContainer}
@@ -426,8 +453,10 @@ export default function HomeScreen() {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={viewStyles.coinsContainer}
+            {/* ReZ Coin - Branded coin display */}
+            <ReZCoin
+              balance={userPoints}
+              size="small"
               onPress={() => {
                 if (Platform.OS === 'ios') {
                   setTimeout(() => router.push('/CoinPage'), 50);
@@ -435,15 +464,7 @@ export default function HomeScreen() {
                   router.push('/CoinPage');
                 }
               }}
-              activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
-              delayPressIn={Platform.OS === 'ios' ? 50 : 0}
-              accessibilityLabel={`Loyalty points: ${userPoints}`}
-              accessibilityRole="button"
-              accessibilityHint="Double tap to view your loyalty points and rewards"
-            >
-              <Ionicons name="star" size={16} color="#FFD700" />
-              <ThemedText style={textStyles.coinsText}>{userPoints}</ThemedText>
-            </TouchableOpacity>
+            />
 
             <NotificationBell iconSize={24} iconColor="white" />
 
@@ -479,9 +500,9 @@ export default function HomeScreen() {
             >
               <ThemedText style={textStyles.profileText}>
                 {user?.initials ||
-                 (authState.user?.profile?.firstName ? authState.user.profile.firstName.charAt(0).toUpperCase() :
-                  (authState.isAuthenticated ? 'U' : '?')
-                 )}
+                  (authState.user?.profile?.firstName ? authState.user.profile.firstName.charAt(0).toUpperCase() :
+                    (authState.isAuthenticated ? 'U' : '?')
+                  )}
               </ThemedText>
             </TouchableOpacity>
           </View>
@@ -505,7 +526,7 @@ export default function HomeScreen() {
             {/* Full Address Section */}
             <View style={viewStyles.addressSection}>
               <View style={viewStyles.addressHeader}>
-                <Ionicons name="location" size={16} color="#8B5CF6" />
+                <Ionicons name="location" size={16} color="#00C06A" />
                 <Text style={viewStyles.addressHeaderText}>Current Location</Text>
               </View>
               <LocationDisplay
@@ -548,19 +569,6 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        {/* Dynamic Greeting */}
-        <View style={viewStyles.greetingContainer}>
-          <GreetingDisplay
-            showEmoji={true}
-            showTime={false}
-            showLocation={true}
-            animationType="fade"
-            maxLength={40}
-            style={viewStyles.greetingCard}
-            textStyle={textStyles.greeting}
-          />
-        </View>
-
         <TouchableOpacity
           style={viewStyles.searchContainer}
           onPress={handleSearchPress}
@@ -587,7 +595,7 @@ export default function HomeScreen() {
         >
           <View style={viewStyles.partnerInfo}>
             <View style={viewStyles.partnerIcon}>
-              <Ionicons name="star" size={20} color="#8B5CF6" />
+              <Ionicons name="star" size={20} color="#00C06A" />
             </View>
             <View>
               <ThemedText style={textStyles.partnerLevel}>Partner</ThemedText>
@@ -610,123 +618,13 @@ export default function HomeScreen() {
           </View>
 
           <View style={viewStyles.partnerArrow}>
-            <Ionicons name="chevron-forward" size={20} color="#8B5CF6" />
+            <Ionicons name="chevron-forward" size={20} color="#00C06A" />
           </View>
         </TouchableOpacity>
-
-        {/* Quick Actions */}
-        <View style={viewStyles.quickActions}>
-          <TouchableOpacity
-            style={viewStyles.actionItem}
-            onPress={() => {
-              try {
-                router.push('/tracking');
-              } catch (error) {
-                console.error('Tracking action press error:', error);
-              }
-            }}
-            activeOpacity={0.8}
-            accessibilityLabel={`Track orders: ${userStats ? Math.max(0, (userStats.orders?.total || 0) - (userStats.orders?.completed || 0) - (userStats.orders?.cancelled || 0)) : 0} active orders`}
-            accessibilityRole="button"
-            accessibilityHint="Double tap to track your active orders"
-          >
-            <View style={viewStyles.actionIcon}>
-              <Ionicons name="location-outline" size={24} color="#333" />
-            </View>
-            <ThemedText style={textStyles.actionLabel}>Track Orders</ThemedText>
-            <ThemedText style={textStyles.actionValue}>
-              {userStats ? 
-                `${Math.max(0, (userStats.orders?.total || 0) - (userStats.orders?.completed || 0) - (userStats.orders?.cancelled || 0))} Active` 
-                : 'Loading...'}
-            </ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={viewStyles.actionItem}
-            onPress={() => {
-              try {
-                handleWalletPress();
-              } catch (error) {
-                console.error('Wallet action press error:', error);
-              }
-            }}
-            activeOpacity={0.8}
-            accessibilityLabel={`Wallet balance: Rupees ${userPoints.toLocaleString()}`}
-            accessibilityRole="button"
-            accessibilityHint="Double tap to open your wallet and view transactions"
-          >
-            <View style={viewStyles.actionIcon}>
-              <Ionicons name="wallet-outline" size={24} color="#333" />
-            </View>
-            <ThemedText style={textStyles.actionLabel}>Wallet</ThemedText>
-            <ThemedText style={textStyles.actionValue}>
-              ₹ {userPoints.toLocaleString()}
-            </ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={viewStyles.actionItem}
-            onPress={() => {
-              try {
-                handleOffersPress();
-              } catch (error) {
-                console.error('Offers action press error:', error);
-              }
-            }}
-            activeOpacity={0.8}
-            accessibilityLabel={`Offers: ${userStats?.offers?.totalRedeemed !== undefined ? Math.max(0, 5 - (userStats.offers.totalRedeemed || 0)) : 5} new offers available`}
-            accessibilityRole="button"
-            accessibilityHint="Double tap to view available offers and deals"
-          >
-            <View style={viewStyles.actionIcon}>
-              <Ionicons name="pricetag-outline" size={24} color="#333" />
-            </View>
-            <ThemedText style={textStyles.actionLabel}>Offers</ThemedText>
-            <ThemedText style={textStyles.actionValue}>
-              {userStats?.offers?.totalRedeemed !== undefined ? 
-                `${Math.max(0, 5 - (userStats.offers.totalRedeemed || 0))} New` 
-                : '5 New'}
-            </ThemedText>
-          </TouchableOpacity>
-
-          <View style={viewStyles.actionItem}>
-            <TouchableOpacity
-              style={Platform.OS === 'ios' ? viewStyles.iosActionWrapper : viewStyles.defaultActionWrapper}
-              onPress={() => {
-                try {
-                  if (Platform.OS === 'ios') {
-                    InteractionManager.runAfterInteractions(() => {
-                      handleMainStorePress();
-                    });
-                  } else {
-                    handleMainStorePress();
-                  }
-                } catch (error) {
-                  console.error('Store action press error:', error);
-                }
-              }}
-              activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.8}
-              accessibilityLabel="Store: Explore stores and products"
-              accessibilityRole="button"
-              accessibilityHint="Double tap to browse stores and their products"
-            >
-              <View style={viewStyles.actionIcon}>
-                <Ionicons name="storefront-outline" size={24} color="#333" />
-              </View>
-              <ThemedText style={textStyles.actionLabel}>Store</ThemedText>
-              <ThemedText style={textStyles.actionValue}>Explore</ThemedText>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Online Voucher Button - Lazy Loaded */}
         <Suspense fallback={<BelowFoldFallback />}>
           <VoucherNavButton variant="minimal" style={{ marginBottom: 20 }} />
-        </Suspense>
-
-        {/* Navigation Shortcuts - Lazy Loaded */}
-        <Suspense fallback={<BelowFoldFallback />}>
-          <NavigationShortcuts />
         </Suspense>
 
         {/* Feature Highlights - Lazy Loaded */}
@@ -734,161 +632,7 @@ export default function HomeScreen() {
           <FeatureHighlights />
         </Suspense>
 
-        {/* Going Out Section */}
-        <View style={viewStyles.section}>
-          <View style={viewStyles.sectionHeader}>
-            <ThemedText style={textStyles.sectionTitle}>Going Out</ThemedText>
-            <TouchableOpacity
-              style={viewStyles.viewAllButton}
-              onPress={handleGoingOutViewAll}
-              activeOpacity={0.8}
-              accessibilityLabel="View all going out categories"
-              accessibilityRole="button"
-              accessibilityHint="Double tap to view all going out category options"
-            >
-              <ThemedText style={textStyles.viewAllText}>View all</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {Platform.OS === 'web' ? (
-            <View style={viewStyles.webScrollContainer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={viewStyles.webScrollContent}>
-                <TouchableOpacity style={viewStyles.horizontalCategoryItem} onPress={handleFashionPress} activeOpacity={0.85}>
-                  <View style={viewStyles.categoryIcon}>
-                    <Ionicons name="shirt-outline" size={24} color="#8B5CF6" />
-                  </View>
-                  <ThemedText style={textStyles.categoryLabel}>Fashion</ThemedText>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[viewStyles.horizontalCategoryItem, viewStyles.horizontalCategorySpacing]} onPress={() => handleCategoryPress('fleet')} activeOpacity={0.85}>
-                  <View style={viewStyles.categoryIcon}>
-                    <Ionicons name="car-outline" size={24} color="#8B5CF6" />
-                  </View>
-                  <ThemedText style={textStyles.categoryLabel}>Fleet Market</ThemedText>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[viewStyles.horizontalCategoryItem, viewStyles.horizontalCategorySpacing]} onPress={() => handleCategoryPress('gift')} activeOpacity={0.85}>
-                  <View style={viewStyles.categoryIcon}>
-                    <Ionicons name="gift-outline" size={24} color="#8B5CF6" />
-                  </View>
-                  <ThemedText style={textStyles.categoryLabel}>Gift</ThemedText>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[viewStyles.horizontalCategoryItem, viewStyles.horizontalCategorySpacing]} onPress={() => handleCategoryPress('restaurant')} activeOpacity={0.85}>
-                  <View style={viewStyles.categoryIcon}>
-                    <Ionicons name="restaurant-outline" size={24} color="#8B5CF6" />
-                  </View>
-                  <ThemedText style={textStyles.categoryLabel}>Restaurant</ThemedText>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[viewStyles.horizontalCategoryItem, viewStyles.horizontalCategorySpacing]} onPress={() => handleCategoryPress('electronics')} activeOpacity={0.85}>
-                  <View style={viewStyles.categoryIcon}>
-                    <Ionicons name="phone-portrait-outline" size={24} color="#8B5CF6" />
-                  </View>
-                  <ThemedText style={textStyles.categoryLabel}>Electronic</ThemedText>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={viewStyles.horizontalScrollContent}>
-              <TouchableOpacity
-                style={viewStyles.horizontalCategoryItem}
-                onPress={handleFashionPress}
-                activeOpacity={0.85}
-                accessibilityLabel="Fashion category"
-                accessibilityRole="button"
-                accessibilityHint="Double tap to browse fashion stores and products"
-              >
-                <View style={viewStyles.categoryIcon}>
-                  <Ionicons name="shirt-outline" size={24} color="#8B5CF6" />
-                </View>
-                <ThemedText style={textStyles.categoryLabel}>Fashion</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={viewStyles.horizontalCategoryItem} onPress={() => handleCategoryPress('fleet')} activeOpacity={0.85}>
-                <View style={viewStyles.categoryIcon}>
-                  <Ionicons name="car-outline" size={24} color="#8B5CF6" />
-                </View>
-                <ThemedText style={textStyles.categoryLabel}>Fleet Market</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={viewStyles.horizontalCategoryItem} onPress={() => handleCategoryPress('gift')} activeOpacity={0.85}>
-                <View style={viewStyles.categoryIcon}>
-                  <Ionicons name="gift-outline" size={24} color="#8B5CF6" />
-                </View>
-                <ThemedText style={textStyles.categoryLabel}>Gift</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={viewStyles.horizontalCategoryItem} onPress={() => handleCategoryPress('restaurant')} activeOpacity={0.85}>
-                <View style={viewStyles.categoryIcon}>
-                  <Ionicons name="restaurant-outline" size={24} color="#8B5CF6" />
-                </View>
-                <ThemedText style={textStyles.categoryLabel}>Restaurant</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={viewStyles.horizontalCategoryItem} onPress={() => handleCategoryPress('electronics')} activeOpacity={0.85}>
-                <View style={viewStyles.categoryIcon}>
-                  <Ionicons name="phone-portrait-outline" size={24} color="#8B5CF6" />
-                </View>
-                <ThemedText style={textStyles.categoryLabel}>Electronic</ThemedText>
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-        </View>
-
-        {/* Home Delivery Section */}
-        <View style={viewStyles.section}>
-          <View style={viewStyles.sectionHeader}>
-            <ThemedText style={textStyles.sectionTitle}>Home Delivery</ThemedText>
-            <TouchableOpacity
-              style={viewStyles.viewAllButton}
-              onPress={handleHomeDeliveryViewAll}
-              activeOpacity={0.8}
-              accessibilityLabel="View all home delivery categories"
-              accessibilityRole="button"
-              accessibilityHint="Double tap to view all home delivery category options"
-            >
-              <ThemedText style={textStyles.viewAllText}>View all</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={viewStyles.horizontalScrollContent}>
-            <TouchableOpacity style={viewStyles.horizontalCategoryItem} onPress={() => handleCategoryPress('organic')} activeOpacity={0.85}>
-              <View style={viewStyles.categoryIcon}>
-                <Ionicons name="leaf-outline" size={24} color="#8B5CF6" />
-              </View>
-              <ThemedText style={textStyles.categoryLabel}>Organic</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[viewStyles.horizontalCategoryItem, viewStyles.horizontalCategorySpacing]} onPress={() => handleCategoryPress('grocery')} activeOpacity={0.85}>
-              <View style={viewStyles.categoryIcon}>
-                <Ionicons name="basket-outline" size={24} color="#8B5CF6" />
-              </View>
-              <ThemedText style={textStyles.categoryLabel}>Grocery</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[viewStyles.horizontalCategoryItem, viewStyles.horizontalCategorySpacing]} onPress={() => handleCategoryPress('medicine')} activeOpacity={0.85}>
-              <View style={viewStyles.categoryIcon}>
-                <Ionicons name="medical-outline" size={24} color="#8B5CF6" />
-              </View>
-              <ThemedText style={textStyles.categoryLabel}>Medicine</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[viewStyles.horizontalCategoryItem, viewStyles.horizontalCategorySpacing]} onPress={() => handleCategoryPress('fruit')} activeOpacity={0.85}>
-              <View style={viewStyles.categoryIcon}>
-                <Ionicons name="nutrition-outline" size={24} color="#8B5CF6" />
-              </View>
-              <ThemedText style={textStyles.categoryLabel}>Fruit</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[viewStyles.horizontalCategoryItem, viewStyles.horizontalCategorySpacing]} onPress={() => handleCategoryPress('meat')} activeOpacity={0.85}>
-              <View style={viewStyles.categoryIcon}>
-                <Ionicons name="restaurant" size={24} color="#8B5CF6" />
-              </View>
-              <ThemedText style={textStyles.categoryLabel}>Meat</ThemedText>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+        {/* Categories now handled by CategoryTabBar above */}
 
         {/* Sections from state - Progressive loading with memoization */}
         {React.useMemo(() => {
@@ -918,12 +662,12 @@ export default function HomeScreen() {
                 }}
                 cardWidth={
                   section.id === 'new_arrivals' ? 180 :
-                  section.id === 'just_for_you' ? 230 :
-                  section.type === 'branded_stores' ? 200 : 280
+                    section.id === 'just_for_you' ? 230 :
+                      section.type === 'branded_stores' ? 200 : 280
                 }
                 spacing={
                   section.id === 'new_arrivals' ? 12 :
-                  section.id === 'just_for_you' ? 12 : 16
+                    section.id === 'just_for_you' ? 12 : 16
                 }
                 showIndicator={false}
               />
@@ -942,7 +686,8 @@ export default function HomeScreen() {
       <Suspense fallback={<FABFallback />}>
         <QuickAccessFAB />
       </Suspense>
-    </ScrollView>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
@@ -986,9 +731,9 @@ const textStyles = StyleSheet.create({
     color: '#666',
   },
   statNumber: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFC857',
   },
   statLabel: {
     fontSize: 10,
@@ -1002,32 +747,49 @@ const textStyles = StyleSheet.create({
   },
   actionValue: {
     fontSize: 12,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
+    fontFamily: 'Poppins-Bold',
+    color: '#00796B',
   },
   viewAllText: {
     fontSize: 14,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
   categoryLabel: {
     fontSize: 11,
-    color: '#333',
+    color: '#0B2240',
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: 8,
   },
 });
 
 const viewStyles = StyleSheet.create({
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F7FAFC',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F7FAFC',
+    ...Platform.select({
+      web: {
+        touchAction: 'pan-y', // Only handle vertical scrolling, let children handle horizontal
+      },
+    }),
+  },
+  categoryTabBar: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 192, 106, 0.1)',
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 56 : 50,
@@ -1065,7 +827,7 @@ const viewStyles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 8,
     borderRadius: 16,
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00796B',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -1074,7 +836,7 @@ const viewStyles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.1)',
+    borderColor: 'rgba(0, 192, 106, 0.1)',
   },
   detailedLocationContent: {
     padding: 16,
@@ -1090,14 +852,14 @@ const viewStyles = StyleSheet.create({
   addressHeaderText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00796B',
     marginLeft: 6,
   },
   coordinatesSection: {
     marginBottom: 12,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(139, 92, 246, 0.1)',
+    borderTopColor: 'rgba(0, 121, 107, 0.1)',
   },
   coordinatesHeader: {
     flexDirection: 'row',
@@ -1124,7 +886,7 @@ const viewStyles = StyleSheet.create({
   refreshSection: {
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(139, 92, 246, 0.1)',
+    borderTopColor: 'rgba(0, 121, 107, 0.1)',
     alignItems: 'center',
   },
   refreshDisplay: {
@@ -1211,26 +973,43 @@ const viewStyles = StyleSheet.create({
   },
   partnerCard: {
     backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 15,
+    borderRadius: 16,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    elevation: 3,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0px 8px 20px rgba(0, 192, 106, 0.15)',
+      },
+    }),
   },
   partnerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   partnerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   partnerStats: {
     flexDirection: 'row',
@@ -1244,7 +1023,7 @@ const viewStyles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     marginHorizontal: 6,
   },
   partnerArrow: {
@@ -1255,22 +1034,39 @@ const viewStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 12,
-    elevation: 3,
+    borderRadius: 16,
+    padding: 14,
     marginBottom: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.1)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0px 6px 16px rgba(0, 192, 106, 0.12)',
+      },
+    }),
   },
   actionItem: {
     alignItems: 'center',
     flex: 1,
   },
   actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
   },
   section: {
     marginBottom: 18,
@@ -1282,12 +1078,12 @@ const viewStyles = StyleSheet.create({
     marginBottom: 12,
   },
   viewAllButton: {
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   viewAll: {
     // view-only; if you want text, use textStyles.viewAll
@@ -1317,13 +1113,28 @@ const viewStyles = StyleSheet.create({
     marginLeft: 8,
   },
   categoryIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'white',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 4px 8px rgba(0, 192, 106, 0.1)',
+      },
+    }),
   },
   iosActionWrapper: {
     flex: 1,

@@ -1,5 +1,8 @@
 // Homepage Components Export Index
 export { default as HorizontalScrollSection } from './HorizontalScrollSection';
+export { default as ReZCoin } from './ReZCoin';
+export { default as CategoryTabBar } from './CategoryTabBar';
+export { default as StickySearchHeader } from './StickySearchHeader';
 
 // Card Components
 export { default as EventCard } from './cards/EventCard';

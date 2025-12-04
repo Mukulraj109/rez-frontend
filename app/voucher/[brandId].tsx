@@ -12,6 +12,7 @@ import {
   Share as RNShare,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -20,7 +21,41 @@ import { Brand } from '@/types/voucher.types';
 import realVouchersApi from '@/services/realVouchersApi';
 import PurchaseModal from '@/components/voucher/PurchaseModal';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+// ReZ Premium Color System from TASK.md
+const COLORS = {
+  // Primary
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  primaryLight: 'rgba(0, 192, 106, 0.1)',
+  primaryGlow: 'rgba(0, 192, 106, 0.3)',
+
+  // Gold (rewards)
+  gold: '#FFC857',
+  goldDark: '#FF9F1C',
+  goldLight: 'rgba(255, 200, 87, 0.15)',
+  goldGlow: 'rgba(255, 200, 87, 0.3)',
+
+  // Navy (text)
+  navy: '#0B2240',
+  slate: '#1F2D3D',
+  muted: '#9AA7B2',
+
+  // Surface
+  surface: '#F7FAFC',
+  white: '#FFFFFF',
+
+  // Glass
+  glassWhite: 'rgba(255, 255, 255, 0.7)',
+  glassBorder: 'rgba(255, 255, 255, 0.4)',
+  glassHighlight: 'rgba(255, 255, 255, 0.6)',
+
+  // Status
+  error: '#EF4444',
+  star: '#F59E0B',
+  info: '#3B82F6',
+};
 
 export default function BrandDetailPage() {
   const router = useRouter();
@@ -29,8 +64,13 @@ export default function BrandDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [denominations, setDenominations] = useState<number[]>([]);
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     let isMounted = true;
@@ -39,24 +79,48 @@ export default function BrandDetailPage() {
       const animation = Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 800,
+          duration: 600,
           useNativeDriver: true,
         }),
         Animated.spring(slideAnim, {
           toValue: 0,
+          tension: 50,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
           tension: 50,
           friction: 7,
           useNativeDriver: true,
         }),
       ]);
 
+      // Pulse animation for CTA
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.02,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
       if (isMounted) {
         animation.start();
+        pulse.start();
       }
 
       return () => {
         isMounted = false;
-        animation.stop(); // Stop animation on unmount
+        animation.stop();
+        pulse.stop();
       };
     }
   }, [brand]);
@@ -68,16 +132,12 @@ export default function BrandDetailPage() {
   const loadBrandDetails = async () => {
     try {
       setLoading(true);
-      
-      // PRODUCTION: Use real API
       const brandRes = await realVouchersApi.getVoucherBrandById(brandId as string);
-      
+
       if (!brandRes.success || !brandRes.data) {
-        console.error('❌ [BRAND DETAIL] Failed to load brand:', brandRes);
         return;
       }
 
-      // Transform backend data to match frontend types
       const brandData: Brand = {
         id: brandRes.data._id,
         name: brandRes.data.name,
@@ -94,12 +154,10 @@ export default function BrandDetailPage() {
         offers: [],
       };
 
-      // Set denominations for purchase
       setDenominations(brandRes.data.denominations || [100, 500, 1000, 2000]);
-
       setBrand(brandData);
     } catch (error) {
-      console.error('❌ [BRAND DETAIL] Error loading brand details:', error);
+      console.error('Error loading brand details:', error);
     } finally {
       setLoading(false);
     }
@@ -109,26 +167,17 @@ export default function BrandDetailPage() {
     if (!brand) return;
 
     try {
-      const shareMessage = `Check out ${brand.name} - Get up to ${brand.cashbackRate}% cashback! Download REZ app to purchase vouchers.`;
+      const shareMessage = `Check out ${brand.name} - Get up to ${brand.cashbackRate}% cashback! Download ReZ app to save smarter.`;
 
       if (Platform.OS === 'web') {
-        // Web sharing
         if (navigator.share) {
-          await navigator.share({
-            title: brand.name,
-            text: shareMessage,
-          });
+          await navigator.share({ title: brand.name, text: shareMessage });
         } else {
-          // Fallback: Copy to clipboard for browsers without share API
           await Clipboard.setStringAsync(shareMessage);
-          alert('Link copied to clipboard! Share it with your friends.');
+          alert('Link copied to clipboard!');
         }
       } else {
-        // Mobile sharing
-        await RNShare.share({
-          message: shareMessage,
-          title: brand.name,
-        });
+        await RNShare.share({ message: shareMessage, title: brand.name });
       }
     } catch (error) {
       console.error('Share error:', error);
@@ -136,94 +185,109 @@ export default function BrandDetailPage() {
   };
 
   const handleFavorite = () => {
-    // TODO: Implement wishlist functionality
-    console.log('Add to wishlist');
+    setIsFavorite(!isFavorite);
   };
 
   const handlePurchaseSuccess = () => {
-    // Refresh brand data or navigate to My Vouchers
     console.log('Purchase successful!');
   };
 
   const renderHeader = () => (
     <LinearGradient
-      colors={['#8B5CF6', '#A855F7', '#EC4899']}
+      colors={[COLORS.primary, COLORS.primaryDark, '#00695C']}
       style={styles.header}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
+      {/* Decorative elements */}
+      <View style={styles.headerOrb1} />
+      <View style={styles.headerOrb2} />
+      <View style={styles.headerGlassOverlay} />
+
       <View style={styles.headerContent}>
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.glassButton}
           onPress={() => router.back()}
-          activeOpacity={0.7}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          activeOpacity={0.8}
         >
-          <Ionicons name="arrow-back" size={22} color="white" />
+          <Ionicons name="arrow-back" size={22} color={COLORS.white} />
         </TouchableOpacity>
-        
+
         <ThemedText style={styles.headerTitle} numberOfLines={1}>
           {brand?.name || 'Brand'}
         </ThemedText>
-        
+
         <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={styles.headerActionButton}
+          <TouchableOpacity
+            style={styles.glassButton}
             onPress={handleShare}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <Ionicons name="share-outline" size={22} color="white" />
+            <Ionicons name="share-outline" size={20} color={COLORS.white} />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.headerActionButton}
+
+          <TouchableOpacity
+            style={[styles.glassButton, isFavorite && styles.favoriteActive]}
             onPress={handleFavorite}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <Ionicons name="heart-outline" size={22} color="white" />
+            <Ionicons
+              name={isFavorite ? "heart" : "heart-outline"}
+              size={20}
+              color={isFavorite ? "#FF6B6B" : COLORS.white}
+            />
           </TouchableOpacity>
         </View>
       </View>
     </LinearGradient>
   );
 
-  const renderBrandIllustration = () => (
-    <Animated.View 
+  const renderBrandHero = () => (
+    <Animated.View
       style={[
-        styles.illustrationContainer,
+        styles.heroSection,
         {
           opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
+          transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
         }
       ]}
     >
-      <View style={styles.brandLogoContainer}>
+      {/* Logo with glow effect */}
+      <View style={styles.logoWrapper}>
+        <View style={styles.logoGlow} />
         <LinearGradient
-          colors={[
-            brand?.backgroundColor || '#F3F4F6',
-            (brand?.backgroundColor || '#F3F4F6') + 'DD',
-          ]}
-          style={[styles.brandLogo, { backgroundColor: brand?.backgroundColor || '#F3F4F6' }]}
+          colors={[brand?.backgroundColor || '#F3F4F6', (brand?.backgroundColor || '#F3F4F6') + 'CC']}
+          style={styles.brandLogo}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <ThemedText style={[styles.brandLogoText, { color: brand?.logoColor || '#000' }]}>
+          <View style={styles.logoShine} />
+          <ThemedText style={[styles.brandLogoText, { color: brand?.logoColor || COLORS.navy }]}>
             {brand?.logo}
           </ThemedText>
         </LinearGradient>
-        <ThemedText style={styles.brandName}>{brand?.name}</ThemedText>
-        {brand?.featured && (
-          <View style={styles.featuredBadge}>
-            <Ionicons name="star" size={12} color="#F59E0B" />
-            <ThemedText style={styles.featuredText}>Featured</ThemedText>
-          </View>
-        )}
       </View>
+
+      <ThemedText style={styles.brandName}>{brand?.name}</ThemedText>
+
+      {brand?.featured && (
+        <View style={styles.featuredBadge}>
+          <LinearGradient
+            colors={[COLORS.gold, COLORS.goldDark]}
+            style={styles.featuredGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Ionicons name="star" size={12} color={COLORS.navy} />
+            <ThemedText style={styles.featuredText}>Featured Brand</ThemedText>
+          </LinearGradient>
+        </View>
+      )}
     </Animated.View>
   );
 
   const renderStats = () => (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.statsContainer,
         {
@@ -232,30 +296,40 @@ export default function BrandDetailPage() {
         }
       ]}
     >
-      <View style={styles.statCard}>
+      {/* Rating Card */}
+      <View style={[
+        styles.statCard,
+        Platform.OS === 'web' && { boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)' }
+      ]}>
+        <View style={styles.cardShine} />
         <View style={styles.statRow}>
-          <View style={styles.statIconContainer}>
-            <Ionicons name="star" size={20} color="#F59E0B" />
+          <View style={[styles.statIconContainer, { backgroundColor: COLORS.goldLight }]}>
+            <Ionicons name="star" size={20} color={COLORS.gold} />
           </View>
           <View style={styles.statContent}>
             <ThemedText style={styles.statValue}>
               {brand?.rating ? `${brand.rating.toFixed(1)}%` : '95%'} Positive rating
             </ThemedText>
             <ThemedText style={styles.statSubtext}>
-              by {brand?.reviewCount || '7.8k+ users'}
+              by {brand?.reviewCount || '8.8k+ users'}
             </ThemedText>
           </View>
         </View>
       </View>
-      
-      <View style={styles.statCard}>
+
+      {/* Rewards Card */}
+      <View style={[
+        styles.statCard,
+        Platform.OS === 'web' && { boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)' }
+      ]}>
+        <View style={styles.cardShine} />
         <View style={styles.statRow}>
-          <View style={styles.statIconContainer}>
-            <Ionicons name="trophy" size={20} color="#9333EA" />
+          <View style={[styles.statIconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+            <Ionicons name="trophy" size={20} color="#8B5CF6" />
           </View>
           <View style={styles.statContent}>
             <ThemedText style={styles.statValue}>
-              {brand?.rewardCount || '55 lakh+ Rewards'}
+              55 lakh+ Rewards
             </ThemedText>
             <ThemedText style={styles.statSubtext}>
               given in last month
@@ -266,67 +340,47 @@ export default function BrandDetailPage() {
     </Animated.View>
   );
 
-  const renderOfferDetails = () => (
-    <Animated.View 
+  const renderNoticeCard = () => (
+    <Animated.View
       style={[
-        styles.offerSection,
+        styles.noticeSection,
         {
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         }
       ]}
     >
-      {brand?.bigSavingDays && (
-        <View style={styles.offerCard}>
-          <View style={styles.offerHeader}>
-            <Ionicons name="flame" size={20} color="#F97316" />
-            <ThemedText style={styles.offerTitle}>{brand.bigSavingDays.title}</ThemedText>
-          </View>
-          <ThemedText style={styles.offerDescription}>{brand.bigSavingDays.description}</ThemedText>
-          {brand.extraOffers?.map((offer, index) => (
-            <View key={index} style={styles.extraOfferRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-              <ThemedText style={styles.extraOffer}>{offer}</ThemedText>
-            </View>
-          ))}
-        </View>
-      )}
-      
-      {brand?.wasilRewards && (
+      <View style={[
+        styles.noticeCard,
+        Platform.OS === 'web' && { boxShadow: '0 4px 20px rgba(0, 192, 106, 0.1)' }
+      ]}>
         <LinearGradient
-          colors={['#FEF3C7', '#FDE68A']}
+          colors={[COLORS.primaryLight, 'rgba(0, 192, 106, 0.05)']}
+          style={styles.noticeGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.wasilRewardsCard}
         >
-          <View style={styles.wasilRewardsContent}>
-            <Ionicons name="gift" size={24} color="#F59E0B" />
-            <ThemedText style={styles.wasilRewardsText}>
-              + Up to {brand.wasilRewards.percentage}% REZ Rewards
-            </ThemedText>
+          <View style={styles.noticeHeader}>
+            <View style={styles.noticeIconContainer}>
+              <Ionicons name="information-circle" size={20} color={COLORS.primary} />
+            </View>
+            <ThemedText style={styles.noticeTitle}>Important Notice</ThemedText>
           </View>
+          <ThemedText style={styles.noticeText}>
+            Add products to your cart/Wishlist or save for later only after going via REZ
+          </ThemedText>
         </LinearGradient>
-      )}
-      
-      <View style={styles.instructionCard}>
-        <View style={styles.instructionHeader}>
-          <Ionicons name="information-circle" size={18} color="#9333EA" />
-          <ThemedText style={styles.instructionTitle}>Important Notice</ThemedText>
-        </View>
-        <ThemedText style={styles.instructionText}>
-          Add products to your cart/Wishlist or save for later only after going via REZ
-        </ThemedText>
       </View>
     </Animated.View>
   );
 
   const renderActionButton = () => (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.actionSection,
         {
           opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
+          transform: [{ translateY: slideAnim }, { scale: pulseAnim }],
         }
       ]}
     >
@@ -336,119 +390,135 @@ export default function BrandDetailPage() {
         onPress={() => setShowPurchaseModal(true)}
       >
         <LinearGradient
-          colors={['#8B5CF6', '#A855F7', '#EC4899']}
+          colors={[COLORS.primary, COLORS.primaryDark]}
           style={styles.rewardButtonGradient}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          end={{ x: 1, y: 0 }}
         >
+          {/* Button shine effect */}
+          <View style={styles.buttonShine} />
+
           <View style={styles.rewardButtonContent}>
-            <Ionicons name="cash" size={24} color="white" />
+            <View style={styles.rewardIconContainer}>
+              <Ionicons name="gift" size={22} color={COLORS.white} />
+            </View>
             <ThemedText style={styles.rewardButtonText}>
-              Earn up to {brand?.cashbackRate || 7}% Reward
+              Earn up to {brand?.cashbackRate || 12}% Reward
             </ThemedText>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.white} />
           </View>
         </LinearGradient>
       </TouchableOpacity>
     </Animated.View>
   );
 
-  const renderBottomTabs = () => (
-    <Animated.View 
+  const renderTimeline = () => (
+    <Animated.View
       style={[
-        styles.bottomSection,
+        styles.timelineSection,
         {
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         }
       ]}
     >
-      {/* Timeline */}
-      <View style={styles.timelineContainer}>
-        <View style={styles.timelineItem}>
-          <View style={styles.timelineIconWrapper}>
-            <LinearGradient
-              colors={['#8B5CF6', '#A855F7']}
-              style={styles.timelineIcon}
-            >
-              <Ionicons name="cart" size={16} color="white" />
-            </LinearGradient>
-          </View>
-          <View style={styles.timelineContent}>
-            <ThemedText style={styles.timelineTitle}>Purchase</ThemedText>
-            <ThemedText style={styles.timelineSubtitle}>Today</ThemedText>
-          </View>
-        </View>
-        
-        <View style={styles.timelineLine}>
-          <View style={styles.timelineDashedLineContainer}>
-            <View style={styles.dash} />
-            <View style={styles.dash} />
-            <View style={styles.dash} />
-            <View style={styles.dash} />
-            <View style={styles.dash} />
-          </View>
-        </View>
-        
-        <View style={styles.timelineItem}>
-          <View style={styles.timelineIconWrapper}>
-            <LinearGradient
-              colors={['#8B5CF6', '#A855F7']}
-              style={styles.timelineIcon}
-            >
-              <Ionicons name="gift" size={16} color="white" />
-            </LinearGradient>
-          </View>
-          <View style={styles.timelineContent}>
-            <ThemedText style={styles.timelineTitle}>Reward Track</ThemedText>
-            <ThemedText style={styles.timelineSubtitle}>in 30 min</ThemedText>
-            <ThemedText style={styles.timelineSubtitle}>Today</ThemedText>
-          </View>
-        </View>
-      </View>
-      
-      {/* Bottom Buttons */}
-      <View style={styles.bottomButtons}>
-        <TouchableOpacity
-          style={styles.bottomButton}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={['#8B5CF6', '#A855F7']}
-            style={styles.bottomButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Ionicons name="pricetag" size={18} color="white" />
-            <ThemedText style={styles.bottomButtonText}>Rewards Rates</ThemedText>
-          </LinearGradient>
-        </TouchableOpacity>
+      <ThemedText style={styles.timelineSectionTitle}>How it works</ThemedText>
 
-        <TouchableOpacity
-          style={styles.bottomButton}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={['#8B5CF6', '#A855F7']}
-            style={styles.bottomButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Ionicons name="document-text" size={18} color="white" />
-            <ThemedText style={styles.bottomButtonText}>Offer Terms</ThemedText>
-          </LinearGradient>
-        </TouchableOpacity>
+      <View style={styles.timelineContainer}>
+        {/* Step 1 */}
+        <View style={styles.timelineStep}>
+          <View style={styles.timelineStepNumber}>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              style={styles.stepNumberGradient}
+            >
+              <ThemedText style={styles.stepNumber}>1</ThemedText>
+            </LinearGradient>
+          </View>
+          <View style={styles.timelineStepContent}>
+            <ThemedText style={styles.timelineStepTitle}>Purchase Voucher</ThemedText>
+            <ThemedText style={styles.timelineStepSubtitle}>Select amount & pay</ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.timelineConnector}>
+          <View style={styles.connectorDash} />
+          <View style={styles.connectorDash} />
+          <View style={styles.connectorDash} />
+        </View>
+
+        {/* Step 2 */}
+        <View style={styles.timelineStep}>
+          <View style={styles.timelineStepNumber}>
+            <LinearGradient
+              colors={[COLORS.gold, COLORS.goldDark]}
+              style={styles.stepNumberGradient}
+            >
+              <ThemedText style={styles.stepNumber}>2</ThemedText>
+            </LinearGradient>
+          </View>
+          <View style={styles.timelineStepContent}>
+            <ThemedText style={styles.timelineStepTitle}>Get Reward</ThemedText>
+            <ThemedText style={styles.timelineStepSubtitle}>Within 30 minutes</ThemedText>
+          </View>
+        </View>
       </View>
+    </Animated.View>
+  );
+
+  const renderBottomActions = () => (
+    <Animated.View
+      style={[
+        styles.bottomActions,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }
+      ]}
+    >
+      <TouchableOpacity style={styles.bottomActionButton} activeOpacity={0.85}>
+        <View style={styles.bottomActionInner}>
+          <View style={styles.bottomActionIcon}>
+            <Ionicons name="pricetag" size={18} color={COLORS.primary} />
+          </View>
+          <ThemedText style={styles.bottomActionText}>Reward Rates</ThemedText>
+          <Ionicons name="chevron-forward" size={16} color={COLORS.muted} />
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.bottomActionButton} activeOpacity={0.85}>
+        <View style={styles.bottomActionInner}>
+          <View style={styles.bottomActionIcon}>
+            <Ionicons name="document-text" size={18} color={COLORS.primary} />
+          </View>
+          <ThemedText style={styles.bottomActionText}>Offer Terms</ThemedText>
+          <Ionicons name="chevron-forward" size={16} color={COLORS.muted} />
+        </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
-        {renderHeader()}
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <LinearGradient
+          colors={[COLORS.primary, COLORS.primaryDark]}
+          style={styles.loadingHeader}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity style={styles.glassButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={22} color={COLORS.white} />
+            </TouchableOpacity>
+            <ThemedText style={styles.headerTitle}>Loading...</ThemedText>
+            <View style={{ width: 94 }} />
+          </View>
+        </LinearGradient>
         <View style={styles.loadingContent}>
-          <ActivityIndicator size="large" color="#9333EA" />
-          <ThemedText style={styles.loadingText}>Loading brand details...</ThemedText>
+          <View style={styles.loaderWrapper}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+          <ThemedText style={styles.loadingText}>Fetching brand details...</ThemedText>
         </View>
       </View>
     );
@@ -457,15 +527,23 @@ export default function BrandDetailPage() {
   if (!brand) {
     return (
       <View style={styles.errorContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
         {renderHeader()}
         <View style={styles.errorContent}>
-          <ThemedText style={styles.errorText}>Brand not found</ThemedText>
-          <TouchableOpacity 
-            style={styles.backToVouchersButton}
-            onPress={() => router.back()}
-          >
-            <ThemedText style={styles.backToVouchersText}>Back to Vouchers</ThemedText>
+          <View style={styles.errorIconContainer}>
+            <Ionicons name="alert-circle-outline" size={56} color={COLORS.muted} />
+          </View>
+          <ThemedText style={styles.errorTitle}>Brand not found</ThemedText>
+          <ThemedText style={styles.errorText}>
+            This brand may have been removed or is temporarily unavailable.
+          </ThemedText>
+          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.9}>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              style={styles.backButton}
+            >
+              <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </View>
@@ -474,21 +552,34 @@ export default function BrandDetailPage() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
-      
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
+      {/* Premium Background */}
+      <LinearGradient
+        colors={['#E8F5E9', '#E0F2F1', '#F5F5F5', '#E8F5E9']}
+        style={styles.backgroundGradient}
+      >
+        <View style={styles.bgOrb1} />
+        <View style={styles.bgOrb2} />
+      </LinearGradient>
+
       {renderHeader()}
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {renderBrandIllustration()}
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {renderBrandHero()}
         {renderStats()}
-        {renderOfferDetails()}
+        {renderNoticeCard()}
         {renderActionButton()}
-        {renderBottomTabs()}
+        {renderTimeline()}
+        {renderBottomActions()}
 
         <View style={styles.bottomSpace} />
       </ScrollView>
 
-      {/* Purchase Modal */}
       <PurchaseModal
         visible={showPurchaseModal}
         brand={brand ? {
@@ -505,484 +596,526 @@ export default function BrandDetailPage() {
         onSuccess={handlePurchaseSuccess}
       />
     </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: COLORS.surface,
   },
-  
-  // Header Styles
+
+  // Background
+  backgroundGradient: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  bgOrb1: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: COLORS.primaryGlow,
+    top: height * 0.25,
+    right: -80,
+    opacity: 0.3,
+  },
+  bgOrb2: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: COLORS.goldGlow,
+    bottom: 150,
+    left: -50,
+    opacity: 0.25,
+  },
+
+  // Header
   header: {
-    paddingTop: Platform.OS === 'android' ? 45 : 55,
-    paddingBottom: 24,
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 10,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  headerOrb1: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    top: -40,
+    right: -20,
+  },
+  headerOrb2: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    bottom: -20,
+    left: 40,
+  },
+  headerGlassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    zIndex: 1,
   },
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  glassButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  favoriteActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: 'white',
+    color: COLORS.white,
     flex: 1,
     textAlign: 'center',
     letterSpacing: -0.3,
-    paddingHorizontal: 16,
+    marginHorizontal: 12,
   },
   headerActions: {
     flexDirection: 'row',
     gap: 10,
   },
-  headerActionButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-  
+
   // Content
   content: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
-  
-  // Illustration
-  illustrationContainer: {
+  scrollContent: {
+    paddingBottom: 20,
+  },
+
+  // Hero Section
+  heroSection: {
     alignItems: 'center',
     paddingVertical: 32,
-    backgroundColor: 'white',
-    marginBottom: 12,
+    paddingHorizontal: 20,
   },
-  illustrationBackground: {
-    width: width * 0.8,
-    height: 160,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
+  logoWrapper: {
+    position: 'relative',
+    marginBottom: 16,
   },
-  illustration: {
-    fontSize: 48,
-  },
-  brandLogoContainer: {
-    alignItems: 'center',
-    gap: 12,
+  logoGlow: {
+    position: 'absolute',
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    borderRadius: 34,
+    backgroundColor: 'rgba(0, 192, 106, 0.15)',
   },
   brandLogo: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
+    width: 100,
+    height: 100,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowRadius: 16,
+    elevation: 10,
+    overflow: 'hidden',
+  },
+  logoShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '45%',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
   },
   brandLogoText: {
-    fontSize: 40,
+    fontSize: 48,
+    marginTop: 8,
   },
   brandName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 26,
+    fontWeight: '800',
+    color: COLORS.navy,
     letterSpacing: -0.5,
+    marginBottom: 12,
   },
   featuredBadge: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  featuredGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     gap: 6,
-    marginTop: 4,
   },
   featuredText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#F59E0B',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: COLORS.navy,
+    letterSpacing: 0.3,
   },
-  
+
   // Stats
   statsContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 12,
     gap: 12,
+    marginBottom: 16,
   },
   statCard: {
-    backgroundColor: 'white',
+    backgroundColor: COLORS.glassWhite,
     borderRadius: 20,
-    padding: 20,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.06)',
+    borderColor: COLORS.glassBorder,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 6,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cardShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    transform: [{ skewY: '-2deg' }],
+    marginTop: -15,
   },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 14,
   },
   statIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: '#F3F0FF',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
   statContent: {
     flex: 1,
   },
-  statItem: {
-    marginBottom: 12,
-  },
   statValue: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-  statSubtext: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  
-  // Offers
-  offerSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 12,
-    gap: 16,
-  },
-  offerCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.06)',
-  },
-  offerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  offerTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#111827',
-    letterSpacing: -0.3,
-  },
-  offerDescription: {
-    fontSize: 15,
-    color: '#6B7280',
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  extraOfferRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  extraOffer: {
-    fontSize: 15,
-    color: '#374151',
-    flex: 1,
-    lineHeight: 22,
-  },
-  wasilRewardsCard: {
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  wasilRewardsContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  wasilRewardsText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F59E0B',
-    letterSpacing: -0.3,
-  },
-  instructionCard: {
-    backgroundColor: '#F3F0FF',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#DDD6FE',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  instructionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  instructionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#9333EA',
+    color: COLORS.navy,
+    letterSpacing: -0.2,
+    marginBottom: 3,
+  },
+  statSubtext: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.muted,
+  },
+
+  // Notice
+  noticeSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  noticeCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+  },
+  noticeGradient: {
+    padding: 18,
+  },
+  noticeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  noticeIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 192, 106, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noticeTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
     letterSpacing: -0.2,
   },
-  instructionText: {
+  noticeText: {
     fontSize: 14,
-    color: '#7C3AED',
+    color: COLORS.primary,
     lineHeight: 20,
     fontWeight: '500',
   },
-  
+
   // Action Button
   actionSection: {
-    backgroundColor: 'white',
     paddingHorizontal: 20,
-    paddingVertical: 24,
-    marginBottom: 12,
+    marginBottom: 24,
   },
   rewardButton: {
-    borderRadius: 28,
+    borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
   },
   rewardButtonGradient: {
-    paddingVertical: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  buttonShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   rewardButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
   },
+  rewardIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   rewardButtonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.white,
+    letterSpacing: -0.2,
+    flex: 1,
+  },
+
+  // Timeline
+  timelineSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  timelineSectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: 'white',
+    color: COLORS.navy,
     letterSpacing: -0.3,
-  },
-  
-  // Bottom Section
-  bottomSection: {
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    marginBottom: 16,
   },
   timelineContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    marginBottom: 32,
-    paddingTop: 8,
-  },
-  timelineItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  timelineIconWrapper: {
-    marginBottom: 12,
-  },
-  timelineIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  purpleDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#9333EA',
-  },
-  timelineContent: {
-    alignItems: 'center',
-  },
-  timelineTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-    letterSpacing: -0.3,
-  },
-  timelineSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  timelineLine: {
-    width: 80,
-    marginTop: 24,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  timelineDashedLineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    width: '100%',
-    justifyContent: 'center',
-  },
-  dash: {
-    width: 8,
-    height: 2,
-    backgroundColor: '#9333EA',
-    borderRadius: 1,
-  },
-  bottomButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  bottomButton: {
-    flex: 1,
+    backgroundColor: COLORS.glassWhite,
     borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#8B5CF6',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+  },
+  timelineStep: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  timelineStepNumber: {
+    marginBottom: 12,
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
-  bottomButtonGradient: {
-    paddingVertical: 14,
-    alignItems: 'center',
+  stepNumberGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
   },
-  bottomButtonText: {
+  stepNumber: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.white,
+  },
+  timelineStepContent: {
+    alignItems: 'center',
+  },
+  timelineStepTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.navy,
+    marginBottom: 2,
+  },
+  timelineStepSubtitle: {
+    fontSize: 12,
+    color: COLORS.muted,
+    fontWeight: '500',
+  },
+  timelineConnector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 20,
+  },
+  connectorDash: {
+    width: 10,
+    height: 3,
+    backgroundColor: COLORS.primary,
+    borderRadius: 2,
+    opacity: 0.4,
+  },
+
+  // Bottom Actions
+  bottomActions: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  bottomActionButton: {
+    backgroundColor: COLORS.glassWhite,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+    overflow: 'hidden',
+  },
+  bottomActionInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  bottomActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bottomActionText: {
+    flex: 1,
     fontSize: 15,
     fontWeight: '600',
-    color: 'white',
-    letterSpacing: -0.2,
+    color: COLORS.navy,
   },
-  
-  // Loading State
+
+  // Loading
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
+  },
+  loadingHeader: {
+    paddingTop: Platform.OS === 'android' ? 50 : 60,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
   loadingContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+  },
+  loaderWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: COLORS.glassWhite,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   loadingText: {
-    fontSize: 16,
-    color: '#8B5CF6',
-    marginTop: 16,
+    fontSize: 15,
+    color: COLORS.muted,
+    fontWeight: '500',
   },
-  
-  // Error State
+
+  // Error
   errorContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
   },
   errorContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 32,
+  },
+  errorIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 28,
+    backgroundColor: COLORS.glassWhite,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.navy,
+    marginBottom: 8,
   },
   errorText: {
-    fontSize: 18,
-    color: '#6B7280',
+    fontSize: 14,
+    color: COLORS.muted,
     textAlign: 'center',
-    marginBottom: 20,
+    lineHeight: 20,
+    marginBottom: 24,
   },
-  backToVouchersButton: {
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 16,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
+  backButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 14,
   },
-  backToVouchersText: {
-    fontSize: 16,
+  backButtonText: {
+    fontSize: 15,
     fontWeight: '600',
-    color: 'white',
+    color: COLORS.white,
   },
-  
+
   // Bottom Space
   bottomSpace: {
-    height: 40,
+    height: 60,
   },
 });

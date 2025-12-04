@@ -99,7 +99,7 @@ export default function BenefitsTable({
   const getLevelColor = (level: number): string[] => {
     switch (level) {
       case 1:
-        return ['#8B5CF6', '#A78BFA'];
+        return ['#00C06A', '#00796B'];
       case 2:
         return ['#10B981', '#34D399'];
       case 3:
@@ -128,7 +128,7 @@ export default function BenefitsTable({
       <View style={styles.header}>
         <View style={styles.headerIcon}>
           <LinearGradient
-            colors={['#8B5CF6', '#A78BFA']}
+            colors={['#00C06A', '#00796B']}
             style={styles.headerIconGradient}
           >
             <Ionicons name="grid" size={20} color="white" />
@@ -194,7 +194,7 @@ export default function BenefitsTable({
               {/* Benefit Name */}
               <View style={styles.benefitNameCell}>
                 <View style={styles.benefitIconContainer}>
-                  <Ionicons name={benefitType.icon as any} size={16} color="#8B5CF6" />
+                  <Ionicons name={benefitType.icon as any} size={16} color="#00C06A" />
                 </View>
                 <Text style={styles.benefitNameText}>{benefitType.name}</Text>
               </View>
@@ -220,7 +220,7 @@ export default function BenefitsTable({
                           <Ionicons 
                             name="checkmark-circle" 
                             size={16} 
-                            color={isCurrentLevel ? '#8B5CF6' : '#10B981'} 
+                            color={isCurrentLevel ? '#00C06A' : '#10B981'} 
                           />
                           <Text style={[
                             styles.benefitValue,
@@ -477,9 +477,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1FAE5',
   },
   currentActiveBenefitContainer: {
-    backgroundColor: '#8B5CF620',
+    backgroundColor: '#00C06A20',
     borderWidth: 1,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
   },
   benefitValue: {
     fontSize: 12,
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   currentBenefitValue: {
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   actionRow: {
     flexDirection: 'row',
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
   },
   currentRequirementCard: {
     borderWidth: 2,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
   },
   requirementCardGradient: {
     padding: 12,
