@@ -351,7 +351,14 @@ export default function EventBookingModal({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const handleBookingSubmit = async () => {
-    if (!event) return;
+    console.log('📝 [BOOKING MODAL] handleBookingSubmit called');
+    if (!event) {
+      console.log('❌ [BOOKING MODAL] No event provided');
+      return;
+    }
+
+    console.log('📝 [BOOKING MODAL] Event:', event.id, event.title);
+    console.log('📝 [BOOKING MODAL] Form data:', JSON.stringify(formData));
 
     // Validate form
     if (!formData.attendeeInfo.name.trim()) {
@@ -385,12 +392,21 @@ export default function EventBookingModal({
 
     // If event is free, book directly
     if (event.price.isFree) {
+      console.log('🎫 [BOOKING MODAL] Calling bookEvent for FREE event:', event.id);
       const bookingId = await bookEvent(event, finalFormData);
+      console.log('🎫 [BOOKING MODAL] bookEvent result:', bookingId);
       if (bookingId) {
+        console.log('✅ [BOOKING MODAL] Booking successful, closing modal');
         // Track booking completion
         eventAnalytics.trackBookingComplete(event.id, bookingId, selectedSlot || undefined, 'booking_modal');
         onBookingSuccess?.(bookingId);
         onClose();
+      } else {
+        console.log('❌ [BOOKING MODAL] Booking failed (bookingId is null)');
+        // Alert should have been shown by useEventBooking, but add backup
+        if (typeof window !== 'undefined') {
+          console.error('Booking failed - check console for details');
+        }
       }
       return;
     }

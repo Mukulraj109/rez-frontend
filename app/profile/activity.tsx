@@ -116,7 +116,7 @@ export default function ActivityFeedPage() {
 
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color="#8B5CF6" />
+        <ActivityIndicator size="small" color="#00C06A" />
         <ThemedText style={styles.footerText}>Loading more...</ThemedText>
       </View>
     );
@@ -135,10 +135,10 @@ export default function ActivityFeedPage() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
+      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
 
       {/* Header */}
-      <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
+      <LinearGradient colors={['#00C06A', '#00796B']} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity 
             style={styles.backButton} 
@@ -233,7 +233,7 @@ export default function ActivityFeedPage() {
           <RefreshControl
             refreshing={isLoading && activities.length > 0}
             onRefresh={refresh}
-            tintColor="#8B5CF6"
+            tintColor="#00C06A"
           />
         }
         onEndReached={loadMore}
@@ -245,7 +245,7 @@ export default function ActivityFeedPage() {
 
       {isLoading && activities.length === 0 && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#00C06A" />
           <ThemedText style={styles.loadingText}>Loading activities...</ThemedText>
         </View>
       )}
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     padding: 16,
     minWidth: 110,
     alignItems: 'center',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   summaryNumber: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginBottom: 4,
   },
   summaryLabel: {
@@ -359,9 +359,9 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   filterPillActive: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
-    shadowColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
+    borderColor: '#00C06A',
+    shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,

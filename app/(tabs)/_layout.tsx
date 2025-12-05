@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 
 export default function TabLayout() {
@@ -69,18 +70,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="earn"
+        name="categories"
         options={{
-          title: 'Earn',
+          title: 'Categories',
           tabBarIcon: ({ color }) => (
-            <IconSymbol
-              size={22}
-              name="indianrupeesign"
-              color={color}
-              accessibilityLabel="Earn icon"
-            />
+            <Ionicons name="grid-outline" size={22} color={color} />
           ),
-          tabBarAccessibilityLabel: 'Earn tab, view earning opportunities and rewards',
         }}
       />
     </Tabs>

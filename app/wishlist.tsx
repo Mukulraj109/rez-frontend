@@ -482,7 +482,7 @@ export default function WishlistPage() {
       >
         {/* Discount Badge */}
         <View style={[styles.discountBadge, isExpired && styles.discountBadgeExpired]}>
-          <Ionicons name="pricetag" size={14} color={isExpired ? '#EF4444' : '#7C3AED'} />
+          <Ionicons name="pricetag" size={14} color={isExpired ? '#EF4444' : '#00C06A'} />
           <ThemedText style={[styles.discountBadgeText, isExpired && styles.discountBadgeTextExpired]}>
             {formatDiscountValue(snapshot)}
           </ThemedText>
@@ -546,7 +546,7 @@ export default function WishlistPage() {
         <Image source={{ uri: item.image }} style={styles.storeLogo} />
       ) : (
         <View style={styles.storeLogoPlaceholder}>
-          <Ionicons name="storefront-outline" size={28} color="#7C3AED" />
+          <Ionicons name="storefront-outline" size={28} color="#00C06A" />
         </View>
       )}
       <View style={styles.storeInfo}>
@@ -555,7 +555,7 @@ export default function WishlistPage() {
         </ThemedText>
         <View style={styles.storeFooter}>
           <View style={styles.followingBadge}>
-            <Ionicons name="heart" size={12} color="#7C3AED" />
+            <Ionicons name="heart" size={12} color="#00C06A" />
             <ThemedText style={styles.followingText}>Following</ThemedText>
           </View>
           <TouchableOpacity
@@ -682,7 +682,7 @@ export default function WishlistPage() {
               style={styles.actionBtn}
               onPress={() => handleWishlistPress(wishlist)}
             >
-              <Ionicons name="eye-outline" size={20} color="#7C3AED" />
+              <Ionicons name="eye-outline" size={20} color="#00C06A" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionBtn}
@@ -691,7 +691,7 @@ export default function WishlistPage() {
                 setShowShareModal(true);
               }}
             >
-              <Ionicons name="share-outline" size={20} color="#7C3AED" />
+              <Ionicons name="share-outline" size={20} color="#00C06A" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionBtn}
@@ -706,7 +706,7 @@ export default function WishlistPage() {
         {deals.length > 0 && (
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="pricetag" size={16} color="#7C3AED" />
+              <Ionicons name="pricetag" size={16} color="#00C06A" />
               <ThemedText style={styles.sectionTitle}>Saved Deals</ThemedText>
             </View>
             <FlatList
@@ -724,7 +724,7 @@ export default function WishlistPage() {
         {stores.length > 0 && (
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="storefront-outline" size={16} color="#7C3AED" />
+              <Ionicons name="storefront-outline" size={16} color="#00C06A" />
               <ThemedText style={styles.sectionTitle}>Following Stores</ThemedText>
             </View>
             <FlatList
@@ -742,7 +742,7 @@ export default function WishlistPage() {
         {products.length > 0 && (
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="bag-outline" size={16} color="#7C3AED" />
+              <Ionicons name="bag-outline" size={16} color="#00C06A" />
               <ThemedText style={styles.sectionTitle}>Products</ThemedText>
             </View>
             <FlatList
@@ -760,7 +760,7 @@ export default function WishlistPage() {
         {videos.length > 0 && (
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="videocam-outline" size={16} color="#7C3AED" />
+              <Ionicons name="videocam-outline" size={16} color="#00C06A" />
               <ThemedText style={styles.sectionTitle}>Saved Videos</ThemedText>
             </View>
             <FlatList
@@ -785,7 +785,7 @@ export default function WishlistPage() {
         {wishlist.items.length > 5 && (
           <TouchableOpacity style={styles.viewAllBtn} onPress={() => handleWishlistPress(wishlist)}>
             <ThemedText style={styles.viewAllText}>View all {wishlist.itemCount} items</ThemedText>
-            <Ionicons name="chevron-forward" size={16} color="#7C3AED" />
+            <Ionicons name="chevron-forward" size={16} color="#00C06A" />
           </TouchableOpacity>
         )}
       </View>
@@ -797,8 +797,8 @@ export default function WishlistPage() {
     return (
       <ThemedView style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-        <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
+        <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
+        <LinearGradient colors={['#00C06A', '#00796B']} style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={handleBackPress}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
@@ -808,7 +808,7 @@ export default function WishlistPage() {
           </TouchableOpacity>
         </LinearGradient>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7C3AED" />
+          <ActivityIndicator size="large" color="#00C06A" />
           <ThemedText style={styles.loadingText}>Loading wishlists...</ThemedText>
         </View>
       </ThemedView>
@@ -820,8 +820,8 @@ export default function WishlistPage() {
     return (
       <ThemedView style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-        <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
+        <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
+        <LinearGradient colors={['#00C06A', '#00796B']} style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={handleBackPress}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
@@ -843,8 +843,8 @@ export default function WishlistPage() {
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-      <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
+      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
+      <LinearGradient colors={['#00C06A', '#00796B']} style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={handleBackPress}>
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
@@ -872,7 +872,7 @@ export default function WishlistPage() {
             renderItem={renderWishlist}
             keyExtractor={(item, index) => `wishlist-${item.id}-${index}`}
             refreshControl={
-              <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#7C3AED" />
+              <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#00C06A" />
             }
             contentContainerStyle={styles.listContainer}
             showsVerticalScrollIndicator={false}
@@ -1047,13 +1047,13 @@ const styles = StyleSheet.create({
 
   // Deal Card
   dealCard: {
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#E6F7F1',
     borderRadius: 12,
     padding: 12,
     marginRight: 12,
     width: 160,
     borderWidth: 1,
-    borderColor: '#DDD6FE',
+    borderColor: '#B8E5D6',
   },
   dealCardExpired: {
     backgroundColor: '#FEF2F2',
@@ -1063,7 +1063,7 @@ const styles = StyleSheet.create({
   discountBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#D1F7E5',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -1077,7 +1077,7 @@ const styles = StyleSheet.create({
   discountBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#7C3AED',
+    color: '#00C06A',
   },
   discountBadgeTextExpired: {
     color: '#EF4444',
@@ -1193,7 +1193,7 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#7C3AED',
+    color: '#00C06A',
     marginBottom: 6,
   },
   productFooter: {
@@ -1236,7 +1236,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#E6F7F1',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1262,7 +1262,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#E6F7F1',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -1270,7 +1270,7 @@ const styles = StyleSheet.create({
   followingText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#7C3AED',
+    color: '#00C06A',
   },
 
   // Video Card
@@ -1356,7 +1356,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   createBtn: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -1378,7 +1378,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#7C3AED',
+    color: '#00C06A',
     marginRight: 4,
   },
 
@@ -1413,7 +1413,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryBtn: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -1483,7 +1483,7 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     flex: 1,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',

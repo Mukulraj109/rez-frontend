@@ -92,7 +92,7 @@ export default function StorePromoCoinsPage() {
     <View style={styles.container}>
       {/* Header */}
       <LinearGradient
-        colors={['#8B5CF6', '#7C3AED']}
+        colors={['#00C06A', '#00796B']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
@@ -167,7 +167,7 @@ export default function StorePromoCoinsPage() {
             </View>
 
             <View
-              style={[styles.summaryCard, { backgroundColor: '#8B5CF6' }]}
+              style={[styles.summaryCard, { backgroundColor: '#00C06A' }]}
               accessibilityLabel={`Active stores: ${summary.storeCount}`}
               accessibilityRole="summary"
             >
@@ -182,7 +182,7 @@ export default function StorePromoCoinsPage() {
 
         {/* Info Banner */}
         <View style={styles.infoBanner}>
-          <Ionicons name="information-circle" size={20} color="#8B5CF6" />
+          <Ionicons name="information-circle" size={20} color="#00C06A" />
           <ThemedText style={styles.infoBannerText}>
             Promo coins are store-specific and can only be used at the store where they were earned.
           </ThemedText>
@@ -220,7 +220,7 @@ export default function StorePromoCoinsPage() {
                     />
                   ) : (
                     <View style={[styles.storeLogo, styles.storeLogoPlaceholder]}>
-                      <Ionicons name="storefront" size={24} color="#8B5CF6" />
+                      <Ionicons name="storefront" size={24} color="#00C06A" />
                     </View>
                   )}
 
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   infoBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#D1F7E5',
     padding: 12,
     borderRadius: 8,
     marginBottom: 20,
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   infoBannerText: {
     flex: 1,
     fontSize: 13,
-    color: '#5B21B6',
+    color: '#006B52',
     lineHeight: 18,
   },
   storeListContainer: {
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   storeLogoPlaceholder: {
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#E6F7F1',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   coinBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#E6F7F1',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   coinBadgeText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   storeCardStats: {
     flexDirection: 'row',

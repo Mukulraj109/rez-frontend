@@ -226,7 +226,7 @@ ${earnings.recentTransactions.map((t, i) => `${i + 1}. ${new Date(t.date).toLoca
       case 'video':
         return '#EC4899';
       case 'project':
-        return '#8B5CF6';
+        return '#00C06A';
       case 'referral':
         return '#10B981';
       case 'cashback':
@@ -367,8 +367,8 @@ ${earnings.recentTransactions.map((t, i) => `${i + 1}. ${new Date(t.date).toLoca
             </View>
 
             <View style={styles.breakdownCard}>
-              <View style={[styles.breakdownIcon, { backgroundColor: '#8B5CF620' }]}>
-                <Ionicons name="briefcase" size={24} color="#8B5CF6" />
+              <View style={[styles.breakdownIcon, { backgroundColor: '#00C06A20' }]}>
+                <Ionicons name="briefcase" size={24} color="#00C06A" />
               </View>
               <Text style={styles.breakdownLabel}>Projects</Text>
               <Text style={styles.breakdownValue}>

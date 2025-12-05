@@ -241,7 +241,7 @@ export default function SocialMediaPage() {
       case 'approved': return '#10B981';
       case 'pending': return '#F59E0B';
       case 'rejected': return '#EF4444';
-      case 'credited': return '#8B5CF6';
+      case 'credited': return '#00C06A';
       default: return '#6B7280';
     }
   };
@@ -268,10 +268,10 @@ export default function SocialMediaPage() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
+        <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
 
         {/* Header */}
-        <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
+        <LinearGradient colors={['#00C06A', '#00796B']} style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
@@ -326,7 +326,7 @@ export default function SocialMediaPage() {
               {/* Earnings Summary */}
               <View style={styles.summaryCard}>
                 <LinearGradient
-                  colors={['#8B5CF6', '#7C3AED']}
+                  colors={['#00C06A', '#00796B']}
                   style={styles.summaryGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -420,7 +420,7 @@ export default function SocialMediaPage() {
 
                 {loadingOrders ? (
                   <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color="#8B5CF6" />
+                    <ActivityIndicator size="small" color="#00C06A" />
                     <Text style={styles.loadingText}>Loading orders...</Text>
                   </View>
                 ) : completedOrders.length > 0 ? (
@@ -433,7 +433,7 @@ export default function SocialMediaPage() {
                         <Ionicons
                           name={selectedOrderId ? "radio-button-off" : "radio-button-on"}
                           size={20}
-                          color={selectedOrderId ? "#9CA3AF" : "#8B5CF6"}
+                          color={selectedOrderId ? "#9CA3AF" : "#00C06A"}
                         />
                         <Text style={[styles.orderText, !selectedOrderId && styles.orderTextActive]}>
                           No order (₹0 cashback)
@@ -451,7 +451,7 @@ export default function SocialMediaPage() {
                           <Ionicons
                             name={selectedOrderId === order._id ? "radio-button-on" : "radio-button-off"}
                             size={20}
-                            color={selectedOrderId === order._id ? "#8B5CF6" : "#9CA3AF"}
+                            color={selectedOrderId === order._id ? "#00C06A" : "#9CA3AF"}
                           />
                           <View style={styles.orderInfo}>
                             <Text style={[styles.orderText, selectedOrderId === order._id && styles.orderTextActive]}>
@@ -555,7 +555,7 @@ export default function SocialMediaPage() {
                 </TouchableOpacity>
 
                 <View style={styles.infoBox}>
-                  <Ionicons name="information-circle" size={16} color="#8B5CF6" />
+                  <Ionicons name="information-circle" size={16} color="#00C06A" />
                   <Text style={styles.infoText}>
                     Your post will be reviewed within 48 hours. Cashback will be credited upon approval.
                   </Text>
@@ -580,7 +580,7 @@ export default function SocialMediaPage() {
                 <Text style={styles.sectionTitle}>Submission History</Text>
                 {loading ? (
                   <View style={styles.historyLoadingContainer}>
-                    <ActivityIndicator size="large" color="#8B5CF6" />
+                    <ActivityIndicator size="large" color="#00C06A" />
                   </View>
                 ) : posts.length === 0 ? (
                   <View style={styles.emptyContainer}>
@@ -654,7 +654,7 @@ export default function SocialMediaPage() {
                             accessibilityHint="Opens your social media post in browser"
                           >
                             <Text style={styles.postLinkText}>View Post</Text>
-                            <Ionicons name="open-outline" size={14} color="#8B5CF6" />
+                            <Ionicons name="open-outline" size={14} color="#00C06A" />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -719,7 +719,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#8B5CF6',
+    borderBottomColor: '#00C06A',
   },
   tabText: {
     fontSize: 15,
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   activeTabText: {
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   content: {
     flex: 1,
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   orderTextActive: {
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   orderAmount: {
     fontSize: 13,
@@ -900,7 +900,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -941,8 +941,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   platformButtonActive: {
-    borderColor: '#8B5CF6',
-    backgroundColor: '#F5F3FF',
+    borderColor: '#00C06A',
+    backgroundColor: '#E6F7F1',
   },
   platformName: {
     fontSize: 14,
@@ -970,7 +970,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flexDirection: 'row',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -988,7 +988,7 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#E6F7F1',
     borderRadius: 8,
     padding: 12,
     gap: 8,
@@ -1016,7 +1016,7 @@ const styles = StyleSheet.create({
   statCardValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginBottom: 4,
   },
   statCardLabel: {
@@ -1047,7 +1047,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1126,6 +1126,6 @@ const styles = StyleSheet.create({
   postLinkText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
 });

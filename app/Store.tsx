@@ -48,45 +48,45 @@ const FALLBACK_STORES: Store[] = [
   {
     id: 'fastDelivery',
     title: '30 min delivery',
-    accent: '#7B61FF',
+    accent: '#00C06A',
     icon: 'flash',
-    gradient: ['#7B61FF', '#A855F7'] as const,
+    gradient: ['#00C06A', '#00796B'] as const,
     badge: '30 min',
     description: 'Lightning fast delivery'
   },
   {
     id: 'budgetFriendly',
     title: '1 rupees store',
-    accent: '#6E56CF',
+    accent: '#00A05A',
     icon: 'cash',
-    gradient: ['#6E56CF', '#8B5CF6'] as const,
+    gradient: ['#00A05A', '#00C06A'] as const,
     badge: '₹1',
     description: 'Everything at ₹1'
   },
   {
     id: 'ninetyNineStore',
     title: '99 Rupees store',
-    accent: '#6A5ACD',
+    accent: '#00796B',
     icon: 'wallet',
-    gradient: ['#6A5ACD', '#7C3AED'] as const,
+    gradient: ['#00796B', '#00C06A'] as const,
     badge: '₹99',
     description: 'Budget friendly shopping'
   },
   {
     id: 'premium',
     title: 'Luxury store',
-    accent: '#A78BFA',
+    accent: '#FFC857',
     icon: 'diamond',
-    gradient: ['#A78BFA', '#C084FC'] as const,
+    gradient: ['#FFC857', '#FFD97D'] as const,
     badge: 'Premium',
     description: 'Luxury & premium brands'
   },
   {
     id: 'alliance',
     title: 'Alliance Store',
-    accent: '#9F7AEA',
+    accent: '#00C06A',
     icon: 'people',
-    gradient: ['#9F7AEA', '#A855F7'] as const,
+    gradient: ['#00C06A', '#00A05A'] as const,
     badge: 'Partner',
     description: 'Partner stores network'
   },
@@ -120,9 +120,9 @@ const FALLBACK_STORES: Store[] = [
   {
     id: 'cashStore',
     title: 'Cash Store',
-    accent: '#8B5CF6',
+    accent: '#00C06A',
     icon: 'card',
-    gradient: ['#8B5CF6', '#7C3AED'] as const,
+    gradient: ['#00C06A', '#00796B'] as const,
     badge: 'Cash',
     description: 'Cashback & rewards'
   },
@@ -176,10 +176,10 @@ const mapCategoryToStore = (category: StoreCategory): Store => {
 };
 
 
-function ModernCardIllustration({ 
-  icon, 
-  gradient = ['#8B5CF6', '#A855F7'] as const,
-  badge 
+function ModernCardIllustration({
+  icon,
+  gradient = ['#00C06A', '#00796B'] as const,
+  badge
 }: { 
   icon?: string;
   gradient?: readonly string[];
@@ -364,7 +364,7 @@ export default function App() {
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       {/* Header with gradient - Fixed at top */}
       <LinearGradient
-        colors={['#8B5CF6', '#A855F7'] as const}
+        colors={['#00C06A', '#00796B'] as const}
         style={styles.header}
       >
         {/* Top section */}
@@ -465,7 +465,7 @@ export default function App() {
             accessibilityRole="button"
             accessibilityHint="Double tap to go back to the previous screen"
           >
-            <Ionicons name="chevron-back" size={18} color="#7C3AED" />
+            <Ionicons name="chevron-back" size={18} color="#00C06A" />
           </TouchableOpacity>
 
           <View style={styles.searchContainer}>
@@ -500,7 +500,7 @@ export default function App() {
           <>
             {isLoadingCategories ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#8B5CF6" />
+                <ActivityIndicator size="large" color="#00C06A" />
                 <Text style={styles.loadingText}>Loading categories...</Text>
               </View>
             ) : categoriesError ? (
@@ -762,7 +762,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
   },
 
   // Loading and error states

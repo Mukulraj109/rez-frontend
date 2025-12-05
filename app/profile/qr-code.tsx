@@ -57,10 +57,10 @@ const QRCodePage = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
+      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
 
       {/* Header */}
-      <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
+      <LinearGradient colors={['#00C06A', '#00796B']} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity 
             style={styles.backButton} 
@@ -89,7 +89,7 @@ const QRCodePage = () => {
             <Ionicons
               name="person"
               size={20}
-              color={activeTab === 'profile' ? '#8B5CF6' : 'rgba(255,255,255,0.7)'}
+              color={activeTab === 'profile' ? '#00C06A' : 'rgba(255,255,255,0.7)'}
             />
             <ThemedText style={[styles.tabText, activeTab === 'profile' && styles.tabTextActive]}>
               Profile
@@ -103,7 +103,7 @@ const QRCodePage = () => {
             <Ionicons
               name="wallet"
               size={20}
-              color={activeTab === 'wallet' ? '#8B5CF6' : 'rgba(255,255,255,0.7)'}
+              color={activeTab === 'wallet' ? '#00C06A' : 'rgba(255,255,255,0.7)'}
             />
             <ThemedText style={[styles.tabText, activeTab === 'wallet' && styles.tabTextActive]}>
               Wallet
@@ -153,7 +153,7 @@ const QRCodePage = () => {
             ) : (
               <>
                 <View style={styles.walletInfo}>
-                  <Ionicons name="wallet" size={32} color="#8B5CF6" />
+                  <Ionicons name="wallet" size={32} color="#00C06A" />
                   <ThemedText style={styles.walletId}>{walletId}</ThemedText>
                   <ThemedText style={styles.walletBalance}>
                     Balance: ₹{user?.wallet?.balance || 0}
@@ -173,7 +173,7 @@ const QRCodePage = () => {
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-            <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.actionButtonGradient}>
+            <LinearGradient colors={['#00C06A', '#00796B']} style={styles.actionButtonGradient}>
               <Ionicons name="share-social" size={20} color="white" />
               <ThemedText style={styles.actionButtonText}>Share</ThemedText>
             </LinearGradient>
@@ -181,7 +181,7 @@ const QRCodePage = () => {
 
           <TouchableOpacity style={styles.actionButton} onPress={handleCopyLink}>
             <View style={styles.actionButtonOutline}>
-              <Ionicons name="copy" size={20} color="#8B5CF6" />
+              <Ionicons name="copy" size={20} color="#00C06A" />
               <ThemedText style={styles.actionButtonTextOutline}>Copy Link</ThemedText>
             </View>
           </TouchableOpacity>
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
   },
   tabTextActive: {
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   content: {
     flex: 1,
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -472,13 +472,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
     gap: 8,
   },
   actionButtonTextOutline: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   featuresSection: {
     marginTop: 24,

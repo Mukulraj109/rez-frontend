@@ -362,10 +362,10 @@ const MyProductsPage = () => {
               accessibilityState={{ disabled: reorderingProductId === item.orderId }}
             >
               {reorderingProductId === item.orderId ? (
-                <ActivityIndicator size="small" color="#8B5CF6" />
+                <ActivityIndicator size="small" color="#00C06A" />
               ) : (
                 <>
-                  <Ionicons name="repeat-outline" size={20} color="#8B5CF6" />
+                  <Ionicons name="repeat-outline" size={20} color="#00C06A" />
                   <Text style={styles.actionText}>Reorder</Text>
                 </>
               )}
@@ -415,8 +415,8 @@ const MyProductsPage = () => {
   if (loading && !refreshing) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-        <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
+        <StatusBar barStyle="light-content" backgroundColor="#00796B" />
+        <LinearGradient colors={['#00796B', '#00C06A']} style={styles.header}>
           <View style={styles.headerContent}>
             <HeaderBackButton
               onPress={handleBackPress}
@@ -428,7 +428,7 @@ const MyProductsPage = () => {
           </View>
         </LinearGradient>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#00C06A" />
           <Text style={styles.loadingText}>Loading products...</Text>
         </View>
       </View>
@@ -437,10 +437,10 @@ const MyProductsPage = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
+      <StatusBar barStyle="light-content" backgroundColor="#00796B" />
 
       {/* Header */}
-      <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
+      <LinearGradient colors={['#00796B', '#00C06A']} style={styles.header}>
         <View style={styles.headerContent}>
           <HeaderBackButton
             onPress={handleBackPress}
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
   },
   activeTabText: {
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   listContainer: {
     padding: 16,
@@ -671,7 +671,7 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginRight: 12,
   },
   productQuantity: {
@@ -750,7 +750,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   shopButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalButtonPrimary: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
   },
   modalButtonSecondary: {
     backgroundColor: '#F3F4F6',

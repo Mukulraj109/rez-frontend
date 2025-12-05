@@ -161,11 +161,11 @@ export default function AchievementsPage() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
+      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
 
       {/* Header */}
       <LinearGradient
-        colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
+        colors={['#00C06A', '#00796B', '#00695C']}
         style={styles.header}
       >
         <View style={styles.headerContent}>
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   summaryNumber: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginBottom: 4,
   },
   summaryLabel: {
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterTabActive: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
   },
   filterText: {
     fontSize: 14,
@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   primaryButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   modalCloseButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 12,

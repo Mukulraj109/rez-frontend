@@ -107,7 +107,9 @@ export default function AccountPage() {
       
       {/* Modern Header */}
       <LinearGradient
-        colors={[ACCOUNT_COLORS.primary, ACCOUNT_COLORS.primaryLight, '#A78BFA']}
+        colors={[ACCOUNT_COLORS.primary, ACCOUNT_COLORS.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={styles.header}
       >
         <View style={styles.headerContent}>
@@ -301,35 +303,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   settingsContainer: {
     backgroundColor: 'white',
     borderRadius: 16,
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginBottom: 20,
     overflow: 'hidden',
-    shadowColor: ACCOUNT_COLORS.text,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: ACCOUNT_COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
   },
   infoContainer: {
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginBottom: 20,
   },
   infoCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(0, 192, 106, 0.06)',
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    shadowColor: ACCOUNT_COLORS.text,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
   },
   infoText: {
     flex: 1,

@@ -137,7 +137,7 @@ export default function MyVisitsPage() {
       case 'cancelled':
         return '#EF4444'; // Red
       default:
-        return '#8B5CF6'; // Purple
+        return '#00C06A'; // Purple
     }
   };
 
@@ -189,14 +189,14 @@ export default function MyVisitsPage() {
       <>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.container}>
-          <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
+          <LinearGradient colors={['#00C06A', '#00796B']} style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>My Visits</Text>
           </LinearGradient>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#8B5CF6" />
+            <ActivityIndicator size="large" color="#00C06A" />
             <Text style={styles.loadingText}>Loading your visits...</Text>
           </View>
         </View>
@@ -209,7 +209,7 @@ export default function MyVisitsPage() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
+      <LinearGradient colors={['#00C06A', '#00796B']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
@@ -247,8 +247,8 @@ export default function MyVisitsPage() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            colors={['#8B5CF6']}
-            tintColor="#8B5CF6"
+            colors={['#00C06A']}
+            tintColor="#00C06A"
           />
         }
       >
@@ -270,7 +270,7 @@ export default function MyVisitsPage() {
               {/* Store Info */}
               <View style={styles.storeHeader}>
                 <View style={styles.storeIconContainer}>
-                  <Ionicons name="storefront" size={24} color="#8B5CF6" />
+                  <Ionicons name="storefront" size={24} color="#00C06A" />
                 </View>
                 <View style={styles.storeInfo}>
                   <Text style={styles.storeName}>{visit.store.name}</Text>
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#8B5CF6',
+    borderBottomColor: '#00C06A',
   },
   tabText: {
     fontSize: 15,
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   activeTabText: {
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   scrollView: {
     flex: 1,

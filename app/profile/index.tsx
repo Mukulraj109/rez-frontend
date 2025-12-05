@@ -528,7 +528,9 @@ export default function ProfilePage() {
       
       {/* Modern Profile Header */}
       <LinearGradient
-        colors={[PROFILE_COLORS.primary, PROFILE_COLORS.primaryLight, '#A78BFA']}
+        colors={[PROFILE_COLORS.primary, PROFILE_COLORS.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={styles.header}
       >
         <View style={styles.headerContent}>
@@ -694,7 +696,7 @@ export default function ProfilePage() {
                   <ThemedText style={styles.missingFieldsLabel}>
                     Add: {getMissingFields().join(', ')}
                   </ThemedText>
-                  <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+                  <Ionicons name="chevron-forward" size={16} color={PROFILE_COLORS.primary} />
                 </View>
               )}
             </TouchableOpacity>
@@ -710,7 +712,7 @@ export default function ProfilePage() {
             accessibilityHint="Double tap to invite friends and get rewards"
           >
             <LinearGradient
-              colors={['#8B5CF6', '#7C3AED']}
+              colors={[PROFILE_COLORS.primary, PROFILE_COLORS.primaryDark]}
               style={styles.referralGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -758,7 +760,7 @@ export default function ProfilePage() {
                   <Ionicons name="star" size={12} color="#F59E0B" />
                   <ThemedText style={styles.tierText}>Gold</ThemedText>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#8B5CF6" />
+                <Ionicons name="chevron-forward" size={20} color={PROFILE_COLORS.primary} />
               </View>
             </View>
           </TouchableOpacity>
@@ -773,7 +775,7 @@ export default function ProfilePage() {
             accessibilityHint="Double tap to unlock exclusive rewards and benefits"
           >
             <LinearGradient
-              colors={['#8B5CF6', '#A78BFA']}
+              colors={[PROFILE_COLORS.gold, PROFILE_COLORS.goldDark]}
               style={styles.partnerGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -781,7 +783,7 @@ export default function ProfilePage() {
               <View style={styles.partnerContent}>
                 <View style={styles.partnerLeft}>
                   <View style={styles.partnerIconContainer}>
-                    <Ionicons name="trophy" size={28} color="white" />
+                    <Ionicons name="trophy" size={28} color="#0B2240" />
                   </View>
                   <View style={styles.partnerText}>
                     <ThemedText style={styles.partnerTitle}>
@@ -794,10 +796,10 @@ export default function ProfilePage() {
                 </View>
                 <View style={styles.partnerRight}>
                   <View style={styles.partnerLevelBadge}>
-                    <Ionicons name="star" size={12} color="#8B5CF6" />
+                    <Ionicons name="star" size={12} color={PROFILE_COLORS.gold} />
                     <ThemedText style={styles.partnerLevelText}>Level 1</ThemedText>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color="white" />
+                  <Ionicons name="chevron-forward" size={20} color="#0B2240" />
                 </View>
               </View>
             </LinearGradient>
@@ -850,7 +852,7 @@ export default function ProfilePage() {
                 accessibilityHint="Double tap to view complete activity history"
               >
                 <ThemedText style={styles.viewAllText}>View All</ThemedText>
-                <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+                <Ionicons name="chevron-forward" size={16} color={PROFILE_COLORS.primary} />
               </TouchableOpacity>
             </View>
             {statsLoading ? (
@@ -1089,13 +1091,13 @@ const styles = StyleSheet.create({
     borderRadius: PROFILE_RADIUS.large,
     padding: PROFILE_SPACING.lg,
     marginTop: 16,
-    shadowColor: PROFILE_COLORS.black,
+    shadowColor: PROFILE_COLORS.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
     borderLeftWidth: 4,
-    borderLeftColor: '#8B5CF6',
+    borderLeftColor: PROFILE_COLORS.primary,
   },
 
   // Referral Card
@@ -1242,12 +1244,12 @@ const styles = StyleSheet.create({
   partnerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: 'white',
+    color: '#0B2240',
     marginBottom: 4,
   },
   partnerSubtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(11, 34, 64, 0.8)',
   },
   partnerRight: {
     flexDirection: 'row',
@@ -1266,7 +1268,7 @@ const styles = StyleSheet.create({
   partnerLevelText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: PROFILE_COLORS.goldDark,
   },
 
   completionHeader: {
@@ -1294,14 +1296,14 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#EDE9FE',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   percentageText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: PROFILE_COLORS.primary,
   },
   progressBarContainer: {
     height: 8,
@@ -1321,7 +1323,7 @@ const styles = StyleSheet.create({
   },
   missingFieldsLabel: {
     fontSize: 12,
-    color: '#8B5CF6',
+    color: PROFILE_COLORS.primary,
     fontWeight: '600',
     flex: 1,
   },
@@ -1333,11 +1335,13 @@ const styles = StyleSheet.create({
     padding: PROFILE_SPACING.lg,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    shadowColor: PROFILE_COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: PROFILE_COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
   },
   iconGridItem: {
     alignItems: 'center',
@@ -1369,11 +1373,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: PROFILE_RADIUS.large,
     overflow: 'hidden',
-    shadowColor: PROFILE_COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: PROFILE_COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
   },
   menuItem: {
     flexDirection: 'row',
@@ -1443,11 +1449,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: PROFILE_RADIUS.large,
     padding: PROFILE_SPACING.lg,
-    shadowColor: PROFILE_COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: PROFILE_COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
   },
   statsHeader: {
     flexDirection: 'row',
@@ -1468,7 +1476,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: PROFILE_COLORS.primary,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -1502,6 +1510,6 @@ const styles = StyleSheet.create({
   },
 
   footer: {
-    height: 40,
+    height: 100,
   },
 });

@@ -161,13 +161,16 @@ export interface MenuItemCardProps {
   style?: any;
 }
 
-// Constants
+// Constants - ReZ Brand Colors
 export const PROFILE_COLORS = {
-  primary: '#8B5CF6', // Purple
-  primaryLight: '#A78BFA',
-  secondary: '#EC4899', // Pink
-  background: '#FFFFFF',
-  surface: '#F8FAFC',
+  primary: '#00C06A', // ReZ Green
+  primaryLight: '#00D977',
+  primaryDark: '#00796B', // Deep Teal
+  secondary: '#FFC857', // Sun Gold
+  gold: '#FFC857',
+  goldDark: '#E5A83D',
+  background: '#F7FAFC',
+  surface: '#FFFFFF',
   text: '#1F2937',
   textSecondary: '#6B7280',
   textLight: '#9CA3AF',
@@ -180,9 +183,11 @@ export const PROFILE_COLORS = {
 } as const;
 
 export const PROFILE_GRADIENTS = {
-  primary: ['#8B5CF6', '#7C3AED'],
-  secondary: ['#EC4899', '#DB2777'],
+  primary: ['#00C06A', '#00796B'], // ReZ Green gradient
+  secondary: ['#FFC857', '#FF9F1C'], // Gold gradient
   card: ['transparent', 'rgba(0, 0, 0, 0.1)'],
+  referral: ['#00C06A', '#00796B'], // Green for referral
+  partner: ['#FFC857', '#E5A83D'], // Gold for partner program
 } as const;
 
 export const PROFILE_SPACING = {

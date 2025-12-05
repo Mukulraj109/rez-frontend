@@ -213,11 +213,11 @@ export default function CheckoutPage() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
+      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
       
       {/* Header with Amount Display */}
       <LinearGradient 
-        colors={['#8B5CF6', '#7C3AED']} 
+        colors={['#00C06A', '#00796B']} 
         style={styles.header}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -343,7 +343,7 @@ export default function CheckoutPage() {
                     }
                   </ThemedText>
                 </View>
-                <Ionicons name="pricetag" size={20} color="#8B5CF6" />
+                <Ionicons name="pricetag" size={20} color="#00C06A" />
               </View>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </TouchableOpacity>
@@ -354,7 +354,7 @@ export default function CheckoutPage() {
             {/* REZ Coin with Slider */}
             <View style={styles.coinSliderCard}>
               <LinearGradient
-                colors={['#8B5CF6', '#7C3AED']}
+                colors={['#00C06A', '#00796B']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.coinSliderGradient}
@@ -458,7 +458,7 @@ export default function CheckoutPage() {
                   <Switch
                     value={state.coinSystem.promoCoin.used > 0}
                     onValueChange={(value) => handlers.handleCoinToggle('promo', value)}
-                    trackColor={{ false: '#E5E7EB', true: '#8B5CF6' }}
+                    trackColor={{ false: '#E5E7EB', true: '#00C06A' }}
                     thumbColor={'white'}
                     accessibilityLabel="Use promo coins"
                     accessibilityRole="switch"
@@ -621,10 +621,10 @@ export default function CheckoutPage() {
             {/* Card Offer Discount */}
             {((state as any).appliedCardOffer || (state.billSummary as any)?.cardOfferDiscount) && (
               <View style={styles.summaryRow}>
-                <ThemedText style={[styles.summaryLabel, { color: '#8B5CF6' }]}>
+                <ThemedText style={[styles.summaryLabel, { color: '#00C06A' }]}>
                   Card Offer Discount
                 </ThemedText>
-                <ThemedText style={[styles.summaryValue, { color: '#8B5CF6' }]}>
+                <ThemedText style={[styles.summaryValue, { color: '#00C06A' }]}>
                   -₹{((state.billSummary as any)?.cardOfferDiscount || 0).toFixed(0)}
                 </ThemedText>
               </View>
@@ -632,10 +632,10 @@ export default function CheckoutPage() {
 
             {(state.billSummary?.coinDiscount || 0) > 0 && (
               <View style={styles.summaryRow}>
-                <ThemedText style={[styles.summaryLabel, { color: '#8B5CF6' }]}>
+                <ThemedText style={[styles.summaryLabel, { color: '#00C06A' }]}>
                   REZ Coin Discount
                 </ThemedText>
-                <ThemedText style={[styles.summaryValue, { color: '#8B5CF6' }]}>
+                <ThemedText style={[styles.summaryValue, { color: '#00C06A' }]}>
                   -₹{(state.billSummary?.coinDiscount || 0).toFixed(0)}
                 </ThemedText>
               </View>
@@ -1153,7 +1153,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   changeAmountButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
@@ -1198,7 +1198,7 @@ const styles = StyleSheet.create({
   coinSliderCard: {
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -1245,7 +1245,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   coinUsedBadge: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -1269,7 +1269,7 @@ const styles = StyleSheet.create({
   coinUsedTextPurple: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   coinUsedTextGreen: {
     fontSize: 14,
@@ -1357,7 +1357,7 @@ const styles = StyleSheet.create({
   
   // Total Payable
   totalPayableCard: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -1402,7 +1402,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   loadWalletButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 20,
@@ -1542,7 +1542,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   changePromoButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -1619,7 +1619,7 @@ const styles = StyleSheet.create({
   viewAllLink: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   noCouponsContainer: {
     alignItems: 'center',
@@ -1632,7 +1632,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   browseCouponsButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1665,7 +1665,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   promoDiscountBadge: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
@@ -1683,7 +1683,7 @@ const styles = StyleSheet.create({
   promoOptionCode: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginBottom: 2,
   },
   currentPromoCode: {
@@ -1737,7 +1737,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E7EB',
   },
   applyPromoButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',

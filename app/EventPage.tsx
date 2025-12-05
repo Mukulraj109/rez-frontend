@@ -351,43 +351,58 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
     );
   }, [initialEvent, eventId, isDynamic, eventData, realEventData]);
 
-  // Determine if event is truly offline (has slots or location is not "Online")
+  // Determine if event is truly offline (NOT an online event)
   const isOfflineEvent = useMemo(() => {
-    // If event has availableSlots defined, it's an offline event
-    if (realEventData?.availableSlots !== undefined || eventData?.availableSlots !== undefined) {
-      return true;
+    // Primary check: use isOnline flag from event data
+    // If isOnline is explicitly true, it's NOT an offline event
+    if (eventDetails.isOnline === true) {
+      return false;
     }
-    // If location is not "Online", it's an offline event
-    if (eventDetails.location && eventDetails.location.toLowerCase() !== 'online') {
-      return true;
+
+    // Secondary check: if location indicates online
+    if (eventDetails.location) {
+      const locationLower = eventDetails.location.toLowerCase();
+      if (locationLower === 'online' || locationLower === 'online event' || locationLower.includes('virtual')) {
+        return false;
+      }
     }
-    // Otherwise, use isOnline flag
-    return !eventDetails.isOnline;
-  }, [eventDetails.isOnline, eventDetails.location, eventData, realEventData]);
+
+    // Default: treat as offline event (venue-based)
+    return true;
+  }, [eventDetails.isOnline, eventDetails.location]);
 
 
-  // Get available slots for offline events - prioritize realEventData, then eventData, then mock
+  // Get available slots for offline events - only use real data, no mock fallback
   const availableSlots = useMemo(() => {
+    // Online events don't have slots
     if (!isOfflineEvent) {
       return [];
     }
-    
-    // Priority: realEventData > eventData > mock data
-    if (realEventData?.availableSlots && Array.isArray(realEventData.availableSlots) && realEventData.availableSlots.length > 0) {
-      return realEventData.availableSlots;
+
+    // Priority: realEventData > eventData
+    // For real backend events, use actual slots (may be empty)
+    if (realEventData) {
+      // Real event from backend - use its slots (or empty if none defined)
+      return realEventData.availableSlots && Array.isArray(realEventData.availableSlots)
+        ? realEventData.availableSlots
+        : [];
     }
-    
-    if (eventData?.availableSlots && Array.isArray(eventData.availableSlots) && eventData.availableSlots.length > 0) {
+
+    if (eventData?.availableSlots && Array.isArray(eventData.availableSlots)) {
       return eventData.availableSlots;
     }
-    
-    // Use mock data as fallback for offline events
-    return [
-      { id: "slot1", time: "10:00 AM", available: true, maxCapacity: 50, bookedCount: 12 },
-      { id: "slot2", time: "2:00 PM", available: true, maxCapacity: 50, bookedCount: 28 },
-      { id: "slot3", time: "6:00 PM", available: false, maxCapacity: 50, bookedCount: 50 },
-    ];
-  }, [isOfflineEvent, eventData?.availableSlots, realEventData?.availableSlots]);
+
+    // Only use mock data for demo/static events (no real data)
+    if (!realEventData && !eventData) {
+      return [
+        { id: "slot1", time: "10:00 AM", available: true, maxCapacity: 50, bookedCount: 12 },
+        { id: "slot2", time: "2:00 PM", available: true, maxCapacity: 50, bookedCount: 28 },
+        { id: "slot3", time: "6:00 PM", available: false, maxCapacity: 50, bookedCount: 50 },
+      ];
+    }
+
+    return [];
+  }, [isOfflineEvent, eventData, realEventData]);
 
   const handleSharePress = useCallback(async () => {
     try {
@@ -469,37 +484,25 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
   const handleOnlineBooking = useCallback(async () => {
     if (!eventDetails.isOnline) return;
 
-    try {
-      setIsLoading(true);
-      const bookingUrl =
-        eventData?.bookingUrl || `https://events.example.com/book/${eventDetails.id}`;
-
-      const supported = await Linking.canOpenURL(bookingUrl);
-      if (supported) {
-        await Linking.openURL(bookingUrl);
-      } else {
-        alertOk("Error", "Unable to open booking link. Please try again later.");
-      }
-    } catch (error) {
-      console.error("Error opening booking URL:", error);
-      alertOk("Error", "Failed to open booking page. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [eventDetails, eventData]);
-
-  const handleOfflineBooking = useCallback(async () => {
-    if (eventDetails.isOnline) return;
-    
-    // Check if user needs to select a time slot
-    if (!selectedSlot && availableSlots.length > 0) {
-      alertOk("Select Time Slot", "Please select a time slot before booking.");
+    // Check authentication
+    if (!isAuthenticated || !user) {
+      alertOk("Login Required", "Please login to register for events");
       return;
     }
 
-    // If no slots are available, show error
-    if (availableSlots.length === 0) {
-      alertOk("No Slots Available", "There are no available time slots for this event. Please contact the organizer.");
+    // Track booking start
+    eventAnalytics.trackBookingStart(eventDetails.id, undefined, 'event_page');
+
+    // Open booking modal (same flow as offline events, just without slot selection)
+    setShowBookingModal(true);
+  }, [eventDetails, isAuthenticated, user]);
+
+  const handleOfflineBooking = useCallback(async () => {
+    if (eventDetails.isOnline) return;
+
+    // Check if user needs to select a time slot (only if slots are defined)
+    if (availableSlots.length > 0 && !selectedSlot) {
+      alertOk("Select Time Slot", "Please select a time slot before booking.");
       return;
     }
 
@@ -943,7 +946,7 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
             currency: eventDetails.price?.currency || '₹',
             isFree: eventDetails.price?.isFree ?? false
           }}
-          hasSelectedSlot={!eventDetails.isOnline ? !!selectedSlot : true}
+          hasSelectedSlot={eventDetails.isOnline ? true : (availableSlots.length === 0 || !!selectedSlot)}
         />
       </View>
 

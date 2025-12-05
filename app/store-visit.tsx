@@ -727,7 +727,7 @@ function StoreVisitPageInner() {
     return (
       <ThemedView style={styles.container}>
         <LinearGradient
-          colors={['#8B5CF6', '#7C3AED']}
+          colors={['#00C06A', '#00796B']}
           style={styles.header}
         >
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>

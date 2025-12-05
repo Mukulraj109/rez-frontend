@@ -1121,7 +1121,7 @@ const styles = StyleSheet.create({
   resultImageText: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   resultInfo: {
     flex: 1,

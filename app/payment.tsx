@@ -257,7 +257,7 @@ export default function PaymentPage() {
       case 'card':
         return '#3B82F6';
       case 'upi':
-        return '#8B5CF6';
+        return '#00C06A';
       case 'wallet':
         return '#EC4899';
       case 'netbanking':
@@ -397,7 +397,7 @@ export default function PaymentPage() {
               accessibilityState={{ disabled: !upiId || isProcessing, busy: isProcessing }}
             >
               <LinearGradient
-                colors={['#7C3AED', '#8B5CF6'] as const}
+                colors={['#00796B', '#00C06A'] as const}
                 style={styles.payButtonGradient}
               >
                 <ThemedText style={styles.payButtonText}>
@@ -517,7 +517,7 @@ export default function PaymentPage() {
               accessibilityState={{ disabled: !cardNumber || !cardExpiry || !cardCVV || !cardName || isProcessing, busy: isProcessing }}
             >
               <LinearGradient
-                colors={['#7C3AED', '#8B5CF6'] as const}
+                colors={['#00796B', '#00C06A'] as const}
                 style={styles.payButtonGradient}
               >
                 <ThemedText style={styles.payButtonText}>
@@ -568,7 +568,7 @@ export default function PaymentPage() {
               accessibilityState={{ disabled: isProcessing, busy: isProcessing }}
             >
               <LinearGradient
-                colors={['#7C3AED', '#8B5CF6'] as const}
+                colors={['#00796B', '#00C06A'] as const}
                 style={styles.payButtonGradient}
               >
                 <ThemedText style={styles.payButtonText}>
@@ -636,8 +636,8 @@ export default function PaymentPage() {
   if (isLoading) {
     return (
       <ThemedView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-        <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
+        <StatusBar barStyle="light-content" backgroundColor="#00796B" />
+        <LinearGradient colors={['#00796B', '#00C06A'] as const} style={styles.headerBg}>
           <View style={styles.headerContainer}>
             <TouchableOpacity
               style={styles.backButton}
@@ -665,7 +665,7 @@ export default function PaymentPage() {
         >
           <ActivityIndicator
             size="large"
-            color="#7C3AED"
+            color="#00796B"
             accessibilityLabel="Loading indicator"
           />
           <ThemedText style={styles.loadingText}>Loading payment methods...</ThemedText>
@@ -676,8 +676,8 @@ export default function PaymentPage() {
 
   return (
     <ThemedView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-      <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
+      <StatusBar barStyle="light-content" backgroundColor="#00796B" />
+      <LinearGradient colors={['#00796B', '#00C06A'] as const} style={styles.headerBg}>
         <View style={styles.headerContainer}>
           <TouchableOpacity
             style={styles.backButton}
@@ -788,7 +788,7 @@ const styles = StyleSheet.create({
     padding: 24,
     marginTop: 16,
     marginBottom: 16,
-    shadowColor: '#7C3AED',
+    shadowColor: '#00796B',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -950,7 +950,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   selectedWalletOption: {
-    borderColor: '#7C3AED',
+    borderColor: '#00796B',
     backgroundColor: '#F3F0FF',
   },
   walletIcon: {
@@ -1015,7 +1015,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00796B',
     borderRadius: 4,
   },
   progressText: {

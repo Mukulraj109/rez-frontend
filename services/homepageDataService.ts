@@ -387,8 +387,9 @@ class HomepageDataService {
     const { data: events, fromCache, isOffline } = await this.getWithCacheAndFallback(
       cacheKey,
       async () => {
-        const items = await eventsApiService.getFeaturedEvents(10);
-        return items;
+        // Get events from today onwards (includes today's events even if time passed)
+        const result = await eventsApiService.getEvents({ todayAndFuture: true }, 10, 0);
+        return result.events;
       },
       fallbackSection?.items || []
     );

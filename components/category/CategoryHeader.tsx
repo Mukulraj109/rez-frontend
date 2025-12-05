@@ -106,9 +106,11 @@ export default function CategoryHeader({
 
         {/* Title */}
         <View style={styles.titleContainer}>
-          <ThemedText 
+          <ThemedText
             style={[styles.title, { color: category.headerConfig.textColor }]}
-            numberOfLines={1}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
           >
             {category.headerConfig.title}
           </ThemedText>
@@ -303,13 +305,16 @@ const styles = StyleSheet.create({
   titleContainer: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    minWidth: 100,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+    flexWrap: 'wrap',
   },
   rightActions: {
     flexDirection: 'row',

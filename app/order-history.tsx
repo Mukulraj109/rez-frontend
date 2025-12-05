@@ -148,7 +148,7 @@ export default function OrderHistoryPage() {
         accessibilityLabel="Loading more orders"
         accessibilityRole="progressbar"
       >
-        <ActivityIndicator size="small" color="#7C3AED" />
+        <ActivityIndicator size="small" color="#00C06A" />
         <ThemedText style={styles.loadingText}>Loading more orders...</ThemedText>
       </View>
     );
@@ -157,8 +157,8 @@ export default function OrderHistoryPage() {
   if (error && !orders.length) {
     return (
       <ThemedView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-        <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
+        <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
+        <LinearGradient colors={['#00C06A', '#00796B']} style={styles.headerBg}>
           <View style={styles.headerContainer}>
             <TouchableOpacity
               style={styles.backButton}
@@ -197,10 +197,10 @@ export default function OrderHistoryPage() {
 
   return (
     <ThemedView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
+      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
       
       {/* Header */}
-      <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.headerBg}>
+      <LinearGradient colors={['#00C06A', '#00796B']} style={styles.headerBg}>
         <View style={styles.headerContainer}>
           <TouchableOpacity
             style={styles.backButton}
@@ -261,8 +261,8 @@ export default function OrderHistoryPage() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#7C3AED"
-            colors={['#7C3AED']}
+            tintColor="#00C06A"
+            colors={['#00C06A']}
             accessibilityLabel="Pull to refresh orders"
           />
         }
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   shopButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,

@@ -202,11 +202,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
-      // Allow onboarding ONLY if user explicitly logged out or never logged in
-      // If they had a session that expired/invalidated, redirect to sign-in
-      if (isOnboardingRoute && !hasExplicitlyLoggedOut && !state.error) {
-        // This is likely a new user going through initial onboarding
-        // Let them continue
+      // Allow onboarding for users who explicitly logged out or are new users
+      // This enables the "Sign Up" flow from the sign-in page
+      if (isOnboardingRoute && !state.error) {
+        // Allow onboarding flow to continue
         return;
       }
 

@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     left: 16,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   cashbackText: {
     fontSize: 12,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
     textAlign: 'center',
   },

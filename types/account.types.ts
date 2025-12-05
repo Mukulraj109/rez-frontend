@@ -337,20 +337,23 @@ export interface UpdateAccountSettingsRequest {
   preferences?: Partial<AppPreferences>;
 }
 
-// Constants
+// Constants - ReZ Brand Colors
 export const ACCOUNT_COLORS = {
-  primary: '#8B5CF6',
-  primaryLight: '#A78BFA',
-  secondary: '#EC4899',
-  background: '#FFFFFF',
-  surface: '#F8FAFC',
+  primary: '#00C06A',
+  primaryLight: '#00D977',
+  primaryDark: '#00796B',
+  secondary: '#FFC857',
+  gold: '#FFC857',
+  goldDark: '#E5A83D',
+  background: '#F7FAFC',
+  surface: '#FFFFFF',
   text: '#1F2937',
   textSecondary: '#6B7280',
   border: '#E5E7EB',
   success: '#10B981',
   warning: '#F59E0B',
   error: '#EF4444',
-  info: '#3B82F6',
+  info: '#00C06A',
 } as const;
 
 export const DEFAULT_ACCOUNT_TABS: AccountTab[] = [

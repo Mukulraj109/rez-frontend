@@ -9,6 +9,7 @@ export interface EventFilters {
   isOnline?: boolean;
   featured?: boolean;
   upcoming?: boolean;
+  todayAndFuture?: boolean;
   search?: string;
 }
 
@@ -331,15 +332,22 @@ class EventsApiService {
    * Book event slot
    */
   async bookEventSlot(eventId: string, bookingData: BookingRequest): Promise<BookingResult> {
+    console.log('📡 [eventsApi] bookEventSlot called:', { eventId, bookingData });
     try {
 
       // Get auth token from storage (you'll need to implement this)
+      console.log('📡 [eventsApi] Getting auth token...');
       const token = await this.getAuthToken();
+      console.log('📡 [eventsApi] Auth token retrieved:', token ? `${token.substring(0, 20)}...` : 'NULL');
       if (!token) {
+        console.error('❌ [eventsApi] No auth token available');
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`${this.baseUrl}/events/${eventId}/book`, {
+      const url = `${this.baseUrl}/events/${eventId}/book`;
+      console.log('📡 [eventsApi] Making POST request to:', url);
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -348,13 +356,17 @@ class EventsApiService {
         body: JSON.stringify(bookingData),
       });
 
+      console.log('📡 [eventsApi] Response status:', response.status, response.statusText);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ [eventsApi] API error response:', errorData);
         throw new Error(errorData.message || 'Failed to book event');
       }
 
       const data = await response.json();
-      
+      console.log('✅ [eventsApi] Booking successful:', data);
+
       return {
         success: data.success,
         booking: data.data?.booking || data.data, // Handle both old and new response format
@@ -362,7 +374,7 @@ class EventsApiService {
         message: data.message
       };
     } catch (error) {
-      console.error('❌ Error booking event:', error);
+      console.error('❌ [eventsApi] Error booking event:', error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to book event'

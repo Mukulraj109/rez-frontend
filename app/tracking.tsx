@@ -273,14 +273,16 @@ export default function OrderTrackingScreen() {
         <View style={styles.statusHeaderContent}>
           <View style={styles.statusLeft}>
             <View style={[styles.modernStatusIcon, { backgroundColor: order.statusColor + '20' }]}>
-              <Ionicons 
-                name={getStatusIcon(order.status) as any} 
-                size={20} 
-                color={order.statusColor} 
+              <Ionicons
+                name={getStatusIcon(order.status) as any}
+                size={18}
+                color={order.statusColor}
               />
             </View>
-            <View>
-              <ThemedText style={styles.orderNumberLarge}>#{order.orderNumber}</ThemedText>
+            <View style={styles.statusLeftText}>
+              <ThemedText style={styles.orderNumberLarge} numberOfLines={1} ellipsizeMode="middle">
+                #{order.orderNumber}
+              </ThemedText>
               <ThemedText style={[styles.statusTextLarge, { color: order.statusColor }]}>
                 {order.status.replace('_', ' ')}
               </ThemedText>
@@ -288,7 +290,9 @@ export default function OrderTrackingScreen() {
           </View>
           
           <View style={styles.statusRight}>
-            <ThemedText style={styles.estimatedTime}>{order.estimatedDelivery}</ThemedText>
+            <ThemedText style={styles.estimatedTime} numberOfLines={1}>
+              {order.estimatedDelivery}
+            </ThemedText>
             <ThemedText style={styles.estimatedLabel}>Estimated</ThemedText>
           </View>
         </View>
@@ -315,12 +319,14 @@ export default function OrderTrackingScreen() {
           </ThemedText>
         </View>
         <View style={styles.merchantInfo}>
-          <ThemedText style={styles.merchantName}>{order.merchantName}</ThemedText>
-          <ThemedText style={styles.orderItems}>
-            {order.items.join(' • ')}
+          <ThemedText style={styles.merchantName} numberOfLines={1}>
+            {order.merchantName}
+          </ThemedText>
+          <ThemedText style={styles.orderItems} numberOfLines={1}>
+            {order.items.slice(0, 2).join(' • ')}{order.items.length > 2 ? ` +${order.items.length - 2} more` : ''}
           </ThemedText>
         </View>
-        <ThemedText style={styles.orderAmount}>₹{order.totalAmount}</ThemedText>
+        <ThemedText style={styles.orderAmount}>₹{order.totalAmount.toLocaleString()}</ThemedText>
       </View>
 
       {/* Delivery Person Info (if on the way) */}
@@ -328,7 +334,7 @@ export default function OrderTrackingScreen() {
         <View style={styles.deliveryPersonCard}>
           <View style={styles.deliveryPersonLeft}>
             <View style={styles.deliveryPersonAvatar}>
-              <Ionicons name="person" size={18} color="#8B5CF6" />
+              <Ionicons name="person" size={18} color="#00C06A" />
             </View>
             <View>
               <ThemedText style={styles.deliveryPersonName}>
@@ -367,7 +373,7 @@ export default function OrderTrackingScreen() {
           accessibilityRole="button"
           accessibilityHint="Double tap to view full order details"
         >
-          <Ionicons name="receipt-outline" size={16} color="#8B5CF6" />
+          <Ionicons name="receipt-outline" size={16} color="#00C06A" />
           <ThemedText style={styles.secondaryButtonText}>View Details</ThemedText>
         </TouchableOpacity>
 
@@ -392,7 +398,7 @@ export default function OrderTrackingScreen() {
             accessibilityRole="button"
             accessibilityHint="Double tap to share and earn rewards"
           >
-            <Ionicons name="share-social" size={16} color="#10B981" />
+            <Ionicons name="gift" size={16} color="#FFC857" />
             <ThemedText style={styles.shareButtonText}>Share & Earn 5%</ThemedText>
           </TouchableOpacity>
         )}
@@ -488,14 +494,14 @@ export default function OrderTrackingScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#8B5CF6"
-            colors={['#8B5CF6']}
+            tintColor="#00C06A"
+            colors={['#00C06A']}
           />
         }
       >
         {loading ? (
           <View style={styles.modernEmptyState}>
-            <ActivityIndicator size="large" color="#8B5CF6" />
+            <ActivityIndicator size="large" color="#00C06A" />
             <ThemedText style={[styles.emptyDescription, { marginTop: 20 }]}>
               Loading your orders...
             </ThemedText>
@@ -561,18 +567,31 @@ export default function OrderTrackingScreen() {
   );
 }
 
+// ReZ Brand Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  goldDark: '#E5A83D',
+  navy: '#0B2240',
+  text: '#1F2937',
+  textMuted: '#6B7280',
+  surface: '#F7FAFC',
+  white: '#FFFFFF',
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: COLORS.surface,
   },
-  
+
   // Modern Header
   modernHeader: {
     paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight || 25,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    backgroundColor: '#8B5CF6',
+    paddingBottom: 18,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.primary,
   },
   headerContent: {
     flexDirection: 'row',
@@ -617,13 +636,13 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: 'white',
-    marginHorizontal: 20,
-    marginTop: -10,
-    borderRadius: 16,
+    marginHorizontal: 16,
+    marginTop: -8,
+    borderRadius: 14,
     padding: 4,
-    shadowColor: '#8B5CF6',
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 6,
   },
@@ -634,7 +653,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeTab: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: COLORS.primary,
   },
   tabText: {
     fontSize: 14,
@@ -657,61 +676,73 @@ const styles = StyleSheet.create({
   // Modern Order Card
   modernOrderCard: {
     backgroundColor: 'white',
-    borderRadius: 24,
-    marginHorizontal: 20,
-    marginBottom: 24,
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginBottom: 20,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowRadius: 16,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
   },
 
   // Status Header
   orderStatusHeader: {
-    padding: 20,
-    paddingBottom: 16,
+    padding: 16,
+    paddingBottom: 14,
   },
   statusHeaderContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   statusLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  modernStatusIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
     marginRight: 12,
   },
+  modernStatusIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    flexShrink: 0,
+  },
+  statusLeftText: {
+    flex: 1,
+    minWidth: 0,
+  },
   orderNumberLarge: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
     marginBottom: 2,
   },
   statusTextLarge: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
   statusRight: {
     alignItems: 'flex-end',
+    flexShrink: 0,
+    minWidth: 80,
   },
   estimatedTime: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
   },
   estimatedLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6B7280',
     fontWeight: '500',
   },
@@ -742,43 +773,47 @@ const styles = StyleSheet.create({
   merchantSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
   merchantAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#8B5CF6',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
+    flexShrink: 0,
   },
   merchantInitial: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: 'white',
   },
   merchantInfo: {
     flex: 1,
+    minWidth: 0,
+    marginRight: 10,
   },
   merchantName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 2,
   },
   orderItems: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
-    lineHeight: 18,
+    lineHeight: 16,
   },
   orderAmount: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: COLORS.gold,
+    flexShrink: 0,
   },
 
   // Delivery Person Card
@@ -786,9 +821,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#F8F9FF',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(0, 192, 106, 0.04)',
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
@@ -801,7 +836,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -809,12 +844,12 @@ const styles = StyleSheet.create({
   deliveryPersonName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.text,
     marginBottom: 2,
   },
   deliveryPersonRole: {
     fontSize: 12,
-    color: '#8B5CF6',
+    color: COLORS.primary,
     fontWeight: '500',
   },
   callButton: {
@@ -828,40 +863,40 @@ const styles = StyleSheet.create({
 
   // Modern Tracking
   modernTrackingContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   trackingHeader: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   modernTrackingSteps: {
-    paddingLeft: 8,
+    paddingLeft: 4,
   },
   modernStep: {
     flexDirection: 'row',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   stepLeftColumn: {
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   modernStepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   stepCompleted: {
     backgroundColor: '#10B981',
   },
   stepActive: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: COLORS.primary,
   },
   pulsingDot: {
     position: 'relative',
@@ -870,10 +905,10 @@ const styles = StyleSheet.create({
   },
   pulse: {
     position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(139, 92, 246, 0.3)',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0, 192, 106, 0.3)',
   },
   pulse1: {
     transform: [{ scale: 1 }],
@@ -895,7 +930,7 @@ const styles = StyleSheet.create({
   },
   modernStepLine: {
     width: 2,
-    height: 40,
+    height: 32,
     backgroundColor: '#E5E7EB',
   },
   stepLineCompleted: {
@@ -908,25 +943,25 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   modernStepTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   stepActiveTitle: {
-    color: '#8B5CF6',
+    color: COLORS.primary,
   },
   stepCompletedTitle: {
     color: '#10B981',
   },
   modernStepDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#6B7280',
-    lineHeight: 18,
-    marginBottom: 4,
+    lineHeight: 16,
+    marginBottom: 2,
   },
   modernStepTimestamp: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#9CA3AF',
     fontWeight: '500',
   },
@@ -934,58 +969,58 @@ const styles = StyleSheet.create({
   // Action Buttons
   actionButtons: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 10,
   },
   secondaryButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.2)',
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   secondaryButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#8B5CF6',
-    marginLeft: 6,
+    color: COLORS.primary,
+    marginLeft: 5,
   },
   primaryButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: '#8B5CF6',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
   },
   primaryButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: 'white',
-    marginLeft: 6,
+    marginLeft: 5,
   },
   shareButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 200, 87, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: 'rgba(255, 200, 87, 0.3)',
   },
   shareButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#10B981',
-    marginLeft: 6,
+    color: '#E5A83D',
+    marginLeft: 5,
   },
 
   // Modern Empty State
@@ -1018,7 +1053,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   emptyActionButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: 16,

@@ -183,7 +183,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({
       {showStoreResponse && review.storeResponse && (
         <View style={styles.storeResponse}>
           <View style={styles.storeResponseHeader}>
-            <Ionicons name="storefront" size={16} color="#7C3AED" />
+            <Ionicons name="storefront" size={16} color="#00C06A" />
             <ThemedText style={styles.storeResponseTitle}>
               Response from {review.storeResponse.responderName}
             </ThemedText>
@@ -203,7 +203,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({
           <Ionicons
             name={review.isLiked ? "thumbs-up" : "thumbs-up-outline"}
             size={16}
-            color={review.isLiked ? "#7C3AED" : "#6B7280"}
+            color={review.isLiked ? "#00C06A" : "#6B7280"}
           />
           <ThemedText style={[
             styles.actionText,
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 8,
     borderLeftWidth: 3,
-    borderLeftColor: '#7C3AED',
+    borderLeftColor: '#00C06A',
   },
   storeResponseHeader: {
     flexDirection: 'row',
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   storeResponseTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#7C3AED',
+    color: '#00C06A',
     flex: 1,
   },
   storeResponseDate: {
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   actionTextActive: {
-    color: '#7C3AED',
+    color: '#00C06A',
     fontWeight: '600',
   },
   pendingBadge: {

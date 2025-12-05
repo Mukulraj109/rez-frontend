@@ -144,7 +144,7 @@ export default function OffersScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <LinearGradient
-        colors={['#8B5CF6', '#A855F7']}
+        colors={['#00C06A', '#00796B']}
         style={styles.header}
       >
         <View style={styles.headerTop}>
@@ -237,7 +237,7 @@ export default function OffersScreen() {
         {/* Loading State */}
         {state.loading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#8B5CF6" />
+            <ActivityIndicator size="large" color="#00C06A" />
             <ThemedText style={styles.loadingText}>Loading offers...</ThemedText>
           </View>
         )}
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   heroBannerButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '900',
     color: 'white',
-    backgroundColor: '#6366F1',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 16,
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   },
   scalloped: {
     height: 20,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     position: 'relative',
   },
   scallopedInner: {
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
   },
   viewAll: {
     fontSize: 14,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '500',
   },
   productsGrid: {
@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
   },
   cashBack: {
     fontSize: 12,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '500',
     marginBottom: 4,
   },
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,

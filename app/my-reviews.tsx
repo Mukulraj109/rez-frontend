@@ -119,7 +119,7 @@ export default function MyReviewsPage() {
               <Image source={{ uri: storeLogo }} style={styles.storeLogo} />
             ) : (
               <View style={[styles.storeLogo, styles.storeLogoPlaceholder]}>
-                <Ionicons name="storefront" size={20} color="#8B5CF6" />
+                <Ionicons name="storefront" size={20} color="#00C06A" />
               </View>
             )}
             <View style={styles.storeDetails}>
@@ -156,7 +156,7 @@ export default function MyReviewsPage() {
           </View>
           {review.merchantReply && (
             <View style={styles.stat}>
-              <Ionicons name="chatbox-outline" size={16} color="#8B5CF6" />
+              <Ionicons name="chatbox-outline" size={16} color="#00C06A" />
               <Text style={styles.statText}>Store replied</Text>
             </View>
           )}
@@ -166,7 +166,7 @@ export default function MyReviewsPage() {
         {review.merchantReply && (
           <View style={styles.merchantReply}>
             <View style={styles.replyHeader}>
-              <Ionicons name="business" size={16} color="#8B5CF6" />
+              <Ionicons name="business" size={16} color="#00C06A" />
               <Text style={styles.replyLabel}>Store Response</Text>
             </View>
             <Text style={styles.replyText}>{review.merchantReply}</Text>
@@ -185,7 +185,7 @@ export default function MyReviewsPage() {
             accessibilityRole="button"
             accessibilityHint={`Opens ${storeName} store page`}
           >
-            <Ionicons name="storefront-outline" size={16} color="#8B5CF6" />
+            <Ionicons name="storefront-outline" size={16} color="#00C06A" />
             <Text style={styles.actionButtonText}>View Store</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -206,7 +206,7 @@ export default function MyReviewsPage() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
+        <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
 
         {/* Header */}
         <View style={styles.header}>
@@ -230,8 +230,8 @@ export default function MyReviewsPage() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#8B5CF6"
-              colors={['#8B5CF6']}
+              tintColor="#00C06A"
+              colors={['#00C06A']}
             />
           }
           onScroll={({ nativeEvent }) => {
@@ -245,7 +245,7 @@ export default function MyReviewsPage() {
         >
           {loading && reviews.length === 0 ? (
             <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color="#8B5CF6" />
+              <ActivityIndicator size="large" color="#00C06A" />
               <Text style={styles.loadingText}>Loading your reviews...</Text>
             </View>
           ) : error ? (
@@ -290,7 +290,7 @@ export default function MyReviewsPage() {
 
               {hasMore && (
                 <View style={styles.loadMoreContainer}>
-                  <ActivityIndicator size="small" color="#8B5CF6" />
+                  <ActivityIndicator size="small" color="#00C06A" />
                   <Text style={styles.loadMoreText}>Loading more...</Text>
                 </View>
               )}
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingTop: Platform.select({
       ios: 50,
       android: StatusBar.currentHeight || 16,
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   shopButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: 12,
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
   merchantReply: {
     backgroundColor: '#F9FAFB',
     borderLeftWidth: 3,
-    borderLeftColor: '#8B5CF6',
+    borderLeftColor: '#00C06A',
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
   replyLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   replyText: {
     fontSize: 13,

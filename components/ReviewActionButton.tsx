@@ -25,7 +25,7 @@ const ReviewActionButton: React.FC<ReviewActionButtonProps> = ({
       activeOpacity={0.8}
     >
       <LinearGradient
-        colors={disabled ? ['#D1D5DB', '#9CA3AF'] : ['#7C3AED', '#8B5CF6']}
+        colors={disabled ? ['#D1D5DB', '#9CA3AF'] : ['#00C06A', '#00796B']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#7C3AED',
+    shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,

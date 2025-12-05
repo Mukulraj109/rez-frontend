@@ -235,8 +235,8 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   if (walletState.isLoading && !walletState.data) {
     return (
       <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-        <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
+        <StatusBar barStyle="light-content" backgroundColor="#00796B" />
+        <LinearGradient colors={['#00796B', '#00C06A'] as const} style={styles.headerBg}>
           <View style={styles.headerContainer}>
             <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -255,8 +255,8 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   if (walletState.error && !walletState.data) {
     return (
       <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-        <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
+        <StatusBar barStyle="light-content" backgroundColor="#00796B" />
+        <LinearGradient colors={['#00796B', '#00C06A'] as const} style={styles.headerBg}>
           <View style={styles.headerContainer}>
             <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -298,8 +298,8 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   return (
     <WalletErrorBoundary>
       <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
-      <LinearGradient colors={['#7C3AED', '#8B5CF6'] as const} style={styles.headerBg}>
+      <StatusBar barStyle="light-content" backgroundColor="#00796B" />
+      <LinearGradient colors={['#00796B', '#00C06A'] as const} style={styles.headerBg}>
         <View style={styles.headerContainer}>
           <TouchableOpacity
             style={styles.backButton}
@@ -327,8 +327,8 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
           <RefreshControl
             refreshing={walletState.isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#7C3AED"
-            colors={['#7C3AED']}
+            tintColor="#00796B"
+            colors={['#00796B']}
             progressBackgroundColor="#FFFFFF"
           />
         }
@@ -351,7 +351,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
             accessibilityHint="Double tap to check your complete transaction history"
           >
             <LinearGradient
-              colors={['#8B5CF6', '#7C3AED'] as const}
+              colors={['#00C06A', '#00796B'] as const}
               style={styles.transactionButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -564,7 +564,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Ionicons name="diamond" size={48} color="#8B5CF6" />
+              <Ionicons name="diamond" size={48} color="#00C06A" />
               <Text style={styles.modalTitle}>Confirm Topup</Text>
             </View>
 
@@ -628,7 +628,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
       borderBottomLeftRadius: 22,
       borderBottomRightRadius: 22,
       overflow: 'hidden',
-      shadowColor: '#7C3AED',
+      shadowColor: '#00796B',
       shadowOpacity: 0.15,
       elevation: 8,
     },
@@ -660,12 +660,12 @@ const createStyles = (screenData: { width: number; height: number }) => {
       alignItems: 'center',
       paddingVertical: isTablet ? 28 : isSmallScreen ? 20 : 24,
       width: isTablet ? '65%' : '80%',
-      shadowColor: '#7C3AED',
+      shadowColor: '#00796B',
       shadowOpacity: 0.12,
       elevation: 12,
     },
     currency: {
-      color: '#7C3AED',
+      color: '#00796B',
       fontSize: isTablet ? 36 : isSmallScreen ? 28 : 32,
       fontWeight: '800',
     },
@@ -677,7 +677,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
     errorTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginTop: 16 },
     errorDetails: { fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center' },
     retryButton: {
-      backgroundColor: '#7C3AED',
+      backgroundColor: '#00796B',
       paddingHorizontal: 24,
       paddingVertical: 12,
       borderRadius: 16,
@@ -693,7 +693,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
     viewTransactionsButton: {
       borderRadius: 20,
       overflow: 'hidden',
-      shadowColor: '#8B5CF6',
+      shadowColor: '#00C06A',
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.2,
       shadowRadius: 12,
@@ -880,7 +880,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
     modalAmount: {
       fontSize: 36,
       fontWeight: '700',
-      color: '#8B5CF6',
+      color: '#00C06A',
       marginVertical: 8,
     },
     modalActions: {
@@ -899,7 +899,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
       backgroundColor: '#F3F4F6',
     },
     confirmButton: {
-      backgroundColor: '#8B5CF6',
+      backgroundColor: '#00C06A',
     },
     cancelButtonText: {
       fontSize: 16,

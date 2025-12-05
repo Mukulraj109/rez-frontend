@@ -51,6 +51,7 @@ import TierBadge from '@/components/subscription/TierBadge';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import NotificationBell from '@/components/common/NotificationBell';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import categoriesApi from '@/services/categoriesApi';
 
 // Lazy-loaded components (below-the-fold)
 const ProfileMenuModal = React.lazy(() => import('@/components/profile/ProfileMenuModal'));
@@ -58,6 +59,8 @@ const VoucherNavButton = React.lazy(() => import('@/components/voucher/VoucherNa
 const NavigationShortcuts = React.lazy(() => import('@/components/navigation/NavigationShortcuts'));
 const QuickAccessFAB = React.lazy(() => import('@/components/navigation/QuickAccessFAB'));
 const FeatureHighlights = React.lazy(() => import('@/components/homepage/FeatureHighlights'));
+const CategoryIconGrid = React.lazy(() => import('@/components/categories/CategoryIconGrid'));
+const CategoryGridSkeleton = React.lazy(() => import('@/components/skeletons/CategoryGridSkeleton'));
 
 // Fallback components for Suspense boundaries
 const BelowFoldFallback = () => (
@@ -87,6 +90,8 @@ export default function HomeScreen() {
   const [isLoadingStats, setIsLoadingStats] = React.useState(false);
   const [interactionsComplete, setInteractionsComplete] = React.useState(false); // Deferred render flag
   const [selectedCategory, setSelectedCategory] = React.useState('for-you'); // Category tab state
+  const [homeCategories, setHomeCategories] = React.useState<any[]>([]); // Homepage category icons
+  const [categoriesLoading, setCategoriesLoading] = React.useState(true);
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
   const scrollY = React.useRef(new Animated.Value(0)).current; // For sticky header
@@ -102,6 +107,35 @@ export default function HomeScreen() {
     });
 
     return () => handle.cancel();
+  }, []);
+
+  // Load homepage categories for icon grid
+  React.useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const [goingOutRes, homeDeliveryRes] = await Promise.all([
+          categoriesApi.getCategories({ type: 'going_out', isActive: true }),
+          categoriesApi.getCategories({ type: 'home_delivery', isActive: true }),
+        ]);
+
+        const goingOut = goingOutRes?.data || goingOutRes || [];
+        const homeDelivery = homeDeliveryRes?.data || homeDeliveryRes || [];
+
+        const combined = [...goingOut, ...homeDelivery]
+          .map((cat: any) => ({ ...cat, id: cat._id || cat.id || cat.slug }))
+          .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+          .slice(0, 8);
+
+        setHomeCategories(combined);
+      } catch (error) {
+        console.error('Failed to load homepage categories:', error);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    loadCategories();
   }, []);
 
   // Load user points and statistics (optimized with cache check)
@@ -632,8 +666,6 @@ export default function HomeScreen() {
           <FeatureHighlights />
         </Suspense>
 
-        {/* Categories now handled by CategoryTabBar above */}
-
         {/* Sections from state - Progressive loading with memoization */}
         {React.useMemo(() => {
           return state.sections
@@ -790,6 +822,10 @@ const viewStyles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 192, 106, 0.1)',
+  },
+  categoriesSection: {
+    marginHorizontal: 16,
+    marginVertical: 16,
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 56 : 50,

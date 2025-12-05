@@ -45,6 +45,17 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
     
     logger.debug('[BOTTOM NAV] Checking pathname:', normalizedPath || '(empty)');
     
+    // Check for Categories tab - multiple formats
+    if (
+      normalizedPath === '/categories' ||
+      normalizedPath === '/(tabs)/categories' ||
+      normalizedPath.startsWith('/categories/') ||
+      normalizedPath.startsWith('/(tabs)/categories/')
+    ) {
+      logger.debug('[BOTTOM NAV] ✅ Categories tab active');
+      return 'Categories';
+    }
+
     // Check for Play tab - multiple formats (check first to avoid conflicts)
     if (
       normalizedPath === '/play' ||
@@ -69,15 +80,16 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
     
     // Check for Home tab - handle multiple formats
     // Home is at /(tabs) or /(tabs)/index, or root /
-    // IMPORTANT: Check home last, after play and earn, to avoid conflicts
+    // IMPORTANT: Check home last, after other tabs, to avoid conflicts
     if (
       normalizedPath === '/(tabs)' ||
       normalizedPath === '/(tabs)/index' ||
       normalizedPath.startsWith('/(tabs)/index/') ||
-      // If pathname includes (tabs) but doesn't match play or earn, it's home
-      (normalizedPath.includes('/(tabs)') && 
-       !normalizedPath.includes('/play') && 
-       !normalizedPath.includes('/earn'))
+      // If pathname includes (tabs) but doesn't match other tabs, it's home
+      (normalizedPath.includes('/(tabs)') &&
+       !normalizedPath.includes('/play') &&
+       !normalizedPath.includes('/earn') &&
+       !normalizedPath.includes('/categories'))
     ) {
       logger.debug('[BOTTOM NAV] ✅ Home tab active');
       return 'Home';
@@ -96,6 +108,12 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
       route: '/(tabs)',
       icon: 'home',
       isActive: activeTab === 'Home',
+    },
+    {
+      name: 'Categories',
+      route: '/(tabs)/categories',
+      icon: 'grid-outline',
+      isActive: activeTab === 'Categories',
     },
     {
       name: 'Play',

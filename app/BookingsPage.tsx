@@ -21,6 +21,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import eventsApiService from '@/services/eventsApi';
 import { showAlert, alertOk, confirmAlert } from '@/utils/alert';
 
+// ReZ Brand Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  goldDark: '#E5A83D',
+  navy: '#0B2240',
+  text: '#1F2937',
+  textMuted: '#6B7280',
+  surface: '#F7FAFC',
+  white: '#FFFFFF',
+  error: '#EF4444',
+  warning: '#F59E0B',
+  success: '#10B981',
+};
+
 interface UserBooking {
   _id: string;
   eventId: any;
@@ -209,7 +225,7 @@ export default function BookingsPage() {
       
       {/* Header */}
       <LinearGradient
-        colors={['#6366F1', '#8B5CF6']}
+        colors={[COLORS.primary, COLORS.primaryDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
@@ -229,8 +245,8 @@ export default function BookingsPage() {
               key={status}
               style={[
                 styles.filterTab,
-                filter === status && { backgroundColor: tintColor },
-                { borderColor: filter === status ? tintColor : borderColor },
+                filter === status && styles.filterTabActive,
+                { borderColor: filter === status ? COLORS.primary : borderColor },
               ]}
               onPress={() => setFilter(status)}
             >
@@ -250,15 +266,17 @@ export default function BookingsPage() {
       {/* Bookings List */}
       {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={tintColor} />
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <ThemedText style={styles.loadingText}>Loading bookings...</ThemedText>
         </View>
       ) : bookings.length === 0 ? (
         <ScrollView
           contentContainerStyle={styles.emptyContainer}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
         >
-          <Ionicons name="calendar-outline" size={64} color={textColor} style={styles.emptyIcon} />
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="calendar-outline" size={48} color={COLORS.primary} />
+          </View>
           <ThemedText style={styles.emptyTitle}>No Bookings Found</ThemedText>
           <ThemedText style={styles.emptyText}>
             {filter === 'all'
@@ -266,7 +284,7 @@ export default function BookingsPage() {
               : `You don't have any ${filter} bookings`}
           </ThemedText>
           <TouchableOpacity
-            style={[styles.exploreButton, { backgroundColor: tintColor }]}
+            style={styles.exploreButton}
             onPress={() => router.push('/' as any)}
           >
             <ThemedText style={styles.exploreButtonText}>Explore Events</ThemedText>
@@ -276,32 +294,30 @@ export default function BookingsPage() {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
         >
           {bookings.map((booking) => (
             <View
               key={booking._id}
-              style={[styles.bookingCard, { backgroundColor: cardBackground, borderColor: borderColor }]}
+              style={styles.bookingCard}
             >
               {/* Event Image and Info */}
               <View style={styles.bookingHeader}>
-                {booking.event?.image && (
-                  <View style={styles.eventImageContainer}>
-                    <Ionicons name="calendar" size={32} color={tintColor} />
-                  </View>
-                )}
+                <View style={styles.eventImageContainer}>
+                  <Ionicons name="calendar" size={28} color={COLORS.primary} />
+                </View>
                 <View style={styles.bookingInfo}>
                   <ThemedText style={styles.eventTitle}>
                     {booking.event?.title || 'Event'}
                   </ThemedText>
                   <View style={styles.bookingMeta}>
-                    <Ionicons name="location-outline" size={14} color={textColor} />
+                    <Ionicons name="location-outline" size={14} color={COLORS.textMuted} />
                     <ThemedText style={styles.metaText}>
                       {booking.event?.location || 'Location TBD'}
                     </ThemedText>
                   </View>
                   <View style={styles.bookingMeta}>
-                    <Ionicons name="time-outline" size={14} color={textColor} />
+                    <Ionicons name="time-outline" size={14} color={COLORS.textMuted} />
                     <ThemedText style={styles.metaText}>
                       {booking.event?.date ? formatDate(booking.event.date) : formatDate(booking.bookingDate)} •{' '}
                       {booking.event?.time || formatTime(booking.bookingDate)}
@@ -309,7 +325,7 @@ export default function BookingsPage() {
                   </View>
                   {booking.slotId && (
                     <View style={styles.bookingMeta}>
-                      <Ionicons name="time" size={14} color={textColor} />
+                      <Ionicons name="ellipse" size={8} color={COLORS.primary} />
                       <ThemedText style={styles.metaText}>Slot: {booking.slotId}</ThemedText>
                     </View>
                   )}
@@ -317,7 +333,7 @@ export default function BookingsPage() {
               </View>
 
               {/* Booking Details */}
-              <View style={[styles.bookingDetails, { borderTopColor: borderColor }]}>
+              <View style={styles.bookingDetails}>
                 <View style={styles.detailRow}>
                   <ThemedText style={styles.detailLabel}>Booking Reference:</ThemedText>
                   <ThemedText style={styles.detailValue}>{booking.bookingReference}</ThemedText>
@@ -328,13 +344,13 @@ export default function BookingsPage() {
                 </View>
                 <View style={styles.detailRow}>
                   <ThemedText style={styles.detailLabel}>Amount:</ThemedText>
-                  <ThemedText style={[styles.detailValue, styles.amountText]}>
-                    {booking.currency} {booking.amount}
+                  <ThemedText style={styles.amountText}>
+                    {booking.currency} {booking.amount.toLocaleString()}
                   </ThemedText>
                 </View>
                 <View style={styles.detailRow}>
                   <ThemedText style={styles.detailLabel}>Status:</ThemedText>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '15' }]}>
                     <ThemedText style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
                       {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                     </ThemedText>
@@ -345,11 +361,11 @@ export default function BookingsPage() {
               {/* Actions */}
               {booking.status === 'confirmed' || booking.status === 'pending' ? (
                 <TouchableOpacity
-                  style={[styles.cancelButton, { borderColor: '#EF4444' }]}
+                  style={styles.cancelButton}
                   onPress={() => handleCancelBooking(booking._id, booking.event?.title || 'Event')}
                 >
-                  <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
-                  <ThemedText style={[styles.cancelButtonText, { color: '#EF4444' }]}>
+                  <Ionicons name="close-circle-outline" size={18} color={COLORS.error} />
+                  <ThemedText style={styles.cancelButtonText}>
                     Cancel Booking
                   </ThemedText>
                 </TouchableOpacity>
@@ -365,48 +381,57 @@ export default function BookingsPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.surface,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight || 25,
     paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   placeholder: {
-    width: 40,
+    width: 44,
   },
   filterContainer: {
     borderBottomWidth: 1,
     paddingVertical: 12,
+    backgroundColor: COLORS.white,
   },
   filterScroll: {
     paddingHorizontal: 16,
     gap: 8,
   },
   filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 20,
-    borderWidth: 1,
+    borderWidth: 1.5,
     marginRight: 8,
+    backgroundColor: COLORS.white,
+  },
+  filterTabActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   filterText: {
     fontSize: 14,
     fontWeight: '500',
+    color: COLORS.textMuted,
   },
   filterTextActive: {
     color: '#FFFFFF',
@@ -418,16 +443,17 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     gap: 16,
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 16,
   },
   loadingText: {
     fontSize: 16,
-    opacity: 0.7,
+    color: COLORS.textMuted,
   },
   emptyContainer: {
     flex: 1,
@@ -435,25 +461,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 32,
   },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
   emptyIcon: {
     marginBottom: 16,
     opacity: 0.5,
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: COLORS.text,
     marginBottom: 8,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
-    opacity: 0.7,
+    color: COLORS.textMuted,
     marginBottom: 24,
+    lineHeight: 22,
   },
   loginButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
   },
   loginButtonText: {
     color: '#FFFFFF',
@@ -461,9 +499,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   exploreButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
   },
   exploreButtonText: {
     color: '#FFFFFF',
@@ -471,20 +510,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bookingCard: {
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 16,
     padding: 16,
-    gap: 12,
+    gap: 14,
+    backgroundColor: COLORS.white,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
   },
   bookingHeader: {
     flexDirection: 'row',
     gap: 12,
   },
   eventImageContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -493,8 +539,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   eventTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.text,
     marginBottom: 4,
   },
   bookingMeta: {
@@ -504,13 +551,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   metaText: {
-    fontSize: 14,
-    opacity: 0.7,
+    fontSize: 13,
+    color: COLORS.textMuted,
   },
   bookingDetails: {
     borderTopWidth: 1,
-    paddingTop: 12,
-    gap: 8,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 14,
+    gap: 10,
   },
   detailRow: {
     flexDirection: 'row',
@@ -519,20 +567,22 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    opacity: 0.7,
+    color: COLORS.textMuted,
   },
   detailValue: {
     fontSize: 14,
     fontWeight: '500',
+    color: COLORS.text,
   },
   amountText: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 16,
+    color: COLORS.gold,
   },
   statusBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
   },
   statusText: {
     fontSize: 12,
@@ -544,13 +594,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginTop: 4,
+    borderColor: COLORS.error,
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
   },
   cancelButtonText: {
     fontSize: 14,
     fontWeight: '600',
+    color: COLORS.error,
   },
 });
 
