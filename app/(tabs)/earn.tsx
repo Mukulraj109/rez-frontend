@@ -12,6 +12,15 @@ import ProfileMenuModal from '@/components/profile/ProfileMenuModal';
 import { profileMenuSections } from '@/data/profileData';
 import earningsNotificationService from '@/services/earningsNotificationService';
 
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  navy: '#0B2240',
+  surface: '#F7FAFC',
+};
+
 // New Earn Page Components
 import NotificationSection from '@/components/earnPage/NotificationSection';
 import ProjectDashboard from '@/components/earnPage/ProjectDashboard';
@@ -215,21 +224,30 @@ export default function EarnScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor="#8B5CF6"
-          colors={['#8B5CF6']}
+          tintColor={COLORS.primary}
+          colors={[COLORS.primary]}
         />
       }
     >
-      {/* Header */}
-      <LinearGradient 
-        colors={['#8B5CF6', '#A855F7', '#9333EA']} 
+      {/* Premium Glassmorphism Header */}
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.primaryDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
+        {/* Glass overlay */}
+        <View style={styles.glassOverlay} />
+
+        {/* Decorative elements */}
+        <View style={styles.decorCircle1} />
+        <View style={styles.decorCircle2} />
+        <View style={styles.decorCircle3} />
+
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
             <ThemedText style={styles.headerTitle}>Earn</ThemedText>
+            <View style={styles.titleUnderline} />
           </View>
 
           <View style={styles.headerRight}>
@@ -249,7 +267,7 @@ export default function EarnScreen() {
               accessibilityRole="button"
               accessibilityHint="Double tap to view your loyalty points and rewards details"
             >
-              <Ionicons name="star" size={18} color="#FFD700" />
+              <Ionicons name="star" size={18} color={COLORS.gold} />
               <ThemedText style={styles.coinsText}>
                 {isLoadingCoins ? '...' : userPoints}
               </ThemedText>
@@ -294,7 +312,7 @@ export default function EarnScreen() {
             >
               <ThemedText style={styles.profileText}>
                 {user?.initials ||
-                 (authState.user?.profile?.firstName 
+                 (authState.user?.profile?.firstName
                    ? authState.user.profile.firstName.charAt(0).toUpperCase()
                    : (authState.user?.profile?.lastName
                       ? authState.user.profile.lastName.charAt(0).toUpperCase()
@@ -366,33 +384,91 @@ export default function EarnScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.surface,
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 50 : 40,
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    position: 'relative',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.35,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        boxShadow: '0px 8px 32px rgba(0, 192, 106, 0.35)',
+      },
+    }),
+  },
+  glassOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  decorCircle1: {
+    position: 'absolute',
+    top: -40,
+    right: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  decorCircle2: {
+    position: 'absolute',
+    top: 60,
+    left: -30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 200, 87, 0.15)',
+  },
+  decorCircle3: {
+    position: 'absolute',
+    bottom: -20,
+    right: 60,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    zIndex: 2,
   },
   headerLeft: {
     flex: 1,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '700',
     color: 'white',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  titleUnderline: {
+    width: 40,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: COLORS.gold,
+    marginTop: 6,
+    opacity: 0.9,
   },
   headerRight: {
     flexDirection: 'row',
@@ -402,17 +478,18 @@ const styles = StyleSheet.create({
   coinsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+      },
+    }),
   },
   coinsText: {
     color: 'white',
@@ -422,32 +499,47 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   cartButton: {
-    padding: 8,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  profileAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+      },
+    }),
+  },
+  profileAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.gold,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.4)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.35,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 5,
+      },
+      web: {
+        boxShadow: '0px 3px 12px rgba(255, 200, 87, 0.35)',
+      },
+    }),
   },
   profileText: {
-    color: '#1F2937',
+    color: COLORS.navy,
     fontWeight: '800',
     fontSize: 16,
     letterSpacing: 0.5,
@@ -455,6 +547,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
-    gap: 20, // Modern spacing between sections
+    gap: 20,
   },
 });

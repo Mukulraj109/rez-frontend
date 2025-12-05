@@ -251,7 +251,7 @@ const ProductionProductCarousel = ({ products, isLoading, error }: ProductionPro
           style={[
             styles.dot,
             {
-              backgroundColor: activeIndex === index ? '#8B5CF6' : '#E5E7EB',
+              backgroundColor: activeIndex === index ? '#00C06A' : '#E5E7EB',
               width: activeIndex === index ? 24 : 8,
               transform: [{ scale: activeIndex === index ? 1 : 0.8 }],
             },
@@ -266,7 +266,7 @@ const ProductionProductCarousel = ({ products, isLoading, error }: ProductionPro
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#00C06A" />
           <Text style={styles.loadingText}>Loading featured products...</Text>
         </View>
       </View>
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     right: -40,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 4,
     paddingHorizontal: 40,
     transform: [{ rotate: '45deg' }],
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   badge: {
-    backgroundColor: 'rgba(139, 92, 246, 0.9)',
+    backgroundColor: 'rgba(0, 192, 106, 0.9)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,

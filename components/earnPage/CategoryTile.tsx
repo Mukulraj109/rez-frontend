@@ -11,8 +11,8 @@ export default function CategoryTile({
   onPress, 
   size = 'medium' 
 }: CategoryTileProps) {
-  const gradient = CATEGORY_GRADIENTS[category.color] || ['#8B5CF6', '#7C3AED', '#6D28D9'];
-  const solidColor = CATEGORY_SOLID_COLORS[category.color] || '#8B5CF6';
+  const gradient = CATEGORY_GRADIENTS[category.color] || ['#00C06A', '#00A85C', '#00796B'];
+  const solidColor = CATEGORY_SOLID_COLORS[category.color] || '#00C06A';
   
   const getSizeStyles = (size: string) => {
     switch (size) {
@@ -53,7 +53,7 @@ export default function CategoryTile({
       accessibilityState={{ disabled: !category.isActive }}
     >
       <LinearGradient
-        colors={Array.isArray(gradient) && gradient.length > 0 ? gradient : ['#8B5CF6', '#7C3AED', '#6D28D9']}
+        colors={Array.isArray(gradient) && gradient.length > 0 ? gradient : ['#00C06A', '#00A85C', '#00796B']}
         style={[styles.gradient, { padding: sizeStyles.padding }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -101,13 +101,15 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 4,
     marginVertical: 4,
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
     elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   gradient: {
     flex: 1,
@@ -122,9 +124,11 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginBottom: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    padding: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 14,
+    padding: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
   },
   categoryName: {
     color: '#FFFFFF',
@@ -139,12 +143,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 200, 87, 0.9)',
     borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    minWidth: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    minWidth: 22,
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   projectCountText: {
     fontSize: 10,

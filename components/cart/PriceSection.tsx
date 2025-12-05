@@ -80,7 +80,7 @@ export default function PriceSection({
             accessibilityState={{ disabled: loading || totalPrice === 0, busy: loading }}
           >
             <LinearGradient
-              colors={loading || totalPrice === 0 ? ['#D1D5DB', '#9CA3AF'] : ['#8B5CF6', '#6D28D9']}
+              colors={loading || totalPrice === 0 ? ['#D1D5DB', '#9CA3AF'] : ['#00C06A', '#00996B']}
               style={styles.gradientButton}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -113,14 +113,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 10,
+    borderTopColor: 'rgba(0, 192, 106, 0.15)',
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 12,
     paddingBottom: Platform.OS === 'ios' ? 90 : 80,
   },
   iosContainer: {
@@ -161,11 +161,11 @@ const styles = StyleSheet.create({
   buyNowButton: {
     borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
   },
   gradientButton: {
     paddingHorizontal: 24,

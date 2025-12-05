@@ -233,7 +233,7 @@ export default function CategoryPage() {
   if (!state.currentCategory && state.loading) {
     return (
       <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#00C06A" />
         <ThemedText style={styles.loadingText}>Loading category...</ThemedText>
       </ThemedView>
     );
@@ -284,8 +284,8 @@ export default function CategoryPage() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#8B5CF6"
-              colors={['#8B5CF6']}
+              tintColor="#00C06A"
+              colors={['#00C06A']}
             />
           }
         >
@@ -423,18 +423,19 @@ export default function CategoryPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F5F7FA',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F5F7FA',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: '#00C06A',
+    fontWeight: '500',
   },
   errorContainer: {
     flex: 1,
@@ -457,7 +458,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     fontSize: 16,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
   },
   content: {
@@ -469,19 +470,32 @@ const styles = StyleSheet.create({
   },
   resultsSummary: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#F3F4F6',
+    paddingVertical: 14,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
     marginHorizontal: 16,
     marginTop: 16,
-    borderRadius: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
   },
   resultsText: {
     fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
+    color: '#00796B',
+    fontWeight: '600',
   },
   section: {
     marginTop: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    marginHorizontal: 12,
+    borderRadius: 16,
+    paddingVertical: 16,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -493,35 +507,52 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: '#0B2240',
   },
   viewAllButton: {
     fontSize: 14,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
   },
   emptyState: {
     padding: 40,
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    marginHorizontal: 16,
+    marginTop: 24,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.1)',
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0B2240',
     marginBottom: 8,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
+    lineHeight: 22,
   },
   clearFiltersButton: {
-    fontSize: 14,
-    color: '#8B5CF6',
-    fontWeight: '600',
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    backgroundColor: '#00C06A',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    overflow: 'hidden',
   },
   bottomSpacing: {
-    height: 40,
+    height: 100,
   },
 });

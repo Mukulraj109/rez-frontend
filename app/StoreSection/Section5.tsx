@@ -306,7 +306,7 @@ export default function Section5({ discountData, storeInfo, dynamicData, cardTyp
         return { name: 'warning' as const, color: '#F59E0B' };
       case 'info':
       default:
-        return { name: 'information-circle' as const, color: '#7C3AED' };
+        return { name: 'information-circle' as const, color: '#00C06A' };
     }
   };
 
@@ -432,7 +432,7 @@ export default function Section5({ discountData, storeInfo, dynamicData, cardTyp
                       router.push('/wishlist');
                     }}
                   >
-                    <Ionicons name="heart-outline" size={18} color="#7C3AED" />
+                    <Ionicons name="heart-outline" size={18} color="#00C06A" />
                     <ThemedText style={styles.modalButtonSecondaryText}>View Saved</ThemedText>
                   </TouchableOpacity>
                 )}
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
   },
   modalButtonPrimary: {
     flex: 1,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   },
   modalButtonSecondary: {
     flex: 1,
-    backgroundColor: '#F3E8FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   modalButtonSecondaryText: {
-    color: '#7C3AED',
+    color: '#00C06A',
     fontSize: 16,
     fontWeight: '600',
   },

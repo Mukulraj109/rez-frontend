@@ -1,3 +1,6 @@
+// WalkInDealsModal.tsx - Premium Glassmorphism Design
+// Walk-in Deals Modal - Green & Gold Theme
+
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   View,
@@ -7,18 +10,44 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
-  ActivityIndicator,
   Text,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/ThemedText';
 import { Deal, DealModalProps } from '@/types/deals';
 import DealDetailsModal from '@/components/DealDetailsModal';
 import DealList from '@/components/DealList';
 import realOffersApi from '@/services/realOffersApi';
 import DealsListSkeleton from '@/components/skeletons/DealsListSkeleton';
+
+// Premium Glass Design Tokens - Green & Gold Theme
+const GLASS = {
+  lightBg: 'rgba(255, 255, 255, 0.85)',
+  lightBorder: 'rgba(255, 255, 255, 0.5)',
+  lightHighlight: 'rgba(255, 255, 255, 0.9)',
+  frostedBg: 'rgba(255, 255, 255, 0.92)',
+  tintedGreenBg: 'rgba(0, 192, 106, 0.08)',
+  tintedGreenBorder: 'rgba(0, 192, 106, 0.2)',
+  tintedGoldBg: 'rgba(255, 200, 87, 0.12)',
+  tintedGoldBorder: 'rgba(255, 200, 87, 0.35)',
+};
+
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  goldDark: '#E5A500',
+  navy: '#0B2240',
+  textPrimary: '#1F2937',
+  textSecondary: '#6B7280',
+  white: '#FFFFFF',
+  surface: '#F7FAFC',
+  error: '#EF4444',
+};
 
 export default function WalkInDealsModal({ visible, onClose, deals = [], storeId }: DealModalProps) {
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
@@ -83,12 +112,11 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
           // Determine discount type and value
           let discountType: 'percentage' | 'fixed' = 'percentage';
           let discountValue = 0;
-          
+
           if (deal.type === 'cashback') {
             discountType = 'percentage';
             discountValue = deal.cashbackPercentage || 0;
           } else if (deal.type === 'discount' || deal.type === 'walk_in') {
-            // For discount/walk_in, check if we have originalPrice and discountedPrice
             if (deal.originalPrice && deal.discountedPrice) {
               const discountAmount = deal.originalPrice - deal.discountedPrice;
               discountValue = Math.round((discountAmount / deal.originalPrice) * 100);
@@ -148,24 +176,23 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
             terms.push(`Applicable on: ${deal.restrictions.applicableOn.join(', ')}`);
           }
           if (deal.description) {
-            // Add description as additional context if no other terms
             if (terms.length === 0) {
               terms.push(deal.description);
             }
           }
 
-          // Determine badge color based on deal type
-          let badgeBgColor = '#E5E7EB';
-          let badgeTextColor = '#374151';
+          // Determine badge color based on deal type - using green/gold theme
+          let badgeBgColor = GLASS.tintedGreenBg;
+          let badgeTextColor = COLORS.primary;
           if (deal.metadata?.featured || deal.type === 'mega') {
-            badgeBgColor = '#FEF3C7';
-            badgeTextColor = '#92400E';
+            badgeBgColor = GLASS.tintedGoldBg;
+            badgeTextColor = COLORS.goldDark;
           } else if (deal.type === 'cashback') {
-            badgeBgColor = '#D1FAE5';
-            badgeTextColor = '#065F46';
+            badgeBgColor = GLASS.tintedGreenBg;
+            badgeTextColor = COLORS.primary;
           } else if (deal.type === 'walk_in') {
-            badgeBgColor = '#DBEAFE';
-            badgeTextColor = '#1E40AF';
+            badgeBgColor = GLASS.tintedGreenBg;
+            badgeTextColor = COLORS.primaryDark;
           }
 
           return {
@@ -190,7 +217,6 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
               backgroundColor: badgeBgColor,
               textColor: badgeTextColor
             },
-            // Additional fields for display
             image: deal.image,
             subtitle: deal.subtitle,
             originalPrice: deal.originalPrice,
@@ -276,136 +302,24 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
       <TouchableWithoutFeedback onPress={handleBackdropPress}>
         <View style={styles.overlay}>
           <Animated.View style={[styles.blurContainer, { opacity: fadeAnim }]}>
-            <BlurView intensity={50} style={styles.blur} />
+            {Platform.OS === 'ios' ? (
+              <BlurView intensity={60} tint="dark" style={styles.blur} />
+            ) : (
+              <View style={[styles.blur, styles.androidBlur]} />
+            )}
           </Animated.View>
 
           <TouchableWithoutFeedback onPress={handleModalPress}>
             <Animated.View style={[styles.modalContainer, { transform: [{ translateY: slideAnim }] }]}>
-              <View style={styles.modal}>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={onClose}
-                  accessibilityLabel="Close walk-in deals"
-                  accessibilityRole="button"
-                  accessibilityHint="Double tap to close this dialog"
-                >
-                  <Ionicons name="close" size={20} color="#555" />
-                </TouchableOpacity>
-
-                <ScrollView 
-                  style={styles.scrollView}
-                  contentContainerStyle={styles.scrollContent}
-                  showsVerticalScrollIndicator={true}
-                  bounces={true}
-                >
-                  <View style={styles.header}>
-                    <View style={styles.headerContent}>
-                      <Ionicons name="pricetag" size={24} color="#7C3AED" style={styles.headerIcon} />
-                      <View style={styles.headerTextContainer}>
-                        <ThemedText style={styles.headerTitle}>Walk-in Deals</ThemedText>
-                        <ThemedText style={styles.headerSubtitle}>
-                          {dealCount > 0 ? `${dealCount} deals available` : 'Available offers for this store'}
-                        </ThemedText>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Filter Tabs */}
-                  <View style={styles.filterContainer}>
-                    <ScrollView 
-                      horizontal 
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.filterScrollContent}
-                    >
-                    <TouchableOpacity
-                      style={[styles.filterTab, filterType === 'all' && styles.filterTabActive]}
-                      onPress={() => handleFilterChange('all')}
-                    >
-                      <Text style={[styles.filterTabText, filterType === 'all' && styles.filterTabTextActive]}>
-                        All
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.filterTab, filterType === 'walk_in' && styles.filterTabActive]}
-                      onPress={() => handleFilterChange('walk_in')}
-                    >
-                      <Text style={[styles.filterTabText, filterType === 'walk_in' && styles.filterTabTextActive]}>
-                        Walk-in
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.filterTab, filterType === 'online' && styles.filterTabActive]}
-                      onPress={() => handleFilterChange('online')}
-                    >
-                      <Text style={[styles.filterTabText, filterType === 'online' && styles.filterTabTextActive]}>
-                        Online
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.filterTab, filterType === 'cashback' && styles.filterTabActive]}
-                      onPress={() => handleFilterChange('cashback')}
-                    >
-                      <Text style={[styles.filterTabText, filterType === 'cashback' && styles.filterTabTextActive]}>
-                        Cashback
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.filterTab, filterType === 'combo' && styles.filterTabActive]}
-                      onPress={() => handleFilterChange('combo')}
-                    >
-                      <Text style={[styles.filterTabText, filterType === 'combo' && styles.filterTabTextActive]}>
-                        Combos
-                      </Text>
-                    </TouchableOpacity>
-                    </ScrollView>
-                  </View>
-
-                  {/* Error State */}
-                  {error && (
-                    <View style={styles.errorContainer}>
-                      <Ionicons name="alert-circle" size={20} color="#EF4444" />
-                      <Text style={styles.errorText}>{error}</Text>
-                      <TouchableOpacity style={styles.retryButton} onPress={handleRefreshDeals}>
-                        <Text style={styles.retryButtonText}>Retry</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {/* Empty State */}
-                  {!isLoadingDeals && !error && activeDeals.length === 0 && (
-                    <View style={styles.emptyContainer}>
-                      <View style={styles.emptyIconContainer}>
-                        <Ionicons name="gift-outline" size={72} color="#7C3AED" />
-                      </View>
-                      <Text style={styles.emptyTitle}>No deals available right now</Text>
-                      <Text style={styles.emptySubtitle}>Check back later for exciting offers!</Text>
-                    </View>
-                  )}
-
-                  {/* Deals List */}
-                  {!error && activeDeals.length > 0 && (
-                    <View style={styles.listContainer}>
-                      <DealList
-                        deals={activeDeals}
-                        selectedDeals={selectedDeals}
-                        onAddDeal={handleAddDeal}
-                        onRemoveDeal={handleRemoveDeal}
-                        onMoreDetails={handleMoreDetails}
-                        isLoading={isLoadingDeals}
-                        onRefresh={handleRefreshDeals}
-                        showFilters={true}
-                      />
-                    </View>
-                  )}
-
-                  {/* Loading Skeleton */}
-                  {isLoadingDeals && activeDeals.length === 0 && (
-                    <View style={styles.listContainer}>
-                      <DealsListSkeleton count={4} />
-                    </View>
-                  )}
-                </ScrollView>
-              </View>
+              {Platform.OS === 'ios' ? (
+                <BlurView intensity={80} tint="light" style={styles.modal}>
+                  {renderModalContent()}
+                </BlurView>
+              ) : (
+                <View style={[styles.modal, styles.modalAndroid]}>
+                  {renderModalContent()}
+                </View>
+              )}
             </Animated.View>
           </TouchableWithoutFeedback>
         </View>
@@ -418,6 +332,191 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
       />
     </Modal>
   );
+
+  function renderModalContent() {
+    return (
+      <>
+        {/* Glass Highlight */}
+        <View style={styles.glassHighlight} />
+
+        {/* Handle Bar */}
+        <View style={styles.handleBar} />
+
+        {/* Close Button */}
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={onClose}
+          accessibilityLabel="Close walk-in deals"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to close this dialog"
+        >
+          <View style={styles.closeButtonInner}>
+            <Ionicons name="close" size={18} color={COLORS.textPrimary} />
+          </View>
+        </TouchableOpacity>
+
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={true}
+          bounces={true}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.headerIconContainer}
+              >
+                <Ionicons name="pricetag" size={22} color={COLORS.white} />
+              </LinearGradient>
+              <View style={styles.headerTextContainer}>
+                <ThemedText style={styles.headerTitle}>Walk-in Deals</ThemedText>
+                <ThemedText style={styles.headerSubtitle}>
+                  {dealCount > 0 ? `${dealCount} deals available` : 'Available offers for this store'}
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+
+          {/* Filter Tabs */}
+          <View style={styles.filterContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScrollContent}
+            >
+              {renderFilterTab('all', 'All')}
+              {renderFilterTab('walk_in', 'Walk-in')}
+              {renderFilterTab('online', 'Online')}
+              {renderFilterTab('cashback', 'Cashback')}
+            </ScrollView>
+          </View>
+
+          {/* Secondary Filter Row */}
+          <View style={styles.secondaryFilters}>
+            <Text style={styles.dealsAvailableText}>
+              {activeDeals.length} deals available
+            </Text>
+            <View style={styles.filterActions}>
+              <TouchableOpacity style={styles.glassFilterButton}>
+                <Ionicons name="funnel-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.filterButtonText}>Filter</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.glassFilterButton}>
+                <Ionicons name="swap-vertical-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.filterButtonText}>Sort: Prio...</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Type Filter Chips */}
+          <View style={styles.typeChipsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeChipsContent}>
+              {renderTypeChip('all', 'All', true)}
+              {renderTypeChip('instant', 'Instant', false)}
+              {renderTypeChip('cashback', 'Cashback', false)}
+              {renderTypeChip('bogo', 'BOGO', false)}
+              {renderTypeChip('vip', 'VIP', false)}
+            </ScrollView>
+          </View>
+
+          {/* Error State */}
+          {error && (
+            <View style={styles.errorContainer}>
+              <View style={styles.errorIconContainer}>
+                <Ionicons name="alert-circle" size={20} color={COLORS.error} />
+              </View>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={handleRefreshDeals}>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryDark]}
+                  style={styles.retryButtonGradient}
+                >
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Empty State */}
+          {!isLoadingDeals && !error && activeDeals.length === 0 && (
+            <View style={styles.emptyContainer}>
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.emptyIconContainer}
+              >
+                <Ionicons name="gift-outline" size={48} color={COLORS.white} />
+              </LinearGradient>
+              <Text style={styles.emptyTitle}>No deals available right now</Text>
+              <Text style={styles.emptySubtitle}>Check back later for exciting offers!</Text>
+            </View>
+          )}
+
+          {/* Deals List */}
+          {!error && activeDeals.length > 0 && (
+            <View style={styles.listContainer}>
+              <DealList
+                deals={activeDeals}
+                selectedDeals={selectedDeals}
+                onAddDeal={handleAddDeal}
+                onRemoveDeal={handleRemoveDeal}
+                onMoreDetails={handleMoreDetails}
+                isLoading={isLoadingDeals}
+                onRefresh={handleRefreshDeals}
+                showFilters={true}
+              />
+            </View>
+          )}
+
+          {/* Loading Skeleton */}
+          {isLoadingDeals && activeDeals.length === 0 && (
+            <View style={styles.listContainer}>
+              <DealsListSkeleton count={4} />
+            </View>
+          )}
+        </ScrollView>
+      </>
+    );
+  }
+
+  function renderFilterTab(type: typeof filterType, label: string) {
+    const isActive = filterType === type;
+    return (
+      <TouchableOpacity
+        style={[styles.filterTab, isActive && styles.filterTabActive]}
+        onPress={() => handleFilterChange(type)}
+      >
+        {isActive ? (
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.primaryDark]}
+            style={styles.filterTabGradient}
+          >
+            <Text style={styles.filterTabTextActive}>{label}</Text>
+          </LinearGradient>
+        ) : (
+          <Text style={styles.filterTabText}>{label}</Text>
+        )}
+      </TouchableOpacity>
+    );
+  }
+
+  function renderTypeChip(type: string, label: string, isActive: boolean) {
+    return (
+      <TouchableOpacity style={[styles.typeChip, isActive && styles.typeChipActive]}>
+        {isActive ? (
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.primaryDark]}
+            style={styles.typeChipGradient}
+          >
+            <Text style={styles.typeChipTextActive}>{label}</Text>
+          </LinearGradient>
+        ) : (
+          <Text style={styles.typeChipText}>{label}</Text>
+        )}
+      </TouchableOpacity>
+    );
+  }
 }
 
 const createStyles = (screenData: { width: number; height: number }) => {
@@ -432,7 +531,8 @@ const createStyles = (screenData: { width: number; height: number }) => {
   return StyleSheet.create({
     overlay: { flex: 1, justifyContent: 'flex-end' },
     blurContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-    blur: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.3)' },
+    blur: { flex: 1 },
+    androidBlur: { backgroundColor: 'rgba(0, 0, 0, 0.5)' },
     modalContainer: {
       flex: 1,
       justifyContent: 'flex-end',
@@ -442,43 +542,70 @@ const createStyles = (screenData: { width: number; height: number }) => {
       width: '100%',
     },
     modal: {
-      backgroundColor: '#fff',
-      borderTopLeftRadius: isTabletOrLarge ? 0 : 24,
-      borderTopRightRadius: isTabletOrLarge ? 0 : 24,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       width: '100%',
       maxHeight: maxModalHeight,
       minHeight: isSmallScreen ? 300 : 400,
-      padding: 0, // Remove padding from modal, add to scrollView
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 16,
-      elevation: 8,
-      overflow: 'hidden', // Ensure content doesn't overflow
+      borderWidth: 1,
+      borderColor: GLASS.lightBorder,
+      borderBottomWidth: 0,
+      overflow: 'hidden',
+    },
+    modalAndroid: {
+      backgroundColor: GLASS.frostedBg,
+    },
+    glassHighlight: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 1,
+      backgroundColor: GLASS.lightHighlight,
+    },
+    handleBar: {
+      width: 40,
+      height: 4,
+      backgroundColor: 'rgba(0, 0, 0, 0.15)',
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginTop: 12,
+      marginBottom: 8,
     },
     scrollView: {
       flex: 1,
     },
     scrollContent: {
       padding: modalPadding,
-      paddingBottom: isSmallScreen ? modalPadding + 40 : modalPadding + 50, // Extra padding at bottom for savings preview
+      paddingTop: 8,
+      paddingBottom: isSmallScreen ? modalPadding + 40 : modalPadding + 50,
     },
     closeButton: {
       position: 'absolute',
       top: modalPadding + 4,
       right: modalPadding + 4,
-      backgroundColor: '#F3F4F6',
+      zIndex: 10,
+    },
+    closeButtonInner: {
+      backgroundColor: GLASS.lightBg,
       borderRadius: 20,
       width: isSmallScreen ? 36 : 40,
       height: isSmallScreen ? 36 : 40,
       justifyContent: 'center',
       alignItems: 'center',
-      zIndex: 10,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      borderWidth: 1,
+      borderColor: GLASS.lightBorder,
+      ...Platform.select({
+        ios: {
+          shadowColor: COLORS.navy,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 3,
+        },
+      }),
     },
     header: {
       marginTop: isSmallScreen ? 8 : 12,
@@ -489,11 +616,26 @@ const createStyles = (screenData: { width: number; height: number }) => {
     headerContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      paddingRight: isSmallScreen ? 40 : 48, // Space for close button
+      paddingRight: isSmallScreen ? 40 : 48,
     },
-    headerIcon: {
-      marginRight: 12,
+    headerIconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+      ...Platform.select({
+        ios: {
+          shadowColor: COLORS.primary,
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.3,
+          shadowRadius: 6,
+        },
+        android: {
+          elevation: 4,
+        },
+      }),
     },
     headerTextContainer: {
       flex: 1,
@@ -502,20 +644,20 @@ const createStyles = (screenData: { width: number; height: number }) => {
     headerTitle: {
       fontSize: isSmallScreen ? 22 : isTabletOrLarge ? 28 : 24,
       fontWeight: '700',
-      color: '#111827',
+      color: COLORS.textPrimary,
       marginBottom: 4,
       letterSpacing: -0.5,
     },
     headerSubtitle: {
       fontSize: isSmallScreen ? 13 : isTabletOrLarge ? 15 : 14,
-      color: '#6B7280',
+      color: COLORS.textSecondary,
       lineHeight: isSmallScreen ? 18 : 20,
     },
     filterContainer: {
       marginBottom: 16,
       paddingBottom: 12,
       borderBottomWidth: 1,
-      borderBottomColor: '#E5E7EB',
+      borderBottomColor: 'rgba(0, 0, 0, 0.06)',
     },
     filterScrollContent: {
       paddingHorizontal: isSmallScreen ? 8 : 12,
@@ -523,65 +665,137 @@ const createStyles = (screenData: { width: number; height: number }) => {
       alignItems: 'center',
     },
     filterTab: {
+      borderRadius: 24,
+      overflow: 'hidden',
+      backgroundColor: GLASS.lightBg,
+      borderWidth: 1,
+      borderColor: GLASS.lightBorder,
+    },
+    filterTabActive: {
+      borderColor: COLORS.primary,
+    },
+    filterTabGradient: {
       paddingHorizontal: isSmallScreen ? 14 : 18,
       paddingVertical: 10,
-      borderRadius: 24,
-      backgroundColor: '#F9FAFB',
-      borderWidth: 1.5,
-      borderColor: '#E5E7EB',
       minHeight: 40,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
-    },
-    filterTabActive: {
-      backgroundColor: '#7C3AED',
-      borderColor: '#7C3AED',
-      shadowColor: '#7C3AED',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      elevation: 3,
     },
     filterTabText: {
       fontSize: isSmallScreen ? 12 : 13,
       fontWeight: '600',
-      color: '#6B7280',
+      color: COLORS.textSecondary,
       letterSpacing: 0.2,
+      paddingHorizontal: isSmallScreen ? 14 : 18,
+      paddingVertical: 10,
     },
     filterTabTextActive: {
-      color: '#FFFFFF',
+      color: COLORS.white,
       fontWeight: '700',
+      fontSize: isSmallScreen ? 12 : 13,
+    },
+    secondaryFilters: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 12,
+      paddingHorizontal: 4,
+    },
+    dealsAvailableText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: COLORS.textPrimary,
+    },
+    filterActions: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    glassFilterButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: GLASS.lightBg,
+      borderWidth: 1,
+      borderColor: GLASS.tintedGreenBorder,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    filterButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: COLORS.primary,
+    },
+    typeChipsContainer: {
+      marginBottom: 16,
+    },
+    typeChipsContent: {
+      paddingHorizontal: 4,
+      gap: 8,
+    },
+    typeChip: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      backgroundColor: GLASS.lightBg,
+      borderWidth: 1,
+      borderColor: GLASS.lightBorder,
+    },
+    typeChipActive: {
+      borderColor: COLORS.primary,
+    },
+    typeChipGradient: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    typeChipText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: COLORS.textSecondary,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    typeChipTextActive: {
+      color: COLORS.white,
+      fontWeight: '700',
+      fontSize: 12,
     },
     listContainer: { flex: 1, marginTop: 0, paddingTop: 8 },
     errorContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#FEF2F2',
+      backgroundColor: 'rgba(239, 68, 68, 0.08)',
       padding: 16,
-      borderRadius: 12,
+      borderRadius: 16,
       marginHorizontal: 12,
       marginVertical: 12,
       gap: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(239, 68, 68, 0.2)',
+    },
+    errorIconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     errorText: {
       flex: 1,
       fontSize: 14,
-      color: '#EF4444',
+      color: COLORS.error,
       fontWeight: '500',
     },
     retryButton: {
-      backgroundColor: '#7C3AED',
+      borderRadius: 8,
+      overflow: 'hidden',
+    },
+    retryButtonGradient: {
       paddingHorizontal: 16,
       paddingVertical: 8,
-      borderRadius: 8,
     },
     retryButtonText: {
-      color: '#FFFFFF',
+      color: COLORS.white,
       fontSize: 13,
       fontWeight: '600',
     },
@@ -593,25 +807,35 @@ const createStyles = (screenData: { width: number; height: number }) => {
       paddingHorizontal: 32,
     },
     emptyIconContainer: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
-      backgroundColor: '#F3F4F6',
+      width: 100,
+      height: 100,
+      borderRadius: 50,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 24,
+      ...Platform.select({
+        ios: {
+          shadowColor: COLORS.primary,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
     },
     emptyTitle: {
       fontSize: 20,
       fontWeight: '700',
-      color: '#111827',
+      color: COLORS.textPrimary,
       marginBottom: 8,
       textAlign: 'center',
       letterSpacing: -0.3,
     },
     emptySubtitle: {
       fontSize: 15,
-      color: '#6B7280',
+      color: COLORS.textSecondary,
       textAlign: 'center',
       lineHeight: 22,
       paddingHorizontal: 20,
@@ -625,7 +849,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
     loadingText: {
       marginTop: 16,
       fontSize: 14,
-      color: '#6B7280',
+      color: COLORS.textSecondary,
       fontWeight: '500',
     },
   });

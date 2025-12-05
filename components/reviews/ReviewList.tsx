@@ -226,7 +226,7 @@ export default function ReviewList({
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconContainer}>
-        <Ionicons name="chatbubble-ellipses-outline" size={48} color="#8B5CF6" />
+        <Ionicons name="chatbubble-ellipses-outline" size={48} color="#00C06A" />
       </View>
       <ThemedText style={styles.emptyTitle}>No Reviews Yet</ThemedText>
       <ThemedText style={styles.emptyText}>
@@ -250,7 +250,7 @@ export default function ReviewList({
 
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color="#8B5CF6" />
+        <ActivityIndicator size="small" color="#00C06A" />
       </View>
     );
   };
@@ -258,7 +258,7 @@ export default function ReviewList({
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#00C06A" />
         <ThemedText style={styles.loadingText}>Loading reviews...</ThemedText>
       </View>
     );
@@ -283,8 +283,8 @@ export default function ReviewList({
         <RefreshControl
           refreshing={isRefreshing}
           onRefresh={handleRefresh}
-          colors={['#8B5CF6']}
-          tintColor="#8B5CF6"
+          colors={['#00C06A']}
+          tintColor="#00C06A"
         />
       }
       contentContainerStyle={[
@@ -356,11 +356,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 100,
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -429,8 +429,8 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   filterChipActive: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
+    borderColor: '#00C06A',
   },
   filterChipText: {
     fontSize: 13,
@@ -479,11 +479,11 @@ const styles = StyleSheet.create({
   emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 100,
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

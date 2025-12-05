@@ -6,17 +6,17 @@ const StepsCard = () => {
   const steps = [
     {
       id: 1,
-      icon: <MaterialCommunityIcons name="ticket-percent" size={24} color="#6B21A8" />,
+      icon: <MaterialCommunityIcons name="ticket-percent" size={24} color="#00C06A" />,
       text: "Buy a voucher on rez app",
     },
     {
       id: 2,
-      icon: <MaterialCommunityIcons name="store-outline" size={24} color="#6B21A8" />,
+      icon: <MaterialCommunityIcons name="store-outline" size={24} color="#00C06A" />,
       text: "Buy selected items in-store",
     },
     {
       id: 3,
-      icon: <MaterialCommunityIcons name="check-decagram-outline" size={24} color="#6B21A8" />,
+      icon: <MaterialCommunityIcons name="check-decagram-outline" size={24} color="#00C06A" />,
       text: "Use vouchers at store checkout",
     },
   ];
@@ -46,21 +46,23 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "#F6F0FF",
+    backgroundColor: "rgba(0, 192, 106, 0.08)",
     borderRadius: 16,
     paddingVertical: 20,
     paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "rgba(0, 192, 106, 0.15)",
   },
   step: {
     alignItems: "center",
     flex: 1,
-    paddingHorizontal: 8, // more breathing space
+    paddingHorizontal: 8,
   },
   circle: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#EDE9FE",
+    backgroundColor: "rgba(0, 192, 106, 0.15)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 8,
@@ -68,13 +70,13 @@ const styles = StyleSheet.create({
   number: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#6B21A8",
+    color: "#00C06A",
   },
   stepText: {
     fontSize: 13,
     textAlign: "center",
     color: "#333",
-    lineHeight: 18, // more vertical spacing
+    lineHeight: 18,
   },
 });
 

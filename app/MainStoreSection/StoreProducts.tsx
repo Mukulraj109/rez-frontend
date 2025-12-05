@@ -1,9 +1,57 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, Dimensions } from 'react-native';
+// StoreProducts.tsx - Premium Glassmorphism Design
+// Green & Gold color theme following TASK.md
+
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Dimensions,
+  Platform,
+  Animated,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import productsApi, { Product } from '@/services/productsApi';
 import { RetryButton } from '@/components/common/RetryButton';
+
+// Premium Glass Design Tokens - Green & Gold Theme
+const GLASS = {
+  // Light Glass
+  lightBg: 'rgba(255, 255, 255, 0.75)',
+  lightBorder: 'rgba(255, 255, 255, 0.5)',
+  lightHighlight: 'rgba(255, 255, 255, 0.8)',
+
+  // Frosted Glass
+  frostedBg: 'rgba(255, 255, 255, 0.9)',
+  frostedBorder: 'rgba(255, 255, 255, 0.6)',
+
+  // Green Tinted Glass
+  tintedGreenBg: 'rgba(0, 192, 106, 0.08)',
+  tintedGreenBorder: 'rgba(0, 192, 106, 0.2)',
+
+  // Gold Tinted Glass
+  tintedGoldBg: 'rgba(255, 200, 87, 0.1)',
+  tintedGoldBorder: 'rgba(255, 200, 87, 0.3)',
+};
+
+const COLORS = {
+  primary: '#00C06A',       // ReZ Green
+  primaryDark: '#00996B',   // Deep Green
+  gold: '#FFC857',          // Sun Gold
+  goldDark: '#E5A500',      // Darker Gold
+  navy: '#0B2240',          // Midnight Navy
+  textPrimary: '#1F2937',
+  textSecondary: '#6B7280',
+  white: '#FFFFFF',
+  surface: '#F7FAFC',
+  discount: '#EF4444',      // Red for discount badges
+};
 
 interface StoreProductsProps {
   storeId: string;
@@ -11,9 +59,6 @@ interface StoreProductsProps {
 }
 
 const { width } = Dimensions.get('window');
-// Parent sectionCard has marginHorizontal:16 + paddingHorizontal:20 = 36px each side
-// Plus 12px gap between cards
-// Total to subtract: (36*2) + 12 = 84px
 const CARD_WIDTH = (width - 84) / 2;
 
 export default function StoreProducts({ storeId, storeName }: StoreProductsProps) {
@@ -21,6 +66,10 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Animation refs
+  const cardScale1 = useRef(new Animated.Value(1)).current;
+  const cardScale2 = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     fetchProducts();
@@ -31,17 +80,8 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
       setLoading(true);
       setError(null);
 
-      console.log('📦 [StoreProducts] Fetching products for storeId:', storeId);
-
-      // Don't send pagination params - backend validation doesn't allow them
       const response = await productsApi.getProductsByStore(storeId, {});
 
-      console.log('📦 [StoreProducts] Full Response:', JSON.stringify(response, null, 2));
-      console.log('📦 [StoreProducts] Success:', response.success);
-      console.log('📦 [StoreProducts] Data:', response.data);
-
-      // Backend returns: { data: [{ store: {...}, products: [...] }] }
-      // Add proper validation to prevent crashes if API structure changes
       if (
         response.success &&
         response.data &&
@@ -49,29 +89,20 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
         response.data.length > 0
       ) {
         const storeData = response.data[0];
-
-        // Validate storeData exists and has products array
         if (
           storeData &&
           typeof storeData === 'object' &&
           'products' in storeData &&
           Array.isArray(storeData.products)
         ) {
-          const products = storeData.products;
-          console.log('📦 [StoreProducts] Found', products.length, 'products');
-          setProducts(products);
+          setProducts(storeData.products);
         } else {
-          console.log('📦 [StoreProducts] Invalid data structure - missing products array');
           setError('Invalid product data structure');
         }
       } else {
-        console.log('📦 [StoreProducts] No products in response');
         setError('No products found');
       }
     } catch (err: any) {
-      console.error('❌ [StoreProducts] Error:', err);
-      console.error('❌ [StoreProducts] Error message:', err.message);
-      console.error('❌ [StoreProducts] Error response:', err.response);
       setError('Failed to load products');
     } finally {
       setLoading(false);
@@ -82,31 +113,29 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
     const productId = product._id || product.id;
     router.push({
       pathname: '/ProductPage',
-      params: {
-        cardId: productId,
-        cardType: 'product'
-      }
+      params: { cardId: productId, cardType: 'product' }
     } as any);
   };
 
   const handleViewAll = () => {
-    // Navigate to full products page for this store
     router.push({
       pathname: '/StoreProductsPage',
-      params: {
-        storeId,
-        storeName: storeName || 'Store'
-      }
+      params: { storeId, storeName: storeName || 'Store' }
     } as any);
   };
 
-  // Format price with comma separator
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('en-IN');
+  const formatPrice = (price: number) => price.toLocaleString('en-IN');
+
+  const animateCard = (scale: Animated.Value, toValue: number) => {
+    Animated.spring(scale, {
+      toValue,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 100,
+    }).start();
   };
 
-  const renderProduct = ({ item }: { item: any }) => {
-    // Handle both array of strings and array of image objects
+  const renderProduct = ({ item, index }: { item: any; index: number }) => {
     const imageUrl = Array.isArray(item.images) && item.images.length > 0
       ? (typeof item.images[0] === 'string' ? item.images[0] : item.images[0]?.url)
       : null;
@@ -117,96 +146,140 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
       ? Math.round(((comparePrice - price) / comparePrice) * 100)
       : 0;
 
-    // Truncate product name for display
     const displayName = item.name?.length > 30
       ? item.name.substring(0, 30) + '...'
       : item.name;
 
+    const cardScale = index === 0 ? cardScale1 : cardScale2;
+
     return (
-      <TouchableOpacity
-        style={styles.productCard}
-        onPress={() => handleProductPress(item)}
-        activeOpacity={0.85}
-      >
-        {/* Product Image */}
-        <View style={styles.imageContainer}>
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.productImage}
-              resizeMode="cover"
-            />
+      <Animated.View style={{ transform: [{ scale: cardScale }] }}>
+        <TouchableOpacity
+          style={styles.productCard}
+          onPress={() => handleProductPress(item)}
+          onPressIn={() => animateCard(cardScale, 0.96)}
+          onPressOut={() => animateCard(cardScale, 1)}
+          activeOpacity={1}
+        >
+          {/* Glass Card Effect */}
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={40} tint="light" style={styles.cardBlur}>
+              {renderCardContent()}
+            </BlurView>
           ) : (
-            <View style={styles.placeholderImage}>
-              <Ionicons name="image-outline" size={32} color="#CBD5E1" />
+            <View style={[styles.cardBlur, styles.cardBlurAndroid]}>
+              {renderCardContent()}
             </View>
           )}
+        </TouchableOpacity>
+      </Animated.View>
+    );
 
-          {/* Discount Badge */}
-          {discount > 0 && (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>{discount}% OFF</Text>
-            </View>
-          )}
-        </View>
+    function renderCardContent() {
+      return (
+        <>
+          {/* Inner Glass Highlight */}
+          <View style={styles.glassHighlight} />
 
-        {/* Product Info */}
-        <View style={styles.productInfo}>
-          <Text style={styles.productName} numberOfLines={2} ellipsizeMode="tail">
-            {displayName}
-          </Text>
+          {/* Product Image */}
+          <View style={styles.imageContainer}>
+            {imageUrl ? (
+              <Image
+                source={{ uri: imageUrl }}
+                style={styles.productImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.placeholderImage}>
+                <Ionicons name="image-outline" size={32} color={COLORS.textSecondary} />
+              </View>
+            )}
 
-          {/* Price Section */}
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>₹{formatPrice(price)}</Text>
-            {comparePrice && comparePrice > price && (
-              <Text style={styles.comparePrice}>₹{formatPrice(comparePrice)}</Text>
+            {/* Premium Discount Badge */}
+            {discount > 0 && (
+              <LinearGradient
+                colors={[COLORS.gold, COLORS.goldDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.discountBadge}
+              >
+                <Text style={styles.discountText}>{discount}% OFF</Text>
+              </LinearGradient>
             )}
           </View>
 
-          {/* Rating - if available */}
-          {item.ratings?.average > 0 && (
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={11} color="#FBBF24" />
-              <Text style={styles.ratingText}>
-                {item.ratings.average.toFixed(1)}
-              </Text>
+          {/* Product Info */}
+          <View style={styles.productInfo}>
+            <Text style={styles.productName} numberOfLines={2} ellipsizeMode="tail">
+              {displayName}
+            </Text>
+
+            {/* Price Section */}
+            <View style={styles.priceContainer}>
+              <Text style={styles.price}>₹{formatPrice(price)}</Text>
+              {comparePrice && comparePrice > price && (
+                <Text style={styles.comparePrice}>₹{formatPrice(comparePrice)}</Text>
+              )}
             </View>
-          )}
-        </View>
-      </TouchableOpacity>
-    );
+
+            {/* Rating Badge - Glass Style */}
+            {item.ratings?.average > 0 && (
+              <View style={styles.ratingBadge}>
+                <Ionicons name="star" size={11} color={COLORS.goldDark} />
+                <Text style={styles.ratingText}>
+                  {item.ratings.average.toFixed(1)}
+                </Text>
+              </View>
+            )}
+          </View>
+        </>
+      );
+    }
   };
 
+  // Loading State with Glass Effect
   if (loading) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Store Products</Text>
+          <View style={styles.headerTitleRow}>
+            <View style={styles.headerIconBg}>
+              <Ionicons name="cube" size={16} color={COLORS.white} />
+            </View>
+            <Text style={styles.title}>Store Products</Text>
+          </View>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7C3AED" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>Loading products...</Text>
         </View>
       </View>
     );
   }
 
+  // Error/Empty State
   if (error || products.length === 0) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Store Products</Text>
+          <View style={styles.headerTitleRow}>
+            <View style={styles.headerIconBg}>
+              <Ionicons name="cube" size={16} color={COLORS.white} />
+            </View>
+            <Text style={styles.title}>Store Products</Text>
+          </View>
         </View>
         <View style={styles.emptyContainer}>
-          <Ionicons name="cube-outline" size={48} color="#CBD5E1" />
+          <View style={styles.emptyIconBg}>
+            <Ionicons name="cube-outline" size={36} color={COLORS.textSecondary} />
+          </View>
           <Text style={styles.emptyText}>
             {error || 'No products available'}
           </Text>
           {error && (
             <RetryButton
               onRetry={fetchProducts}
-              label="Retry"
+              label="Try Again"
               variant="secondary"
               size="small"
               style={{ marginTop: 16 }}
@@ -217,27 +290,39 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
     );
   }
 
-  // Show only 2 products on MainStorePage if there are more than 2
   const displayProducts = products.slice(0, 2);
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Premium Glass Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Store Products</Text>
+        <View style={styles.headerTitleRow}>
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.primaryDark]}
+            style={styles.headerIconBg}
+          >
+            <Ionicons name="cube" size={16} color={COLORS.white} />
+          </LinearGradient>
+          <Text style={styles.title}>Store Products</Text>
+        </View>
+
         {products.length >= 2 && (
-          <TouchableOpacity onPress={handleViewAll} style={styles.viewAllButton} activeOpacity={0.7}>
-            <Text style={styles.viewAll}>View All ({products.length})</Text>
-            <Ionicons name="chevron-forward" size={16} color="#7C3AED" />
+          <TouchableOpacity
+            onPress={handleViewAll}
+            style={styles.viewAllButton}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.viewAllText}>View All ({products.length})</Text>
+            <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Products Row - Show max 2 products */}
+      {/* Products Grid */}
       <View style={styles.productsRow}>
-        {displayProducts.map((product) => (
+        {displayProducts.map((product, index) => (
           <View key={product._id || product.id}>
-            {renderProduct({ item: product })}
+            {renderProduct({ item: product, index })}
           </View>
         ))}
       </View>
@@ -247,158 +332,250 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 12,
-    // No horizontal padding - parent sectionCard already has paddingHorizontal
+    paddingVertical: 16,
   },
+
+  // Header Styles
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
+
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  headerIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
     letterSpacing: -0.3,
   },
+
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#F3E8FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: 4,
+    backgroundColor: GLASS.tintedGreenBg,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: GLASS.tintedGreenBorder,
   },
-  viewAll: {
+
+  viewAllText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#7C3AED',
+    color: COLORS.primary,
   },
+
+  // Products Grid
   productsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
   },
-  row: {
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
+
+  // Product Card - Glass Effect
   productCard: {
     width: CARD_WIDTH,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
+
+  cardBlur: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: GLASS.lightBorder,
+    overflow: 'hidden',
+  },
+
+  cardBlurAndroid: {
+    backgroundColor: GLASS.lightBg,
+  },
+
+  glassHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: GLASS.lightHighlight,
+    zIndex: 1,
+  },
+
+  // Image Container
   imageContainer: {
     width: '100%',
     height: CARD_WIDTH * 0.85,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.surface,
     position: 'relative',
   },
+
   productImage: {
     width: '100%',
     height: '100%',
   },
+
   placeholderImage: {
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.surface,
   },
+
+  // Premium Gold Discount Badge
   discountBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#DC2626',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    shadowColor: '#DC2626',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 2,
+    top: 10,
+    right: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
+
   discountText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: COLORS.navy,
     letterSpacing: 0.3,
   },
+
+  // Product Info
   productInfo: {
-    padding: 10,
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
+
   productName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: COLORS.textPrimary,
     marginBottom: 8,
     lineHeight: 17,
     height: 34,
   },
+
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 6,
   },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    backgroundColor: '#FEF9C3',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  ratingText: {
-    fontSize: 11,
-    color: '#92400E',
-    marginLeft: 3,
-    fontWeight: '600',
-  },
+
   price: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#7C3AED',
+    color: COLORS.primary,
   },
+
   comparePrice: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#9CA3AF',
+    color: COLORS.textSecondary,
     textDecorationLine: 'line-through',
   },
+
+  // Glass Rating Badge
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: GLASS.tintedGoldBg,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: GLASS.tintedGoldBorder,
+  },
+
+  ratingText: {
+    fontSize: 11,
+    color: COLORS.goldDark,
+    marginLeft: 4,
+    fontWeight: '700',
+  },
+
+  // Loading State
   loadingContainer: {
     paddingVertical: 48,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: GLASS.frostedBg,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: GLASS.frostedBorder,
   },
+
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
+
+  // Empty State
   emptyContainer: {
     paddingVertical: 48,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: GLASS.frostedBg,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: GLASS.frostedBorder,
   },
+
+  emptyIconBg: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
   emptyText: {
-    marginTop: 12,
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     fontWeight: '500',
+    textAlign: 'center',
   },
 });

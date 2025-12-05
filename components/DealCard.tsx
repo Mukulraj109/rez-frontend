@@ -291,7 +291,7 @@ export default function DealCard({
           {/* Usage Limit */}
           {deal.usageLimit && (
             <View style={styles.usageContainer}>
-              <Ionicons name="repeat-outline" size={14} color="#8B5CF6" />
+              <Ionicons name="repeat-outline" size={14} color="#00C06A" />
               <ThemedText style={styles.usageText}>
                 {deal.usageLimit - (deal.usageCount || 0)} uses remaining
               </ThemedText>
@@ -306,10 +306,10 @@ export default function DealCard({
             <ThemedText style={styles.previewToggleText}>
               {showPreview ? 'Hide' : 'Preview'} savings
             </ThemedText>
-            <Ionicons 
-              name={showPreview ? "chevron-up-outline" : "chevron-down-outline"} 
-              size={16} 
-              color="#8B5CF6" 
+            <Ionicons
+              name={showPreview ? "chevron-up-outline" : "chevron-down-outline"}
+              size={16}
+              color="#00C06A"
             />
           </TouchableOpacity>
         </View>
@@ -381,12 +381,12 @@ export default function DealCard({
 // Helper functions
 const getCategoryColor = (category: string): string => {
   const colors: Record<string, string> = {
-    'instant-discount': '#8B5CF6',
+    'instant-discount': '#00C06A',
     'cashback': '#10B981',
-    'buy-one-get-one': '#F59E0B',
+    'buy-one-get-one': '#FFC857',
     'seasonal': '#EF4444',
     'first-time': '#3B82F6',
-    'loyalty': '#7C3AED',
+    'loyalty': '#00796B',
     'clearance': '#DC2626',
   };
   return colors[category] || '#6B7280';
@@ -587,7 +587,7 @@ const createStyles = (screenWidth: number) => {
     },
     moreDetailsText: {
       fontSize: 12,
-      color: '#8B5CF6',
+      color: '#00C06A',
       fontWeight: '600',
     },
     usageContainer: {
@@ -597,7 +597,7 @@ const createStyles = (screenWidth: number) => {
     },
     usageText: {
       fontSize: 12,
-      color: '#8B5CF6',
+      color: '#00C06A',
       marginLeft: 6,
       fontWeight: '500',
     },
@@ -610,7 +610,7 @@ const createStyles = (screenWidth: number) => {
     },
     previewToggleText: {
       fontSize: 13,
-      color: '#8B5CF6',
+      color: '#00C06A',
       fontWeight: '600',
       marginRight: 4,
     },
@@ -675,7 +675,7 @@ const createStyles = (screenWidth: number) => {
       width: 4,
       height: 4,
       borderRadius: 2,
-      backgroundColor: '#8B5CF6',
+      backgroundColor: '#00C06A',
       marginTop: 6,
       marginRight: 8,
     },
@@ -686,18 +686,18 @@ const createStyles = (screenWidth: number) => {
       lineHeight: 16,
     },
     actionButton: {
-      backgroundColor: '#8B5CF6',
+      backgroundColor: '#00C06A',
       borderRadius: 0, // Full width button
       paddingVertical: isSmallScreen ? 16 : 18,
       paddingHorizontal: isSmallScreen ? 16 : 20,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: '#8B5CF6',
+      shadowColor: '#00C06A',
       shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 3,
       marginTop: 0,
       minHeight: 56, // Larger touch target
     },

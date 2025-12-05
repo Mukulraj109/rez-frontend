@@ -11,6 +11,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { FilterChipsProps } from '@/types/home-delivery.types';
 
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  navy: '#0B2240',
+  slate: '#1F2D3D',
+  muted: '#9AA7B2',
+  surface: '#F7FAFC',
+  error: '#EF4444',
+  glassWhite: 'rgba(255, 255, 255, 0.8)',
+  glassBorder: 'rgba(255, 255, 255, 0.4)',
+};
+
 interface FilterChip {
   id: string;
   label: string;
@@ -105,7 +119,7 @@ export function FilterChips({
               <Ionicons
                 name={chip.icon as any}
                 size={16}
-                color={chip.isActive ? '#8B5CF6' : '#6B7280'}
+                color={chip.isActive ? COLORS.primary : COLORS.muted}
                 style={styles.chipIcon}
               />
               <ThemedText style={[
@@ -114,12 +128,12 @@ export function FilterChips({
               ]}>
                 {chip.label}
               </ThemedText>
-              
+
               {chip.isActive && (
                 <View style={styles.activeIndicator}>
                   <Ionicons
                     name="checkmark"
-                    size={12}
+                    size={11}
                     color="#FFFFFF"
                   />
                 </View>
@@ -163,55 +177,66 @@ export function FilterChips({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
+    backgroundColor: COLORS.glassWhite,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: 'rgba(0, 0, 0, 0.04)',
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      },
+    }),
   },
   scrollView: {
     flexGrow: 0,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    gap: 12,
+    paddingHorizontal: 16,
+    gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-      web: {
-        boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
-      },
-    }),
-  },
-  filterChipActive: {
-    backgroundColor: '#EDE9FE',
-    borderColor: '#8B5CF6',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#8B5CF6',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
       },
       android: {
         elevation: 2,
       },
       web: {
-        boxShadow: '0px 2px 4px rgba(139, 92, 246, 0.1)',
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255,255,255,0.5)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+      },
+    }),
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    borderColor: COLORS.primary,
+    borderWidth: 1.5,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 3px 12px rgba(0, 192, 106, 0.15)',
       },
     }),
   },
@@ -224,34 +249,51 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
   chipText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
-    color: '#6B7280',
+    color: COLORS.slate,
   },
   chipTextActive: {
-    color: '#8B5CF6',
+    color: COLORS.primaryDark,
     fontWeight: '600',
   },
   activeIndicator: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#8B5CF6',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 4,
+    marginLeft: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 6px rgba(0, 192, 106, 0.3)',
+      },
+    }),
   },
   clearAllButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   clearAllText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.error,
   },
 });

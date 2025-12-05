@@ -153,7 +153,7 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
   const renderSkeleton = () => {
     return (
       <View style={styles.skeletonContainer}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#00C06A" />
         <ThemedText style={styles.skeletonText}>Loading recommendations...</ThemedText>
       </View>
     );
@@ -212,7 +212,7 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
         {item.storeName && (
           <View style={styles.storeBadgeContainer}>
             <View style={styles.storeBadge}>
-              <Ionicons name="storefront" size={12} color="#8B5CF6" />
+              <Ionicons name="storefront" size={12} color="#00C06A" />
               <ThemedText style={styles.storeBadgeText} numberOfLines={1}>
                 From {item.storeName}
               </ThemedText>
@@ -238,7 +238,7 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
       {/* Section Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name="sparkles" size={24} color="#8B5CF6" />
+          <Ionicons name="sparkles" size={24} color="#00C06A" />
           <ThemedText style={styles.title}>Recommended for You</ThemedText>
         </View>
         {!loading && !error && products.length > 0 && (
@@ -251,7 +251,7 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
             accessibilityHint="Double tap to see all recommended products"
           >
             <ThemedText style={styles.viewAllText}>View All</ThemedText>
-            <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+            <Ionicons name="chevron-forward" size={16} color="#00C06A" />
           </TouchableOpacity>
         )}
       </View>
@@ -334,12 +334,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 6,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
   },
   viewAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   content: {
     minHeight: 200,
@@ -365,19 +365,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#E9D5FF',
+    borderColor: 'rgba(0, 192, 106, 0.2)',
     alignSelf: 'flex-start',
     maxWidth: '100%',
   },
   storeBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00796B',
     flexShrink: 1,
   },
   // Skeleton Loader
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,

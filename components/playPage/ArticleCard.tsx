@@ -5,6 +5,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { Article } from '@/types/article.types';
 
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  text: '#0B2240',
+};
+
 const { width: screenWidth } = Dimensions.get('window');
 
 interface ArticleCardProps {
@@ -47,7 +55,7 @@ export default function ArticleCard({ article, onPress, style }: ArticleCardProp
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.placeholderContainer]}>
-            <Ionicons name="document-text" size={40} color="#8B5CF6" />
+            <Ionicons name="document-text" size={40} color={COLORS.primary} />
             <ThemedText style={styles.placeholderText}>Article</ThemedText>
           </View>
         )}
@@ -83,7 +91,7 @@ export default function ArticleCard({ article, onPress, style }: ArticleCardProp
           {/* Read more button */}
           <View style={styles.readMoreContainer}>
             <ThemedText style={styles.readMoreText}>Read more</ThemedText>
-            <Ionicons name="arrow-forward" size={12} color="#8B5CF6" />
+            <Ionicons name="arrow-forward" size={12} color={COLORS.primary} />
           </View>
         </View>
       </View>
@@ -96,14 +104,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#FFFFFF',
-    shadowColor: '#8B5CF6',
+    shadowColor: COLORS.gold,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 10,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 200, 87, 0.2)',
   },
   imageContainer: {
     flex: 1,
@@ -112,11 +120,11 @@ const styles = StyleSheet.create({
   placeholderContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#EDE9FE',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     gap: 10,
   },
   placeholderText: {
-    color: '#8B5CF6',
+    color: COLORS.primary,
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -171,14 +179,16 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignSelf: 'flex-start',
     gap: 4,
-    shadowColor: '#8B5CF6',
+    shadowColor: COLORS.gold,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 200, 87, 0.25)',
   },
   readMoreText: {
-    color: '#8B5CF6',
+    color: COLORS.primary,
     fontSize: 12,
     fontWeight: '700',
   },

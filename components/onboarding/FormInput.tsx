@@ -186,16 +186,16 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   inputFocused: {
-    borderColor: '#8B5CF6',
+    borderColor: '#FFC857',
     borderWidth: 2,
-    shadowColor: '#8B5CF6',
+    shadowColor: '#FFC857',
     shadowOffset: {
       width: 0,
       height: 0,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
   },
   inputError: {
     borderColor: '#EF4444',

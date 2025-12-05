@@ -120,7 +120,7 @@ const FashionHeader = () => {
   return (
     <View style={styles.wrapper}>
       <LinearGradient
-        colors={["#FF6B9D", "#C651CD", "#8E2DE2"]}
+        colors={["#00C06A", "#00996B", "#0B2240"]}
         style={styles.container}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -199,7 +199,7 @@ const FashionHeader = () => {
                 accessibilityHint="Double tap to open profile and settings menu"
               >
                 <LinearGradient
-                  colors={["#FFD700", "#FFA500", "#FF69B4"]}
+                  colors={["#FFC857", "#FF9F1C", "#00C06A"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.profileGradient}
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   coinContainer: {
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#FFD700",
+    shadowColor: "#FFC857",
     shadowOpacity: 0.4,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#FFD700",
+    shadowColor: "#FFC857",
     shadowOpacity: 0.5,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   discountBadge: {
     borderRadius: 30,
     overflow: "hidden",
-    shadowColor: "#FFD700",
+    shadowColor: "#FFC857",
     shadowOpacity: 0.6,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -494,13 +494,13 @@ const styles = StyleSheet.create({
   uptoText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#6B21A8",
+    color: "#0B2240",
     letterSpacing: 1.5,
   },
   discountText: {
     fontSize: 32,
     fontWeight: "900",
-    color: "#6B21A8",
+    color: "#0B2240",
     lineHeight: 36,
     textShadowColor: "rgba(255, 255, 255, 0.5)",
     textShadowOffset: { width: 0, height: 1 },
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   offText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#6B21A8",
+    color: "#0B2240",
     letterSpacing: 1.5,
   },
   saleTagContainer: {

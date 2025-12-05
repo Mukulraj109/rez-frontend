@@ -78,8 +78,8 @@ export function createButtonConfigs(props: StoreActionButtonsProps): ActionButto
       isVisible: true,
       isEnabled: !props.isLockDisabled && props.lockButtonState !== 'disabled',
       isLoading: props.isLockLoading || props.lockButtonState === 'loading',
-      backgroundColor: ['#F59E0B', '#DC2626'] as const, // Enhanced amber-to-red gradient for lock
-      textColor: '#FFFFFF',
+      backgroundColor: ['#FFC857', '#FF9F1C'] as const, // ReZ Gold gradient for lock (premium action)
+      textColor: '#0B2240', // Midnight Navy for contrast on gold
     });
   }
 
@@ -93,7 +93,7 @@ export function createButtonConfigs(props: StoreActionButtonsProps): ActionButto
       isVisible: true,
       isEnabled: !props.isBookingDisabled && props.bookingButtonState !== 'disabled',
       isLoading: props.isBookingLoading || props.bookingButtonState === 'loading',
-      backgroundColor: ['#8B5CF6', '#6D28D9'] as const, // Enhanced purple gradient for booking
+      backgroundColor: ['#00C06A', '#00796B'] as const, // ReZ Green gradient for booking
       textColor: '#FFFFFF',
     });
   }
@@ -221,25 +221,25 @@ const DEFAULT_BUTTON_CONFIGS: Record<ActionButtonId, {
   call: {
     title: 'Call',
     iconName: 'call-outline',
-    backgroundColor: ['#8B5CF6', '#6D28D9'] as const,
+    backgroundColor: ['#00C06A', '#00796B'] as const, // ReZ Green gradient
     textColor: '#FFFFFF',
   },
   product: {
     title: 'Products',
     iconName: 'cube-outline',
-    backgroundColor: ['#8B5CF6', '#6D28D9'] as const,
+    backgroundColor: ['#00C06A', '#00796B'] as const, // ReZ Green gradient
     textColor: '#FFFFFF',
   },
   location: {
     title: 'Location',
     iconName: 'location-outline',
-    backgroundColor: ['#8B5CF6', '#6D28D9'] as const,
+    backgroundColor: ['#00C06A', '#00796B'] as const, // ReZ Green gradient
     textColor: '#FFFFFF',
   },
   custom: {
     title: 'Action',
     iconName: 'arrow-forward-outline',
-    backgroundColor: ['#8B5CF6', '#6D28D9'] as const,
+    backgroundColor: ['#00C06A', '#00796B'] as const, // ReZ Green gradient
     textColor: '#FFFFFF',
   },
 };

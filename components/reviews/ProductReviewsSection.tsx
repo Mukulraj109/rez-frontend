@@ -178,7 +178,7 @@ export default function ProductReviewsSection({
                 {option.label}
               </ThemedText>
               {sortBy === option.key && (
-                <Ionicons name="checkmark" size={20} color="#8B5CF6" />
+                <Ionicons name="checkmark" size={20} color="#00C06A" />
               )}
             </TouchableOpacity>
           ))}
@@ -201,7 +201,7 @@ export default function ProductReviewsSection({
           onPress={handleWriteReview}
           activeOpacity={0.8}
         >
-          <Ionicons name="create" size={20} color="#8B5CF6" />
+          <Ionicons name="create" size={20} color="#00C06A" />
           <ThemedText style={styles.writeReviewText}>Write a Review</ThemedText>
         </TouchableOpacity>
 
@@ -224,7 +224,7 @@ export default function ProductReviewsSection({
             Showing {filterRating} star reviews
           </ThemedText>
           <TouchableOpacity onPress={() => onFilterChange(null)}>
-            <Ionicons name="close-circle" size={20} color="#8B5CF6" />
+            <Ionicons name="close-circle" size={20} color="#00C06A" />
           </TouchableOpacity>
         </View>
       )}
@@ -259,7 +259,7 @@ export default function ProductReviewsSection({
           activeOpacity={0.8}
         >
           <ThemedText style={styles.loadMoreText}>Load More Reviews</ThemedText>
-          <Ionicons name="chevron-down" size={16} color="#8B5CF6" />
+          <Ionicons name="chevron-down" size={16} color="#00C06A" />
         </TouchableOpacity>
       </View>
     );
@@ -268,7 +268,7 @@ export default function ProductReviewsSection({
   if (isLoading && reviews.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#00C06A" />
         <ThemedText style={styles.loadingText}>Loading reviews...</ThemedText>
       </View>
     );
@@ -296,8 +296,8 @@ export default function ProductReviewsSection({
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={['#8B5CF6']}
-            tintColor="#8B5CF6"
+            colors={['#00C06A']}
+            tintColor="#00C06A"
           />
         }
         contentContainerStyle={[
@@ -421,15 +421,15 @@ const styles = StyleSheet.create({
   writeReviewButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F7FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     borderWidth: 1,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   writeReviewText: {
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
     marginLeft: 8,
   },
@@ -448,13 +448,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F5F3FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   filterText: {
     fontSize: 13,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
   },
   emptyState: {
@@ -477,10 +477,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   emptyButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   emptyButtonText: {
     fontSize: 14,
@@ -497,13 +502,13 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: '#F8F7FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     borderWidth: 1,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
     borderRadius: 20,
   },
   loadMoreText: {
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
     fontSize: 14,
   },
@@ -543,14 +548,14 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   sortOptionSelected: {
-    backgroundColor: '#F8F7FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
   },
   sortOptionText: {
     fontSize: 16,
     color: '#333',
   },
   sortOptionTextSelected: {
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
   },
 });

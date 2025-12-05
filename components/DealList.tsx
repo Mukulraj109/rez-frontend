@@ -205,7 +205,7 @@ export default function DealList({
             style={styles.controlButton}
             onPress={() => setShowFilterModal(true)}
           >
-            <Ionicons name="funnel-outline" size={16} color="#8B5CF6" />
+            <Ionicons name="funnel-outline" size={16} color="#00C06A" />
             <ThemedText style={styles.controlButtonText} numberOfLines={1}>
               {filterBy === 'all' ? 'Filter' : `Filter: ${getCategoryDisplayName(filterBy)}`}
             </ThemedText>
@@ -221,7 +221,7 @@ export default function DealList({
               setSortBy(nextSort);
             }}
           >
-            <Ionicons name="swap-vertical-outline" size={16} color="#8B5CF6" />
+            <Ionicons name="swap-vertical-outline" size={16} color="#00C06A" />
             <ThemedText style={styles.controlButtonText} numberOfLines={1}>
               Sort: {getSortDisplayName(sortBy)}
             </ThemedText>
@@ -317,8 +317,8 @@ export default function DealList({
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor="#8B5CF6"
-              colors={['#8B5CF6']}
+              tintColor="#00C06A"
+              colors={['#00C06A']}
             />
           ) : undefined
         }
@@ -335,7 +335,7 @@ export default function DealList({
       {/* Loading overlay for refresh */}
       {isLoading && processedDeals.length > 0 && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#00C06A" />
         </View>
       )}
     </View>
@@ -429,7 +429,7 @@ const createStyles = (screenData: { width: number; height: number }, isTablet: b
   controlButtonText: {
     fontSize: screenData.width < 375 ? 12 : 14,
     fontWeight: '500',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginLeft: 6,
     textAlign: 'center',
   },
@@ -455,8 +455,8 @@ const createStyles = (screenData: { width: number; height: number }, isTablet: b
     maxWidth: screenData.width < 375 ? screenData.width * 0.25 : screenData.width * 0.3,
   },
   quickFilterActive: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
+    borderColor: '#00C06A',
   },
   quickFilterText: {
     fontSize: screenData.width < 375 ? 10 : 12,
@@ -506,7 +506,7 @@ const createStyles = (screenData: { width: number; height: number }, isTablet: b
     lineHeight: 20,
   },
   clearFilterButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,

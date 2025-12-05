@@ -84,8 +84,8 @@ export default function ProjectDashboard({
           <ProjectStatusCard
             label="Complete now"
             count={projectStatus.completeNow}
-            color="#8B5CF6"
-            gradient={['#8B5CF6', '#7C3AED', '#6D28D9']}
+            color="#00C06A"
+            gradient={['#00C06A', '#00A85C', '#00796B']}
             onPress={() => onStatusPress('complete-now')}
             delay={0}
           />
@@ -118,18 +118,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     marginLeft: 20,
     marginRight: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 22,
     paddingVertical: 20,
     paddingLeft: 16,
-    paddingRight: 20, // Extra right padding for better visual balance
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    paddingRight: 20,
+    shadowColor: '#FFC857',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
     elevation: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 200, 87, 0.2)',
   },
   header: {
     marginBottom: 16,
@@ -146,8 +146,8 @@ const styles = StyleSheet.create({
   },
   titleUnderline: {
     width: 45,
-    height: 3,
-    backgroundColor: '#8B5CF6',
+    height: 4,
+    backgroundColor: '#FFC857',
     borderRadius: 2,
   },
   statusCards: {

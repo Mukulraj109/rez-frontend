@@ -299,10 +299,10 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
         ) : (
           <View style={styles.placeholderContainer}>
             <LinearGradient
-              colors={['#F3E8FF', '#EDE9FE']}
+              colors={['rgba(0, 192, 106, 0.1)', 'rgba(0, 192, 106, 0.05)']}
               style={StyleSheet.absoluteFill}
             />
-            <Ionicons name="image-outline" size={56} color="#A78BFA" />
+            <Ionicons name="image-outline" size={56} color="#00C06A" />
             <ThemedText style={styles.placeholderText}>No Image</ThemedText>
           </View>
         )}
@@ -315,7 +315,7 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
 
         {/* Store Badge - Bottom left */}
         <View style={styles.storeBadge}>
-          <Ionicons name="storefront" size={18} color="#7C3AED" />
+          <Ionicons name="storefront" size={18} color="#00C06A" />
         </View>
       </View>
     </View>
@@ -356,13 +356,13 @@ const styles = StyleSheet.create({
   coinBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
     borderRadius: 20,
     paddingRight: 14,
     paddingLeft: 4,
     paddingVertical: 4,
     gap: 6,
-    shadowColor: '#7C3AED',
+    shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
 
   placeholderText: {
     fontSize: 14,
-    color: '#A78BFA',
+    color: '#00C06A',
     marginTop: 8,
     fontWeight: '500',
   },

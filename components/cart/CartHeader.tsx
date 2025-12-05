@@ -24,10 +24,10 @@ export default function CartHeader({ onBack, title = 'Cart' }: CartHeaderProps) 
 
   return (
     <LinearGradient
-      colors={['#8B5CF6', '#6D28D9']}
+      colors={['#00C06A', '#00996B']}
       style={[styles.container, { paddingTop: statusBarHeight + 10 }]}
       start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      end={{ x: 1, y: 0 }}
     >
       <View style={styles.content}>
         {/* Back Button */}
@@ -60,39 +60,50 @@ export default function CartHeader({ onBack, title = 'Cart' }: CartHeaderProps) 
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: 20,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 6,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    minHeight: 48,
+    minHeight: 52,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.35)',
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   title: {
     flex: 1,
     textAlign: 'center',
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   spacer: {
-    width: 44,
+    width: 46,
   },
 });

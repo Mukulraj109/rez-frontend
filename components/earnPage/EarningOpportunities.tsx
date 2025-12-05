@@ -67,7 +67,7 @@ const opportunities: EarningOpportunity[] = [
     description: 'Daily chance to win coins',
     icon: 'radio-button-on',
     coins: '50-500',
-    gradient: ['#8B5CF6', '#7C3AED', '#6D28D9'], // Enhanced purple gradient
+    gradient: ['#00C06A', '#00A85C', '#00796B'], // ReZ green gradient
     route: '/games/spin-wheel',
   },
   {
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   titleUnderline: {
     width: 50,
     height: 4,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#FFC857',
     borderRadius: 2,
   },
   sectionSubtitle: {

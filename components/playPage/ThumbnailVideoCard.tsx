@@ -5,6 +5,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { UGCVideoItem, PLAY_PAGE_COLORS } from '@/types/playPage.types';
 
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+};
+
 const { width: screenWidth } = Dimensions.get('window');
 
 interface ThumbnailVideoCardProps {
@@ -50,7 +57,7 @@ export default function ThumbnailVideoCard({
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.placeholderContainer]}>
-            <Ionicons name="videocam" size={40} color="#A855F7" />
+            <Ionicons name="videocam" size={40} color={COLORS.primary} />
             <ThemedText style={styles.placeholderText}>Video</ThemedText>
           </View>
         )}
@@ -121,14 +128,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: PLAY_PAGE_COLORS.cardBackground,
-    shadowColor: '#8B5CF6',
+    shadowColor: COLORS.gold,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 12,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.1)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 200, 87, 0.2)',
   },
   thumbnailContainer: {
     flex: 1,
@@ -137,11 +144,11 @@ const styles = StyleSheet.create({
   placeholderContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#EDE9FE',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     gap: 10,
   },
   placeholderText: {
-    color: '#8B5CF6',
+    color: COLORS.primary,
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -177,16 +184,16 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(139, 92, 246, 0.95)',
+    backgroundColor: 'rgba(0, 192, 106, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8B5CF6',
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 10,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 200, 87, 0.3)',
   },
   contentOverlay: {
     position: 'absolute',

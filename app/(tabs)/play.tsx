@@ -338,7 +338,7 @@ export default function PlayScreen() {
               accessibilityHint="Double tap to upload the first video to this section"
             >
               <LinearGradient
-                colors={['#8B5CF6', '#A855F7']}
+                colors={['#00C06A', '#00A85C', '#00796B']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.emptyButtonGradient}
@@ -373,7 +373,7 @@ export default function PlayScreen() {
             accessibilityHint="Double tap to upload a video and share your content"
           >
             <LinearGradient
-              colors={['#8B5CF6', '#A855F7', '#C084FC']}
+              colors={['#00C06A', '#00A85C', '#00796B']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.fabGradient}
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   emptyButton: {
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: {
       width: 0,
       height: 4,

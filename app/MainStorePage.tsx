@@ -894,9 +894,9 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
 
   return (
     <ThemedView style={styles.page}>
-      <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
+      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
 
-      <LinearGradient colors={["#7C3AED", "#8B5CF6"]} style={styles.headerGradient}>
+      <LinearGradient colors={["#00C06A", "#00996B"]} style={styles.headerGradient}>
         <MainStoreHeader
           storeName={isDynamic && storeData ? storeData.name || storeData.title : productData.storeName}
           subtitle={isDynamic && storeData ? (() => {
@@ -921,8 +921,8 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#8B5CF6', '#7C3AED']} // Android
-            tintColor="#8B5CF6" // iOS
+            colors={['#00C06A', '#00996B']} // Android
+            tintColor="#00C06A" // iOS
             title="Pull to refresh" // iOS
             titleColor="#666"
           />
@@ -1206,7 +1206,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       {/* This reduces initial bundle size by ~150KB (3 modals × 50KB each) */}
 
       {showAboutModal && (
-        <Suspense fallback={<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#7C3AED" /></View>}>
+        <Suspense fallback={<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#00C06A" /></View>}>
           <LazyAboutModal
             visible={showAboutModal}
             onClose={handleCloseAboutModal}
@@ -1389,7 +1389,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       )}
 
       {showDealsModal && (
-        <Suspense fallback={<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#7C3AED" /></View>}>
+        <Suspense fallback={<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#00C06A" /></View>}>
           <LazyWalkInDealsModal
             visible={showDealsModal}
             onClose={handleCloseDealsModal}
@@ -1399,7 +1399,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       )}
 
       {showReviewModal && (
-        <Suspense fallback={<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#7C3AED" /></View>}>
+        <Suspense fallback={<View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#00C06A" /></View>}>
           <LazyReviewModal
             visible={showReviewModal}
             onClose={handleCloseReviewModal}
@@ -1464,14 +1464,17 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
     },
     headerGradient: {
       paddingBottom: 8,
-      borderBottomLeftRadius: 24,
-      borderBottomRightRadius: 24,
+      borderBottomLeftRadius: 28,
+      borderBottomRightRadius: 28,
       overflow: "hidden",
-      shadowColor: "#7C3AED",
+      shadowColor: "#00C06A",
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.15,
+      shadowOpacity: 0.25,
       shadowRadius: 20,
-      elevation: 8,
+      elevation: 10,
+      borderWidth: 1,
+      borderTopWidth: 0,
+      borderColor: 'rgba(255, 255, 255, 0.15)',
     },
     scrollContent: {
       paddingBottom: 180,
@@ -1491,16 +1494,17 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
       paddingBottom: 16, // Increased bottom padding to accommodate logo overlay (half outside)
     },
     imageCard: {
-      backgroundColor: "#fff",
+      backgroundColor: "rgba(255, 255, 255, 0.95)",
       borderRadius: 24,
       overflow: "visible", // Changed to visible to allow logo to extend outside
-      shadowColor: "#7C3AED",
+      shadowColor: "#00C06A",
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.12,
+      shadowOpacity: 0.15,
       shadowRadius: 20,
       elevation: 12,
       padding: 0,
-      borderWidth: 0,
+      borderWidth: 1,
+      borderColor: "rgba(0, 192, 106, 0.1)",
       position: "relative",
       marginBottom: 0, // No margin needed since logo is positioned absolutely
     },
@@ -1512,17 +1516,17 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
     sectionCard: {
       marginHorizontal: HORIZONTAL_PADDING,
       marginTop: 20,
-      backgroundColor: "#fff",
+      backgroundColor: "rgba(255, 255, 255, 0.95)",
       borderRadius: 20,
       paddingVertical: 20,
       paddingHorizontal: 20,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 3,
+      shadowColor: "#00C06A",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 4,
       borderWidth: 1,
-      borderColor: "rgba(0, 0, 0, 0.04)",
+      borderColor: "rgba(0, 192, 106, 0.1)",
     },
     cashbackFullWidth: {
       marginHorizontal: HORIZONTAL_PADDING,
@@ -1553,13 +1557,13 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
       borderRadius: 40,
       padding: 6,
       // Enhanced shadow for separation from image
-      shadowColor: "#7C3AED",
+      shadowColor: "#00C06A",
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
+      shadowOpacity: 0.25,
       shadowRadius: 16,
       elevation: 10,
       borderWidth: 1,
-      borderColor: "rgba(124, 58, 237, 0.1)",
+      borderColor: "rgba(0, 192, 106, 0.15)",
     },
     logoContainer: {
       width: 72, // Reduced from 100 to 72 for better proportion

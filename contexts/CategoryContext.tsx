@@ -408,7 +408,7 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
             totalCount: Math.max(response.data.productCount || 0, items.length),
             headerConfig: {
               title: response.data.name,
-              backgroundColor: response.data.metadata?.color ? [response.data.metadata.color, response.data.metadata.color] : ['#8B5CF6', '#7C3AED'],
+              backgroundColor: ['#00C06A', '#00996B'], // Always use ReZ green for consistent branding
               textColor: '#FFFFFF',
               showSearch: true,
               showCart: true,
@@ -466,7 +466,7 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
         type: 'general' as const,
         image: '',
         bannerImage: '',
-        color: '#8B5CF6',
+        color: '#00C06A',
         icon: '',
         items: [
           {
@@ -517,7 +517,7 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
         totalCount: 2,
         headerConfig: {
           title: slug.charAt(0).toUpperCase() + slug.slice(1).replace(/[-_]/g, ' '),
-          backgroundColor: ['#8B5CF6', '#7C3AED'],
+          backgroundColor: ['#00C06A', '#00996B'],
           textColor: '#FFFFFF',
           showSearch: true,
           showCart: true,
@@ -582,7 +582,7 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
         totalCount: cat.productCount || 0,
         headerConfig: {
           title: cat.name,
-          backgroundColor: cat.metadata?.color ? [cat.metadata.color, cat.metadata.color] : ['#8B5CF6', '#7C3AED'],
+          backgroundColor: ['#00C06A', '#00996B'], // Always use ReZ green for consistent branding
           textColor: '#FFFFFF',
           showSearch: true,
           showCart: true,

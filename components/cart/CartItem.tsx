@@ -247,7 +247,7 @@ export default function CartItem({
               {/* Cashback Badge */}
               {item.cashback && (
                 <View style={styles.cashbackBadge}>
-                  <Ionicons name="gift" size={12} color="#8B5CF6" />
+                  <Ionicons name="gift" size={12} color="#00C06A" />
                   <ThemedText style={styles.cashbackText}>
                     {item.cashback}
                   </ThemedText>
@@ -301,18 +301,18 @@ const styles = StyleSheet.create({
     marginVertical: 0,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 18,
     padding: 14,
     flexDirection: 'row',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
     minHeight: 110,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: 'rgba(0, 192, 106, 0.1)',
   },
   imageContainer: {
     width: 80,
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   },
   productPrice: {
     fontWeight: '800',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginTop: 4,
     fontSize: 17,
   },
@@ -403,13 +403,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F3E8FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
   },
   cashbackText: {
-    color: '#8B5CF6',
+    color: '#00796B',
     fontWeight: '600',
     fontSize: 11,
   },

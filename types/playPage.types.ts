@@ -237,24 +237,26 @@ export const VIDEO_CARD_SIZES = {
   }
 };
 
-// Modern Color scheme for Play Page
+// ReZ Design System Color scheme for Play Page
 export const PLAY_PAGE_COLORS = {
-  primary: '#6366F1', // Modern indigo
-  secondary: '#8B5CF6', // Purple accent
-  background: '#FAFAFA', // Softer background
+  primary: '#00C06A', // ReZ Green
+  secondary: '#00796B', // Deep Teal
+  gold: '#FFC857', // Sun Gold
+  background: '#F7FAFC', // ReZ Surface
   cardBackground: '#FFFFFF',
-  text: '#1F2937', // Darker, more readable text
-  textSecondary: '#6B7280', // Modern gray
-  textTertiary: '#9CA3AF', // Light gray
+  text: '#0B2240', // Midnight Navy
+  textSecondary: '#1F2D3D', // Slate
+  textTertiary: '#9AA7B2', // Cool Gray
   textOverlay: '#FFFFFF',
-  shadow: '#000000',
-  like: '#F59E0B', // Warmer like color
-  share: '#10B981', // Modern green
+  shadow: '#00C06A',
+  like: '#FFC857', // Gold for likes
+  share: '#00C06A', // ReZ Green
   overlay: 'rgba(0, 0, 0, 0.2)',
   border: '#E5E7EB',
   accent: '#F3F4F6',
   gradient: {
-    header: ['#6366F1', '#8B5CF6', '#A855F7'], // 3-color gradient
+    header: ['#00C06A', '#00A85C', '#00796B'], // ReZ Green gradient
+    heroGold: ['#00C06A', '#00A16B', '#FFC857'], // Green to Gold
     videoOverlay: ['transparent', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.7)'],
     cardOverlay: ['transparent', 'rgba(0, 0, 0, 0.2)', 'rgba(0, 0, 0, 0.5)'],
     subtle: ['#F8FAFC', '#F1F5F9']

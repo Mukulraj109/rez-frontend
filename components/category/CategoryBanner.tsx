@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   cashbackBadge: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,

@@ -352,7 +352,7 @@ export default function FrequentlyBoughtTogether({
       <View style={styles.container}>
         <Text style={styles.title}>Frequently Bought Together</Text>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7C3AED" />
+          <ActivityIndicator size="large" color="#00C06A" />
           <Text style={styles.loadingText}>Loading bundle products...</Text>
         </View>
       </View>
@@ -370,7 +370,7 @@ export default function FrequentlyBoughtTogether({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name="gift" size={24} color="#7C3AED" />
+          <Ionicons name="gift" size={24} color="#00C06A" />
           <Text style={styles.title}>Frequently Bought Together</Text>
         </View>
         {savings > 0 && (
@@ -453,7 +453,7 @@ export default function FrequentlyBoughtTogether({
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={selectedProducts.size === 0 ? ['#D1D5DB', '#9CA3AF'] : ['#8B5CF6', '#7C3AED']}
+          colors={selectedProducts.size === 0 ? ['#D1D5DB', '#9CA3AF'] : ['#00C06A', '#00996B']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.addButtonGradient}
@@ -650,9 +650,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   productCardSelected: {
-    borderColor: '#7C3AED',
-    backgroundColor: '#F5F3FF',
-    shadowColor: '#7C3AED',
+    borderColor: '#00C06A',
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+    shadowColor: '#00C06A',
     shadowOpacity: 0.2,
     elevation: 4,
   },
@@ -673,8 +673,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
+    backgroundColor: '#00C06A',
+    borderColor: '#00C06A',
   },
   productImageContainer: {
     width: '100%',
@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#7C3AED',
+    color: '#00C06A',
   },
   productOriginalPrice: {
     fontSize: 12,
@@ -823,9 +823,9 @@ const styles = StyleSheet.create({
   addButton: {
     borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: '#7C3AED',
+    shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },

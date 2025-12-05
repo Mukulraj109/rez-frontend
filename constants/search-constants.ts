@@ -20,25 +20,25 @@ export const SORT_OPTIONS = {
   DISCOUNT: { id: 'discount', label: 'Best Offers', icon: 'pricetag-outline' },
 } as const;
 
-// Filter categories matching the design
+// Filter categories matching the design - ReZ Green
 export const FILTER_CATEGORIES = {
   FASHION: {
     id: 'fashion',
     label: 'Fashion',
     icon: 'shirt-outline',
-    color: '#7C3AED',
+    color: '#00C06A',
     activeColor: '#FFFFFF',
     backgroundColor: '#F3F4F6',
-    activeBackgroundColor: '#7C3AED',
+    activeBackgroundColor: '#00C06A',
   },
   GENDER: {
     id: 'gender',
     label: 'Gender',
     icon: 'people-outline',
-    color: '#7C3AED',
+    color: '#00C06A',
     activeColor: '#FFFFFF',
     backgroundColor: '#F3F4F6',
-    activeBackgroundColor: '#7C3AED',
+    activeBackgroundColor: '#00C06A',
   },
   REZ_PAY: {
     id: 'rez_pay',
@@ -64,7 +64,7 @@ export const FILTER_CATEGORIES = {
 export const GENDER_OPTIONS = {
   MEN: { id: 'men', label: 'Men', icon: 'male-outline', color: '#3B82F6' },
   WOMEN: { id: 'women', label: 'Women', icon: 'female-outline', color: '#EC4899' },
-  UNISEX: { id: 'unisex', label: 'Unisex', icon: 'people-outline', color: '#8B5CF6' },
+  UNISEX: { id: 'unisex', label: 'Unisex', icon: 'people-outline', color: '#00C06A' },
   KIDS: { id: 'kids', label: 'Kids', icon: 'child-outline', color: '#10B981' },
 } as const;
 
@@ -157,17 +157,17 @@ export const ANIMATIONS = {
   FILTER_TRANSITION: 200,
 } as const;
 
-// Colors matching the design
+// Colors matching the design - ReZ Brand Colors
 export const COLORS = {
-  // Primary colors
-  PRIMARY: '#7C3AED',
-  PRIMARY_LIGHT: '#8B5CF6',
-  PRIMARY_DARK: '#6D28D9',
-  
-  // Secondary colors
-  SECONDARY: '#FFB800',
-  SECONDARY_LIGHT: '#FCD34D',
-  SECONDARY_DARK: '#D97706',
+  // Primary colors - ReZ Green
+  PRIMARY: '#00C06A',
+  PRIMARY_LIGHT: '#00D977',
+  PRIMARY_DARK: '#00996B',
+
+  // Secondary colors - ReZ Gold
+  SECONDARY: '#FFC857',
+  SECONDARY_LIGHT: '#FFD77A',
+  SECONDARY_DARK: '#FF9F1C',
   
   // Status colors
   SUCCESS: '#10B981',

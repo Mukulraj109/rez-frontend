@@ -326,11 +326,11 @@ const StoreListPage: React.FC = () => {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
+        <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
 
         {/* Fixed Header with Gradient - DOES NOT SCROLL */}
         <LinearGradient
-          colors={['#F8F9FF', '#F0F2FF', '#E8EDFF'] as const}
+          colors={['#E8FFF3', '#F0FFF7', '#F8FFFC'] as const}
           style={styles.headerContainer}
         >
           {/* Search Header */}
@@ -357,13 +357,13 @@ const StoreListPage: React.FC = () => {
               onPress={() => setShowSortModal(true)}
               activeOpacity={0.7}
             >
-              <Ionicons name="swap-vertical" size={16} color="#7C3AED" />
+              <Ionicons name="swap-vertical" size={16} color="#00C06A" />
               <Text style={styles.sortButtonText}>
                 {sortBy === 'rating' ? 'Rating' :
                  sortBy === 'distance' ? 'Distance' :
                  sortBy === 'name' ? 'Name' : 'Newest'}
               </Text>
-              <Ionicons name="chevron-down" size={14} color="#7C3AED" />
+              <Ionicons name="chevron-down" size={14} color="#00C06A" />
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -377,8 +377,8 @@ const StoreListPage: React.FC = () => {
             <RefreshControl
               refreshing={isLoading}
               onRefresh={handleRefresh}
-              tintColor="#7C3AED"
-              colors={['#7C3AED']}
+              tintColor="#00C06A"
+              colors={['#00C06A']}
             />
           }
         >
@@ -438,7 +438,7 @@ const StoreListPage: React.FC = () => {
                 activeOpacity={0.7}
               >
                 <Text style={styles.loadMoreText}>Load More Stores</Text>
-                <Ionicons name="chevron-down" size={20} color="#7C3AED" />
+                <Ionicons name="chevron-down" size={20} color="#00C06A" />
               </TouchableOpacity>
             )}
           </View>
@@ -485,7 +485,7 @@ const StoreListPage: React.FC = () => {
                    option === 'name' ? 'Name (A-Z)' : 'Newest First'}
                 </Text>
                 {sortBy === option && (
-                  <Ionicons name="checkmark" size={20} color="#7C3AED" />
+                  <Ionicons name="checkmark" size={20} color="#00C06A" />
                 )}
               </TouchableOpacity>
             ))}
@@ -506,7 +506,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#F8F9FF',
+      backgroundColor: '#F8FFFC',
     },
     safeArea: {
       flex: 1,
@@ -563,8 +563,8 @@ const createStyles = (screenData: { width: number; height: number }) => {
       borderRadius: 20,
       gap: 4,
       borderWidth: 1.5,
-      borderColor: '#E8E8E8',
-      shadowColor: '#7C3AED',
+      borderColor: 'rgba(0, 192, 106, 0.2)',
+      shadowColor: '#00C06A',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 4,
@@ -573,7 +573,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
     sortButtonText: {
       fontSize: 13,
       fontWeight: '700',
-      color: '#7C3AED',
+      color: '#00C06A',
       letterSpacing: 0.1,
     },
     loadMoreButton: {
@@ -596,7 +596,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
     loadMoreText: {
       fontSize: 16,
       fontWeight: '600',
-      color: '#7C3AED',
+      color: '#00C06A',
     },
     modalOverlay: {
       flex: 1,
@@ -633,7 +633,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
       backgroundColor: '#F9FAFB',
     },
     sortOptionActive: {
-      backgroundColor: '#EDE9FE',
+      backgroundColor: 'rgba(0, 192, 106, 0.1)',
     },
     sortOptionText: {
       fontSize: 16,
@@ -641,7 +641,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
       color: '#374151',
     },
     sortOptionTextActive: {
-      color: '#7C3AED',
+      color: '#00C06A',
       fontWeight: '600',
     },
   });

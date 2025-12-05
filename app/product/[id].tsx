@@ -617,7 +617,7 @@ export default function ProductDetailPage() {
           {product.store && (
             <View style={styles.locationSection}>
               <View style={styles.locationInfo}>
-                <Ionicons name="location" size={18} color="#8B5CF6" />
+                <Ionicons name="location" size={18} color="#00C06A" />
                 <View style={styles.locationTextContainer}>
                   {/* Calculate and show distance if coordinates available */}
                   {product.store.location?.coordinates && locationState.currentLocation?.coordinates && (
@@ -645,7 +645,7 @@ export default function ProductDetailPage() {
                 accessibilityHint="Double tap to view the store page"
               >
                 <ThemedText style={styles.viewStoreText}>View Store</ThemedText>
-                <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+                <Ionicons name="chevron-forward" size={16} color="#00C06A" />
               </TouchableOpacity>
             </View>
           )}
@@ -683,7 +683,7 @@ export default function ProductDetailPage() {
                 accessibilityRole="button"
                 accessibilityHint="Double tap to set up notifications when this product becomes available"
               >
-                <Ionicons name="notifications-outline" size={16} color="#8B5CF6" />
+                <Ionicons name="notifications-outline" size={16} color="#00C06A" />
                 <ThemedText style={styles.notifyMeText}>Notify Me</ThemedText>
               </TouchableOpacity>
             )}
@@ -727,9 +727,9 @@ export default function ProductDetailPage() {
               }}
               activeOpacity={0.8}
             >
-              <Ionicons name="shirt-outline" size={18} color="#8B5CF6" />
+              <Ionicons name="shirt-outline" size={18} color="#00C06A" />
               <ThemedText style={styles.sizeGuideButtonText}>View Size Guide</ThemedText>
-              <Ionicons name="chevron-forward" size={18} color="#8B5CF6" />
+              <Ionicons name="chevron-forward" size={18} color="#00C06A" />
             </TouchableOpacity>
           </View>
         )}
@@ -1038,12 +1038,12 @@ export default function ProductDetailPage() {
           >
             {isAddingToCart ? (
               <>
-                <ActivityIndicator size="small" color="#8B5CF6" />
+                <ActivityIndicator size="small" color="#00C06A" />
                 <ThemedText style={styles.addToCartText}>Adding...</ThemedText>
               </>
             ) : (
               <>
-                <Ionicons name="cart-outline" size={20} color="#8B5CF6" />
+                <Ionicons name="cart-outline" size={20} color="#00C06A" />
                 <ThemedText style={styles.addToCartText}>Add to Cart</ThemedText>
               </>
             )}
@@ -1196,7 +1196,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   backButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1231,16 +1231,21 @@ const styles = StyleSheet.create({
   coinButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#FFC857',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     marginRight: 8,
+    shadowColor: '#FFC857',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   coinText: {
-    color: 'white',
+    color: '#0B2240',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     marginLeft: 4,
   },
   headerRight: {
@@ -1279,7 +1284,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     fontSize: 14,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
   },
   ratingContainer: {
@@ -1308,12 +1313,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F8F5FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E8E0F5',
+    borderColor: 'rgba(0, 192, 106, 0.15)',
   },
   locationInfo: {
     flexDirection: 'row',
@@ -1327,7 +1332,7 @@ const styles = StyleSheet.create({
   distanceText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginBottom: 2,
   },
   locationText: {
@@ -1343,13 +1348,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
     marginLeft: 12,
   },
   viewStoreText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginRight: 4,
   },
   priceRow: {
@@ -1398,18 +1403,18 @@ const styles = StyleSheet.create({
   notifyMeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3E8FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
     gap: 6,
   },
   notifyMeText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   section: {
     backgroundColor: 'white',
@@ -1420,19 +1425,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F3E8FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
     marginTop: 16,
     gap: 8,
   },
   sizeGuideButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00C06A',
     flex: 1,
     textAlign: 'center',
   },
@@ -1481,7 +1486,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#8B5CF6',
+    borderBottomColor: '#00C06A',
   },
   tabText: {
     fontSize: 16,
@@ -1489,7 +1494,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   activeTabText: {
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
   },
   
@@ -1548,24 +1553,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#8B5CF6',
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#00C06A',
+    borderRadius: 12,
     paddingVertical: 12,
     marginRight: 8,
   },
   addToCartText: {
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
     marginLeft: 8,
   },
   buyNowButton: {
     flex: 1,
-    backgroundColor: '#8B5CF6',
-    borderRadius: 8,
+    backgroundColor: '#00C06A',
+    borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buyNowText: {
     color: 'white',

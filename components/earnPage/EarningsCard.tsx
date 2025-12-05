@@ -8,10 +8,10 @@ import { EARN_COLORS } from '@/constants/EarnPageColors';
 import EarningsChart from './EarningsChart';
 
 const earningSources = [
-  { 
-    label: 'Projects', 
+  {
+    label: 'Projects',
     icon: 'briefcase-outline',
-    gradient: ['#8B5CF6', '#7C3AED', '#6D28D9'],
+    gradient: ['#00C06A', '#00A85C', '#00796B'],
   },
   { 
     label: 'Referrals', 
@@ -136,13 +136,13 @@ export default function EarningsCard({
           accessibilityHint="Double tap to view your wallet details and transaction history"
         >
           <LinearGradient
-            colors={['rgba(139, 92, 246, 0.15)', 'rgba(139, 92, 246, 0.1)']}
+            colors={['#00C06A', '#00A85C', '#00796B']}
             style={styles.walletButtonGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
             <ThemedText style={styles.seeWalletText}>See wallet</ThemedText>
-            <Ionicons name="chevron-forward" size={16} color={EARN_COLORS.primary} />
+            <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
@@ -161,20 +161,20 @@ export default function EarningsCard({
         accessibilityState={{ selected: showChart }}
       >
         <LinearGradient
-          colors={showChart 
-            ? ['rgba(139, 92, 246, 0.15)', 'rgba(139, 92, 246, 0.1)']
-            : ['rgba(139, 92, 246, 0.1)', 'rgba(139, 92, 246, 0.05)']
+          colors={showChart
+            ? ['rgba(255, 200, 87, 0.2)', 'rgba(0, 192, 106, 0.15)']
+            : ['rgba(0, 192, 106, 0.1)', 'rgba(255, 200, 87, 0.1)']
           }
           style={styles.chartToggleGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <Ionicons 
-            name={showChart ? 'stats-chart' : 'bar-chart-outline'} 
-            size={18} 
-            color={EARN_COLORS.primary} 
+          <Ionicons
+            name={showChart ? 'stats-chart' : 'bar-chart-outline'}
+            size={18}
+            color={showChart ? '#D97706' : EARN_COLORS.primary}
           />
-          <ThemedText style={styles.chartToggleText}>
+          <ThemedText style={[styles.chartToggleText, showChart && { color: '#D97706' }]}>
             {showChart ? 'Hide Chart' : 'View Chart'}
           </ThemedText>
         </LinearGradient>
@@ -262,38 +262,38 @@ export default function EarningsCard({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.97)',
     marginHorizontal: 20,
     marginBottom: 24,
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: '#FFC857',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 200, 87, 0.2)',
     position: 'relative',
     overflow: 'hidden',
   },
   decorativeCircle1: {
     position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(139, 92, 246, 0.06)',
-    top: -40,
-    right: -40,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 200, 87, 0.12)',
+    top: -50,
+    right: -50,
   },
   decorativeCircle2: {
     position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
-    bottom: -20,
-    left: -20,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+    bottom: -30,
+    left: -30,
   },
   header: {
     flexDirection: 'row',
@@ -317,8 +317,8 @@ const styles = StyleSheet.create({
   },
   titleUnderline: {
     width: 50,
-    height: 3,
-    backgroundColor: '#8B5CF6',
+    height: 4,
+    backgroundColor: '#FFC857',
     borderRadius: 2,
   },
   earningAmount: {
@@ -328,10 +328,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   amount: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '800',
-    color: '#8B5CF6',
+    color: '#00796B',
     letterSpacing: -0.5,
+    textShadowColor: 'rgba(255, 200, 87, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   earned: {
     fontSize: 16,
@@ -341,23 +344,26 @@ const styles = StyleSheet.create({
   seeWalletButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   walletButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
     gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 16,
   },
   seeWalletText: {
     fontSize: 14,
     fontWeight: '700',
-    color: EARN_COLORS.primary,
+    color: '#FFFFFF',
     letterSpacing: 0.2,
   },
   separator: {
@@ -371,13 +377,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 14,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.15)',
-    shadowColor: '#8B5CF6',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 200, 87, 0.25)',
+    shadowColor: '#FFC857',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   chartToggleGradient: {
     flexDirection: 'row',

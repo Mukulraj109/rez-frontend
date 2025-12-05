@@ -86,10 +86,10 @@ export default function SlidingTabs({
               accessibilityState={{ selected: isActive }}
             >
               <View style={styles.tabContent}>
-                <Ionicons 
-                  name={tab.icon as any} 
-                  size={tabIconSize} 
-                  color={isActive ? '#8B5CF6' : '#9CA3AF'} 
+                <Ionicons
+                  name={tab.icon as any}
+                  size={tabIconSize}
+                  color={isActive ? '#00C06A' : '#9CA3AF'}
                   style={[styles.tabIcon, { marginRight: iconSpacing }]}
                 />
                 <ThemedText style={[
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     flexShrink: 1, // Allow text to shrink if needed
   },
   activeTabText: {
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
   },
   inactiveTabText: {
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     height: 3,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 1.5,
   },
 });

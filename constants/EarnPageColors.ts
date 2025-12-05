@@ -44,49 +44,65 @@ export const CATEGORY_SOLID_COLORS = {
   orange: '#F59E0B',
 } as const;
 
-// Earn Page Color Palette
+// Earn Page Color Palette - ReZ Design System
 export const EARN_COLORS = {
-  // Primary Colors
-  primary: '#8B5CF6',
-  primaryLight: '#A855F7',
-  primaryDark: '#7C3AED',
-  
+  // Primary Colors - ReZ Green
+  primary: '#00C06A',
+  primaryLight: '#4ADE80',
+  primaryDark: '#00796B',
+
   // Secondary Colors
-  secondary: '#10B981',
-  secondaryLight: '#34D399',
-  secondaryDark: '#059669',
-  
+  secondary: '#00796B',
+  secondaryLight: '#4DB6AC',
+  secondaryDark: '#004D40',
+
+  // Gold Accent - for rewards/coins
+  gold: '#FFC857',
+  goldLight: '#FFD87A',
+  goldDark: '#F5A623',
+
   // Accent Colors
   accent: '#EC4899',
   accentLight: '#F472B6',
   accentDark: '#DB2777',
-  
+
+  // Navy - for dark text
+  navy: '#0B2240',
+  slate: '#1F2D3D',
+  muted: '#9AA7B2',
+
   // Background Colors
-  background: '#F8FAFC',
+  background: '#F7FAFC',
   backgroundSecondary: '#FFFFFF',
   backgroundCard: '#FFFFFF',
-  
+
+  // Glass Effects
+  glassWhite: 'rgba(255, 255, 255, 0.7)',
+  glassBorder: 'rgba(255, 255, 255, 0.4)',
+  glassHighlight: 'rgba(255, 255, 255, 0.5)',
+
   // Text Colors
-  textPrimary: '#1F2937',
+  textPrimary: '#0B2240',
   textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
+  textTertiary: '#9AA7B2',
   textLight: '#FFFFFF',
-  
+
   // Status Colors
-  success: '#10B981',
-  warning: '#F59E0B',
+  success: '#00C06A',
+  warning: '#FFC857',
   error: '#EF4444',
   info: '#3B82F6',
-  
+
   // Border Colors
   border: '#E5E7EB',
   borderLight: '#F3F4F6',
   borderDark: '#D1D5DB',
-  
+
   // Shadow Colors
   shadowLight: 'rgba(0, 0, 0, 0.05)',
   shadowMedium: 'rgba(0, 0, 0, 0.1)',
   shadowDark: 'rgba(0, 0, 0, 0.15)',
+  shadowGreen: 'rgba(0, 192, 106, 0.3)',
 } as const;
 
 // Category Color Mapping for specific categories

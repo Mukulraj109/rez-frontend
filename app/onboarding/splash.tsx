@@ -1,12 +1,82 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, Dimensions, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00A16B',
+  deepTeal: '#00796B',
+  gold: '#FFC857',
+  goldDark: '#FF9F1C',
+  textPrimary: '#0B2240',
+  white: '#FFFFFF',
+};
 
 export default function SplashScreen() {
   const router = useRouter();
 
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const coinRotate = useRef(new Animated.Value(0)).current;
+  const taglineAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
+    // Start animations
+    Animated.sequence([
+      // Coin entrance with scale and fade
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Tagline fade in
+      Animated.timing(taglineAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Coin rotation loop
+    Animated.loop(
+      Animated.timing(coinRotate, {
+        toValue: 1,
+        duration: 3000,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    // Pulse animation for glow
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Navigate after delay
     const timer = setTimeout(() => {
       router.push('/onboarding/registration');
     }, 3000);
@@ -14,56 +84,269 @@ export default function SplashScreen() {
     return () => clearTimeout(timer);
   }, [router]);
 
+  const coinSpin = coinRotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   return (
-    <LinearGradient
-      colors={['#f5f0ff', '#b87ee6', '#a855f7']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={styles.container}
-      accessible={true}
-      accessibilityLabel="Welcome to Rez App"
-      accessibilityRole="none"
-    >
-      <View style={styles.content}>
-        <Text
-          style={styles.brandText}
-          accessibilityLabel="Rez App brand logo"
-          accessibilityRole="header"
-        >
-          Rez App
-        </Text>
-        <Text
-          style={styles.tagline}
-          accessibilityLabel="App tagline: Search and Find Best Deals"
-        >
-          Search & Find Best Deals
-        </Text>
+    <View style={styles.container}>
+      {/* Hero Gradient Background */}
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.primaryDark, COLORS.deepTeal]}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+
+      {/* Decorative Circles */}
+      <View style={styles.decorativeCircles}>
+        <View style={[styles.circle, styles.circleGoldLarge]} />
+        <View style={[styles.circle, styles.circleGreenMedium]} />
+        <View style={[styles.circle, styles.circleGoldSmall]} />
+        <View style={[styles.circle, styles.circleGreenTiny]} />
+        <View style={[styles.circle, styles.circleGoldTiny]} />
       </View>
-    </LinearGradient>
-);
+
+      <View style={styles.content}>
+        {/* Animated Coin Logo */}
+        <Animated.View
+          style={[
+            styles.coinContainer,
+            {
+              opacity: fadeAnim,
+              transform: [
+                { scale: scaleAnim },
+              ],
+            },
+          ]}
+          accessible={true}
+          accessibilityLabel="ReZ App Logo"
+          accessibilityRole="image"
+        >
+          {/* Glow Effect */}
+          <Animated.View
+            style={[
+              styles.coinGlow,
+              { transform: [{ scale: pulseAnim }] },
+            ]}
+          />
+
+          {/* Main Coin */}
+          <Animated.View
+            style={[
+              styles.coinOuter,
+              { transform: [{ rotateY: coinSpin }] },
+            ]}
+          >
+            <LinearGradient
+              colors={[COLORS.gold, COLORS.goldDark]}
+              style={styles.coinGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.coinInner}>
+                <Text style={styles.coinText}>R</Text>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+        </Animated.View>
+
+        {/* Brand Name */}
+        <Animated.View
+          style={[
+            styles.brandContainer,
+            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
+          ]}
+        >
+          <Text style={styles.brandText}>ReZ</Text>
+          <View style={styles.brandUnderline}>
+            <LinearGradient
+              colors={[COLORS.gold, COLORS.goldDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.underlineGradient}
+            />
+          </View>
+        </Animated.View>
+
+        {/* Tagline */}
+        <Animated.View
+          style={[
+            styles.taglineContainer,
+            { opacity: taglineAnim },
+          ]}
+        >
+          <Text style={styles.tagline}>Smart people use ReZ to save money</Text>
+        </Animated.View>
+      </View>
+
+      {/* Bottom Badge */}
+      <View style={styles.bottomBadge}>
+        <Text style={styles.badgeText}>Save smarter, live better</Text>
+      </View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   content: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+
+  // Decorative Circles
+  decorativeCircles: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  circle: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  circleGoldLarge: {
+    width: 350,
+    height: 350,
+    top: -100,
+    right: -120,
+    backgroundColor: 'rgba(255, 200, 87, 0.12)',
+  },
+  circleGreenMedium: {
+    width: 250,
+    height: 250,
+    bottom: 80,
+    left: -100,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  circleGoldSmall: {
+    width: 120,
+    height: 120,
+    top: SCREEN_HEIGHT * 0.3,
+    left: 30,
+    backgroundColor: 'rgba(255, 200, 87, 0.1)',
+  },
+  circleGreenTiny: {
+    width: 80,
+    height: 80,
+    bottom: SCREEN_HEIGHT * 0.25,
+    right: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  circleGoldTiny: {
+    width: 50,
+    height: 50,
+    top: 120,
+    left: SCREEN_WIDTH * 0.6,
+    backgroundColor: 'rgba(255, 200, 87, 0.15)',
+  },
+
+  // Coin Logo
+  coinContainer: {
+    marginBottom: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coinGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255, 200, 87, 0.25)',
+  },
+  coinOuter: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    elevation: 15,
+  },
+  coinGradient: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 5,
+    borderColor: '#B8860B',
+  },
+  coinInner: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#DAA520',
+  },
+  coinText: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: COLORS.textPrimary,
+    letterSpacing: -1,
+  },
+
+  // Brand
+  brandContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   brandText: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 16,
-    letterSpacing: 1,
+    fontSize: 56,
+    fontWeight: '800',
+    color: COLORS.white,
+    letterSpacing: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 8,
+  },
+  brandUnderline: {
+    marginTop: 8,
+    width: 80,
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  underlineGradient: {
+    flex: 1,
+  },
+
+  // Tagline
+  taglineContainer: {
+    marginTop: 8,
   },
   tagline: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '500',
     color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+
+  // Bottom Badge
+  bottomBadge: {
+    position: 'absolute',
+    bottom: 60,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    letterSpacing: 0.5,
   },
 });

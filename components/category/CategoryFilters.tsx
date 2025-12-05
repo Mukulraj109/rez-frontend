@@ -234,7 +234,7 @@ export default function CategoryFilters({
                     maximumValue={activeValue.max}
                     value={activeValue.min}
                     step={filter.range?.step || 1}
-                    minimumTrackTintColor="#8B5CF6"
+                    minimumTrackTintColor="#00C06A"
                     maximumTrackTintColor="#E5E7EB"
                     onValueChange={(value) => {
                       onFilterChange(filter.id, { ...activeValue, min: value });
@@ -253,7 +253,7 @@ export default function CategoryFilters({
                     maximumValue={filter.range?.max || 100}
                     value={activeValue.max}
                     step={filter.range?.step || 1}
-                    minimumTrackTintColor="#8B5CF6"
+                    minimumTrackTintColor="#00C06A"
                     maximumTrackTintColor="#E5E7EB"
                     onValueChange={(value) => {
                       onFilterChange(filter.id, { ...activeValue, max: value });
@@ -294,7 +294,7 @@ export default function CategoryFilters({
                   onValueChange={(value) => {
                     onFilterChange(filter.id, value ? option.value : null);
                   }}
-                  trackColor={{ false: '#E5E7EB', true: '#8B5CF6' }}
+                  trackColor={{ false: '#E5E7EB', true: '#00C06A' }}
                   thumbColor={isSelected ? '#FFFFFF' : '#F3F4F6'}
                   accessibilityLabel={`${option.label} toggle`}
                   accessibilityRole="switch"
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   activeFilterBadge: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   selectedOptionChip: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
   },
   optionIcon: {
     marginRight: 4,
@@ -487,8 +487,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkedCheckbox: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
+    borderColor: '#00C06A',
   },
   multipleOptionText: {
     fontSize: 14,
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
   rangeValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginRight: 8,
   },
   rangeLabels: {

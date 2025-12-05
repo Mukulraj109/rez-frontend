@@ -189,7 +189,7 @@ const ProductionBrandList = ({ stores, isLoading, error, onRefresh }: Production
 
               <View style={styles.metaRow}>
                 <View style={styles.deliveryBadge}>
-                  <Ionicons name="time-outline" size={14} color="#8B5CF6" />
+                  <Ionicons name="time-outline" size={14} color="#00C06A" />
                   <Text style={styles.deliveryText}>{deliveryTime}</Text>
                 </View>
 
@@ -222,7 +222,7 @@ const ProductionBrandList = ({ stores, isLoading, error, onRefresh }: Production
           <Text style={styles.sectionTitle}>Explore all brands</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#00C06A" />
           <Text style={styles.loadingText}>Loading fashion brands...</Text>
         </View>
       </View>
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: 14,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
   },
   scrollContainer: {
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: 'white',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: {
       width: 0,
       height: 8,
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 12,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.1)',
+    borderColor: 'rgba(0, 192, 106, 0.1)',
   },
   shimmerOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 10,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 12,
   },
   retryButtonText: {

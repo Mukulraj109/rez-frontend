@@ -219,7 +219,7 @@ export default memo(function Section6({ dynamicData, cardType }: Section6Props) 
             <Ionicons
               name={showDetails ? "chevron-up" : "chevron-down"}
               size={18}
-              color="#6c63ff"
+              color="#00C06A"
             />
           </TouchableOpacity>
 
@@ -241,7 +241,7 @@ export default memo(function Section6({ dynamicData, cardType }: Section6Props) 
               accessibilityLabel={`View all outlets for ${storeName || 'store'}`}
               accessibilityHint="Double tap to see store outlet locations"
             >
-              <Ionicons name="location-outline" size={18} color="#6c63ff" />
+              <Ionicons name="location-outline" size={18} color="#00C06A" />
               <ThemedText style={styles.outletsButtonText}>View outlets</ThemedText>
             </TouchableOpacity>
           )}
@@ -253,7 +253,7 @@ export default memo(function Section6({ dynamicData, cardType }: Section6Props) 
         <ScrollView style={styles.voucherDetailsCard} showsVerticalScrollIndicator={false}>
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#8B5CF6" />
+              <ActivityIndicator size="large" color="#00C06A" />
               <ThemedText style={styles.loadingText}>Loading vouchers...</ThemedText>
             </View>
           ) : vouchers.length > 0 ? (
@@ -290,7 +290,7 @@ export default memo(function Section6({ dynamicData, cardType }: Section6Props) 
                   </>
                 )}
                 <ThemedText style={styles.moreDetailsText}>More details</ThemedText>
-                <Ionicons name="information-circle-outline" size={16} color="#8B5CF6" style={styles.infoIcon} />
+                <Ionicons name="information-circle-outline" size={16} color="#00C06A" style={styles.infoIcon} />
               </TouchableOpacity>
 
               {/* Restrictions */}
@@ -332,7 +332,7 @@ export default memo(function Section6({ dynamicData, cardType }: Section6Props) 
                   accessibilityState={{ disabled: isAddingVoucher || !voucher.canRedeem, busy: isAddingVoucher }}
                 >
                   <LinearGradient
-                    colors={['#8B5CF6', '#7C3AED']}
+                    colors={['#00C06A', '#00996B']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={[styles.addButton, (isAddingVoucher || !voucher.canRedeem) && styles.addButtonDisabled]}

@@ -1,10 +1,24 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import OnboardingContainer from '@/components/onboarding/OnboardingContainer';
 import { useAuth } from '@/contexts/AuthContext';
 import { navigationDebugger } from '@/utils/navigationDebug';
+
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00A16B',
+  deepTeal: '#00796B',
+  gold: '#FFC857',
+  goldDark: '#FF9F1C',
+  textPrimary: '#0B2240',
+  textMuted: '#9AA7B2',
+  surface: '#F7FAFC',
+  glassWhite: 'rgba(255, 255, 255, 0.9)',
+  glassBorder: 'rgba(255, 255, 255, 0.5)',
+};
 
 interface BrandItem {
   id: string;
@@ -13,65 +27,63 @@ interface BrandItem {
   originalPrice: number;
   discountedPrice: number;
   isEnabled: boolean;
-  backgroundColor: string;
+  gradientColors: string[];
 }
 
 const brands: BrandItem[] = [
-  { 
-    id: 'puma', 
-    name: 'Puma', 
-    icon: 'fitness-outline', 
-    originalPrice: 1000, 
-    discountedPrice: 800, 
+  {
+    id: 'puma',
+    name: 'Puma',
+    icon: 'fitness-outline',
+    originalPrice: 1000,
+    discountedPrice: 800,
     isEnabled: true,
-    backgroundColor: '#FEE2E2'
+    gradientColors: [COLORS.primary, COLORS.deepTeal]
   },
-  { 
-    id: 'nike', 
-    name: 'Nike', 
-    icon: 'checkmark-outline', 
-    originalPrice: 2000, 
-    discountedPrice: 1800, 
+  {
+    id: 'nike',
+    name: 'Nike',
+    icon: 'checkmark-outline',
+    originalPrice: 2000,
+    discountedPrice: 1800,
     isEnabled: true,
-    backgroundColor: '#DBEAFE'
+    gradientColors: [COLORS.gold, COLORS.goldDark]
   },
-  { 
-    id: 'kfc', 
-    name: 'KFC', 
-    icon: 'restaurant-outline', 
-    originalPrice: 3000, 
-    discountedPrice: 2800, 
+  {
+    id: 'kfc',
+    name: 'KFC',
+    icon: 'restaurant-outline',
+    originalPrice: 3000,
+    discountedPrice: 2800,
     isEnabled: true,
-    backgroundColor: '#FEF3C7'
+    gradientColors: [COLORS.primary, COLORS.deepTeal]
   },
-  { 
-    id: 'dominos', 
-    name: "Domino's", 
-    icon: 'pizza-outline', 
-    originalPrice: 2500, 
-    discountedPrice: 2000, 
+  {
+    id: 'dominos',
+    name: "Domino's",
+    icon: 'pizza-outline',
+    originalPrice: 2500,
+    discountedPrice: 2000,
     isEnabled: true,
-    backgroundColor: '#FECACA'
+    gradientColors: [COLORS.gold, COLORS.goldDark]
   },
-  { 
-    id: 'pizzahut', 
-    name: 'Pizza HUT', 
-    icon: 'fast-food-outline', 
-    originalPrice: 1000, 
-    discountedPrice: 800, 
+  {
+    id: 'pizzahut',
+    name: 'Pizza HUT',
+    icon: 'fast-food-outline',
+    originalPrice: 1000,
+    discountedPrice: 800,
     isEnabled: false,
-    backgroundColor: '#E5E7EB'
+    gradientColors: ['#D1D5DB', '#9CA3AF']
   },
 ];
 
 export default function TransactionsPreviewScreen() {
   const router = useRouter();
-  const { state, actions } = useAuth();
+  const { actions } = useAuth();
 
   const handleFinish = async () => {
     try {
-
-      // Complete onboarding via the auth context
       await actions.completeOnboarding({
         preferences: {
           notifications: {
@@ -83,21 +95,16 @@ export default function TransactionsPreviewScreen() {
         }
       });
 
-      // Navigate immediately without delay to prevent race conditions
-
       navigationDebugger.logNavigation('transactions-preview', '(tabs)', 'onboarding-completed');
       router.replace('/(tabs)');
-      
-    } catch (error) {
-      console.error('❌ [FINISH ONBOARDING] Error completing onboarding:', error);
-      
-      // TEMPORARY DEBUG: Skip onboarding completion and just navigate
 
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
       router.replace('/(tabs)');
     }
   };
 
-  const renderBrandItem = (brand: BrandItem) => {
+  const renderBrandItem = (brand: BrandItem, index: number) => {
     const discount = brand.originalPrice - brand.discountedPrice;
     const discountPercentage = Math.round((discount / brand.originalPrice) * 100);
 
@@ -106,7 +113,6 @@ export default function TransactionsPreviewScreen() {
         key={brand.id}
         style={[
           styles.brandItem,
-          { backgroundColor: brand.backgroundColor },
           !brand.isEnabled && styles.brandItemDisabled,
         ]}
         accessible={true}
@@ -114,19 +120,29 @@ export default function TransactionsPreviewScreen() {
         accessibilityRole="text"
       >
         <View style={styles.brandInfo}>
-          <View style={styles.brandIcon}>
+          <LinearGradient
+            colors={brand.gradientColors}
+            style={styles.brandIconGradient}
+          >
             <Ionicons
               name={brand.icon as any}
-              size={24}
-              color={brand.isEnabled ? '#374151' : '#9CA3AF'}
+              size={22}
+              color="#FFFFFF"
             />
+          </LinearGradient>
+          <View style={styles.brandDetails}>
+            <Text style={[
+              styles.brandName,
+              !brand.isEnabled && styles.brandNameDisabled,
+            ]}>
+              {brand.name}
+            </Text>
+            {brand.isEnabled && (
+              <View style={styles.savingsBadge}>
+                <Text style={styles.savingsText}>Save ₹{discount}</Text>
+              </View>
+            )}
           </View>
-          <Text style={[
-            styles.brandName,
-            !brand.isEnabled && styles.brandNameDisabled,
-          ]}>
-            {brand.name}
-          </Text>
         </View>
 
         <View style={styles.priceInfo}>
@@ -136,12 +152,13 @@ export default function TransactionsPreviewScreen() {
           ]}>
             ₹{brand.originalPrice}
           </Text>
-          <Ionicons
-            name="arrow-forward"
-            size={16}
-            color={brand.isEnabled ? '#10B981' : '#9CA3AF'}
-            style={styles.arrowIcon}
-          />
+          <View style={styles.arrowContainer}>
+            <Ionicons
+              name="arrow-forward"
+              size={14}
+              color={brand.isEnabled ? COLORS.primary : '#9CA3AF'}
+            />
+          </View>
           <Text style={[
             styles.discountedPrice,
             !brand.isEnabled && styles.priceDisabled,
@@ -149,156 +166,297 @@ export default function TransactionsPreviewScreen() {
             ₹{brand.discountedPrice}
           </Text>
         </View>
+
+        {!brand.isEnabled && (
+          <View style={styles.comingSoonOverlay}>
+            <Text style={styles.comingSoonText}>Soon</Text>
+          </View>
+        )}
       </View>
     );
   };
 
   return (
-    <OnboardingContainer useGradient={false} style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text
-            style={styles.title}
-            accessibilityLabel="Seamless Transactions and Rewards!"
-            accessibilityRole="header"
-          >
-            Seamless Transactions{'\n'}& Rewards!
-          </Text>
-          <View style={styles.underline} />
+    <View style={styles.container}>
+      {/* Background */}
+      <LinearGradient
+        colors={[COLORS.surface, '#EDF2F7', COLORS.surface]}
+        style={StyleSheet.absoluteFill}
+      />
 
-          <Text
-            style={styles.subtitle}
-            accessibilityLabel="Purchase your favorite brands using UPI and get a 10% discount. Earn the Brand Coin!"
-          >
-            Purchase your favorite brands using UPI and get{'\n'}
-            a 10% discount.{'\n'}
-            Earn the Brand Coin!
-          </Text>
-
-          {/* Floating Coins */}
-          <View
-            style={styles.coinsContainer}
-            accessible={true}
-            accessibilityLabel="Reward coins illustration"
-            accessibilityRole="image"
-          >
-            <View style={[styles.coin, styles.coin1]}>
-              <Text style={styles.coinText}>₹</Text>
-            </View>
-            <View style={[styles.coin, styles.coin2]}>
-              <Text style={styles.coinText}>₹</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.transactionsSection}>
-          <Text
-            style={styles.transactionsTitle}
-            accessibilityRole="header"
-          >
-            Transactions
-          </Text>
-
-          <View style={styles.brandsList}>
-            {brands.map(renderBrandItem)}
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.finishButton}
-          onPress={handleFinish}
-          accessibilityLabel="Complete onboarding and start shopping"
-          accessibilityRole="button"
-          accessibilityHint="Double tap to finish setup and explore the app"
-        >
-          <Text style={styles.finishButtonText}>Finish</Text>
-        </TouchableOpacity>
+      {/* Decorative Elements */}
+      <View style={styles.decorativeCircles}>
+        <View style={[styles.circle, styles.circleGreen]} />
+        <View style={[styles.circle, styles.circleGold]} />
       </View>
-    </OnboardingContainer>
-);
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.glassCard}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.5)', 'rgba(255,255,255,0)']}
+            style={styles.glassShine}
+          />
+
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Seamless Transactions{'\n'}& Rewards!</Text>
+
+            <View style={styles.underlineContainer}>
+              <LinearGradient
+                colors={[COLORS.gold, COLORS.goldDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.underline}
+              />
+            </View>
+
+            <Text style={styles.subtitle}>
+              Purchase your favorite brands using UPI and get{'\n'}
+              up to 10% discount. Earn ReZ Coins!
+            </Text>
+
+            {/* Floating Coins */}
+            <View style={styles.coinsContainer}>
+              <View style={[styles.coin, styles.coin1]}>
+                <LinearGradient
+                  colors={[COLORS.gold, COLORS.goldDark]}
+                  style={styles.coinGradient}
+                >
+                  <Text style={styles.coinText}>R</Text>
+                </LinearGradient>
+              </View>
+              <View style={[styles.coin, styles.coin2]}>
+                <LinearGradient
+                  colors={[COLORS.gold, COLORS.goldDark]}
+                  style={styles.coinGradient}
+                >
+                  <Text style={styles.coinText}>R</Text>
+                </LinearGradient>
+              </View>
+              <View style={[styles.coin, styles.coin3]}>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.deepTeal]}
+                  style={styles.coinGradient}
+                >
+                  <Ionicons name="gift" size={12} color="#FFF" />
+                </LinearGradient>
+              </View>
+            </View>
+          </View>
+
+          {/* Transactions Section */}
+          <View style={styles.transactionsSection}>
+            <View style={styles.transactionsTitleRow}>
+              <Text style={styles.transactionsTitle}>Sample Transactions</Text>
+              <View style={styles.discountBadge}>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.deepTeal]}
+                  style={styles.discountBadgeGradient}
+                >
+                  <Text style={styles.discountBadgeText}>10% OFF</Text>
+                </LinearGradient>
+              </View>
+            </View>
+
+            <View style={styles.brandsList}>
+              {brands.map(renderBrandItem)}
+            </View>
+          </View>
+
+          {/* Finish Button */}
+          <TouchableOpacity
+            style={styles.primaryButtonWrapper}
+            onPress={handleFinish}
+            activeOpacity={0.9}
+            accessibilityLabel="Complete onboarding and start shopping"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to finish setup and explore the app"
+          >
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.deepTeal]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>Start Shopping</Text>
+              <Ionicons name="rocket" size={20} color="#FFFFFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F8F9FA',
-  },
-  content: {
     flex: 1,
-    justifyContent: 'space-between',
-    paddingTop: 40,
-    paddingBottom: 40,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+  },
+
+  // Decorative
+  decorativeCircles: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  circle: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  circleGreen: {
+    width: 200,
+    height: 200,
+    top: -60,
+    right: -60,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+  },
+  circleGold: {
+    width: 150,
+    height: 150,
+    bottom: 100,
+    left: -50,
+    backgroundColor: 'rgba(255, 200, 87, 0.1)',
+  },
+
+  // Glass Card
+  glassCard: {
+    backgroundColor: COLORS.glassWhite,
+    borderRadius: 28,
+    padding: 28,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: COLORS.glassBorder,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 15,
+    ...(Platform.OS === 'web' && {
+      backdropFilter: 'blur(30px)',
+    }),
+  },
+  glassShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+  },
+
+  // Header
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
     position: 'relative',
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#8B5CF6',
+    fontSize: 24,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
     textAlign: 'center',
-    lineHeight: 28,
-    marginBottom: 8,
+    lineHeight: 32,
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+  underlineContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   underline: {
-    width: 60,
-    height: 3,
-    backgroundColor: '#8B5CF6',
+    width: 50,
+    height: 4,
     borderRadius: 2,
-    marginBottom: 20,
   },
   subtitle: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
+    color: COLORS.textMuted,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   },
+
+  // Floating Coins
   coinsContainer: {
     position: 'absolute',
     width: '100%',
     height: '100%',
+    pointerEvents: 'none',
   },
   coin: {
     position: 'absolute',
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  coinGradient: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 4,
+    borderWidth: 2,
+    borderColor: '#B8860B',
   },
   coinText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
   },
   coin1: {
-    top: 20,
-    left: 40,
+    top: 0,
+    left: 10,
   },
   coin2: {
-    top: 60,
-    right: 30,
+    top: 30,
+    right: 5,
   },
+  coin3: {
+    top: 70,
+    left: 30,
+  },
+
+  // Transactions Section
   transactionsSection: {
-    flex: 1,
-    paddingTop: 20,
+    marginBottom: 24,
+  },
+  transactionsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
   transactionsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 20,
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  discountBadge: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  discountBadgeGradient: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  discountBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   brandsList: {
     gap: 12,
@@ -307,80 +465,117 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    padding: 14,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowRadius: 8,
+    elevation: 2,
+    position: 'relative',
+    overflow: 'hidden',
   },
   brandItemDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
+    backgroundColor: '#F9FAFB',
   },
   brandInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  brandIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  brandIconGradient: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
+  brandDetails: {
+    flex: 1,
+  },
   brandName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: COLORS.textPrimary,
+    marginBottom: 2,
   },
   brandNameDisabled: {
     color: '#9CA3AF',
+  },
+  savingsBadge: {
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  savingsText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   priceInfo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   originalPrice: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#9CA3AF',
     textDecorationLine: 'line-through',
   },
-  arrowIcon: {
-    marginHorizontal: 8,
+  arrowContainer: {
+    marginHorizontal: 6,
   },
   discountedPrice: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#10B981',
+    color: COLORS.primary,
   },
   priceDisabled: {
     color: '#9CA3AF',
   },
-  finishButton: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 25,
-    paddingVertical: 16,
-    alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+  comingSoonOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
-  finishButtonText: {
+  comingSoonText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+
+  // Primary Button
+  primaryButtonWrapper: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  primaryButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

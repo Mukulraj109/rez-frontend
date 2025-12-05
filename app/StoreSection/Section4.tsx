@@ -1,44 +1,59 @@
+// Section4.tsx - Premium Glassmorphism Design
+// Card Offers Section - Green & Gold Theme
+
 import React, { useState, useEffect, memo, useRef } from "react";
 import {
   View,
   Image,
   StyleSheet,
-  ViewStyle,
-  TextStyle,
-  ImageStyle,
   ActivityIndicator,
   Platform,
   TouchableOpacity,
   Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { triggerImpact, triggerNotification } from "@/utils/haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { triggerImpact } from "@/utils/haptics";
 import { ThemedText } from "@/components/ThemedText";
 import discountsApi, { Discount } from "@/services/discountsApi";
 import { ImageSourcePropType } from "react-native";
-import {
-  Colors,
-  Spacing,
-  Shadows,
-  BorderRadius,
-  Typography,
-  IconSize,
-  Timing,
-} from "@/constants/DesignSystem";
+
+// Premium Glass Design Tokens - Green & Gold Theme
+const GLASS = {
+  lightBg: 'rgba(255, 255, 255, 0.8)',
+  lightBorder: 'rgba(255, 255, 255, 0.5)',
+  lightHighlight: 'rgba(255, 255, 255, 0.9)',
+  frostedBg: 'rgba(255, 255, 255, 0.92)',
+  tintedGreenBg: 'rgba(0, 192, 106, 0.08)',
+  tintedGreenBorder: 'rgba(0, 192, 106, 0.2)',
+  tintedGoldBg: 'rgba(255, 200, 87, 0.12)',
+  tintedGoldBorder: 'rgba(255, 200, 87, 0.35)',
+};
+
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00996B',
+  gold: '#FFC857',
+  goldDark: '#E5A500',
+  navy: '#0B2240',
+  textPrimary: '#1F2937',
+  textSecondary: '#6B7280',
+  white: '#FFFFFF',
+  surface: '#F7FAFC',
+};
 
 interface Section4Props {
   title?: string;
   subtitle?: string;
   icon?: keyof typeof Ionicons.glyphMap;
-  // accept either a remote URL (string) or a local image module (number/object)
   cardImageUri?: string | ImageSourcePropType;
   productPrice?: number;
-  storeId?: string; // NEW: Store ID for filtering card offers
+  storeId?: string;
   testID?: string;
   onPress?: () => void;
 }
 
-// default to the local card image in assets
 const DEFAULT_CARD_IMAGE = require('@/assets/images/card.jpg');
 
 export default memo(function Section4({
@@ -58,24 +73,21 @@ export default memo(function Section4({
   const [title, setTitle] = useState(initialTitle);
   const [subtitle, setSubtitle] = useState(initialSubtitle);
 
-  // Animation ref for micro-interactions
-  const cardScaleAnim = useRef(new Animated.Value(1)).current;
+  // Animation refs
+  const cardScale = useRef(new Animated.Value(1)).current;
 
-  // Animation helper
-  const animateScale = (animValue: Animated.Value, toValue: number) => {
-    Animated.spring(animValue, {
+  const animatePress = (toValue: number) => {
+    Animated.spring(cardScale, {
       toValue,
       useNativeDriver: true,
-      ...Timing.springBouncy,
+      friction: 8,
+      tension: 100,
     }).start();
   };
 
-  // Handle card press with haptic feedback
   const handlePress = () => {
     if (!onPress) return;
-
     triggerImpact('Light');
-
     onPress();
   };
 
@@ -87,7 +99,6 @@ export default memo(function Section4({
     try {
       setLoading(true);
 
-      // Use new getCardOffers API with storeId filtering
       const response = await discountsApi.getCardOffers({
         storeId,
         orderValue: productPrice,
@@ -98,7 +109,6 @@ export default memo(function Section4({
       if (response.success && response.data?.discounts && response.data.discounts.length > 0) {
         setCardOffers(response.data.discounts);
 
-        // Update title based on best offer
         const bestOffer = response.data.discounts[0];
         const maxDiscount = bestOffer.type === 'percentage' ? bestOffer.value : null;
 
@@ -109,13 +119,11 @@ export default memo(function Section4({
         const offersCount = response.data.discounts.length;
         setSubtitle(`On ${offersCount} card & payment offer${offersCount > 1 ? 's' : ''}`);
       } else {
-        // Reset to defaults if no offers
         setTitle(initialTitle);
         setSubtitle(initialSubtitle);
         setCardOffers([]);
       }
     } catch (error) {
-      // Silent fail - show default content
       setTitle(initialTitle);
       setSubtitle(initialSubtitle);
       setCardOffers([]);
@@ -124,66 +132,86 @@ export default memo(function Section4({
     }
   };
 
-  // resolve Image source: remote -> { uri: ... } ; local module -> use directly
   const resolvedSource: ImageSourcePropType =
     typeof cardImageUri === "string" ? { uri: cardImageUri } : cardImageUri;
 
-  // Wrap in TouchableOpacity if onPress is provided
   const CardWrapper = onPress ? TouchableOpacity : View;
   const cardWrapperProps = onPress
     ? {
-        activeOpacity: 0.8,
+        activeOpacity: 1,
         onPress: handlePress,
-        onPressIn: () => animateScale(cardScaleAnim, 0.97),
-        onPressOut: () => animateScale(cardScaleAnim, 1),
+        onPressIn: () => animatePress(0.97),
+        onPressOut: () => animatePress(1),
       }
     : {};
 
   return (
-    <View
-      style={styles.container}
-      testID={testID}
-      accessibilityRole="region"
-      accessibilityLabel="Card payment offers"
-    >
-      <Animated.View style={{ transform: [{ scale: cardScaleAnim }] }}>
-        <CardWrapper
-          style={styles.card}
-          accessibilityLabel={`${title}. ${subtitle}`}
-          accessibilityRole={onPress ? "button" : "summary"}
-          accessibilityHint={onPress ? "Double tap to view offer details" : undefined}
-          {...cardWrapperProps}
-        >
-          {/* Left icon */}
-          <View
-            style={styles.iconContainer}
-            accessible
-            accessibilityRole="image"
-            accessibilityLabel="card-offer-icon"
-          >
-            <Ionicons name={icon} size={IconSize.lg} color={Colors.primary[600]} />
+    <View style={styles.container} testID={testID}>
+      <Animated.View style={[styles.cardWrapper, { transform: [{ scale: cardScale }] }]}>
+        {/* Glass Card */}
+        {Platform.OS === 'ios' ? (
+          <BlurView intensity={50} tint="light" style={styles.card}>
+            <CardWrapper
+              style={styles.cardContent}
+              accessibilityLabel={`${title}. ${subtitle}`}
+              accessibilityRole={onPress ? "button" : "summary"}
+              accessibilityHint={onPress ? "Double tap to view offer details" : undefined}
+              {...cardWrapperProps}
+            >
+              {renderContent()}
+            </CardWrapper>
+          </BlurView>
+        ) : (
+          <View style={[styles.card, styles.cardAndroid]}>
+            <CardWrapper
+              style={styles.cardContent}
+              accessibilityLabel={`${title}. ${subtitle}`}
+              accessibilityRole={onPress ? "button" : "summary"}
+              accessibilityHint={onPress ? "Double tap to view offer details" : undefined}
+              {...cardWrapperProps}
+            >
+              {renderContent()}
+            </CardWrapper>
           </View>
+        )}
+      </Animated.View>
 
-        {/* Middle text */}
+      {/* Divider */}
+      <View style={styles.divider} />
+    </View>
+  );
+
+  function renderContent() {
+    return (
+      <>
+        {/* Glass Highlight */}
+        <View style={styles.glassHighlight} />
+
+        {/* Left Icon */}
+        <LinearGradient
+          colors={[COLORS.gold, COLORS.goldDark]}
+          style={styles.iconContainer}
+        >
+          <Ionicons name={icon} size={24} color={COLORS.navy} />
+        </LinearGradient>
+
+        {/* Text Content */}
         <View style={styles.textContainer}>
           <ThemedText style={styles.title}>{title}</ThemedText>
           <ThemedText style={styles.subtitle}>{subtitle}</ThemedText>
         </View>
 
-        {/* Right rotated card/coupon */}
-        <View style={styles.rightContainer} accessibilityElementsHidden>
-          <View style={styles.coupon}>
-            {/* loading spinner */}
+        {/* Right Card/Coupon Visual */}
+        <View style={styles.rightContainer}>
+          <View style={styles.couponWrapper}>
             {imageLoading && !errored && (
               <View style={styles.loaderContainer}>
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color={COLORS.white} />
               </View>
             )}
 
-            {/* Image fills the coupon; onError swaps to fallback */}
             {!errored ? (
               <Image
-                // resolvedSource will be either { uri: 'https://...' } or require('./card.jpg')
                 source={resolvedSource}
                 style={styles.couponImage}
                 resizeMode="cover"
@@ -195,165 +223,211 @@ export default memo(function Section4({
                 accessibilityLabel="card-offer-image"
               />
             ) : (
-              // fallback visual (keeps layout & style)
-              <View style={styles.fallback}>
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.fallback}
+              >
                 <ThemedText style={styles.fallbackPercent}>%</ThemedText>
-              </View>
+              </LinearGradient>
             )}
 
+            {/* Percentage Badge */}
             <View style={styles.couponBadge}>
               <ThemedText style={styles.couponBadgeText}>%</ThemedText>
             </View>
           </View>
         </View>
-        </CardWrapper>
-      </Animated.View>
-
-      {/* dashed divider */}
-      <View style={styles.divider} />
-    </View>
-  );
+      </>
+    );
+  }
 });
 
-/* --- Styles --- */
-interface Styles {
-  container: ViewStyle;
-  card: ViewStyle;
-  iconContainer: ViewStyle;
-  textContainer: ViewStyle;
-  title: TextStyle;
-  subtitle: TextStyle;
-  rightContainer: ViewStyle;
-  coupon: ViewStyle;
-  couponImage: ImageStyle;
-  loaderContainer: ViewStyle;
-  fallback: ViewStyle;
-  fallbackPercent: TextStyle;
-  couponBadge: ViewStyle;
-  couponBadgeText: TextStyle;
-  divider: ViewStyle;
-}
-
-const styles = StyleSheet.create<Styles>({
-  // Modern Container
+const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.base,
-    backgroundColor: Colors.background.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
 
-  // Modern Card with Purple Tint
+  cardWrapper: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+
   card: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: GLASS.lightBorder,
+    overflow: 'hidden',
+  },
+
+  cardAndroid: {
+    backgroundColor: GLASS.lightBg,
+  },
+
+  cardContent: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.background.purpleLight,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.base,
-    borderRadius: BorderRadius.lg,
-    ...Shadows.subtle,
+    padding: 16,
   },
 
-  // Modern Icon Container
+  glassHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: GLASS.lightHighlight,
+  },
+
+  // Icon Container
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.primary[50],
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: Spacing.md,
-    ...Shadows.purpleSubtle,
+    marginRight: 14,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.35,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
 
+  // Text Container
   textContainer: {
     flex: 1,
     justifyContent: "center",
   },
 
-  // Modern Typography
   title: {
-    ...Typography.bodyLarge,
+    fontSize: 15,
     fontWeight: "700",
-    color: Colors.primary[600],
-    marginBottom: Spacing.xs,
+    color: COLORS.textPrimary,
+    marginBottom: 4,
     lineHeight: 20,
   },
+
   subtitle: {
-    ...Typography.body,
-    color: Colors.gray[600],
+    fontSize: 13,
+    color: COLORS.textSecondary,
     lineHeight: 18,
+    fontWeight: '500',
   },
 
-  // Modern Rotated Coupon Area
+  // Right Coupon Visual
   rightContainer: {
-    width: 72,
-    height: 72,
+    width: 76,
+    height: 76,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: Spacing.sm,
+    marginLeft: 8,
   },
-  coupon: {
-    width: 60,
-    height: 44,
-    borderRadius: BorderRadius.md - 2,
-    backgroundColor: Colors.primary[600],
+
+  couponWrapper: {
+    width: 64,
+    height: 48,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    transform: [{ rotate: "10deg" }],
+    transform: [{ rotate: "8deg" }],
     overflow: "hidden",
-    ...Shadows.purpleMedium,
+    backgroundColor: COLORS.surface,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
+
   couponImage: {
     width: "100%",
     height: "100%",
   },
+
   loaderContainer: {
     position: "absolute",
     width: "100%",
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.0)",
+    backgroundColor: COLORS.primary,
   },
+
   fallback: {
     width: "100%",
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.primary[100],
   },
+
   fallbackPercent: {
-    color: Colors.primary[600],
-    fontSize: 20,
+    color: COLORS.white,
+    fontSize: 22,
     fontWeight: "800",
   },
 
-  // Modern Badge
+  // Badge
   couponBadge: {
     position: "absolute",
-    right: -6,
-    top: 6,
-    width: 28,
-    height: 28,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.background.primary,
+    right: -8,
+    top: 4,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: GLASS.frostedBg,
     alignItems: "center",
     justifyContent: "center",
-    transform: [{ rotate: "-10deg" }],
-    ...Shadows.subtle,
-  },
-  couponBadgeText: {
-    color: Colors.primary[600],
-    fontWeight: "800",
-    fontSize: 12,
+    transform: [{ rotate: "-8deg" }],
+    borderWidth: 1,
+    borderColor: GLASS.lightBorder,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
 
-  // Modern Divider
+  couponBadgeText: {
+    color: COLORS.gold,
+    fontWeight: "800",
+    fontSize: 13,
+  },
+
+  // Divider
   divider: {
-    marginTop: Spacing.md,
+    marginTop: 16,
     borderBottomWidth: 1,
     borderStyle: "dashed",
-    borderColor: Colors.gray[100],
-    opacity: 0.95,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
 });

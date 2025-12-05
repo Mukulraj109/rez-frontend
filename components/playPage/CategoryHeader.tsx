@@ -1,31 +1,48 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ScrollView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/ThemedText';
 import { CategoryHeaderProps, PLAY_PAGE_COLORS } from '@/types/playPage.types';
 
-export default function CategoryHeader({ 
-  categories, 
-  onCategoryPress 
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  navy: '#0B2240',
+};
+
+export default function CategoryHeader({
+  categories,
+  onCategoryPress
 }: CategoryHeaderProps) {
-  
+
   return (
     <LinearGradient
-      colors={PLAY_PAGE_COLORS.gradient.header as any}
+      colors={[COLORS.primary, COLORS.primaryDark]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}
     >
+      {/* Glass overlay */}
+      <View style={styles.glassOverlay} />
+
+      {/* Decorative elements */}
+      <View style={styles.decorCircle1} />
+      <View style={styles.decorCircle2} />
+      <View style={styles.decorCircle3} />
+
       {/* Header Title */}
       <View style={styles.headerTop}>
         <ThemedText style={styles.headerTitle}>
           Watch & Shop Your Favorites
         </ThemedText>
+        <View style={styles.titleUnderline} />
       </View>
 
       {/* Category Tabs */}
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.tabsContainer}
         contentContainerStyle={styles.tabsContent}
@@ -44,16 +61,16 @@ export default function CategoryHeader({
             >
               <LinearGradient
                 colors={
-                  isActive 
-                    ? ['#FFFFFF', 'rgba(255,255,255,0.7)'] 
-                    : ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']
+                  isActive
+                    ? ['#FFFFFF', 'rgba(255,255,255,0.9)']
+                    : ['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.08)']
                 }
                 style={styles.tabContent}
               >
                 <ThemedText style={styles.tabEmoji}>
                   {category.emoji}
                 </ThemedText>
-                <ThemedText 
+                <ThemedText
                   style={[
                     styles.tabText,
                     isActive && styles.activeTabText
@@ -72,53 +89,119 @@ export default function CategoryHeader({
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 80,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingBottom: 38,
-    borderBottomLeftRadius: 28, // rounded bottom corners
+    borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
-    marginBottom:30,
-    overflow: 'hidden', // ensure gradient respects rounding
+    marginBottom: 24,
+    overflow: 'hidden',
+    position: 'relative',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.35,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        boxShadow: '0px 8px 32px rgba(0, 192, 106, 0.35)',
+      },
+    }),
+  },
+  glassOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  decorCircle1: {
+    position: 'absolute',
+    top: -40,
+    right: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  decorCircle2: {
+    position: 'absolute',
+    top: 60,
+    left: -30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 200, 87, 0.15)',
+  },
+  decorCircle3: {
+    position: 'absolute',
+    bottom: 20,
+    right: 60,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   headerTop: {
     alignItems: 'center',
     marginBottom: 20,
     paddingHorizontal: 20,
+    zIndex: 2,
   },
   headerTitle: {
     color: '#FFF',
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
-    letterSpacing: 0.5,
-    lineHeight: 26,
-    textShadowColor: 'rgba(0,0,0,0.25)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
+    letterSpacing: -0.3,
+    lineHeight: 28,
+    textShadowColor: 'rgba(0,0,0,0.15)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  titleUnderline: {
+    width: 50,
+    height: 4,
+    backgroundColor: COLORS.gold,
+    borderRadius: 2,
+    marginTop: 8,
+    opacity: 0.9,
   },
   tabsContainer: {
     paddingLeft: 20,
+    zIndex: 2,
   },
   tabsContent: {
     paddingRight: 20,
     alignItems: 'center',
   },
   tabButton: {
-    marginRight: 16,
-    borderRadius: 28,
+    marginRight: 12,
+    borderRadius: 20,
     overflow: 'hidden',
-    minWidth: 120,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    minWidth: 130,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+      },
+    }),
   },
   activeTabButton: {
-    transform: [{ scale: 1.05 }],
-    shadowColor: '#FFF',
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 6 },
+    transform: [{ scale: 1.02 }],
+    shadowColor: COLORS.gold,
+    shadowOpacity: 0.5,
+    shadowOffset: { width: 0, height: 4 },
     shadowRadius: 12,
     elevation: 8,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 200, 87, 0.4)',
   },
   tabContent: {
     flexDirection: 'row',
@@ -126,20 +209,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 18,
-    borderRadius: 28,
+    borderRadius: 20,
   },
   tabEmoji: {
     fontSize: 18,
     marginRight: 8,
   },
   tabText: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 15,
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   activeTabText: {
-    color: '#111',
+    color: COLORS.navy,
     fontWeight: '700',
   },
 });

@@ -7,10 +7,24 @@ import {
   Platform,
   Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
 import { HomeDeliveryHeaderProps } from '@/types/home-delivery.types';
+
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  navy: '#0B2240',
+  surface: '#F7FAFC',
+  glassWhite: 'rgba(255, 255, 255, 0.6)',
+  glassBorder: 'rgba(255, 255, 255, 0.3)',
+  glassHighlight: 'rgba(255, 255, 255, 0.5)',
+};
 
 export function HomeDeliveryHeader({
   searchQuery,
@@ -74,8 +88,21 @@ export function HomeDeliveryHeader({
 
   return (
     <View style={styles.container}>
-      {/* Modern Header with Gradient */}
-      <View style={styles.headerGradient}>
+      {/* Premium Glassmorphism Header */}
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        {/* Glass overlay effect */}
+        <View style={styles.glassOverlay} />
+
+        {/* Decorative elements */}
+        <View style={styles.decorCircle1} />
+        <View style={styles.decorCircle2} />
+        <View style={styles.decorCircle3} />
+
         {/* Header Top Row */}
         <View style={styles.headerTop}>
           <TouchableOpacity
@@ -86,11 +113,16 @@ export function HomeDeliveryHeader({
             accessibilityRole="button"
             accessibilityHint="Double tap to go back to previous page"
           >
-            <Ionicons name="arrow-back" size={22} color="white" />
+            <View style={styles.glassButton}>
+              <Ionicons name="arrow-back" size={20} color="white" />
+            </View>
           </TouchableOpacity>
-          
-          <ThemedText style={styles.headerTitle}>Home delivery</ThemedText>
-          
+
+          <View style={styles.titleContainer}>
+            <ThemedText style={styles.headerTitle}>Home Delivery</ThemedText>
+            <View style={styles.titleUnderline} />
+          </View>
+
           <TouchableOpacity
             style={styles.searchIconButton}
             onPress={handleSearchIconPress}
@@ -100,12 +132,14 @@ export function HomeDeliveryHeader({
             accessibilityHint={`Double tap to ${isSearchVisible ? 'hide' : 'show'} the search bar`}
             accessibilityState={{ expanded: isSearchVisible }}
           >
-            <Ionicons name="search" size={22} color="white" />
+            <View style={[styles.glassButton, isSearchVisible && styles.glassButtonActive]}>
+              <Ionicons name="search" size={20} color="white" />
+            </View>
           </TouchableOpacity>
         </View>
 
-        {/* Modern Search Bar - Toggle Visible */}
-        <Animated.View 
+        {/* Premium Glass Search Bar - Toggle Visible */}
+        <Animated.View
           style={[
             styles.searchBarContainer,
             {
@@ -117,14 +151,14 @@ export function HomeDeliveryHeader({
         >
           <View style={styles.searchContainer}>
             <View style={styles.searchIconContainer}>
-              <Ionicons name="search" size={18} color="#8B5CF6" />
+              <Ionicons name="search" size={18} color={COLORS.primary} />
             </View>
-            
+
             <TextInput
               ref={searchInputRef}
               style={styles.searchInput}
               placeholder="Search products, brands, stores..."
-              placeholderTextColor="#A78BFA"
+              placeholderTextColor="#9AA7B2"
               value={searchQuery}
               onChangeText={onSearchChange}
               onSubmitEditing={handleSearch}
@@ -135,7 +169,7 @@ export function HomeDeliveryHeader({
               accessibilityHint="Enter product name, brand, or store to search"
               accessibilityRole="search"
             />
-            
+
             {searchQuery.length > 0 && (
               <TouchableOpacity
                 style={styles.clearButton}
@@ -145,12 +179,12 @@ export function HomeDeliveryHeader({
                 accessibilityRole="button"
                 accessibilityHint="Double tap to clear search text"
               >
-                <Ionicons name="close-circle" size={18} color="#A78BFA" />
+                <Ionicons name="close-circle" size={18} color={COLORS.primary} />
               </TouchableOpacity>
             )}
           </View>
         </Animated.View>
-      </View>
+      </LinearGradient>
     </View>
 );
 }
@@ -161,64 +195,117 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   headerGradient: {
-    backgroundColor: '#8B5CF6',
     paddingTop: Platform.OS === 'ios' ? 50 : 30,
     paddingBottom: 24,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    position: 'relative',
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#8B5CF6',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.35,
+        shadowRadius: 16,
       },
       android: {
-        elevation: 8,
+        elevation: 12,
       },
       web: {
-        boxShadow: '0px 4px 12px rgba(139, 92, 246, 0.3)',
+        boxShadow: '0px 8px 32px rgba(0, 192, 106, 0.35)',
       },
     }),
+  },
+  glassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  decorCircle1: {
+    position: 'absolute',
+    top: -40,
+    right: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  decorCircle2: {
+    position: 'absolute',
+    top: 60,
+    left: -30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 200, 87, 0.15)',
+  },
+  decorCircle3: {
+    position: 'absolute',
+    bottom: -20,
+    right: 60,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 16,
+    zIndex: 2,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    zIndex: 3,
+  },
+  glassButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+      },
+    }),
+  },
+  glassButtonActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
   },
   headerTitle: {
     color: 'white',
     fontSize: 22,
-    fontWeight: '800',
-    flex: 1,
-    textAlign: 'center',
-    marginHorizontal: 16,
-    letterSpacing: 0.5,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  titleUnderline: {
+    width: 40,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: COLORS.gold,
+    marginTop: 6,
+    opacity: 0.9,
   },
   searchIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    zIndex: 3,
   },
   searchBarContainer: {
     marginTop: 8,
+    zIndex: 2,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -226,37 +313,39 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.12,
         shadowRadius: 12,
       },
       android: {
         elevation: 6,
       },
       web: {
-        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
+        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255,255,255,0.5)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
       },
     }),
   },
   searchIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#1F2937',
+    fontSize: 15,
+    color: COLORS.navy,
     fontWeight: '500',
     paddingVertical: 0,
   },

@@ -299,7 +299,7 @@ export default function StoreActionButtons({
               <Ionicons
                 name={(config.id === 'lock' && !config.isEnabled) ? 'lock-closed' : config.iconName as any}
                 size={IconSize.md}
-                color={Colors.text.white}
+                color={config.textColor || Colors.text.white}
                 style={styles.buttonIcon}
               />
             )}

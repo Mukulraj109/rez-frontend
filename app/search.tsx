@@ -17,6 +17,22 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  navy: '#0B2240',
+  slate: '#1F2D3D',
+  muted: '#9AA7B2',
+  surface: '#F7FAFC',
+  error: '#EF4444',
+  warning: '#F59E0B',
+  glassWhite: 'rgba(255, 255, 255, 0.7)',
+  glassBorder: 'rgba(255, 255, 255, 0.4)',
+  glassHighlight: 'rgba(255, 255, 255, 0.5)',
+};
 import {
   SearchPageState,
   SearchSection,
@@ -193,7 +209,15 @@ export default function SearchPage() {
   };
 
   const renderHeader = () => (
-    <LinearGradient colors={['#7C3AED', '#8B5CF6', '#C084FC'] as const} style={styles.header}>
+    <LinearGradient
+      colors={[COLORS.primary, COLORS.primaryDark]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.header}
+    >
+      {/* Glass overlay */}
+      <View style={styles.glassOverlay} />
+
       <View style={styles.headerContent}>
         <TouchableOpacity
           onPress={handleBack}
@@ -210,11 +234,12 @@ export default function SearchPage() {
 
         <View style={styles.searchContainer}>
           <View style={[styles.searchInputContainer, inputFocused && styles.searchInputFocused]}>
-            <Ionicons name="search" size={20} color="#8B5CF6" style={styles.searchIcon} />
+            <View style={styles.searchIconWrapper}>
+              <Ionicons name="search" size={18} color={COLORS.primary} />
+            </View>
             <TextInput
               style={[
                 styles.searchInput,
-                // web-only inline style to remove web focus outline; cast to any to satisfy TS
                 Platform.OS === 'web'
                   ? ({
                       outlineWidth: 0,
@@ -225,7 +250,7 @@ export default function SearchPage() {
                   : undefined,
               ]}
               placeholder="Search for a service, store or category"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={COLORS.muted}
               value={searchState.query}
               onChangeText={handleQueryChange}
               onFocus={() => setInputFocused(true)}
@@ -249,7 +274,7 @@ export default function SearchPage() {
                 accessibilityRole="button"
                 accessibilityHint="Clears the current search text"
               >
-                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                <Ionicons name="close-circle" size={20} color={COLORS.muted} />
               </TouchableOpacity>
             )}
           </View>
@@ -276,6 +301,7 @@ export default function SearchPage() {
       {/* Decorative elements */}
       <View style={styles.floatingElement1} />
       <View style={styles.floatingElement2} />
+      <View style={styles.floatingElement3} />
     </LinearGradient>
   );
 
@@ -299,7 +325,7 @@ export default function SearchPage() {
               accessibilityHint={`Opens full list of ${section.title} categories`}
             >
               <Text style={styles.viewAllText}>View all</Text>
-              <Ionicons name="arrow-forward" size={16} color="#8B5CF6" style={{ marginLeft: 4 }} />
+              <Ionicons name="arrow-forward" size={16} color={COLORS.primaryDark} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </View>
 
@@ -328,7 +354,7 @@ export default function SearchPage() {
                       style={styles.categoryImagePlaceholder}
                       accessibilityLabel={`${category.name} category placeholder`}
                     >
-                      <Ionicons name="image-outline" size={28} color="#8B5CF6" />
+                      <Ionicons name="image-outline" size={28} color={COLORS.primary} />
                     </View>
                   )}
                 </View>
@@ -387,7 +413,7 @@ export default function SearchPage() {
       {/* Search Results Header */}
       <View style={styles.searchResultsHeader}>
         <View style={styles.searchResultsTitleContainer}>
-          <Ionicons name="search" size={20} color="#8B5CF6" />
+          <Ionicons name="search" size={20} color={COLORS.primary} />
           <Text style={styles.searchResultsTitle}>
             Search Results
           </Text>
@@ -438,7 +464,7 @@ export default function SearchPage() {
               </Text>
               <View style={styles.resultMeta}>
                 <View style={styles.resultCashback}>
-                  <Ionicons name="cash-outline" size={14} color="#10B981" />
+                  <Ionicons name="cash-outline" size={14} color={COLORS.primary} />
                   <Text style={styles.resultCashbackText}>{result.cashbackPercentage}% cashback</Text>
                 </View>
                 <View style={styles.categoryTag}>
@@ -486,7 +512,7 @@ export default function SearchPage() {
       accessibilityLabel={searchState.isSearching ? 'Searching for results' : 'Loading content'}
       accessibilityRole="progressbar"
     >
-      <ActivityIndicator size="large" color="#7C3AED" />
+      <ActivityIndicator size="large" color={COLORS.primary} />
       <Text style={styles.loadingText}>
         {searchState.isSearching ? 'Searching...' : 'Loading...'}
       </Text>
@@ -572,7 +598,7 @@ export default function SearchPage() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       {renderHeader()}
       {searchState.error && searchState.sections.length > 0 && (
         <View
@@ -600,7 +626,7 @@ export default function SearchPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.surface,
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 12 : 20,
@@ -608,8 +634,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     position: 'relative',
     overflow: 'hidden',
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.35,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        boxShadow: '0px 8px 32px rgba(0, 192, 106, 0.35)',
+      },
+    }),
+  },
+  glassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   headerContent: {
     flexDirection: 'row',
@@ -621,14 +665,20 @@ const styles = StyleSheet.create({
     zIndex: 3,
   },
   backButtonContainer: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+      },
+    }),
   },
   searchContainer: {
     flex: 1,
@@ -638,19 +688,49 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255,255,255,0.5)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      },
+    }),
   },
   searchInputFocused: {
-    shadowOpacity: 0.12,
-    elevation: 5,
+    borderColor: COLORS.primary,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOpacity: 0.15,
+      },
+      web: {
+        boxShadow: '0px 4px 20px rgba(0, 192, 106, 0.15), inset 0 1px 0 rgba(255,255,255,0.5)',
+      },
+    }),
+  },
+  searchIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   searchIcon: {
     marginRight: 10,
@@ -658,8 +738,8 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: '#0F172A',
-    // make sure no border is present by default:
+    color: COLORS.navy,
+    fontWeight: '500',
     borderWidth: 0,
     padding: 0,
   },
@@ -667,21 +747,27 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   filterButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
     position: 'relative',
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+      },
+    }),
   },
   filterBadge: {
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: '#EF4444',
+    backgroundColor: COLORS.gold,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -689,31 +775,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: '#7C3AED',
+    borderColor: 'rgba(255,255,255,0.5)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.35,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(255, 200, 87, 0.35)',
+      },
+    }),
   },
   filterBadgeText: {
-    color: 'white',
+    color: COLORS.navy,
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   floatingElement1: {
     position: 'absolute',
-    top: -10,
-    right: 40,
+    top: -30,
+    right: 30,
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     zIndex: 1,
   },
   floatingElement2: {
     position: 'absolute',
-    top: 40,
-    left: -20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    top: 50,
+    left: -30,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255, 200, 87, 0.15)',
+    zIndex: 1,
+  },
+  floatingElement3: {
+    position: 'absolute',
+    bottom: -20,
+    right: 80,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     zIndex: 1,
   },
   content: {
@@ -735,14 +845,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: COLORS.navy,
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.muted,
     fontWeight: '500',
     marginTop: 2,
   },
@@ -750,12 +860,109 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
     ...Platform.select({
       ios: {
-        shadowColor: '#8B5CF6',
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 192, 106, 0.1)',
+      },
+    }),
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: COLORS.primaryDark,
+    fontWeight: '700',
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    justifyContent: 'space-between',
+  },
+  categoryCard: {
+    width: (width - 54) / 2,
+    backgroundColor: COLORS.glassWhite,
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0px 6px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255,255,255,0.5)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      },
+    }),
+  },
+  categoryImageContainer: {
+    marginBottom: 12,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  categoryImage: {
+    width: '100%',
+    height: 110,
+    borderRadius: 14,
+  },
+  categoryImagePlaceholder: {
+    width: '100%',
+    height: 110,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+  },
+  categoryImageText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  categoryInfo: {
+    alignItems: 'flex-start',
+  },
+  categoryName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.navy,
+    marginBottom: 8,
+  },
+  cashbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cashbackBadge: {
+    backgroundColor: 'rgba(0, 192, 106, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
         shadowRadius: 4,
@@ -764,109 +971,19 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
       web: {
-        boxShadow: '0px 2px 4px rgba(139, 92, 246, 0.15)',
-      },
-    }),
-  },
-  viewAllText: {
-    fontSize: 14,
-    color: '#7C3AED',
-    fontWeight: '700',
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    justifyContent: 'space-between',
-  },
-  categoryCard: {
-    width: (width - 56) / 2,
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 4,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 20,
-      },
-      android: {
-        elevation: 8,
-      },
-      web: {
-        boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.12)',
-      },
-    }),
-    borderWidth: 0.5,
-    borderColor: 'rgba(139,92,246,0.08)',
-  },
-  categoryImageContainer: {
-    marginBottom: 10,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  categoryImage: {
-    width: '100%',
-    height: 120,
-    borderRadius: 16,
-  },
-  categoryImagePlaceholder: {
-    width: '100%',
-    height: 120,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  categoryImageText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#8B5CF6',
-  },
-  categoryInfo: {
-    alignItems: 'flex-start',
-  },
-  categoryName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 6,
-  },
-  cashbackRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  cashbackBadge: {
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0px 2px 4px rgba(16, 185, 129, 0.2)',
+        boxShadow: '0px 2px 6px rgba(0, 192, 106, 0.15)',
       },
     }),
   },
   cashbackBadgeText: {
-    color: '#047857',
-    fontSize: 13,
+    color: COLORS.primaryDark,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   categoryCashback: {
     fontSize: 12,
-    color: '#10B981',
+    color: COLORS.primary,
     fontWeight: '600',
   },
   suggestionsContainer: {
@@ -942,7 +1059,7 @@ const styles = StyleSheet.create({
   searchResultsCount: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: COLORS.primary,
     marginBottom: 4,
   },
   searchQueryText: {
@@ -959,28 +1076,30 @@ const styles = StyleSheet.create({
   },
   resultCard: {
     width: (width - 48) / 2,
-    backgroundColor: 'white',
+    backgroundColor: COLORS.glassWhite,
     marginBottom: 16,
     marginHorizontal: 2,
     borderRadius: 20,
-    padding: 16,
-    height: 300, // Increased height for better consistency
+    padding: 14,
+    height: 290,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
     ...Platform.select({
       ios: {
-        shadowColor: '#8B5CF6',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
+        shadowOpacity: 0.08,
         shadowRadius: 12,
       },
       android: {
-        elevation: 6,
+        elevation: 4,
       },
       web: {
-        boxShadow: '0px 4px 12px rgba(139, 92, 246, 0.12)',
+        boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255,255,255,0.5)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
       },
     }),
-    borderWidth: 1,
-    borderColor: 'rgba(139,92,246,0.08)',
   },
   resultImageContainer: {
     marginBottom: 12,
@@ -1031,32 +1150,34 @@ const styles = StyleSheet.create({
   resultCashback: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
+    backgroundColor: 'rgba(0, 192, 106, 0.12)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 10,
     alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   resultCashbackText: {
     fontSize: 11,
-    color: '#047857',
+    color: COLORS.primaryDark,
     fontWeight: '700',
     marginLeft: 4,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   categoryTag: {
-    backgroundColor: '#F5F3FF',
+    backgroundColor: 'rgba(255, 200, 87, 0.15)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.2)',
+    borderColor: 'rgba(255, 200, 87, 0.3)',
   },
   categoryTagText: {
-    color: '#6B21A8',
+    color: COLORS.navy,
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   loadingContainer: {
     flex: 1,
@@ -1091,15 +1212,24 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   retryButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 32,
     paddingVertical: 14,
-    borderRadius: 24,
-    elevation: 2,
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 4px 16px rgba(0, 192, 106, 0.3)',
+      },
+    }),
   },
   retryButtonText: {
     color: 'white',
@@ -1178,14 +1308,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   emptyActionButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: COLORS.primary,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 16,
     alignItems: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#8B5CF6',
+        shadowColor: COLORS.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -1194,7 +1324,7 @@ const styles = StyleSheet.create({
         elevation: 6,
       },
       web: {
-        boxShadow: '0px 4px 8px rgba(139, 92, 246, 0.3)',
+        boxShadow: '0px 4px 16px rgba(0, 192, 106, 0.3)',
       },
     }),
   },

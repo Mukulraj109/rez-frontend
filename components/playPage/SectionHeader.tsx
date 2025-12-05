@@ -4,27 +4,37 @@ import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { SectionHeaderProps, PLAY_PAGE_COLORS } from '@/types/playPage.types';
 
-export default function SectionHeader({ 
-  title, 
-  showViewAll = true, 
-  onViewAllPress, 
-  style 
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  gold: '#FFC857',
+  text: '#0B2240',
+};
+
+export default function SectionHeader({
+  title,
+  showViewAll = true,
+  onViewAllPress,
+  style
 }: SectionHeaderProps) {
-  
+
   return (
     <View style={[styles.container, style]}>
-      <ThemedText style={styles.title}>
-        {title}
-      </ThemedText>
-      
+      <View style={styles.titleContainer}>
+        <ThemedText style={styles.title}>
+          {title}
+        </ThemedText>
+        <View style={styles.titleUnderline} />
+      </View>
+
       {showViewAll && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.viewAllButton}
           onPress={onViewAllPress}
           activeOpacity={0.7}
         >
           <ThemedText style={styles.viewAllText}>View all</ThemedText>
-          <Ionicons name="arrow-forward" size={16} color={PLAY_PAGE_COLORS.primary} />
+          <Ionicons name="arrow-forward" size={16} color={COLORS.primary} />
         </TouchableOpacity>
       )}
     </View>
@@ -36,15 +46,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24, // More horizontal padding
-    paddingVertical: 18, // More vertical padding
-    marginBottom: 8, // Add bottom margin
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    marginBottom: 8,
+  },
+  titleContainer: {
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: 22, // Larger title
-    fontWeight: '700', // Bolder
-    color: PLAY_PAGE_COLORS.text,
-    letterSpacing: 0.3,
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.text,
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  titleUnderline: {
+    width: 40,
+    height: 4,
+    backgroundColor: COLORS.gold,
+    borderRadius: 2,
   },
   viewAllButton: {
     flexDirection: 'row',
@@ -53,14 +73,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.15)',
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 200, 87, 0.25)',
   },
   viewAllText: {
     fontSize: 15,
     fontWeight: '700',
-    color: PLAY_PAGE_COLORS.primary,
+    color: COLORS.primary,
     letterSpacing: 0.3,
   },
 });

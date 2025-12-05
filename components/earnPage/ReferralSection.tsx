@@ -227,7 +227,7 @@ export default function ReferralSection({
                 </LinearGradient>
               </Animated.View>
               
-              <Animated.View 
+              <Animated.View
                 style={[
                   styles.person,
                   styles.personRight,
@@ -245,7 +245,7 @@ export default function ReferralSection({
                 ]}
               >
                 <LinearGradient
-                  colors={['#8B5CF6', '#7C3AED']}
+                  colors={['#00C06A', '#00796B']}
                   style={styles.personAvatar}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -274,9 +274,9 @@ export default function ReferralSection({
             ]}
           >
             {[
-              { value: referralData.totalReferrals, label: 'Total Referrals', icon: 'people', gradient: ['#8B5CF6', '#7C3AED'] },
+              { value: referralData.totalReferrals, label: 'Total Referrals', icon: 'people', gradient: ['#00C06A', '#00796B'] },
               { value: `₹${referralData.totalEarningsFromReferrals}`, label: 'Earned', icon: 'wallet', gradient: ['#10B981', '#059669'] },
-              { value: `₹${referralData.referralBonus}`, label: 'Per Referral', icon: 'gift', gradient: ['#F59E0B', '#D97706'] },
+              { value: `₹${referralData.referralBonus}`, label: 'Per Referral', icon: 'gift', gradient: ['#FFC857', '#F5A623'] },
             ].map((stat, idx) => (
               <View key={idx} style={styles.statItem}>
                 <LinearGradient
@@ -321,7 +321,7 @@ export default function ReferralSection({
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
+                colors={['#00C06A', '#00A85C', '#00796B']}
                 style={styles.shareButtonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -331,13 +331,13 @@ export default function ReferralSection({
               </LinearGradient>
             </TouchableOpacity>
             
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.learnButton}
               onPress={onLearnMore}
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['rgba(139, 92, 246, 0.1)', 'rgba(139, 92, 246, 0.05)']}
+                colors={['rgba(0, 192, 106, 0.1)', 'rgba(0, 192, 106, 0.05)']}
                 style={styles.learnButtonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -375,8 +375,8 @@ const styles = StyleSheet.create({
   },
   titleUnderline: {
     width: 60,
-    height: 3,
-    backgroundColor: '#8B5CF6',
+    height: 4,
+    backgroundColor: '#FFC857',
     borderRadius: 2,
     marginTop: 2,
   },
@@ -384,13 +384,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#FFC857',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 200, 87, 0.2)',
   },
   cardBackground: {
     padding: 24,
@@ -399,12 +399,12 @@ const styles = StyleSheet.create({
   },
   decorativeCircle1: {
     position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(139, 92, 246, 0.06)',
-    top: -40,
-    right: -40,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 200, 87, 0.12)',
+    top: -50,
+    right: -50,
   },
   decorativeCircle2: {
     position: 'absolute',
@@ -576,7 +576,7 @@ statLabel: {
     flex: 1,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

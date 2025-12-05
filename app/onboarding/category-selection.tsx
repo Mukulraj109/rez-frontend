@@ -1,22 +1,40 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import OnboardingContainer from '@/components/onboarding/OnboardingContainer';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { navigationDebugger } from '@/utils/navigationDebug';
+
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00A16B',
+  deepTeal: '#00796B',
+  gold: '#FFC857',
+  goldDark: '#FF9F1C',
+  textPrimary: '#0B2240',
+  textMuted: '#9AA7B2',
+  surface: '#F7FAFC',
+  glassWhite: 'rgba(255, 255, 255, 0.9)',
+  glassBorder: 'rgba(255, 255, 255, 0.5)',
+};
 
 interface CategoryItem {
   id: string;
   name: string;
   icon: string;
   isEnabled: boolean;
+  color: string;
 }
 
 const categories: CategoryItem[] = [
-  { id: 'fashion', name: 'Fashion', icon: 'shirt-outline', isEnabled: true },
-  { id: 'food', name: 'Food', icon: 'restaurant-outline', isEnabled: true },
-  { id: 'medicine', name: 'Madeine', icon: 'medical-outline', isEnabled: false },
+  { id: 'fashion', name: 'Fashion', icon: 'shirt-outline', isEnabled: true, color: COLORS.primary },
+  { id: 'food', name: 'Food & Dining', icon: 'restaurant-outline', isEnabled: true, color: COLORS.gold },
+  { id: 'grocery', name: 'Grocery', icon: 'cart-outline', isEnabled: true, color: COLORS.primary },
+  { id: 'electronics', name: 'Electronics', icon: 'phone-portrait-outline', isEnabled: true, color: COLORS.deepTeal },
+  { id: 'beauty', name: 'Beauty', icon: 'sparkles-outline', isEnabled: true, color: COLORS.gold },
+  { id: 'medicine', name: 'Medicine', icon: 'medical-outline', isEnabled: false, color: '#9CA3AF' },
 ];
 
 export default function CategorySelectionScreen() {
@@ -26,7 +44,7 @@ export default function CategorySelectionScreen() {
 
   const handleCategorySelect = (categoryId: string, isEnabled: boolean) => {
     if (!isEnabled) return;
-    
+
     setSelectedCategories(prev => {
       if (prev.includes(categoryId)) {
         return prev.filter(id => id !== categoryId);
@@ -43,232 +61,354 @@ export default function CategorySelectionScreen() {
   };
 
   return (
-    <OnboardingContainer useGradient={false} style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text
-            style={styles.title}
-            accessibilityLabel="Search and Find Best Deals"
-            accessibilityRole="header"
-          >
-            Search & Find Best{'\n'}Deals
-          </Text>
-          <View style={styles.underline} />
+    <View style={styles.container}>
+      {/* Background */}
+      <LinearGradient
+        colors={[COLORS.surface, '#EDF2F7', COLORS.surface]}
+        style={StyleSheet.absoluteFill}
+      />
 
-          <Text
-            style={styles.subtitle}
-            accessibilityLabel="20 best offers waiting near you"
-          >
-            20 best offers{'\n'}waiting near you
-          </Text>
-
-          <View
-            style={styles.cashbackBadge}
-            accessible={true}
-            accessibilityLabel="Cashback rewards available"
-            accessibilityRole="image"
-          >
-            <Text style={styles.cashText}>CASH</Text>
-            <Text style={styles.backText}>BACK</Text>
-          </View>
-        </View>
-
-        <View style={styles.categoriesSection}>
-          <Text
-            style={styles.categoriesTitle}
-            accessibilityRole="header"
-          >
-            Categories
-          </Text>
-
-          <View style={styles.categoriesList}>
-            {categories.map((category) => {
-              const isSelected = selectedCategories.includes(category.id);
-              return (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                    styles.categoryItem,
-                    isSelected && styles.categoryItemSelected,
-                    !category.isEnabled && styles.categoryItemDisabled,
-                  ]}
-                  onPress={() => handleCategorySelect(category.id, category.isEnabled)}
-                  disabled={!category.isEnabled}
-                  accessibilityLabel={`${category.name} category${!category.isEnabled ? ', coming soon' : ''}`}
-                  accessibilityRole="button"
-                  accessibilityHint={category.isEnabled ? `Double tap to ${isSelected ? 'deselect' : 'select'} this category` : 'This category is not available yet'}
-                  accessibilityState={{
-                    selected: isSelected,
-                    disabled: !category.isEnabled
-                  }}
-                >
-                  <View style={styles.categoryIcon}>
-                    <Ionicons
-                      name={category.icon as any}
-                      size={24}
-                      color={!category.isEnabled ? '#9CA3AF' : isSelected ? '#8B5CF6' : '#374151'}
-                    />
-                  </View>
-                  <Text style={[
-                    styles.categoryName,
-                    isSelected && styles.categoryNameSelected,
-                    !category.isEnabled && styles.categoryNameDisabled,
-                  ]}>
-                    {category.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.nextButton}
-          onPress={handleNext}
-          accessibilityLabel="Continue to rewards introduction"
-          accessibilityRole="button"
-          accessibilityHint="Double tap to proceed to the next step"
-        >
-          <Text style={styles.nextButtonText}>Next</Text>
-        </TouchableOpacity>
+      {/* Decorative Elements */}
+      <View style={styles.decorativeCircles}>
+        <View style={[styles.circle, styles.circleGreen]} />
+        <View style={[styles.circle, styles.circleGold]} />
       </View>
-    </OnboardingContainer>
-);
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.glassCard}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.5)', 'rgba(255,255,255,0)']}
+            style={styles.glassShine}
+          />
+
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Find Best Deals</Text>
+            <Text style={styles.subtitle}>
+              Select your favorite categories{'\n'}to personalize your experience
+            </Text>
+
+            <View style={styles.underlineContainer}>
+              <LinearGradient
+                colors={[COLORS.gold, COLORS.goldDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.underline}
+              />
+            </View>
+          </View>
+
+          {/* Cashback Badge */}
+          <View style={styles.cashbackContainer}>
+            <LinearGradient
+              colors={[COLORS.gold, COLORS.goldDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cashbackBadge}
+            >
+              <Text style={styles.cashbackTitle}>CASHBACK</Text>
+              <Text style={styles.cashbackSubtitle}>on every purchase</Text>
+            </LinearGradient>
+          </View>
+
+          {/* Categories */}
+          <View style={styles.categoriesSection}>
+            <Text style={styles.categoriesTitle}>Choose Categories</Text>
+
+            <View style={styles.categoriesList}>
+              {categories.map((category) => {
+                const isSelected = selectedCategories.includes(category.id);
+                return (
+                  <TouchableOpacity
+                    key={category.id}
+                    style={[
+                      styles.categoryItem,
+                      isSelected && styles.categoryItemSelected,
+                      !category.isEnabled && styles.categoryItemDisabled,
+                    ]}
+                    onPress={() => handleCategorySelect(category.id, category.isEnabled)}
+                    disabled={!category.isEnabled}
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={[
+                        styles.categoryIcon,
+                        isSelected && { backgroundColor: `${category.color}15` },
+                      ]}
+                    >
+                      <Ionicons
+                        name={category.icon as any}
+                        size={22}
+                        color={!category.isEnabled ? '#9CA3AF' : isSelected ? category.color : COLORS.textPrimary}
+                      />
+                    </View>
+                    <Text
+                      style={[
+                        styles.categoryName,
+                        isSelected && { color: category.color },
+                        !category.isEnabled && styles.categoryNameDisabled,
+                      ]}
+                    >
+                      {category.name}
+                    </Text>
+                    {isSelected && (
+                      <View style={[styles.checkmark, { backgroundColor: category.color }]}>
+                        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                      </View>
+                    )}
+                    {!category.isEnabled && (
+                      <View style={styles.comingSoonBadge}>
+                        <Text style={styles.comingSoonText}>Soon</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Next Button */}
+          <TouchableOpacity
+            style={styles.primaryButtonWrapper}
+            onPress={handleNext}
+            activeOpacity={0.9}
+          >
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.deepTeal]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>Continue</Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F8F9FA',
-  },
-  content: {
     flex: 1,
-    justifyContent: 'space-between',
-    paddingTop: 40,
-    paddingBottom: 40,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+  },
+
+  // Decorative
+  decorativeCircles: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  circle: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  circleGreen: {
+    width: 200,
+    height: 200,
+    top: -60,
+    right: -60,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+  },
+  circleGold: {
+    width: 150,
+    height: 150,
+    bottom: 100,
+    left: -50,
+    backgroundColor: 'rgba(255, 200, 87, 0.1)',
+  },
+
+  // Glass Card
+  glassCard: {
+    backgroundColor: COLORS.glassWhite,
+    borderRadius: 28,
+    padding: 28,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: COLORS.glassBorder,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 15,
+    ...(Platform.OS === 'web' && {
+      backdropFilter: 'blur(30px)',
+    }),
+  },
+  glassShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+  },
+
+  // Header
   header: {
     alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#8B5CF6',
-    textAlign: 'center',
-    lineHeight: 28,
-    marginBottom: 8,
-  },
-  underline: {
-    width: 60,
-    height: 3,
-    backgroundColor: '#8B5CF6',
-    borderRadius: 2,
     marginBottom: 20,
   },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
   subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    fontSize: 14,
+    color: COLORS.textMuted,
     textAlign: 'center',
     lineHeight: 22,
+    marginBottom: 16,
+  },
+  underlineContainer: {
+    alignItems: 'center',
+  },
+  underline: {
+    width: 50,
+    height: 4,
+    borderRadius: 2,
+  },
+
+  // Cashback Badge
+  cashbackContainer: {
+    alignItems: 'center',
     marginBottom: 24,
   },
   cashbackBadge: {
-    backgroundColor: '#F3F0FF',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#8B5CF6',
+    borderRadius: 24,
     alignItems: 'center',
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  cashText: {
-    fontSize: 16,
+  cashbackTitle: {
+    fontSize: 18,
     fontWeight: '800',
-    color: '#8B5CF6',
-    marginBottom: -2,
+    color: COLORS.textPrimary,
+    letterSpacing: 1,
   },
-  backText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#EC4899',
+  cashbackSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(11, 34, 64, 0.7)',
+    marginTop: 2,
   },
+
+  // Categories
   categoriesSection: {
-    flex: 1,
-    paddingTop: 20,
+    marginBottom: 24,
   },
   categoriesTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 20,
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 16,
   },
   categoriesList: {
-    gap: 16,
+    gap: 12,
   },
   categoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     borderWidth: 2,
     borderColor: 'transparent',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   categoryItemSelected: {
-    borderColor: '#8B5CF6',
-    backgroundColor: '#F3F0FF',
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(0, 192, 106, 0.03)',
   },
   categoryItemDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
     backgroundColor: '#F9FAFB',
   },
   categoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 14,
   },
   categoryName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: COLORS.textPrimary,
     flex: 1,
-  },
-  categoryNameSelected: {
-    color: '#8B5CF6',
   },
   categoryNameDisabled: {
     color: '#9CA3AF',
   },
-  nextButton: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 25,
-    paddingVertical: 16,
+  checkmark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
-  nextButtonText: {
+  comingSoonBadge: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  comingSoonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+
+  // Primary Button
+  primaryButtonWrapper: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  primaryButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

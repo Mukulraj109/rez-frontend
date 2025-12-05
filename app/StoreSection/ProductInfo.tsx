@@ -230,7 +230,7 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
           
           {/* Dynamic availability and location */}
           <View style={styles.locationRow}>
-            <Ionicons name="location" size={14} color="#7C3AED" />
+            <Ionicons name="location" size={14} color="#00C06A" />
             {distanceText ? (
               <Text style={styles.distanceText}>{distanceText}</Text>
             ) : null}
@@ -287,13 +287,13 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
               activeOpacity={0.7}
             >
               <View style={styles.storeVisitContent}>
-                <Ionicons name="storefront" size={18} color="#8B5CF6" />
+                <Ionicons name="storefront" size={18} color="#00C06A" />
                 <View style={styles.storeVisitText}>
                   <Text style={styles.storeVisitLabel}>Visit Store</Text>
                   <Text style={styles.storeVisitName}>{dynamicData.store.name || dynamicData.merchant || 'Store'}</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#8B5CF6" />
+              <Ionicons name="chevron-forward" size={20} color="#00C06A" />
             </TouchableOpacity>
           )}
 
@@ -349,7 +349,7 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
             <View style={styles.reviewCardContent}>
               <View style={styles.reviewTextSection}>
                 <View style={styles.reviewIconWrapper}>
-                  <Ionicons name="create-outline" size={18} color="#8B5CF6" />
+                  <Ionicons name="create-outline" size={18} color="#00C06A" />
                 </View>
                 <View style={styles.reviewTextContent}>
                   <Text style={styles.reviewMainText}>Write a review</Text>
@@ -397,7 +397,7 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
                 ]}
               >
                 <LinearGradient
-                  colors={["#8B5CF6", "#6D28D9"]}
+                  colors={["#00C06A", "#00796B"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.sliderGradient}
@@ -411,7 +411,7 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
                 onPress={onStoreVisitPress}
               >
                 <View style={styles.segmentContent}>
-                  <Ionicons name="storefront" size={16} color={active === "visit" ? "#fff" : "#7C3AED"} />
+                  <Ionicons name="storefront" size={16} color={active === "visit" ? "#fff" : "#00C06A"} />
                   <Text style={[styles.segmentText, active === "visit" ? styles.segmentTextActive : styles.segmentTextInactive]}>
                     STORE VISIT
                   </Text>
@@ -425,7 +425,7 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
                 onPress={onBookNowPress}
               >
                 <View style={styles.segmentContent}>
-                  <Ionicons name="calendar-outline" size={16} color={active === "book" ? "#fff" : "#7C3AED"} />
+                  <Ionicons name="calendar-outline" size={16} color={active === "book" ? "#fff" : "#00C06A"} />
                   <Text style={[styles.segmentText, active === "book" ? styles.segmentTextActive : styles.segmentTextInactive]}>
                     Book Now
                   </Text>
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  price: { fontSize: 24, fontWeight: "800", color: "#7C3AED" },
+  price: { fontSize: 24, fontWeight: "800", color: "#00C06A" },
   originalPrice: { 
     fontSize: 18, fontWeight: "500", color: "#999", 
     textDecorationLine: "line-through", marginLeft: 8 
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   discountText: { fontSize: 12, fontWeight: "700", color: "#fff" },
   locationRow: { flexDirection: "row", alignItems: "center", padding: 10, flexWrap: "wrap" },
   locationText: { fontSize: 13, marginLeft: 6, color: "#555", flexShrink: 1 },
-  distanceText: { fontSize: 14, marginLeft: 6, color: "#7C3AED", fontWeight: "700" },
+  distanceText: { fontSize: 14, marginLeft: 6, color: "#00C06A", fontWeight: "700" },
   deliveryTimeRow: { flexDirection: "row", alignItems: "center", marginLeft: 8 },
   openBadge: {
     marginLeft: 8,
@@ -532,10 +532,10 @@ const styles = StyleSheet.create({
 
   // Store Visit Card styles
   storeVisitCard: {
-    backgroundColor: "#F9F5FF",
+    backgroundColor: "rgba(0, 192, 106, 0.05)",
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: "#E9D5FF",
+    borderColor: "rgba(0, 192, 106, 0.15)",
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginTop: 14,
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#8B5CF6",
+    shadowColor: "#00C06A",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
   storeVisitLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#8B5CF6",
+    color: "#00C06A",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 2,
@@ -576,12 +576,12 @@ const styles = StyleSheet.create({
 
   // Enhanced review CTA card styles
   reviewCTACard: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "rgba(0, 192, 106, 0.12)",
     marginVertical: 16,
-    shadowColor: "#8B5CF6",
+    shadowColor: "#00C06A",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#F3F0FF",
+    backgroundColor: "rgba(0, 192, 106, 0.1)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   },
   reviewSubText: {
     fontSize: 13,
-    color: "#8B5CF6",
+    color: "#00C06A",
     fontWeight: "500",
   },
   cashbackBadge: {
@@ -661,7 +661,7 @@ const styles = StyleSheet.create({
     height: 58,
     borderRadius: 30,
     borderWidth: 1.5,
-    borderColor: "#E6E0FF",
+    borderColor: "rgba(0, 192, 106, 0.2)",
     backgroundColor: "#FFFFFF",
     overflow: "hidden",
     position: "relative",
@@ -705,6 +705,6 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   segmentTextInactive: {
-    color: "#6D28D9",
+    color: "#00C06A",
   },
 });

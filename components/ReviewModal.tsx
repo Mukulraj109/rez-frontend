@@ -1,3 +1,6 @@
+// ReviewModal.tsx - Premium Glassmorphism Design
+// Reviews & Ratings Modal - Green & Gold Theme
+
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   View,
@@ -9,9 +12,11 @@ import {
   Animated,
   ScrollView,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/ThemedText';
 import StarRating from '@/components/StarRating';
 import RatingBreakdown from '@/components/RatingBreakdown';
@@ -20,6 +25,30 @@ import ReviewTabs from '@/components/ReviewTabs';
 import ReviewCard from '@/components/ReviewCard';
 import UGCGrid from '@/components/UGCGrid';
 import { ReviewModalProps, TabType } from '@/types/reviews';
+
+// Premium Glass Design Tokens - Green & Gold Theme
+const GLASS = {
+  lightBg: 'rgba(255, 255, 255, 0.85)',
+  lightBorder: 'rgba(255, 255, 255, 0.5)',
+  lightHighlight: 'rgba(255, 255, 255, 0.9)',
+  frostedBg: 'rgba(255, 255, 255, 0.92)',
+  tintedGreenBg: 'rgba(0, 192, 106, 0.08)',
+  tintedGreenBorder: 'rgba(0, 192, 106, 0.2)',
+  tintedGoldBg: 'rgba(255, 200, 87, 0.12)',
+  tintedGoldBorder: 'rgba(255, 200, 87, 0.35)',
+};
+
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  goldDark: '#E5A500',
+  navy: '#0B2240',
+  textPrimary: '#1F2937',
+  textSecondary: '#6B7280',
+  white: '#FFFFFF',
+  surface: '#F7FAFC',
+};
 
 export default function ReviewModal({
   visible,
@@ -53,7 +82,7 @@ export default function ReviewModal({
       console.log('  📝 Reviews Data:', JSON.stringify(reviews, null, 2));
       console.log('  🖼️ UGC Content Count:', ugcContent?.length || 0);
       console.log('  🖼️ UGC Loading:', ugcLoading);
-      
+
       // Log each review in detail
       if (reviews && reviews.length > 0) {
         reviews.forEach((review, index) => {
@@ -141,7 +170,11 @@ export default function ReviewModal({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <Animated.View style={[styles.blurContainer, { opacity: fadeAnim }]}>
-            <BlurView intensity={50} style={styles.blur} />
+            {Platform.OS === 'ios' ? (
+              <BlurView intensity={60} tint="dark" style={styles.blur} />
+            ) : (
+              <View style={[styles.blur, styles.androidBlur]} />
+            )}
           </Animated.View>
 
           <TouchableWithoutFeedback>
@@ -151,117 +184,204 @@ export default function ReviewModal({
                 { transform: [{ translateY: slideAnim }] },
               ]}
             >
-              <ScrollView
-                style={styles.modal}
-                contentContainerStyle={styles.modalContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.handleBar} />
-
-                {/* Close (cut) button */}
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={onClose}
-                  accessibilityLabel="Close reviews and ratings"
-                  accessibilityRole="button"
-                  accessibilityHint="Double tap to close this dialog"
-                >
-                  <Ionicons name="close" size={20} color="#555" />
-                </TouchableOpacity>
-
-                {/* Header */}
-                <View style={styles.header}>
-                  <ThemedText style={styles.headerTitle}>Reviews & Ratings</ThemedText>
-                  <ThemedText style={styles.storeName}>{storeName}</ThemedText>
+              {Platform.OS === 'ios' ? (
+                <BlurView intensity={80} tint="light" style={styles.modal}>
+                  {renderModalContent()}
+                </BlurView>
+              ) : (
+                <View style={[styles.modal, styles.modalAndroid]}>
+                  {renderModalContent()}
                 </View>
-
-                {/* Rating Summary */}
-                <View style={styles.ratingSummary}>
-                  <View style={styles.averageRatingContainer}>
-                    <ThemedText style={styles.averageRatingNumber}>
-                      {averageRating.toFixed(1)}
-                    </ThemedText>
-                    <ThemedText style={styles.outOfFive}> / 5</ThemedText>
-                  </View>
-                  <StarRating rating={averageRating} size="large" showHalf={true} />
-                  <ThemedText style={styles.totalReviewsText}>
-                    Based on {totalReviews.toLocaleString()} reviews
-                  </ThemedText>
-                </View>
-
-                {/* Breakdown */}
-                <View style={styles.breakdownSection}>
-                  <RatingBreakdown
-                    ratingBreakdown={ratingBreakdown}
-                    totalReviews={totalReviews}
-                  />
-                </View>
-
-                {/* Action */}
-                <View style={styles.actionSection}>
-                  <ReviewActionButton 
-                    onPress={onWriteReview} 
-                    disabled={!onWriteReview}
-                    hasReviewed={!onWriteReview}
-                  />
-                </View>
-
-                {/* Tabs */}
-                <ReviewTabs
-                  activeTab={activeTab}
-                  onTabChange={handleTabChange}
-                  reviewCount={totalReviews}
-                  ugcCount={ugcContent.length}
-                />
-
-                {/* Content */}
-                {activeTab === 'reviews' ? (
-                  <View style={styles.reviewListContainer}>
-                    {reviews.length === 0 ? (
-                      <View style={styles.emptyState}>
-                        <ThemedText style={styles.emptyStateText}>
-                          No reviews yet. Be the first to review this store!
-                        </ThemedText>
-                      </View>
-                    ) : (
-                      reviews.map((review) => (
-                        <ReviewCard
-                          key={review.id}
-                          review={review}
-                          onLike={onLikeReview ? () => onLikeReview(review.id) : undefined}
-                          onReport={onReportReview ? () => onReportReview(review.id) : undefined}
-                          onHelpful={onHelpfulReview ? () => onHelpfulReview(review.id) : undefined}
-                        />
-                      ))
-                    )}
-                  </View>
-                ) : (
-                  ugcLoading ? (
-                    <View style={styles.loadingContainer}>
-                      <ActivityIndicator size="large" color="#7C3AED" />
-                      <ThemedText style={styles.loadingText}>Loading UGC content...</ThemedText>
-                    </View>
-                  ) : ugcContent.length === 0 ? (
-                    <View style={styles.emptyState}>
-                      <ThemedText style={styles.emptyStateText}>
-                        No user-generated content yet.
-                      </ThemedText>
-                    </View>
-                  ) : (
-                    <UGCGrid
-                      ugcContent={ugcContent}
-                      onContentPress={() => {}}
-                      onLikeContent={() => {}}
-                    />
-                  )
-                )}
-              </ScrollView>
+              )}
             </Animated.View>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
     </Modal>
-);
+  );
+
+  function renderModalContent() {
+    return (
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.modalContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Glass Highlight */}
+        <View style={styles.glassHighlight} />
+
+        {/* Handle Bar */}
+        <View style={styles.handleBar} />
+
+        {/* Close Button */}
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={onClose}
+          accessibilityLabel="Close reviews and ratings"
+          accessibilityRole="button"
+          accessibilityHint="Double tap to close this dialog"
+        >
+          <View style={styles.closeButtonInner}>
+            <Ionicons name="close" size={18} color={COLORS.textPrimary} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Header */}
+        <View style={styles.header}>
+          <ThemedText style={styles.headerTitle}>Reviews & Ratings</ThemedText>
+          <ThemedText style={styles.storeName}>{storeName}</ThemedText>
+        </View>
+
+        {/* Rating Summary - Glass Card */}
+        <View style={styles.ratingSummaryCard}>
+          <View style={styles.ratingSummaryGlass}>
+            <View style={styles.averageRatingContainer}>
+              <ThemedText style={styles.averageRatingNumber}>
+                {averageRating.toFixed(1)}
+              </ThemedText>
+              <ThemedText style={styles.outOfFive}> / 5</ThemedText>
+            </View>
+            <View style={styles.starsContainer}>
+              <StarRating rating={averageRating} size="large" showHalf={true} />
+            </View>
+            <ThemedText style={styles.totalReviewsText}>
+              Based on {totalReviews.toLocaleString()} reviews
+            </ThemedText>
+          </View>
+        </View>
+
+        {/* Rating Breakdown - Glass Card */}
+        <View style={styles.breakdownSection}>
+          <View style={styles.glassCard}>
+            <RatingBreakdown
+              ratingBreakdown={ratingBreakdown}
+              totalReviews={totalReviews}
+            />
+          </View>
+        </View>
+
+        {/* Action Section - Already Reviewed Banner */}
+        <View style={styles.actionSection}>
+          {!onWriteReview ? (
+            <View style={styles.alreadyReviewedBanner}>
+              <View style={styles.alreadyReviewedContent}>
+                <View style={styles.alreadyReviewedIconContainer}>
+                  <Ionicons name="star" size={20} color={COLORS.gold} />
+                </View>
+                <ThemedText style={styles.alreadyReviewedText}>
+                  You have already reviewed this store
+                </ThemedText>
+                <TouchableOpacity style={styles.editReviewButton}>
+                  <Ionicons name="create-outline" size={18} color={COLORS.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.writeReviewButton} onPress={onWriteReview}>
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.writeReviewGradient}
+              >
+                <Ionicons name="create-outline" size={20} color={COLORS.white} />
+                <ThemedText style={styles.writeReviewText}>Write a Review</ThemedText>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Tabs - Glass Style */}
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'reviews' && styles.tabActive]}
+            onPress={() => handleTabChange('reviews')}
+          >
+            {activeTab === 'reviews' ? (
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.tabGradient}
+              >
+                <ThemedText style={styles.tabTextActive}>Reviews ({totalReviews})</ThemedText>
+              </LinearGradient>
+            ) : (
+              <ThemedText style={styles.tabText}>Reviews ({totalReviews})</ThemedText>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'ugc' && styles.tabActive]}
+            onPress={() => handleTabChange('ugc')}
+          >
+            {activeTab === 'ugc' ? (
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.tabGradient}
+              >
+                <ThemedText style={styles.tabTextActive}>UGC Content</ThemedText>
+              </LinearGradient>
+            ) : (
+              <ThemedText style={styles.tabText}>UGC Content</ThemedText>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Content */}
+        {activeTab === 'reviews' ? (
+          <View style={styles.reviewListContainer}>
+            {reviews.length === 0 ? (
+              <View style={styles.emptyState}>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryDark]}
+                  style={styles.emptyIconContainer}
+                >
+                  <Ionicons name="chatbubble-outline" size={32} color={COLORS.white} />
+                </LinearGradient>
+                <ThemedText style={styles.emptyStateTitle}>No reviews yet</ThemedText>
+                <ThemedText style={styles.emptyStateText}>
+                  Be the first to review this store!
+                </ThemedText>
+              </View>
+            ) : (
+              reviews.map((review) => (
+                <View key={review.id} style={styles.reviewCardWrapper}>
+                  <ReviewCard
+                    review={review}
+                    onLike={onLikeReview ? () => onLikeReview(review.id) : undefined}
+                    onReport={onReportReview ? () => onReportReview(review.id) : undefined}
+                    onHelpful={onHelpfulReview ? () => onHelpfulReview(review.id) : undefined}
+                  />
+                </View>
+              ))
+            )}
+          </View>
+        ) : (
+          ugcLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <ThemedText style={styles.loadingText}>Loading UGC content...</ThemedText>
+            </View>
+          ) : ugcContent.length === 0 ? (
+            <View style={styles.emptyState}>
+              <LinearGradient
+                colors={[COLORS.gold, COLORS.goldDark]}
+                style={styles.emptyIconContainer}
+              >
+                <Ionicons name="images-outline" size={32} color={COLORS.navy} />
+              </LinearGradient>
+              <ThemedText style={styles.emptyStateTitle}>No content yet</ThemedText>
+              <ThemedText style={styles.emptyStateText}>
+                User-generated content will appear here.
+              </ThemedText>
+            </View>
+          ) : (
+            <UGCGrid
+              ugcContent={ugcContent}
+              onContentPress={() => {}}
+              onLikeContent={() => {}}
+            />
+          )
+        )}
+      </ScrollView>
+    );
+  }
 }
 
 const createStyles = (screenData: { width: number; height: number }) => {
@@ -281,10 +401,11 @@ const createStyles = (screenData: { width: number; height: number }) => {
     },
     blur: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    },
+    androidBlur: {
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     modalContainer: {
-      backgroundColor: '#fff',
       width: modalWidth,
       maxHeight: modalHeight,
       borderRadius: 24,
@@ -292,14 +413,32 @@ const createStyles = (screenData: { width: number; height: number }) => {
     },
     modal: {
       flex: 1,
+      borderWidth: 1,
+      borderColor: GLASS.lightBorder,
+      borderRadius: 24,
+    },
+    modalAndroid: {
+      backgroundColor: GLASS.frostedBg,
+    },
+    scrollView: {
+      flex: 1,
     },
     modalContent: {
       padding: 20,
+      paddingBottom: 40,
+    },
+    glassHighlight: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 1,
+      backgroundColor: GLASS.lightHighlight,
     },
     handleBar: {
       width: 40,
       height: 4,
-      backgroundColor: '#ccc',
+      backgroundColor: 'rgba(0, 0, 0, 0.15)',
       borderRadius: 2,
       alignSelf: 'center',
       marginVertical: 10,
@@ -308,74 +447,267 @@ const createStyles = (screenData: { width: number; height: number }) => {
       position: 'absolute',
       top: 10,
       right: 10,
-      backgroundColor: '#f2f2f2',
+      zIndex: 10,
+    },
+    closeButtonInner: {
+      backgroundColor: GLASS.lightBg,
       borderRadius: 20,
-      padding: 6,
-      zIndex: 1,
+      width: 36,
+      height: 36,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: GLASS.lightBorder,
+      ...Platform.select({
+        ios: {
+          shadowColor: COLORS.navy,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+        },
+        android: {
+          elevation: 3,
+        },
+      }),
     },
     header: {
       alignItems: 'center',
       marginBottom: 20,
+      marginTop: 10,
     },
     headerTitle: {
       fontSize: 24,
-      fontWeight: 'bold',
+      fontWeight: '700',
+      color: COLORS.textPrimary,
+      letterSpacing: -0.3,
     },
     storeName: {
-      fontSize: 16,
-      color: '#7C3AED',
+      fontSize: 15,
+      color: COLORS.primary,
+      fontWeight: '600',
+      marginTop: 4,
     },
-    ratingSummary: {
-      alignItems: 'center',
-      padding: 20,
-      backgroundColor: 'rgba(124, 58, 237, 0.05)',
-      borderRadius: 16,
+    ratingSummaryCard: {
       marginBottom: 20,
+    },
+    ratingSummaryGlass: {
+      alignItems: 'center',
+      padding: 24,
+      backgroundColor: GLASS.tintedGreenBg,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: GLASS.tintedGreenBorder,
+      ...Platform.select({
+        ios: {
+          shadowColor: COLORS.primary,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 12,
+        },
+        android: {
+          elevation: 4,
+        },
+      }),
     },
     averageRatingContainer: {
       flexDirection: 'row',
       alignItems: 'baseline',
     },
     averageRatingNumber: {
-      fontSize: 42,
-      fontWeight: 'bold',
+      fontSize: 48,
+      fontWeight: '800',
+      color: COLORS.textPrimary,
+      letterSpacing: -1,
     },
     outOfFive: {
       fontSize: 20,
-      color: '#666',
+      color: COLORS.textSecondary,
+      fontWeight: '500',
+    },
+    starsContainer: {
+      marginVertical: 12,
     },
     totalReviewsText: {
       fontSize: 14,
-      color: '#666',
+      color: COLORS.textSecondary,
+      fontWeight: '500',
     },
     breakdownSection: {
       marginBottom: 20,
     },
+    glassCard: {
+      backgroundColor: GLASS.lightBg,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: GLASS.lightBorder,
+      ...Platform.select({
+        ios: {
+          shadowColor: COLORS.navy,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 2,
+        },
+      }),
+    },
     actionSection: {
       marginBottom: 20,
+    },
+    alreadyReviewedBanner: {
+      backgroundColor: GLASS.tintedGoldBg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: GLASS.tintedGoldBorder,
+      overflow: 'hidden',
+    },
+    alreadyReviewedContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 14,
+      gap: 12,
+    },
+    alreadyReviewedIconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(255, 200, 87, 0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    alreadyReviewedText: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '600',
+      color: COLORS.textPrimary,
+    },
+    editReviewButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: GLASS.lightBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: GLASS.tintedGreenBorder,
+    },
+    writeReviewButton: {
+      borderRadius: 14,
+      overflow: 'hidden',
+    },
+    writeReviewGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      gap: 8,
+    },
+    writeReviewText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: COLORS.white,
+    },
+    tabsContainer: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 20,
+    },
+    tab: {
+      flex: 1,
+      borderRadius: 24,
+      overflow: 'hidden',
+      backgroundColor: GLASS.lightBg,
+      borderWidth: 1,
+      borderColor: GLASS.lightBorder,
+    },
+    tabActive: {
+      borderColor: COLORS.primary,
+    },
+    tabGradient: {
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    tabText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: COLORS.textSecondary,
+      textAlign: 'center',
+      paddingVertical: 12,
+    },
+    tabTextActive: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: COLORS.white,
     },
     reviewListContainer: {
       gap: 12,
     },
+    reviewCardWrapper: {
+      backgroundColor: GLASS.lightBg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: GLASS.lightBorder,
+      overflow: 'hidden',
+      ...Platform.select({
+        ios: {
+          shadowColor: COLORS.navy,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 2,
+        },
+      }),
+    },
     emptyState: {
-      padding: 40,
+      padding: 48,
       alignItems: 'center',
       justifyContent: 'center',
     },
+    emptyIconContainer: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+      ...Platform.select({
+        ios: {
+          shadowColor: COLORS.primary,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 4,
+        },
+      }),
+    },
+    emptyStateTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: COLORS.textPrimary,
+      marginBottom: 8,
+    },
     emptyStateText: {
-      fontSize: 16,
-      color: '#6B7280',
+      fontSize: 14,
+      color: COLORS.textSecondary,
       textAlign: 'center',
+      lineHeight: 20,
     },
     loadingContainer: {
-      padding: 40,
+      padding: 48,
       alignItems: 'center',
       justifyContent: 'center',
     },
     loadingText: {
       marginTop: 12,
       fontSize: 14,
-      color: '#6B7280',
+      color: COLORS.textSecondary,
+      fontWeight: '500',
     },
   });
 };

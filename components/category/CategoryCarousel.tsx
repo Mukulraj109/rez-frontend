@@ -196,7 +196,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
           style={[
             styles.dot,
             {
-              backgroundColor: activeIndex === index ? '#8B5CF6' : '#E5E7EB',
+              backgroundColor: activeIndex === index ? '#00C06A' : '#E5E7EB',
               width: activeIndex === index ? 20 : 8,
             },
           ]}
@@ -244,7 +244,13 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 12,
+    marginTop: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.1)',
   },
   headerContainer: {
     paddingHorizontal: 16,
@@ -253,7 +259,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: '#0B2240',
   },
   scrollContent: {
     paddingHorizontal: (width - CARD_WIDTH) / 2,
@@ -261,14 +267,16 @@ const styles = StyleSheet.create({
   productCard: {
     height: 320,
     marginHorizontal: 8,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#fff',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   productImage: {
     flex: 1,
@@ -294,7 +302,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     right: -40,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 4,
     paddingHorizontal: 40,
     transform: [{ rotate: '45deg' }],
@@ -324,19 +332,20 @@ const styles = StyleSheet.create({
     bottom: 16,
     left: 16,
     right: 16,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(0, 192, 106, 0.25)',
     borderRadius: 30,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
   cashbackInfo: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 14,
     color: '#fff',
+    fontWeight: '600',
   },
   arrow: {
     fontSize: 18,
@@ -346,12 +355,17 @@ const styles = StyleSheet.create({
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 12,
+    marginTop: 16,
     gap: 8,
   },
   dot: {
     height: 8,
     borderRadius: 4,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
 

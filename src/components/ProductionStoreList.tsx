@@ -105,14 +105,14 @@ const StoreCard = ({ store, index, onPress }: StoreCardProps) => {
     };
 
     const name = storeName.toUpperCase();
-    return gradients[name] || ['#6B21A8', '#8B5CF6', '#A855F7']; // Default purple gradient
+    return gradients[name] || ['#00C06A', '#00996B', '#0B2240']; // Default green gradient
   };
 
   // Get accent color based on cashback percentage
   const getAccentColor = (cashback: number): string => {
     if (cashback >= 15) return '#10B981'; // Green for high cashback
     if (cashback >= 10) return '#F59E0B'; // Orange for medium
-    return '#8B5CF6'; // Purple for standard
+    return '#00C06A'; // Green for standard
   };
 
   const cashback = store.offers?.cashback || 5;
@@ -205,7 +205,7 @@ const ProductionStoreList = ({ stores, isLoading, error, onRefresh }: Production
           <Text style={styles.sectionTitle}>Store you can't miss</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#00C06A" />
           <Text style={styles.loadingText}>Loading fashion stores...</Text>
         </View>
       </View>
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 20,
     marginVertical: 12,
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: {
       width: 0,
       height: 4,
@@ -329,12 +329,12 @@ const styles = StyleSheet.create({
   viewAllButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     borderRadius: 12,
   },
   viewAllText: {
     fontSize: 13,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '700',
   },
   scrollContainer: {
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 10,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     borderRadius: 12,
   },
   retryButtonText: {

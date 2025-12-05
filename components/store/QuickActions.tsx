@@ -300,7 +300,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({
               isCompact && styles.iconContainerCompact,
               { width: iconContainerSize, height: iconContainerSize, borderRadius: iconContainerSize / 2 }
             ]}>
-              <Ionicons name={action.icon} size={iconSize} color="#7C3AED" />
+              <Ionicons name={action.icon} size={iconSize} color="#00C06A" />
             </View>
             <Text style={[styles.actionLabel, isCompact && styles.actionLabelCompact]} numberOfLines={2}>
               {action.label}
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F3E8FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,

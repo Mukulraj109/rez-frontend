@@ -1,27 +1,59 @@
 // FollowStoreSection.tsx
-// Modern "Follow Store" section for Store Pages
-// Beautiful UI with gradients, animations, and modern design
+// Premium Glassmorphism "Follow Store" section
+// Inspired by Apple's Liquid Glass design
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, ActivityIndicator, Platform } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import wishlistApi from '@/services/wishlistApi';
 import { showAlert } from '@/components/common/CrossPlatformAlert';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
-import {
-  Colors,
-  Spacing,
-  Shadows,
-  BorderRadius,
-  Typography,
-  IconSize,
-  Timing,
-  Gradients,
-} from '@/constants/DesignSystem';
+
+// Premium Design Tokens from TASK.md - Green & Gold Theme
+const GLASS = {
+  // Light Glass (Primary - for cards)
+  lightBg: 'rgba(255, 255, 255, 0.7)',
+  lightBorder: 'rgba(255, 255, 255, 0.4)',
+  lightHighlight: 'rgba(255, 255, 255, 0.6)',
+
+  // Frosted Glass (for overlays)
+  frostedBg: 'rgba(255, 255, 255, 0.85)',
+  frostedBorder: 'rgba(255, 255, 255, 0.5)',
+
+  // Tinted Glass (green tint) - Default state
+  tintedGreenBg: 'rgba(0, 192, 106, 0.08)',
+  tintedGreenBorder: 'rgba(0, 192, 106, 0.2)',
+
+  // Gold tinted glass for following state
+  tintedGoldBg: 'rgba(255, 200, 87, 0.12)',
+  tintedGoldBorder: 'rgba(255, 200, 87, 0.35)',
+};
+
+const COLORS = {
+  primary: '#00C06A',       // ReZ Green
+  primaryDark: '#00796B',   // Deep Teal
+  gold: '#FFC857',          // Sun Gold - following state
+  goldDark: '#E5A500',      // Darker gold
+  navy: '#0B2240',          // Midnight Navy
+  textPrimary: '#1F2937',
+  textSecondary: '#6B7280',
+  textMuted: '#9CA3AF',
+  surface: '#F7FAFC',
+  white: '#FFFFFF',
+  success: '#10B981',
+};
 
 interface FollowStoreSectionProps {
   storeData?: {
@@ -35,13 +67,15 @@ interface FollowStoreSectionProps {
     cashback?: number;
     discount?: number;
   } | null;
-  /** Optional: Pass current follow state from parent for sync */
   isFollowingProp?: boolean;
-  /** Optional: Callback when follow state changes */
   onFollowChange?: (isFollowing: boolean) => void;
 }
 
-export default function FollowStoreSection({ storeData, isFollowingProp, onFollowChange }: FollowStoreSectionProps) {
+export default function FollowStoreSection({
+  storeData,
+  isFollowingProp,
+  onFollowChange,
+}: FollowStoreSectionProps) {
   const router = useRouter();
   const { state: authState } = useAuth();
   const isAuthenticated = authState?.isAuthenticated && !!authState?.user;
@@ -51,7 +85,7 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
   const [isCheckingStatus, setIsCheckingStatus] = useState(isFollowingProp === undefined);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  // Sync with parent prop when it changes
+  // Sync with parent prop
   useEffect(() => {
     if (isFollowingProp !== undefined) {
       setIsFollowing(isFollowingProp);
@@ -63,24 +97,35 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
   const heartScale = useRef(new Animated.Value(1)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0.3)).current;
+  const toggleAnim = useRef(new Animated.Value(0)).current;
 
   const storeId = storeData?.id || storeData?._id;
   const storeName = storeData?.name || storeData?.title || 'this store';
 
-  // Start pulse animation for the heart when following
+  // Animate toggle position
+  useEffect(() => {
+    Animated.spring(toggleAnim, {
+      toValue: notificationsEnabled ? 1 : 0,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 100,
+    }).start();
+  }, [notificationsEnabled]);
+
+  // Pulse animation for following state
   useEffect(() => {
     if (isFollowing) {
       const pulse = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.15,
-            duration: 800,
+            toValue: 1.08,
+            duration: 1200,
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
-            duration: 800,
+            duration: 1200,
             useNativeDriver: true,
           }),
         ])
@@ -90,20 +135,27 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
     }
   }, [isFollowing]);
 
-  // Shimmer animation
+  // Glow pulse animation
   useEffect(() => {
-    const shimmer = Animated.loop(
-      Animated.timing(shimmerAnim, {
-        toValue: 1,
-        duration: 2000,
-        useNativeDriver: true,
-      })
+    const glow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 0.6,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0.3,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
     );
-    shimmer.start();
-    return () => shimmer.stop();
+    glow.start();
+    return () => glow.stop();
   }, []);
 
-  // Check if user already follows this store
+  // Check follow status on mount
   useEffect(() => {
     const checkFollowStatus = async () => {
       if (!storeId || !isAuthenticated) {
@@ -112,7 +164,6 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
       }
 
       try {
-        // Use wishlistApi - backend supports this endpoint
         const response = await wishlistApi.checkWishlistStatus('store', storeId);
         if (response.success && response.data?.inWishlist) {
           setIsFollowing(true);
@@ -131,15 +182,15 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
   const animateHeart = () => {
     Animated.sequence([
       Animated.timing(heartScale, {
-        toValue: 1.4,
-        duration: 150,
+        toValue: 1.3,
+        duration: 120,
         useNativeDriver: true,
       }),
       Animated.spring(heartScale, {
         toValue: 1,
         useNativeDriver: true,
-        friction: 3,
-        tension: 100,
+        friction: 4,
+        tension: 120,
       }),
     ]).start();
   };
@@ -149,8 +200,8 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
     Animated.spring(buttonScale, {
       toValue,
       useNativeDriver: true,
-      friction: 7,
-      tension: 100,
+      friction: 8,
+      tension: 120,
     }).start();
   };
 
@@ -175,15 +226,13 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
 
     triggerImpact('Medium');
 
-    // Optimistic update
     const wasFollowing = isFollowing;
     setIsFollowing(!wasFollowing);
-    onFollowChange?.(!wasFollowing); // Notify parent immediately
+    onFollowChange?.(!wasFollowing);
     setIsLoading(true);
 
     try {
       if (wasFollowing) {
-        // Unfollow store - use wishlistApi (backend supports this)
         const response = await wishlistApi.removeFromWishlist('store', storeId);
         if (response.success) {
           triggerNotification('Success');
@@ -192,7 +241,6 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
           throw new Error(response.message || 'Failed to unfollow');
         }
       } else {
-        // Follow store - use wishlistApi (backend supports this)
         const response = await wishlistApi.addToWishlist({
           itemType: 'store',
           itemId: storeId,
@@ -214,9 +262,8 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
         }
       }
     } catch (error) {
-      // Revert on error
       setIsFollowing(wasFollowing);
-      onFollowChange?.(wasFollowing); // Revert parent state
+      onFollowChange?.(wasFollowing);
       triggerNotification('Error');
       showAlert('Error', 'Something went wrong. Please try again.', undefined, 'error');
     } finally {
@@ -237,338 +284,445 @@ export default function FollowStoreSection({ storeData, isFollowingProp, onFollo
   if (isCheckingStatus) {
     return (
       <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={Colors.primary[600]} />
+        <View style={styles.glassCard}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <ThemedText style={styles.loadingText}>Checking status...</ThemedText>
+          </View>
         </View>
       </View>
     );
   }
 
+  // Glass card content renderer (supports both web and native)
+  const renderGlassContent = () => (
+    <>
+      {/* Inner highlight for glass effect */}
+      <View style={styles.glassHighlight} />
+
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={styles.cardContent}
+        onPress={handleFollowToggle}
+        onPressIn={() => animateButton(0.97)}
+        onPressOut={() => animateButton(1)}
+        disabled={isLoading}
+        accessibilityRole="button"
+        accessibilityLabel={isFollowing ? `Unfollow ${storeName}` : `Follow ${storeName}`}
+        accessibilityState={{ selected: isFollowing }}
+      >
+        {/* Left: Animated Heart Icon with Glow */}
+        <View style={styles.iconWrapper}>
+          {/* Glow effect behind icon */}
+          {isFollowing && (
+            <Animated.View
+              style={[
+                styles.iconGlow,
+                {
+                  opacity: glowAnim,
+                  backgroundColor: COLORS.gold,
+                }
+              ]}
+            />
+          )}
+
+          <Animated.View
+            style={[
+              styles.iconContainer,
+              isFollowing ? styles.iconContainerFollowing : styles.iconContainerDefault,
+              {
+                transform: [
+                  { scale: Animated.multiply(heartScale, isFollowing ? pulseAnim : new Animated.Value(1)) }
+                ]
+              }
+            ]}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color={isFollowing ? COLORS.navy : COLORS.primary} />
+            ) : (
+              <Ionicons
+                name={isFollowing ? 'heart' : 'heart-outline'}
+                size={28}
+                color={isFollowing ? COLORS.navy : COLORS.primary}
+              />
+            )}
+          </Animated.View>
+        </View>
+
+        {/* Center: Text Content */}
+        <View style={styles.textContainer}>
+          <ThemedText style={[styles.title, isFollowing && styles.titleFollowing]}>
+            {isFollowing ? 'Following' : 'Follow Store'}
+          </ThemedText>
+          <ThemedText style={styles.subtitle} numberOfLines={1}>
+            {isFollowing
+              ? `You're following ${storeName}`
+              : 'Get exclusive offers & updates'}
+          </ThemedText>
+        </View>
+
+        {/* Right: Action Badge */}
+        <View style={[
+          styles.actionBadge,
+          isFollowing ? styles.actionBadgeFollowing : styles.actionBadgeDefault
+        ]}>
+          <Ionicons
+            name={isFollowing ? 'checkmark' : 'add'}
+            size={20}
+            color={isFollowing ? COLORS.navy : COLORS.primary}
+          />
+        </View>
+      </TouchableOpacity>
+    </>
+  );
+
   return (
     <View style={styles.container}>
-      {/* Main Follow Card */}
+      {/* Main Follow Card - Glass Effect */}
       <Animated.View style={[styles.cardWrapper, { transform: [{ scale: buttonScale }] }]}>
-        <LinearGradient
-          colors={isFollowing
-            ? ['#FF6B6B', '#EE5A5A', '#DC4747']
-            : ['#667eea', '#764ba2', '#8B5CF6']
-          }
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradientCard}
-        >
-          {/* Decorative Elements */}
-          <View style={styles.decorativeCircle1} />
-          <View style={styles.decorativeCircle2} />
-
-          <TouchableOpacity
-            activeOpacity={0.9}
-            style={styles.cardContent}
-            onPress={handleFollowToggle}
-            onPressIn={() => animateButton(0.96)}
-            onPressOut={() => animateButton(1)}
-            disabled={isLoading}
-            accessibilityRole="button"
-            accessibilityLabel={isFollowing ? `Unfollow ${storeName}` : `Follow ${storeName}`}
-            accessibilityState={{ selected: isFollowing }}
+        {Platform.OS === 'ios' ? (
+          <BlurView
+            intensity={60}
+            tint="light"
+            style={[
+              styles.glassCard,
+              isFollowing ? styles.glassCardFollowing : styles.glassCardDefault
+            ]}
           >
-            {/* Left: Animated Heart Icon */}
-            <View style={styles.iconWrapper}>
-              <Animated.View
-                style={[
-                  styles.iconContainer,
-                  {
-                    transform: [
-                      { scale: Animated.multiply(heartScale, isFollowing ? pulseAnim : new Animated.Value(1)) }
-                    ]
-                  }
-                ]}
-              >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Ionicons
-                    name={isFollowing ? 'heart' : 'heart-outline'}
-                    size={32}
-                    color="#FFF"
-                  />
-                )}
-              </Animated.View>
-              {isFollowing && (
-                <View style={styles.heartGlow} />
-              )}
-            </View>
-
-            {/* Center: Text Content */}
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.title}>
-                {isFollowing ? 'Following' : 'Follow Store'}
-              </ThemedText>
-              <ThemedText style={styles.subtitle} numberOfLines={1}>
-                {isFollowing
-                  ? `You're following ${storeName}`
-                  : 'Get exclusive offers & updates'}
-              </ThemedText>
-            </View>
-
-            {/* Right: Action Badge */}
-            <View style={styles.actionContainer}>
-              <View style={[
-                styles.actionBadge,
-                isFollowing && styles.actionBadgeActive
-              ]}>
-                <Ionicons
-                  name={isFollowing ? 'checkmark' : 'add'}
-                  size={20}
-                  color="#FFF"
-                />
-              </View>
-            </View>
-          </TouchableOpacity>
-        </LinearGradient>
+            {renderGlassContent()}
+          </BlurView>
+        ) : (
+          <View
+            style={[
+              styles.glassCard,
+              styles.glassCardAndroid,
+              isFollowing ? styles.glassCardFollowing : styles.glassCardDefault
+            ]}
+          >
+            {renderGlassContent()}
+          </View>
+        )}
       </Animated.View>
 
-      {/* Notification Toggle Card */}
+      {/* Notification Toggle Card - Glass Effect */}
       {isFollowing && (
-        <View style={styles.notificationCard}>
-          <TouchableOpacity
-            style={styles.notificationRow}
-            onPress={handleNotificationToggle}
-            activeOpacity={0.7}
-            accessibilityRole="switch"
-            accessibilityLabel="Deal notifications"
-            accessibilityState={{ checked: notificationsEnabled }}
-          >
-            <View style={styles.notificationLeft}>
-              <LinearGradient
-                colors={notificationsEnabled
-                  ? ['#10B981', '#059669']
-                  : ['#E5E7EB', '#D1D5DB']
-                }
-                style={styles.notificationIconBg}
-              >
-                <Ionicons
-                  name={notificationsEnabled ? 'notifications' : 'notifications-outline'}
-                  size={20}
-                  color={notificationsEnabled ? '#FFF' : '#6B7280'}
-                />
-              </LinearGradient>
-              <View style={styles.notificationTextContainer}>
-                <ThemedText style={styles.notificationTitle}>Deal Notifications</ThemedText>
-                <ThemedText style={styles.notificationSubtitle}>
-                  Get notified about new offers
-                </ThemedText>
-              </View>
+        <Animated.View style={styles.notificationWrapper}>
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={50} tint="light" style={styles.notificationCard}>
+              {renderNotificationContent()}
+            </BlurView>
+          ) : (
+            <View style={[styles.notificationCard, styles.notificationCardAndroid]}>
+              {renderNotificationContent()}
             </View>
-
-            {/* Custom Toggle Switch */}
-            <View style={[styles.toggle, notificationsEnabled && styles.toggleActive]}>
-              <Animated.View style={[
-                styles.toggleKnob,
-                notificationsEnabled && styles.toggleKnobActive
-              ]} />
-            </View>
-          </TouchableOpacity>
-        </View>
+          )}
+        </Animated.View>
       )}
 
-      {/* Benefits Section */}
+      {/* Benefits Section - Glass Cards */}
       {!isFollowing && (
         <View style={styles.benefitsSection}>
           <ThemedText style={styles.benefitsTitle}>Why Follow?</ThemedText>
           <View style={styles.benefitsGrid}>
-            <View style={styles.benefitCard}>
-              <LinearGradient
-                colors={['#FEF3C7', '#FDE68A']}
-                style={styles.benefitIconBg}
-              >
-                <Ionicons name="flash" size={18} color="#D97706" />
-              </LinearGradient>
-              <ThemedText style={styles.benefitText}>Early Access</ThemedText>
-            </View>
-
-            <View style={styles.benefitCard}>
-              <LinearGradient
-                colors={['#DBEAFE', '#BFDBFE']}
-                style={styles.benefitIconBg}
-              >
-                <Ionicons name="pricetag" size={18} color="#2563EB" />
-              </LinearGradient>
-              <ThemedText style={styles.benefitText}>Exclusive Deals</ThemedText>
-            </View>
-
-            <View style={styles.benefitCard}>
-              <LinearGradient
-                colors={['#FCE7F3', '#FBCFE8']}
-                style={styles.benefitIconBg}
-              >
-                <Ionicons name="gift" size={18} color="#DB2777" />
-              </LinearGradient>
-              <ThemedText style={styles.benefitText}>Special Rewards</ThemedText>
-            </View>
+            {[
+              { icon: 'flash', label: 'Early Access', colors: ['#FEF3C7', '#FDE68A'], iconColor: '#D97706' },
+              { icon: 'pricetag', label: 'Exclusive Deals', colors: ['#DBEAFE', '#BFDBFE'], iconColor: '#2563EB' },
+              { icon: 'gift', label: 'Special Rewards', colors: ['#FCE7F3', '#FBCFE8'], iconColor: '#DB2777' },
+            ].map((benefit, index) => (
+              <View key={index} style={styles.benefitCard}>
+                <LinearGradient
+                  colors={benefit.colors as [string, string]}
+                  style={styles.benefitIconBg}
+                >
+                  <Ionicons name={benefit.icon as any} size={18} color={benefit.iconColor} />
+                </LinearGradient>
+                <ThemedText style={styles.benefitText}>{benefit.label}</ThemedText>
+              </View>
+            ))}
           </View>
         </View>
       )}
     </View>
   );
+
+  // Notification content renderer
+  function renderNotificationContent() {
+    return (
+      <>
+        <View style={styles.notificationHighlight} />
+        <TouchableOpacity
+          style={styles.notificationRow}
+          onPress={handleNotificationToggle}
+          activeOpacity={0.8}
+          accessibilityRole="switch"
+          accessibilityLabel="Deal notifications"
+          accessibilityState={{ checked: notificationsEnabled }}
+        >
+          <View style={styles.notificationLeft}>
+            <View style={[
+              styles.notificationIconBg,
+              notificationsEnabled && styles.notificationIconBgActive
+            ]}>
+              <Ionicons
+                name={notificationsEnabled ? 'notifications' : 'notifications-outline'}
+                size={20}
+                color={notificationsEnabled ? COLORS.white : COLORS.textSecondary}
+              />
+            </View>
+            <View style={styles.notificationTextContainer}>
+              <ThemedText style={styles.notificationTitle}>Deal Notifications</ThemedText>
+              <ThemedText style={styles.notificationSubtitle}>
+                Get notified about new offers
+              </ThemedText>
+            </View>
+          </View>
+
+          {/* Premium Glass Toggle Switch */}
+          <View style={[styles.toggle, notificationsEnabled && styles.toggleActive]}>
+            <Animated.View
+              style={[
+                styles.toggleKnob,
+                {
+                  transform: [{
+                    translateX: toggleAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [2, 24],
+                    })
+                  }]
+                },
+                notificationsEnabled && styles.toggleKnobActive
+              ]}
+            >
+              {notificationsEnabled && (
+                <Ionicons name="checkmark" size={12} color={COLORS.success} />
+              )}
+            </Animated.View>
+          </View>
+        </TouchableOpacity>
+      </>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.lg,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+
+  // Card Wrapper with shadow
+  cardWrapper: {
+    borderRadius: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0 8px 32px rgba(11, 34, 64, 0.12)',
+      },
+    }),
+  },
+
+  // Glass Card Base
+  glassCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: GLASS.lightBorder,
+  },
+
+  glassCardAndroid: {
+    backgroundColor: GLASS.lightBg,
+  },
+
+  glassCardDefault: {
+    borderColor: GLASS.tintedGreenBorder,
+  },
+
+  glassCardFollowing: {
+    borderColor: GLASS.tintedGoldBorder,
+  },
+
+  glassHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: GLASS.lightHighlight,
   },
 
   loadingContainer: {
     height: 100,
     justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
   },
 
-  // Main Card
-  cardWrapper: {
-    borderRadius: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#8B5CF6',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.35,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 12,
-      },
-      web: {
-        boxShadow: '0 8px 32px rgba(139, 92, 246, 0.35)',
-      },
-    }),
-  },
-
-  gradientCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-
-  decorativeCircle1: {
-    position: 'absolute',
-    top: -30,
-    right: -30,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-
-  decorativeCircle2: {
-    position: 'absolute',
-    bottom: -20,
-    left: -20,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  loadingText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
   },
 
   cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.lg,
-    paddingVertical: 20,
+    padding: 20,
   },
 
+  // Icon Styles
   iconWrapper: {
     position: 'relative',
-    marginRight: Spacing.md,
+    marginRight: 16,
+  },
+
+  iconGlow: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 36,
+    opacity: 0.3,
   },
 
   iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
 
-  heartGlow: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 34,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    zIndex: -1,
+  iconContainerDefault: {
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    borderColor: 'rgba(0, 192, 106, 0.25)',
   },
 
+  iconContainerFollowing: {
+    backgroundColor: COLORS.gold,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+
+  // Text Styles
   textContainer: {
     flex: 1,
-    marginRight: Spacing.sm,
+    marginRight: 12,
   },
 
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#FFF',
+    color: COLORS.textPrimary,
     marginBottom: 4,
-    letterSpacing: 0.3,
+    letterSpacing: -0.3,
+  },
+
+  titleFollowing: {
+    color: COLORS.goldDark,
   },
 
   subtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
 
-  actionContainer: {
-    alignItems: 'center',
-  },
-
+  // Action Badge
   actionBadge: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
 
-  actionBadgeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  actionBadgeDefault: {
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    borderColor: 'rgba(0, 192, 106, 0.25)',
+  },
+
+  actionBadgeFollowing: {
+    backgroundColor: COLORS.gold,
     borderColor: 'rgba(255, 255, 255, 0.5)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
 
   // Notification Card
-  notificationCard: {
-    marginTop: Spacing.md,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
+  notificationWrapper: {
+    marginTop: 12,
+    borderRadius: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: COLORS.navy,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
-        shadowRadius: 12,
+        shadowRadius: 16,
       },
       android: {
         elevation: 4,
       },
       web: {
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+        boxShadow: '0 4px 20px rgba(11, 34, 64, 0.08)',
       },
     }),
+  },
+
+  notificationCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: GLASS.lightBorder,
+  },
+
+  notificationCardAndroid: {
+    backgroundColor: GLASS.frostedBg,
+  },
+
+  notificationHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: GLASS.lightHighlight,
   },
 
   notificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: Spacing.md,
+    padding: 16,
   },
 
   notificationLeft: {
@@ -580,10 +734,29 @@ const styles = StyleSheet.create({
   notificationIconBg: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.md,
+    marginRight: 14,
+    backgroundColor: 'rgba(156, 163, 175, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(156, 163, 175, 0.2)',
+  },
+
+  notificationIconBgActive: {
+    backgroundColor: COLORS.success,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.success,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
 
   notificationTextContainer: {
@@ -593,34 +766,38 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
     marginBottom: 2,
   },
 
   notificationSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
 
-  // Toggle Switch
+  // Premium Glass Toggle Switch
   toggle: {
-    width: 52,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#E5E7EB',
-    padding: 3,
+    width: 54,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(156, 163, 175, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(156, 163, 175, 0.3)',
     justifyContent: 'center',
   },
 
   toggleActive: {
-    backgroundColor: '#10B981',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
 
   toggleKnob: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FFF',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -635,64 +812,68 @@ const styles = StyleSheet.create({
   },
 
   toggleKnobActive: {
-    alignSelf: 'flex-end',
+    backgroundColor: COLORS.white,
+    borderWidth: 2,
+    borderColor: COLORS.success,
   },
 
   // Benefits Section
   benefitsSection: {
-    marginTop: Spacing.lg,
+    marginTop: 20,
   },
 
   benefitsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: Spacing.md,
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    marginBottom: 14,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
 
   benefitsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: Spacing.sm,
+    gap: 10,
   },
 
   benefitCard: {
     flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 14,
-    padding: Spacing.md,
+    backgroundColor: GLASS.frostedBg,
+    borderRadius: 18,
+    padding: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: GLASS.lightBorder,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: COLORS.navy,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowRadius: 10,
       },
       android: {
         elevation: 2,
       },
       web: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+        boxShadow: '0 2px 12px rgba(11, 34, 64, 0.06)',
       },
     }),
   },
 
   benefitIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: 10,
   },
 
   benefitText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#374151',
+    color: COLORS.textPrimary,
     textAlign: 'center',
   },
 });

@@ -133,7 +133,7 @@ const SimilarStoresSection: React.FC<SimilarStoresSectionProps> = ({
           <ThemedText style={styles.title}>Explore Similar Stores</ThemedText>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6B46C1" />
+          <ActivityIndicator size="large" color="#00C06A" />
           <ThemedText style={styles.loadingText}>Loading stores...</ThemedText>
         </View>
       </View>
@@ -189,7 +189,7 @@ const SimilarStoresSection: React.FC<SimilarStoresSectionProps> = ({
           accessibilityRole="button"
         >
           <ThemedText style={styles.viewAllText}>View All</ThemedText>
-          <Ionicons name="chevron-forward" size={16} color="#6B46C1" />
+          <Ionicons name="chevron-forward" size={16} color="#00C06A" />
         </TouchableOpacity>
       </View>
 
@@ -224,7 +224,7 @@ const SimilarStoresSection: React.FC<SimilarStoresSectionProps> = ({
         accessibilityRole="button"
       >
         <ThemedText style={styles.bottomViewAllText}>View All Stores</ThemedText>
-        <Ionicons name="arrow-forward" size={20} color="#6B46C1" />
+        <Ionicons name="arrow-forward" size={20} color="#00C06A" />
       </TouchableOpacity>
     </View>
   );
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B46C1',
+    color: '#00C06A',
   },
   listContent: {
     paddingVertical: 4,
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#6B46C1',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
   },
   viewAllButton: {
     marginTop: 16,
-    backgroundColor: '#6B46C1',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   bottomViewAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B46C1',
+    color: '#00C06A',
   },
 });
 

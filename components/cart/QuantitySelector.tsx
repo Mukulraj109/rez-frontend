@@ -12,7 +12,7 @@ import { ThemedText } from '@/components/ThemedText';
  * QuantitySelector Component
  * A reusable component for adjusting product quantities
  * Features:
- * - Increment/Decrement buttons with purple theme
+ * - Increment/Decrement buttons with ReZ green theme
  * - Min/Max bounds validation
  * - Disabled state styling
  * - Full TypeScript support
@@ -104,7 +104,7 @@ export default function QuantitySelector({
         <Ionicons
           name="remove"
           size={size === 'small' ? 14 : 18}
-          color={isDecreaseDisabled ? 'rgba(139, 92, 246, 0.4)' : '#8B5CF6'}
+          color={isDecreaseDisabled ? 'rgba(0, 192, 106, 0.4)' : '#00C06A'}
         />
       </TouchableOpacity>
 
@@ -150,7 +150,7 @@ export default function QuantitySelector({
         <Ionicons
           name="add"
           size={size === 'small' ? 14 : 18}
-          color={isIncreaseDisabled ? 'rgba(139, 92, 246, 0.4)' : '#8B5CF6'}
+          color={isIncreaseDisabled ? 'rgba(0, 192, 106, 0.4)' : '#00C06A'}
         />
       </TouchableOpacity>
     </View>
@@ -168,9 +168,9 @@ const stylesNormal = StyleSheet.create({
     gap: 12,
     padding: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
     borderWidth: 1.5,
-    borderColor: '#E9D5FF',
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   button: {
     width: 40,
@@ -179,7 +179,7 @@ const stylesNormal = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#7C3AED',
+    borderColor: '#00C06A',
     backgroundColor: '#FFFFFF',
   },
   decreaseButton: {
@@ -190,7 +190,7 @@ const stylesNormal = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
-    borderColor: 'rgba(124, 58, 237, 0.4)',
+    borderColor: 'rgba(0, 192, 106, 0.4)',
   },
   display: {
     minWidth: 50,
@@ -200,7 +200,7 @@ const stylesNormal = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#E9D5FF',
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   displayDisabled: {
     opacity: 0.5,
@@ -208,11 +208,11 @@ const stylesNormal = StyleSheet.create({
   quantityText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#7C3AED',
+    color: '#00796B',
     textAlign: 'center',
   },
   quantityTextDisabled: {
-    color: 'rgba(124, 58, 237, 0.5)',
+    color: 'rgba(0, 192, 106, 0.5)',
   },
 });
 
@@ -228,9 +228,9 @@ const stylesSmall = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 6,
     borderRadius: 10,
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
     borderWidth: 1,
-    borderColor: '#E9D5FF',
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   button: {
     width: 28,
@@ -239,7 +239,7 @@ const stylesSmall = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
     backgroundColor: '#FFFFFF',
   },
   decreaseButton: {
@@ -250,7 +250,7 @@ const stylesSmall = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
-    borderColor: 'rgba(139, 92, 246, 0.4)',
+    borderColor: 'rgba(0, 192, 106, 0.4)',
   },
   display: {
     minWidth: 32,
@@ -260,7 +260,7 @@ const stylesSmall = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E9D5FF',
+    borderColor: 'rgba(0, 192, 106, 0.2)',
     paddingHorizontal: 8,
   },
   displayDisabled: {
@@ -269,10 +269,10 @@ const stylesSmall = StyleSheet.create({
   quantityText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00796B',
     textAlign: 'center',
   },
   quantityTextDisabled: {
-    color: 'rgba(139, 92, 246, 0.5)',
+    color: 'rgba(0, 192, 106, 0.5)',
   },
 });

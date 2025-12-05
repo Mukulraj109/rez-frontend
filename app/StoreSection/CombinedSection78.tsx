@@ -1,11 +1,51 @@
-import React, { useState, useEffect, memo } from 'react';
-import { View, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, ScrollView, Platform } from 'react-native';
+// CombinedSection78.tsx - Premium Glassmorphism Design
+// Instant Discount / Deals Section - Green & Gold Theme
+
+import React, { useState, useEffect, memo, useRef } from 'react';
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  Platform,
+  Animated,
+  Image,
+} from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { ThemedText } from '@/components/ThemedText';
 import storeVouchersApi from '@/services/storeVouchersApi';
 import discountsApi from '@/services/discountsApi';
+
+// Premium Glass Design Tokens - Green & Gold Theme
+const GLASS = {
+  lightBg: 'rgba(255, 255, 255, 0.8)',
+  lightBorder: 'rgba(255, 255, 255, 0.5)',
+  lightHighlight: 'rgba(255, 255, 255, 0.9)',
+  frostedBg: 'rgba(255, 255, 255, 0.92)',
+  tintedGreenBg: 'rgba(0, 192, 106, 0.08)',
+  tintedGreenBorder: 'rgba(0, 192, 106, 0.2)',
+  tintedGoldBg: 'rgba(255, 200, 87, 0.12)',
+  tintedGoldBorder: 'rgba(255, 200, 87, 0.35)',
+};
+
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00996B',
+  gold: '#FFC857',
+  goldDark: '#E5A500',
+  navy: '#0B2240',
+  textPrimary: '#1F2937',
+  textSecondary: '#6B7280',
+  white: '#FFFFFF',
+  surface: '#F7FAFC',
+};
 
 interface CombinedSection78Props {
   title?: string;
@@ -26,13 +66,6 @@ interface CombinedSection78Props {
   cardType?: string;
 }
 
-const PURPLE = '#6c63ff';
-const CARD_BG = '#f6f3ff';     // soft lavender like the screenshot
-const BORDER = '#ece6ff';
-const DIVIDER = '#e6e0fa';
-const PRIMARY = '#333333';
-const SECONDARY = '#666666';
-
 export default memo(function CombinedSection78({
   title = 'Get Instant Discount',
   savePercentage = 'Save 20%',
@@ -48,6 +81,12 @@ export default memo(function CombinedSection78({
   const [loading, setLoading] = useState(true);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
+  // Animations
+  const cardScale = useRef(new Animated.Value(1)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const modalScale = useRef(new Animated.Value(0.9)).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
+
   const storeId = dynamicData?.store?.id || dynamicData?.store?._id;
   const storeName = dynamicData?.store?.name;
 
@@ -59,52 +98,44 @@ export default memo(function CombinedSection78({
     }
   }, [storeId]);
 
+  const animatePress = (anim: Animated.Value, toValue: number) => {
+    Animated.spring(anim, {
+      toValue,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 100,
+    }).start();
+  };
+
   const fetchVoucher = async () => {
     if (!storeId) return;
 
     try {
       setLoading(true);
 
-      // Try to fetch store vouchers first
       const vouchersResponse = await storeVouchersApi.getStoreVouchers(storeId, {
         page: 1,
         limit: 1,
       });
 
-      console.log('🎫 [CombinedSection78] Vouchers response:', vouchersResponse);
-
       if (vouchersResponse.success && vouchersResponse.data?.vouchers?.length > 0) {
-        console.log('✅ [CombinedSection78] Store voucher found:', vouchersResponse.data.vouchers[0]);
         setVoucher(vouchersResponse.data.vouchers[0]);
       } else {
-        // If no store vouchers, try to get discount offers
-        console.log('⚠️ [CombinedSection78] No store vouchers, trying discounts API...');
         const discountsResponse = await discountsApi.getBillPaymentDiscounts(5000);
 
-        console.log('🎯 [CombinedSection78] Discounts response:', discountsResponse);
-
         if (discountsResponse.success && discountsResponse.data?.length > 0) {
-          console.log('✅ [CombinedSection78] Discount found:', discountsResponse.data[0]);
           setVoucher(discountsResponse.data[0]);
-        } else {
-          console.log('❌ [CombinedSection78] No vouchers or discounts available');
         }
       }
     } catch (error) {
-      console.error('❌ [CombinedSection78] Error fetching voucher:', error);
+      console.error('Error fetching voucher:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleAddVoucher = async () => {
-    console.log('🔘 [CombinedSection78] Add button clicked');
-    console.log('📦 [CombinedSection78] Current voucher:', voucher);
-    console.log('🏪 [CombinedSection78] Store ID:', storeId);
-
-    // If custom handler provided, use it
     if (onAddPress) {
-      console.log('🔄 [CombinedSection78] Using custom onAddPress handler');
       onAddPress();
       return;
     }
@@ -113,7 +144,6 @@ export default memo(function CombinedSection78({
       setIsAddingVoucher(true);
 
       if (!storeId) {
-        console.log('❌ [CombinedSection78] No store ID available');
         if (Platform.OS === 'web') {
           alert('Store information not available');
         } else {
@@ -123,7 +153,6 @@ export default memo(function CombinedSection78({
       }
 
       if (!voucher) {
-        console.log('❌ [CombinedSection78] No voucher available');
         if (Platform.OS === 'web') {
           alert('No voucher available');
         } else {
@@ -133,15 +162,9 @@ export default memo(function CombinedSection78({
       }
 
       const voucherId = voucher._id || voucher.id;
-      console.log('🎫 [CombinedSection78] Claiming voucher with ID:', voucherId);
-
-      // Claim the voucher using the real API
       const response = await storeVouchersApi.claimVoucher(voucherId);
 
-      console.log('📥 [CombinedSection78] Claim response:', response);
-
       if (response.success) {
-        console.log('✅ [CombinedSection78] Voucher claimed successfully');
         if (Platform.OS === 'web') {
           alert(`Voucher Claimed!\n\nDiscount voucher for ${storeName || 'this store'} has been added to your account`);
         } else {
@@ -151,11 +174,8 @@ export default memo(function CombinedSection78({
             [{ text: 'OK' }]
           );
         }
-
-        // Refresh voucher data
         await fetchVoucher();
       } else {
-        console.log('❌ [CombinedSection78] Claim failed:', response.error);
         if (Platform.OS === 'web') {
           alert(response.error || 'Unable to claim voucher');
         } else {
@@ -163,7 +183,6 @@ export default memo(function CombinedSection78({
         }
       }
     } catch (error: any) {
-      console.error('❌ [CombinedSection78] Add voucher error:', error);
       const errorMessage = error?.response?.data?.message || error?.message || 'Unable to add voucher. Please try again.';
       if (Platform.OS === 'web') {
         alert(errorMessage);
@@ -175,10 +194,7 @@ export default memo(function CombinedSection78({
     }
   };
 
-  const handleMoreDetails = () => {
-    console.log('ℹ️ [CombinedSection78] More details clicked');
-    console.log('📦 [CombinedSection78] Voucher details:', voucher);
-
+  const handleShowDetails = () => {
     if (!voucher) {
       if (Platform.OS === 'web') {
         alert('No voucher information available');
@@ -188,355 +204,480 @@ export default memo(function CombinedSection78({
       return;
     }
 
+    Animated.parallel([
+      Animated.spring(modalScale, { toValue: 1, useNativeDriver: true, friction: 8 }),
+      Animated.timing(modalOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+
     setShowDetailsModal(true);
   };
 
-  // Calculate display values from real voucher data
-  // Handle both voucher format (discountType/discountValue) and discount format (type/value)
-  const displayTitle = voucher?.name || title;
+  const handleHideDetails = () => {
+    Animated.parallel([
+      Animated.timing(modalScale, { toValue: 0.9, duration: 150, useNativeDriver: true }),
+      Animated.timing(modalOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+    ]).start(() => setShowDetailsModal(false));
+  };
 
   const voucherType = voucher?.discountType || voucher?.type;
   const voucherValue = voucher?.discountValue || voucher?.value;
 
+  const displayTitle = voucher?.name || title;
   const displaySavePercentage = voucher && voucherValue
     ? `Save ${voucherType === 'percentage' ? voucherValue + '%' : '₹' + voucherValue}`
     : savePercentage;
-
   const displayMinBill = voucher
     ? `Minimum bill: ₹${voucher.minBillAmount || voucher.minOrderValue || 5000}`
     : minimumBill;
 
-  return (
-    <View
-      style={styles.wrap}
-      testID={testID}
-      accessibilityRole="region"
-      accessibilityLabel="Instant discount voucher"
-    >
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PURPLE} />
-          <ThemedText style={styles.loadingText}>Loading voucher...</ThemedText>
+  // Loading state
+  if (loading) {
+    return (
+      <View style={styles.container} testID={testID}>
+        <View style={styles.loadingCard}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ThemedText style={styles.loadingText}>Loading deal...</ThemedText>
         </View>
-      ) : (
-        <View
-          style={styles.card}
-          accessibilityLabel={`${displayTitle}. ${displaySavePercentage}. ${displayMinBill}`}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container} testID={testID}>
+      <Animated.View style={{ transform: [{ scale: cardScale }] }}>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPressIn={() => animatePress(cardScale, 0.98)}
+          onPressOut={() => animatePress(cardScale, 1)}
+          style={styles.cardWrapper}
         >
-          {/* header */}
-          <View style={styles.headerRow}>
-            <ThemedText
-              style={styles.title}
-              accessibilityRole="header"
-            >
-              {displayTitle}
-            </ThemedText>
-            <View style={styles.badge} accessibilityElementsHidden>
-              <ThemedText style={styles.badgeText}>{displaySavePercentage}</ThemedText>
+          {/* Glass Card */}
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={50} tint="light" style={styles.card}>
+              {renderCardContent()}
+            </BlurView>
+          ) : (
+            <View style={[styles.card, styles.cardAndroid]}>
+              {renderCardContent()}
             </View>
+          )}
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Premium Details Modal */}
+      <Modal
+        visible={showDetailsModal}
+        transparent={true}
+        animationType="none"
+        onRequestClose={handleHideDetails}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={handleHideDetails}
+        >
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                opacity: modalOpacity,
+                transform: [{ scale: modalScale }],
+              },
+            ]}
+          >
+            <View onStartShouldSetResponder={() => true} onTouchEnd={(e) => e.stopPropagation()}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryDark]}
+                  style={styles.modalHeaderIcon}
+                >
+                  <Ionicons name="ticket" size={24} color={COLORS.white} />
+                </LinearGradient>
+                <ThemedText style={styles.modalTitle}>Deal Details</ThemedText>
+                <TouchableOpacity
+                  onPress={handleHideDetails}
+                  style={styles.modalCloseBtn}
+                >
+                  <Ionicons name="close" size={22} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Modal Body */}
+              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                <View style={styles.modalSection}>
+                  <ThemedText style={styles.modalLabel}>Name</ThemedText>
+                  <ThemedText style={styles.modalValue}>{voucher?.name || 'N/A'}</ThemedText>
+                </View>
+
+                <View style={styles.modalSection}>
+                  <ThemedText style={styles.modalLabel}>Discount</ThemedText>
+                  <View style={styles.discountValueRow}>
+                    <LinearGradient
+                      colors={[COLORS.gold, COLORS.goldDark]}
+                      style={styles.discountBadgeLarge}
+                    >
+                      <ThemedText style={styles.discountBadgeText}>
+                        {voucherType === 'percentage' ? `${voucherValue}%` : `₹${voucherValue}`}
+                      </ThemedText>
+                    </LinearGradient>
+                  </View>
+                </View>
+
+                <View style={styles.modalSection}>
+                  <ThemedText style={styles.modalLabel}>Minimum Bill</ThemedText>
+                  <ThemedText style={styles.modalValue}>
+                    ₹{voucher?.minBillAmount || voucher?.minOrderValue || 'N/A'}
+                  </ThemedText>
+                </View>
+
+                <View style={styles.modalSection}>
+                  <ThemedText style={styles.modalLabel}>Restrictions</ThemedText>
+                  <View style={styles.restrictionsList}>
+                    <View style={styles.restrictionItem}>
+                      <View style={styles.restrictionIcon}>
+                        <Ionicons
+                          name={voucher?.restrictions?.isOfflineOnly ? 'storefront' : 'globe-outline'}
+                          size={16}
+                          color={COLORS.primary}
+                        />
+                      </View>
+                      <ThemedText style={styles.restrictionText}>
+                        {voucher?.restrictions?.isOfflineOnly ? 'Offline only' : 'Online & Offline'}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.restrictionItem}>
+                      <View style={styles.restrictionIcon}>
+                        <Ionicons name="pricetag-outline" size={16} color={COLORS.primary} />
+                      </View>
+                      <ThemedText style={styles.restrictionText}>
+                        {voucher?.restrictions?.notValidAboveStoreDiscount
+                          ? 'Not valid above store discount'
+                          : 'Valid with store discount'}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.restrictionItem}>
+                      <View style={styles.restrictionIcon}>
+                        <Ionicons name="receipt-outline" size={16} color={COLORS.primary} />
+                      </View>
+                      <ThemedText style={styles.restrictionText}>
+                        {voucher?.restrictions?.singleVoucherPerBill
+                          ? 'Single voucher per bill'
+                          : 'Multiple vouchers allowed'}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </View>
+              </ScrollView>
+
+              {/* Modal Footer */}
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={handleHideDetails}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryDark]}
+                  style={styles.modalButtonGradient}
+                >
+                  <ThemedText style={styles.modalButtonText}>Close</ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+
+  function renderCardContent() {
+    return (
+      <>
+        {/* Glass Highlight */}
+        <View style={styles.glassHighlight} />
+
+        {/* Header Row */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              style={styles.headerIcon}
+            >
+              <Ionicons name="flash" size={20} color={COLORS.white} />
+            </LinearGradient>
+            <ThemedText style={styles.title}>{displayTitle}</ThemedText>
           </View>
 
-          {/* min bill */}
-          <ThemedText style={styles.minBill}>{displayMinBill}</ThemedText>
+          {/* Save Badge */}
+          <LinearGradient
+            colors={[COLORS.gold, COLORS.goldDark]}
+            style={styles.saveBadge}
+          >
+            <ThemedText style={styles.saveBadgeText}>{displaySavePercentage}</ThemedText>
+          </LinearGradient>
+        </View>
 
-        {/* dashed divider */}
-        <View style={styles.dashed} />
+        {/* Minimum Bill */}
+        <ThemedText style={styles.minBill}>{displayMinBill}</ThemedText>
 
-        {/* detail rows */}
-        <View style={styles.details}>
+        {/* Dashed Divider */}
+        <View style={styles.divider} />
+
+        {/* Details Section */}
+        <View style={styles.detailsSection}>
           <View style={styles.detailRow}>
-            <View style={styles.iconCircle}>
-            <MaterialCommunityIcons name="bag-carry-on-off" size={24} color="purple" />
+            <View style={styles.detailIcon}>
+              <MaterialCommunityIcons name="bag-carry-on-off" size={18} color={COLORS.primary} />
             </View>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-              <ThemedText style={styles.detailText}>Offline Only </ThemedText>
-              <TouchableOpacity
-                onPress={handleMoreDetails}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="View more details about this voucher"
-              >
-                <ThemedText style={styles.linkText}>| More details</ThemedText>
+            <View style={styles.detailTextContainer}>
+              <ThemedText style={styles.detailText}>Offline Only</ThemedText>
+              <TouchableOpacity onPress={handleShowDetails}>
+                <ThemedText style={styles.moreDetailsLink}>| More details</ThemedText>
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.detailRow}>
-            <View style={styles.iconCircle}>
-              <MaterialIcons name="percent" size={20} color="purple" />
+            <View style={styles.detailIcon}>
+              <MaterialIcons name="percent" size={16} color={COLORS.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <ThemedText style={styles.detailText}>
-                Not valid above store discount
-              </ThemedText>
+              <ThemedText style={styles.detailText}>Not valid above store discount</ThemedText>
               <ThemedText style={styles.subText}>Single voucher per bill</ThemedText>
             </View>
           </View>
         </View>
 
-        {/* add button */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={handleAddVoucher}
-          disabled={disabled || isAddingVoucher || !voucher || voucher.isAssigned}
-          style={[styles.addBtn, (disabled || isAddingVoucher || !voucher || voucher.isAssigned) && styles.addBtnDisabled]}
-          accessibilityRole="button"
-          accessibilityLabel={`Add ${displayTitle} voucher to account`}
-          accessibilityHint="Double tap to add this discount voucher"
-          accessibilityState={{ disabled: disabled || isAddingVoucher || !voucher || voucher.isAssigned, busy: isAddingVoucher }}
-        >
-          <ThemedText style={styles.addText}>
-            {isAddingVoucher ? 'Adding...' : voucher?.isAssigned ? 'Already Claimed' : !voucher ? 'Not Available' : 'Add'}
-          </ThemedText>
-        </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Details Modal */}
-      <Modal
-        visible={showDetailsModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowDetailsModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDetailsModal(false)}
-        >
-          <View
-            style={styles.modalContent}
-            onStartShouldSetResponder={() => true}
-            onTouchEnd={(e) => e.stopPropagation()}
+        {/* Add Button */}
+        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPressIn={() => animatePress(buttonScale, 0.96)}
+            onPressOut={() => animatePress(buttonScale, 1)}
+            onPress={handleAddVoucher}
+            disabled={disabled || isAddingVoucher || !voucher || voucher.isAssigned}
+            style={[
+              styles.addButtonWrapper,
+              (disabled || isAddingVoucher || !voucher || voucher.isAssigned) && styles.addButtonDisabled
+            ]}
           >
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle}>Voucher Details</ThemedText>
-              <TouchableOpacity
-                onPress={() => setShowDetailsModal(false)}
-                style={styles.modalCloseButton}
-                accessibilityRole="button"
-                accessibilityLabel="Close details"
-              >
-                <Ionicons name="close" size={24} color="#111827" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Modal Body */}
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {/* Voucher Name */}
-              <View style={styles.modalSection}>
-                <ThemedText style={styles.modalLabel}>Name</ThemedText>
-                <ThemedText style={styles.modalValue}>{voucher?.name || 'N/A'}</ThemedText>
-              </View>
-
-              {/* Discount Amount */}
-              <View style={styles.modalSection}>
-                <ThemedText style={styles.modalLabel}>Discount</ThemedText>
-                <ThemedText style={styles.modalValue}>
-                  {voucherType === 'percentage' ? `${voucherValue}%` : `₹${voucherValue}`}
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              style={styles.addButton}
+            >
+              {isAddingVoucher ? (
+                <ActivityIndicator size="small" color={COLORS.white} />
+              ) : (
+                <ThemedText style={styles.addButtonText}>
+                  {voucher?.isAssigned ? 'Already Claimed' : !voucher ? 'Not Available' : 'Add Deal'}
                 </ThemedText>
-              </View>
-
-              {/* Minimum Bill */}
-              <View style={styles.modalSection}>
-                <ThemedText style={styles.modalLabel}>Minimum Bill</ThemedText>
-                <ThemedText style={styles.modalValue}>
-                  ₹{voucher?.minBillAmount || voucher?.minOrderValue || 'N/A'}
-                </ThemedText>
-              </View>
-
-              {/* Restrictions */}
-              <View style={styles.modalSection}>
-                <ThemedText style={styles.modalLabel}>Restrictions</ThemedText>
-                <View style={styles.restrictionsList}>
-                  <View style={styles.restrictionItem}>
-                    <Ionicons
-                      name={voucher?.restrictions?.isOfflineOnly ? 'storefront' : 'globe-outline'}
-                      size={16}
-                      color="#6B7280"
-                    />
-                    <ThemedText style={styles.restrictionText}>
-                      {voucher?.restrictions?.isOfflineOnly ? 'Offline only' : 'Online & Offline'}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.restrictionItem}>
-                    <Ionicons name="pricetag-outline" size={16} color="#6B7280" />
-                    <ThemedText style={styles.restrictionText}>
-                      {voucher?.restrictions?.notValidAboveStoreDiscount
-                        ? 'Not valid above store discount'
-                        : 'Valid with store discount'}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.restrictionItem}>
-                    <Ionicons name="receipt-outline" size={16} color="#6B7280" />
-                    <ThemedText style={styles.restrictionText}>
-                      {voucher?.restrictions?.singleVoucherPerBill
-                        ? 'Single voucher per bill'
-                        : 'Multiple vouchers allowed'}
-                    </ThemedText>
-                  </View>
-                </View>
-              </View>
-            </ScrollView>
-
-            {/* Modal Footer */}
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={() => setShowDetailsModal(false)}
-                activeOpacity={0.8}
-              >
-                <ThemedText style={styles.modalButtonText}>Close</ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </View>
-);
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      </>
+    );
+  }
 });
 
 const styles = StyleSheet.create({
-  wrap: {
+  container: {
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
+    paddingVertical: 12,
+  },
+
+  cardWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 
   card: {
-    backgroundColor: CARD_BG,
-    borderRadius: 16,
+    borderRadius: 24,
+    padding: 20,
     borderWidth: 1,
-    borderColor: BORDER,
-    padding: 16,
-    // very soft elevation like the screenshot
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: GLASS.lightBorder,
+    overflow: 'hidden',
   },
 
+  cardAndroid: {
+    backgroundColor: GLASS.lightBg,
+  },
+
+  glassHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: GLASS.lightHighlight,
+  },
+
+  // Header
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  title: {
+
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    fontSize: 15,
+    gap: 12,
+  },
+
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  title: {
+    fontSize: 16,
     fontWeight: '700',
-    color: PURPLE,
+    color: COLORS.textPrimary,
+    flex: 1,
   },
-  badge: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    // subtle floating feel
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+
+  saveBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  badgeText: {
+
+  saveBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#2f2f2f',
+    fontWeight: '700',
+    color: COLORS.navy,
+    letterSpacing: 0.2,
   },
 
   minBill: {
     fontSize: 13,
-    color: SECONDARY,
-    marginTop: 2,
-    marginBottom: 10,
+    color: COLORS.textSecondary,
+    marginBottom: 16,
+    marginLeft: 52,
   },
 
-  dashed: {
+  divider: {
     borderTopWidth: 1,
     borderStyle: 'dashed',
-    borderColor: DIVIDER,
-    marginBottom: 12,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    marginBottom: 16,
   },
 
-  details: {
-    gap: 10,
-    marginBottom: 14,
+  // Details Section
+  detailsSection: {
+    gap: 14,
+    marginBottom: 20,
   },
+
   detailRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-  },
-  iconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#efe8ff',
-    borderWidth: 1,
-    borderColor: '#e3dcff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-    marginTop: 1,
-  },
-  detailText: {
-    flex: 1,
-    fontSize: 13,
-    color: PRIMARY,
-    lineHeight: 18,
-  },
-  linkText: {
-    color: PURPLE,
-    fontWeight: '600',
-  },
-  subText: {
-    fontSize: 12,
-    color: SECONDARY,
-    marginTop: 2,
-    lineHeight: 16,
+    gap: 12,
   },
 
-  addBtn: {
-    marginTop: 4,
-    backgroundColor: PURPLE,
-    height: 44,
-    borderRadius: 22,
+  detailIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: GLASS.tintedGreenBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: GLASS.tintedGreenBorder,
+  },
+
+  detailTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+
+  detailText: {
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    fontWeight: '500',
+  },
+
+  moreDetailsLink: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+
+  subText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+
+  // Add Button
+  addButtonWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+
+  addButton: {
+    height: 50,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    // slight glow like the mock
-    shadowColor: PURPLE,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
   },
-  addBtnDisabled: {
-    backgroundColor: '#b8aefc',
-    shadowOpacity: 0.1,
-    elevation: 2,
+
+  addButtonDisabled: {
+    opacity: 0.5,
   },
-  addText: {
-    color: '#fff',
-    fontSize: 15,
+
+  addButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
     fontWeight: '700',
   },
 
-  loadingContainer: {
-    paddingVertical: 40,
+  // Loading State
+  loadingCard: {
+    backgroundColor: GLASS.frostedBg,
+    borderRadius: 24,
+    padding: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: CARD_BG,
-    borderRadius: 16,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: GLASS.lightBorder,
   },
+
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: SECONDARY,
+    color: COLORS.textSecondary,
   },
 
   // Modal Styles
@@ -547,80 +688,141 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+
   modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    borderRadius: 28,
     width: '100%',
-    maxWidth: 500,
+    maxWidth: 400,
     maxHeight: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.2,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 16,
+      },
+    }),
   },
+
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
+    gap: 12,
   },
+
+  modalHeaderIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   modalTitle: {
-    fontSize: 18,
+    flex: 1,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: COLORS.textPrimary,
   },
-  modalCloseButton: {
-    padding: 4,
+
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: GLASS.lightBg,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
+
   modalBody: {
     padding: 20,
   },
+
   modalSection: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
+
   modalLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
+    letterSpacing: 0.6,
+    marginBottom: 10,
   },
+
   modalValue: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#111827',
+    color: COLORS.textPrimary,
   },
+
+  discountValueRow: {
+    flexDirection: 'row',
+  },
+
+  discountBadgeLarge: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+
+  discountBadgeText: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: COLORS.navy,
+  },
+
   restrictionsList: {
-    gap: 12,
+    gap: 14,
   },
+
   restrictionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
+
+  restrictionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: GLASS.tintedGreenBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: GLASS.tintedGreenBorder,
+  },
+
   restrictionText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textPrimary,
     flex: 1,
+    fontWeight: '500',
   },
-  modalFooter: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
+
   modalButton: {
-    backgroundColor: PURPLE,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
+    padding: 20,
+    paddingTop: 0,
   },
+
+  modalButtonGradient: {
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   modalButtonText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '700',
   },

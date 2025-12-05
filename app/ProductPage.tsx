@@ -549,7 +549,7 @@ export default function StorePage() {
           {/* Loading indicator when fetching backend data */}
           {isLoadingBackend && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#8B5CF6" />
+              <ActivityIndicator size="large" color="#00C06A" />
               <ThemedText style={styles.loadingText}>Loading product details...</ThemedText>
             </View>
           )}
@@ -575,7 +575,7 @@ export default function StorePage() {
               onPress={() => setShowQuantityPicker(true)}
             >
               <ThemedText style={styles.quantityValue}>{quantity}</ThemedText>
-              <Ionicons name="chevron-down" size={16} color="#7C3AED" />
+              <Ionicons name="chevron-down" size={16} color="#00C06A" />
             </TouchableOpacity>
           </View>
 
@@ -618,7 +618,7 @@ export default function StorePage() {
                         {i + 1}
                       </ThemedText>
                       {quantity === i + 1 && (
-                        <Ionicons name="checkmark" size={20} color="#7C3AED" />
+                        <Ionicons name="checkmark" size={20} color="#00C06A" />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -747,7 +747,7 @@ export default function StorePage() {
                 activeOpacity={0.7}
               >
                 <ThemedText style={styles.seeAllText}>See All</ThemedText>
-                <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+                <Ionicons name="chevron-forward" size={16} color="#00C06A" />
               </TouchableOpacity>
             </View>
 
@@ -862,14 +862,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: '#7C3AED',
-    backgroundColor: '#F5F3FF',
+    borderColor: '#00C06A',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     gap: 8,
   },
   quantityValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#7C3AED',
+    color: '#00C06A',
     minWidth: 20,
     textAlign: 'center',
   },
@@ -914,14 +914,14 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   quantityOptionSelected: {
-    backgroundColor: '#F5F3FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
   },
   quantityOptionText: {
     fontSize: 16,
     color: '#374151',
   },
   quantityOptionTextSelected: {
-    color: '#7C3AED',
+    color: '#00C06A',
     fontWeight: '600',
   },
   relatedProductsSection: {
@@ -956,7 +956,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
   },
   modalContainer: {
@@ -1016,12 +1016,17 @@ const styles = StyleSheet.create({
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
     gap: 8,
     marginTop: 8,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   retryButtonText: {
     color: '#fff',

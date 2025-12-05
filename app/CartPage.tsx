@@ -419,7 +419,7 @@ export default function CartPage() {
   return (
    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
 
-      <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
+      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
 
       <CartHeader onBack={handleBackPress} />
 
@@ -438,7 +438,7 @@ export default function CartPage() {
       <View style={styles.listContainer}>
         {cartState.isLoading && activeTab === 'products' ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#8B5CF6" />
+            <ActivityIndicator size="large" color="#00C06A" />
             <ThemedText style={styles.loadingText}>Loading cart...</ThemedText>
           </View>
         ) : (
@@ -499,14 +499,14 @@ export default function CartPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFBFC',
+    backgroundColor: '#F5F7FA',
   },
   listContainer: {
     flex: 1,
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 16,
     paddingBottom: 20,
   },
   emptyListContent: {
@@ -515,30 +515,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardWrapper: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     marginBottom: 16,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 192, 106, 0.1)',
   },
   emptyContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
     paddingVertical: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    marginHorizontal: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.1)',
   },
   emptyTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#111827',
-    marginBottom: 8,
+    color: '#0B2240',
+    marginBottom: 12,
     textAlign: 'center',
   },
   emptySubtitle: {
@@ -556,7 +561,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 15,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: '#00C06A',
+    fontWeight: '600',
   },
 });

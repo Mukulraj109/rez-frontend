@@ -116,7 +116,7 @@ const CategoryCard = ({ category, index, scrollX, onPress }: CategoryCardProps) 
     );
 
     return {
-      shadowColor: '#8B5CF6',
+      shadowColor: '#00C06A',
       shadowOpacity,
       shadowRadius,
       shadowOffset: {
@@ -139,7 +139,7 @@ const CategoryCard = ({ category, index, scrollX, onPress }: CategoryCardProps) 
     if (category.icon) {
       // Use icon from database
       // Get gradient colors from metadata or use default based on category name
-      const metadataColor = category.metadata?.color || '#8B5CF6';
+      const metadataColor = category.metadata?.color || '#00C06A';
       const gradientColors = getGradientColorsFromMetadata(metadataColor);
       
       return {

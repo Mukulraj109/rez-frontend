@@ -142,7 +142,7 @@ export default memo(function Section3({ productPrice = 1000, storeId }: Section3
       >
         {/* Gradient Background */}
         <LinearGradient
-          colors={meetsMinimum ? ['#8B5CF6', '#7C3AED'] : ['#6B7280', '#4B5563']}
+          colors={meetsMinimum ? ['#00C06A', '#00996B'] : ['#6B7280', '#4B5563']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.cardGradient}
@@ -285,7 +285,7 @@ export default memo(function Section3({ productPrice = 1000, storeId }: Section3
               <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
                 {/* Offer Header */}
                 <LinearGradient
-                  colors={['#8B5CF6', '#7C3AED']}
+                  colors={['#00C06A', '#00996B']}
                   style={styles.modalOfferHeader}
                 >
                   <ThemedText style={styles.modalOfferValue}>
@@ -383,7 +383,7 @@ export default memo(function Section3({ productPrice = 1000, storeId }: Section3
                     disabled={isApplying}
                   >
                     <LinearGradient
-                      colors={['#8B5CF6', '#7C3AED']}
+                      colors={['#00C06A', '#00996B']}
                       style={styles.applyButtonGradient}
                     >
                       <ThemedText style={styles.applyButtonText}>

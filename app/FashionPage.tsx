@@ -37,8 +37,8 @@ export default function FashionPage() {
         <RefreshControl
           refreshing={isLoading}
           onRefresh={refetchAll}
-          colors={['#8B5CF6']}
-          tintColor="#8B5CF6"
+          colors={['#00C06A']}
+          tintColor="#00C06A"
         />
       }
     >

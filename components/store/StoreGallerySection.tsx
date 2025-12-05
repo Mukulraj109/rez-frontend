@@ -355,7 +355,7 @@ export default function StoreGallerySection({ storeId }: StoreGallerySectionProp
                 }}
               >
                 <Text style={styles.viewAllText}>View All</Text>
-                <Ionicons name="chevron-forward" size={16} color="#3B82F6" />
+                <Ionicons name="chevron-forward" size={16} color="#00C06A" />
               </TouchableOpacity>
             )}
           </View>
@@ -496,7 +496,7 @@ export default function StoreGallerySection({ storeId }: StoreGallerySectionProp
                   onPress={() => handleItemPress(0)}
                 >
                   <LinearGradient
-                    colors={['#3B82F6', '#2563EB']}
+                    colors={['#00C06A', '#00996B']}
                     style={styles.moreButtonGradient}
                   >
                     <Ionicons name="images" size={20} color="#FFF" />
@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   countBadge: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: '#00C06A',
   },
   viewAllButton: {
     flexDirection: 'row',
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: '#00C06A',
   },
   clearButton: {
     flexDirection: 'row',
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#00C06A',
     borderRadius: 8,
   },
   clearButtonLargeText: {
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   categoryChipActive: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#00C06A',
   },
   categoryChipImage: {
     width: 20,
@@ -665,8 +665,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   tagChipActive: {
-    backgroundColor: '#DBEAFE',
-    borderColor: '#3B82F6',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    borderColor: '#00C06A',
   },
   tagChipText: {
     fontSize: 12,
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   tagChipTextActive: {
-    color: '#3B82F6',
+    color: '#00C06A',
     fontWeight: '600',
   },
   categoriesScrollView: {
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#00C06A',
     borderRadius: 8,
     marginTop: 8,
   },

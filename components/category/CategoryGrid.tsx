@@ -109,7 +109,7 @@ export default function CategoryGrid({
     
     return (
       <View style={styles.loadingFooter}>
-        <ActivityIndicator size="small" color="#8B5CF6" />
+        <ActivityIndicator size="small" color="#00C06A" />
         <ThemedText style={styles.loadingText}>Loading more...</ThemedText>
       </View>
     );
@@ -172,8 +172,8 @@ export default function CategoryGrid({
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#8B5CF6"
-              colors={['#8B5CF6']}
+              tintColor="#00C06A"
+              colors={['#00C06A']}
             />
           ) : undefined
         }
@@ -199,7 +199,7 @@ export default function CategoryGrid({
       {/* Loading overlay for initial load */}
       {loading && items.length === 0 && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#00C06A" />
           <ThemedText style={styles.loadingOverlayText}>Loading items...</ThemedText>
         </View>
       )}
@@ -212,16 +212,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   gridContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(240, 253, 244, 0.5)',
+    marginHorizontal: 4,
+    borderRadius: 16,
+    paddingTop: 8,
   },
   listContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(240, 253, 244, 0.3)',
+    marginHorizontal: 4,
+    borderRadius: 16,
+    paddingTop: 8,
   },
   horizontalContainer: {
-    paddingLeft: 16,
+    paddingLeft: 12,
   },
   contentContainer: {
-    paddingBottom: 20,
+    paddingBottom: 24,
+    paddingTop: 8,
   },
   horizontalContent: {
     paddingRight: 16,
@@ -236,18 +245,23 @@ const styles = StyleSheet.create({
     // Dynamic styles applied inline
   },
   listSeparator: {
-    height: 12,
+    height: 16,
   },
   loadingFooter: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
-    gap: 8,
+    paddingVertical: 24,
+    gap: 10,
+    backgroundColor: 'rgba(0, 192, 106, 0.05)',
+    marginHorizontal: 16,
+    borderRadius: 16,
+    marginTop: 8,
   },
   loadingText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#00796B',
+    fontWeight: '500',
   },
   loadingOverlay: {
     position: 'absolute',
@@ -255,13 +269,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
+    borderRadius: 16,
   },
   loadingOverlayText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#00C06A',
+    fontWeight: '600',
   },
 });

@@ -293,7 +293,7 @@ const UGCCard = memo(function UGCCard({
               {mediaLoading && !mediaError && (
                 <View style={styles.skeletonOverlay}>
                   <LinearGradient colors={['#F3F4F6', '#E5E7EB', '#F3F4F6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.skeletonGradient} />
-                  <ActivityIndicator size="large" color="#4F46E5" style={styles.skeletonSpinner} />
+                  <ActivityIndicator size="large" color="#00C06A" style={styles.skeletonSpinner} />
                 </View>
               )}
             </>
@@ -318,7 +318,7 @@ const UGCCard = memo(function UGCCard({
               {mediaLoading && !mediaError && (
                 <View style={styles.skeletonOverlay}>
                   <LinearGradient colors={['#F3F4F6', '#E5E7EB', '#F3F4F6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.skeletonGradient} />
-                  <ActivityIndicator size="large" color="#4F46E5" style={styles.skeletonSpinner} />
+                  <ActivityIndicator size="large" color="#00C06A" style={styles.skeletonSpinner} />
                 </View>
               )}
             </>
@@ -382,7 +382,7 @@ const UGCCard = memo(function UGCCard({
               <Ionicons
                 name={item.isBookmarked ? 'bookmark' : 'bookmark-outline'}
                 size={22}
-                color={item.isBookmarked ? '#7C3AED' : '#FFFFFF'}
+                color={item.isBookmarked ? '#00C06A' : '#FFFFFF'}
                 style={styles.actionIcon}
               />
             </Animated.View>

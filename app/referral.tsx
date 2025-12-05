@@ -275,7 +275,7 @@ const ReferralPageContent = () => {
       case 'expired':
         return { backgroundColor: '#EF4444' };
       default:
-        return { backgroundColor: '#8B5CF6' };
+        return { backgroundColor: '#00C06A' };
     }
   };
 
@@ -332,10 +332,10 @@ const ReferralPageContent = () => {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar barStyle="light-content" backgroundColor="#8B5CF6" />
+      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
 
       {/* Header */}
-      <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.header}>
+      <LinearGradient colors={['#00C06A', '#00796B']} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity
             style={styles.backButton}
@@ -630,6 +630,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 20,
+    paddingBottom: 100,
   },
   codeCard: {
     backgroundColor: 'white',
@@ -656,22 +657,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#8B5CF6',
+    borderColor: '#00C06A',
     borderStyle: 'dashed',
   },
   code: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
     letterSpacing: 2,
   },
   copyButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -682,7 +683,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
@@ -717,7 +718,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#EDE9FE',
+    backgroundColor: 'rgba(0, 192, 106, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -725,7 +726,7 @@ const styles = StyleSheet.create({
   stepNumberText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   stepContent: {
     flex: 1,
@@ -776,7 +777,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
     marginBottom: 4,
   },
   statLabel: {
@@ -824,7 +825,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
@@ -880,7 +881,7 @@ const styles = StyleSheet.create({
   },
   rewardText: {
     fontSize: 14,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontWeight: '600',
     marginLeft: 4,
   },
