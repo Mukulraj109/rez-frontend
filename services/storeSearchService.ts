@@ -220,7 +220,14 @@ class StoreSearchService {
   }
 
   /**
-   * Search stores by delivery category
+   * Check if a string is a MongoDB ObjectId (24 hex characters)
+   */
+  private isMongoObjectId(str: string): boolean {
+    return /^[a-fA-F0-9]{24}$/.test(str);
+  }
+
+  /**
+   * Search stores by delivery category type (e.g., 'fastDelivery', 'premium', etc.)
    */
   async searchStoresByCategory(params: StoreSearchParams): Promise<StoreSearchResponse> {
     const {
@@ -231,6 +238,16 @@ class StoreSearchService {
       limit = 20,
       sortBy = 'rating'
     } = params;
+
+    // If category is a MongoDB ObjectId, use the category endpoint
+    if (this.isMongoObjectId(category)) {
+      return this.getStoresByCategoryId({
+        categoryId: category,
+        page,
+        limit,
+        sortBy
+      });
+    }
 
     const queryParams = new URLSearchParams({
       page: page.toString(),
@@ -248,7 +265,47 @@ class StoreSearchService {
         },
       }
     );
-    
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  }
+
+  /**
+   * Get stores by category ObjectId (for actual product categories from database)
+   */
+  async getStoresByCategoryId(params: {
+    categoryId: string;
+    page?: number;
+    limit?: number;
+    sortBy?: 'rating' | 'name' | 'newest';
+  }): Promise<StoreSearchResponse> {
+    const {
+      categoryId,
+      page = 1,
+      limit = 20,
+      sortBy = 'rating'
+    } = params;
+
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      sortBy,
+    });
+
+    const response = await fetch(
+      `${this.baseUrl}/category/${categoryId}?${queryParams}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }

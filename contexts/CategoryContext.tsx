@@ -392,9 +392,10 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
             }
           }
           
-          // Map backend category to frontend format  
+          // Map backend category to frontend format
           const category = {
             id: response.data._id,
+            _id: response.data._id, // Also include _id for compatibility
             name: response.data.name,
             slug: response.data.slug,
             description: response.data.description,
@@ -403,6 +404,8 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
             bannerImage: response.data.bannerImage,
             color: response.data.metadata?.color,
             icon: response.data.icon,
+            childCategories: response.data.childCategories || [], // Include child categories for subcategory dropdown
+            parentCategory: response.data.parentCategory || null,
             items: items as CategoryItem[], // Use fetched products
             carouselItems: carouselItems as any[],
             totalCount: Math.max(response.data.productCount || 0, items.length),

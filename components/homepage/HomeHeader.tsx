@@ -174,8 +174,35 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
             accessibilityLabel={`Shopping cart: ${cartItemCount} items`}
             accessibilityRole="button"
             accessibilityHint="Double tap to view your shopping cart"
+            style={{ position: 'relative' }}
           >
             <Ionicons name="cart-outline" size={24} color="white" />
+            {cartItemCount > 0 && (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  backgroundColor: '#FF5252',
+                  borderRadius: 10,
+                  minWidth: 18,
+                  height: 18,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingHorizontal: 4,
+                }}
+              >
+                <Text
+                  style={{
+                    color: 'white',
+                    fontSize: 10,
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {cartItemCount > 99 ? '99+' : cartItemCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           {/* Profile Avatar */}

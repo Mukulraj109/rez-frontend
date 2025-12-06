@@ -203,13 +203,10 @@ export default function OrderDetailsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Items Ordered</Text>
         {order.items.map((item, index) => {
-          // Handle both backend formats - full product object or minimal product
-          const firstImage = item.product?.images?.[0];
-          const productImage = typeof firstImage === 'string' 
-            ? firstImage 
-            : firstImage?.url || 'https://via.placeholder.com/100';
-          const productName = item.product?.name || 'Product';
-          const storeName = item.product?.store?.name || 'Store';
+          // Use mapped item properties directly (from dataMappers)
+          const productImage = item.image || 'https://via.placeholder.com/100';
+          const productName = item.name || 'Product';
+          const storeName = item.store?.name || 'Store';
 
           return (
             <View key={index} style={styles.itemCard}>
@@ -225,10 +222,10 @@ export default function OrderDetailsScreen() {
                 )}
                 <View style={styles.itemFooter}>
                   <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
-                  <Text style={styles.itemPrice}>₹{item.unitPrice || 0} each</Text>
+                  <Text style={styles.itemPrice}>₹{item.price || 0} each</Text>
                 </View>
               </View>
-              <Text style={styles.itemTotal}>₹{item.totalPrice || 0}</Text>
+              <Text style={styles.itemTotal}>₹{item.subtotal || 0}</Text>
             </View>
           );
         })}

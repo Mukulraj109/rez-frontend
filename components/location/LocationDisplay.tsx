@@ -286,15 +286,20 @@ export default function LocationDisplay({
     const address = webLocation.address;
 
     if (compact) {
-      // For compact mode, show city and state
-      if (address.city && address.state) {
-        return `${address.city}, ${address.state}`;
-      } else if (address.city) {
+      // For compact mode, show only city name
+      if (address.city) {
         return address.city;
       } else {
-        // Extract from formatted address
+        // Extract city from formatted address (usually first meaningful part)
         const parts = address.formattedAddress?.split(',') || [];
-        return parts.slice(0, 2).join(',').trim() || 'Your Location';
+        // Find the first part that looks like a city name
+        for (const part of parts) {
+          const trimmed = part.trim();
+          if (trimmed && !trimmed.match(/^\d/) && trimmed.length > 2) {
+            return trimmed;
+          }
+        }
+        return 'Your Location';
       }
     } else {
       // For full mode, show formatted address
@@ -305,42 +310,56 @@ export default function LocationDisplay({
   const getLocationText = (location: UserLocation) => {
     if (typeof location.address === 'string') {
       if (compact) {
-        // Extract locality from the full address string for compact mode
+        // Extract only city name for compact mode
         // Example: "675/A, 6th A Cross Road, Koramangala, Bengaluru - 560034, Karnataka, India"
-        // We want: "Koramangala, Bengaluru"
+        // We want: "Bengaluru"
         const addressParts = location.address.split(',');
 
-        // Find the locality (usually the 3rd part) and city (usually the 4th part)
-        let locality = '';
-        let city = '';
-
-        // Look for common locality patterns
+        // Find the city (usually contains "Bengaluru", "Bangalore", etc.)
         for (let i = 0; i < addressParts.length; i++) {
           const part = addressParts[i].trim();
+          // Remove pincode from city name if present
+          const cleanPart = part.replace(/\s*-?\s*\d{6}\s*/, '').trim();
 
-          // Skip house numbers, road names, and pincodes
-          if (part.match(/^\d+/) || part.includes('Cross Road') || part.includes('Main Road') || part.match(/^\d{6}$/)) {
-            continue;
-          }
-
-          // Find locality (area name)
-          if (!locality && part.length > 3 && !part.includes('Karnataka') && !part.includes('India')) {
-            locality = part;
-          }
-          // Find city (usually contains "Bengaluru", "Bangalore", etc.)
-          else if (!city && (part.includes('Bengaluru') || part.includes('Bangalore') || part.includes('Mumbai') || part.includes('Delhi'))) {
-            city = part;
+          // Find city (common Indian cities)
+          if (cleanPart.includes('Bengaluru') || cleanPart.includes('Bangalore')) {
+            return 'Bengaluru';
+          } else if (cleanPart.includes('Mumbai')) {
+            return 'Mumbai';
+          } else if (cleanPart.includes('Delhi')) {
+            return 'Delhi';
+          } else if (cleanPart.includes('Chennai')) {
+            return 'Chennai';
+          } else if (cleanPart.includes('Hyderabad')) {
+            return 'Hyderabad';
+          } else if (cleanPart.includes('Kolkata')) {
+            return 'Kolkata';
+          } else if (cleanPart.includes('Pune')) {
+            return 'Pune';
           }
         }
 
-        return locality && city ? `${locality}, ${city}` : locality || city || 'Unknown Location';
+        // Fallback: find first meaningful part that's not a road/number
+        for (const part of addressParts) {
+          const trimmed = part.trim();
+          if (trimmed && !trimmed.match(/^\d/) && !trimmed.includes('Road') && !trimmed.includes('Cross') && trimmed.length > 3) {
+            return trimmed;
+          }
+        }
+
+        return 'Your Location';
       } else {
         // Show full address when not in compact mode
         return location.address;
       }
     }
 
-    // For object format, use city and state
+    // For object format, use only city name in compact mode
+    if (compact && location.address.city) {
+      return location.address.city;
+    }
+
+    // For full mode, show city and state
     const parts = [];
     if (location.address.city) parts.push(location.address.city);
     if (location.address.state) parts.push(location.address.state);
@@ -540,13 +559,13 @@ const styles = StyleSheet.create({
   },
   locationContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 6,
+    alignItems: 'center',
+    marginBottom: 0,
   },
   locationIcon: {
     fontSize: 18,
     marginRight: 8,
-    marginTop: 1,
+    marginTop: 0,
   },
   locationTextContainer: {
     flex: 1,

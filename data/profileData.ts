@@ -78,7 +78,7 @@ export const profileMenuSections: ProfileMenuSection[] = [
         id: 'store',
         title: 'Store',
         icon: 'storefront-outline',
-        route: '/StoreListPage',
+        route: '/Store',
         isEnabled: true,
         showArrow: true,
       },

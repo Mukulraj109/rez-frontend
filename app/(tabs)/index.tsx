@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -19,6 +19,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { ThemedText } from '@/components/ThemedText';
 import {
@@ -31,6 +32,9 @@ import {
   ReZCoin,
   CategoryTabBar,
   StickySearchHeader,
+  CategoryGridSection,
+  PopularProductsSection,
+  NearbyProductsSection,
 } from '@/components/homepage';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import {
@@ -79,7 +83,7 @@ export default function HomeScreen() {
   const { handleItemPress, handleAddToCart } = useHomepageNavigation();
   const { user, isModalVisible, showModal, hideModal } = useProfile();
   const { handleMenuItemPress } = useProfileMenu();
-  const { state: cartState } = useCart();
+  const { state: cartState, refreshCart } = useCart();
   const { state: authState, actions: authActions } = useAuth();
   const { state: subscriptionState } = useSubscription();
   const [refreshing, setRefreshing] = React.useState(false);
@@ -145,6 +149,20 @@ export default function HomeScreen() {
       loadUserStatistics();
     }
   }, [authState.user, interactionsComplete]);
+
+  // Refresh wallet balance and cart data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Only refresh if user is authenticated and we've already done initial load
+      if (authState.user && statsLoadedRef.current) {
+        // Reset the flag so loadUserStatistics will run
+        statsLoadedRef.current = false;
+        loadUserStatistics();
+        // Also refresh cart data to update cart badge
+        refreshCart();
+      }
+    }, [authState.user, refreshCart])
+  );
 
   const loadUserStatistics = async () => {
     if (isLoadingStats) return; // Prevent concurrent calls
@@ -512,11 +530,38 @@ export default function HomeScreen() {
               }}
               activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
               delayPressIn={Platform.OS === 'ios' ? 50 : 0}
-              accessibilityLabel={`Shopping cart: ${cartState.items.length} items`}
+              accessibilityLabel={`Shopping cart: ${cartState.totalItems} items`}
               accessibilityRole="button"
               accessibilityHint="Double tap to view your shopping cart"
+              style={{ position: 'relative' }}
             >
               <Ionicons name="cart-outline" size={24} color="white" />
+              {cartState.totalItems > 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -6,
+                    right: -6,
+                    backgroundColor: '#FF5252',
+                    borderRadius: 10,
+                    minWidth: 18,
+                    height: 18,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingHorizontal: 4,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: 'white',
+                      fontSize: 10,
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    {cartState.totalItems > 99 ? '99+' : cartState.totalItems}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -705,6 +750,15 @@ export default function HomeScreen() {
               />
             ));
         }, [state.sections, handleItemPress, actions, renderEventCard, renderRecommendationCard, renderStoreCard, renderBrandedStoreCard, renderProductCard])}
+
+        {/* Categories Grid Section - Shows 10 random parent categories */}
+        <CategoryGridSection title="Categories" maxCategories={10} />
+
+        {/* Popular Products Section - Shows products with highest order count */}
+        <PopularProductsSection title="Popular" limit={10} />
+
+        {/* In Your Area Section - Shows products from nearby stores */}
+        <NearbyProductsSection title="In Your Area" limit={10} radius={10} />
       </View>
 
       {/* Profile Menu Modal - Lazy Loaded */}
@@ -842,8 +896,7 @@ const viewStyles = StyleSheet.create({
   },
   locationContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
+    alignItems: 'center',
     marginRight: 8,
     paddingVertical: 4,
     paddingHorizontal: 8,

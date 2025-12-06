@@ -3,6 +3,9 @@ export { default as HorizontalScrollSection } from './HorizontalScrollSection';
 export { default as ReZCoin } from './ReZCoin';
 export { default as CategoryTabBar } from './CategoryTabBar';
 export { default as StickySearchHeader } from './StickySearchHeader';
+export { default as CategoryGridSection } from './CategoryGridSection';
+export { default as PopularProductsSection } from './PopularProductsSection';
+export { default as NearbyProductsSection } from './NearbyProductsSection';
 
 // Card Components
 export { default as EventCard } from './cards/EventCard';
@@ -10,6 +13,7 @@ export { default as StoreCard } from './cards/StoreCard';
 export { default as ProductCard } from './cards/ProductCard';
 export { default as BrandedStoreCard } from './cards/BrandedStoreCard';
 export { default as RecommendationCard } from './cards/RecommendationCard';
+export { default as HomepageProductCard } from './cards/HomepageProductCard';
 
 // Skeleton Loading Components
 export { 

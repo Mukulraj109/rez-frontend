@@ -42,7 +42,7 @@ export default function CategoryPage() {
 
   const loadCategoryData = async () => {
     if (!slug) return;
-    
+
     try {
       await actions.loadCategory(slug);
     } catch (error) {
@@ -57,6 +57,29 @@ export default function CategoryPage() {
       );
     }
   };
+
+  // Redirect to StoreListPage after category is loaded
+  useEffect(() => {
+    if (state.currentCategory && !state.loading) {
+      const category = state.currentCategory;
+
+      // Build subcategories param (from childCategories if available)
+      const subcategoriesParam = (category as any).childCategories
+        ? JSON.stringify((category as any).childCategories)
+        : '[]';
+
+      // Redirect to StoreListPage with category params
+      router.replace({
+        pathname: '/StoreListPage',
+        params: {
+          category: (category as any)._id || (category as any).id,
+          categorySlug: slug,
+          title: category.name,
+          subcategories: subcategoriesParam,
+        },
+      } as any);
+    }
+  }, [state.currentCategory, state.loading, router, slug]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

@@ -130,12 +130,15 @@ export const useWallet = ({
         }
       ];
 
+      // Calculate total balance from coins (REZ Coin + Promo Coin)
+      const calculatedTotalBalance = coins.reduce((sum, coin) => sum + coin.amount, 0);
+
       const walletData: WalletData = {
         userId: userId || 'unknown',
-        totalBalance: backendData.balance.total,
+        totalBalance: calculatedTotalBalance,
         availableBalance: backendData.balance.available, // Actual wallet balance (excludes paybill)
         currency: backendData.currency,
-        formattedTotalBalance: `${backendData.currency} ${backendData.balance.total}`,
+        formattedTotalBalance: `${backendData.currency} ${calculatedTotalBalance}`,
         coins: coins,
         recentTransactions: [],
         lastUpdated: new Date(backendData.lastUpdated),
@@ -260,12 +263,15 @@ export const useWallet = ({
         }
       ];
 
+      // Calculate total balance from coins (REZ Coin + Promo Coin)
+      const calculatedTotalBalance = coins.reduce((sum, coin) => sum + coin.amount, 0);
+
       const walletData: WalletData = {
         userId: userId || 'unknown',
-        totalBalance: backendData.balance.total,
+        totalBalance: calculatedTotalBalance,
         availableBalance: backendData.balance.available, // Actual wallet balance (excludes paybill)
         currency: backendData.currency,
-        formattedTotalBalance: `${backendData.currency} ${backendData.balance.total}`,
+        formattedTotalBalance: `${backendData.currency} ${calculatedTotalBalance}`,
         coins: coins,
         recentTransactions: [],
         lastUpdated: new Date(backendData.lastUpdated),

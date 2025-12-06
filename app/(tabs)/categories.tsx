@@ -304,8 +304,8 @@ export default function CategoriesScreen() {
       setError(null);
 
       const [goingOutResult, homeDeliveryResult] = await Promise.all([
-        categoriesApi.getCategories({ type: 'going_out' }),
-        categoriesApi.getCategories({ type: 'home_delivery' }),
+        categoriesApi.getCategories({ type: 'going_out', parent: 'null' }),
+        categoriesApi.getCategories({ type: 'home_delivery', parent: 'null' }),
       ]);
 
       const process = (result: any) => (result?.data || result || [])

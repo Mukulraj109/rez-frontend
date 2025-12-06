@@ -1,5 +1,5 @@
 // StoreListPage.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -45,7 +45,26 @@ const StoreListPage: React.FC = () => {
   });
 
   // Use search hook with category from params
-  const category = (params.category as string) || 'all';
+  const categoryFromParams = (params.category as string) || 'all';
+
+  // Parse subcategories from params
+  const subcategoriesParam = params.subcategories as string;
+  const subcategories = useMemo(() => {
+    try {
+      return subcategoriesParam ? JSON.parse(subcategoriesParam) : [];
+    } catch {
+      return [];
+    }
+  }, [subcategoriesParam]);
+
+  // Subcategory selection state
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('all');
+  const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
+
+  // Always use parent category for fetching stores
+  // Subcategory is used to filter products within stores
+  const effectiveCategory = categoryFromParams;
+
   const {
     stores,
     loading: isLoading,
@@ -58,7 +77,7 @@ const StoreListPage: React.FC = () => {
     setSortBy: setSortByInHook,
     clearError
   } = useStoreSearch({
-    category,
+    category: effectiveCategory,
     searchQuery,
     autoFetch: true,
     sortBy,
@@ -111,24 +130,22 @@ const StoreListPage: React.FC = () => {
   }, [stores]);
 
   // Convert stores to SearchResults format
+  // Filter products by selected subcategory if one is chosen
   const searchResults: SearchResults | null = stores.length > 0 ? {
     query: searchQuery,
     totalResults: stores.length,
     totalStores: stores.length,
     stores: stores.map((store, storeIndex) => {
-      console.log(`\n🏪 [STORE ${storeIndex}] Processing store:`, store.name);
-      console.log('📦 Products count:', store.products?.length || 0);
-
-      if (store.products && store.products.length > 0) {
-        const firstProduct = store.products[0];
-        console.log('📱 First product raw data:', {
-          name: firstProduct.name,
-          price: firstProduct.price,
-          priceType: typeof firstProduct.price,
-          rating: firstProduct.rating,
-          ratingType: typeof firstProduct.rating,
-        });
+      // Filter products by subcategory if selected
+      let filteredProducts = store.products || [];
+      if (selectedSubcategory !== 'all' && filteredProducts.length > 0) {
+        filteredProducts = filteredProducts.filter((product: any) =>
+          product.subCategory === selectedSubcategory ||
+          product.subCategory?._id === selectedSubcategory ||
+          product.subcategory === selectedSubcategory
+        );
       }
+
 
       return {
       storeId: store._id,
@@ -145,7 +162,7 @@ const StoreListPage: React.FC = () => {
       logo: store.logo || null, // Logo for overlay
       description: store.description || '',
       deliveryCategories: store.deliveryCategories || {},
-      products: (store.products || []).map(product => {
+      products: filteredProducts.map((product: any) => {
         // Handle both old and new product data structures
         // New structure from backend transformation: { price: number, originalPrice: number, rating: number }
         // Old structure: { price: { current, original }, rating: { value, count } }
@@ -195,20 +212,9 @@ const StoreListPage: React.FC = () => {
           tags: Array.isArray(product.tags) ? product.tags : [],
         };
 
-        // Log the transformation result for first product
-        if (product === store.products[0]) {
-          console.log('✅ Transformed first product:', {
-            name: transformedProduct.name,
-            price: transformedProduct.price,
-            priceType: typeof transformedProduct.price,
-            rating: transformedProduct.rating,
-            ratingType: typeof transformedProduct.rating,
-          });
-        }
-
         return transformedProduct;
       }),
-      totalProductsFound: store.products?.length || 0,
+      totalProductsFound: filteredProducts.length,
     };
     }),
     filters: availableFilters,
@@ -368,6 +374,24 @@ const StoreListPage: React.FC = () => {
           </View>
         </LinearGradient>
 
+        {/* Subcategory Filter Dropdown - Only show if subcategories exist */}
+        {subcategories.length > 0 && (
+          <View style={styles.subcategoryContainer}>
+            <TouchableOpacity
+              style={styles.subcategoryDropdown}
+              onPress={() => setShowSubcategoryModal(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.subcategoryLabel}>
+                {selectedSubcategory === 'all'
+                  ? 'All Subcategories'
+                  : subcategories.find((s: any) => s._id === selectedSubcategory)?.name || 'All'}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#00C06A" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Scrollable Content Area - ONLY THIS SCROLLS */}
         <ScrollView
           style={styles.content}
@@ -485,6 +509,76 @@ const StoreListPage: React.FC = () => {
                    option === 'name' ? 'Name (A-Z)' : 'Newest First'}
                 </Text>
                 {sortBy === option && (
+                  <Ionicons name="checkmark" size={20} color="#00C06A" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Subcategory Modal */}
+      <Modal
+        visible={showSubcategoryModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSubcategoryModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSubcategoryModal(false)}
+        >
+          <View style={styles.sortModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Subcategory</Text>
+              <TouchableOpacity onPress={() => setShowSubcategoryModal(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* All Subcategories Option */}
+            <TouchableOpacity
+              style={[
+                styles.sortOption,
+                selectedSubcategory === 'all' && styles.sortOptionActive
+              ]}
+              onPress={() => {
+                setSelectedSubcategory('all');
+                setShowSubcategoryModal(false);
+              }}
+            >
+              <Text style={[
+                styles.sortOptionText,
+                selectedSubcategory === 'all' && styles.sortOptionTextActive
+              ]}>
+                All Subcategories
+              </Text>
+              {selectedSubcategory === 'all' && (
+                <Ionicons name="checkmark" size={20} color="#00C06A" />
+              )}
+            </TouchableOpacity>
+
+            {/* Individual Subcategory Options */}
+            {subcategories.map((sub: any) => (
+              <TouchableOpacity
+                key={sub._id}
+                style={[
+                  styles.sortOption,
+                  selectedSubcategory === sub._id && styles.sortOptionActive
+                ]}
+                onPress={() => {
+                  setSelectedSubcategory(sub._id);
+                  setShowSubcategoryModal(false);
+                }}
+              >
+                <Text style={[
+                  styles.sortOptionText,
+                  selectedSubcategory === sub._id && styles.sortOptionTextActive
+                ]}>
+                  {sub.name}
+                </Text>
+                {selectedSubcategory === sub._id && (
                   <Ionicons name="checkmark" size={20} color="#00C06A" />
                 )}
               </TouchableOpacity>
@@ -643,6 +737,32 @@ const createStyles = (screenData: { width: number; height: number }) => {
     sortOptionTextActive: {
       color: '#00C06A',
       fontWeight: '600',
+    },
+    subcategoryContainer: {
+      paddingHorizontal: horizontalPadding,
+      paddingVertical: 8,
+      backgroundColor: '#F8F9FA',
+    },
+    subcategoryDropdown: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: '#FFFFFF',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: 'rgba(0, 192, 106, 0.2)',
+      shadowColor: '#00C06A',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    subcategoryLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#374151',
     },
   });
 };

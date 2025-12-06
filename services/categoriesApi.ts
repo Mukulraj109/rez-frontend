@@ -88,12 +88,12 @@ class CategoriesService {
   }
 
   // Get root categories (no parent)
+  // Note: Backend validates query params - only parent, type, featured are allowed
   async getRootCategories(type?: string): Promise<ApiResponse<Category[]>> {
     const params = new URLSearchParams();
     params.append('parent', 'null');
-    params.append('isActive', 'true');
     if (type) params.append('type', type);
-    
+
     return apiClient.get(`${this.baseUrl}?${params.toString()}`);
   }
 

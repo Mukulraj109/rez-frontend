@@ -759,6 +759,17 @@ export const useCheckout = (): UseCheckoutReturn => {
         couponCode: state.appliedPromoCode?.code,
       });
 
+      // Add coinsUsed to order data
+      const coinsUsed = {
+        wasilCoins: state.coinSystem.wasilCoin.used || 0,
+        promoCoins: state.coinSystem.promoCoin.used || 0,
+        storePromoCoins: state.coinSystem.storePromoCoin.used || 0,
+        totalCoinsValue: (state.coinSystem.wasilCoin.used || 0) +
+          (state.coinSystem.promoCoin.used || 0) +
+          (state.coinSystem.storePromoCoin.used || 0)
+      };
+      (orderData as any).coinsUsed = coinsUsed;
+
       // Create order via API
       const response = await ordersService.createOrder(orderData);
 
@@ -868,6 +879,17 @@ export const useCheckout = (): UseCheckoutReturn => {
         couponCode: state.appliedPromoCode?.code,
       });
 
+      // Add coinsUsed to order data
+      const coinsUsedData = {
+        wasilCoins: state.coinSystem.wasilCoin.used || 0,
+        promoCoins: state.coinSystem.promoCoin.used || 0,
+        storePromoCoins: state.coinSystem.storePromoCoin.used || 0,
+        totalCoinsValue: (state.coinSystem.wasilCoin.used || 0) +
+          (state.coinSystem.promoCoin.used || 0) +
+          (state.coinSystem.storePromoCoin.used || 0)
+      };
+      (orderData as any).coinsUsed = coinsUsedData;
+
       const orderResponse = await ordersService.createOrder(orderData);
 
       if (!orderResponse.success || !orderResponse.data) {
@@ -962,6 +984,17 @@ export const useCheckout = (): UseCheckoutReturn => {
         specialInstructions: '',
         couponCode: state.appliedPromoCode?.code,
       });
+
+      // Add coinsUsed to order data
+      const coinsUsedPaybill = {
+        wasilCoins: state.coinSystem.wasilCoin.used || 0,
+        promoCoins: state.coinSystem.promoCoin.used || 0,
+        storePromoCoins: state.coinSystem.storePromoCoin.used || 0,
+        totalCoinsValue: (state.coinSystem.wasilCoin.used || 0) +
+          (state.coinSystem.promoCoin.used || 0) +
+          (state.coinSystem.storePromoCoin.used || 0)
+      };
+      (orderData as any).coinsUsed = coinsUsedPaybill;
 
       const orderResponse = await ordersService.createOrder(orderData);
 

@@ -37,6 +37,7 @@ export default function CheckoutPage() {
   // Cart validation state
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showWarningBanner, setShowWarningBanner] = useState(true);
+  const [coinSectionExpanded, setCoinSectionExpanded] = useState(false);
 
   // Use cart validation hook with real-time validation
   const {
@@ -349,8 +350,33 @@ export default function CheckoutPage() {
             </TouchableOpacity>
           )}
 
-          {/* Coin Toggles */}
+          {/* Coin Toggles Section - Collapsible */}
           <View style={styles.coinToggles}>
+            {/* Collapsible Header */}
+            <TouchableOpacity
+              style={styles.coinSectionHeader}
+              onPress={() => setCoinSectionExpanded(!coinSectionExpanded)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.coinSectionHeaderLeft}>
+                <Ionicons name="diamond" size={20} color="#00C06A" />
+                <View style={styles.coinSectionHeaderText}>
+                  <ThemedText style={styles.coinSectionTitle}>Use Your Coins</ThemedText>
+                  <ThemedText style={styles.coinSectionSubtitle}>
+                    {totalWalletBalance} coins available
+                  </ThemedText>
+                </View>
+              </View>
+              <Ionicons
+                name={coinSectionExpanded ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color="#6B7280"
+              />
+            </TouchableOpacity>
+
+            {/* Coin Options - Only show when expanded */}
+            {coinSectionExpanded && (
+              <>
             {/* REZ Coin with Slider */}
             <View style={styles.coinSliderCard}>
               <LinearGradient
@@ -567,6 +593,8 @@ export default function CheckoutPage() {
                 </LinearGradient>
               </View>
             )}
+              </>
+            )}
           </View>
         </View>
 
@@ -670,6 +698,12 @@ export default function CheckoutPage() {
 
       {/* Bottom Payment Buttons */}
       <View style={styles.bottomButtonsContainer}>
+        {/* Payment Options Header */}
+        <View style={styles.paymentHeaderContainer}>
+          <ThemedText style={styles.paymentHeaderText}>Payment Options</ThemedText>
+          <View style={styles.paymentHeaderDivider} />
+        </View>
+
         <TouchableOpacity
           style={styles.otherPaymentButton}
           onPress={handlers.navigateToOtherPaymentMethods}
@@ -1118,6 +1152,35 @@ const styles = StyleSheet.create({
   coinToggles: {
     gap: 12,
   },
+  coinSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  coinSectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  coinSectionHeaderText: {
+    gap: 2,
+  },
+  coinSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  coinSectionSubtitle: {
+    fontSize: 13,
+    color: '#059669',
+    fontWeight: '500',
+  },
   coinToggleCard: {
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
@@ -1378,15 +1441,32 @@ const styles = StyleSheet.create({
   
   // Bottom Buttons
   bottomSpace: {
-    height: 120,
+    height: 280, // Increased to ensure payment buttons are fully visible
   },
   bottomButtonsContainer: {
     backgroundColor: 'white',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 100, // Extra padding to account for bottom navigation bar
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     gap: 12,
+  },
+  paymentHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  paymentHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginRight: 12,
+  },
+  paymentHeaderDivider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
   },
   otherPaymentButton: {
     backgroundColor: 'white',
@@ -1402,7 +1482,7 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   loadWalletButton: {
-    backgroundColor: '#00C06A',
+    backgroundColor: '#8B5CF6', // Purple to differentiate from PayBill
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 20,
