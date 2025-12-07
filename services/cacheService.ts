@@ -43,6 +43,9 @@ const MAX_CACHE_SIZE = FILE_SIZE_LIMITS.MAX_DOCUMENT_SIZE; // 10MB - cache size 
 const COMPRESSION_THRESHOLD = 10 * 1024; // 10KB
 const CURRENT_CACHE_VERSION = '1.0.0';
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
 class CacheService {
   private cacheIndex: Map<string, CacheEntry> = new Map();
   private hits = 0;
@@ -51,15 +54,19 @@ class CacheService {
   private initializing = false; // Prevent multiple initialization attempts
 
   constructor() {
-    this.initialize();
+    // Only initialize in browser environment (not during SSR)
+    if (isBrowser) {
+      this.initialize();
+    }
   }
 
   /**
    * Initialize cache service
    */
   private async initialize(): Promise<void> {
-    if (this.initialized || this.initializing) return;
-    
+    // Skip initialization during SSR
+    if (!isBrowser || this.initialized || this.initializing) return;
+
     this.initializing = true;
 
     try {

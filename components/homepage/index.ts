@@ -6,6 +6,9 @@ export { default as StickySearchHeader } from './StickySearchHeader';
 export { default as CategoryGridSection } from './CategoryGridSection';
 export { default as PopularProductsSection } from './PopularProductsSection';
 export { default as NearbyProductsSection } from './NearbyProductsSection';
+export { default as HotDealsSection } from './HotDealsSection';
+export { default as CategoryProductsSection } from './CategoryProductsSection';
+export { default as FeaturedCategoriesContainer } from './FeaturedCategoriesContainer';
 
 // Card Components
 export { default as EventCard } from './cards/EventCard';
@@ -14,6 +17,7 @@ export { default as ProductCard } from './cards/ProductCard';
 export { default as BrandedStoreCard } from './cards/BrandedStoreCard';
 export { default as RecommendationCard } from './cards/RecommendationCard';
 export { default as HomepageProductCard } from './cards/HomepageProductCard';
+export { default as CategoryProductCard } from './cards/CategoryProductCard';
 
 // Skeleton Loading Components
 export { 

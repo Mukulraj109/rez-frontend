@@ -77,14 +77,13 @@ class CategoriesService {
     return apiClient.get(`${this.baseUrl}/tree${query}`);
   }
 
-  // Get featured categories
-  async getFeaturedCategories(type?: string): Promise<ApiResponse<Category[]>> {
+  // Get featured categories - uses dedicated /featured endpoint
+  async getFeaturedCategories(type?: string, limit: number = 20): Promise<ApiResponse<Category[]>> {
     const params = new URLSearchParams();
-    params.append('featured', 'true');
-    params.append('isActive', 'true');
+    params.append('limit', String(limit));
     if (type) params.append('type', type);
-    
-    return apiClient.get(`${this.baseUrl}?${params.toString()}`);
+
+    return apiClient.get(`${this.baseUrl}/featured?${params.toString()}`);
   }
 
   // Get root categories (no parent)

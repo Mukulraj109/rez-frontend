@@ -35,6 +35,8 @@ import {
   CategoryGridSection,
   PopularProductsSection,
   NearbyProductsSection,
+  HotDealsSection,
+  FeaturedCategoriesContainer,
 } from '@/components/homepage';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import {
@@ -759,6 +761,12 @@ export default function HomeScreen() {
 
         {/* In Your Area Section - Shows products from nearby stores */}
         <NearbyProductsSection title="In Your Area" limit={10} radius={10} />
+
+        {/* Hot Deals Section - Shows products with hot-deal tag or high cashback */}
+        <HotDealsSection title="Hot deals" limit={10} />
+
+        {/* Featured Category Sections - Dynamic sections by category */}
+        <FeaturedCategoriesContainer productsPerCategory={10} />
       </View>
 
       {/* Profile Menu Modal - Lazy Loaded */}

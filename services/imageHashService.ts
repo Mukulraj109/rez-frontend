@@ -52,10 +52,13 @@ export interface HashComparisonOptions {
 // Constants
 // ============================================================================
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
 const STORAGE_KEY = '@bill_upload_hashes';
 const MAX_STORED_HASHES = 100;
 const DEFAULT_TIME_WINDOW = 24 * 60 * 60 * 1000; // 24 hours
-const DEFAULT_AMOUNT_THRESHOLD = 10; // �10
+const DEFAULT_AMOUNT_THRESHOLD = 10; // ₹10
 
 // ============================================================================
 // Image Hash Service Class
@@ -69,7 +72,8 @@ class ImageHashService {
    * Initialize the service and load stored hashes
    */
   async initialize(): Promise<void> {
-    if (this.isInitialized) {
+    // Skip initialization during SSR
+    if (!isBrowser || this.isInitialized) {
       return;
     }
 
@@ -446,9 +450,11 @@ class ImageHashService {
 
 export const imageHashService = new ImageHashService();
 
-// Auto-initialize on import
-imageHashService.initialize().catch(error => {
-  console.error('[ImageHash] Auto-initialization failed:', error);
-});
+// Auto-initialize on import (only in browser environment)
+if (isBrowser) {
+  imageHashService.initialize().catch(error => {
+    console.error('[ImageHash] Auto-initialization failed:', error);
+  });
+}
 
 export default imageHashService;

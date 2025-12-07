@@ -119,12 +119,16 @@ const DEFAULT_CONFIG: TelemetryConfig = {
 // Telemetry Service
 // ============================================================================
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
 class TelemetryService {
   private config: TelemetryConfig = DEFAULT_CONFIG;
   private queue: EventBatch[] = [];
   private flushTimer: NodeJS.Timeout | null = null;
   private isSending: boolean = false;
   private isOnline: boolean = true;
+  private isInitialized: boolean = false;
   private stats: DeliveryStats = {
     totalEvents: 0,
     sentEvents: 0,
@@ -135,7 +139,10 @@ class TelemetryService {
   };
 
   constructor() {
-    this.initialize();
+    // Only initialize in browser environment (not during SSR)
+    if (isBrowser) {
+      this.initialize();
+    }
   }
 
   // ==========================================================================
@@ -146,12 +153,18 @@ class TelemetryService {
    * Initialize telemetry service
    */
   private async initialize(): Promise<void> {
+    // Skip initialization during SSR
+    if (!isBrowser || this.isInitialized) {
+      return;
+    }
+
     try {
       await this.loadConfig();
       await this.loadQueue();
       await this.loadStats();
       this.setupNetworkListener();
       this.startAutoFlush();
+      this.isInitialized = true;
     } catch (error) {
       console.error('Failed to initialize TelemetryService:', error);
     }

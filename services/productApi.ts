@@ -12,13 +12,15 @@ export interface HomepageProduct {
   rating: number;
   reviewCount: number;
   purchases?: number;
+  cashbackPercentage?: number;
   category: string;
+  categorySlug?: string;
   store: {
     _id: string;
     name: string;
     logo: string;
-    deliveryTime: string;
-    deliveryFee: number;
+    deliveryTime?: string;
+    deliveryFee?: number;
     city: string;
     distance?: number | null;
   };
@@ -32,6 +34,15 @@ export interface NearbyProductsParams {
 }
 
 export interface PopularProductsParams {
+  limit?: number;
+}
+
+export interface HotDealsParams {
+  limit?: number;
+}
+
+export interface CategoryProductsParams {
+  categorySlug: string;
   limit?: number;
 }
 
@@ -67,6 +78,36 @@ class ProductApiService {
     }
 
     return apiClient.get(`${this.baseUrl}/nearby?${query.toString()}`);
+  }
+
+  // Get hot deals - FOR "Hot Deals" SECTION
+  async getHotDeals(params: HotDealsParams = {}): Promise<ApiResponse<HomepageProduct[]>> {
+    const query = new URLSearchParams();
+
+    if (params.limit) {
+      query.append('limit', String(params.limit));
+    }
+
+    const queryString = query.toString();
+    const url = queryString ? `${this.baseUrl}/hot-deals?${queryString}` : `${this.baseUrl}/hot-deals`;
+
+    return apiClient.get(url);
+  }
+
+  // Get products by category slug - FOR HOMEPAGE CATEGORY SECTIONS
+  async getProductsByCategory(params: CategoryProductsParams): Promise<ApiResponse<HomepageProduct[]>> {
+    const query = new URLSearchParams();
+
+    if (params.limit) {
+      query.append('limit', String(params.limit));
+    }
+
+    const queryString = query.toString();
+    const url = queryString
+      ? `${this.baseUrl}/category-section/${params.categorySlug}?${queryString}`
+      : `${this.baseUrl}/category-section/${params.categorySlug}`;
+
+    return apiClient.get(url);
   }
 }
 

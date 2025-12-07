@@ -1,56 +1,24 @@
 // Quick Access FAB (Floating Action Button)
-// Premium glassmorphic FAB with ReZ brand colors
-// Follows ReZ Design System: Primary Green (#00C06A) + Sun Gold (#FFC857) for rewards
+// Expandable floating action button with quick access to key features
 
 import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 
 interface QuickAction {
   icon: string;
   label: string;
   route: string;
-  gradient: string[];
+  color: string;
 }
 
-// ReZ Brand Colors
-const REZ_COLORS = {
-  primary: '#00C06A',
-  primaryDark: '#00A16B',
-  deepTeal: '#00796B',
-  sunGold: '#FFC857',
-  goldDark: '#FF9F1C',
-  midnightNavy: '#0B2240',
-};
-
 const actions: QuickAction[] = [
-  { 
-    icon: 'document-text-outline', 
-    label: 'Upload Bill', 
-    route: '/bill-upload', 
-    gradient: [REZ_COLORS.primary, REZ_COLORS.primaryDark] 
-  },
-  { 
-    icon: 'gift-outline', 
-    label: 'Refer', 
-    route: '/referral', 
-    gradient: [REZ_COLORS.sunGold, REZ_COLORS.goldDark] 
-  },
-  { 
-    icon: 'diamond-outline', 
-    label: 'Premium', 
-    route: '/subscription/plans', 
-    gradient: [REZ_COLORS.sunGold, REZ_COLORS.goldDark] 
-  },
-  { 
-    icon: 'game-controller-outline', 
-    label: 'Games', 
-    route: '/games', 
-    gradient: [REZ_COLORS.primary, REZ_COLORS.deepTeal] 
-  },
+  { icon: '📄', label: 'Upload Bill', route: '/bill-upload', color: '#4CAF50' },
+  { icon: '🎁', label: 'Refer', route: '/referral', color: '#FF6B6B' },
+  { icon: '👑', label: 'Premium', route: '/subscription/plans', color: '#FFD700' },
+  { icon: '🎮', label: 'Games', route: '/games', color: '#9C27B0' },
 ];
 
 export default function QuickAccessFAB() {
@@ -84,17 +52,12 @@ export default function QuickAccessFAB() {
           {actions.map((action, index) => {
             const translateY = animation.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -(70 * (actions.length - index))],
+              outputRange: [0, -(60 * (actions.length - index))],
             });
 
             const opacity = animation.interpolate({
               inputRange: [0, 0.5, 1],
               outputRange: [0, 0.5, 1],
-            });
-
-            const scale = animation.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.8, 1],
             });
 
             return (
@@ -103,29 +66,18 @@ export default function QuickAccessFAB() {
                 style={[
                   styles.actionWrapper,
                   {
-                    transform: [{ translateY }, { scale }],
+                    transform: [{ translateY }],
                     opacity,
                   },
                 ]}
               >
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={[styles.actionButton, { backgroundColor: action.color }]}
                   onPress={() => handleActionPress(action.route)}
                   activeOpacity={0.8}
                 >
-                  <LinearGradient
-                    colors={action.gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.actionGradient}
-                  >
-                    <Ionicons 
-                      name={action.icon as any} 
-                      size={20} 
-                      color="#FFFFFF" 
-                    />
-                    <ThemedText style={styles.actionLabel}>{action.label}</ThemedText>
-                  </LinearGradient>
+                  <ThemedText style={styles.actionIcon}>{action.icon}</ThemedText>
+                  <ThemedText style={styles.actionLabel}>{action.label}</ThemedText>
                 </TouchableOpacity>
               </Animated.View>
             );
@@ -137,13 +89,9 @@ export default function QuickAccessFAB() {
         style={styles.fabContainer}
         onPress={toggleExpand}
         activeOpacity={0.9}
-        activeBackgroundColor="transparent"
       >
         <LinearGradient
-          colors={expanded 
-            ? [REZ_COLORS.deepTeal, REZ_COLORS.primaryDark] 
-            : [REZ_COLORS.primary, REZ_COLORS.primaryDark, REZ_COLORS.sunGold]
-          }
+          colors={expanded ? ['#EF4444', '#DC2626'] : ['#8B5CF6', '#7C3AED']}
           style={styles.fab}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -157,20 +105,12 @@ export default function QuickAccessFAB() {
                     outputRange: ['0deg', '45deg'],
                   }),
                 },
-                {
-                  scale: animation.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [1, 1.1, 1],
-                  }),
-                },
               ],
             }}
           >
-            <Ionicons 
-              name={expanded ? 'close' : 'flash'} 
-              size={28} 
-              color="#FFFFFF" 
-            />
+            <ThemedText style={styles.fabIcon}>
+              {expanded ? '✕' : '⚡'}
+            </ThemedText>
           </Animated.View>
         </LinearGradient>
       </TouchableOpacity>
@@ -185,82 +125,55 @@ const styles = StyleSheet.create({
     right: 20,
     alignItems: 'flex-end',
     zIndex: 1000,
-    backgroundColor: 'transparent', // Ensure no white background
   },
   actionsContainer: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: 'transparent', // Ensure no white background
   },
   actionWrapper: {
     position: 'absolute',
     right: 0,
     bottom: 0,
-    backgroundColor: 'transparent', // Ensure no white background
   },
   actionButton: {
-    borderRadius: 20,
-    marginBottom: 10,
-    overflow: 'hidden',
-    backgroundColor: 'transparent', // Ensure no white background
-    // Premium shadow for glassmorphic effect
-    ...Platform.select({
-      ios: {
-        shadowColor: '#00C06A',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-      web: {
-        boxShadow: '0px 8px 24px rgba(0, 192, 106, 0.3)',
-      },
-    }),
-  },
-  actionGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  actionIcon: {
+    fontSize: 20,
+    marginRight: 8,
   },
   actionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginLeft: 10,
-    fontFamily: 'Inter-SemiBold',
+    color: '#FFF',
   },
   fabContainer: {
-    backgroundColor: 'transparent', // Ensure no white background
-    borderRadius: 32, // Match FAB border radius
-    overflow: 'hidden', // Ensure gradient doesn't show white edges
-    // Premium glassmorphic shadow with green glow
-    ...Platform.select({
-      ios: {
-        shadowColor: '#00C06A',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 12,
-      },
-      web: {
-        boxShadow: '0px 8px 32px rgba(0, 192, 106, 0.4), 0px 0px 20px rgba(255, 200, 87, 0.2)',
-      },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   fab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent', // Ensure no white background
-    overflow: 'hidden', // Ensure gradient fills completely
+  },
+  fabIcon: {
+    fontSize: 28,
+    color: '#FFF',
   },
 });

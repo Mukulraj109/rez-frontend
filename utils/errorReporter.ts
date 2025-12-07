@@ -120,6 +120,9 @@ const ERROR_BATCH_SIZE = 20;
 // Error Reporter
 // ============================================================================
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
 class ErrorReporter {
   private breadcrumbs: Breadcrumb[] = [];
   private errors: CapturedError[] = [];
@@ -127,9 +130,13 @@ class ErrorReporter {
   private sessionId: string = '';
   private appVersion: string = '1.0.0';
   private isEnabled: boolean = true;
+  private isInitialized: boolean = false;
 
   constructor() {
-    this.initialize();
+    // Only initialize in browser environment (not during SSR)
+    if (isBrowser) {
+      this.initialize();
+    }
   }
 
   // ==========================================================================
@@ -140,10 +147,16 @@ class ErrorReporter {
    * Initialize error reporter
    */
   private async initialize(): Promise<void> {
+    // Skip initialization during SSR
+    if (!isBrowser || this.isInitialized) {
+      return;
+    }
+
     try {
       await this.loadBreadcrumbs();
       await this.loadErrors();
       this.setupGlobalErrorHandlers();
+      this.isInitialized = true;
     } catch (error) {
       console.error('Failed to initialize ErrorReporter:', error);
     }
