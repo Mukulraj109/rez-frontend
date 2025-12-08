@@ -481,6 +481,15 @@ const CategoryIconItem: React.FC<CategoryIconItemProps> = memo(({
   onPress,
   size = 'medium',
 }) => {
+  // Safely extract string values to prevent rendering objects
+  const categoryName = typeof category.name === 'string' ? category.name : 'Category';
+  const categorySlug = typeof category.slug === 'string' ? category.slug : '';
+  const categoryIcon = typeof category.icon === 'string' ? category.icon : undefined;
+  const categoryImage = typeof category.image === 'string' ? category.image : undefined;
+  const metadataColor = category.metadata?.color && typeof category.metadata.color === 'string'
+    ? category.metadata.color
+    : undefined;
+
   const sizeConfig = {
     small: { circle: 52, icon: 24, label: 10 },
     medium: { circle: 64, icon: 28, label: 12 },
@@ -488,18 +497,18 @@ const CategoryIconItem: React.FC<CategoryIconItemProps> = memo(({
   };
 
   const config = sizeConfig[size];
-  const backgroundColor = getCategoryColor(category.slug, category.name, category.metadata?.color);
-  const iconColor = getCategoryIconColor(category.slug, category.name);
-  const iconName = getCategoryIcon(category.slug, category.name, category.icon);
+  const backgroundColor = getCategoryColor(categorySlug, categoryName, metadataColor);
+  const iconColor = getCategoryIconColor(categorySlug, categoryName);
+  const iconName = getCategoryIcon(categorySlug, categoryName, categoryIcon);
 
   return (
     <TouchableOpacity
       style={styles.container}
-      onPress={() => onPress(category.slug)}
+      onPress={() => onPress(categorySlug)}
       activeOpacity={0.7}
       accessibilityRole="button"
-      accessibilityLabel={`${category.name} category`}
-      accessibilityHint={`Navigate to ${category.name} category page`}
+      accessibilityLabel={`${categoryName} category`}
+      accessibilityHint={`Navigate to ${categoryName} category page`}
     >
       <View
         style={[
@@ -512,9 +521,9 @@ const CategoryIconItem: React.FC<CategoryIconItemProps> = memo(({
           },
         ]}
       >
-        {category.image ? (
+        {categoryImage ? (
           <Image
-            source={{ uri: category.image }}
+            source={{ uri: categoryImage }}
             style={[
               styles.iconImage,
               { width: config.icon, height: config.icon },
@@ -533,7 +542,7 @@ const CategoryIconItem: React.FC<CategoryIconItemProps> = memo(({
         style={[styles.label, { fontSize: config.label }]}
         numberOfLines={2}
       >
-        {category.name}
+        {categoryName}
       </ThemedText>
     </TouchableOpacity>
   );

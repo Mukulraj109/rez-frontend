@@ -38,6 +38,8 @@ import {
   HotDealsSection,
   FeaturedCategoriesContainer,
 } from '@/components/homepage';
+import ServiceCategoriesSection from '@/components/homepage/ServiceCategoriesSection';
+import PopularServicesSection from '@/components/homepage/PopularServicesSection';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import {
   EventItem,
@@ -155,13 +157,16 @@ export default function HomeScreen() {
   // Refresh wallet balance and cart data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      // Only refresh if user is authenticated and we've already done initial load
-      if (authState.user && statsLoadedRef.current) {
-        // Reset the flag so loadUserStatistics will run
-        statsLoadedRef.current = false;
-        loadUserStatistics();
-        // Also refresh cart data to update cart badge
+      // Only refresh if user is authenticated
+      if (authState.user) {
+        // Always refresh cart data to update cart badge
         refreshCart();
+
+        // Refresh wallet balance (only if we've done initial load to avoid double-loading on mount)
+        if (statsLoadedRef.current) {
+          statsLoadedRef.current = false;
+          loadUserStatistics();
+        }
       }
     }, [authState.user, refreshCart])
   );
@@ -761,6 +766,10 @@ export default function HomeScreen() {
 
         {/* In Your Area Section - Shows products from nearby stores */}
         <NearbyProductsSection title="In Your Area" limit={10} radius={10} />
+
+        {/* Services Sections */}
+        <ServiceCategoriesSection />
+        <PopularServicesSection />
 
         {/* Hot Deals Section - Shows products with hot-deal tag or high cashback */}
         <HotDealsSection title="Hot deals" limit={10} />

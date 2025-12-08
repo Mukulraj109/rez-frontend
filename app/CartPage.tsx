@@ -34,11 +34,27 @@ import { useCart } from '@/contexts/CartContext';
 import { useCartValidation } from '@/hooks/useCartValidation';
 import cartApi from '@/services/cartApi';
 
+// Helper function to format time slot for display
+const formatTimeSlot = (start: string, end?: string): string => {
+  const formatTime = (timeStr: string): string => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHour = hours % 12 || 12;
+    return `${displayHour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  const formattedStart = formatTime(start);
+  if (end) {
+    const formattedEnd = formatTime(end);
+    return `${formattedStart} - ${formattedEnd}`;
+  }
+  return formattedStart;
+};
+
 export default function CartPage() {
   const router = useRouter();
   const { state: cartState, actions: cartActions } = useCart();
   const [activeTab, setActiveTab] = useState<'products' | 'service' | 'lockedproduct'>('products');
-  const [serviceItems, setServiceItems] = useState<CartItemType[]>([]); // Empty - services should come from backend too
   const [lockedProducts, setLockedProducts] = useState<LockedProduct[]>([]);
 
   // Cart validation state
@@ -62,31 +78,77 @@ export default function CartPage() {
     showToastNotifications: false, // We'll handle notifications via modal
   });
 
-  // Use real cart items from CartContext
+  // Use real cart items from CartContext - separate products and services
   const productItems = useMemo(() => {
-    return cartState.items.map(item => {
-      // Preserve metadata for event items
-      const metadata = (item as any).metadata || {};
-      const isEvent = metadata.eventType === 'event';
-      
-      return {
-        id: item.id,
-        productId: (item as any).productId || item.id,
-        name: item.name,
-        image: item.image || '',
-        price: item.discountedPrice || item.originalPrice || 0,
-        originalPrice: item.originalPrice,
-        cashback: isEvent ? '0' : `Upto 12% cash back`, // Events don't have cashback
-        quantity: item.quantity,
-        discount: (item as any).discount,
-        variant: (item as any).variant,
-        store: (item as any).store,
-        category: 'products' as const,
-        // Preserve event metadata
-        metadata: isEvent ? metadata : undefined,
-        isEvent: isEvent,
-      };
-    });
+    return cartState.items
+      .filter(item => (item as any).itemType !== 'service') // Only non-service items
+      .map(item => {
+        // Preserve metadata for event items
+        const metadata = (item as any).metadata || {};
+        const isEvent = metadata.eventType === 'event';
+
+        return {
+          id: item.id,
+          productId: (item as any).productId || item.id,
+          name: item.name,
+          image: item.image || '',
+          price: item.discountedPrice || item.originalPrice || 0,
+          originalPrice: item.originalPrice,
+          cashback: isEvent ? '0' : `Upto 12% cash back`, // Events don't have cashback
+          quantity: item.quantity,
+          discount: (item as any).discount,
+          variant: (item as any).variant,
+          store: (item as any).store,
+          category: 'products' as const,
+          itemType: (item as any).itemType || 'product',
+          // Preserve event metadata
+          metadata: isEvent ? metadata : undefined,
+          isEvent: isEvent,
+        };
+      });
+  }, [cartState.items, cartState.isLoading, cartState.error]);
+
+  // Service items from cart
+  const serviceItems = useMemo(() => {
+    return cartState.items
+      .filter(item => (item as any).itemType === 'service')
+      .map(item => {
+        const bookingDetails = (item as any).serviceBookingDetails || {};
+        const bookingDate = bookingDetails.bookingDate ? new Date(bookingDetails.bookingDate) : null;
+
+        return {
+          id: item.id,
+          productId: (item as any).productId || item.id,
+          name: item.name,
+          image: item.image || '',
+          price: item.discountedPrice || item.originalPrice || 0,
+          originalPrice: item.originalPrice,
+          cashback: '0', // Services typically don't have cashback
+          quantity: item.quantity,
+          discount: (item as any).discount,
+          variant: (item as any).variant,
+          store: (item as any).store,
+          category: 'service' as const,
+          itemType: 'service' as const,
+          // Service booking details
+          serviceBookingDetails: {
+            bookingDate: bookingDate,
+            timeSlot: bookingDetails.timeSlot,
+            duration: bookingDetails.duration,
+            serviceType: bookingDetails.serviceType,
+            customerNotes: bookingDetails.customerNotes,
+            customerName: bookingDetails.customerName,
+            customerPhone: bookingDetails.customerPhone,
+          },
+          // Formatted display values
+          bookingDateFormatted: bookingDate
+            ? bookingDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+            : '',
+          bookingTimeFormatted: bookingDetails.timeSlot?.start
+            ? formatTimeSlot(bookingDetails.timeSlot.start, bookingDetails.timeSlot.end)
+            : '',
+        };
+      });
   }, [cartState.items, cartState.isLoading, cartState.error]);
 
   const currentItems = useMemo(() => {
@@ -215,11 +277,9 @@ export default function CartPage() {
   };
 
   const handleRemoveItem = async (itemId: string) => {
-    if (activeTab === 'products') {
+    if (activeTab === 'products' || activeTab === 'service') {
       // Use CartContext to remove item (will sync with backend)
       await cartActions.removeItem(itemId);
-    } else if (activeTab === 'service') {
-      setServiceItems(prev => prev.filter(item => item.id !== itemId));
     }
   };
 
@@ -378,6 +438,47 @@ export default function CartPage() {
             onUnlock={handleUnlockItem}
             showAnimation={true}
           />
+        </View>
+      );
+    }
+
+    // Render service item with booking details
+    if (activeTab === 'service') {
+      const serviceItem = item as any;
+      return (
+        <View style={styles.cardWrapper}>
+          <CartItem
+            item={item}
+            onRemove={handleRemoveItem}
+            onUpdateQuantity={handleUpdateQuantity}
+            showAnimation={true}
+            hideQuantityControls={true} // Services don't have quantity controls
+          />
+          {/* Service Booking Details */}
+          {serviceItem.serviceBookingDetails && (
+            <View style={styles.serviceBookingDetails}>
+              <View style={styles.serviceBookingRow}>
+                <ThemedText style={styles.serviceBookingIcon}>📅</ThemedText>
+                <ThemedText style={styles.serviceBookingText}>
+                  {serviceItem.bookingDateFormatted || 'Date not set'}
+                </ThemedText>
+              </View>
+              <View style={styles.serviceBookingRow}>
+                <ThemedText style={styles.serviceBookingIcon}>🕐</ThemedText>
+                <ThemedText style={styles.serviceBookingText}>
+                  {serviceItem.bookingTimeFormatted || 'Time not set'}
+                </ThemedText>
+              </View>
+              {serviceItem.serviceBookingDetails.duration && (
+                <View style={styles.serviceBookingRow}>
+                  <ThemedText style={styles.serviceBookingIcon}>⏱️</ThemedText>
+                  <ThemedText style={styles.serviceBookingText}>
+                    {serviceItem.serviceBookingDetails.duration} min
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       );
     }
@@ -563,5 +664,30 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#00C06A',
     fontWeight: '600',
+  },
+  // Service booking details styles
+  serviceBookingDetails: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 192, 106, 0.15)',
+    backgroundColor: 'rgba(0, 192, 106, 0.05)',
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: -4,
+  },
+  serviceBookingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  serviceBookingIcon: {
+    fontSize: 14,
+    marginRight: 8,
+  },
+  serviceBookingText: {
+    fontSize: 13,
+    color: '#0B2240',
+    fontWeight: '500',
   },
 });

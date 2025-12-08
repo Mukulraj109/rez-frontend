@@ -29,6 +29,18 @@ interface CartItemWithQuantity extends CartItemType {
   addedAt: string;
   productId?: string;
   variant?: any;
+  itemType?: 'product' | 'service' | 'event';
+  serviceBookingDetails?: {
+    bookingDate: Date | string | null;
+    timeSlot: { start: string; end: string } | null;
+    duration: number;
+    serviceType: string;
+    customerNotes?: string;
+    customerName?: string;
+    customerPhone?: string;
+    customerEmail?: string;
+  } | null;
+  metadata?: any;
 }
 
 interface CartState {
@@ -369,6 +381,10 @@ export function CartProvider({ children }: CartProviderProps) {
               variant: item.variant,
               subtotal: item.subtotal,
               savings: item.savings,
+              // Item type and service/event details
+              itemType: item.itemType || 'product',
+              serviceBookingDetails: item.serviceBookingDetails || null,
+              metadata: item.metadata || null,
             };
           });
 

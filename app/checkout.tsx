@@ -12,6 +12,7 @@ import {
   TextInput,
   Modal,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,10 +35,22 @@ export default function CheckoutPage() {
   const [promoCode, setPromoCode] = useState('');
   const [customCoinAmount, setCustomCoinAmount] = useState('');
 
+  // Check if cart has service items (services require upfront payment, no COD)
+  const serviceItems = state.items?.filter((item: any) => item.itemType === 'service') || [];
+  const hasServiceItems = serviceItems.length > 0;
+  const productItems = state.items?.filter((item: any) => item.itemType !== 'service') || [];
+
   // Cart validation state
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showWarningBanner, setShowWarningBanner] = useState(true);
   const [coinSectionExpanded, setCoinSectionExpanded] = useState(false);
+  const [paymentExpanded, setPaymentExpanded] = useState(false);
+
+  // Order confirmation modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cod' | 'paybill' | 'wallet' | 'razorpay' | null>(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('');
 
   // Use cart validation hook with real-time validation
   const {
@@ -155,61 +168,156 @@ export default function CheckoutPage() {
     await validateCart();
   };
 
-  const handleApplyPromoCode = () => {
+  const [applyingPromo, setApplyingPromo] = useState(false);
+
+  const handleApplyPromoCode = async () => {
     if (!promoCode.trim()) {
       Alert.alert('Error', 'Please enter a promo code');
       return;
     }
-    
+
     const previousPromo = state.appliedPromoCode;
-    handlers.handlePromoCodeApply(promoCode.trim().toUpperCase());
-    setPromoCode('');
-    setShowPromoModal(false);
-    
-    // Show success or error after API call
-    setTimeout(() => {
-      if (state.error) {
-        showToast({
-          message: state.error,
-          type: 'error',
-          duration: 4000,
-        });
-      } else if (state.appliedPromoCode) {
-        const message = previousPromo 
-          ? `${previousPromo.code} replaced with ${state.appliedPromoCode.code}!`
-          : `${state.appliedPromoCode.code} applied successfully!`;
+    const codeToApply = promoCode.trim().toUpperCase();
+
+    setApplyingPromo(true);
+
+    try {
+      const result = await handlers.handlePromoCodeApply(codeToApply);
+
+      setPromoCode('');
+      setShowPromoModal(false);
+
+      if (result.success) {
+        const message = previousPromo
+          ? `${previousPromo.code} replaced with ${codeToApply}!`
+          : result.message;
         showToast({
           message: message,
           type: 'success',
           duration: 3000,
         });
+      } else {
+        showToast({
+          message: result.message,
+          type: 'error',
+          duration: 4000,
+        });
       }
-    }, 500);
+    } catch (error) {
+      showToast({
+        message: 'Failed to apply promo code',
+        type: 'error',
+        duration: 4000,
+      });
+    } finally {
+      setApplyingPromo(false);
+    }
   };
 
-  const handleQuickPromoSelect = (selectedPromoCode: string) => {
+  // Payment confirmation handlers
+  const handlePaymentSelect = (method: 'cod' | 'paybill' | 'wallet' | 'razorpay') => {
+    // Validate before showing modal
+    if (method === 'cod' && hasServiceItems) {
+      Alert.alert('COD Not Available', 'Cash on Delivery is not available for service bookings.');
+      return;
+    }
+    if (method === 'paybill' && paybillBalance < (state.billSummary?.totalPayable || 0)) {
+      Alert.alert('Insufficient Balance', `Your PayBill balance (₹${paybillBalance}) is less than the order total.`);
+      return;
+    }
+    if (method === 'wallet' && totalWalletBalance < (state.billSummary?.totalPayable || 0)) {
+      Alert.alert('Insufficient Balance', `Your wallet balance (${totalWalletBalance} RC) is less than the order total.`);
+      return;
+    }
+
+    setSelectedPaymentMethod(method);
+    setShowConfirmModal(true);
+    setPaymentExpanded(false);
+  };
+
+  const handleConfirmOrder = async () => {
+    if (!selectedPaymentMethod) return;
+
+    setShowConfirmModal(false);
+    setProcessingPayment(true);
+
+    // Set processing message based on payment method
+    const messages: Record<string, string> = {
+      cod: 'Placing your order...',
+      paybill: 'Processing PayBill payment...',
+      wallet: 'Deducting from wallet...',
+      razorpay: 'Redirecting to payment...',
+    };
+    setProcessingMessage(messages[selectedPaymentMethod] || 'Processing...');
+
+    try {
+      switch (selectedPaymentMethod) {
+        case 'cod':
+          await handlers.handleCODPayment();
+          break;
+        case 'paybill':
+          await handlers.handlePayBillPayment();
+          break;
+        case 'wallet':
+          await handlers.handleWalletPayment();
+          break;
+        case 'razorpay':
+          await handlers.handleRazorpayPayment();
+          break;
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+    } finally {
+      setProcessingPayment(false);
+      setProcessingMessage('');
+    }
+  };
+
+  const getPaymentMethodLabel = (method: string | null) => {
+    const labels: Record<string, string> = {
+      cod: 'Cash on Delivery',
+      paybill: 'PayBill Balance',
+      wallet: 'Wallet (REZ Coins)',
+      razorpay: 'Online Payment',
+    };
+    return labels[method || ''] || '';
+  };
+
+  const handleQuickPromoSelect = async (selectedPromoCode: string) => {
     const previousPromo = state.appliedPromoCode;
-    handlers.handlePromoCodeApply(selectedPromoCode);
-    setShowPromoModal(false);
-    
-    setTimeout(() => {
-      if (state.error) {
-        showToast({
-          message: state.error,
-          type: 'error',
-          duration: 4000,
-        });
-      } else if (state.appliedPromoCode) {
-        const message = previousPromo 
+
+    setApplyingPromo(true);
+
+    try {
+      const result = await handlers.handlePromoCodeApply(selectedPromoCode);
+
+      setShowPromoModal(false);
+
+      if (result.success) {
+        const message = previousPromo
           ? `${previousPromo.code} replaced with ${selectedPromoCode}!`
-          : `${selectedPromoCode} applied successfully!`;
+          : result.message;
         showToast({
           message: message,
           type: 'success',
           duration: 3000,
         });
+      } else {
+        showToast({
+          message: result.message,
+          type: 'error',
+          duration: 4000,
+        });
       }
-    }, 500);
+    } catch (error) {
+      showToast({
+        message: 'Failed to apply promo code',
+        type: 'error',
+        duration: 4000,
+      });
+    } finally {
+      setApplyingPromo(false);
+    }
   };
 
   return (
@@ -285,6 +393,60 @@ export default function CheckoutPage() {
               console.log('Card offer applied at checkout:', offer);
             }}
           />
+        )}
+
+        {/* Order Items Preview */}
+        {productItems.length > 0 && (
+          <View style={styles.orderItemsSection}>
+            <View style={styles.orderItemsHeader}>
+              <ThemedText style={styles.orderItemsTitle}>
+                Order Items ({productItems.length})
+              </ThemedText>
+              <TouchableOpacity onPress={() => router.push('/CartPage')}>
+                <ThemedText style={styles.editCartText}>Edit Cart</ThemedText>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.orderItemsScroll}
+            >
+              {productItems.slice(0, 5).map((item: any, index: number) => (
+                <View key={item.id || index} style={styles.orderItemCard}>
+                  <View style={styles.orderItemImageContainer}>
+                    {item.image ? (
+                      <View style={styles.orderItemImagePlaceholder}>
+                        <Ionicons name="cube-outline" size={24} color="#9CA3AF" />
+                      </View>
+                    ) : (
+                      <View style={styles.orderItemImagePlaceholder}>
+                        <Ionicons name="cube-outline" size={24} color="#9CA3AF" />
+                      </View>
+                    )}
+                    <View style={styles.orderItemQtyBadge}>
+                      <ThemedText style={styles.orderItemQtyText}>×{item.quantity}</ThemedText>
+                    </View>
+                  </View>
+                  <ThemedText style={styles.orderItemName} numberOfLines={2}>
+                    {item.name}
+                  </ThemedText>
+                  <ThemedText style={styles.orderItemPrice}>
+                    ₹{(item.price * item.quantity).toLocaleString()}
+                  </ThemedText>
+                </View>
+              ))}
+              {productItems.length > 5 && (
+                <TouchableOpacity
+                  style={styles.moreItemsCard}
+                  onPress={() => router.push('/CartPage')}
+                >
+                  <ThemedText style={styles.moreItemsText}>
+                    +{productItems.length - 5} more
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          </View>
         )}
 
         {/* Apply Promocode Section */}
@@ -598,6 +760,68 @@ export default function CheckoutPage() {
           </View>
         </View>
 
+        {/* Services Summary - Only show if there are service items */}
+        {hasServiceItems && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Services Booked</ThemedText>
+            {serviceItems.map((item: any) => {
+              const bookingDetails = item.serviceBookingDetails || {};
+              const bookingDate = bookingDetails.bookingDate
+                ? new Date(bookingDetails.bookingDate).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                  })
+                : '';
+              const formatTime = (timeStr: string) => {
+                if (!timeStr) return '';
+                const [hours, minutes] = timeStr.split(':').map(Number);
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                const displayHour = hours % 12 || 12;
+                return `${displayHour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+              };
+              const timeSlot = bookingDetails.timeSlot?.start
+                ? `${formatTime(bookingDetails.timeSlot.start)}${bookingDetails.timeSlot.end ? ` - ${formatTime(bookingDetails.timeSlot.end)}` : ''}`
+                : '';
+
+              return (
+                <View key={item.id || item._id} style={styles.serviceCard}>
+                  <View style={styles.serviceCardHeader}>
+                    <Ionicons name="cut" size={20} color="#00C06A" />
+                    <ThemedText style={styles.serviceName}>{item.name}</ThemedText>
+                  </View>
+                  <View style={styles.serviceDetails}>
+                    <View style={styles.serviceDetailRow}>
+                      <ThemedText style={styles.serviceDetailIcon}>📅</ThemedText>
+                      <ThemedText style={styles.serviceDetailText}>{bookingDate}</ThemedText>
+                    </View>
+                    <View style={styles.serviceDetailRow}>
+                      <ThemedText style={styles.serviceDetailIcon}>🕐</ThemedText>
+                      <ThemedText style={styles.serviceDetailText}>{timeSlot}</ThemedText>
+                    </View>
+                    {bookingDetails.duration && (
+                      <View style={styles.serviceDetailRow}>
+                        <ThemedText style={styles.serviceDetailIcon}>⏱️</ThemedText>
+                        <ThemedText style={styles.serviceDetailText}>{bookingDetails.duration} min</ThemedText>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.servicePrice}>
+                    <ThemedText style={styles.servicePriceText}>₹{(item.price || 0).toLocaleString()}</ThemedText>
+                  </View>
+                </View>
+              );
+            })}
+            {/* Service payment notice */}
+            <View style={styles.serviceNotice}>
+              <Ionicons name="information-circle" size={16} color="#F59E0B" />
+              <ThemedText style={styles.serviceNoticeText}>
+                Service bookings require online payment. Cash on Delivery is not available.
+              </ThemedText>
+            </View>
+          </View>
+        )}
+
         {/* Bill Summary */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Bill Summary</ThemedText>
@@ -696,145 +920,118 @@ export default function CheckoutPage() {
         <View style={styles.bottomSpace} />
       </ScrollView>
 
-      {/* Bottom Payment Buttons */}
-      <View style={styles.bottomButtonsContainer}>
-        {/* Payment Options Header */}
-        <View style={styles.paymentHeaderContainer}>
-          <ThemedText style={styles.paymentHeaderText}>Payment Options</ThemedText>
-          <View style={styles.paymentHeaderDivider} />
-        </View>
-
+      {/* Collapsible Payment Section */}
+      <View style={styles.paymentBottomSheet}>
+        {/* Main Pay Button - Always Visible */}
         <TouchableOpacity
-          style={styles.otherPaymentButton}
-          onPress={handlers.navigateToOtherPaymentMethods}
-          activeOpacity={0.7}
-          accessibilityLabel="Other payment methods"
-          accessibilityRole="button"
-          accessibilityHint="Double tap to view alternative payment options like credit card, UPI, or net banking"
+          style={styles.payNowBar}
+          onPress={() => setPaymentExpanded(!paymentExpanded)}
+          activeOpacity={0.9}
         >
-          <ThemedText style={styles.otherPaymentText}>Other payment mode</ThemedText>
-        </TouchableOpacity>
-
-        {/* PayBill Payment Button */}
-        <TouchableOpacity
-          style={[
-            styles.paybillButton,
-            (state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout) && styles.disabledButton
-          ]}
-          onPress={() => {
-            // ✅ FIX: Add error handling wrapper
-            try {
-              console.log('💳 [CHECKOUT] Attempting PayBill payment');
-              handlers.handlePayBillPayment();
-            } catch (error) {
-              console.error('❌ [CHECKOUT] PayBill payment error:', error);
-              Alert.alert('Payment Error', 'Unable to process PayBill payment. Please try again.');
-            }
-          }}
-          activeOpacity={0.7}
-          disabled={state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
-          accessibilityLabel={state.loading
-            ? 'Processing payment'
-            : !canCheckout
-              ? 'Cannot checkout, cart has issues'
-              : paybillBalance < (state.billSummary?.totalPayable || 0)
-                ? `Insufficient PayBill balance. You have ₹${paybillBalance} but need ₹${state.billSummary?.totalPayable || 0}`
-                : `Pay ₹${state.billSummary?.totalPayable || 0} with PayBill. Your balance is ₹${paybillBalance}`}
-          accessibilityRole="button"
-          accessibilityHint="Double tap to complete payment using your PayBill wallet"
-          accessibilityState={{ disabled: state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout, busy: state.loading }}
-        >
-          <View style={styles.paybillButtonContent}>
-            <Ionicons name="wallet" size={20} color="white" />
-            <ThemedText style={styles.paybillButtonText}>
-              {state.loading
-                ? 'Processing...'
-                : !canCheckout
-                  ? 'Cart has issues'
-                  : paybillBalance < (state.billSummary?.totalPayable || 0)
-                    ? 'Insufficient PayBill balance'
-                    : 'Pay with PayBill'}
-            </ThemedText>
+          <View style={styles.payNowLeft}>
+            <ThemedText style={styles.payNowAmount}>₹{(state.billSummary?.totalPayable || 0).toFixed(0)}</ThemedText>
+            <ThemedText style={styles.payNowLabel}>Total Amount</ThemedText>
           </View>
-          <View style={styles.paybillBalanceChip}>
-            <ThemedText style={styles.paybillBalanceText}>₹{paybillBalance}</ThemedText>
+          <View style={styles.payNowRight}>
+            <LinearGradient
+              colors={['#00C06A', '#00A05A']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.payNowButton}
+            >
+              <ThemedText style={styles.payNowButtonText}>
+                {paymentExpanded ? 'Close' : 'Pay Now'}
+              </ThemedText>
+              <Ionicons
+                name={paymentExpanded ? 'chevron-down' : 'chevron-up'}
+                size={18}
+                color="white"
+              />
+            </LinearGradient>
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.loadWalletButton,
-            (state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout) && styles.disabledButton
-          ]}
-          onPress={() => {
-            // ✅ FIX: Add error handling wrapper
-            try {
-              console.log('👛 [CHECKOUT] Attempting wallet payment');
-              handlers.handleWalletPayment();
-            } catch (error) {
-              console.error('❌ [CHECKOUT] Wallet payment error:', error);
-              Alert.alert('Payment Error', 'Unable to process wallet payment. Please try again.');
-            }
-          }}
-          activeOpacity={0.7}
-          disabled={state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
-          accessibilityLabel={state.loading
-            ? 'Processing payment'
-            : !canCheckout
-              ? 'Cannot checkout, cart has issues'
-              : totalWalletBalance < (state.billSummary?.totalPayable || 0)
-                ? `Insufficient wallet balance. You have ${totalWalletBalance} coins but need ₹${state.billSummary?.totalPayable || 0}`
-                : `Load wallet and pay ₹${state.billSummary?.totalPayable || 0}. You have ${totalWalletBalance} REZ coins`}
-          accessibilityRole="button"
-          accessibilityHint="Double tap to load your wallet and complete payment"
-          accessibilityState={{ disabled: state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout, busy: state.loading }}
-        >
-          <ThemedText style={styles.loadWalletText}>
-            {state.loading ? 'Processing...' : !canCheckout ? 'Cart has issues' : 'Load wallet & pay'}
-          </ThemedText>
-          <View style={styles.walletBalanceChip}>
-            <Ionicons name="diamond" size={12} color="#FFD700" />
-            <ThemedText style={styles.walletBalanceText}>Bal RC {totalWalletBalance}</ThemedText>
-          </View>
-        </TouchableOpacity>
+        {/* Expandable Payment Options */}
+        {paymentExpanded && (
+          <View style={styles.paymentOptionsContainer}>
+            <View style={styles.paymentDragIndicator} />
 
-        {/* Cash on Delivery (COD) Button */}
-        <TouchableOpacity
-          style={[
-            styles.codButton,
-            (state.loading || !canCheckout) && styles.disabledButton
-          ]}
-          onPress={() => {
-            // ✅ FIX: Add error handling wrapper
-            try {
-              console.log('💵 [CHECKOUT] Attempting COD payment');
-              handlers.handleCODPayment();
-            } catch (error) {
-              console.error('❌ [CHECKOUT] COD payment error:', error);
-              Alert.alert('Order Error', 'Unable to place COD order. Please try again.');
-            }
-          }}
-          activeOpacity={0.7}
-          disabled={state.loading || !canCheckout}
-          accessibilityLabel={state.loading
-            ? 'Processing order'
-            : !canCheckout
-              ? 'Cannot checkout, cart has issues'
-              : `Place order with Cash on Delivery for ₹${state.billSummary?.totalPayable || 0}. Pay at home when your order arrives`}
-          accessibilityRole="button"
-          accessibilityHint="Double tap to place order and pay cash upon delivery"
-          accessibilityState={{ disabled: state.loading || !canCheckout, busy: state.loading }}
-        >
-          <View style={styles.codButtonContent}>
-            <Ionicons name="cash-outline" size={20} color="#10B981" />
-            <ThemedText style={styles.codButtonText}>
-              {state.loading ? 'Processing...' : !canCheckout ? 'Cart has issues' : 'Cash on Delivery'}
-            </ThemedText>
+            <ThemedText style={styles.paymentOptionsTitle}>Choose Payment Method</ThemedText>
+
+            {/* Quick Pay Options */}
+            <View style={styles.quickPayOptions}>
+              {/* PayBill */}
+              <TouchableOpacity
+                style={[
+                  styles.quickPayCard,
+                  (paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout) && styles.quickPayDisabled
+                ]}
+                onPress={() => handlePaymentSelect('paybill')}
+                disabled={state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
+              >
+                <View style={[styles.quickPayIcon, { backgroundColor: '#10B981' }]}>
+                  <Ionicons name="wallet" size={20} color="white" />
+                </View>
+                <ThemedText style={styles.quickPayLabel}>PayBill</ThemedText>
+                <ThemedText style={styles.quickPayBalance}>₹{paybillBalance}</ThemedText>
+              </TouchableOpacity>
+
+              {/* Wallet */}
+              <TouchableOpacity
+                style={[
+                  styles.quickPayCard,
+                  (totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout) && styles.quickPayDisabled
+                ]}
+                onPress={() => handlePaymentSelect('wallet')}
+                disabled={state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
+              >
+                <View style={[styles.quickPayIcon, { backgroundColor: '#8B5CF6' }]}>
+                  <Ionicons name="diamond" size={20} color="white" />
+                </View>
+                <ThemedText style={styles.quickPayLabel}>Wallet</ThemedText>
+                <ThemedText style={styles.quickPayBalance}>{totalWalletBalance} RC</ThemedText>
+              </TouchableOpacity>
+
+              {/* COD */}
+              <TouchableOpacity
+                style={[
+                  styles.quickPayCard,
+                  (hasServiceItems || !canCheckout) && styles.quickPayDisabled
+                ]}
+                onPress={() => handlePaymentSelect('cod')}
+                disabled={state.loading || !canCheckout || hasServiceItems}
+              >
+                <View style={[styles.quickPayIcon, { backgroundColor: hasServiceItems ? '#9CA3AF' : '#F59E0B' }]}>
+                  <Ionicons name="cash" size={20} color="white" />
+                </View>
+                <ThemedText style={styles.quickPayLabel}>COD</ThemedText>
+                <ThemedText style={styles.quickPayBalance}>{hasServiceItems ? 'N/A' : 'Pay Later'}</ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {/* Other Payment Button */}
+            <TouchableOpacity
+              style={styles.otherPaymentOption}
+              onPress={() => handlePaymentSelect('razorpay')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.otherPaymentLeft}>
+                <Ionicons name="card-outline" size={22} color="#374151" />
+                <View style={styles.otherPaymentText}>
+                  <ThemedText style={styles.otherPaymentTitle}>Other Payment Methods</ThemedText>
+                  <ThemedText style={styles.otherPaymentSubtitle}>UPI, Credit/Debit Card, Net Banking</ThemedText>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Security Badge */}
+            <View style={styles.securityBadge}>
+              <Ionicons name="shield-checkmark" size={14} color="#10B981" />
+              <ThemedText style={styles.securityText}>100% Secure Payments</ThemedText>
+            </View>
           </View>
-          <View style={styles.codBadge}>
-            <ThemedText style={styles.codBadgeText}>Pay at home</ThemedText>
-          </View>
-        </TouchableOpacity>
+        )}
       </View>
 
       {/* Validation Modal */}
@@ -928,9 +1125,11 @@ export default function CheckoutPage() {
                         style={[
                           styles.promoOption,
                           isCurrentlyApplied && styles.currentPromoOption,
-                          !isEligible && styles.ineligiblePromoOption
+                          !isEligible && styles.ineligiblePromoOption,
+                          applyingPromo && styles.promoOptionDisabled
                         ]}
                         onPress={() => {
+                          if (applyingPromo) return; // Prevent multiple clicks
                           if (isEligible) {
                             handleQuickPromoSelect(promo.code);
                           } else if (requiresTier) {
@@ -948,6 +1147,7 @@ export default function CheckoutPage() {
                           }
                         }}
                         activeOpacity={0.7}
+                        disabled={applyingPromo}
                       >
                         <View style={styles.promoOptionContent}>
                           <View style={styles.promoDiscountBadge}>
@@ -994,19 +1194,158 @@ export default function CheckoutPage() {
                 )}
               </View>
             </View>
-            
+
             <View style={styles.modalFooter}>
               <TouchableOpacity
-                style={styles.applyPromoButton}
+                style={[styles.applyPromoButton, applyingPromo && styles.applyPromoButtonDisabled]}
                 onPress={handleApplyPromoCode}
                 activeOpacity={0.8}
+                disabled={applyingPromo}
               >
-                <ThemedText style={styles.applyPromoText}>Apply Code</ThemedText>
+                {applyingPromo ? (
+                  <View style={styles.applyPromoLoading}>
+                    <ActivityIndicator size="small" color="white" />
+                    <ThemedText style={styles.applyPromoText}>Applying...</ThemedText>
+                  </View>
+                ) : (
+                  <ThemedText style={styles.applyPromoText}>Apply Code</ThemedText>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
+      {/* Order Confirmation Modal */}
+      <Modal
+        visible={showConfirmModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
+        <View style={styles.confirmModalOverlay}>
+          <View style={styles.confirmModalContent}>
+            {/* Header */}
+            <LinearGradient
+              colors={['#00C06A', '#00A05A']}
+              style={styles.confirmModalHeader}
+            >
+              <View style={styles.confirmModalHeaderContent}>
+                <Ionicons name="checkmark-circle" size={32} color="white" />
+                <ThemedText style={styles.confirmModalTitle}>Confirm Order</ThemedText>
+              </View>
+            </LinearGradient>
+
+            {/* Body */}
+            <View style={styles.confirmModalBody}>
+              {/* Order Summary */}
+              <View style={styles.confirmSummaryCard}>
+                <View style={styles.confirmSummaryRow}>
+                  <ThemedText style={styles.confirmSummaryLabel}>Items</ThemedText>
+                  <ThemedText style={styles.confirmSummaryValue}>
+                    {state.items?.length || 0} item{(state.items?.length || 0) !== 1 ? 's' : ''}
+                  </ThemedText>
+                </View>
+                <View style={styles.confirmSummaryRow}>
+                  <ThemedText style={styles.confirmSummaryLabel}>Subtotal</ThemedText>
+                  <ThemedText style={styles.confirmSummaryValue}>
+                    ₹{(state.billSummary?.itemTotal || 0).toFixed(0)}
+                  </ThemedText>
+                </View>
+                {(state.billSummary?.promoDiscount || 0) > 0 && (
+                  <View style={styles.confirmSummaryRow}>
+                    <ThemedText style={[styles.confirmSummaryLabel, { color: '#22C55E' }]}>
+                      Promo Discount
+                    </ThemedText>
+                    <ThemedText style={[styles.confirmSummaryValue, { color: '#22C55E' }]}>
+                      -₹{(state.billSummary?.promoDiscount || 0).toFixed(0)}
+                    </ThemedText>
+                  </View>
+                )}
+                {(state.billSummary?.coinDiscount || 0) > 0 && (
+                  <View style={styles.confirmSummaryRow}>
+                    <ThemedText style={[styles.confirmSummaryLabel, { color: '#00C06A' }]}>
+                      Coin Discount
+                    </ThemedText>
+                    <ThemedText style={[styles.confirmSummaryValue, { color: '#00C06A' }]}>
+                      -₹{(state.billSummary?.coinDiscount || 0).toFixed(0)}
+                    </ThemedText>
+                  </View>
+                )}
+                <View style={[styles.confirmSummaryRow, styles.confirmTotalRow]}>
+                  <ThemedText style={styles.confirmTotalLabel}>Total Amount</ThemedText>
+                  <ThemedText style={styles.confirmTotalValue}>
+                    ₹{(state.billSummary?.totalPayable || 0).toFixed(0)}
+                  </ThemedText>
+                </View>
+              </View>
+
+              {/* Payment Method */}
+              <View style={styles.confirmPaymentMethod}>
+                <ThemedText style={styles.confirmPaymentLabel}>Payment Method</ThemedText>
+                <View style={styles.confirmPaymentBadge}>
+                  <Ionicons
+                    name={
+                      selectedPaymentMethod === 'cod' ? 'cash' :
+                      selectedPaymentMethod === 'paybill' ? 'wallet' :
+                      selectedPaymentMethod === 'wallet' ? 'diamond' : 'card'
+                    }
+                    size={18}
+                    color="#00C06A"
+                  />
+                  <ThemedText style={styles.confirmPaymentValue}>
+                    {getPaymentMethodLabel(selectedPaymentMethod)}
+                  </ThemedText>
+                </View>
+              </View>
+
+              {/* Trust Badge */}
+              <View style={styles.confirmTrustBadge}>
+                <Ionicons name="lock-closed" size={14} color="#6B7280" />
+                <ThemedText style={styles.confirmTrustText}>
+                  Your payment is secured with 256-bit encryption
+                </ThemedText>
+              </View>
+            </View>
+
+            {/* Footer Buttons */}
+            <View style={styles.confirmModalFooter}>
+              <TouchableOpacity
+                style={styles.confirmCancelButton}
+                onPress={() => setShowConfirmModal(false)}
+              >
+                <ThemedText style={styles.confirmCancelText}>Review Cart</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmPayButton}
+                onPress={handleConfirmOrder}
+              >
+                <LinearGradient
+                  colors={['#00C06A', '#00A05A']}
+                  style={styles.confirmPayGradient}
+                >
+                  <ThemedText style={styles.confirmPayText}>
+                    Confirm & Pay ₹{(state.billSummary?.totalPayable || 0).toFixed(0)}
+                  </ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Payment Processing Overlay */}
+      {processingPayment && (
+        <View style={styles.processingOverlay}>
+          <View style={styles.processingContent}>
+            <View style={styles.processingSpinner}>
+              <Ionicons name="sync" size={48} color="#00C06A" />
+            </View>
+            <ThemedText style={styles.processingMessage}>{processingMessage}</ThemedText>
+            <ThemedText style={styles.processingWarning}>Please don't close the app</ThemedText>
+          </View>
+        </View>
+      )}
     </View>
 );
 }
@@ -1020,10 +1359,10 @@ const styles = StyleSheet.create({
   // Header Styles
   header: {
     paddingTop: Platform.OS === 'android' ? 40 : 50,
-    paddingBottom: 32,
+    paddingBottom: 28,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
   headerContent: {
     flexDirection: 'row',
@@ -1072,21 +1411,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   amountText: {
-    fontSize: 48,
-    fontWeight: '700',
+    fontSize: 42,
+    fontWeight: '800',
     color: 'white',
-    marginBottom: 8,
+    marginBottom: 10,
+    letterSpacing: -1,
   },
   cashbackBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   cashbackText: {
     color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
   },
   
   // Content
@@ -1263,12 +1603,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#00C06A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   coinSliderGradient: {
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
   },
   coinSliderHeader: {
@@ -1396,192 +1736,222 @@ const styles = StyleSheet.create({
   
   // Bill Summary
   billSummaryCard: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 14,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F9FAFB',
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
   },
   summaryValue: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#111827',
   },
-  
+
   // Total Payable
   totalPayableCard: {
     backgroundColor: '#00C06A',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   totalPayableLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: 'white',
   },
   totalPayableValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: 'white',
   },
   
   // Bottom Buttons
   bottomSpace: {
-    height: 280, // Increased to ensure payment buttons are fully visible
-  },
-  bottomButtonsContainer: {
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 100, // Extra padding to account for bottom navigation bar
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    gap: 12,
-  },
-  paymentHeaderContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  paymentHeaderText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginRight: 12,
-  },
-  paymentHeaderDivider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E5E7EB',
-  },
-  otherPaymentButton: {
-    backgroundColor: 'white',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  otherPaymentText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  loadWalletButton: {
-    backgroundColor: '#8B5CF6', // Purple to differentiate from PayBill
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  loadWalletText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
-  },
-  walletBalanceChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  walletBalanceText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'white',
-  },
-  
-  // COD Button
-  codButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 2,
-    borderColor: '#10B981',
-    marginTop: 12,
-  },
-  codButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  codButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#10B981',
-  },
-  codBadge: {
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  codBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#10B981',
-  },
-  
-  disabledButton: {
-    opacity: 0.5,
+    height: 100, // Reduced since payment is now collapsible
   },
 
-  // PayBill Button
-  paybillButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+  // Collapsible Payment Bottom Sheet
+  paymentBottomSheet: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
+    paddingBottom: 80, // Account for bottom navigation
+  },
+  payNowBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
-  paybillButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  payNowLeft: {
     flex: 1,
   },
-  paybillButtonText: {
+  payNowAmount: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.5,
+  },
+  payNowLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  payNowRight: {},
+  payNowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 6,
+  },
+  payNowButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
+  },
+  paymentOptionsContainer: {
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+  paymentDragIndicator: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  paymentOptionsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
-    flexShrink: 1,
+    color: '#111827',
+    marginBottom: 16,
   },
-  paybillBalanceChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginLeft: 8,
+  quickPayOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
   },
-  paybillBalanceText: {
-    fontSize: 12,
+  quickPayCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  quickPayDisabled: {
+    opacity: 0.5,
+  },
+  quickPayIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  quickPayLabel: {
+    fontSize: 13,
     fontWeight: '600',
-    color: 'white',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  quickPayBalance: {
+    fontSize: 11,
+    color: '#6B7280',
+  },
+  otherPaymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  otherPaymentLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  otherPaymentText: {},
+  otherPaymentTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  otherPaymentSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  securityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  securityText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+
+  disabledButton: {
+    opacity: 0.5,
   },
 
   // Applied Promo Code
@@ -1739,6 +2109,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     opacity: 0.6,
   },
+  promoOptionDisabled: {
+    opacity: 0.5,
+  },
   promoOptionContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1822,6 +2195,14 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
   },
+  applyPromoButtonDisabled: {
+    backgroundColor: '#86EFAC',
+  },
+  applyPromoLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   applyPromoText: {
     fontSize: 16,
     fontWeight: '600',
@@ -1841,6 +2222,342 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#D97706',
+    textAlign: 'center',
+  },
+
+  // Service Card Styles
+  serviceCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  serviceCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  serviceName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  serviceDetails: {
+    gap: 6,
+    marginBottom: 12,
+  },
+  serviceDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  serviceDetailIcon: {
+    fontSize: 14,
+    width: 20,
+  },
+  serviceDetailText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  servicePrice: {
+    borderTopWidth: 1,
+    borderTopColor: '#BBF7D0',
+    paddingTop: 12,
+    alignItems: 'flex-end',
+  },
+  servicePriceText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#00C06A',
+  },
+  serviceNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF3E2',
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+  },
+  serviceNoticeText: {
+    fontSize: 13,
+    color: '#92400E',
+    flex: 1,
+    lineHeight: 18,
+  },
+
+  // Disabled states for COD
+  disabledText: {
+    color: '#9CA3AF',
+  },
+  disabledBadge: {
+    backgroundColor: '#E5E7EB',
+  },
+  disabledBadgeText: {
+    color: '#9CA3AF',
+  },
+
+  // Order Items Preview Section
+  orderItemsSection: {
+    backgroundColor: 'white',
+    paddingVertical: 16,
+    marginBottom: 8,
+  },
+  orderItemsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  orderItemsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  editCartText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#00C06A',
+  },
+  orderItemsScroll: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  orderItemCard: {
+    width: 100,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 10,
+    alignItems: 'center',
+  },
+  orderItemImageContainer: {
+    position: 'relative',
+    marginBottom: 8,
+  },
+  orderItemImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  orderItemQtyBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#00C06A',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  orderItemQtyText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'white',
+  },
+  orderItemName: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#374151',
+    textAlign: 'center',
+    marginBottom: 4,
+    lineHeight: 14,
+  },
+  orderItemPrice: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#00C06A',
+  },
+  moreItemsCard: {
+    width: 80,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderStyle: 'dashed',
+  },
+  moreItemsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#00C06A',
+  },
+
+  // Order Confirmation Modal Styles
+  confirmModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  confirmModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+  },
+  confirmModalHeader: {
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  confirmModalHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  confirmModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: 'white',
+  },
+  confirmModalBody: {
+    padding: 20,
+  },
+  confirmSummaryCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  confirmSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  confirmSummaryLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  confirmSummaryValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  confirmTotalRow: {
+    borderBottomWidth: 0,
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 2,
+    borderTopColor: '#E5E7EB',
+  },
+  confirmTotalLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  confirmTotalValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#00C06A',
+  },
+  confirmPaymentMethod: {
+    marginBottom: 16,
+  },
+  confirmPaymentLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  confirmPaymentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  confirmPaymentValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#00C06A',
+  },
+  confirmTrustBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  confirmTrustText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  confirmModalFooter: {
+    flexDirection: 'row',
+    padding: 16,
+    paddingBottom: 32,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  confirmCancelButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  confirmCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  confirmPayButton: {
+    flex: 2,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  confirmPayGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  confirmPayText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
+  },
+
+  // Processing Overlay Styles
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  processingContent: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  processingSpinner: {
+    marginBottom: 24,
+  },
+  processingMessage: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  processingWarning: {
+    fontSize: 14,
+    color: '#6B7280',
     textAlign: 'center',
   },
 });

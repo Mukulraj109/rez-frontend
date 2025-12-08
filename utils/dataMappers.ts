@@ -46,6 +46,12 @@ export function mapBackendCartItemToFrontend(backendItem: BackendCartItem): any 
     variant: backendItem.variant,
     addedAt: backendItem.addedAt,
     notes: (backendItem as any).notes, // For lock fee notes
+    // Item type: 'product', 'service', or 'event'
+    itemType: (backendItem as any).itemType || 'product',
+    // Service booking details (for services)
+    serviceBookingDetails: (backendItem as any).serviceBookingDetails || null,
+    // Event/other metadata
+    metadata: (backendItem as any).metadata || null,
     // Calculated fields - subtract lock fee discount from subtotal
     subtotal: (backendItem.price * backendItem.quantity) - (backendItem.discount || 0),
     savings: backendItem.originalPrice

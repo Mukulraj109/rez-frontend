@@ -22,6 +22,7 @@ export default function CartItem({
   onRemove,
   onUpdateQuantity,
   showAnimation = true,
+  hideQuantityControls = false,
 }: CartItemProps) {
   const { width } = Dimensions.get('window');
   const isSmallScreen = width < 360;
@@ -255,8 +256,8 @@ export default function CartItem({
               )}
             </View>
 
-            {/* Quantity Controls */}
-            {onUpdateQuantity && (
+            {/* Quantity Controls - Hide for services */}
+            {onUpdateQuantity && !hideQuantityControls && (
               <QuantitySelector
                 quantity={item.quantity || 1}
                 min={0}
@@ -267,8 +268,8 @@ export default function CartItem({
               />
             )}
 
-            {/* Delete Button - Show only if no quantity controls */}
-            {!onUpdateQuantity && (
+            {/* Delete Button - Show when no quantity controls or for services */}
+            {(!onUpdateQuantity || hideQuantityControls) && (
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={handleDelete}

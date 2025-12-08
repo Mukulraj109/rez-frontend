@@ -19,8 +19,10 @@ import { storePromoCoinApi } from '@/services/storePromoCoinApi';
 import { createRazorpayPayment } from '@/services/razorpayApi';
 import { mapBackendCartToFrontend, mapFrontendCheckoutToBackendOrder } from '@/utils/dataMappers';
 import { showToast } from '@/components/common/ToastManager';
+import { useCart } from '@/contexts/CartContext';
 
 export const useCheckout = (): UseCheckoutReturn => {
+  const { actions: cartActions } = useCart();
   const [state, setState] = useState<CheckoutPageState>(CheckoutData.initialState);
   const [paybillBalance, setPaybillBalance] = useState<number>(0);
 
@@ -56,25 +58,30 @@ export const useCheckout = (): UseCheckoutReturn => {
           }));
 
           // Get bill summary from cart totals - Map to correct BillSummary structure
-          const itemTotal = mappedCart.totals.subtotal || 0;
+          // Calculate itemTotal from actual cart items to ensure consistency with Order Items Preview
+          const itemTotal = checkoutItems.reduce((total, item) => total + (item.price * item.quantity), 0);
           const getAndItemTotal = Math.round(itemTotal * 0.05); // 5% get & item charge
           const deliveryFee = mappedCart.totals.delivery || mappedCart.totals.shipping || 0;
           const platformFee = 2; // Fixed platform fee
-          const taxes = mappedCart.totals.tax || 0;
+          // Calculate taxes based on correct itemTotal (5% of item total)
+          const taxes = mappedCart.totals.tax || Math.round(itemTotal * 0.05);
           const promoDiscount = mappedCart.totals.discount || 0;
           const coinDiscount = 0; // Will be calculated when coins are toggled
           
-          // Calculate total payable (if backend returns 0, calculate it ourselves)
-          let totalPayable = mappedCart.totals.total || 0;
-          if (totalPayable === 0 && itemTotal > 0) {
-            // Recalculate if backend returned 0
-            totalPayable = itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes - promoDiscount - coinDiscount;
-          }
+          // Always calculate total payable from our values to ensure consistency
+          let totalPayable = itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes - promoDiscount - coinDiscount;
           
           // Calculate round off to nearest rupee
           const roundOff = Math.round(totalPayable) - totalPayable;
           totalPayable = Math.max(0, Math.round(totalPayable));
           
+          // Calculate savings from actual cart items (originalPrice - price) * quantity
+          const calculatedSavings = checkoutItems.reduce((total, item) => {
+            const originalPrice = item.originalPrice || item.price;
+            const savings = (originalPrice - item.price) * item.quantity;
+            return total + Math.max(0, savings);
+          }, 0);
+
           const billSummary: BillSummary = {
             itemTotal,
             getAndItemTotal,
@@ -86,7 +93,7 @@ export const useCheckout = (): UseCheckoutReturn => {
             roundOff,
             totalPayable,
             cashbackEarned: Math.round((mappedCart.totals.cashback || 0)),
-            savings: mappedCart.totals.savings || mappedCart.totals.discount || 0,
+            savings: calculatedSavings || promoDiscount,
           };
 
           // Get promo code from cart
@@ -382,29 +389,38 @@ export const useCheckout = (): UseCheckoutReturn => {
     setState(prev => ({ ...prev, billSummary: newBillSummary }));
   }, [state.items, state.store, state.appliedPromoCode, state.coinSystem]);
 
-  const applyPromoCode = useCallback(async (code: PromoCode) => {
+  const applyPromoCode = useCallback(async (code: PromoCode): Promise<{ success: boolean; message: string; discount?: number }> => {
     setState(prev => ({ ...prev, loading: true }));
 
     try {
-
-      // Prepare cart data for validation
+      // Prepare cart data for validation - only include non-empty fields
       const cartData = {
-        items: state.items.map(item => ({
-          product: item.id,
-          quantity: item.quantity,
-          price: item.price,
-          category: item.category,
-          store: item.storeId,
-        })),
+        items: state.items.map(item => {
+          const cartItem: any = {
+            product: item.id,
+            quantity: item.quantity,
+            price: item.price,
+          };
+          // Only include category and store if they have values
+          if (item.category && item.category.trim() !== '') {
+            cartItem.category = item.category;
+          }
+          if (item.storeId && item.storeId.trim() !== '') {
+            cartItem.store = item.storeId;
+          }
+          return cartItem;
+        }),
         subtotal: state.items.reduce((total, item) => total + (item.price * item.quantity), 0),
       };
 
+      console.log('🎟️ [Checkout] Validating coupon:', code.code, 'with cart data:', cartData);
+
       const response = await couponService.validateCoupon(code.code, cartData);
 
-      if (response.success && response.data) {
+      console.log('🎟️ [Checkout] Coupon validation response:', response);
 
+      if (response.success && response.data) {
         // Calculate new bill summary with coupon discount
-        const itemTotal = cartData.subtotal;
         const coinUsage = {
           wasil: state.coinSystem.wasilCoin.used,
           promo: state.coinSystem.promoCoin.used,
@@ -420,36 +436,51 @@ export const useCheckout = (): UseCheckoutReturn => {
         // Override promo discount with actual backend value and recalculate totalPayable
         newBillSummary.promoDiscount = response.data.discount;
         newBillSummary.savings = (newBillSummary.savings || 0) + response.data.discount;
-        
+
         // Recalculate totalPayable with promo discount
         const subtotal = newBillSummary.itemTotal + newBillSummary.getAndItemTotal;
         const totalBeforeDiscount = subtotal + newBillSummary.platformFee + newBillSummary.deliveryFee + newBillSummary.taxes;
         const totalAfterDiscount = totalBeforeDiscount - response.data.discount - coinUsage.wasil - coinUsage.promo;
         newBillSummary.totalPayable = Math.max(0, Math.round(totalAfterDiscount));
 
-        setState(prev => ({
-          ...prev,
-          appliedPromoCode: code,
-          billSummary: newBillSummary,
-          loading: false,
-          showPromoCodeSection: false,
-          error: null,
-        }));
+        console.log('🎟️ [Checkout] New bill summary after coupon:', newBillSummary);
+        console.log('🎟️ [Checkout] Setting state with appliedPromoCode:', code);
+        console.log('🎟️ [Checkout] Setting state with billSummary:', newBillSummary);
+
+        setState(prev => {
+          console.log('🎟️ [Checkout] Previous state:', { appliedPromoCode: prev.appliedPromoCode, billSummary: prev.billSummary });
+          const newState = {
+            ...prev,
+            appliedPromoCode: code,
+            billSummary: newBillSummary,
+            loading: false,
+            showPromoCodeSection: false,
+            error: null,
+          };
+          console.log('🎟️ [Checkout] New state:', { appliedPromoCode: newState.appliedPromoCode, billSummary: newState.billSummary });
+          return newState;
+        });
+
+        return { success: true, message: `${code.code} applied! You save ₹${response.data.discount}`, discount: response.data.discount };
       } else {
         console.error('💳 [Checkout] Coupon invalid:', response.message);
+        const errorMsg = response.message || 'Invalid coupon code';
         setState(prev => ({
           ...prev,
           loading: false,
-          error: response.message || 'Invalid coupon code',
+          error: errorMsg,
         }));
+        return { success: false, message: errorMsg };
       }
     } catch (error) {
       console.error('💳 [Checkout] Coupon validation error:', error);
+      const errorMsg = 'Failed to validate coupon';
       setState(prev => ({
         ...prev,
         loading: false,
-        error: 'Failed to validate coupon',
+        error: errorMsg,
       }));
+      return { success: false, message: errorMsg };
     }
   }, [state.items, state.store, state.coinSystem]);
 
@@ -775,10 +806,10 @@ export const useCheckout = (): UseCheckoutReturn => {
 
       if (response.success && response.data) {
 
-        // Clear cart after successful order
+        // Clear cart after successful order (both API and context state)
         try {
           await cartService.clearCart();
-
+          await cartActions.clearCart();
         } catch (clearError) {
           console.error('💳 [Checkout] Failed to clear cart:', clearError);
         }
@@ -802,7 +833,7 @@ export const useCheckout = (): UseCheckoutReturn => {
         currentStep: 'payment_methods',
       }));
     }
-  }, [state.selectedPaymentMethod, state.billSummary, state.items, state.store, state.appliedPromoCode]);
+  }, [state.selectedPaymentMethod, state.billSummary, state.items, state.store, state.appliedPromoCode, cartActions]);
 
   /**
    * Handle wallet payment
@@ -904,10 +935,10 @@ export const useCheckout = (): UseCheckoutReturn => {
         return;
       }
 
-      // Step 3: Clear cart
+      // Step 3: Clear cart (both API and context state)
       try {
         await cartService.clearCart();
-
+        await cartActions.clearCart();
       } catch (clearError) {
         console.error('💳 [Checkout] Failed to clear cart:', clearError);
         // Non-critical error, continue
@@ -919,7 +950,7 @@ export const useCheckout = (): UseCheckoutReturn => {
       const orderId = orderResponse.data.id || orderResponse.data._id;
       const transactionId = walletResponse.data.transaction.transactionId;
 
-      router.push(`/payment-success?orderId=${orderId}&transactionId=${transactionId}&paymentMethod=wallet`);
+      router.replace(`/payment-success?orderId=${orderId}&transactionId=${transactionId}&paymentMethod=wallet`);
 
     } catch (error) {
       console.error('💳 [Checkout] Wallet payment error:', error);
@@ -930,7 +961,7 @@ export const useCheckout = (): UseCheckoutReturn => {
         currentStep: 'checkout'
       }));
     }
-  }, [state.coinSystem, state.billSummary, state.items, state.store, state.appliedPromoCode]);
+  }, [state.coinSystem, state.billSummary, state.items, state.store, state.appliedPromoCode, cartActions]);
 
   /**
    * Handle PayBill payment
@@ -1010,10 +1041,10 @@ export const useCheckout = (): UseCheckoutReturn => {
         return;
       }
 
-      // Step 3: Clear cart
+      // Step 3: Clear cart (both API and context state)
       try {
         await cartService.clearCart();
-
+        await cartActions.clearCart();
       } catch (clearError) {
         console.error('🎟️ [Checkout] Failed to clear cart:', clearError);
         // Non-critical error, continue
@@ -1025,7 +1056,7 @@ export const useCheckout = (): UseCheckoutReturn => {
       const orderId = orderResponse.data.id || orderResponse.data._id;
       const transactionId = paymentResponse.data.transaction?.transactionId || `PAYBILL_${Date.now()}`;
 
-      router.push(`/payment-success?orderId=${orderId}&transactionId=${transactionId}&paymentMethod=paybill`);
+      router.replace(`/payment-success?orderId=${orderId}&transactionId=${transactionId}&paymentMethod=paybill`);
 
     } catch (error) {
       console.error('🎟️ [Checkout] PayBill payment error:', error);
@@ -1036,7 +1067,7 @@ export const useCheckout = (): UseCheckoutReturn => {
         currentStep: 'checkout'
       }));
     }
-  }, [paybillBalance, state.billSummary, state.items, state.store, state.appliedPromoCode]);
+  }, [paybillBalance, state.billSummary, state.items, state.store, state.appliedPromoCode, cartActions]);
 
   /**
    * Handle Cash on Delivery (COD) payment
@@ -1082,10 +1113,10 @@ export const useCheckout = (): UseCheckoutReturn => {
         return;
       }
 
-      // Step 2: Clear cart
+      // Step 2: Clear cart (both API and context state)
       try {
         await cartService.clearCart();
-
+        await cartActions.clearCart();
       } catch (clearError) {
         console.error('💵 [Checkout] Failed to clear cart:', clearError);
         // Non-critical error, continue
@@ -1097,7 +1128,7 @@ export const useCheckout = (): UseCheckoutReturn => {
       const orderId = orderResponse.data.id || orderResponse.data._id;
       const transactionId = `COD_${Date.now()}`;
 
-      router.push(`/payment-success?orderId=${orderId}&transactionId=${transactionId}&paymentMethod=cod`);
+      router.replace(`/payment-success?orderId=${orderId}&transactionId=${transactionId}&paymentMethod=cod`);
 
     } catch (error) {
       console.error('💵 [Checkout] COD payment error:', error);
@@ -1108,7 +1139,7 @@ export const useCheckout = (): UseCheckoutReturn => {
         currentStep: 'checkout'
       }));
     }
-  }, [state.items, state.store, state.appliedPromoCode, state.coinSystem, router]);
+  }, [state.items, state.store, state.appliedPromoCode, state.coinSystem, router, cartActions]);
 
   /**
    * Handle Razorpay payment (UPI, Card, NetBanking, Wallets)
@@ -1236,10 +1267,10 @@ export const useCheckout = (): UseCheckoutReturn => {
               return;
             }
 
-            // Clear cart
+            // Clear cart (both API and context state)
             try {
               await cartService.clearCart();
-
+              await cartActions.clearCart();
             } catch (clearError) {
               console.error('⚠️ [Checkout] Failed to clear cart:', clearError);
               // Non-critical error
@@ -1251,7 +1282,7 @@ export const useCheckout = (): UseCheckoutReturn => {
             const orderId = orderResponse.data.id || orderResponse.data._id;
             showToast({ message: 'Payment successful! Order placed', type: 'success' });
 
-            router.push(
+            router.replace(
               `/payment-success?orderId=${orderId}&transactionId=${paymentResponse.transactionId}&paymentMethod=razorpay`
             );
           } catch (error) {
@@ -1295,25 +1326,126 @@ export const useCheckout = (): UseCheckoutReturn => {
         currentStep: 'checkout',
       }));
     }
-  }, [state.billSummary, state.items, state.store, state.appliedPromoCode, state.coinSystem, router]);
+  }, [state.billSummary, state.items, state.store, state.appliedPromoCode, state.coinSystem, router, cartActions]);
 
   // Handler functions for components
-  const handlePromoCodeApply = useCallback((code: string) => {
-    const promoCode = state.availablePromoCodes.find(p => p.code === code && p.isActive);
-    if (promoCode) {
-      const itemTotal = state.items.reduce((total, item) => total + (item.price * item.quantity), 0);
-      if (itemTotal >= promoCode.minOrderValue) {
-        applyPromoCode(promoCode);
-      } else {
-        setState(prev => ({ 
-          ...prev, 
-          error: `Minimum order value ₹${promoCode.minOrderValue} required for ${code}` 
-        }));
+  const handlePromoCodeApply = useCallback(async (code: string): Promise<{ success: boolean; message: string }> => {
+    // First try to find in available promo codes
+    const existingPromo = state.availablePromoCodes.find(p => p.code === code && p.isActive);
+
+    const itemTotal = state.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+
+    if (existingPromo) {
+      // Check minimum order value
+      if (itemTotal < existingPromo.minOrderValue) {
+        const errorMsg = `Minimum order value ₹${existingPromo.minOrderValue} required for ${code}`;
+        setState(prev => ({ ...prev, error: errorMsg }));
+        return { success: false, message: errorMsg };
       }
+
+      // Apply the promo code and return its result
+      const result = await applyPromoCode(existingPromo);
+      return result;
     } else {
-      setState(prev => ({ ...prev, error: 'Invalid promo code' }));
+      // Code not in available list - try to validate with backend anyway
+      // Create a temporary promo code object
+      const tempPromoCode: PromoCode = {
+        id: code,
+        code: code,
+        title: code,
+        description: 'Promo code',
+        discountType: 'PERCENTAGE', // Will be updated from backend response
+        discountValue: 0, // Will be updated from backend response
+        maxDiscount: 0,
+        minOrderValue: 0,
+        validUntil: '',
+        isActive: true,
+        termsAndConditions: [],
+      };
+
+      setState(prev => ({ ...prev, loading: true, error: null }));
+
+      try {
+        // Prepare cart data for validation - only include non-empty fields
+        const cartData = {
+          items: state.items.map(item => {
+            const cartItem: any = {
+              product: item.id,
+              quantity: item.quantity,
+              price: item.price,
+            };
+            // Only include category and store if they have values
+            if (item.category && item.category.trim() !== '') {
+              cartItem.category = item.category;
+            }
+            if (item.storeId && item.storeId.trim() !== '') {
+              cartItem.store = item.storeId;
+            }
+            return cartItem;
+          }),
+          subtotal: itemTotal,
+        };
+
+        const response = await couponService.validateCoupon(code, cartData);
+
+        if (response.success && response.data) {
+          // Update promo code with backend values
+          tempPromoCode.discountType = response.data.coupon.type;
+          tempPromoCode.discountValue = response.data.coupon.value;
+
+          // Calculate new bill summary with coupon discount
+          const coinUsage = {
+            wasil: state.coinSystem.wasilCoin.used,
+            promo: state.coinSystem.promoCoin.used,
+          };
+
+          const newBillSummary = CheckoutData.helpers.calculateBillSummary(
+            state.items,
+            state.store,
+            tempPromoCode,
+            coinUsage
+          );
+
+          // Override promo discount with actual backend value
+          newBillSummary.promoDiscount = response.data.discount;
+          newBillSummary.savings = (newBillSummary.savings || 0) + response.data.discount;
+
+          // Recalculate totalPayable with promo discount
+          const subtotal = newBillSummary.itemTotal + newBillSummary.getAndItemTotal;
+          const totalBeforeDiscount = subtotal + newBillSummary.platformFee + newBillSummary.deliveryFee + newBillSummary.taxes;
+          const totalAfterDiscount = totalBeforeDiscount - response.data.discount - coinUsage.wasil - coinUsage.promo;
+          newBillSummary.totalPayable = Math.max(0, Math.round(totalAfterDiscount));
+
+          setState(prev => ({
+            ...prev,
+            appliedPromoCode: tempPromoCode,
+            billSummary: newBillSummary,
+            loading: false,
+            showPromoCodeSection: false,
+            error: null,
+          }));
+
+          return { success: true, message: `${code} applied successfully!` };
+        } else {
+          const errorMsg = response.message || 'Invalid promo code';
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: errorMsg,
+          }));
+          return { success: false, message: errorMsg };
+        }
+      } catch (error) {
+        const errorMsg = 'Failed to validate promo code';
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: errorMsg,
+        }));
+        return { success: false, message: errorMsg };
+      }
     }
-  }, [state.availablePromoCodes, state.items, applyPromoCode]);
+  }, [state.availablePromoCodes, state.items, state.store, state.coinSystem, applyPromoCode]);
 
   const handleCoinToggle = useCallback((coinType: 'wasil' | 'promo' | 'storePromo', enabled: boolean) => {
     if (coinType === 'wasil') {

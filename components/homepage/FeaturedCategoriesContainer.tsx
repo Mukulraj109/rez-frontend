@@ -96,14 +96,21 @@ function FeaturedCategoriesContainer({
         </View>
       </View>
 
-      {categories.map((category) => (
-        <CategoryProductsSection
-          key={category._id}
-          categorySlug={category.slug}
-          categoryName={category.name}
-          limit={productsPerCategory}
-        />
-      ))}
+      {categories.map((category) => {
+        // Safely extract string values to prevent rendering objects
+        const catId = typeof category._id === 'string' ? category._id : String(category._id);
+        const catSlug = typeof category.slug === 'string' ? category.slug : '';
+        const catName = typeof category.name === 'string' ? category.name : 'Category';
+
+        return (
+          <CategoryProductsSection
+            key={catId}
+            categorySlug={catSlug}
+            categoryName={catName}
+            limit={productsPerCategory}
+          />
+        );
+      })}
     </View>
   );
 }

@@ -167,28 +167,35 @@ const CategoryGridSection: React.FC<CategoryGridSectionProps> = ({
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <View style={styles.grid}>
-        {categories.map((category, index) => (
-          <TouchableOpacity
-            key={category.id || index}
-            style={styles.card}
-            onPress={() => handleCategoryPress(category)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconContainer}>
-              <Ionicons
-                name={getCategoryIcon(category.name, category.slug)}
-                size={28}
-                color="#00C06A"
-              />
-            </View>
-            <Text style={styles.categoryName} numberOfLines={2}>
-              {category.name}
-            </Text>
-            <Text style={styles.cashbackText}>
-              Up to {category.cashback}% cash back
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {categories.map((category, index) => {
+          // Safely extract string values to prevent rendering objects
+          const categoryName = typeof category.name === 'string' ? category.name : 'Category';
+          const categorySlug = typeof category.slug === 'string' ? category.slug : '';
+          const cashbackValue = typeof category.cashback === 'number' ? category.cashback : 0;
+
+          return (
+            <TouchableOpacity
+              key={category.id || index}
+              style={styles.card}
+              onPress={() => handleCategoryPress(category)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconContainer}>
+                <Ionicons
+                  name={getCategoryIcon(categoryName, categorySlug)}
+                  size={28}
+                  color="#00C06A"
+                />
+              </View>
+              <Text style={styles.categoryName} numberOfLines={2}>
+                {categoryName}
+              </Text>
+              <Text style={styles.cashbackText}>
+                Up to {cashbackValue}% cash back
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );

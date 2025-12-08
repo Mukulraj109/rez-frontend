@@ -498,13 +498,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkAuthStatus = async () => {
     try {
-
+      console.log('🔐 [AUTH CHECK] Starting auth status check...');
       dispatch({ type: 'AUTH_LOADING', payload: true });
 
       // Use authStorage utility (checks localStorage first on web, then AsyncStorage)
       const storedToken = await authStorage.getAuthToken();
       const storedUser = await authStorage.getUser();
 
+      console.log('🔐 [AUTH CHECK] Storage check result:', {
+        hasToken: !!storedToken,
+        hasUser: !!storedUser,
+        tokenPreview: storedToken ? storedToken.substring(0, 20) + '...' : null,
+        userName: storedUser?.profile?.name || storedUser?.phoneNumber || 'N/A'
+      });
 
       if (storedToken && storedUser) {
         // Set auth token in API client FIRST (critical for transaction page)
@@ -590,6 +596,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Mark as refreshing
     isRefreshingToken.current = true;
+    let refreshSuccess = false;
 
     // Create refresh promise
     const refreshPromise = (async () => {
@@ -639,6 +646,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               type: 'AUTH_SUCCESS',
               payload: { user: storedUser, token: response.data.tokens.accessToken }
             });
+            refreshSuccess = true;
             return true; // Success
           } else {
             console.warn('⚠️ [REFRESH TOKEN] No stored user data after refresh');
@@ -698,8 +706,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Resolve all pending callbacks
         const callbacks = pendingRefreshCallbacks.current;
         pendingRefreshCallbacks.current = [];
-        const success = !(error instanceof Error);
-        callbacks.forEach(cb => cb(success));
+        callbacks.forEach(cb => cb(refreshSuccess));
       }
     })();
 

@@ -225,8 +225,17 @@ class CouponService {
     couponCode: string,
     cartData: CartData
   ): Promise<ApiResponse<ValidateCouponResponse>> {
+    console.log('🎟️ [COUPON API] Validating coupon:', couponCode);
+    console.log('🎟️ [COUPON API] Cart data:', JSON.stringify(cartData, null, 2));
 
-    return apiClient.post('/coupons/validate', { couponCode, cartData });
+    try {
+      const response = await apiClient.post('/coupons/validate', { couponCode, cartData });
+      console.log('🎟️ [COUPON API] Validation response:', JSON.stringify(response, null, 2));
+      return response;
+    } catch (error) {
+      console.error('🎟️ [COUPON API] Validation error:', error);
+      throw error;
+    }
   }
 
   /**

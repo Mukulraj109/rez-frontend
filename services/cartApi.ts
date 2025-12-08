@@ -12,6 +12,21 @@ import {
   isCartItemAvailable
 } from '@/types/unified';
 
+// Service booking details for cart items
+export interface ServiceBookingDetails {
+  bookingDate: string | Date;
+  timeSlot: {
+    start: string;
+    end: string;
+  };
+  duration: number; // in minutes
+  serviceType: 'home' | 'store' | 'online';
+  customerNotes?: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+}
+
 // Keep the old CartItem interface for backwards compatibility during migration
 export interface CartItem {
   _id: string;
@@ -42,6 +57,7 @@ export interface CartItem {
       state: string;
     };
   };
+  itemType?: 'product' | 'service' | 'event'; // Type of item
   variant?: {
     type?: string;
     value?: string;
@@ -51,6 +67,7 @@ export interface CartItem {
   originalPrice?: number;
   discount?: number;
   addedAt: string;
+  serviceBookingDetails?: ServiceBookingDetails; // For service items
 }
 
 export interface LockedItem {
@@ -178,10 +195,12 @@ export { UnifiedCartItem, UnifiedCart };
 export interface AddToCartRequest {
   productId: string;
   quantity: number;
+  itemType?: 'product' | 'service' | 'event';
   variant?: {
     type: string;
     value: string;
   };
+  serviceBookingDetails?: ServiceBookingDetails;
   metadata?: {
     eventId?: string;
     slotId?: string;
@@ -192,6 +211,12 @@ export interface AddToCartRequest {
     time?: string;
     [key: string]: any;
   };
+}
+
+export interface AddServiceToCartRequest {
+  productId: string; // Service ID
+  storeId: string;
+  serviceBookingDetails: ServiceBookingDetails;
 }
 
 export interface UpdateCartItemRequest {
@@ -345,6 +370,95 @@ class CartService {
       return createErrorResponse(
         error,
         'Failed to add item to cart. Please try again.'
+      );
+    }
+  }
+
+  /**
+   * Add service item to cart with booking details
+   */
+  async addServiceToCart(data: AddServiceToCartRequest): Promise<ApiResponse<Cart>> {
+    const startTime = Date.now();
+
+    try {
+      // Validate input
+      if (!data.productId) {
+        return {
+          success: false,
+          error: 'Service ID is required',
+          message: 'Service ID is required',
+        };
+      }
+
+      if (!data.storeId) {
+        return {
+          success: false,
+          error: 'Store ID is required',
+          message: 'Store ID is required',
+        };
+      }
+
+      if (!data.serviceBookingDetails) {
+        return {
+          success: false,
+          error: 'Booking details are required',
+          message: 'Please provide booking date and time',
+        };
+      }
+
+      if (!data.serviceBookingDetails.bookingDate) {
+        return {
+          success: false,
+          error: 'Booking date is required',
+          message: 'Please select a booking date',
+        };
+      }
+
+      if (!data.serviceBookingDetails.timeSlot?.start) {
+        return {
+          success: false,
+          error: 'Time slot is required',
+          message: 'Please select a time slot',
+        };
+      }
+
+      const requestData: AddToCartRequest = {
+        productId: data.productId,
+        quantity: 1, // Services always have quantity 1
+        itemType: 'service',
+        serviceBookingDetails: data.serviceBookingDetails,
+        metadata: {
+          storeId: data.storeId,
+        },
+      };
+
+      logApiRequest('POST', '/cart/add (service)', requestData);
+
+      const response = await withRetry(
+        () => apiClient.post<Cart>('/cart/add', requestData),
+        { maxRetries: 2 }
+      );
+
+      logApiResponse('POST', '/cart/add (service)', response, Date.now() - startTime);
+
+      // Validate response
+      if (response.success && response.data) {
+        if (!validateCart(response.data)) {
+          console.error('[CART API] Cart validation failed after adding service');
+          return {
+            success: false,
+            error: 'Invalid cart data received after adding service',
+            message: 'Failed to add service to cart',
+          };
+        }
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[CART API] Error adding service to cart:', error);
+      return createErrorResponse(
+        error,
+        'Failed to add service to cart. Please try again.'
       );
     }
   }

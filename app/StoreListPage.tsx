@@ -385,7 +385,11 @@ const StoreListPage: React.FC = () => {
               <Text style={styles.subcategoryLabel}>
                 {selectedSubcategory === 'all'
                   ? 'All Subcategories'
-                  : subcategories.find((s: any) => s._id === selectedSubcategory)?.name || 'All'}
+                  : (() => {
+                      const found = subcategories.find((s: any) => s._id === selectedSubcategory);
+                      if (!found) return 'All';
+                      return typeof found.name === 'string' ? found.name : 'Subcategory';
+                    })()}
               </Text>
               <Ionicons name="chevron-down" size={16} color="#00C06A" />
             </TouchableOpacity>
@@ -560,29 +564,35 @@ const StoreListPage: React.FC = () => {
             </TouchableOpacity>
 
             {/* Individual Subcategory Options */}
-            {subcategories.map((sub: any) => (
-              <TouchableOpacity
-                key={sub._id}
-                style={[
-                  styles.sortOption,
-                  selectedSubcategory === sub._id && styles.sortOptionActive
-                ]}
-                onPress={() => {
-                  setSelectedSubcategory(sub._id);
-                  setShowSubcategoryModal(false);
-                }}
-              >
-                <Text style={[
-                  styles.sortOptionText,
-                  selectedSubcategory === sub._id && styles.sortOptionTextActive
-                ]}>
-                  {sub.name}
-                </Text>
-                {selectedSubcategory === sub._id && (
-                  <Ionicons name="checkmark" size={20} color="#00C06A" />
-                )}
-              </TouchableOpacity>
-            ))}
+            {subcategories.map((sub: any) => {
+              // Safely extract string values
+              const subId = typeof sub._id === 'string' ? sub._id : String(sub._id || '');
+              const subName = typeof sub.name === 'string' ? sub.name : 'Subcategory';
+
+              return (
+                <TouchableOpacity
+                  key={subId}
+                  style={[
+                    styles.sortOption,
+                    selectedSubcategory === subId && styles.sortOptionActive
+                  ]}
+                  onPress={() => {
+                    setSelectedSubcategory(subId);
+                    setShowSubcategoryModal(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.sortOptionText,
+                    selectedSubcategory === subId && styles.sortOptionTextActive
+                  ]}>
+                    {subName}
+                  </Text>
+                  {selectedSubcategory === subId && (
+                    <Ionicons name="checkmark" size={20} color="#00C06A" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </TouchableOpacity>
       </Modal>

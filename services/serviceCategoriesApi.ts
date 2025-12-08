@@ -1,0 +1,282 @@
+// Service Categories API Service
+// Handles service categories with cashback offers for the homepage
+
+import apiClient, { ApiResponse } from './apiClient';
+
+// ===== TYPE DEFINITIONS =====
+
+export interface ServiceCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon: string;
+  iconType: 'emoji' | 'url' | 'icon-name';
+  image?: string;
+  bannerImage?: string;
+  cashbackPercentage: number;
+  maxCashback?: number;
+  isActive: boolean;
+  sortOrder: number;
+  serviceCount: number;
+  metadata?: {
+    color?: string;
+    tags?: string[];
+    seoTitle?: string;
+    seoDescription?: string;
+  };
+  cashbackText?: string; // Virtual field: "Up to X% cash back"
+}
+
+export interface ServiceInCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  shortDescription?: string;
+  images: string[];
+  pricing: {
+    original: number;
+    selling: number;
+    discount?: number;
+    currency: string;
+  };
+  ratings: {
+    average: number;
+    count: number;
+  };
+  store: {
+    _id: string;
+    name: string;
+    logo?: string;
+    location?: any;
+    contact?: any;
+    operationalInfo?: any;
+  };
+  serviceCategory: {
+    _id: string;
+    name: string;
+    icon: string;
+    cashbackPercentage: number;
+    slug?: string;
+  };
+  serviceDetails?: {
+    duration: number;
+    serviceType: 'home' | 'store' | 'online';
+    maxBookingsPerSlot: number;
+    requiresAddress: boolean;
+    requiresPaymentUpfront: boolean;
+  };
+  cashback?: {
+    percentage: number;
+    maxAmount?: number;
+    isActive: boolean;
+  };
+}
+
+export interface ServicesInCategoryResponse {
+  services: ServiceInCategory[];
+  category: {
+    _id: string;
+    name: string;
+    slug: string;
+    icon: string;
+    cashbackPercentage: number;
+    description?: string;
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+export interface ServiceCategoryQueryParams {
+  page?: number;
+  limit?: number;
+  sortBy?: 'price_low' | 'price_high' | 'rating' | 'newest' | 'popular';
+  minPrice?: number;
+  maxPrice?: number;
+  serviceType?: 'home' | 'store' | 'online';
+}
+
+// ===== SERVICE CLASS =====
+
+class ServiceCategoriesService {
+  /**
+   * Get all service categories for the homepage
+   */
+  async getServiceCategories(includeCount: boolean = true): Promise<ApiResponse<ServiceCategory[]>> {
+    try {
+      const response = await apiClient.get<{ data: ServiceCategory[]; count: number }>(
+        '/service-categories',
+        { includeCount: includeCount.toString() }
+      );
+
+      if (!response.success) {
+        console.error('Failed to fetch service categories:', response.error);
+        return {
+          success: false,
+          error: response.error || 'Failed to fetch service categories'
+        };
+      }
+
+      // Add cashbackText to each category
+      const categories = (response.data?.data || []).map((cat: ServiceCategory) => ({
+        ...cat,
+        cashbackText: `Up to ${cat.cashbackPercentage}% cash back`
+      }));
+
+      return {
+        success: true,
+        data: categories
+      };
+    } catch (error) {
+      console.error('Error fetching service categories:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch service categories'
+      };
+    }
+  }
+
+  /**
+   * Get a single service category by slug
+   */
+  async getServiceCategoryBySlug(slug: string): Promise<ApiResponse<ServiceCategory>> {
+    try {
+      if (!slug) {
+        return {
+          success: false,
+          error: 'Category slug is required'
+        };
+      }
+
+      const response = await apiClient.get<{ data: ServiceCategory }>(
+        `/service-categories/${slug}`
+      );
+
+      if (!response.success) {
+        console.error('Failed to fetch service category:', response.error);
+        return {
+          success: false,
+          error: response.error || 'Failed to fetch service category'
+        };
+      }
+
+      const category = response.data?.data;
+      if (category) {
+        category.cashbackText = `Up to ${category.cashbackPercentage}% cash back`;
+      }
+
+      return {
+        success: true,
+        data: category
+      };
+    } catch (error) {
+      console.error('Error fetching service category:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch service category'
+      };
+    }
+  }
+
+  /**
+   * Get services in a category
+   */
+  async getServicesInCategory(
+    slug: string,
+    params?: ServiceCategoryQueryParams
+  ): Promise<ApiResponse<ServicesInCategoryResponse>> {
+    try {
+      if (!slug) {
+        return {
+          success: false,
+          error: 'Category slug is required'
+        };
+      }
+
+      const queryParams = {
+        page: params?.page || 1,
+        limit: params?.limit || 20,
+        sortBy: params?.sortBy || 'rating',
+        minPrice: params?.minPrice,
+        maxPrice: params?.maxPrice,
+        serviceType: params?.serviceType
+      };
+
+      // Filter out undefined values
+      const cleanParams = Object.fromEntries(
+        Object.entries(queryParams).filter(([_, v]) => v !== undefined)
+      );
+
+      const response = await apiClient.get<ServicesInCategoryResponse>(
+        `/service-categories/${slug}/services`,
+        cleanParams
+      );
+
+      if (!response.success) {
+        console.error('Failed to fetch services in category:', response.error);
+        return {
+          success: false,
+          error: response.error || 'Failed to fetch services'
+        };
+      }
+
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error fetching services in category:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch services'
+      };
+    }
+  }
+
+  /**
+   * Get child categories of a parent category
+   */
+  async getChildCategories(slug: string): Promise<ApiResponse<ServiceCategory[]>> {
+    try {
+      if (!slug) {
+        return {
+          success: false,
+          error: 'Parent category slug is required'
+        };
+      }
+
+      const response = await apiClient.get<{ data: ServiceCategory[]; parent: ServiceCategory }>(
+        `/service-categories/${slug}/children`
+      );
+
+      if (!response.success) {
+        console.error('Failed to fetch child categories:', response.error);
+        return {
+          success: false,
+          error: response.error || 'Failed to fetch child categories'
+        };
+      }
+
+      return {
+        success: true,
+        data: response.data?.data || []
+      };
+    } catch (error) {
+      console.error('Error fetching child categories:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch child categories'
+      };
+    }
+  }
+}
+
+// Create singleton instance
+const serviceCategoriesService = new ServiceCategoriesService();
+
+export default serviceCategoriesService;

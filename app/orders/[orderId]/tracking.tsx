@@ -217,6 +217,73 @@ export default function OrderTrackingScreen() {
           )}
         </View>
 
+        {/* Service Bookings Section */}
+        {order.items.some((item: any) => item.itemType === 'service') && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Service Bookings</Text>
+            {order.items
+              .filter((item: any) => item.itemType === 'service')
+              .map((item: any, index: number) => {
+                const bookingDetails = item.serviceBookingDetails || {};
+                const bookingDate = bookingDetails.bookingDate
+                  ? new Date(bookingDetails.bookingDate).toLocaleDateString('en-IN', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : 'Date TBD';
+                const formatTime = (timeStr: string) => {
+                  if (!timeStr) return '';
+                  const [hours, minutes] = timeStr.split(':').map(Number);
+                  const ampm = hours >= 12 ? 'PM' : 'AM';
+                  const displayHour = hours % 12 || 12;
+                  return `${displayHour}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+                };
+                const timeSlot = bookingDetails.timeSlot?.start
+                  ? `${formatTime(bookingDetails.timeSlot.start)} - ${formatTime(bookingDetails.timeSlot.end)}`
+                  : 'Time TBD';
+
+                return (
+                  <View key={index} style={styles.serviceBookingCard}>
+                    <View style={styles.serviceBookingHeader}>
+                      <Text style={styles.serviceBookingName}>
+                        {item.name || item.product?.name}
+                      </Text>
+                      <View style={[
+                        styles.serviceBookingStatus,
+                        { backgroundColor: item.serviceBookingId ? '#dcfce7' : '#fef3c7' }
+                      ]}>
+                        <Text style={[
+                          styles.serviceBookingStatusText,
+                          { color: item.serviceBookingId ? '#16a34a' : '#d97706' }
+                        ]}>
+                          {item.serviceBookingId ? 'Confirmed' : 'Pending'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.serviceBookingDetails}>
+                      <View style={styles.serviceBookingRow}>
+                        <Text style={styles.serviceBookingIcon}>📅</Text>
+                        <Text style={styles.serviceBookingText}>{bookingDate}</Text>
+                      </View>
+                      <View style={styles.serviceBookingRow}>
+                        <Text style={styles.serviceBookingIcon}>🕐</Text>
+                        <Text style={styles.serviceBookingText}>{timeSlot}</Text>
+                      </View>
+                      {bookingDetails.duration && (
+                        <View style={styles.serviceBookingRow}>
+                          <Text style={styles.serviceBookingIcon}>⏱️</Text>
+                          <Text style={styles.serviceBookingText}>{bookingDetails.duration} min</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+          </View>
+        )}
+
         {/* Delivery Address */}
         {order.delivery?.address && (
           <View style={styles.section}>
@@ -492,5 +559,53 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Service Booking Styles
+  serviceBookingCard: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  serviceBookingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  serviceBookingName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  serviceBookingStatus: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  serviceBookingStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  serviceBookingDetails: {
+    gap: 6,
+  },
+  serviceBookingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  serviceBookingIcon: {
+    fontSize: 14,
+    width: 20,
+  },
+  serviceBookingText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
   },
 });

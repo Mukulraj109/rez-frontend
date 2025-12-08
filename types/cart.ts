@@ -83,6 +83,7 @@ export interface CartItemProps {
   onRemove: (id: string) => void;
   onUpdateQuantity?: (id: string, quantity: number) => void;
   showAnimation?: boolean;
+  hideQuantityControls?: boolean; // For services where quantity is always 1
 }
 
 export interface LockedProductItemProps {
