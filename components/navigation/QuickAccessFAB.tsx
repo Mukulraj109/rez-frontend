@@ -86,12 +86,12 @@ export default function QuickAccessFAB() {
       )}
 
       <TouchableOpacity
-        style={styles.fabContainer}
         onPress={toggleExpand}
         activeOpacity={0.9}
+        style={styles.fabTouchable}
       >
         <LinearGradient
-          colors={expanded ? ['#EF4444', '#DC2626'] : ['#8B5CF6', '#7C3AED']}
+          colors={expanded ? ['#EF4444', '#DC2626'] : ['#00C06A', '#00796B']}
           style={styles.fab}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -158,22 +158,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
   },
-  fabContainer: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+  fabTouchable: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0 4px 16px rgba(0, 192, 106, 0.4)',
+      },
+    }),
   },
   fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
   fabIcon: {
-    fontSize: 28,
+    fontSize: 24,
     color: '#FFF',
   },
 });

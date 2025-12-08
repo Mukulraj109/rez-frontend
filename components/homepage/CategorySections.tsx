@@ -98,7 +98,7 @@ export const CategorySections: React.FC<CategorySectionsProps> = ({ sections, st
                     accessibilityHint={`Double tap to browse ${category.label.toLowerCase()} stores and products`}
                   >
                     <View style={styles.categoryIcon}>
-                      <Ionicons name={category.icon} size={24} color="#8B5CF6" />
+                      <Ionicons name={category.icon} size={24} color="#00C06A" />
                     </View>
                     <ThemedText style={styles.categoryLabel}>{category.label}</ThemedText>
                   </TouchableOpacity>
@@ -123,7 +123,7 @@ export const CategorySections: React.FC<CategorySectionsProps> = ({ sections, st
                   accessibilityHint={`Double tap to browse ${category.label.toLowerCase()} stores and products`}
                 >
                   <View style={styles.categoryIcon}>
-                    <Ionicons name={category.icon} size={24} color="#8B5CF6" />
+                    <Ionicons name={category.icon} size={24} color="#00C06A" />
                   </View>
                   <ThemedText style={styles.categoryLabel}>{category.label}</ThemedText>
                 </TouchableOpacity>
@@ -138,31 +138,35 @@ export const CategorySections: React.FC<CategorySectionsProps> = ({ sections, st
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 18,
+    marginBottom: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
+    color: '#0B2240',
+    fontFamily: 'Poppins',
   },
   viewAllButton: {
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 121, 107, 0.08)',
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(0, 121, 107, 0.15)',
   },
   viewAllText: {
-    fontSize: 14,
-    color: '#8B5CF6',
+    fontSize: 13,
+    color: '#00796B',
     fontWeight: '600',
+    fontFamily: 'Inter',
   },
   horizontalScrollContent: {
     paddingHorizontal: 4,
@@ -177,31 +181,40 @@ const styles = StyleSheet.create({
   },
   horizontalCategoryItem: {
     alignItems: 'center',
-    minWidth: 70,
-    marginRight: 12,
+    minWidth: 72,
+    marginRight: 14,
   },
   categoryIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'white',
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0 2px 8px rgba(0, 192, 106, 0.1)',
+      },
+    }),
   },
   categoryLabel: {
     fontSize: 11,
-    color: '#333',
+    color: '#0B2240',
     textAlign: 'center',
     fontWeight: '500',
     marginTop: 8,
+    fontFamily: 'Inter',
   },
 });
 

@@ -1,15 +1,17 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import {
   TouchableOpacity,
   StyleSheet,
   Image,
   View,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
 import { HomepageProduct } from '@/services/productApi';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 interface CategoryProductCardProps {
   product: HomepageProduct;
@@ -21,6 +23,8 @@ function CategoryProductCard({
   width = 156,
 }: CategoryProductCardProps) {
   const router = useRouter();
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   const handlePress = () => {
     router.push(`/ProductPage?cardId=${product._id || product.id}&cardType=product`);
@@ -39,13 +43,37 @@ function CategoryProductCard({
       <View style={styles.card}>
         {/* Product Image */}
         <View style={styles.imageContainer}>
-          <Image
-            source={{
-              uri: product.image || 'https://via.placeholder.com/160x140?text=No+Image'
-            }}
-            style={styles.image}
-            resizeMode="cover"
+          {/* Background gradient for placeholder */}
+          <LinearGradient
+            colors={['rgba(0, 192, 106, 0.08)', 'rgba(0, 121, 107, 0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.imagePlaceholderBg}
           />
+
+          {/* Loading indicator - just show gradient bg */}
+          {imageLoading && !imageError && (
+            <View style={styles.imagePlaceholder} />
+          )}
+
+          {/* Error fallback - just show gradient bg, no icon */}
+          {imageError ? (
+            <View style={styles.imagePlaceholder} />
+          ) : (
+            <Image
+              source={{
+                uri: product.image || 'https://via.placeholder.com/160x140?text=No+Image'
+              }}
+              style={[styles.image, imageLoading && styles.imageHidden]}
+              resizeMode="cover"
+              onLoadStart={() => setImageLoading(true)}
+              onLoadEnd={() => setImageLoading(false)}
+              onError={() => {
+                setImageLoading(false);
+                setImageError(true);
+              }}
+            />
+          )}
 
           {/* Cashback Badge - Top Right */}
           {hasCashback && (
@@ -64,10 +92,12 @@ function CategoryProductCard({
           )}
 
           {/* Subtle overlay gradient at bottom of image */}
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.03)']}
-            style={styles.imageOverlay}
-          />
+          {!imageError && !imageLoading && (
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.05)']}
+              style={styles.imageOverlay}
+            />
+          )}
         </View>
 
         {/* Product Details */}
@@ -97,60 +127,103 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(0, 0, 0, 0.04)',
+    height: 210,
     ...Platform.select({
       ios: {
         shadowColor: '#0B2240',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 6,
+        elevation: 4,
       },
       web: {
-        boxShadow: '0 4px 12px rgba(11, 34, 64, 0.06), 0 12px 28px rgba(11, 34, 64, 0.1)',
+        boxShadow: '0 2px 8px rgba(11, 34, 64, 0.04), 0 8px 24px rgba(11, 34, 64, 0.08)',
       },
     }),
   },
   imageContainer: {
     position: 'relative',
-    height: 130,
+    height: 120,
     width: '100%',
-    backgroundColor: '#F7FAFC',
+    overflow: 'hidden',
+  },
+  imagePlaceholderBg: {
+    ...StyleSheet.absoluteFillObject,
   },
   image: {
     width: '100%',
     height: '100%',
+  },
+  imageHidden: {
+    opacity: 0,
+  },
+  imagePlaceholder: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+  },
+  errorIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   imageOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 30,
+    height: 40,
   },
   cashbackBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    borderRadius: 8,
+    top: 8,
+    right: 8,
+    borderRadius: 6,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#00C06A',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.25,
         shadowRadius: 4,
       },
       android: {
         elevation: 3,
       },
       web: {
-        boxShadow: '0 2px 8px rgba(0, 192, 106, 0.3)',
+        boxShadow: '0 2px 8px rgba(0, 192, 106, 0.25)',
       },
     }),
   },
@@ -159,17 +232,17 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   cashbackBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: '#FFFFFF',
     fontFamily: 'Inter',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   content: {
     padding: 12,
     paddingTop: 10,
-    paddingBottom: 14,
-    height: 80,
+    paddingBottom: 12,
+    height: 90,
     justifyContent: 'space-between',
   },
   productName: {
@@ -177,20 +250,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0B2240',
     fontFamily: 'Inter',
-    lineHeight: 18,
+    lineHeight: 17,
     letterSpacing: -0.1,
-    height: 36,
+    height: 34,
   },
   cashbackPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 20,
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.15)',
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   coinIcon: {
     width: 16,
@@ -199,11 +272,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFC857',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 5,
+    marginRight: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FFC857',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.3,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
   coinText: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#0B2240',
   },
   cashbackPillText: {

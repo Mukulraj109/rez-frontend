@@ -299,7 +299,7 @@ export default function RootLayout() {
                   
                   {/* Main App Screens */}
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="FashionPage" options={{ headerShown: false }} />
+                  {/* FashionPage removed - use /MainCategory/fashion instead */}
                    <Stack.Screen name="ProductPage" options={{ headerShown: false }} />
                    <Stack.Screen name="products-videos" options={{ headerShown: false }} />
                    <Stack.Screen name="articles" options={{ headerShown: false }} />
@@ -313,6 +313,7 @@ export default function RootLayout() {
                    <Stack.Screen name="CoinPage" options={{ headerShown: false }} />
                     <Stack.Screen name="WalletScreen" options={{ headerShown: false }} />
                     <Stack.Screen name="StoreListPage" options={{ headerShown: false }} />
+                    <Stack.Screen name="EventsListPage" options={{ headerShown: false }} />
                     <Stack.Screen name="StoreSearch" options={{ headerShown: false }} />
                     <Stack.Screen name="ReviewPage" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/index" options={{ headerShown: false }} />
@@ -407,6 +408,7 @@ export default function RootLayout() {
 
                   {/* Dynamic Category Pages */}
                   <Stack.Screen name="category/[slug]" options={{ headerShown: false }} />
+                  <Stack.Screen name="MainCategory/[slug]" options={{ headerShown: false }} />
                   <Stack.Screen name="+not-found" />
                 </Stack>
                 <StatusBar style="auto" />

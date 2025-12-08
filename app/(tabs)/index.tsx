@@ -302,7 +302,7 @@ export default function HomeScreen() {
     [actions, authState.user]);
 
   const handleFashionPress = () => {
-    router.push('/FashionPage');
+    router.push('/MainCategory/fashion');
   };
 
   const handleMainStorePress = () => {

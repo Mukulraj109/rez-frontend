@@ -13,12 +13,11 @@ import {
   Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { BlurView } from 'expo-blur';
 
 // Module-level variable to persist scroll position across re-renders
 let persistedScrollPosition = 0;
-let persistedActiveCategory = 'for-you';
 
 // ReZ Brand Colors
 const COLORS = {
@@ -31,16 +30,22 @@ const COLORS = {
   white: '#FFFFFF',
 };
 
-// Category data
+// Category data - connected to MainCategory pages (all 11 main categories + Events & Stores)
 const CATEGORIES = [
   { id: 'for-you', label: 'For You', icon: 'sparkles', iconOutline: 'sparkles-outline' as const, route: null },
-  { id: 'dining', label: 'Dining', icon: 'restaurant', iconOutline: 'restaurant-outline' as const, route: '/category/restaurant' },
-  { id: 'events', label: 'Events', icon: 'ticket', iconOutline: 'ticket-outline' as const, route: '/EventPage' },
+  { id: 'dining', label: 'Dining', icon: 'restaurant', iconOutline: 'restaurant-outline' as const, route: '/MainCategory/food-dining' },
+  { id: 'events', label: 'Events', icon: 'ticket', iconOutline: 'ticket-outline' as const, route: '/EventsListPage' },
   { id: 'stores', label: 'Stores', icon: 'storefront', iconOutline: 'storefront-outline' as const, route: '/StoreListPage' },
-  { id: 'fashion', label: 'Fashion', icon: 'shirt', iconOutline: 'shirt-outline' as const, route: '/FashionPage' },
-  { id: 'grocery', label: 'Grocery', icon: 'basket', iconOutline: 'basket-outline' as const, route: '/category/grocery' },
-  { id: 'electronics', label: 'Electronics', icon: 'phone-portrait', iconOutline: 'phone-portrait-outline' as const, route: '/category/electronics' },
-  { id: 'gifts', label: 'Gifts', icon: 'gift', iconOutline: 'gift-outline' as const, route: '/category/gift' },
+  { id: 'grocery', label: 'Grocery', icon: 'basket', iconOutline: 'basket-outline' as const, route: '/MainCategory/grocery-essentials' },
+  { id: 'beauty', label: 'Beauty', icon: 'flower', iconOutline: 'flower-outline' as const, route: '/MainCategory/beauty-wellness' },
+  { id: 'health', label: 'Health', icon: 'medical', iconOutline: 'medical-outline' as const, route: '/MainCategory/healthcare' },
+  { id: 'fashion', label: 'Fashion', icon: 'shirt', iconOutline: 'shirt-outline' as const, route: '/MainCategory/fashion' },
+  { id: 'fitness', label: 'Fitness', icon: 'fitness', iconOutline: 'fitness-outline' as const, route: '/MainCategory/fitness-sports' },
+  { id: 'education', label: 'Education', icon: 'school', iconOutline: 'school-outline' as const, route: '/MainCategory/education-learning' },
+  { id: 'home', label: 'Home', icon: 'home', iconOutline: 'home-outline' as const, route: '/MainCategory/home-services' },
+  { id: 'travel', label: 'Travel', icon: 'airplane', iconOutline: 'airplane-outline' as const, route: '/MainCategory/travel-experiences' },
+  { id: 'entertainment', label: 'Fun', icon: 'film', iconOutline: 'film-outline' as const, route: '/MainCategory/entertainment' },
+  { id: 'finance', label: 'Finance', icon: 'wallet', iconOutline: 'wallet-outline' as const, route: '/MainCategory/financial-lifestyle' },
 ];
 
 interface CategoryTabBarProps {
@@ -53,8 +58,17 @@ interface CategoryTabBarProps {
 // Web component with glassy effect
 const WebCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [activeCategory, setActiveCategory] = useState(persistedActiveCategory);
+  const [activeCategory, setActiveCategory] = useState('for-you');
+
+  // Reset to 'for-you' when on homepage
+  useEffect(() => {
+    const isHomepage = pathname === '/' || pathname === '/index' || pathname === '/(tabs)' || pathname === '/(tabs)/index';
+    if (isHomepage) {
+      setActiveCategory('for-you');
+    }
+  }, [pathname]);
 
   useLayoutEffect(() => {
     if (containerRef.current && persistedScrollPosition > 0) {
@@ -77,7 +91,6 @@ const WebCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style }) => {
     if (containerRef.current) {
       persistedScrollPosition = containerRef.current.scrollLeft;
     }
-    persistedActiveCategory = category.id;
     setActiveCategory(category.id);
     if (category.route) {
       router.push(category.route as any);
@@ -176,10 +189,18 @@ const WebCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style }) => {
 // Native component
 const NativeCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style, isSticky }) => {
   const router = useRouter();
-  const [activeCategory, setActiveCategory] = useState(persistedActiveCategory);
+  const pathname = usePathname();
+  const [activeCategory, setActiveCategory] = useState('for-you');
+
+  // Reset to 'for-you' when on homepage
+  useEffect(() => {
+    const isHomepage = pathname === '/' || pathname === '/index' || pathname === '/(tabs)' || pathname === '/(tabs)/index';
+    if (isHomepage) {
+      setActiveCategory('for-you');
+    }
+  }, [pathname]);
 
   const handleCategoryPress = (category: typeof CATEGORIES[0]) => {
-    persistedActiveCategory = category.id;
     setActiveCategory(category.id);
     if (category.route) {
       router.push(category.route as any);

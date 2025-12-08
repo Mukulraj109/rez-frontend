@@ -262,7 +262,7 @@ export const NavigationUtils = {
     CART: '/CartPage',
     WALLET: '/WalletScreen',
     COIN: '/CoinPage',
-    FASHION: '/FashionPage',
+    FASHION: '/MainCategory/fashion',
     STORE: '/ProductPage',
     MAIN_STORE: '/MainStorePage',
     STORE_LIST: '/StoreListPage',
