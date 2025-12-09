@@ -14,6 +14,7 @@ import CategoryHeader from '@/components/CategoryHeader';
 import useCategoryData, { CategoryProduct } from '@/hooks/useCategoryData';
 import { getCategoryConfig } from '@/config/categoryConfig';
 import productsApi from '@/services/productsApi';
+import storesApi from '@/services/storesApi';
 
 // Production-ready components (reused from FashionPage)
 import ProductionStoreList from '@/src/components/ProductionStoreList';
@@ -46,10 +47,12 @@ export default function MainCategoryPage() {
     refetchAll,
   } = useCategoryData(slug || '');
 
-  // State for selected subcategory and filtered products
+  // State for selected subcategory and filtered products/stores
   const [selectedSubcategory, setSelectedSubcategory] = useState<FashionCategory | null>(null);
   const [subcategoryProducts, setSubcategoryProducts] = useState<CategoryProduct[]>([]);
+  const [subcategoryStores, setSubcategoryStores] = useState<any[]>([]);
   const [isLoadingSubcategoryProducts, setIsLoadingSubcategoryProducts] = useState(false);
+  const [isLoadingSubcategoryStores, setIsLoadingSubcategoryStores] = useState(false);
 
   // Handle subcategory selection from the slider
   const handleSubcategorySelect = useCallback((category: FashionCategory) => {
@@ -88,6 +91,39 @@ export default function MainCategoryPage() {
 
     fetchSubcategoryProducts();
   }, [selectedSubcategory?.slug, featuredProducts]);
+
+  // Fetch stores when selected subcategory changes
+  useEffect(() => {
+    const fetchSubcategoryStores = async () => {
+      if (!selectedSubcategory?.slug) {
+        // If no subcategory selected, use featured stores
+        setSubcategoryStores(featuredStores);
+        return;
+      }
+
+      setIsLoadingSubcategoryStores(true);
+      try {
+        console.log(`[MainCategory] Fetching stores for subcategory: ${selectedSubcategory.slug}`);
+        const response = await storesApi.getStoresBySubcategorySlug(selectedSubcategory.slug, 10);
+
+        if (response.success && response.data && response.data.length > 0) {
+          console.log(`[MainCategory] Got ${response.data.length} stores for ${selectedSubcategory.slug}`);
+          setSubcategoryStores(response.data);
+        } else {
+          // Fallback to featured stores if no stores found
+          console.log(`[MainCategory] No stores found for ${selectedSubcategory.slug}, using featured`);
+          setSubcategoryStores(featuredStores);
+        }
+      } catch (error) {
+        console.error('[MainCategory] Error fetching subcategory stores:', error);
+        setSubcategoryStores(featuredStores);
+      } finally {
+        setIsLoadingSubcategoryStores(false);
+      }
+    };
+
+    fetchSubcategoryStores();
+  }, [selectedSubcategory?.slug, featuredStores]);
 
   // Prepare subcategories for the slider (use config subcategories with colors)
   const sliderCategories = categoryConfig?.subcategories.map((sub, index) => {
@@ -171,10 +207,10 @@ export default function MainCategoryPage() {
       {/* Steps Card - How to use vouchers */}
       <StepsCard />
 
-      {/* Store List - Featured stores */}
+      {/* Store List - Stores filtered by selected subcategory */}
       <ProductionStoreList
-        stores={featuredStores}
-        isLoading={isLoadingStores}
+        stores={subcategoryStores.length > 0 ? subcategoryStores : featuredStores}
+        isLoading={isLoadingStores || isLoadingSubcategoryStores}
         error={storesError}
         onRefresh={refetchAll}
       />

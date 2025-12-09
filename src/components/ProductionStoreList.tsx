@@ -260,37 +260,46 @@ const ProductionStoreList = ({ stores, isLoading, error, onRefresh }: Production
         </TouchableOpacity>
       </View>
 
-      {/* Store Grid */}
-      <ScrollView
-        style={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* First Row - up to 5 stores */}
-        <View style={styles.storeRow}>
-          {stores.slice(0, 5).map((store, index) => (
-            <StoreCard
-              key={store._id}
-              store={store}
-              index={index}
-              onPress={handleStorePress}
-            />
-          ))}
-        </View>
-
-        {/* Second Row - next 5 stores if available */}
-        {stores.length > 5 && (
-          <View style={styles.storeRow}>
-            {stores.slice(5, 10).map((store, index) => (
+      {/* Store Grid - Horizontal Scroll */}
+      <View style={styles.scrollContainer}>
+        {/* First Row - Horizontal scroll */}
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          style={styles.horizontalScroll}
+          contentContainerStyle={styles.horizontalScrollContent}
+        >
+          {stores.slice(0, Math.ceil(stores.length / 2)).map((store, index) => (
+            <View key={store._id} style={styles.storeItemWrapper}>
               <StoreCard
-                key={store._id}
                 store={store}
-                index={index + 5}
+                index={index}
                 onPress={handleStorePress}
               />
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* Second Row - Horizontal scroll if more stores */}
+        {stores.length > Math.ceil(stores.length / 2) && (
+          <ScrollView
+            horizontal={true}
+            showsHorizontalScrollIndicator={false}
+            style={styles.horizontalScroll}
+            contentContainerStyle={styles.horizontalScrollContent}
+          >
+            {stores.slice(Math.ceil(stores.length / 2)).map((store, index) => (
+              <View key={store._id} style={styles.storeItemWrapper}>
+                <StoreCard
+                  store={store}
+                  index={index + Math.ceil(stores.length / 2)}
+                  onPress={handleStorePress}
+                />
+              </View>
             ))}
-          </View>
+          </ScrollView>
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -338,8 +347,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   scrollContainer: {
-    maxHeight: 250,
     overflow: 'visible',
+  },
+  horizontalScroll: {
+    flexGrow: 0,
+    marginBottom: 8,
+  },
+  horizontalScrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 15,
+    paddingBottom: 10,
+    alignItems: 'center',
+  },
+  storeItemWrapper: {
+    marginRight: 20,
   },
   storeRow: {
     flexDirection: 'row',

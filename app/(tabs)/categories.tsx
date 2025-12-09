@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { CATEGORY_CONFIGS, getAllCategories, CategoryConfig, SubcategoryItem } from '@/config/categoryConfig';
+import { getSubcategoryIcon } from '@/config/categoryIcons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SIDEBAR_WIDTH = 90;
@@ -196,12 +197,8 @@ export default function CategoriesScreen() {
   const itemWidth = (CONTENT_WIDTH - 24) / numColumns;
 
   const renderItem = ({ item, index }: { item: SubcategoryWithParent; index: number }) => {
-    // Mix of picsum images and colored icon circles for variety
-    // Use images for 2 out of 3 items
-    const usePicsumImage = index % 3 !== 2;
-    const imageUrl = usePicsumImage
-      ? `https://picsum.photos/100/100?random=${item.slug.charCodeAt(0) + index * 7}`
-      : null;
+    // Get custom icon for this subcategory
+    const customIcon = getSubcategoryIcon(item.slug);
 
     return (
       <TouchableOpacity
@@ -211,10 +208,10 @@ export default function CategoriesScreen() {
       >
         <View style={[
           styles.circleCard,
-          !imageUrl && { backgroundColor: item.color + '20' }
+          !customIcon && { backgroundColor: item.color + '20' }
         ]}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.circleImage} />
+          {customIcon ? (
+            <Image source={customIcon} style={styles.circleImage} resizeMode="cover" />
           ) : (
             <Ionicons
               name={(item.icon as keyof typeof Ionicons.glyphMap) || 'grid-outline'}

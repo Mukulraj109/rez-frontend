@@ -365,6 +365,35 @@ class StoresService {
     }
   }
 
+  // Get stores by subcategory slug
+  async getStoresBySubcategorySlug(subcategorySlug: string, limit: number = 10): Promise<ApiResponse<any>> {
+    try {
+      console.log(`📦 [STORES API] Fetching stores for subcategory: ${subcategorySlug}`);
+      const response = await apiClient.get<any>(`/stores/by-category-slug/${subcategorySlug}`, { limit });
+
+      if (response.success && response.data) {
+        console.log(`✅ [STORES API] Got ${response.data.stores?.length || 0} stores for ${subcategorySlug}`);
+        return {
+          ...response,
+          data: response.data.stores || [],
+        };
+      }
+
+      return {
+        success: false,
+        error: 'No stores found',
+        message: `No stores found for subcategory: ${subcategorySlug}`,
+      };
+    } catch (error: any) {
+      console.error('❌ [STORES API] Error fetching stores by subcategory:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch stores',
+        message: error?.message || 'Failed to fetch stores',
+      };
+    }
+  }
+
   // Get featured stores
   async getFeaturedStores(limit: number = 10): Promise<ApiResponse<Store[]>> {
     try {
