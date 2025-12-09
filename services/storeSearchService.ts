@@ -227,7 +227,20 @@ class StoreSearchService {
   }
 
   /**
+   * Check if a string is a delivery category (fastDelivery, budgetFriendly, etc.)
+   */
+  private isDeliveryCategory(str: string): boolean {
+    const deliveryCategories = [
+      'all', 'fastDelivery', 'budgetFriendly', 'oneRupeeStore',
+      'ninetyNineStore', 'premium', 'organic', 'alliance',
+      'lowestPrice', 'mall', 'cashStore'
+    ];
+    return deliveryCategories.includes(str);
+  }
+
+  /**
    * Search stores by delivery category type (e.g., 'fastDelivery', 'premium', etc.)
+   * OR by category slug (e.g., 'food-dining', 'fashion', etc.)
    */
   async searchStoresByCategory(params: StoreSearchParams): Promise<StoreSearchResponse> {
     const {
@@ -249,29 +262,40 @@ class StoreSearchService {
       });
     }
 
-    const queryParams = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      sortBy,
-      ...(location && { location, radius: radius.toString() }),
-    });
+    // If category is a delivery category type (fastDelivery, premium, etc.), use search-by-category
+    if (this.isDeliveryCategory(category)) {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        sortBy,
+        ...(location && { location, radius: radius.toString() }),
+      });
 
-    const response = await fetch(
-      `${this.baseUrl}/search-by-category/${category}?${queryParams}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch(
+        `${this.baseUrl}/search-by-category/${category}?${queryParams}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    );
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      return data;
     }
 
-    const data = await response.json();
-    return data;
+    // Otherwise, treat it as a category slug (food-dining, fashion, etc.)
+    return this.getStoresByCategorySlug({
+      slug: category,
+      page,
+      limit,
+      sortBy
+    });
   }
 
   /**
@@ -298,6 +322,46 @@ class StoreSearchService {
 
     const response = await fetch(
       `${this.baseUrl}/category/${categoryId}?${queryParams}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  }
+
+  /**
+   * Get stores by category slug (for frontend category pages like food-dining, fashion, etc.)
+   */
+  async getStoresByCategorySlug(params: {
+    slug: string;
+    page?: number;
+    limit?: number;
+    sortBy?: 'rating' | 'distance' | 'name' | 'newest';
+  }): Promise<StoreSearchResponse> {
+    const {
+      slug,
+      page = 1,
+      limit = 20,
+      sortBy = 'rating'
+    } = params;
+
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      sortBy,
+    });
+
+    const response = await fetch(
+      `${this.baseUrl}/by-category-slug/${slug}?${queryParams}`,
       {
         method: 'GET',
         headers: {
