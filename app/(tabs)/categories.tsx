@@ -180,7 +180,8 @@ export default function CategoriesScreen() {
     router.push({
       pathname: '/StoreListPage',
       params: {
-        category: subcategory.parentSlug,
+        category: subcategory.slug, // Use subcategory slug for filtering
+        parentCategory: subcategory.parentSlug, // Keep parent for reference
         title: subcategory.name,
       },
     } as any);

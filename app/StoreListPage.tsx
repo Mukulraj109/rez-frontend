@@ -20,6 +20,7 @@ import { SearchFilters, StoreResult, ProductItem, SearchResults, SearchError, Av
 import {
   defaultSearchFilters
 } from '@/utils/mock-store-search-data';
+import { getSubSubCategories, SubSubCategory } from '@/config/subSubCategoryConfig';
 import SearchHeader from '@/components/store-search/SearchHeader';
 import FilterChips from '@/components/store-search/FilterChips';
 import StoreCard from '@/components/store-search/StoreCard';
@@ -60,6 +61,15 @@ const StoreListPage: React.FC = () => {
   // Subcategory selection state
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>('all');
   const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
+
+  // Sub-sub-category (cuisine/item type) filter state
+  const [selectedSubSubCategory, setSelectedSubSubCategory] = useState<string>('all');
+
+  // Get available sub-sub-categories based on current category slug
+  const availableSubSubCategories = useMemo((): SubSubCategory[] => {
+    // The category param is now the subcategory slug (e.g., 'cafes', 'qsr-fast-food')
+    return getSubSubCategories(categoryFromParams);
+  }, [categoryFromParams]);
 
   // Always use parent category for fetching stores
   // Subcategory is used to filter products within stores
@@ -130,7 +140,7 @@ const StoreListPage: React.FC = () => {
   }, [stores]);
 
   // Convert stores to SearchResults format
-  // Filter products by selected subcategory if one is chosen
+  // Filter products by selected subcategory and sub-sub-category if chosen
   const searchResults: SearchResults | null = stores.length > 0 ? {
     query: searchQuery,
     totalResults: stores.length,
@@ -146,6 +156,40 @@ const StoreListPage: React.FC = () => {
         );
       }
 
+      // Filter products by sub-sub-category (cuisine/item type) if selected
+      if (selectedSubSubCategory !== 'all' && filteredProducts.length > 0) {
+        // Get the display name from config for the selected slug
+        const selectedSubSubConfig = availableSubSubCategories.find(s => s.slug === selectedSubSubCategory);
+        const selectedSubSubName = selectedSubSubConfig?.name || '';
+
+        filteredProducts = filteredProducts.filter((product: any) => {
+          const productSubSub = product.subSubCategory || '';
+
+          // Match by exact slug
+          if (productSubSub === selectedSubSubCategory) return true;
+
+          // Match by exact name from config
+          if (selectedSubSubName && productSubSub === selectedSubSubName) return true;
+
+          // Match by partial name (case-insensitive)
+          if (selectedSubSubName && productSubSub.toLowerCase().includes(selectedSubSubName.toLowerCase())) return true;
+          if (productSubSub.toLowerCase().includes(selectedSubSubCategory.toLowerCase())) return true;
+
+          // Match slug converted to words (e.g., 'espresso-drinks' -> 'espresso drinks')
+          const slugAsWords = selectedSubSubCategory.replace(/-/g, ' ');
+          if (productSubSub.toLowerCase().includes(slugAsWords)) return true;
+
+          // Also check product tags for matching sub-sub-category
+          if (product.tags && Array.isArray(product.tags)) {
+            return product.tags.some((tag: string) =>
+              tag.toLowerCase().includes(slugAsWords) ||
+              (selectedSubSubName && tag.toLowerCase().includes(selectedSubSubName.toLowerCase()))
+            );
+          }
+
+          return false;
+        });
+      }
 
       return {
       storeId: store._id,
@@ -393,6 +437,62 @@ const StoreListPage: React.FC = () => {
               </Text>
               <Ionicons name="chevron-down" size={16} color="#00C06A" />
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Sub-Sub-Category Filter Chips - Cuisine/Item Type Filters */}
+        {availableSubSubCategories.length > 0 && (
+          <View style={styles.subSubCategoryContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.subSubCategoryScrollContent}
+            >
+              {/* "All" chip */}
+              <TouchableOpacity
+                style={[
+                  styles.subSubCategoryChip,
+                  selectedSubSubCategory === 'all' && styles.subSubCategoryChipActive
+                ]}
+                onPress={() => setSelectedSubSubCategory('all')}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.subSubCategoryChipText,
+                  selectedSubSubCategory === 'all' && styles.subSubCategoryChipTextActive
+                ]}>
+                  All
+                </Text>
+              </TouchableOpacity>
+
+              {/* Sub-sub-category chips */}
+              {availableSubSubCategories.map((subSub) => (
+                <TouchableOpacity
+                  key={subSub.slug}
+                  style={[
+                    styles.subSubCategoryChip,
+                    selectedSubSubCategory === subSub.slug && styles.subSubCategoryChipActive
+                  ]}
+                  onPress={() => setSelectedSubSubCategory(subSub.slug)}
+                  activeOpacity={0.7}
+                >
+                  {subSub.icon && (
+                    <Ionicons
+                      name={(subSub.icon + '-outline') as keyof typeof Ionicons.glyphMap}
+                      size={14}
+                      color={selectedSubSubCategory === subSub.slug ? '#FFFFFF' : '#00C06A'}
+                      style={styles.subSubCategoryChipIcon}
+                    />
+                  )}
+                  <Text style={[
+                    styles.subSubCategoryChipText,
+                    selectedSubSubCategory === subSub.slug && styles.subSubCategoryChipTextActive
+                  ]}>
+                    {subSub.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         )}
 
@@ -773,6 +873,43 @@ const createStyles = (screenData: { width: number; height: number }) => {
       fontSize: 14,
       fontWeight: '600',
       color: '#374151',
+    },
+    // Sub-sub-category filter chip styles
+    subSubCategoryContainer: {
+      backgroundColor: '#FFFFFF',
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(0, 192, 106, 0.1)',
+    },
+    subSubCategoryScrollContent: {
+      paddingHorizontal: horizontalPadding,
+      paddingVertical: 10,
+      gap: 8,
+      flexDirection: 'row',
+    },
+    subSubCategoryChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      backgroundColor: '#F0FFF7',
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: 'rgba(0, 192, 106, 0.3)',
+    },
+    subSubCategoryChipActive: {
+      backgroundColor: '#00C06A',
+      borderColor: '#00C06A',
+    },
+    subSubCategoryChipIcon: {
+      marginRight: 6,
+    },
+    subSubCategoryChipText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: '#00C06A',
+    },
+    subSubCategoryChipTextActive: {
+      color: '#FFFFFF',
     },
   });
 };

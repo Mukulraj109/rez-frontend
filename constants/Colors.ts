@@ -14,8 +14,8 @@ export const Colors = {
     icon: '#9AA7B2', // Cool Gray 1
     tabIconDefault: '#9AA7B2',
     tabIconSelected: '#00C06A',
-    surface: '#F7FAFC',
-    surfaceSecondary: '#F0F4F8',
+    surface: '#FFFFFF',
+    surfaceSecondary: '#FFFFFF',
     border: '#D9E2EC',
     primary: '#00C06A',
     secondary: '#00796B', // Deep Teal
@@ -28,22 +28,22 @@ export const Colors = {
     gold: '#FFC857',
   },
   dark: {
-    text: '#F7FAFC',
-    background: '#0B2240', // Midnight Navy
+    text: '#0B2240', // Same as light - white theme only
+    background: '#FFFFFF', // White - no dark theme
     tint: '#00C06A',
     icon: '#9AA7B2',
-    tabIconDefault: '#486581',
+    tabIconDefault: '#9AA7B2',
     tabIconSelected: '#00C06A',
-    surface: '#1F2D3D', // Slate 1
-    surfaceSecondary: '#334E68',
-    border: '#334E68',
+    surface: '#FFFFFF', // White - no dark theme
+    surfaceSecondary: '#FFFFFF', // White - no dark theme
+    border: '#D9E2EC',
     primary: '#00C06A',
     secondary: '#00796B',
     accent: '#00796B',
     success: '#2ECC71',
     warning: '#FF9F1C',
     error: '#E74C3C',
-    textSecondary: '#D9E2EC',
+    textSecondary: '#1F2D3D',
     textMuted: '#9AA7B2',
     gold: '#FFC857',
   },

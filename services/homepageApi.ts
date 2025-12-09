@@ -21,8 +21,8 @@ import { ApiResponse } from './apiClient';
 import cacheService from './cacheService';
 
 // API Configuration
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.rez-app.com';
-const API_VERSION = 'v1';
+// Use the same base URL as apiClient for consistency
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5001/api';
 
 // Request timeout configuration
 const REQUEST_TIMEOUT = 10000; // 10 seconds
@@ -33,10 +33,10 @@ const SECTION_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 // API endpoints
 const ENDPOINTS = {
-  HOMEPAGE: `${API_BASE_URL}/${API_VERSION}/homepage`,
-  SECTION: (id: string) => `${API_BASE_URL}/${API_VERSION}/homepage/sections/${id}`,
-  ANALYTICS: `${API_BASE_URL}/${API_VERSION}/analytics/homepage`,
-  USER_PREFERENCES: `${API_BASE_URL}/${API_VERSION}/users/preferences`,
+  HOMEPAGE: `${API_BASE_URL}/homepage`,
+  SECTION: (id: string) => `${API_BASE_URL}/homepage/sections/${id}`,
+  ANALYTICS: `${API_BASE_URL}/analytics/homepage`,
+  USER_PREFERENCES: `${API_BASE_URL}/users/preferences`,
 } as const;
 
 // HTTP Client with timeout and error handling

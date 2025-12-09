@@ -264,10 +264,46 @@ class ProductsService {
 
   // Get products by category
   async getProductsByCategory(
-    categorySlug: string, 
+    categorySlug: string,
     query: Omit<ProductsQuery, 'category'> = {}
   ): Promise<ApiResponse<ProductsResponse>> {
     return apiClient.get(`/products/category/${categorySlug}`, query);
+  }
+
+  // Get products by subcategory slug (for Browse Categories slider)
+  async getProductsBySubcategory(
+    subcategorySlug: string,
+    limit: number = 10
+  ): Promise<ApiResponse<Product[]>> {
+    try {
+      console.log(`[ProductsAPI] Fetching products for subcategory: ${subcategorySlug}`);
+      const response = await apiClient.get<any>(`/products/subcategory/${subcategorySlug}`, { limit });
+
+      if (response.success && response.data) {
+        // Handle both array and paginated response formats
+        const products = Array.isArray(response.data)
+          ? response.data
+          : (response.data.products || []);
+
+        console.log(`[ProductsAPI] Got ${products.length} products for subcategory: ${subcategorySlug}`);
+
+        // Validate and normalize products
+        const validatedProducts = validateProductArray(products);
+        return {
+          ...response,
+          data: validatedProducts as Product[],
+        };
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error(`[ProductsAPI] Error fetching subcategory products:`, error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch products by subcategory',
+        message: error?.message || 'Failed to fetch products by subcategory',
+      };
+    }
   }
 
   // Get products by store

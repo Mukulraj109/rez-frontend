@@ -670,44 +670,6 @@ export default function HomeScreen() {
 
       {/* Content */}
       <View style={viewStyles.content}>
-        {/* Partner Card */}
-        <TouchableOpacity
-          style={viewStyles.partnerCard}
-          onPress={handlePartnerPress}
-          activeOpacity={0.9}
-          accessibilityLabel={`Partner Level 1: ${userPoints || 0} points earned`}
-          accessibilityRole="button"
-          accessibilityHint="Double tap to view partner program details and rewards"
-        >
-          <View style={viewStyles.partnerInfo}>
-            <View style={viewStyles.partnerIcon}>
-              <Ionicons name="star" size={20} color="#00C06A" />
-            </View>
-            <View>
-              <ThemedText style={textStyles.partnerLevel}>Partner</ThemedText>
-              <ThemedText style={textStyles.level1}>Level 1</ThemedText>
-            </View>
-          </View>
-
-          <View style={viewStyles.partnerStats}>
-            <View style={viewStyles.stat}>
-              <ThemedText style={textStyles.statNumber}>{userPoints || 0}</ThemedText>
-              <ThemedText style={textStyles.statLabel}>Points</ThemedText>
-            </View>
-
-            <View style={viewStyles.progressDot} />
-
-            <View style={viewStyles.stat}>
-              <ThemedText style={textStyles.statNumber}>Level 1</ThemedText>
-              <ThemedText style={textStyles.statLabel}>Partner</ThemedText>
-            </View>
-          </View>
-
-          <View style={viewStyles.partnerArrow}>
-            <Ionicons name="chevron-forward" size={20} color="#00C06A" />
-          </View>
-        </TouchableOpacity>
-
         {/* Online Voucher Button - Lazy Loaded */}
         <Suspense fallback={<BelowFoldFallback />}>
           <VoucherNavButton variant="minimal" style={{ marginBottom: 20 }} />
@@ -758,8 +720,8 @@ export default function HomeScreen() {
             ));
         }, [state.sections, handleItemPress, actions, renderEventCard, renderRecommendationCard, renderStoreCard, renderBrandedStoreCard, renderProductCard])}
 
-        {/* Categories Grid Section - Shows 10 random parent categories */}
-        <CategoryGridSection title="Categories" maxCategories={10} />
+        {/* Categories Grid Section - Shows all 11 main categories */}
+        <CategoryGridSection title="Categories" maxCategories={11} />
 
         {/* Popular Products Section - Shows products with highest order count */}
         <PopularProductsSection title="Popular" limit={10} />
@@ -878,11 +840,11 @@ const textStyles = StyleSheet.create({
 const viewStyles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#FFFFFF',
   },
   container: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: '#FFFFFF',
     ...Platform.select({
       web: {
         touchAction: 'pan-y', // Only handle vertical scrolling, let children handle horizontal
@@ -1076,6 +1038,7 @@ const viewStyles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 100,
+    backgroundColor: '#FFFFFF',
   },
   partnerCard: {
     backgroundColor: 'white',

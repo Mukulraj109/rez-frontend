@@ -4,15 +4,16 @@
  * Route: /MainCategory/[slug] (e.g., /MainCategory/fashion, /MainCategory/food-dining)
  */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ScrollView, View, Text, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // Components
 import CategoryHeader from '@/components/CategoryHeader';
-import useCategoryData from '@/hooks/useCategoryData';
+import useCategoryData, { CategoryProduct } from '@/hooks/useCategoryData';
 import { getCategoryConfig } from '@/config/categoryConfig';
+import productsApi from '@/services/productsApi';
 
 // Production-ready components (reused from FashionPage)
 import ProductionStoreList from '@/src/components/ProductionStoreList';
@@ -21,6 +22,7 @@ import ProductionCategorySlider from '@/src/components/ProductionCategorySlider'
 import ProductionProductCarousel from '@/src/components/ProductionProductCarousel';
 import ProductionQuickButtons from '@/src/components/ProductionQuickButtons';
 import StepsCard from '@/src/components/StepsCard';
+import { FashionCategory } from '@/hooks/useFashionData';
 
 export default function MainCategoryPage() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -43,6 +45,64 @@ export default function MainCategoryPage() {
     productsError,
     refetchAll,
   } = useCategoryData(slug || '');
+
+  // State for selected subcategory and filtered products
+  const [selectedSubcategory, setSelectedSubcategory] = useState<FashionCategory | null>(null);
+  const [subcategoryProducts, setSubcategoryProducts] = useState<CategoryProduct[]>([]);
+  const [isLoadingSubcategoryProducts, setIsLoadingSubcategoryProducts] = useState(false);
+
+  // Handle subcategory selection from the slider
+  const handleSubcategorySelect = useCallback((category: FashionCategory) => {
+    setSelectedSubcategory(category);
+  }, []);
+
+  // Fetch products when selected subcategory changes
+  useEffect(() => {
+    const fetchSubcategoryProducts = async () => {
+      if (!selectedSubcategory?.slug) {
+        // If no subcategory selected, use featured products
+        setSubcategoryProducts(featuredProducts);
+        return;
+      }
+
+      setIsLoadingSubcategoryProducts(true);
+      try {
+        console.log(`[MainCategory] Fetching products for subcategory: ${selectedSubcategory.slug}`);
+        const response = await productsApi.getProductsBySubcategory(selectedSubcategory.slug, 10);
+
+        if (response.success && response.data) {
+          console.log(`[MainCategory] Got ${response.data.length} products for ${selectedSubcategory.slug}`);
+          setSubcategoryProducts(response.data as CategoryProduct[]);
+        } else {
+          // Fallback to featured products if API fails
+          console.log(`[MainCategory] No products found for ${selectedSubcategory.slug}, using featured`);
+          setSubcategoryProducts(featuredProducts);
+        }
+      } catch (error) {
+        console.error('[MainCategory] Error fetching subcategory products:', error);
+        setSubcategoryProducts(featuredProducts);
+      } finally {
+        setIsLoadingSubcategoryProducts(false);
+      }
+    };
+
+    fetchSubcategoryProducts();
+  }, [selectedSubcategory?.slug, featuredProducts]);
+
+  // Prepare subcategories for the slider (use config subcategories with colors)
+  const sliderCategories = categoryConfig?.subcategories.map((sub, index) => {
+    const colors = [
+      '#8B5CF6', '#F59E0B', '#3B82F6', '#EC4899',
+      '#10B981', '#EF4444', '#6366F1', '#14B8A6',
+    ];
+    return {
+      _id: sub.slug,
+      name: sub.name,
+      slug: sub.slug,
+      icon: sub.icon,
+      metadata: { color: colors[index % colors.length] },
+    };
+  }) || [];
 
   // Handle invalid slug - show error page
   if (!categoryConfig) {
@@ -90,35 +150,18 @@ export default function MainCategoryPage() {
         gradientColors={categoryConfig.gradientColors}
       />
 
-      {/* Category Slider - Hardcoded Subcategories from config */}
+      {/* Category Slider - Subcategories with selection callback */}
       <ProductionCategorySlider
-        categories={categoryConfig.subcategories.map((sub, index) => {
-          // Different colors for each subcategory to make it vibrant
-          const colors = [
-            '#8B5CF6', // Purple
-            '#F59E0B', // Amber/Yellow
-            '#3B82F6', // Blue
-            '#EC4899', // Pink
-            '#10B981', // Green
-            '#EF4444', // Red
-            '#6366F1', // Indigo
-            '#14B8A6', // Teal
-          ];
-          return {
-            _id: sub.slug,
-            name: sub.name,
-            slug: sub.slug,
-            icon: sub.icon,
-            metadata: { color: colors[index % colors.length] },
-          };
-        })}
+        categories={sliderCategories}
         isLoading={false}
+        selectedSlug={selectedSubcategory?.slug}
+        onSelect={handleSubcategorySelect}
       />
 
-      {/* Product Carousel - Featured products */}
+      {/* Product Carousel - Shows products filtered by selected subcategory */}
       <ProductionProductCarousel
-        products={featuredProducts}
-        isLoading={isLoadingProducts}
+        products={subcategoryProducts.length > 0 ? subcategoryProducts : featuredProducts}
+        isLoading={isLoadingProducts || isLoadingSubcategoryProducts}
         error={productsError}
       />
 

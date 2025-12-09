@@ -27,9 +27,10 @@ interface CategoryCardProps {
   activeIndex: number;
   onPress: (category: FashionCategory) => void;
   totalOriginal: number;
+  isSelected?: boolean; // Whether this is the currently selected subcategory
 }
 
-const CategoryCard = ({ category, index, activeIndex, onPress, totalOriginal, scrollOffset, layoutWidth }: CategoryCardProps & { scrollOffset: number; layoutWidth: number }) => {
+const CategoryCard = ({ category, index, activeIndex, onPress, totalOriginal, scrollOffset, layoutWidth, isSelected }: CategoryCardProps & { scrollOffset: number; layoutWidth: number }) => {
   // Calculate this card's position relative to the center of the viewport
   const cardCenterX = (index * CARD_TOTAL_WIDTH) + (CARD_SIZE / 2);
   const viewportCenterX = scrollOffset + (layoutWidth / 2);
@@ -104,12 +105,15 @@ const CategoryCard = ({ category, index, activeIndex, onPress, totalOriginal, sc
   const categoryStyle = getCategoryStyle(category);
 
   // Calculate visual styles based on distance from center (smooth interpolation)
-  // Scale: 1.15 at center, 0.85 at edges
-  const scale = 1.15 - (normalizedDistance * 0.3);
+  // Scale: 1.2 at center, 0.8 at edges (more prominent center item)
+  const scale = 1.2 - (normalizedDistance * 0.4);
   // Opacity: 1 at center, 0.5 at edges
   const opacity = 1 - (normalizedDistance * 0.5);
-  // TranslateY: -6 at center, 6 at edges
-  const translateY = -6 + (normalizedDistance * 12);
+  // TranslateY: -8 at center, 8 at edges (more pop for center)
+  const translateY = -8 + (normalizedDistance * 16);
+
+  // Check if this item is at the center (selected)
+  const isCentered = normalizedDistance < 0.15;
 
   return (
     <TouchableOpacity
@@ -123,27 +127,34 @@ const CategoryCard = ({ category, index, activeIndex, onPress, totalOriginal, sc
           {
             transform: [{ scale }, { translateY }],
             opacity,
-            shadowOpacity: 0.4 - (normalizedDistance * 0.3),
-            elevation: 12 - (normalizedDistance * 8),
+            shadowOpacity: isCentered ? 0.5 : 0.4 - (normalizedDistance * 0.3),
+            elevation: isCentered ? 16 : 12 - (normalizedDistance * 8),
           }
         ]}
       >
         <LinearGradient
           colors={categoryStyle.gradientColors}
-          style={styles.circleGradient}
+          style={[
+            styles.circleGradient,
+            isCentered && styles.circleGradientSelected,
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
           <View style={styles.circleHighlight} />
           <Ionicons
             name={categoryStyle.icon}
-            size={28}
+            size={isCentered ? 32 : 28}
             color={categoryStyle.iconColor}
           />
         </LinearGradient>
+        {/* Selection indicator ring */}
+        {isCentered && (
+          <View style={[styles.selectionRing, { borderColor: categoryStyle.gradientColors[0] }]} />
+        )}
       </View>
 
-      <Text style={[styles.categoryName, { opacity }]} numberOfLines={1}>
+      <Text style={[styles.categoryName, { opacity, fontWeight: isCentered ? '700' : '600' }]} numberOfLines={1}>
         {category.name}
       </Text>
     </TouchableOpacity>
@@ -163,6 +174,8 @@ const adjustColor = (hex: string, percent: number): string => {
 interface ProductionCategorySliderProps {
   categories: FashionCategory[];
   isLoading: boolean;
+  selectedSlug?: string; // Currently selected subcategory slug
+  onSelect?: (category: FashionCategory) => void; // Callback when subcategory is selected (no navigation)
 }
 
 // Inject CSS for hiding scrollbar on web
@@ -186,13 +199,14 @@ const injectWebStyles = () => {
   }
 };
 
-const ProductionCategorySlider = ({ categories, isLoading }: ProductionCategorySliderProps) => {
+const ProductionCategorySlider = ({ categories, isLoading, selectedSlug, onSelect }: ProductionCategorySliderProps) => {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [layoutWidth, setLayoutWidth] = useState(400); // Default width
   const isRepositioning = useRef(false);
+  const hasInitializedSelection = useRef(false);
 
   // Get display categories (max 8)
   const originalCategories = categories.slice(0, 8);
@@ -213,18 +227,41 @@ const ProductionCategorySlider = ({ categories, isLoading }: ProductionCategoryS
     injectWebStyles();
   }, []);
 
-  // Initialize scroll position to middle set
+  // Initialize scroll position to middle set and select middle item
   useEffect(() => {
     if (totalOriginal > 0 && scrollViewRef.current) {
       setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ x: middleSetStart, animated: false });
-        setScrollOffset(middleSetStart);
+        // Calculate the scroll position to center the middle item
+        const middleItemIndex = Math.floor(totalOriginal / 2);
+        const initialScrollX = middleSetStart + (middleItemIndex * CARD_TOTAL_WIDTH) - (layoutWidth / 2) + (CARD_SIZE / 2);
+        scrollViewRef.current?.scrollTo({ x: initialScrollX, animated: false });
+        setScrollOffset(initialScrollX);
+        setActiveIndex(middleItemIndex);
+
+        // Trigger initial selection callback for middle item
+        if (onSelect && originalCategories[middleItemIndex] && !hasInitializedSelection.current) {
+          hasInitializedSelection.current = true;
+          onSelect(originalCategories[middleItemIndex]);
+        }
       }, 100);
     }
-  }, [totalOriginal, middleSetStart]);
+  }, [totalOriginal, middleSetStart, layoutWidth]);
+
+  // Trigger onSelect when active index changes (user scrolls to new center item)
+  useEffect(() => {
+    if (onSelect && originalCategories[activeIndex] && hasInitializedSelection.current) {
+      onSelect(originalCategories[activeIndex]);
+    }
+  }, [activeIndex]);
 
   const handleCategoryPress = (category: FashionCategory) => {
-    router.push(`/category/${category.slug || category._id}` as any);
+    // If onSelect callback is provided, use it (no navigation)
+    if (onSelect) {
+      onSelect(category);
+    } else {
+      // Fallback to navigation if no callback provided
+      router.push(`/category/${category.slug || category._id}` as any);
+    }
   };
 
   // Handle scroll with infinite loop repositioning
@@ -320,6 +357,8 @@ const ProductionCategorySlider = ({ categories, isLoading }: ProductionCategoryS
           onScroll={handleScroll}
           scrollEventThrottle={16}
           decelerationRate="fast"
+          snapToInterval={CARD_TOTAL_WIDTH}
+          snapToAlignment="center"
           // @ts-ignore - web specific props
           className={Platform.OS === 'web' ? 'category-slider-scroll' : undefined}
         >
@@ -392,6 +431,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  circleGradientSelected: {
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  selectionRing: {
+    position: 'absolute',
+    width: CARD_SIZE + 10,
+    height: CARD_SIZE + 10,
+    borderRadius: (CARD_SIZE + 10) / 2,
+    borderWidth: 2,
+    borderColor: '#00C06A',
+    top: -5,
+    left: -5,
   },
   circleHighlight: {
     position: 'absolute',

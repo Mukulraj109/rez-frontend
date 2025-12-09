@@ -58,6 +58,15 @@ export const profileMenuSections: ProfileMenuSection[] = [
         showArrow: true,
       },
       {
+        id: 'partner',
+        title: 'Partner Program',
+        icon: 'star-outline',
+        route: '/profile/partner',
+        description: 'Level 1 • Earn rewards',
+        isEnabled: true,
+        showArrow: true,
+      },
+      {
         id: 'track_orders',
         title: 'Track Orders',
         icon: 'location-outline',

@@ -56,7 +56,7 @@ export default function VoucherNavButton({
       >
         <Ionicons name="ticket" size={22} color="#FFC857" />
         {showText && (
-          <ThemedText style={styles.minimalText}>Online Vouchers</ThemedText>
+          <ThemedText style={styles.minimalText}>Exclusive Deals</ThemedText>
         )}
       </TouchableOpacity>
     );
