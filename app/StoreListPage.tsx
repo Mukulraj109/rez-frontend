@@ -32,12 +32,18 @@ import { useStoreSearch } from '@/hooks/useStoreSearch';
 const StoreListPage: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+
+  // Parse sortBy from URL params (for Quick Buttons: Near me, Top rated)
+  const sortByFromParams = (params.sortBy as string) as 'rating' | 'distance' | 'name' | 'newest' | undefined;
+  const validSortBy = ['rating', 'distance', 'name', 'newest'].includes(sortByFromParams || '')
+    ? sortByFromParams
+    : 'rating';
+
   // Local state for search and filters
   const [searchQuery, setSearchQuery] = useState((params.query as string) || (params.search as string) || '');
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(defaultSearchFilters);
   const [showSortModal, setShowSortModal] = useState(false);
-  const [sortBy, setSortByLocal] = useState<'rating' | 'distance' | 'name' | 'newest'>('rating');
+  const [sortBy, setSortByLocal] = useState<'rating' | 'distance' | 'name' | 'newest'>(validSortBy!);
   const [availableFilters, setAvailableFilters] = useState<AvailableFilters>({
     categories: [],
     genders: [],

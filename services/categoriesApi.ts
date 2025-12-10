@@ -22,6 +22,9 @@ export interface Category {
   };
   productCount: number;
   storeCount: number;
+  isBestDiscount?: boolean;
+  isBestSeller?: boolean;
+  maxCashback?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -112,8 +115,18 @@ class CategoriesService {
     params.append('includeCounts', 'true');
     params.append('isActive', 'true');
     if (type) params.append('type', type);
-    
+
     return apiClient.get(`${this.baseUrl}?${params.toString()}`);
+  }
+
+  // Get best discount categories
+  async getBestDiscountCategories(limit: number = 10): Promise<ApiResponse<Category[]>> {
+    return apiClient.get(`${this.baseUrl}/best-discount?limit=${limit}`);
+  }
+
+  // Get best seller categories
+  async getBestSellerCategories(limit: number = 10): Promise<ApiResponse<Category[]>> {
+    return apiClient.get(`${this.baseUrl}/best-seller?limit=${limit}`);
   }
 }
 

@@ -22,11 +22,25 @@ import serviceCategoriesApi, {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
-const PARENT_PADDING = 20;
+const PARENT_PADDING = 16;
 const AVAILABLE_WIDTH = SCREEN_WIDTH - (PARENT_PADDING * 2);
 const CARD_WIDTH = Math.floor((AVAILABLE_WIDTH - CARD_GAP) / 2);
 
-// Service Card Component
+// ReZ Design System Colors from TASK.md
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  navy: '#0B2240',
+  textPrimary: '#0B2240',
+  textSecondary: '#1F2D3D',
+  textMuted: '#9AA7B2',
+  surface: '#F7FAFC',
+  white: '#FFFFFF',
+  gold: '#FFC857',
+  cardBorder: 'rgba(0, 0, 0, 0.04)',
+};
+
+// Service Card Component - ReZ Premium Design
 const ServiceCard = memo(({
   service,
   onPress
@@ -80,7 +94,7 @@ const ServiceCard = memo(({
         {/* Rating */}
         {rating > 0 && (
           <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={12} color="#FFB800" />
+            <Ionicons name="star" size={12} color={COLORS.gold} />
             <ThemedText style={styles.ratingText}>
               {rating.toFixed(1)} ({ratingCount})
             </ThemedText>
@@ -150,8 +164,6 @@ export default function ServiceCategoryPage() {
       }
       setError(null);
 
-      console.log('[ServiceCategory] Fetching category:', categorySlug);
-
       const response = await serviceCategoriesApi.getServicesInCategory(
         categorySlug as string,
         { page: pageNum, limit: 20, sortBy }
@@ -162,19 +174,22 @@ export default function ServiceCategoryPage() {
 
         setCategory(categoryData as any);
 
+        // Safely handle services array
+        const servicesArray = Array.isArray(newServices) ? newServices : [];
+
         if (pageNum === 1) {
-          setServices(newServices);
+          setServices(servicesArray);
         } else {
-          setServices(prev => [...prev, ...newServices]);
+          setServices(prev => [...prev, ...servicesArray]);
         }
 
-        setHasMore(pagination.page < pagination.pages);
+        // Safely handle pagination
+        const totalPages = pagination?.pages || 1;
+        const currentPage = pagination?.page || 1;
+        setHasMore(currentPage < totalPages);
         setPage(pageNum);
-
-        console.log('[ServiceCategory] Got', newServices.length, 'services');
       } else {
         setError('Failed to load services');
-        console.error('[ServiceCategory] Failed:', response.error);
       }
     } catch (err) {
       console.error('[ServiceCategory] Error:', err);
@@ -218,7 +233,7 @@ export default function ServiceCategoryPage() {
     return (
       <View style={styles.container}>
         <LinearGradient
-          colors={['#7C3AED', '#8B5CF6', '#A855F7']}
+          colors={[COLORS.primary, COLORS.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
@@ -237,8 +252,8 @@ export default function ServiceCategoryPage() {
           </View>
         </LinearGradient>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7C3AED" />
-          <ThemedText style={styles.loadingText}>Loading services...</ThemedText>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ThemedText style={styles.loadingText}>Fetching your savings...</ThemedText>
         </View>
       </View>
     );
@@ -249,7 +264,7 @@ export default function ServiceCategoryPage() {
     return (
       <View style={styles.container}>
         <LinearGradient
-          colors={['#7C3AED', '#8B5CF6', '#A855F7']}
+          colors={[COLORS.primary, COLORS.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
@@ -283,9 +298,9 @@ export default function ServiceCategoryPage() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header with ReZ Green Gradient */}
       <LinearGradient
-        colors={['#7C3AED', '#8B5CF6', '#A855F7']}
+        colors={[COLORS.primary, COLORS.primaryDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
@@ -303,9 +318,11 @@ export default function ServiceCategoryPage() {
               {category?.name || 'Services'}
             </ThemedText>
             {category?.cashbackPercentage && (
-              <ThemedText style={styles.headerSubtitle}>
-                Up to {category.cashbackPercentage}% cash back
-              </ThemedText>
+              <View style={styles.cashbackPill}>
+                <ThemedText style={styles.cashbackPillText}>
+                  Up to {category.cashbackPercentage}% cash back
+                </ThemedText>
+              </View>
             )}
           </View>
         </View>
@@ -326,7 +343,7 @@ export default function ServiceCategoryPage() {
           <Ionicons
             name={showSortOptions ? "chevron-up" : "chevron-down"}
             size={16}
-            color="#7C3AED"
+            color={COLORS.primary}
           />
         </TouchableOpacity>
       </View>
@@ -350,7 +367,7 @@ export default function ServiceCategoryPage() {
                 {option.label}
               </ThemedText>
               {sortBy === option.value && (
-                <Ionicons name="checkmark" size={18} color="#7C3AED" />
+                <Ionicons name="checkmark" size={18} color={COLORS.primary} />
               )}
             </TouchableOpacity>
           ))}
@@ -366,8 +383,8 @@ export default function ServiceCategoryPage() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            colors={['#7C3AED']}
-            tintColor="#7C3AED"
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
           />
         }
         onScroll={({ nativeEvent }) => {
@@ -381,7 +398,7 @@ export default function ServiceCategoryPage() {
       >
         {services.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="cube-outline" size={48} color="#9CA3AF" />
+            <Ionicons name="cube-outline" size={48} color={COLORS.textMuted} />
             <ThemedText style={styles.emptyText}>No services available</ThemedText>
             <ThemedText style={styles.emptySubtext}>
               Check back later for new services
@@ -404,7 +421,7 @@ export default function ServiceCategoryPage() {
         {/* Loading More Indicator */}
         {loadingMore && (
           <View style={styles.loadingMoreContainer}>
-            <ActivityIndicator size="small" color="#7C3AED" />
+            <ActivityIndicator size="small" color={COLORS.primary} />
             <ThemedText style={styles.loadingMoreText}>Loading more...</ThemedText>
           </View>
         )}
@@ -425,12 +442,13 @@ export default function ServiceCategoryPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.surface,
   },
+  // Header with ReZ gradient
   headerGradient: {
     paddingTop: Platform.OS === 'ios' ? 50 : 40,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingBottom: 24,
+    paddingHorizontal: 16,
   },
   headerContent: {
     flexDirection: 'row',
@@ -439,7 +457,7 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -452,12 +470,22 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
+  cashbackPill: {
+    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
   },
+  cashbackPillText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  // Loading & Error states
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -466,7 +494,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textMuted,
   },
   errorContainer: {
     flex: 1,
@@ -482,45 +510,56 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 20,
-    backgroundColor: '#7C3AED',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
   },
   retryButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
+  // Sort Bar
   sortBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: 'rgba(0,0,0,0.06)',
   },
   resultsCount: {
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textMuted,
+    fontWeight: '500',
   },
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+    borderRadius: 20,
   },
   sortButtonText: {
     fontSize: 14,
-    color: '#7C3AED',
-    fontWeight: '500',
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   sortOptionsContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    paddingHorizontal: 20,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+    paddingHorizontal: 16,
     paddingBottom: 12,
   },
   sortOption: {
@@ -529,19 +568,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   sortOptionActive: {
-    backgroundColor: '#F3E8FF',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
   },
   sortOptionText: {
     fontSize: 14,
-    color: '#374151',
+    color: COLORS.textSecondary,
   },
   sortOptionTextActive: {
-    color: '#7C3AED',
+    color: COLORS.primary,
     fontWeight: '600',
   },
+  // Services Grid
   scrollView: {
     flex: 1,
   },
@@ -553,26 +593,28 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
+  // Service Card - Standard Card from TASK.md
   serviceCard: {
     width: CARD_WIDTH,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
     marginBottom: CARD_GAP,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: COLORS.cardBorder,
+    // Shadow from Standard Card spec
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   emptyCard: {
     width: CARD_WIDTH,
   },
   imageContainer: {
     width: '100%',
-    height: 120,
+    height: 130,
     position: 'relative',
   },
   serviceImage: {
@@ -583,15 +625,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: '#7C3AED',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   cashbackBadgeText: {
     color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
   serviceInfo: {
     padding: 12,
@@ -599,51 +641,60 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
     marginBottom: 4,
+    lineHeight: 18,
   },
   storeName: {
     fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
+    color: COLORS.textMuted,
+    marginBottom: 6,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   ratingText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   price: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   originalPrice: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: COLORS.textMuted,
     textDecorationLine: 'line-through',
   },
+  // Primary Button from TASK.md
   getServiceButton: {
-    backgroundColor: '#7C3AED',
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   getServiceButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
+  // Empty state
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -653,14 +704,15 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: COLORS.textMuted,
     marginTop: 4,
   },
+  // Loading more
   loadingMoreContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -670,7 +722,7 @@ const styles = StyleSheet.create({
   },
   loadingMoreText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textMuted,
   },
   endOfListContainer: {
     alignItems: 'center',
@@ -678,6 +730,6 @@ const styles = StyleSheet.create({
   },
   endOfListText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: COLORS.textMuted,
   },
 });

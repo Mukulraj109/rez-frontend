@@ -1,9 +1,9 @@
 /**
  * CategoryTabBar Component
- * Compact glassy horizontal scrollable category tabs
+ * Compact glassy horizontal scrollable category tabs with images
  */
 
-import React, { useState, useRef, useEffect, useLayoutEffect, memo } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, memo } from 'react';
 import {
   View,
   ScrollView,
@@ -11,8 +11,10 @@ import {
   StyleSheet,
   Platform,
   Text,
+  Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import { BlurView } from 'expo-blur';
 
@@ -30,22 +32,32 @@ const COLORS = {
   white: '#FFFFFF',
 };
 
-// Category data - connected to MainCategory pages (all 11 main categories + Events & Stores)
+// Category images - using local assets
+const CATEGORY_IMAGES = {
+  dining: require('../../assets/category-icons/FOOD-DINING/Family-restaurants.png'),
+  events: require('../../assets/category-icons/ENTERTAINMENT/Live-events.png'),
+  stores: require('../../assets/category-icons/Shopping/Fashion.png'),
+  grocery: require('../../assets/category-icons/GROCERY-ESSENTIALS/Supermarkets.png'),
+  beauty: require('../../assets/category-icons/BEAUTY-WELLNESS/Beauty-services.png'),
+  health: require('../../assets/category-icons/HEALTHCARE/Pharmacy.png'),
+  fashion: require('../../assets/category-icons/Shopping/Fashion.png'),
+  fitness: require('../../assets/category-icons/FITNESS-SPORTS/Gyms.png'),
+  education: require('../../assets/category-icons/EDUCATION-LEARNING/Coaching-center.png'),
+  travel: require('../../assets/category-icons/TRAVEL-EXPERIENCES/Hotels.png'),
+};
+
+// Category data - connected to MainCategory pages
 const CATEGORIES = [
-  { id: 'for-you', label: 'For You', icon: 'sparkles', iconOutline: 'sparkles-outline' as const, route: null },
-  { id: 'dining', label: 'Dining', icon: 'restaurant', iconOutline: 'restaurant-outline' as const, route: '/MainCategory/food-dining' },
-  { id: 'events', label: 'Events', icon: 'ticket', iconOutline: 'ticket-outline' as const, route: '/EventsListPage' },
-  { id: 'stores', label: 'Stores', icon: 'storefront', iconOutline: 'storefront-outline' as const, route: '/StoreListPage' },
-  { id: 'grocery', label: 'Grocery', icon: 'basket', iconOutline: 'basket-outline' as const, route: '/MainCategory/grocery-essentials' },
-  { id: 'beauty', label: 'Beauty', icon: 'flower', iconOutline: 'flower-outline' as const, route: '/MainCategory/beauty-wellness' },
-  { id: 'health', label: 'Health', icon: 'medical', iconOutline: 'medical-outline' as const, route: '/MainCategory/healthcare' },
-  { id: 'fashion', label: 'Fashion', icon: 'shirt', iconOutline: 'shirt-outline' as const, route: '/MainCategory/fashion' },
-  { id: 'fitness', label: 'Fitness', icon: 'fitness', iconOutline: 'fitness-outline' as const, route: '/MainCategory/fitness-sports' },
-  { id: 'education', label: 'Education', icon: 'school', iconOutline: 'school-outline' as const, route: '/MainCategory/education-learning' },
-  { id: 'home', label: 'Home', icon: 'home', iconOutline: 'home-outline' as const, route: '/MainCategory/home-services' },
-  { id: 'travel', label: 'Travel', icon: 'airplane', iconOutline: 'airplane-outline' as const, route: '/MainCategory/travel-experiences' },
-  { id: 'entertainment', label: 'Fun', icon: 'film', iconOutline: 'film-outline' as const, route: '/MainCategory/entertainment' },
-  { id: 'finance', label: 'Finance', icon: 'wallet', iconOutline: 'wallet-outline' as const, route: '/MainCategory/financial-lifestyle' },
+  { id: 'dining', label: 'Dining', image: CATEGORY_IMAGES.dining, route: '/MainCategory/food-dining' },
+  { id: 'events', label: 'Events', image: CATEGORY_IMAGES.events, route: '/EventsListPage' },
+  { id: 'stores', label: 'Stores', image: CATEGORY_IMAGES.stores, route: '/StoreListPage' },
+  { id: 'grocery', label: 'Grocery', image: CATEGORY_IMAGES.grocery, route: '/MainCategory/grocery-essentials' },
+  { id: 'beauty', label: 'Beauty', image: CATEGORY_IMAGES.beauty, route: '/MainCategory/beauty-wellness' },
+  { id: 'health', label: 'Health', image: CATEGORY_IMAGES.health, route: '/MainCategory/healthcare' },
+  { id: 'fashion', label: 'Fashion', image: CATEGORY_IMAGES.fashion, route: '/MainCategory/fashion' },
+  { id: 'fitness', label: 'Fitness', image: CATEGORY_IMAGES.fitness, route: '/MainCategory/fitness-sports' },
+  { id: 'education', label: 'Education', image: CATEGORY_IMAGES.education, route: '/MainCategory/education-learning' },
+  { id: 'travel', label: 'Travel', image: CATEGORY_IMAGES.travel, route: '/MainCategory/travel-experiences' },
 ];
 
 interface CategoryTabBarProps {
@@ -55,153 +67,171 @@ interface CategoryTabBarProps {
   style?: any;
 }
 
-// Web component with glassy effect
+// Web component with glassy effect - using React Native components for proper image handling
 const WebCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [activeCategory, setActiveCategory] = useState('for-you');
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  // Reset to 'for-you' when on homepage
-  useEffect(() => {
-    const isHomepage = pathname === '/' || pathname === '/index' || pathname === '/(tabs)' || pathname === '/(tabs)/index';
-    if (isHomepage) {
-      setActiveCategory('for-you');
+  // Determine active category based on current route
+  const getActiveCategory = () => {
+    for (const category of CATEGORIES) {
+      if (pathname === category.route || pathname.startsWith(category.route)) {
+        return category.id;
+      }
     }
-  }, [pathname]);
+    return null; // No active category on homepage
+  };
 
+  const activeCategory = getActiveCategory();
+
+  // Restore scroll position when component mounts
   useLayoutEffect(() => {
-    if (containerRef.current && persistedScrollPosition > 0) {
-      containerRef.current.scrollLeft = persistedScrollPosition;
+    if (scrollViewRef.current && persistedScrollPosition > 0) {
+      scrollViewRef.current.scrollTo({ x: persistedScrollPosition, animated: false });
     }
   });
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (container) {
-      const handleScroll = () => {
-        persistedScrollPosition = container.scrollLeft;
-      };
-      container.addEventListener('scroll', handleScroll);
-      return () => container.removeEventListener('scroll', handleScroll);
-    }
-  }, []);
+  // Track scroll position
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    persistedScrollPosition = event.nativeEvent.contentOffset.x;
+  };
 
   const handleCategoryClick = (category: typeof CATEGORIES[0]) => {
-    if (containerRef.current) {
-      persistedScrollPosition = containerRef.current.scrollLeft;
-    }
-    setActiveCategory(category.id);
     if (category.route) {
       router.push(category.route as any);
     }
   };
 
   return (
-    <div style={{
-      background: 'rgba(255, 255, 255, 0.6)',
-      backdropFilter: 'blur(50px) saturate(200%)',
-      WebkitBackdropFilter: 'blur(50px) saturate(200%)',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
-      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.05)',
-      ...(style || {}),
-    }}>
-      <div
-        ref={containerRef}
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          overflowX: 'auto',
-          gap: 0,
-          padding: '8px 10px',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-        }}
+    <View style={[webStyles.container, style]}>
+      <ScrollView
+        ref={scrollViewRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={webStyles.scrollContent}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {CATEGORIES.map((category) => {
           const isActive = activeCategory === category.id;
           return (
-            <button
+            <TouchableOpacity
               key={category.id}
-              onClick={() => handleCategoryClick(category)}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '8px 14px',
-                borderRadius: 12,
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                flexShrink: 0,
-                minWidth: 62,
-                position: 'relative',
-                transition: 'all 0.15s ease',
-              }}
+              onPress={() => handleCategoryClick(category)}
+              style={webStyles.tabButton}
+              activeOpacity={0.7}
             >
-              {/* Icon */}
-              <div style={{
-                width: 32,
-                height: 32,
-                borderRadius: 10,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: isActive
-                  ? `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.deepTeal} 100%)`
-                  : 'transparent',
-                marginBottom: 4,
-                transition: 'all 0.15s ease',
-                boxShadow: isActive ? '0 3px 10px rgba(0, 192, 106, 0.35)' : 'none',
-              }}>
-                <Ionicons
-                  name={isActive ? category.icon as any : category.iconOutline}
-                  size={18}
-                  color={isActive ? COLORS.white : COLORS.mutedGray}
+              {/* Image Container */}
+              <View style={[
+                webStyles.imageContainer,
+                isActive && webStyles.imageContainerActive
+              ]}>
+                <Image
+                  source={category.image}
+                  style={webStyles.categoryImage}
+                  resizeMode="contain"
                 />
-              </div>
+              </View>
 
               {/* Label */}
-              <span style={{
-                fontSize: 10,
-                fontWeight: isActive ? 600 : 500,
-                color: isActive ? COLORS.primary : COLORS.mutedGray,
-                letterSpacing: 0.3,
-                textTransform: 'uppercase',
-                fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
-                whiteSpace: 'nowrap',
-              }}>
-                {category.label}
-              </span>
-            </button>
+              <Text style={[
+                webStyles.label,
+                isActive && webStyles.labelActive
+              ]}>
+                {category.label.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
           );
         })}
-      </div>
-
-      <style>{`
-        div::-webkit-scrollbar { display: none; }
-      `}</style>
-    </div>
+      </ScrollView>
+    </View>
   );
+});
+
+// Web-specific styles
+const webStyles = StyleSheet.create({
+  container: {
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  scrollContent: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  tabButton: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minWidth: 62,
+  },
+  imageContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(245, 245, 245, 0.8)',
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  imageContainerActive: {
+    backgroundColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+  },
+  categoryImage: {
+    width: 36,
+    height: 36,
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: COLORS.slate,
+    letterSpacing: 0.3,
+  },
+  labelActive: {
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
 });
 
 // Native component
 const NativeCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style, isSticky }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const [activeCategory, setActiveCategory] = useState('for-you');
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  // Reset to 'for-you' when on homepage
-  useEffect(() => {
-    const isHomepage = pathname === '/' || pathname === '/index' || pathname === '/(tabs)' || pathname === '/(tabs)/index';
-    if (isHomepage) {
-      setActiveCategory('for-you');
+  // Determine active category based on current route
+  const getActiveCategory = () => {
+    for (const category of CATEGORIES) {
+      if (pathname === category.route || pathname.startsWith(category.route)) {
+        return category.id;
+      }
     }
-  }, [pathname]);
+    return null; // No active category on homepage
+  };
+
+  const activeCategory = getActiveCategory();
+
+  // Restore scroll position when component mounts
+  useLayoutEffect(() => {
+    if (scrollViewRef.current && persistedScrollPosition > 0) {
+      scrollViewRef.current.scrollTo({ x: persistedScrollPosition, animated: false });
+    }
+  });
+
+  // Track scroll position
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    persistedScrollPosition = event.nativeEvent.contentOffset.x;
+  };
 
   const handleCategoryPress = (category: typeof CATEGORIES[0]) => {
-    setActiveCategory(category.id);
     if (category.route) {
       router.push(category.route as any);
     }
@@ -209,9 +239,12 @@ const NativeCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style, isSti
 
   const content = (
     <ScrollView
+      ref={scrollViewRef}
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
     >
       {CATEGORIES.map((category) => {
         const isActive = activeCategory === category.id;
@@ -222,11 +255,11 @@ const NativeCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style, isSti
             onPress={() => handleCategoryPress(category)}
             activeOpacity={0.7}
           >
-            <View style={[styles.iconContainer, isActive && styles.iconContainerActive]}>
-              <Ionicons
-                name={isActive ? category.icon as any : category.iconOutline}
-                size={16}
-                color={isActive ? COLORS.white : COLORS.mutedGray}
+            <View style={[styles.imageContainer, isActive && styles.imageContainerActive]}>
+              <Image
+                source={category.image}
+                style={styles.categoryImage}
+                resizeMode="contain"
               />
             </View>
             <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
@@ -274,16 +307,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     minWidth: 62,
   },
-  iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+  imageContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(245, 245, 245, 0.8)',
     marginBottom: 4,
+    overflow: 'hidden',
   },
-  iconContainerActive: {
+  imageContainerActive: {
     backgroundColor: COLORS.primary,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 3 },
@@ -291,10 +325,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  categoryImage: {
+    width: 36,
+    height: 36,
+  },
   tabLabel: {
     fontSize: 10,
     fontWeight: '500',
-    color: COLORS.mutedGray,
+    color: COLORS.slate,
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },

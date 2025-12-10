@@ -15,32 +15,66 @@ export interface FashionStore {
   logo?: string;
   banner?: string;
   category: any;
-  location: {
-    address: string;
-    city: string;
+
+  // Backend sends address separately from location (GeoJSON)
+  address?: {
+    street?: string;
+    city?: string;
     state?: string;
-    coordinates?: [number, number];
+    pincode?: string;
+    country?: string;
   };
-  ratings: {
+
+  // GeoJSON location from backend
+  location?: {
+    type?: string;
+    coordinates?: [number, number];
+    // Legacy fields for compatibility
+    address?: string;
+    city?: string;
+    state?: string;
+  };
+
+  ratings?: {
     average: number;
     count: number;
   };
-  offers: {
+
+  // Offers may not be present in all stores
+  offers?: {
     cashback?: number;
-    isPartner: boolean;
+    isPartner?: boolean;
     partnerLevel?: string;
   };
-  operationalInfo: {
+
+  // OperationalInfo may not be present
+  operationalInfo?: {
     deliveryTime?: string;
     minimumOrder?: number;
   };
-  isFeatured: boolean;
-  isActive: boolean;
+
+  isFeatured?: boolean;
+  isActive?: boolean;
+
   deliveryCategories?: {
     fastDelivery?: boolean;
     premium?: boolean;
     budgetFriendly?: boolean;
   };
+
+  // Additional fields from backend
+  description?: string;
+  shortDescription?: string;
+  coverImage?: string;
+  images?: string[];
+  tags?: string[];
+  contact?: {
+    phone?: string;
+    email?: string;
+  };
+  businessHours?: any;
+  subcategory?: string;
+  subcategorySlug?: string;
 }
 
 export interface FashionProduct {

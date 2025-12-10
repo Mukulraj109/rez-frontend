@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
-  ScrollView,
   StyleSheet,
   TouchableOpacity,
   StatusBar,
@@ -19,8 +18,6 @@ import { CATEGORY_CONFIGS, getAllCategories, CategoryConfig, SubcategoryItem } f
 import { getSubcategoryIcon } from '@/config/categoryIcons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SIDEBAR_WIDTH = 90;
-const CONTENT_WIDTH = SCREEN_WIDTH - SIDEBAR_WIDTH;
 
 // ============ SIDEBAR CATEGORIES FROM CONFIG ============
 interface SidebarCategory {
@@ -43,19 +40,19 @@ const SIDEBAR_CATEGORIES: SidebarCategory[] = Object.values(CATEGORY_CONFIGS).ma
   subcategoryCount: cat.subcategories.length,
 }));
 
-// Images for main categories (using unsplash for better quality)
-const CATEGORY_IMAGES: Record<string, string> = {
-  'food-dining': 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=100&h=100&fit=crop',
-  'grocery-essentials': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=100&h=100&fit=crop',
-  'beauty-wellness': 'https://images.unsplash.com/photo-1560750588-73207b1ef5b8?w=100&h=100&fit=crop',
-  'healthcare': 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=100&h=100&fit=crop',
-  'fashion': 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=100&h=100&fit=crop',
-  'fitness-sports': 'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=100&h=100&fit=crop',
-  'education-learning': 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=100&h=100&fit=crop',
-  'home-services': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=100&h=100&fit=crop',
-  'travel-experiences': 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=100&h=100&fit=crop',
-  'entertainment': 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=100&h=100&fit=crop',
-  'financial-lifestyle': 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=100&h=100&fit=crop',
+// Local images for main categories (consistent with homepage)
+const CATEGORY_IMAGES: Record<string, any> = {
+  'food-dining': require('../../assets/category-icons/FOOD-DINING/Cafes.png'),
+  'grocery-essentials': require('../../assets/category-icons/GROCERY-ESSENTIALS/Supermarkets.png'),
+  'beauty-wellness': require('../../assets/category-icons/BEAUTY-WELLNESS/Beauty-services.png'),
+  'healthcare': require('../../assets/category-icons/HEALTHCARE/Clinics.png'),
+  'fashion': require('../../assets/category-icons/Shopping/Fashion.png'),
+  'fitness-sports': require('../../assets/category-icons/FITNESS-SPORTS/Gyms.png'),
+  'education-learning': require('../../assets/category-icons/EDUCATION-LEARNING/Coaching-center.png'),
+  'home-services': require('../../assets/category-icons/HOME-SERVICES/Cleaning.png'),
+  'travel-experiences': require('../../assets/category-icons/TRAVEL-EXPERIENCES/Tours.png'),
+  'entertainment': require('../../assets/category-icons/ENTERTAINMENT/Live-events.png'),
+  'financial-lifestyle': require('../../assets/category-icons/FINANCIAL-LIFESTYLE/Bill-payments.png'),
 };
 
 // Calculate total subcategories
@@ -71,93 +68,14 @@ interface SubcategoryWithParent extends SubcategoryItem {
   color: string;
 }
 
-// ============ SIDEBAR COMPONENT ============
-interface SidebarProps {
-  categories: SidebarCategory[];
-  selectedCategory: string | null;
-  onCategoryPress: (categoryId: string | null) => void;
-}
-
-const Sidebar: React.FC<SidebarProps> = ({ categories, selectedCategory, onCategoryPress }) => (
-  <View style={sidebarStyles.container}>
-    <View style={sidebarStyles.header}>
-      <Ionicons name="star" size={18} color="#FF9800" />
-      <ThemedText style={sidebarStyles.headerTitle}>Categories</ThemedText>
-    </View>
-    <ScrollView style={sidebarStyles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-      {/* All Option */}
-      <TouchableOpacity
-        style={[sidebarStyles.item, selectedCategory === null && sidebarStyles.itemSelected]}
-        onPress={() => onCategoryPress(null)}
-      >
-        <View style={[sidebarStyles.iconBox, { backgroundColor: '#E8F5E9' }, selectedCategory === null && sidebarStyles.iconBoxSelected]}>
-          <Ionicons name="apps" size={22} color="#00C06A" />
-        </View>
-        <ThemedText style={[sidebarStyles.itemText, selectedCategory === null && sidebarStyles.itemTextSelected]}>All</ThemedText>
-      </TouchableOpacity>
-
-      {/* Category Items */}
-      {categories.map((category) => {
-        const isSelected = selectedCategory === category.id;
-        const categoryImage = CATEGORY_IMAGES[category.id];
-        return (
-          <TouchableOpacity
-            key={category.id}
-            style={[sidebarStyles.item, isSelected && sidebarStyles.itemSelected]}
-            onPress={() => onCategoryPress(category.id)}
-          >
-            <View style={[sidebarStyles.iconBox, { backgroundColor: category.bgColor }, isSelected && sidebarStyles.iconBoxSelected]}>
-              {categoryImage ? (
-                <Image source={{ uri: categoryImage }} style={sidebarStyles.iconImage} />
-              ) : (
-                <Ionicons name={category.icon} size={22} color={category.color} />
-              )}
-            </View>
-            <ThemedText style={[sidebarStyles.itemText, isSelected && sidebarStyles.itemTextSelected]} numberOfLines={2}>
-              {category.name}
-            </ThemedText>
-            <ThemedText style={sidebarStyles.countText}>{category.subcategoryCount}</ThemedText>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
-  </View>
-);
-
-const sidebarStyles = StyleSheet.create({
-  container: { width: 85, backgroundColor: '#F8FAFC', borderRightWidth: 1, borderRightColor: '#E2E8F0' },
-  header: { alignItems: 'center', paddingVertical: 10, backgroundColor: '#FFF9E6', borderBottomWidth: 1, borderBottomColor: '#FFE082' },
-  headerTitle: { fontSize: 9, fontWeight: '700', color: '#F57C00', marginTop: 2 },
-  scrollView: { flex: 1 },
-  item: { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 4, borderLeftWidth: 3, borderLeftColor: 'transparent' },
-  itemSelected: { backgroundColor: '#FFFFFF', borderLeftColor: '#00C06A' },
-  iconBox: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
-  iconBoxSelected: { borderWidth: 2, borderColor: '#00C06A' },
-  iconImage: { width: '100%', height: '100%' },
-  itemText: { fontSize: 9, fontWeight: '500', color: '#64748B', textAlign: 'center', marginTop: 4, lineHeight: 11 },
-  itemTextSelected: { color: '#00C06A', fontWeight: '700' },
-  countText: { fontSize: 8, color: '#9CA3AF', marginTop: 1 },
-});
-
 // ============ MAIN COMPONENT ============
 export default function CategoriesScreen() {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [showAll, setShowAll] = useState(false);
 
-  // Get subcategories based on selected category
+  // Get subcategories when a category is selected
   const displayedSubcategories = useMemo((): SubcategoryWithParent[] => {
-    if (!selectedCategory) {
-      // "All" selected - show first 2 subcategories from each main category
-      return Object.values(CATEGORY_CONFIGS).flatMap(cat =>
-        cat.subcategories.slice(0, 2).map(sub => ({
-          ...sub,
-          parentSlug: cat.slug,
-          parentName: cat.name,
-          color: cat.primaryColor,
-        }))
-      );
-    }
+    if (!selectedCategory) return [];
     const config = CATEGORY_CONFIGS[selectedCategory];
     return config?.subcategories.map(sub => ({
       ...sub,
@@ -171,38 +89,65 @@ export default function CategoriesScreen() {
     selectedCategory ? SIDEBAR_CATEGORIES.find(c => c.id === selectedCategory) : null,
   [selectedCategory]);
 
-  const totalInCurrentView = useMemo(() => {
-    if (!selectedCategory) return TOTAL_SUBCATEGORIES;
-    return CATEGORY_CONFIGS[selectedCategory]?.subcategories.length || 0;
-  }, [selectedCategory]);
-
   // Handle subcategory press - navigate to StoreListPage
   const handleSubcategoryPress = useCallback((subcategory: SubcategoryWithParent) => {
     router.push({
       pathname: '/StoreListPage',
       params: {
-        category: subcategory.slug, // Use subcategory slug for filtering
-        parentCategory: subcategory.parentSlug, // Keep parent for reference
+        category: subcategory.slug,
+        parentCategory: subcategory.parentSlug,
         title: subcategory.name,
       },
     } as any);
   }, [router]);
 
-  const handleCategoryPress = useCallback((categoryId: string | null) => {
+  // Handle main category press - show subcategories
+  const handleMainCategoryPress = useCallback((categoryId: string) => {
     setSelectedCategory(categoryId);
-    setShowAll(false);
+  }, []);
+
+  // Handle back to categories
+  const handleBackToCategories = useCallback(() => {
+    setSelectedCategory(null);
   }, []);
 
   const numColumns = 3;
-  const itemWidth = (CONTENT_WIDTH - 24) / numColumns;
+  const FULL_WIDTH = SCREEN_WIDTH;
+  const categoryItemWidth = (FULL_WIDTH - 48) / numColumns;
+  const subcategoryItemWidth = (FULL_WIDTH - 48) / numColumns;
 
-  const renderItem = ({ item, index }: { item: SubcategoryWithParent; index: number }) => {
-    // Get custom icon for this subcategory
-    const customIcon = getSubcategoryIcon(item.slug);
-
+  // Render main category item
+  const renderCategoryItem = ({ item }: { item: SidebarCategory }) => {
+    const categoryImage = CATEGORY_IMAGES[item.id];
     return (
       <TouchableOpacity
-        style={[styles.gridItem, { width: itemWidth }]}
+        style={[styles.gridItem, { width: categoryItemWidth }]}
+        onPress={() => handleMainCategoryPress(item.id)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.circleCard}>
+          {categoryImage ? (
+            <Image source={categoryImage} style={styles.circleImage} resizeMode="cover" />
+          ) : (
+            <Ionicons name={item.icon} size={28} color={item.color} />
+          )}
+        </View>
+        <ThemedText style={styles.categoryName} numberOfLines={2}>
+          {item.name}
+        </ThemedText>
+        <ThemedText style={styles.subcategoryCountText}>
+          {item.subcategoryCount} items
+        </ThemedText>
+      </TouchableOpacity>
+    );
+  };
+
+  // Render subcategory item
+  const renderSubcategoryItem = ({ item }: { item: SubcategoryWithParent }) => {
+    const customIcon = getSubcategoryIcon(item.slug);
+    return (
+      <TouchableOpacity
+        style={[styles.gridItem, { width: subcategoryItemWidth }]}
         onPress={() => handleSubcategoryPress(item)}
         activeOpacity={0.7}
       >
@@ -232,9 +177,20 @@ export default function CategoriesScreen() {
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={['#00C06A', '#00A05A', '#008B4A']} style={styles.header}>
         <View style={styles.headerContent}>
+          {selectedCategory ? (
+            <TouchableOpacity style={styles.backButton} onPress={handleBackToCategories}>
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          ) : null}
           <View style={styles.headerLeft}>
-            <ThemedText style={styles.headerTitle}>Categories</ThemedText>
-            <ThemedText style={styles.headerSubtitle}>{TOTAL_SUBCATEGORIES} items to explore</ThemedText>
+            <ThemedText style={styles.headerTitle}>
+              {selectedCategory ? currentCategory?.name : 'Categories'}
+            </ThemedText>
+            <ThemedText style={styles.headerSubtitle}>
+              {selectedCategory
+                ? `${displayedSubcategories.length} subcategories`
+                : `${SIDEBAR_CATEGORIES.length} categories to explore`}
+            </ThemedText>
           </View>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/search' as any)}>
             <Ionicons name="search-outline" size={24} color="#FFFFFF" />
@@ -242,17 +198,32 @@ export default function CategoriesScreen() {
         </View>
       </LinearGradient>
 
-      <View style={styles.mainContainer}>
-        <Sidebar
-          categories={SIDEBAR_CATEGORIES}
-          selectedCategory={selectedCategory}
-          onCategoryPress={handleCategoryPress}
-        />
-
-        <View style={styles.contentContainer}>
+      <View style={styles.fullContentContainer}>
+        {!selectedCategory ? (
+          // Show main categories
+          <FlatList
+            data={SIDEBAR_CATEGORIES}
+            renderItem={renderCategoryItem}
+            keyExtractor={(item) => item.id}
+            numColumns={numColumns}
+            contentContainerStyle={styles.gridContent}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <Ionicons name="apps" size={18} color="#00C06A" />
+                  <ThemedText style={styles.sectionTitle}>All Categories</ThemedText>
+                  <ThemedText style={styles.countText}>({SIDEBAR_CATEGORIES.length})</ThemedText>
+                </View>
+              </View>
+            }
+            ListFooterComponent={<View style={{ height: 100 }} />}
+          />
+        ) : (
+          // Show subcategories for selected category
           <FlatList
             data={displayedSubcategories}
-            renderItem={renderItem}
+            renderItem={renderSubcategoryItem}
             keyExtractor={(item) => `${item.parentSlug}-${item.slug}`}
             numColumns={numColumns}
             contentContainerStyle={styles.gridContent}
@@ -260,20 +231,11 @@ export default function CategoriesScreen() {
             ListHeaderComponent={
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleRow}>
-                  {currentCategory ? (
-                    <>
-                      <View style={[styles.groupBadge, { backgroundColor: currentCategory.bgColor }]}>
-                        <Ionicons name={currentCategory.icon} size={14} color={currentCategory.color} />
-                      </View>
-                      <ThemedText style={styles.sectionTitle}>{currentCategory.name}</ThemedText>
-                    </>
-                  ) : (
-                    <>
-                      <Ionicons name="apps" size={18} color="#00C06A" />
-                      <ThemedText style={styles.sectionTitle}>All Categories</ThemedText>
-                    </>
-                  )}
-                  <ThemedText style={styles.countText}>({totalInCurrentView})</ThemedText>
+                  <View style={[styles.groupBadge, { backgroundColor: currentCategory?.bgColor }]}>
+                    <Ionicons name={currentCategory?.icon || 'grid'} size={14} color={currentCategory?.color} />
+                  </View>
+                  <ThemedText style={styles.sectionTitle}>{currentCategory?.name}</ThemedText>
+                  <ThemedText style={styles.countText}>({displayedSubcategories.length})</ThemedText>
                 </View>
               </View>
             }
@@ -283,22 +245,9 @@ export default function CategoriesScreen() {
                 <ThemedText style={styles.emptyText}>No subcategories found</ThemedText>
               </View>
             }
-            ListFooterComponent={
-              <View style={styles.footerContainer}>
-                {!selectedCategory && (
-                  <TouchableOpacity style={styles.seeAllButton} onPress={() => setShowAll(true)}>
-                    <ThemedText style={styles.seeAllText}>See All {TOTAL_SUBCATEGORIES}</ThemedText>
-                    <Ionicons name="chevron-forward" size={16} color="#00C06A" />
-                  </TouchableOpacity>
-                )}
-                <ThemedText style={styles.showingText}>
-                  Showing {displayedSubcategories.length} of {totalInCurrentView}
-                </ThemedText>
-                <View style={{ height: 80 }} />
-              </View>
-            }
+            ListFooterComponent={<View style={{ height: 100 }} />}
           />
-        </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -307,19 +256,19 @@ export default function CategoriesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7FAFC' },
   header: { paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight || 0, paddingBottom: 12, paddingHorizontal: 16 },
-  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12 },
+  headerContent: { flexDirection: 'row', alignItems: 'center', paddingTop: 12 },
   headerLeft: { flex: 1 },
   headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
   headerSubtitle: { fontSize: 13, color: 'rgba(255, 255, 255, 0.85)', fontWeight: '500' },
   headerButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.2)', justifyContent: 'center', alignItems: 'center' },
-  mainContainer: { flex: 1, flexDirection: 'row' },
-  contentContainer: { flex: 1, backgroundColor: '#FFFFFF' },
-  gridContent: { paddingHorizontal: 8, paddingBottom: 16 },
-  gridItem: { alignItems: 'center', marginBottom: 16, paddingHorizontal: 4 },
+  backButton: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+  fullContentContainer: { flex: 1, backgroundColor: '#FFFFFF' },
+  gridContent: { paddingHorizontal: 16, paddingBottom: 16 },
+  gridItem: { alignItems: 'center', marginBottom: 20, paddingHorizontal: 4 },
   circleCard: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
@@ -331,6 +280,22 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  categoryName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 16,
+    maxWidth: 90,
+  },
+  subcategoryCountText: {
+    fontSize: 10,
+    fontWeight: '400',
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 2,
+  },
   subcategoryName: {
     fontSize: 11,
     fontWeight: '500',
@@ -340,15 +305,11 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     maxWidth: 80,
   },
-  sectionHeader: { paddingHorizontal: 8, paddingTop: 12, paddingBottom: 8 },
+  sectionHeader: { paddingHorizontal: 8, paddingTop: 16, paddingBottom: 12 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   groupBadge: { width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1F2937' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
   countText: { fontSize: 13, color: '#9CA3AF', fontWeight: '500' },
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
   emptyText: { fontSize: 16, color: '#9CA3AF', textAlign: 'center', marginTop: 12 },
-  footerContainer: { alignItems: 'center', paddingVertical: 16 },
-  seeAllButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, gap: 4, marginBottom: 8 },
-  seeAllText: { fontSize: 13, fontWeight: '600', color: '#00C06A' },
-  showingText: { fontSize: 11, color: '#9CA3AF' },
 });

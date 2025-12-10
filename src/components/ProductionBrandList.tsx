@@ -124,9 +124,25 @@ const ProductionBrandList = ({ stores, isLoading, error, onRefresh }: Production
     };
 
     const rating = store.ratings?.average || 0;
-    const cashback = store.offers?.cashback || 0;
-    const address = `${store.location?.address || ''}, ${store.location?.city || ''}`;
-    const deliveryTime = store.operationalInfo?.deliveryTime || '30-45 mins';
+
+    // Handle cashback from multiple possible sources - cast to any for additional properties
+    const storeAny = store as any;
+    const cashback = store.offers?.cashback || storeAny.cashback || 0;
+    const hasCashback = cashback > 0;
+
+    // Handle address - backend sends it in 'address' field, not 'location'
+    const storeAddress = store.address || store.location;
+    const addressStr = storeAddress?.street || storeAddress?.address || '';
+    const cityStr = storeAddress?.city || '';
+    const address = addressStr && cityStr
+      ? `${addressStr}, ${cityStr}`
+      : (addressStr || cityStr || '');
+
+    // Handle delivery time from multiple sources
+    const deliveryTime = store.operationalInfo?.deliveryTime || storeAny.deliveryTime || '30-45 mins';
+
+    // Get short description if available
+    const shortDesc = storeAny.shortDescription || storeAny.description || '';
 
     return (
       <Animated.View style={[styles.brandCardWrapper, animatedStyle]}>
@@ -172,20 +188,25 @@ const ProductionBrandList = ({ stores, isLoading, error, onRefresh }: Production
             <View style={styles.brandInfo}>
               <View style={styles.brandHeader}>
                 <Text style={styles.brandName} numberOfLines={1}>{store.name}</Text>
-                <View style={styles.ratingContainer}>
-                  <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
-                  <View style={styles.starsContainer}>
-                    {renderStars(rating)}
+                {rating > 0 && (
+                  <View style={styles.ratingContainer}>
+                    <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+                    <View style={styles.starsContainer}>
+                      {renderStars(rating)}
+                    </View>
                   </View>
+                )}
+              </View>
+
+              {/* Show address if available */}
+              {address ? (
+                <View style={styles.addressContainer}>
+                  <Ionicons name="location-outline" size={14} color="#6B7280" />
+                  <Text style={styles.brandAddress} numberOfLines={1}>
+                    {address}
+                  </Text>
                 </View>
-              </View>
-              
-              <View style={styles.addressContainer}>
-                <Ionicons name="location-outline" size={14} color="#6B7280" />
-                <Text style={styles.brandAddress} numberOfLines={2}>
-                  {address}
-                </Text>
-              </View>
+              ) : null}
 
               <View style={styles.metaRow}>
                 <View style={styles.deliveryBadge}>
@@ -193,15 +214,23 @@ const ProductionBrandList = ({ stores, isLoading, error, onRefresh }: Production
                   <Text style={styles.deliveryText}>{deliveryTime}</Text>
                 </View>
 
-                <LinearGradient
-                  colors={['#10B981', '#059669']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.cashbackContainer}
-                >
-                  <Ionicons name="cash-outline" size={14} color="white" />
-                  <Text style={styles.cashbackText}>Upto {cashback}% cash back</Text>
-                </LinearGradient>
+                {/* Only show cashback badge if cashback > 0 */}
+                {hasCashback ? (
+                  <LinearGradient
+                    colors={['#10B981', '#059669']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.cashbackContainer}
+                  >
+                    <Ionicons name="gift-outline" size={14} color="white" />
+                    <Text style={styles.cashbackText}>Upto {cashback}% cashback</Text>
+                  </LinearGradient>
+                ) : (
+                  <View style={styles.partnerBadge}>
+                    <Ionicons name="storefront-outline" size={14} color="#00C06A" />
+                    <Text style={styles.partnerText}>Partner Store</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>
@@ -481,6 +510,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: 'white',
     letterSpacing: 0.3,
+  },
+  partnerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+  partnerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#059669',
   },
   // Loading states
   loadingContainer: {

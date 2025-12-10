@@ -1,20 +1,27 @@
 import React, { useEffect, useState, useCallback, memo } from 'react';
 import {
   View,
-  ScrollView,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Image,
-  Dimensions,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
 import servicesService from '@/services/servicesApi';
 
-const { width: screenWidth } = Dimensions.get('window');
-const CARD_WIDTH = screenWidth * 0.75;
-const CARD_GAP = 12;
+const PARENT_PADDING = 16;
+
+// Clean minimal colors
+const COLORS = {
+  primary: '#00C06A',
+  navy: '#0B2240',
+  textPrimary: '#0B2240',
+  textSecondary: '#666666',
+  white: '#FFFFFF',
+  cardBg: '#FFFFFF',
+  border: '#F0F0F0',
+};
 
 interface PopularService {
   _id?: string;
@@ -64,10 +71,10 @@ interface PopularServicesSectionProps {
   limit?: number;
 }
 
-// Popular Service Card Component
+// Simple Clean Service Card - matches screenshot style
 const PopularServiceCard = memo(({
   service,
-  onPress
+  onPress,
 }: {
   service: PopularService;
   onPress: () => void;
@@ -75,7 +82,7 @@ const PopularServiceCard = memo(({
   const imageUrl = service.image || service.images?.[0] || 'https://via.placeholder.com/300x200';
   const description = service.shortDescription || service.description || 'Professional service';
 
-  // Safely get category name - handle case where serviceCategory might be a string or object
+  // Safely get category name
   let categoryName = 'Service';
   if (service.serviceCategory) {
     if (typeof service.serviceCategory === 'string') {
@@ -88,35 +95,44 @@ const PopularServiceCard = memo(({
   }
 
   return (
-    <View style={styles.serviceCard}>
-      <View style={styles.cardContent}>
-        {/* Left side - Text content */}
-        <View style={styles.textContent}>
-          <ThemedText style={styles.categoryLabel}>
-            {categoryName}
-          </ThemedText>
-          <ThemedText style={styles.serviceDescription} numberOfLines={2}>
-            {description}
-          </ThemedText>
-          <TouchableOpacity
-            style={styles.bookButton}
-            onPress={onPress}
-            activeOpacity={0.85}
-          >
-            <ThemedText style={styles.bookButtonText}>Book now</ThemedText>
-          </TouchableOpacity>
-        </View>
+    <TouchableOpacity
+      style={styles.serviceCard}
+      onPress={onPress}
+      activeOpacity={0.95}
+    >
+      {/* Left side - Text content */}
+      <View style={styles.textContent}>
+        {/* Category name */}
+        <ThemedText style={styles.categoryLabel}>
+          {categoryName}
+        </ThemedText>
 
-        {/* Right side - Image */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.serviceImage}
-            resizeMode="cover"
-          />
-        </View>
+        {/* Description */}
+        <ThemedText style={styles.serviceDescription} numberOfLines={2}>
+          {description}
+        </ThemedText>
+
+        {/* Book Button */}
+        <TouchableOpacity
+          style={styles.bookButton}
+          onPress={onPress}
+          activeOpacity={0.8}
+        >
+          <ThemedText style={styles.bookButtonText}>
+            Book now
+          </ThemedText>
+        </TouchableOpacity>
       </View>
-    </View>
+
+      {/* Right side - Image */}
+      <View style={styles.imageContainer}>
+        <Image
+          source={{ uri: imageUrl }}
+          style={styles.serviceImage}
+          resizeMode="cover"
+        />
+      </View>
+    </TouchableOpacity>
   );
 });
 
@@ -133,18 +149,15 @@ function PopularServicesSection({
     try {
       setLoading(true);
       setError(null);
-      console.log('⭐ [POPULAR SERVICES UI] Fetching popular services...');
       const response = await servicesService.getPopularServices(limit);
 
       if (response.success && response.data) {
-        console.log('✅ [POPULAR SERVICES UI] Got', response.data.length, 'services');
         setServices(response.data as PopularService[]);
       } else {
-        console.log('❌ [POPULAR SERVICES UI] Failed:', response);
         setError('Failed to load popular services');
       }
     } catch (err) {
-      console.error('❌ [POPULAR SERVICES UI] Error:', err);
+      console.error('Error fetching popular services:', err);
       setError('Failed to load popular services');
     } finally {
       setLoading(false);
@@ -169,14 +182,15 @@ function PopularServicesSection({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <ThemedText style={styles.title}>{title}</ThemedText>
+        <View style={styles.titleRow}>
+          <ThemedText style={styles.title}>{title}</ThemedText>
+        </View>
       </View>
 
       {/* Content */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7C3AED" />
-          <ThemedText style={styles.loadingText}>Loading services...</ThemedText>
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
@@ -203,71 +217,70 @@ function PopularServicesSection({
 const styles = StyleSheet.create({
   container: {
     marginTop: 24,
-    marginBottom: 8,
+    marginBottom: 12,
+    paddingHorizontal: PARENT_PADDING,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 16,
-    paddingHorizontal: 4,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: COLORS.navy,
   },
   listContainer: {
-    gap: 16,
+    gap: 12,
   },
+  // Clean minimal card
   serviceCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.cardBg,
     borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardContent: {
     flexDirection: 'row',
     padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   textContent: {
     flex: 1,
-    paddingRight: 16,
+    paddingRight: 12,
     justifyContent: 'center',
   },
   categoryLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#7C3AED',
-    marginBottom: 8,
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginBottom: 4,
   },
   serviceDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-    marginBottom: 16,
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+    marginBottom: 12,
   },
   bookButton: {
-    backgroundColor: '#7C3AED',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
     alignSelf: 'flex-start',
   },
   bookButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: COLORS.white,
+    fontSize: 13,
     fontWeight: '600',
   },
   imageContainer: {
-    width: 120,
-    height: 120,
+    width: 100,
+    height: 100,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -279,11 +292,6 @@ const styles = StyleSheet.create({
     padding: 40,
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#6B7280',
-  },
   errorContainer: {
     padding: 40,
     alignItems: 'center',
@@ -294,13 +302,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   retryButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 20,
   },
   retryText: {
-    color: '#FFFFFF',
+    color: COLORS.white,
     fontSize: 14,
     fontWeight: '600',
   },

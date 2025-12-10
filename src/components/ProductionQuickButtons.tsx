@@ -38,7 +38,7 @@ const ProductionQuickButtons = () => {
 
       // Navigate to stores page with location filter
       router.push(
-        `/StoresListingPage?lat=${location.coords.latitude}&lng=${location.coords.longitude}&category=fashion&nearby=true`
+        `/StoreListPage?lat=${location.coords.latitude}&lng=${location.coords.longitude}&sortBy=distance`
       );
     } catch (error) {
       console.error('Error getting location:', error);
@@ -51,8 +51,8 @@ const ProductionQuickButtons = () => {
   };
 
   const handleNewOffer = () => {
-    // Navigate to offers page with new filter
-    router.push('/OffersPage?filter=new&category=fashion');
+    // Navigate to offers page with new arrivals
+    router.push('/offers/view-all?category=new_arrival');
   };
 
   const handleRezCoin = () => {
@@ -62,7 +62,7 @@ const ProductionQuickButtons = () => {
 
   const handleTopRated = () => {
     // Navigate to stores page sorted by rating
-    router.push('/StoresListingPage?category=fashion&sortBy=rating&order=desc');
+    router.push('/StoreListPage?sortBy=rating&order=desc');
   };
 
   const quickButtons: QuickButton[] = [

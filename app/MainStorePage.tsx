@@ -58,6 +58,7 @@ import wishlistApi from '@/services/wishlistApi';
 import { storesApi } from '@/services/storesApi';
 import { showAlert } from '@/components/common/CrossPlatformAlert';
 import { useAuth } from '@/contexts/AuthContext';
+import asyncStorageService from '@/services/asyncStorageService';
 
 // ============================================================================
 // LAZY LOADED COMPONENTS - Code Splitting for Bundle Size Optimization
@@ -257,7 +258,69 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         setStoreData(transformedData);
         setIsDynamic(true);
         fullStoreDataRef.current = fetchedStoreData; // Store full data for modals
-        
+
+        // Track this store as recently viewed
+        // Note: Backend has 'address' field separate from 'location' (GeoJSON)
+        asyncStorageService.addRecentlyViewedStore({
+          _id: transformedData.id,
+          name: transformedData.name,
+          slug: fetchedStoreData.slug,
+          logo: transformedData.logo,
+          banner: transformedData.image,
+          // Use 'address' field from backend (not 'location' which is GeoJSON)
+          address: fetchedStoreData.address ? {
+            street: fetchedStoreData.address.street,
+            city: fetchedStoreData.address.city,
+            state: fetchedStoreData.address.state,
+          } : undefined,
+          ratings: {
+            average: transformedData.rating,
+            count: transformedData.ratingCount,
+          },
+          offers: {
+            cashback: typeof transformedData.cashback === 'number' && transformedData.cashback > 0
+              ? transformedData.cashback
+              : undefined,
+          },
+        }).catch(err => console.log('[MainStorePage] Error tracking store view:', err));
+
+        // Track store visit for "Shop at your favorite" section
+        asyncStorageService.trackStoreVisit({
+          _id: transformedData.id,
+          name: transformedData.name,
+          slug: fetchedStoreData.slug,
+          logo: transformedData.logo,
+          banner: transformedData.image,
+          description: fetchedStoreData.description || '',
+          // Pass address if available
+          address: fetchedStoreData.address ? {
+            street: fetchedStoreData.address.street || '',
+            city: fetchedStoreData.address.city || '',
+            state: fetchedStoreData.address.state || '',
+            pincode: fetchedStoreData.address.pincode || '',
+            landmark: fetchedStoreData.address.landmark || '',
+          } : undefined,
+          // Pass location if available (fallback for stores without address field)
+          location: fetchedStoreData.location ? {
+            address: fetchedStoreData.location.address || '',
+            city: fetchedStoreData.location.city || '',
+            state: fetchedStoreData.location.state || '',
+            pincode: fetchedStoreData.location.pincode || '',
+          } : undefined,
+          ratings: {
+            average: transformedData.rating,
+            count: transformedData.ratingCount,
+          },
+          offers: {
+            cashback: typeof transformedData.cashback === 'number' && transformedData.cashback > 0
+              ? transformedData.cashback
+              : undefined,
+          },
+          operationalInfo: {
+            deliveryTime: fetchedStoreData.operationalInfo?.deliveryTime || '',
+          },
+        }).catch(err => console.log('[MainStorePage] Error tracking favorite store visit:', err));
+
       } catch (error) {
         console.error('❌ [MainStorePage] Failed to transform store data:', error);
         setError('Failed to load store details');

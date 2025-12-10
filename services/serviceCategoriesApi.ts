@@ -83,7 +83,7 @@ export interface ServicesInCategoryResponse {
     icon: string;
     cashbackPercentage: number;
     description?: string;
-  };
+  } | null;
   pagination: {
     page: number;
     limit: number;
@@ -123,7 +123,9 @@ class ServiceCategoriesService {
       }
 
       // Add cashbackText to each category
-      const categories = (response.data?.data || []).map((cat: ServiceCategory) => ({
+      // response.data is already the array (apiClient unwraps responseData.data)
+      const rawCategories = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+      const categories = rawCategories.map((cat: ServiceCategory) => ({
         ...cat,
         cashbackText: `Up to ${cat.cashbackPercentage}% cash back`
       }));
@@ -225,9 +227,17 @@ class ServiceCategoriesService {
         };
       }
 
+      // Backend returns: { data: { services, category, pagination } }
+      // apiClient unwraps responseData.data, so response.data = { services, category, pagination }
+      const rawData = response.data || {};
+
       return {
         success: true,
-        data: response.data
+        data: {
+          services: Array.isArray(rawData.services) ? rawData.services : [],
+          category: rawData.category || null,
+          pagination: rawData.pagination || { page: 1, limit: 20, total: 0, pages: 1 }
+        }
       };
     } catch (error) {
       console.error('Error fetching services in category:', error);

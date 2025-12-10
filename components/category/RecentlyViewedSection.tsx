@@ -1,0 +1,412 @@
+/**
+ * RecentlyViewedSection Component
+ * Displays a horizontal scrollable list of recently viewed stores and products
+ * Production-ready with proper styling matching the app's design system
+ */
+
+import React, { useCallback, memo } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Image,
+  Platform,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { RecentlyViewedItem } from '@/types/recentlyViewed.types';
+
+interface RecentlyViewedSectionProps {
+  items: RecentlyViewedItem[];
+  isLoading?: boolean;
+  onViewAll?: () => void;
+  maxItems?: number;
+}
+
+const CARD_WIDTH = 170;
+const CARD_GAP = 12;
+const IMAGE_HEIGHT = 140;
+
+// Memoized Card Component for performance
+const RecentlyViewedCard = memo(({
+  item,
+  onPress,
+}: {
+  item: RecentlyViewedItem;
+  onPress: () => void;
+}) => {
+  const formattedRating = item.rating.value > 0 ? item.rating.value.toFixed(1) : '0.0';
+  const hasCashback = item.cashbackPercentage && item.cashbackPercentage > 0;
+
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.85}
+      accessibilityLabel={`View ${item.name}`}
+      accessibilityRole="button"
+    >
+      {/* Image Container */}
+      <View style={styles.imageContainer}>
+        {item.image ? (
+          <Image
+            source={{ uri: item.image }}
+            style={styles.cardImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Ionicons
+              name={item.type === 'store' ? 'storefront-outline' : 'cube-outline'}
+              size={40}
+              color="#9CA3AF"
+            />
+          </View>
+        )}
+
+        {/* Gradient overlay for better text visibility */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.4)']}
+          style={styles.imageGradient}
+        />
+
+        {/* Type Badge */}
+        <View style={[
+          styles.typeBadge,
+          item.type === 'store' ? styles.storeBadge : styles.productBadge
+        ]}>
+          <Ionicons
+            name={item.type === 'store' ? 'storefront' : 'pricetag'}
+            size={10}
+            color="#FFFFFF"
+          />
+          <Text style={styles.typeBadgeText}>
+            {item.type === 'store' ? 'Store' : 'Product'}
+          </Text>
+        </View>
+      </View>
+
+      {/* Card Content */}
+      <View style={styles.cardContent}>
+        {/* Name */}
+        <Text style={styles.itemName} numberOfLines={1}>
+          {item.name}
+        </Text>
+
+        {/* Rating Row */}
+        <View style={styles.ratingRow}>
+          <Text style={styles.ratingValue}>{formattedRating}</Text>
+          <Ionicons name="star" size={12} color="#FFC857" />
+          {item.rating.count > 0 && (
+            <Text style={styles.ratingCount}>({item.rating.count})</Text>
+          )}
+        </View>
+
+        {/* Address (for stores) or Price (for products) */}
+        {item.type === 'store' && item.address && item.address.length > 1 ? (
+          <View style={styles.addressRow}>
+            <Ionicons name="location-outline" size={12} color="#6B7280" />
+            <Text style={styles.addressText} numberOfLines={2}>
+              {item.address}
+            </Text>
+          </View>
+        ) : item.type === 'product' && item.price && item.price.current > 0 ? (
+          <View style={styles.priceRow}>
+            <Text style={styles.currentPrice}>
+              ₹{item.price.current.toLocaleString('en-IN')}
+            </Text>
+            {item.price.original && item.price.original > item.price.current && (
+              <Text style={styles.originalPrice}>
+                ₹{item.price.original.toLocaleString('en-IN')}
+              </Text>
+            )}
+          </View>
+        ) : null}
+
+        {/* Cashback Badge */}
+        {hasCashback && (
+          <View style={styles.cashbackBadge}>
+            <Text style={styles.cashbackText}>
+              Upto {item.cashbackPercentage}% cash back
+            </Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+RecentlyViewedCard.displayName = 'RecentlyViewedCard';
+
+const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
+  items,
+  isLoading = false,
+  onViewAll,
+  maxItems = 10,
+}) => {
+  const router = useRouter();
+
+  // Handle item press - navigate to appropriate detail page
+  const handleItemPress = useCallback((item: RecentlyViewedItem) => {
+    if (item.type === 'store') {
+      router.push({
+        pathname: '/MainStorePage',
+        params: { storeId: item.id },
+      } as any);
+    } else {
+      router.push({
+        pathname: '/ProductPage',
+        params: { cardId: item.id, cardType: 'product' },
+      } as any);
+    }
+  }, [router]);
+
+  // Don't render if no items and not loading
+  if (!isLoading && items.length === 0) {
+    return null;
+  }
+
+  const displayItems = items.slice(0, maxItems);
+
+  return (
+    <View style={styles.container}>
+      {/* Section Header */}
+      <View style={styles.header}>
+        <Text style={styles.sectionTitle}>Recently Viewed</Text>
+        {onViewAll && items.length > 0 && (
+          <TouchableOpacity
+            onPress={onViewAll}
+            style={styles.viewAllButton}
+            accessibilityLabel="View all recently viewed items"
+            accessibilityRole="button"
+          >
+            <Text style={styles.viewAllText}>View all</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Loading State */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#00C06A" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      ) : (
+        /* Horizontal Scroll of Cards */
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          decelerationRate="fast"
+          snapToInterval={CARD_WIDTH + CARD_GAP}
+          snapToAlignment="start"
+        >
+          {displayItems.map((item) => (
+            <RecentlyViewedCard
+              key={`${item.type}-${item.id}`}
+              item={item}
+              onPress={() => handleItemPress(item)}
+            />
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    marginVertical: 12,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    borderRadius: 16,
+    paddingVertical: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+      },
+    }),
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    letterSpacing: -0.3,
+  },
+  viewAllButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: '#00C06A',
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#9CA3AF',
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    gap: CARD_GAP,
+  },
+  card: {
+    width: CARD_WIDTH,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.06)',
+      },
+    }),
+  },
+  imageContainer: {
+    width: '100%',
+    height: IMAGE_HEIGHT,
+    position: 'relative',
+    backgroundColor: '#F3F4F6',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+  },
+  imagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  typeBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  storeBadge: {
+    backgroundColor: '#00C06A',
+  },
+  productBadge: {
+    backgroundColor: '#8B5CF6',
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  cardContent: {
+    padding: 12,
+    gap: 6,
+  },
+  itemName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    letterSpacing: -0.2,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  ratingCount: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 4,
+  },
+  addressText: {
+    fontSize: 12,
+    color: '#6B7280',
+    flex: 1,
+    lineHeight: 16,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  currentPrice: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  originalPrice: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
+  },
+  cashbackBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  cashbackText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
+  },
+});
+
+export default memo(RecentlyViewedSection);

@@ -26,6 +26,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import cartApi from '@/services/cartApi';
 import wishlistApi from '@/services/wishlistApi';
+import asyncStorageService from '@/services/asyncStorageService';
 
 interface Store {
   _id?: string;
@@ -283,6 +284,24 @@ export default function StorePage() {
         setCardData(updatedCardData);
 
         setBackendData(productData as any);
+
+        // Track this product as recently viewed
+        asyncStorageService.addRecentlyViewedProduct({
+          _id: updatedCardData.id || updatedCardData._id,
+          name: updatedCardData.name,
+          title: updatedCardData.title,
+          image: updatedCardData.image,
+          images: updatedCardData.images,
+          price: updatedCardData.price ? {
+            current: updatedCardData.price,
+            original: updatedCardData.originalPrice,
+          } : undefined,
+          rating: {
+            value: updatedCardData.rating || 0,
+            count: updatedCardData.reviewCount || 0,
+          },
+          cashback: updatedCardData.cashback,
+        }).catch(err => console.log('[ProductPage] Error tracking product view:', err));
 
         // Fetch product analytics and track view
         try {

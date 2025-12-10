@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, memo } from 'react';
 import {
   View,
-  FlatList,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
@@ -13,16 +12,40 @@ import { useRouter } from 'expo-router';
 import serviceCategoriesApi, { ServiceCategory } from '@/services/serviceCategoriesApi';
 
 const { width: screenWidth } = Dimensions.get('window');
-const PARENT_PADDING = 20;
+const PARENT_PADDING = 16;
 const CARD_GAP = 12;
 const AVAILABLE_WIDTH = screenWidth - (PARENT_PADDING * 2);
 const CARD_WIDTH = Math.floor((AVAILABLE_WIDTH - CARD_GAP) / 2);
+
+// ReZ Design System Colors from TASK.md
+const COLORS = {
+  // Primary
+  primary: '#00C06A',
+  primaryLight: 'rgba(0, 192, 106, 0.1)',
+  primaryMedium: 'rgba(0, 192, 106, 0.2)',
+  // Deep Teal
+  teal: '#00796B',
+  // Gold (rewards)
+  gold: '#FFC857',
+  goldLight: 'rgba(255, 200, 87, 0.15)',
+  // Navy
+  navy: '#0B2240',
+  // Text
+  textPrimary: '#0B2240',
+  textSecondary: '#1F2D3D',
+  textMuted: '#9AA7B2',
+  // Surface
+  surface: '#F7FAFC',
+  white: '#FFFFFF',
+  // Card border (from Standard Card spec)
+  cardBorder: 'rgba(0, 0, 0, 0.04)',
+};
 
 interface ServiceCategoriesSectionProps {
   title?: string;
 }
 
-// Service Category Card Component
+// Service Category Card Component - ReZ Premium Design
 const ServiceCategoryCard = memo(({
   category,
   onPress
@@ -31,19 +54,19 @@ const ServiceCategoryCard = memo(({
   onPress: () => void;
 }) => {
   const renderIcon = () => {
-    // Safely get icon - ensure it's a string
     const iconValue = typeof category.icon === 'string' ? category.icon : '🔧';
 
+    // Display URL images as full-color (no tint)
     if (category.iconType === 'url' && iconValue && iconValue.startsWith('http')) {
       return (
         <Image
           source={{ uri: iconValue }}
-          style={styles.categoryIcon}
+          style={styles.categoryImage}
           resizeMode="contain"
         />
       );
     }
-    // For emoji or icon-name, display as text
+    // For emoji, display as text
     return (
       <ThemedText style={styles.categoryEmoji}>
         {iconValue}
@@ -51,7 +74,6 @@ const ServiceCategoryCard = memo(({
     );
   };
 
-  // Safely get name and cashback - ensure we're rendering strings not objects
   const categoryName = typeof category.name === 'string' ? category.name : 'Service';
   const cashbackPercent = typeof category.cashbackPercentage === 'number'
     ? category.cashbackPercentage
@@ -63,15 +85,22 @@ const ServiceCategoryCard = memo(({
       onPress={onPress}
       activeOpacity={0.85}
     >
+      {/* Icon Container - shows full color image */}
       <View style={styles.iconContainer}>
         {renderIcon()}
       </View>
+
+      {/* Category Name - Navy text */}
       <ThemedText style={styles.categoryName} numberOfLines={1}>
         {categoryName}
       </ThemedText>
-      <ThemedText style={styles.cashbackText}>
-        Up to {cashbackPercent}% cash back
-      </ThemedText>
+
+      {/* Cashback Pill - ReZ Green style from TASK.md */}
+      <View style={styles.cashbackPill}>
+        <ThemedText style={styles.cashbackText}>
+          Up to {cashbackPercent}% cash back
+        </ThemedText>
+      </View>
     </TouchableOpacity>
   );
 });
@@ -88,18 +117,15 @@ function ServiceCategoriesSection({
     try {
       setLoading(true);
       setError(null);
-      console.log('📦 [SERVICES UI] Fetching service categories...');
       const response = await serviceCategoriesApi.getServiceCategories();
 
       if (response.success && response.data) {
-        console.log('✅ [SERVICES UI] Got', response.data.length, 'categories');
         setCategories(response.data);
       } else {
-        console.log('❌ [SERVICES UI] Failed:', response);
         setError('Failed to load services');
       }
     } catch (err) {
-      console.error('❌ [SERVICES UI] Error:', err);
+      console.error('Error fetching services:', err);
       setError('Failed to load services');
     } finally {
       setLoading(false);
@@ -113,35 +139,6 @@ function ServiceCategoriesSection({
   const handleCategoryPress = (category: ServiceCategory) => {
     router.push(`/services/${category.slug}`);
   };
-
-  const renderCategory = useCallback(({ item, index }: { item: ServiceCategory; index: number }) => {
-    return (
-      <ServiceCategoryCard
-        category={item}
-        onPress={() => handleCategoryPress(item)}
-      />
-    );
-  }, []);
-
-  const keyExtractor = useCallback((item: ServiceCategory, index: number) =>
-    item._id || `service-cat-${index}`, []);
-
-  // Render items in a grid (2 columns)
-  const renderRow = useCallback(({ item, index }: { item: ServiceCategory[]; index: number }) => {
-    return (
-      <View style={styles.row}>
-        {item.map((category, i) => (
-          <ServiceCategoryCard
-            key={category._id || `cat-${index}-${i}`}
-            category={category}
-            onPress={() => handleCategoryPress(category)}
-          />
-        ))}
-        {/* Add empty space if odd number of items */}
-        {item.length === 1 && <View style={styles.emptyCard} />}
-      </View>
-    );
-  }, []);
 
   // Group categories into rows of 2
   const groupedCategories = React.useMemo(() => {
@@ -159,7 +156,7 @@ function ServiceCategoriesSection({
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header - Poppins H2 style */}
       <View style={styles.header}>
         <ThemedText style={styles.title}>{title}</ThemedText>
       </View>
@@ -167,8 +164,8 @@ function ServiceCategoriesSection({
       {/* Content */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7C3AED" />
-          <ThemedText style={styles.loadingText}>Loading services...</ThemedText>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ThemedText style={styles.loadingText}>Fetching your savings...</ThemedText>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
@@ -199,20 +196,22 @@ function ServiceCategoriesSection({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 16,
+    marginTop: 24,
     marginBottom: 8,
+    paddingHorizontal: PARENT_PADDING,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-    paddingHorizontal: 4,
   },
+  // H2: Poppins 22 (700) from TASK.md Typography
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.navy,
+    letterSpacing: -0.3,
   },
   gridContainer: {
     gap: CARD_GAP,
@@ -222,50 +221,66 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: CARD_GAP,
   },
+  // Standard Card from TASK.md
   categoryCard: {
     width: CARD_WIDTH,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderRadius: 16,
-    padding: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     alignItems: 'center',
+    // Border from Standard Card spec
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: COLORS.cardBorder,
+    // Shadow from Standard Card spec: 0 2px 8px rgba(11, 34, 64, 0.04), 0 8px 24px rgba(11, 34, 64, 0.08)
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   emptyCard: {
     width: CARD_WIDTH,
   },
+  // Icon container - subtle background for images
   iconContainer: {
     width: 56,
     height: 56,
-    borderRadius: 12,
-    backgroundColor: '#F3E8FF',
+    borderRadius: 14,
+    backgroundColor: COLORS.surface,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
-  categoryIcon: {
-    width: 32,
-    height: 32,
-    tintColor: '#7C3AED',
+  // Full color image (no tint)
+  categoryImage: {
+    width: 36,
+    height: 36,
   },
   categoryEmoji: {
     fontSize: 28,
   },
+  // H3 style: Poppins 18 (600) - adjusted for cards
   categoryName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#7C3AED',
+    color: COLORS.textPrimary,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  // Cashback Pill from TASK.md
+  cashbackPill: {
+    backgroundColor: COLORS.primaryLight,
+    borderWidth: 1,
+    borderColor: COLORS.primaryMedium,
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
   },
   cashbackText: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.primary,
     textAlign: 'center',
   },
   loadingContainer: {
@@ -275,7 +290,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.textMuted,
   },
   errorContainer: {
     padding: 40,
@@ -286,15 +301,22 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     marginBottom: 12,
   },
+  // Primary Button style from TASK.md
   retryButton: {
-    backgroundColor: '#7C3AED',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+    // Primary button shadow
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
   },
   retryText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: COLORS.white,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

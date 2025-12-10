@@ -24,10 +24,20 @@ import ProductionProductCarousel from '@/src/components/ProductionProductCarouse
 import ProductionQuickButtons from '@/src/components/ProductionQuickButtons';
 import StepsCard from '@/src/components/StepsCard';
 import { FashionCategory } from '@/hooks/useFashionData';
+import RecentlyViewedSection from '@/components/category/RecentlyViewedSection';
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
+import FavoriteStoresSection from '@/components/category/FavoriteStoresSection';
+import { useFavoriteStores } from '@/hooks/useFavoriteStores';
 
 export default function MainCategoryPage() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
+
+  // Get recently viewed items
+  const { items: recentlyViewedItems, isLoading: isLoadingRecentlyViewed } = useRecentlyViewed();
+
+  // Get favorite stores
+  const { favoriteStores, isLoading: isLoadingFavorites, toggleFavorite } = useFavoriteStores();
 
   // Get category configuration
   const categoryConfig = getCategoryConfig(slug || '');
@@ -70,19 +80,14 @@ export default function MainCategoryPage() {
 
       setIsLoadingSubcategoryProducts(true);
       try {
-        console.log(`[MainCategory] Fetching products for subcategory: ${selectedSubcategory.slug}`);
         const response = await productsApi.getProductsBySubcategory(selectedSubcategory.slug, 10);
 
         if (response.success && response.data) {
-          console.log(`[MainCategory] Got ${response.data.length} products for ${selectedSubcategory.slug}`);
           setSubcategoryProducts(response.data as CategoryProduct[]);
         } else {
-          // Fallback to featured products if API fails
-          console.log(`[MainCategory] No products found for ${selectedSubcategory.slug}, using featured`);
           setSubcategoryProducts(featuredProducts);
         }
       } catch (error) {
-        console.error('[MainCategory] Error fetching subcategory products:', error);
         setSubcategoryProducts(featuredProducts);
       } finally {
         setIsLoadingSubcategoryProducts(false);
@@ -103,19 +108,14 @@ export default function MainCategoryPage() {
 
       setIsLoadingSubcategoryStores(true);
       try {
-        console.log(`[MainCategory] Fetching stores for subcategory: ${selectedSubcategory.slug}`);
         const response = await storesApi.getStoresBySubcategorySlug(selectedSubcategory.slug, 10);
 
         if (response.success && response.data && response.data.length > 0) {
-          console.log(`[MainCategory] Got ${response.data.length} stores for ${selectedSubcategory.slug}`);
           setSubcategoryStores(response.data);
         } else {
-          // Fallback to featured stores if no stores found
-          console.log(`[MainCategory] No stores found for ${selectedSubcategory.slug}, using featured`);
           setSubcategoryStores(featuredStores);
         }
       } catch (error) {
-        console.error('[MainCategory] Error fetching subcategory stores:', error);
         setSubcategoryStores(featuredStores);
       } finally {
         setIsLoadingSubcategoryStores(false);
@@ -207,6 +207,16 @@ export default function MainCategoryPage() {
       {/* Steps Card - How to use vouchers */}
       <StepsCard />
 
+      {/* Shop at your Favorite Section - Bookmarked + Most visited stores */}
+      {favoriteStores.length > 0 && (
+        <FavoriteStoresSection
+          stores={favoriteStores}
+          isLoading={isLoadingFavorites}
+          onToggleFavorite={toggleFavorite}
+          maxItems={10}
+        />
+      )}
+
       {/* Store List - Stores filtered by selected subcategory */}
       <ProductionStoreList
         stores={subcategoryStores.length > 0 ? subcategoryStores : featuredStores}
@@ -214,6 +224,15 @@ export default function MainCategoryPage() {
         error={storesError}
         onRefresh={refetchAll}
       />
+
+      {/* Recently Viewed Section - Shows recently viewed stores and products */}
+      {recentlyViewedItems.length > 0 && (
+        <RecentlyViewedSection
+          items={recentlyViewedItems}
+          isLoading={isLoadingRecentlyViewed}
+          maxItems={10}
+        />
+      )}
 
       {/* Brand List - All category stores/brands */}
       <ProductionBrandList

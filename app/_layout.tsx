@@ -409,6 +409,10 @@ export default function RootLayout() {
                   {/* Dynamic Category Pages */}
                   <Stack.Screen name="category/[slug]" options={{ headerShown: false }} />
                   <Stack.Screen name="MainCategory/[slug]" options={{ headerShown: false }} />
+
+                  {/* Services Pages */}
+                  <Stack.Screen name="services" options={{ headerShown: false }} />
+
                   <Stack.Screen name="+not-found" />
                 </Stack>
                 <StatusBar style="auto" />

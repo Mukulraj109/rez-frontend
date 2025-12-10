@@ -37,9 +37,14 @@ import {
   NearbyProductsSection,
   HotDealsSection,
   FeaturedCategoriesContainer,
+  BestDiscountSection,
+  BestSellerSection,
 } from '@/components/homepage';
+import HomeTabSection, { TabId } from '@/components/homepage/HomeTabSection';
 import ServiceCategoriesSection from '@/components/homepage/ServiceCategoriesSection';
 import PopularServicesSection from '@/components/homepage/PopularServicesSection';
+import PromoBanner from '@/components/homepage/PromoBanner';
+import GlobeBanner from '@/components/homepage/GlobeBanner';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import {
   EventItem,
@@ -100,6 +105,8 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = React.useState('for-you'); // Category tab state
   const [homeCategories, setHomeCategories] = React.useState<any[]>([]); // Homepage category icons
   const [categoriesLoading, setCategoriesLoading] = React.useState(true);
+  const [activeTab, setActiveTab] = React.useState<TabId>('rez'); // Home tab bar state
+
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
   const scrollY = React.useRef(new Animated.Value(0)).current; // For sticky header
@@ -443,11 +450,11 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#00C06A" colors={['#00C06A']} />
         }
       >
-      {/* Header */}
+      {/* Header - Light Green gradient (stays same) */}
       <LinearGradient
-        colors={['#00C06A', '#00A16B', '#FFC857']}
+        colors={['#86EFAC', '#A7F3D0', '#D1FAE5', '#ECFDF5']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
         style={viewStyles.header}
       >
         <View style={viewStyles.headerTop}>
@@ -486,7 +493,7 @@ export default function HomeScreen() {
             <Ionicons
               name={showDetailedLocation ? "chevron-up" : "chevron-down"}
               size={16}
-              color="white"
+              color="#1a1a1a"
               style={viewStyles.locationArrow}
             />
           </Pressable>
@@ -512,20 +519,7 @@ export default function HomeScreen() {
               />
             </TouchableOpacity>
 
-            {/* ReZ Coin - Branded coin display */}
-            <ReZCoin
-              balance={userPoints}
-              size="small"
-              onPress={() => {
-                if (Platform.OS === 'ios') {
-                  setTimeout(() => router.push('/CoinPage'), 50);
-                } else {
-                  router.push('/CoinPage');
-                }
-              }}
-            />
-
-            <NotificationBell iconSize={24} iconColor="white" />
+            <NotificationBell iconSize={24} iconColor="#1a1a1a" />
 
             <TouchableOpacity
               onPress={() => {
@@ -542,7 +536,7 @@ export default function HomeScreen() {
               accessibilityHint="Double tap to view your shopping cart"
               style={{ position: 'relative' }}
             >
-              <Ionicons name="cart-outline" size={24} color="white" />
+              <Ionicons name="cart-outline" size={24} color="#FFFFFF" />
               {cartState.totalItems > 0 && (
                 <View
                   style={{
@@ -655,18 +649,24 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        <TouchableOpacity
-          style={viewStyles.searchContainer}
-          onPress={handleSearchPress}
-          activeOpacity={0.85}
-          accessibilityLabel="Search bar"
-          accessibilityRole="search"
-          accessibilityHint="Double tap to search for stores, products, and services"
-        >
-          <Ionicons name="search" size={20} color="#666" style={viewStyles.searchIcon} />
-          <Text style={textStyles.searchPlaceholder}>Search for the service</Text>
-        </TouchableOpacity>
-      </LinearGradient>
+        </LinearGradient>
+
+      {/* Home Tab Section - Outside gradient */}
+      <HomeTabSection
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onSearchPress={handleSearchPress}
+        coinBalance={userPoints}
+        onCoinPress={() => {
+          if (Platform.OS === 'ios') {
+            setTimeout(() => router.push('/CoinPage'), 50);
+          } else {
+            router.push('/CoinPage');
+          }
+        }}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+      />
 
       {/* Content */}
       <View style={viewStyles.content}>
@@ -723,11 +723,23 @@ export default function HomeScreen() {
         {/* Categories Grid Section - Shows all 11 main categories */}
         <CategoryGridSection title="Categories" maxCategories={11} />
 
+        {/* Promotional Banner */}
+        <PromoBanner />
+
+        {/* Best Discount Categories Section */}
+        <BestDiscountSection title="Best Discount" limit={10} />
+
+        {/* Best Seller Categories Section */}
+        <BestSellerSection title="Best Seller" limit={10} />
+
         {/* Popular Products Section - Shows products with highest order count */}
         <PopularProductsSection title="Popular" limit={10} />
 
         {/* In Your Area Section - Shows products from nearby stores */}
         <NearbyProductsSection title="In Your Area" limit={10} radius={10} />
+
+        {/* Globe Banner - Best Deals on Internet */}
+        <GlobeBanner />
 
         {/* Services Sections */}
         <ServiceCategoriesSection />
@@ -762,9 +774,9 @@ export default function HomeScreen() {
 
 const textStyles = StyleSheet.create({
   locationText: {
-    color: 'white',
+    color: '#1a1a1a',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   coinsText: {
     color: 'white',
@@ -1006,34 +1018,79 @@ const viewStyles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 8,
   },
-  searchContainer: {
-    backgroundColor: 'white',
+  tabSectionContainer: {
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginHorizontal: 0,
+    paddingBottom: 8,
+  },
+  searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 25,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
     marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    marginBottom: 12,
+    gap: 8,
+  },
+  searchContainer: {
+    flex: 3,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
+      web: {
+        boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.08)',
+      },
+    }),
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  pharmacyButton: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
       },
       android: {
         elevation: 2,
       },
       web: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
-        outline: 'none',
+        boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.08)',
       },
     }),
   },
-  searchIcon: {
-    marginRight: 10,
+  pharmacyText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#059669', // Emerald-600
+    letterSpacing: -0.3,
+  },
+  pharmacyPlus: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#10B981', // Emerald-500
   },
   content: {
     padding: 20,
@@ -1212,5 +1269,187 @@ const viewStyles = StyleSheet.create({
   defaultActionWrapper: {
     flex: 1,
     alignItems: 'center',
+  },
+  // ============ ZEPTO STYLE HEADER ============
+  zeptoHeader: {
+    backgroundColor: '#E8F5E9', // Light green (like Zepto's light purple)
+    paddingTop: Platform.OS === 'ios' ? 56 : 45,
+    paddingBottom: 16,
+  },
+  zeptoHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  deliveryTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  deliveryTimeBolt: {
+    fontSize: 18,
+    marginRight: 4,
+  },
+  deliveryTimeText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1a1a1a',
+    letterSpacing: -0.5,
+  },
+  zeptoHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  zeptoIconButton: {
+    padding: 6,
+    position: 'relative',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#FF5252',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  zeptoProfileAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  zeptoProfileText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  zeptoLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+  zeptoLocationDisplay: {
+    backgroundColor: 'transparent',
+    shadowOpacity: 0,
+    elevation: 0,
+    padding: 0,
+    flex: 1,
+  },
+  zeptoLocationText: {
+    color: '#1a1a1a',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  zeptoLocationDetailText: {
+    color: '#666',
+    fontSize: 12,
+  },
+  zeptoDetailedLocation: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
+      },
+    }),
+  },
+  zeptoSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginTop: 8,
+    gap: 10,
+  },
+  zeptoSearchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
+      web: {
+        boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
+      },
+    }),
+  },
+  zeptoSearchPlaceholder: {
+    fontSize: 15,
+    color: '#9CA3AF',
+    marginLeft: 10,
+    flex: 1,
+  },
+  zeptoPharmacyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 1,
+      },
+      web: {
+        boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.05)',
+      },
+    }),
+  },
+  zeptoPharmacyText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#00796B',
+  },
+  zeptoPharmacyPlus: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#00C06A',
+    marginLeft: 2,
   },
 });

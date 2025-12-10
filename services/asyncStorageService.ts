@@ -8,12 +8,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Check if we're running in a browser environment (SSR safe)
 const isClient = typeof window !== 'undefined';
 
+import {
+  RecentlyViewedItem,
+  RecentlyViewedStore,
+  RecentlyViewedProduct
+} from '@/types/recentlyViewed.types';
+
+import {
+  FavoriteStore,
+  FavoriteStoreInput,
+  MAX_FAVORITE_STORES
+} from '@/types/favoriteStore.types';
+
 // Storage keys
 export const STORAGE_KEYS = {
   CART: 'shopping_cart',
   CART_OFFLINE_QUEUE: 'cart_offline_queue',
   WISHLIST: 'wishlist',
   RECENTLY_VIEWED: 'recently_viewed',
+  RECENTLY_VIEWED_UNIFIED: 'recently_viewed_unified', // New: stores + products combined
+  FAVORITE_STORES: 'favorite_stores', // Bookmarked + most visited stores
   SEARCH_HISTORY: 'search_history',
   USER_PREFERENCES: 'user_preferences',
   AUTH_TOKEN: 'auth_token',
@@ -256,6 +270,312 @@ class AsyncStorageService {
     // Add to beginning
     const updated = [product, ...filtered].slice(0, 20);
     await this.saveRecentlyViewed(updated);
+  }
+
+  // ============================================================================
+  // UNIFIED RECENTLY VIEWED (Stores + Products)
+  // ============================================================================
+
+  private readonly MAX_RECENTLY_VIEWED_UNIFIED = 20;
+
+  /**
+   * Save unified recently viewed items (stores + products)
+   */
+  async saveRecentlyViewedUnified(items: RecentlyViewedItem[]): Promise<void> {
+    const limited = items.slice(0, this.MAX_RECENTLY_VIEWED_UNIFIED);
+    await this.save(STORAGE_KEYS.RECENTLY_VIEWED_UNIFIED, limited);
+  }
+
+  /**
+   * Get unified recently viewed items
+   */
+  async getRecentlyViewedUnified(): Promise<RecentlyViewedItem[]> {
+    const items = await this.get<RecentlyViewedItem[]>(STORAGE_KEYS.RECENTLY_VIEWED_UNIFIED);
+    return items || [];
+  }
+
+  /**
+   * Add a store to recently viewed (unified)
+   */
+  async addRecentlyViewedStore(store: RecentlyViewedStore): Promise<void> {
+    try {
+      const current = await this.getRecentlyViewedUnified();
+
+      // Get image from multiple possible sources
+      let image = '';
+      if (store.banner) {
+        image = Array.isArray(store.banner) ? store.banner[0] : store.banner;
+      } else if (store.coverImage) {
+        image = store.coverImage;
+      } else if (store.logo) {
+        image = store.logo;
+      }
+
+      // Get address from multiple possible sources
+      let address = '';
+      if (store.address) {
+        address = [store.address.street, store.address.city].filter(Boolean).join(', ');
+      } else if (store.location) {
+        address = [store.location.address, store.location.city].filter(Boolean).join(', ');
+      }
+
+      // Transform store to unified format
+      const item: RecentlyViewedItem = {
+        id: store._id,
+        type: 'store',
+        name: store.name,
+        image,
+        rating: {
+          value: store.ratings?.average || 0,
+          count: store.ratings?.count || 0,
+        },
+        address: address || undefined,
+        cashbackPercentage: store.offers?.cashback,
+        slug: store.slug,
+        viewedAt: Date.now(),
+      };
+
+      // Remove if already exists (by id AND type)
+      const filtered = current.filter(p => !(p.id === item.id && p.type === 'store'));
+
+      // Add to beginning, limit to max
+      const updated = [item, ...filtered].slice(0, this.MAX_RECENTLY_VIEWED_UNIFIED);
+      await this.saveRecentlyViewedUnified(updated);
+    } catch (error) {
+      console.error('💾 [STORAGE] Failed to add recently viewed store:', error);
+    }
+  }
+
+  /**
+   * Add a product to recently viewed (unified)
+   */
+  async addRecentlyViewedProduct(product: RecentlyViewedProduct): Promise<void> {
+    try {
+      const current = await this.getRecentlyViewedUnified();
+
+      const productId = product._id || product.id || '';
+      if (!productId) {
+        console.warn('💾 [STORAGE] Cannot add product without ID to recently viewed');
+        return;
+      }
+
+      // Get image from multiple sources
+      const image = product.images?.[0] || product.image || '';
+
+      // Get rating from multiple sources
+      let ratingValue = 0;
+      let ratingCount = 0;
+      if (product.rating) {
+        ratingValue = typeof product.rating.value === 'string'
+          ? parseFloat(product.rating.value) || 0
+          : (product.rating.value || 0);
+        ratingCount = product.rating.count || 0;
+      } else if (product.ratings) {
+        ratingValue = product.ratings.average || 0;
+        ratingCount = product.ratings.count || 0;
+      }
+
+      // Transform product to unified format
+      const item: RecentlyViewedItem = {
+        id: productId,
+        type: 'product',
+        name: product.name || product.title || '',
+        image,
+        rating: {
+          value: ratingValue,
+          count: ratingCount,
+        },
+        price: product.price,
+        cashbackPercentage: product.cashback?.percentage,
+        slug: product.slug,
+        viewedAt: Date.now(),
+      };
+
+      // Remove if already exists (by id AND type)
+      const filtered = current.filter(p => !(p.id === item.id && p.type === 'product'));
+
+      // Add to beginning, limit to max
+      const updated = [item, ...filtered].slice(0, this.MAX_RECENTLY_VIEWED_UNIFIED);
+      await this.saveRecentlyViewedUnified(updated);
+    } catch (error) {
+      console.error('💾 [STORAGE] Failed to add recently viewed product:', error);
+    }
+  }
+
+  /**
+   * Clear all unified recently viewed items
+   */
+  async clearRecentlyViewedUnified(): Promise<void> {
+    await this.remove(STORAGE_KEYS.RECENTLY_VIEWED_UNIFIED);
+  }
+
+  // ============================================================================
+  // FAVORITE STORES (Bookmarked + Most Visited)
+  // ============================================================================
+
+  /**
+   * Get all favorite stores (sorted: bookmarked first, then by visit count)
+   */
+  async getFavoriteStores(): Promise<FavoriteStore[]> {
+    const stores = await this.get<FavoriteStore[]>(STORAGE_KEYS.FAVORITE_STORES);
+    if (!stores) return [];
+
+    // Sort: bookmarked first (by addedAt desc), then by visitCount desc
+    return stores.sort((a, b) => {
+      // Bookmarked stores come first
+      if (a.isFavorited && !b.isFavorited) return -1;
+      if (!a.isFavorited && b.isFavorited) return 1;
+
+      // If both bookmarked, sort by when they were added
+      if (a.isFavorited && b.isFavorited) {
+        return (b.addedAt || 0) - (a.addedAt || 0);
+      }
+
+      // If neither bookmarked, sort by visit count
+      return b.visitCount - a.visitCount;
+    });
+  }
+
+  /**
+   * Save favorite stores
+   */
+  async saveFavoriteStores(stores: FavoriteStore[]): Promise<void> {
+    const limited = stores.slice(0, MAX_FAVORITE_STORES);
+    await this.save(STORAGE_KEYS.FAVORITE_STORES, limited);
+  }
+
+  /**
+   * Track a store visit (for "most visited" functionality)
+   */
+  async trackStoreVisit(store: FavoriteStoreInput): Promise<void> {
+    try {
+      const current = await this.get<FavoriteStore[]>(STORAGE_KEYS.FAVORITE_STORES) || [];
+
+      // Get image from multiple possible sources
+      let image = '';
+      if (store.banner) {
+        image = Array.isArray(store.banner) ? store.banner[0] : store.banner;
+      } else if (store.coverImage) {
+        image = store.coverImage;
+      } else if (store.logo) {
+        image = store.logo;
+      }
+
+      // Format full address
+      let address = '';
+      if (store.address) {
+        const parts = [
+          store.address.street,
+          store.address.landmark,
+          store.address.city,
+          store.address.state,
+          store.address.pincode
+        ].filter(Boolean);
+        address = parts.join(', ');
+      } else if (store.location) {
+        const parts = [
+          store.location.address,
+          store.location.city,
+          store.location.state,
+          store.location.pincode
+        ].filter(Boolean);
+        address = parts.join(', ');
+      }
+
+      // Check if store already exists
+      const existingIndex = current.findIndex(s => s.id === store._id);
+
+      if (existingIndex >= 0) {
+        // Update existing store
+        current[existingIndex].visitCount += 1;
+        current[existingIndex].lastVisited = Date.now();
+        // Update image/address/description if newer data available
+        if (image) current[existingIndex].image = image;
+        if (address) current[existingIndex].address = address;
+        if (store.description) current[existingIndex].description = store.description;
+        if (store.operationalInfo?.deliveryTime) current[existingIndex].deliveryTime = store.operationalInfo.deliveryTime;
+        if (store.ratings) {
+          current[existingIndex].rating = {
+            value: store.ratings.average || 0,
+            count: store.ratings.count || 0
+          };
+        }
+        if (store.offers?.cashback) {
+          current[existingIndex].cashbackPercentage = store.offers.cashback;
+        }
+      } else {
+        // Add new store
+        const newStore: FavoriteStore = {
+          id: store._id,
+          name: store.name,
+          image,
+          rating: {
+            value: store.ratings?.average || 0,
+            count: store.ratings?.count || 0
+          },
+          address,
+          description: store.description || '',
+          deliveryTime: store.operationalInfo?.deliveryTime || '',
+          cashbackPercentage: store.offers?.cashback,
+          slug: store.slug,
+          isFavorited: false,
+          visitCount: 1,
+          lastVisited: Date.now()
+        };
+        current.unshift(newStore);
+      }
+
+      // Limit and save
+      const limited = current.slice(0, MAX_FAVORITE_STORES);
+      await this.save(STORAGE_KEYS.FAVORITE_STORES, limited);
+    } catch (error) {
+      console.error('💾 [STORAGE] Failed to track store visit:', error);
+    }
+  }
+
+  /**
+   * Toggle favorite (bookmark) status for a store
+   */
+  async toggleFavoriteStore(storeId: string): Promise<boolean> {
+    try {
+      const current = await this.get<FavoriteStore[]>(STORAGE_KEYS.FAVORITE_STORES) || [];
+      const storeIndex = current.findIndex(s => s.id === storeId);
+
+      if (storeIndex >= 0) {
+        // Toggle favorite status
+        const newStatus = !current[storeIndex].isFavorited;
+        current[storeIndex].isFavorited = newStatus;
+        current[storeIndex].addedAt = newStatus ? Date.now() : undefined;
+        await this.save(STORAGE_KEYS.FAVORITE_STORES, current);
+        return newStatus;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('💾 [STORAGE] Failed to toggle favorite store:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if a store is favorited (bookmarked)
+   */
+  async isFavoriteStore(storeId: string): Promise<boolean> {
+    try {
+      const stores = await this.get<FavoriteStore[]>(STORAGE_KEYS.FAVORITE_STORES) || [];
+      const store = stores.find(s => s.id === storeId);
+      return store?.isFavorited || false;
+    } catch (error) {
+      console.error('💾 [STORAGE] Failed to check favorite store:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clear all favorite stores
+   */
+  async clearFavoriteStores(): Promise<void> {
+    await this.remove(STORAGE_KEYS.FAVORITE_STORES);
   }
 
   /**

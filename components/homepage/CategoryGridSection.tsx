@@ -6,23 +6,38 @@ import {
   StyleSheet,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+
+// Category icon images
+const CATEGORY_ICONS = {
+  'food-dining': require('../../assets/category-icons/FOOD-DINING/Cafes.png'),
+  'grocery-essentials': require('../../assets/category-icons/GROCERY-ESSENTIALS/Supermarkets.png'),
+  'beauty-wellness': require('../../assets/category-icons/BEAUTY-WELLNESS/Beauty-services.png'),
+  'healthcare': require('../../assets/category-icons/HEALTHCARE/Clinics.png'),
+  'fashion': require('../../assets/category-icons/Shopping/Fashion.png'),
+  'fitness-sports': require('../../assets/category-icons/FITNESS-SPORTS/Gyms.png'),
+  'education-learning': require('../../assets/category-icons/EDUCATION-LEARNING/Coaching-center.png'),
+  'home-services': require('../../assets/category-icons/HOME-SERVICES/Cleaning.png'),
+  'travel-experiences': require('../../assets/category-icons/TRAVEL-EXPERIENCES/Tours.png'),
+  'entertainment': require('../../assets/category-icons/ENTERTAINMENT/Live-events.png'),
+  'financial-lifestyle': require('../../assets/category-icons/FINANCIAL-LIFESTYLE/Bill-payments.png'),
+};
 
 // Our 11 main categories with icons and cashback info
 const MAIN_CATEGORIES = [
-  { slug: 'food-dining', name: 'Food & Dining', icon: 'restaurant-outline' as const, cashback: 18 },
-  { slug: 'grocery-essentials', name: 'Grocery & Essentials', icon: 'cart-outline' as const, cashback: 5 },
-  { slug: 'beauty-wellness', name: 'Beauty & Wellness', icon: 'sparkles-outline' as const, cashback: 12 },
-  { slug: 'healthcare', name: 'Healthcare', icon: 'heart-outline' as const, cashback: 18 },
-  { slug: 'fashion', name: 'Fashion', icon: 'shirt-outline' as const, cashback: 10 },
-  { slug: 'fitness-sports', name: 'Fitness & Sports', icon: 'fitness-outline' as const, cashback: 5 },
-  { slug: 'education-learning', name: 'Education & Learning', icon: 'school-outline' as const, cashback: 15 },
-  { slug: 'home-services', name: 'Home Services', icon: 'home-outline' as const, cashback: 8 },
-  { slug: 'travel-experiences', name: 'Travel & Experiences', icon: 'airplane-outline' as const, cashback: 10 },
-  { slug: 'entertainment', name: 'Entertainment', icon: 'game-controller-outline' as const, cashback: 5 },
-  { slug: 'financial-lifestyle', name: 'Financial & Lifestyle', icon: 'wallet-outline' as const, cashback: 8 },
+  { slug: 'food-dining', name: 'Food & Dining', cashback: 18 },
+  { slug: 'grocery-essentials', name: 'Grocery & Essentials', cashback: 5 },
+  { slug: 'beauty-wellness', name: 'Beauty & Wellness', cashback: 12 },
+  { slug: 'healthcare', name: 'Healthcare', cashback: 18 },
+  { slug: 'fashion', name: 'Fashion', cashback: 10 },
+  { slug: 'fitness-sports', name: 'Fitness & Sports', cashback: 5 },
+  { slug: 'education-learning', name: 'Education & Learning', cashback: 15 },
+  { slug: 'home-services', name: 'Home Services', cashback: 8 },
+  { slug: 'travel-experiences', name: 'Travel & Experiences', cashback: 10 },
+  { slug: 'entertainment', name: 'Entertainment', cashback: 5 },
+  { slug: 'financial-lifestyle', name: 'Financial & Lifestyle', cashback: 8 },
 ];
 
 interface CategoryGridSectionProps {
@@ -56,10 +71,10 @@ const CategoryGridSection: React.FC<CategoryGridSectionProps> = ({
             activeOpacity={0.7}
           >
             <View style={styles.iconContainer}>
-              <Ionicons
-                name={category.icon}
-                size={28}
-                color="#00C06A"
+              <Image
+                source={CATEGORY_ICONS[category.slug as keyof typeof CATEGORY_ICONS]}
+                style={styles.categoryIcon}
+                resizeMode="contain"
               />
             </View>
             <Text style={styles.categoryName} numberOfLines={2}>
@@ -126,12 +141,14 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: 'rgba(0, 192, 106, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.15)',
+    overflow: 'hidden',
+  },
+  categoryIcon: {
+    width: 56,
+    height: 56,
   },
   categoryName: {
     fontSize: 13,
