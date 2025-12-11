@@ -542,7 +542,7 @@ function GoingOutSection({ backgroundImage = DEFAULT_BACKGROUND_IMAGE }: GoingOu
 const styles = StyleSheet.create({
   container: {
     marginVertical: 16,
-    marginHorizontal: 12,
+    marginHorizontal: 8,
   },
   backgroundContainer: {
     borderRadius: 20,
@@ -650,13 +650,13 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
   },
   productsContainer: {
-    paddingLeft: 12,
-    paddingRight: 12,
+    paddingLeft: 8,
+    paddingRight: 8,
     paddingTop: 12,
     gap: 12,
   },
   productsScroll: {
-    marginHorizontal: -12,
+    marginHorizontal: -8,
   },
   productCard: {
     width: 170,

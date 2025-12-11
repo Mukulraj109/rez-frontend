@@ -118,7 +118,7 @@ export default function HomeScreen() {
   const [newOffersCount, setNewOffersCount] = React.useState(0); // New offers count
 
   // Get recently viewed items
-  const { items: recentlyViewedItems, isLoading: isLoadingRecentlyViewed } = useRecentlyViewed();
+  const { items: recentlyViewedItems, isLoading: isLoadingRecentlyViewed, refresh: refreshRecentlyViewed } = useRecentlyViewed();
 
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
@@ -320,16 +320,21 @@ export default function HomeScreen() {
 
   // Load user points and statistics (optimized with cache check)
   React.useEffect(() => {
-    if (authState.user && !statsLoadedRef.current && !isLoadingStats && interactionsComplete) {
+    // Load stats when user is authenticated, regardless of interactionsComplete
+    // This ensures coin balance shows immediately after login
+    if (authState.user && !statsLoadedRef.current && !isLoadingStats) {
       statsLoadedRef.current = true;
       loadUserStatistics();
     }
-  }, [authState.user, interactionsComplete]);
+  }, [authState.user, authState.isAuthenticated]);
 
-  // Refresh wallet balance and cart data when screen comes into focus
+  // Refresh wallet balance, cart data, and recently viewed when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      // Only refresh if user is authenticated
+      // Always refresh recently viewed items when returning to homepage
+      refreshRecentlyViewed();
+
+      // Only refresh user data if authenticated
       if (authState.user) {
         // Always refresh cart data to update cart badge
         refreshCart();
@@ -340,7 +345,7 @@ export default function HomeScreen() {
           loadUserStatistics();
         }
       }
-    }, [authState.user, refreshCart])
+    }, [authState.user, refreshCart, refreshRecentlyViewed])
   );
 
   const loadUserStatistics = async () => {

@@ -81,20 +81,18 @@ const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Use ref instead of state to track visibility - avoids re-renders
-  const isVisibleRef = useRef(false);
+  // Use state to track visibility for pointer events
+  const [isVisible, setIsVisible] = React.useState(false);
   const containerRef = useRef<View>(null);
 
-  // Listen to scroll position to toggle pointer events without causing re-renders
+  // Listen to scroll position to toggle pointer events
   useEffect(() => {
     const listenerId = scrollY.addListener(({ value }) => {
       const shouldBeVisible = value >= showThreshold;
-      if (isVisibleRef.current !== shouldBeVisible) {
-        isVisibleRef.current = shouldBeVisible;
-        // Update pointer events directly on the native side for web
-        if (Platform.OS === 'web' && containerRef.current) {
-          (containerRef.current as any).style.pointerEvents = shouldBeVisible ? 'auto' : 'none';
-        }
+      setIsVisible(shouldBeVisible);
+      // Also update directly for web
+      if (Platform.OS === 'web' && containerRef.current) {
+        (containerRef.current as any).style.pointerEvents = shouldBeVisible ? 'auto' : 'none';
       }
     });
     return () => scrollY.removeListener(listenerId);
@@ -148,7 +146,7 @@ const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
             transform: [{ translateY: headerTranslateY }],
           },
         ]}
-        pointerEvents="box-none"
+        pointerEvents={isVisible ? 'auto' : 'none'}
       >
         <BlurView
           intensity={90}
@@ -178,7 +176,7 @@ const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
           transform: [{ translateY: headerTranslateY }],
         },
       ]}
-      pointerEvents="box-none"
+      pointerEvents={isVisible ? 'auto' : 'none'}
     >
       <HeaderContentComponent
         paddingTop={paddingTop}

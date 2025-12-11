@@ -7,6 +7,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import CategoryTabBar from './CategoryTabBar';
 
 export type TabId = 'rez' | 'rez-mall' | 'cash-store' | '1-rupee-store';
@@ -34,21 +35,26 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
     <View style={styles.container}>
       {/* Tabs Row */}
       <View style={styles.tabsRow}>
-        {/* Tab 1: rez */}
+        {/* Tab 1: Rez - Premium Style */}
         <TouchableOpacity
           style={styles.tabItem}
           onPress={() => onTabChange('rez')}
           activeOpacity={0.85}
         >
-          <View style={[
-            styles.tab,
-            activeTab === 'rez' ? styles.tabActive : styles.tabInactive
-          ]}>
-            <Text style={[
-              styles.tabTextSingle,
-              activeTab === 'rez' ? styles.tabTextActive : styles.tabTextInactive
-            ]}>rez</Text>
-          </View>
+          {activeTab === 'rez' ? (
+            <LinearGradient
+              colors={['#059669', '#047857']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.tab, styles.tabActiveGradient]}
+            >
+              <Text style={styles.rezTextActive}>Rez</Text>
+            </LinearGradient>
+          ) : (
+            <View style={[styles.tab, styles.tabInactive]}>
+              <Text style={styles.rezTextInactive}>Rez</Text>
+            </View>
+          )}
         </TouchableOpacity>
 
         {/* Tab 2: Rez Mall */}
@@ -176,6 +182,24 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     backgroundColor: '#059669',
+  },
+  tabActiveGradient: {
+    borderRadius: 12,
+  },
+  rezTextActive: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  rezTextInactive: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#059669',
+    letterSpacing: 0.5,
   },
   tabInactive: {
     backgroundColor: '#FFFFFF',
