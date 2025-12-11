@@ -1,315 +1,316 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, Suspense } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   StatusBar,
   Platform,
-  SafeAreaView,
-  FlatList,
+  ScrollView,
   Dimensions,
   Image,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
-import { CATEGORY_CONFIGS, getAllCategories, CategoryConfig, SubcategoryItem } from '@/config/categoryConfig';
+import { CATEGORY_CONFIGS, SubcategoryItem } from '@/config/categoryConfig';
 import { getSubcategoryIcon } from '@/config/categoryIcons';
+import { useProfile, useProfileMenu } from '@/contexts/ProfileContext';
+import { profileMenuSections } from '@/data/profileData';
+import { useAuth } from '@/contexts/AuthContext';
+
+// Lazy-loaded components
+const ProfileMenuModal = React.lazy(() => import('@/components/profile/ProfileMenuModal'));
+
+const ModalFallback = () => null;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// ============ SIDEBAR CATEGORIES FROM CONFIG ============
-interface SidebarCategory {
-  id: string;
-  name: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  bgColor: string;
-  subcategoryCount: number;
-  image?: string;
-}
-
-// Generate sidebar categories from categoryConfig
-const SIDEBAR_CATEGORIES: SidebarCategory[] = Object.values(CATEGORY_CONFIGS).map(cat => ({
-  id: cat.slug,
-  name: cat.name,
-  icon: cat.icon as keyof typeof Ionicons.glyphMap,
-  color: cat.primaryColor,
-  bgColor: `${cat.primaryColor}20`, // 20% opacity
-  subcategoryCount: cat.subcategories.length,
-}));
-
-// Local images for main categories (consistent with homepage)
-const CATEGORY_IMAGES: Record<string, any> = {
-  'food-dining': require('../../assets/category-icons/FOOD-DINING/Cafes.png'),
-  'grocery-essentials': require('../../assets/category-icons/GROCERY-ESSENTIALS/Supermarkets.png'),
-  'beauty-wellness': require('../../assets/category-icons/BEAUTY-WELLNESS/Beauty-services.png'),
-  'healthcare': require('../../assets/category-icons/HEALTHCARE/Clinics.png'),
-  'fashion': require('../../assets/category-icons/Shopping/Fashion.png'),
-  'fitness-sports': require('../../assets/category-icons/FITNESS-SPORTS/Gyms.png'),
-  'education-learning': require('../../assets/category-icons/EDUCATION-LEARNING/Coaching-center.png'),
-  'home-services': require('../../assets/category-icons/HOME-SERVICES/Cleaning.png'),
-  'travel-experiences': require('../../assets/category-icons/TRAVEL-EXPERIENCES/Tours.png'),
-  'entertainment': require('../../assets/category-icons/ENTERTAINMENT/Live-events.png'),
-  'financial-lifestyle': require('../../assets/category-icons/FINANCIAL-LIFESTYLE/Bill-payments.png'),
-};
-
-// Calculate total subcategories
-const TOTAL_SUBCATEGORIES = Object.values(CATEGORY_CONFIGS).reduce(
-  (sum, cat) => sum + cat.subcategories.length,
-  0
-);
+const NUM_COLUMNS = 4;
+const ITEM_WIDTH = (SCREEN_WIDTH - 32) / NUM_COLUMNS;
 
 // ============ INTERFACES ============
-interface SubcategoryWithParent extends SubcategoryItem {
-  parentSlug: string;
-  parentName: string;
+interface CategorySection {
+  id: string;
+  name: string;
   color: string;
+  subcategories: SubcategoryItem[];
 }
+
+// Generate category sections from config
+const CATEGORY_SECTIONS: CategorySection[] = Object.values(CATEGORY_CONFIGS).map(cat => ({
+  id: cat.slug,
+  name: cat.name,
+  color: cat.primaryColor,
+  subcategories: cat.subcategories,
+}));
 
 // ============ MAIN COMPONENT ============
 export default function CategoriesScreen() {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { user, isModalVisible, showModal, hideModal } = useProfile();
+  const { handleMenuItemPress } = useProfileMenu();
+  const { state: authState } = useAuth();
 
-  // Get subcategories when a category is selected
-  const displayedSubcategories = useMemo((): SubcategoryWithParent[] => {
-    if (!selectedCategory) return [];
-    const config = CATEGORY_CONFIGS[selectedCategory];
-    return config?.subcategories.map(sub => ({
-      ...sub,
-      parentSlug: config.slug,
-      parentName: config.name,
-      color: config.primaryColor,
-    })) || [];
-  }, [selectedCategory]);
-
-  const currentCategory = useMemo(() =>
-    selectedCategory ? SIDEBAR_CATEGORIES.find(c => c.id === selectedCategory) : null,
-  [selectedCategory]);
+  // Handle wallet press - navigate to WalletScreen
+  const handleWalletPress = () => {
+    router.push('/WalletScreen');
+  };
 
   // Handle subcategory press - navigate to StoreListPage
-  const handleSubcategoryPress = useCallback((subcategory: SubcategoryWithParent) => {
+  const handleSubcategoryPress = useCallback((subcategory: SubcategoryItem, parentSlug: string) => {
     router.push({
       pathname: '/StoreListPage',
       params: {
         category: subcategory.slug,
-        parentCategory: subcategory.parentSlug,
+        parentCategory: parentSlug,
         title: subcategory.name,
       },
     } as any);
   }, [router]);
 
-  // Handle main category press - show subcategories
-  const handleMainCategoryPress = useCallback((categoryId: string) => {
-    setSelectedCategory(categoryId);
-  }, []);
-
-  // Handle back to categories
-  const handleBackToCategories = useCallback(() => {
-    setSelectedCategory(null);
-  }, []);
-
-  const numColumns = 3;
-  const FULL_WIDTH = SCREEN_WIDTH;
-  const categoryItemWidth = (FULL_WIDTH - 48) / numColumns;
-  const subcategoryItemWidth = (FULL_WIDTH - 48) / numColumns;
-
-  // Render main category item
-  const renderCategoryItem = ({ item }: { item: SidebarCategory }) => {
-    const categoryImage = CATEGORY_IMAGES[item.id];
-    return (
-      <TouchableOpacity
-        style={[styles.gridItem, { width: categoryItemWidth }]}
-        onPress={() => handleMainCategoryPress(item.id)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.circleCard}>
-          {categoryImage ? (
-            <Image source={categoryImage} style={styles.circleImage} resizeMode="cover" />
-          ) : (
-            <Ionicons name={item.icon} size={28} color={item.color} />
-          )}
-        </View>
-        <ThemedText style={styles.categoryName} numberOfLines={2}>
-          {item.name}
-        </ThemedText>
-        <ThemedText style={styles.subcategoryCountText}>
-          {item.subcategoryCount} items
-        </ThemedText>
-      </TouchableOpacity>
-    );
-  };
-
   // Render subcategory item
-  const renderSubcategoryItem = ({ item }: { item: SubcategoryWithParent }) => {
+  const renderSubcategoryItem = (item: SubcategoryItem, parentSlug: string, color: string) => {
     const customIcon = getSubcategoryIcon(item.slug);
     return (
       <TouchableOpacity
-        style={[styles.gridItem, { width: subcategoryItemWidth }]}
-        onPress={() => handleSubcategoryPress(item)}
+        key={item.slug}
+        style={styles.gridItem}
+        onPress={() => handleSubcategoryPress(item, parentSlug)}
         activeOpacity={0.7}
       >
-        <View style={[
-          styles.circleCard,
-          !customIcon && { backgroundColor: item.color + '20' }
-        ]}>
+        <View style={[styles.itemCard, { backgroundColor: '#F8F8F8' }]}>
           {customIcon ? (
-            <Image source={customIcon} style={styles.circleImage} resizeMode="cover" />
+            <Image source={customIcon} style={styles.itemImage} resizeMode="contain" />
           ) : (
-            <Ionicons
-              name={(item.icon as keyof typeof Ionicons.glyphMap) || 'grid-outline'}
-              size={28}
-              color={item.color}
-            />
+            <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
+              <Ionicons
+                name={(item.icon as keyof typeof Ionicons.glyphMap) || 'grid-outline'}
+                size={32}
+                color={color}
+              />
+            </View>
           )}
         </View>
-        <ThemedText style={styles.subcategoryName} numberOfLines={2}>
+        <ThemedText style={styles.itemName} numberOfLines={2}>
           {item.name}
         </ThemedText>
       </TouchableOpacity>
     );
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <LinearGradient colors={['#00C06A', '#00A05A', '#008B4A']} style={styles.header}>
-        <View style={styles.headerContent}>
-          {selectedCategory ? (
-            <TouchableOpacity style={styles.backButton} onPress={handleBackToCategories}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          ) : null}
-          <View style={styles.headerLeft}>
-            <ThemedText style={styles.headerTitle}>
-              {selectedCategory ? currentCategory?.name : 'Categories'}
-            </ThemedText>
-            <ThemedText style={styles.headerSubtitle}>
-              {selectedCategory
-                ? `${displayedSubcategories.length} subcategories`
-                : `${SIDEBAR_CATEGORIES.length} categories to explore`}
-            </ThemedText>
-          </View>
-          <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/search' as any)}>
-            <Ionicons name="search-outline" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-
-      <View style={styles.fullContentContainer}>
-        {!selectedCategory ? (
-          // Show main categories
-          <FlatList
-            data={SIDEBAR_CATEGORIES}
-            renderItem={renderCategoryItem}
-            keyExtractor={(item) => item.id}
-            numColumns={numColumns}
-            contentContainerStyle={styles.gridContent}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionTitleRow}>
-                  <Ionicons name="apps" size={18} color="#00C06A" />
-                  <ThemedText style={styles.sectionTitle}>All Categories</ThemedText>
-                  <ThemedText style={styles.countText}>({SIDEBAR_CATEGORIES.length})</ThemedText>
-                </View>
-              </View>
-            }
-            ListFooterComponent={<View style={{ height: 100 }} />}
-          />
-        ) : (
-          // Show subcategories for selected category
-          <FlatList
-            data={displayedSubcategories}
-            renderItem={renderSubcategoryItem}
-            keyExtractor={(item) => `${item.parentSlug}-${item.slug}`}
-            numColumns={numColumns}
-            contentContainerStyle={styles.gridContent}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionTitleRow}>
-                  <View style={[styles.groupBadge, { backgroundColor: currentCategory?.bgColor }]}>
-                    <Ionicons name={currentCategory?.icon || 'grid'} size={14} color={currentCategory?.color} />
-                  </View>
-                  <ThemedText style={styles.sectionTitle}>{currentCategory?.name}</ThemedText>
-                  <ThemedText style={styles.countText}>({displayedSubcategories.length})</ThemedText>
-                </View>
-              </View>
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="folder-open-outline" size={48} color="#9CA3AF" />
-                <ThemedText style={styles.emptyText}>No subcategories found</ThemedText>
-              </View>
-            }
-            ListFooterComponent={<View style={{ height: 100 }} />}
-          />
-        )}
+  // Render category section
+  const renderCategorySection = (section: CategorySection) => (
+    <View key={section.id} style={styles.sectionContainer}>
+      <ThemedText style={styles.sectionTitle}>{section.name}</ThemedText>
+      <View style={styles.gridContainer}>
+        {section.subcategories.map(sub => renderSubcategoryItem(sub, section.id, section.color))}
       </View>
-    </SafeAreaView>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFD814" />
+
+      {/* Yellow Header like Blinkit */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <ThemedText style={styles.brandText}>Rez</ThemedText>
+            <ThemedText style={styles.deliveryTime}>Quick Services</ThemedText>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.headerIcon} onPress={handleWalletPress}>
+              <Ionicons name="wallet-outline" size={22} color="#1F2937" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.profileAvatar}
+              onPress={showModal}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.profileText}>
+                {user?.initials ||
+                  (authState.user?.profile?.firstName ? authState.user.profile.firstName.charAt(0).toUpperCase() :
+                    (authState.isAuthenticated ? 'U' : '?')
+                  )}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() => router.push('/search' as any)}
+          activeOpacity={0.9}
+        >
+          <Ionicons name="search" size={20} color="#9CA3AF" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder='Search "services"'
+            placeholderTextColor="#9CA3AF"
+            editable={false}
+          />
+          <Ionicons name="mic-outline" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Categories ScrollView */}
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {CATEGORY_SECTIONS.map(section => renderCategorySection(section))}
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* Profile Menu Modal */}
+      <Suspense fallback={<ModalFallback />}>
+        <ProfileMenuModal
+          visible={isModalVisible}
+          onClose={hideModal}
+          user={user}
+          menuSections={profileMenuSections}
+          onMenuItemPress={handleMenuItemPress}
+        />
+      </Suspense>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7FAFC' },
-  header: { paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight || 0, paddingBottom: 12, paddingHorizontal: 16 },
-  headerContent: { flexDirection: 'row', alignItems: 'center', paddingTop: 12 },
-  headerLeft: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
-  headerSubtitle: { fontSize: 13, color: 'rgba(255, 255, 255, 0.85)', fontWeight: '500' },
-  headerButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.2)', justifyContent: 'center', alignItems: 'center' },
-  backButton: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-  fullContentContainer: { flex: 1, backgroundColor: '#FFFFFF' },
-  gridContent: { paddingHorizontal: 16, paddingBottom: 16 },
-  gridItem: { alignItems: 'center', marginBottom: 20, paddingHorizontal: 4 },
-  circleCard: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    backgroundColor: '#FFD814',
+    paddingTop: Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 0) + 10,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  brandText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  deliveryTime: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1F2937',
+    padding: 0,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 8,
+  },
+  sectionContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  gridItem: {
+    width: ITEM_WIDTH,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  itemCard: {
+    width: ITEM_WIDTH - 12,
+    height: ITEM_WIDTH - 12,
+    borderRadius: 12,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#F8F8F8',
   },
-  circleImage: {
+  itemImage: {
+    width: '85%',
+    height: '85%',
+  },
+  iconContainer: {
     width: '100%',
     height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
   },
-  categoryName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 16,
-    maxWidth: 90,
-  },
-  subcategoryCountText: {
-    fontSize: 10,
-    fontWeight: '400',
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  subcategoryName: {
+  itemName: {
     fontSize: 11,
     fontWeight: '500',
     color: '#374151',
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 14,
-    maxWidth: 80,
+    paddingHorizontal: 2,
   },
-  sectionHeader: { paddingHorizontal: 8, paddingTop: 16, paddingBottom: 12 },
-  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  groupBadge: { width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
-  countText: { fontSize: 13, color: '#9CA3AF', fontWeight: '500' },
-  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
-  emptyText: { fontSize: 16, color: '#9CA3AF', textAlign: 'center', marginTop: 12 },
+  profileAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFEAA7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F6D55C',
+  },
+  profileText: {
+    color: '#1F2937',
+    fontWeight: '700',
+    fontSize: 14,
+  },
 });
