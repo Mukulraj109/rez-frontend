@@ -5,7 +5,7 @@
  * Includes the category tab bar below it
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import {
   View,
   TextInput,
@@ -33,57 +33,19 @@ interface StickySearchHeaderProps {
   onCategoryChange?: (categoryId: string) => void;
 }
 
-export const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
-  scrollY,
-  showThreshold = 200,
-  onSearchPress,
-  selectedCategory,
-  onCategoryChange,
-}) => {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [isVisible, setIsVisible] = useState(false);
-
-  // Listen to scroll position to toggle pointer events
-  useEffect(() => {
-    const listenerId = scrollY.addListener(({ value }) => {
-      setIsVisible(value >= showThreshold);
-    });
-    return () => scrollY.removeListener(listenerId);
-  }, [scrollY, showThreshold]);
-
-  // Animated opacity based on scroll position
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [showThreshold - 50, showThreshold],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-
-  // Animated translate for slide-in effect
-  const headerTranslateY = scrollY.interpolate({
-    inputRange: [showThreshold - 50, showThreshold],
-    outputRange: [-20, 0],
-    extrapolate: 'clamp',
-  });
-
-  const handleSearchPress = () => {
-    if (onSearchPress) {
-      onSearchPress();
-    } else {
-      if (Platform.OS === 'ios') {
-        setTimeout(() => router.push('/search'), 50);
-      } else {
-        router.push('/search');
-      }
-    }
-  };
-
-  const HeaderContent = () => (
-    <View style={[styles.headerContent, { paddingTop: insets.top + 8 }]}>
+// Memoized header content component to prevent re-renders
+const HeaderContentComponent = memo<{
+  paddingTop: number;
+  onSearchPress: () => void;
+  selectedCategory?: string;
+  onCategoryChange?: (categoryId: string) => void;
+}>(({ paddingTop, onSearchPress, selectedCategory, onCategoryChange }) => {
+  return (
+    <View style={[styles.headerContent, { paddingTop }]}>
       {/* Search Bar */}
       <TouchableOpacity
         style={styles.searchContainer}
-        onPress={handleSearchPress}
+        onPress={onSearchPress}
         activeOpacity={0.85}
         accessibilityLabel="Search bar"
         accessibilityRole="search"
@@ -107,6 +69,73 @@ export const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
       />
     </View>
   );
+});
+
+const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
+  scrollY,
+  showThreshold = 200,
+  onSearchPress,
+  selectedCategory,
+  onCategoryChange,
+}) => {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  // Use ref instead of state to track visibility - avoids re-renders
+  const isVisibleRef = useRef(false);
+  const containerRef = useRef<View>(null);
+
+  // Listen to scroll position to toggle pointer events without causing re-renders
+  useEffect(() => {
+    const listenerId = scrollY.addListener(({ value }) => {
+      const shouldBeVisible = value >= showThreshold;
+      if (isVisibleRef.current !== shouldBeVisible) {
+        isVisibleRef.current = shouldBeVisible;
+        // Update pointer events directly on the native side for web
+        if (Platform.OS === 'web' && containerRef.current) {
+          (containerRef.current as any).style.pointerEvents = shouldBeVisible ? 'auto' : 'none';
+        }
+      }
+    });
+    return () => scrollY.removeListener(listenerId);
+  }, [scrollY, showThreshold]);
+
+  // Memoize animated values to prevent recreation
+  const headerOpacity = useMemo(
+    () =>
+      scrollY.interpolate({
+        inputRange: [showThreshold - 50, showThreshold],
+        outputRange: [0, 1],
+        extrapolate: 'clamp',
+      }),
+    [scrollY, showThreshold]
+  );
+
+  const headerTranslateY = useMemo(
+    () =>
+      scrollY.interpolate({
+        inputRange: [showThreshold - 50, showThreshold],
+        outputRange: [-20, 0],
+        extrapolate: 'clamp',
+      }),
+    [scrollY, showThreshold]
+  );
+
+  // Memoize handlers to prevent recreation
+  const handleSearchPress = useCallback(() => {
+    if (onSearchPress) {
+      onSearchPress();
+    } else {
+      if (Platform.OS === 'ios') {
+        setTimeout(() => router.push('/search'), 50);
+      } else {
+        router.push('/search');
+      }
+    }
+  }, [onSearchPress, router]);
+
+  // Calculate padding top
+  const paddingTop = insets.top + 8;
 
   // Native platforms with blur
   if (Platform.OS !== 'web') {
@@ -119,14 +148,19 @@ export const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
             transform: [{ translateY: headerTranslateY }],
           },
         ]}
-        pointerEvents={isVisible ? 'auto' : 'none'}
+        pointerEvents="box-none"
       >
         <BlurView
           intensity={90}
           tint="light"
           style={styles.blurContainer}
         >
-          <HeaderContent />
+          <HeaderContentComponent
+            paddingTop={paddingTop}
+            onSearchPress={handleSearchPress}
+            selectedCategory={selectedCategory}
+            onCategoryChange={onCategoryChange}
+          />
         </BlurView>
       </Animated.View>
     );
@@ -135,6 +169,7 @@ export const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
   // Web version with CSS backdrop-filter
   return (
     <Animated.View
+      ref={containerRef as any}
       style={[
         styles.container,
         styles.webContainer,
@@ -143,9 +178,14 @@ export const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
           transform: [{ translateY: headerTranslateY }],
         },
       ]}
-      pointerEvents={isVisible ? 'auto' : 'none'}
+      pointerEvents="box-none"
     >
-      <HeaderContent />
+      <HeaderContentComponent
+        paddingTop={paddingTop}
+        onSearchPress={handleSearchPress}
+        selectedCategory={selectedCategory}
+        onCategoryChange={onCategoryChange}
+      />
     </Animated.View>
   );
 };
@@ -165,14 +205,14 @@ const styles = StyleSheet.create({
   },
   webContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 192, 106, 0.1)',
     ...Platform.select({
       web: {
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         boxShadow: '0 4px 20px rgba(11, 34, 64, 0.08)',
-      },
+      } as any,
     }),
   },
   headerContent: {
@@ -209,4 +249,15 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StickySearchHeader;
+// Memoize component to prevent unnecessary re-renders
+export default memo(StickySearchHeader, (prevProps, nextProps) => {
+  // Only re-render if props actually change
+  return (
+    prevProps.showThreshold === nextProps.showThreshold &&
+    prevProps.selectedCategory === nextProps.selectedCategory &&
+    prevProps.onSearchPress === nextProps.onSearchPress &&
+    prevProps.onCategoryChange === nextProps.onCategoryChange
+  );
+});
+
+export { StickySearchHeader };

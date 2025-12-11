@@ -173,7 +173,7 @@ const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
   const displayItems = items.slice(0, maxItems);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.wrapper}>
       {/* Section Header */}
       <View style={styles.header}>
         <Text style={styles.sectionTitle}>Recently Viewed</Text>
@@ -219,39 +219,21 @@ const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 12,
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    borderRadius: 16,
-    paddingVertical: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
-      },
-    }),
+  wrapper: {
+    marginVertical: 16,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 14,
+    paddingHorizontal: 12,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
-    letterSpacing: -0.3,
+    color: '#0B2240',
+    letterSpacing: -0.2,
   },
   viewAllButton: {
     paddingVertical: 4,
@@ -272,28 +254,28 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   scrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     gap: CARD_GAP,
   },
   card: {
     width: CARD_WIDTH,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(0, 192, 106, 0.1)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
       web: {
-        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.06)',
+        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
       },
     }),
   },

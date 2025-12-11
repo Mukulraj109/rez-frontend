@@ -39,12 +39,18 @@ import {
   FeaturedCategoriesContainer,
   BestDiscountSection,
   BestSellerSection,
+  QuickActionsSection,
 } from '@/components/homepage';
 import HomeTabSection, { TabId } from '@/components/homepage/HomeTabSection';
 import ServiceCategoriesSection from '@/components/homepage/ServiceCategoriesSection';
 import PopularServicesSection from '@/components/homepage/PopularServicesSection';
 import PromoBanner from '@/components/homepage/PromoBanner';
 import GlobeBanner from '@/components/homepage/GlobeBanner';
+import RecentlyViewedSection from '@/components/category/RecentlyViewedSection';
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
+import GoingOutSection from '@/components/homepage/GoingOutSection';
+import HomeDeliverySection from '@/components/homepage/HomeDeliverySection';
+import ServiceSection from '@/components/homepage/ServiceSection';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import {
   EventItem,
@@ -65,6 +71,8 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import NotificationBell from '@/components/common/NotificationBell';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import categoriesApi from '@/services/categoriesApi';
+import vouchersService from '@/services/realVouchersApi';
+import realOffersApi from '@/services/realOffersApi';
 
 // Lazy-loaded components (below-the-fold)
 const ProfileMenuModal = React.lazy(() => import('@/components/profile/ProfileMenuModal'));
@@ -106,6 +114,11 @@ export default function HomeScreen() {
   const [homeCategories, setHomeCategories] = React.useState<any[]>([]); // Homepage category icons
   const [categoriesLoading, setCategoriesLoading] = React.useState(true);
   const [activeTab, setActiveTab] = React.useState<TabId>('rez'); // Home tab bar state
+  const [voucherCount, setVoucherCount] = React.useState(0); // Active voucher count
+  const [newOffersCount, setNewOffersCount] = React.useState(0); // New offers count
+
+  // Get recently viewed items
+  const { items: recentlyViewedItems, isLoading: isLoadingRecentlyViewed } = useRecentlyViewed();
 
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
@@ -152,6 +165,158 @@ export default function HomeScreen() {
 
     loadCategories();
   }, []);
+
+  // Load quick actions data (vouchers and new offers)
+  React.useEffect(() => {
+    const loadQuickActionsData = async () => {
+      // Only load if user is authenticated
+      if (!authState.isAuthenticated || !authState.user) {
+        setVoucherCount(0);
+        setNewOffersCount(0);
+        return;
+      }
+
+      try {
+        // Fetch active vouchers count - include BOTH gift card vouchers AND offer redemptions
+        // This matches what the My Vouchers page shows
+        // Note: API limit is max 50, so we use that and rely on pagination.total for accurate count
+        const [vouchersResponse, redemptionsResponse] = await Promise.all([
+          vouchersService.getUserVouchers({
+            status: 'active',
+            page: 1,
+            limit: 50, // API max limit is 50
+          }).catch((error) => {
+            console.error('❌ [HOME] Error fetching vouchers:', error);
+            return { success: false, data: [], meta: undefined };
+          }),
+          realOffersApi.getUserRedemptions({
+            status: 'active',
+            page: 1,
+            limit: 50, // API max limit is 50
+          }).catch((error) => {
+            console.error('❌ [HOME] Error fetching offer redemptions:', error);
+            return { success: false, data: [], meta: undefined };
+          }),
+        ]);
+
+        console.log('🔍 [HOME] Vouchers response:', JSON.stringify(vouchersResponse, null, 2));
+        console.log('🔍 [HOME] Redemptions response:', JSON.stringify(redemptionsResponse, null, 2));
+
+        let totalVoucherCount = 0;
+
+        // Count gift card vouchers - use pagination total if available, otherwise count array
+        if (vouchersResponse.success) {
+          const activeVouchers = vouchersResponse.data || [];
+          const paginationTotal = vouchersResponse.meta?.pagination?.total;
+          
+          if (paginationTotal !== undefined) {
+            totalVoucherCount += paginationTotal;
+            console.log('✅ [HOME] Gift card vouchers count (from pagination):', paginationTotal);
+          } else {
+            totalVoucherCount += activeVouchers.length;
+            console.log('✅ [HOME] Gift card vouchers count (from array):', activeVouchers.length);
+          }
+        }
+
+        // Count offer redemptions (cashback vouchers) - use pagination total if available
+        if (redemptionsResponse.success) {
+          const activeRedemptions = redemptionsResponse.data || [];
+          const paginationTotal = redemptionsResponse.meta?.pagination?.total;
+          
+          if (paginationTotal !== undefined) {
+            totalVoucherCount += paginationTotal;
+            console.log('✅ [HOME] Offer redemptions count (from pagination):', paginationTotal);
+          } else {
+            totalVoucherCount += activeRedemptions.length;
+            console.log('✅ [HOME] Offer redemptions count (from array):', activeRedemptions.length);
+          }
+        }
+
+        // If we got 0 with 'active' status, try fetching all vouchers (no status filter)
+        // This handles cases where vouchers might not have the exact status we expect
+        if (totalVoucherCount === 0) {
+          console.log('⚠️ [HOME] No active vouchers found, trying to fetch all vouchers...');
+          
+          const allVouchersResponse = await vouchersService.getUserVouchers({
+            page: 1,
+            limit: 50, // API max limit is 50
+          }).catch(() => ({ success: false, data: [], meta: undefined }));
+          
+          const allRedemptionsResponse = await realOffersApi.getUserRedemptions({
+            page: 1,
+            limit: 50, // API max limit is 50
+          }).catch(() => ({ success: false, data: [], meta: undefined }));
+          
+          let allCount = 0;
+          
+          if (allVouchersResponse.success) {
+            const allVouchers = allVouchersResponse.data || [];
+            const paginationTotal = allVouchersResponse.meta?.pagination?.total;
+            allCount += paginationTotal !== undefined ? paginationTotal : allVouchers.length;
+            console.log('✅ [HOME] All gift card vouchers count:', paginationTotal !== undefined ? paginationTotal : allVouchers.length);
+          }
+          
+          if (allRedemptionsResponse.success) {
+            const allRedemptions = allRedemptionsResponse.data || [];
+            const paginationTotal = allRedemptionsResponse.meta?.pagination?.total;
+            allCount += paginationTotal !== undefined ? paginationTotal : allRedemptions.length;
+            console.log('✅ [HOME] All offer redemptions count:', paginationTotal !== undefined ? paginationTotal : allRedemptions.length);
+          }
+          
+          if (allCount > 0) {
+            console.log('✅ [HOME] Found vouchers without status filter, using total:', allCount);
+            setVoucherCount(allCount);
+            return; // Exit early since we found vouchers
+          }
+        }
+
+        console.log('✅ [HOME] Total vouchers count:', totalVoucherCount);
+        setVoucherCount(totalVoucherCount);
+
+        // Fetch active offers count (all available offers, not just "new" ones)
+        // This gives a better representation of available offers to the user
+        const offersResponse = await realOffersApi.getOffers({
+          page: 1,
+          limit: 1, // We only need the total count from pagination
+        }).catch((error) => {
+          console.error('❌ [HOME] Error fetching offers count:', error);
+          return { success: false, data: { items: [], totalCount: 0 } };
+        });
+
+        if (offersResponse.success && offersResponse.data) {
+          // PaginatedResponse has items array and totalCount
+          const paginatedData = offersResponse.data;
+          const totalOffersCount = paginatedData.totalCount || 0;
+          console.log('✅ [HOME] Offers count loaded:', totalOffersCount);
+          setNewOffersCount(totalOffersCount);
+        } else {
+          // If API call fails, try to get count from items array as fallback
+          console.warn('⚠️ [HOME] Could not get offers totalCount, trying fallback');
+          const fallbackResponse = await realOffersApi.getOffers({
+            page: 1,
+            limit: 100,
+          }).catch(() => ({ success: false, data: { items: [] } }));
+          
+          if (fallbackResponse.success && fallbackResponse.data) {
+            const items = fallbackResponse.data.items || [];
+            console.log('✅ [HOME] Offers count (fallback):', items.length);
+            setNewOffersCount(items.length);
+          } else {
+            console.warn('⚠️ [HOME] Could not load offers count');
+            setNewOffersCount(0);
+          }
+        }
+      } catch (error) {
+        console.error('❌ [HOME] Error loading quick actions data:', error);
+        // Don't set to 0 on error, keep previous values
+      }
+    };
+
+    // Only load after interactions complete to avoid blocking initial render
+    if (interactionsComplete && authState.isAuthenticated) {
+      loadQuickActionsData();
+    }
+  }, [authState.isAuthenticated, authState.user, interactionsComplete]);
 
   // Load user points and statistics (optimized with cache check)
   React.useEffect(() => {
@@ -299,6 +464,30 @@ export default function HomeScreen() {
           loadUserStatistics().catch(err => {
             console.error('Failed to refresh stats:', err);
           });
+
+          // Refresh quick actions data (vouchers and offers)
+          Promise.all([
+            Promise.all([
+              vouchersService.getUserVouchers({ status: 'active', page: 1, limit: 50 }),
+              realOffersApi.getUserRedemptions({ status: 'active', page: 1, limit: 50 }),
+            ])
+              .then(([vouchersRes, redemptionsRes]) => {
+                let count = 0;
+                if (vouchersRes.success) count += (vouchersRes.data || []).length;
+                if (redemptionsRes.success) count += (redemptionsRes.data || []).length;
+                setVoucherCount(count);
+              })
+              .catch(() => {}),
+            realOffersApi.getOffers({ page: 1, limit: 1 })
+              .then(res => {
+                if (res.success && res.data) {
+                  const paginatedData = res.data;
+                  const count = paginatedData.totalCount || 0;
+                  setNewOffersCount(count);
+                }
+              })
+              .catch(() => {}),
+          ]).catch(() => {});
         }
       } catch (error) {
         console.error('❌ [HOME] Failed to refresh homepage:', error);
@@ -536,7 +725,7 @@ export default function HomeScreen() {
               accessibilityHint="Double tap to view your shopping cart"
               style={{ position: 'relative' }}
             >
-              <Ionicons name="cart-outline" size={24} color="#FFFFFF" />
+              <Ionicons name="cart-outline" size={24} color="#1a1a1a" />
               {cartState.totalItems > 0 && (
                 <View
                   style={{
@@ -670,20 +859,70 @@ export default function HomeScreen() {
 
       {/* Content */}
       <View style={viewStyles.content}>
-        {/* Online Voucher Button - Lazy Loaded */}
-        <Suspense fallback={<BelowFoldFallback />}>
-          <VoucherNavButton variant="minimal" style={{ marginBottom: 20 }} />
-        </Suspense>
+        {/* Quick Actions Section - Voucher, Wallet, Offers, Store - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && (
+          <QuickActionsSection
+            voucherCount={voucherCount}
+            walletBalance={userPoints}
+            newOffersCount={newOffersCount}
+          />
+        )}
 
-        {/* Feature Highlights - Lazy Loaded */}
-        <Suspense fallback={<BelowFoldFallback />}>
-          <FeatureHighlights />
-        </Suspense>
+        {/* Online Voucher Button (Exclusive Deals) - Lazy Loaded - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && (
+          <Suspense fallback={<BelowFoldFallback />}>
+            <VoucherNavButton variant="minimal" style={{ marginBottom: 20 }} />
+          </Suspense>
+        )}
 
-        {/* Sections from state - Progressive loading with memoization */}
+        {/* Recently Viewed Section - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && recentlyViewedItems.length > 0 && (
+          <RecentlyViewedSection
+            items={recentlyViewedItems}
+            isLoading={isLoadingRecentlyViewed}
+            maxItems={10}
+          />
+        )}
+
+        {/* Going Out Section - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && (
+          <GoingOutSection />
+        )}
+
+        {/* Just for you Section - Only show when "rez" tab is active */}
         {React.useMemo(() => {
+          if (activeTab !== 'rez') return null;
+          const justForYouSection = state.sections.find(section => section.id === 'just_for_you');
+          if (!justForYouSection || !justForYouSection.items || justForYouSection.items.length === 0) return null;
+          return (
+            <HorizontalScrollSection
+              key={justForYouSection.id}
+              section={justForYouSection}
+              onItemPress={item => handleItemPress(justForYouSection.id, item)}
+              onRefresh={() => actions.refreshSection(justForYouSection.id)}
+              renderCard={item => renderRecommendationCard(item)}
+              cardWidth={230}
+              spacing={12}
+              showIndicator={false}
+            />
+          );
+        }, [activeTab, state.sections, handleItemPress, actions, renderRecommendationCard])}
+
+        {/* Home Delivery Section - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && (
+          <HomeDeliverySection />
+        )}
+
+        {/* Service Section - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && (
+          <ServiceSection />
+        )}
+
+        {/* Other Sections from state (excluding just_for_you) - Progressive loading with memoization - Only show when "rez" tab is active */}
+        {React.useMemo(() => {
+          if (activeTab !== 'rez') return null;
           return state.sections
-            .filter(section => section.items && section.items.length > 0)
+            .filter(section => section.id !== 'just_for_you' && section.items && section.items.length > 0)
             .map(section => (
               <HorizontalScrollSection
                 key={section.id}
@@ -708,48 +947,66 @@ export default function HomeScreen() {
                 }}
                 cardWidth={
                   section.id === 'new_arrivals' ? 180 :
-                    section.id === 'just_for_you' ? 230 :
-                      section.type === 'branded_stores' ? 200 : 280
+                    section.type === 'branded_stores' ? 200 : 280
                 }
                 spacing={
-                  section.id === 'new_arrivals' ? 12 :
-                    section.id === 'just_for_you' ? 12 : 16
+                  section.id === 'new_arrivals' ? 12 : 16
                 }
                 showIndicator={false}
               />
             ));
-        }, [state.sections, handleItemPress, actions, renderEventCard, renderRecommendationCard, renderStoreCard, renderBrandedStoreCard, renderProductCard])}
+        }, [activeTab, state.sections, handleItemPress, actions, renderEventCard, renderRecommendationCard, renderStoreCard, renderBrandedStoreCard, renderProductCard])}
 
-        {/* Categories Grid Section - Shows all 11 main categories */}
-        <CategoryGridSection title="Categories" maxCategories={11} />
+        {/* Categories Grid Section - Shows all 11 main categories - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && (
+          <CategoryGridSection title="Categories" maxCategories={11} />
+        )}
 
-        {/* Promotional Banner */}
-        <PromoBanner />
+        {/* Promotional Banner - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <PromoBanner />}
 
-        {/* Best Discount Categories Section */}
-        <BestDiscountSection title="Best Discount" limit={10} />
+        {/* Best Discount Categories Section - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <BestDiscountSection title="Best Discount" limit={10} />}
 
-        {/* Best Seller Categories Section */}
-        <BestSellerSection title="Best Seller" limit={10} />
+        {/* Best Seller Categories Section - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <BestSellerSection title="Best Seller" limit={10} />}
 
-        {/* Popular Products Section - Shows products with highest order count */}
-        <PopularProductsSection title="Popular" limit={10} />
+        {/* Popular Products Section - Shows products with highest order count - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <PopularProductsSection title="Popular" limit={10} />}
 
-        {/* In Your Area Section - Shows products from nearby stores */}
-        <NearbyProductsSection title="In Your Area" limit={10} radius={10} />
+        {/* In Your Area Section - Shows products from nearby stores - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <NearbyProductsSection title="In Your Area" limit={10} radius={10} />}
 
-        {/* Globe Banner - Best Deals on Internet */}
-        <GlobeBanner />
+        {/* Globe Banner - Best Deals on Internet - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <GlobeBanner />}
 
-        {/* Services Sections */}
-        <ServiceCategoriesSection />
-        <PopularServicesSection />
+        {/* Services Sections - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <ServiceCategoriesSection />}
+        {activeTab === 'rez' && <PopularServicesSection />}
 
-        {/* Hot Deals Section - Shows products with hot-deal tag or high cashback */}
-        <HotDealsSection title="Hot deals" limit={10} />
+        {/* Hot Deals Section - Shows products with hot-deal tag or high cashback - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <HotDealsSection title="Hot deals" limit={10} />}
 
-        {/* Featured Category Sections - Dynamic sections by category */}
-        <FeaturedCategoriesContainer productsPerCategory={10} />
+        {/* Featured Category Sections - Dynamic sections by category - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <FeaturedCategoriesContainer productsPerCategory={10} />}
+
+        {/* Feature Highlights - Lazy Loaded (moved to bottom) - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && (
+          <Suspense fallback={<BelowFoldFallback />}>
+            <FeatureHighlights />
+          </Suspense>
+        )}
+
+        {/* Show content for other tabs when not "rez" */}
+        {activeTab !== 'rez' && (
+          <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+            <ThemedText style={{ fontSize: 16, color: '#9AA7B2' }}>
+              {activeTab === 'rez-mall' && 'Rez Mall content coming soon...'}
+              {activeTab === 'cash-store' && 'Cash Store content coming soon...'}
+              {activeTab === '1-rupee-store' && '1₹ Store content coming soon...'}
+            </ThemedText>
+          </View>
+        )}
       </View>
 
       {/* Profile Menu Modal - Lazy Loaded */}
@@ -875,7 +1132,7 @@ const viewStyles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === 'ios' ? 56 : 50,
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 0,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
   },

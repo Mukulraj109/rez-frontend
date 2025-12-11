@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ECFDF5',
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 0,
     marginTop: -1,
   },
   // Tabs

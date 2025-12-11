@@ -12,6 +12,8 @@ export { default as CategoryProductsSection } from './CategoryProductsSection';
 export { default as FeaturedCategoriesContainer } from './FeaturedCategoriesContainer';
 export { default as BestDiscountSection } from './BestDiscountSection';
 export { default as BestSellerSection } from './BestSellerSection';
+export { default as QuickActionsSection } from './QuickActionsSection';
+export { default as GoingOutSection } from './GoingOutSection';
 
 // Card Components
 export { default as EventCard } from './cards/EventCard';

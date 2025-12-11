@@ -204,18 +204,6 @@ function RecommendationCard({
       accessibilityHint="Double tap to view recommended product details"
     >
       <ThemedView style={styles.card}>
-        {/* Recommendation Badge */}
-        <View
-          style={styles.recommendationBadge}
-          accessibilityLabel="Recommended for you"
-          accessibilityRole="text"
-        >
-          <Ionicons name="sparkles" size={12} color="#FFFFFF" />
-          <ThemedText style={styles.recommendationBadgeText}>
-            For You
-          </ThemedText>
-        </View>
-
         {/* Product Image */}
         <View style={styles.imageContainer}>
           <FastImage
@@ -427,29 +415,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 400,
   },
-  recommendationBadge: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#00C06A',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    zIndex: 10,
-  },
-  recommendationBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
   imageContainer: {
     position: 'relative',
-    height: 120,
-    marginTop: 24, // Account for recommendation badge
+    height: 140,
   },
   image: {
     width: '100%',

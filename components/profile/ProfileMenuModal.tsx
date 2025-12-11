@@ -235,14 +235,59 @@ export default function ProfileMenuModal({
         </View>
       </View>
 
-      {/* Logout Button */}
+      {/* Partner Profile Quick Action - Premium Glass Card */}
       <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={handleLogout}
-        activeOpacity={0.8}
+        style={styles.partnerCard}
+        onPress={() => {
+          onClose();
+          router.push('/profile/partner' as any);
+        }}
+        activeOpacity={0.9}
       >
-        <Ionicons name="log-out-outline" size={18} color={COLORS.error} />
-        <ThemedText style={styles.logoutText}>Sign Out</ThemedText>
+        {Platform.OS === 'web' ? (
+          <View style={styles.partnerCardGlass}>
+            <View style={styles.partnerCardContent}>
+              <LinearGradient
+                colors={['rgba(255, 200, 87, 0.2)', 'rgba(255, 200, 87, 0.15)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.partnerIconContainer}
+              >
+                <Ionicons name="star" size={26} color={COLORS.gold} />
+              </LinearGradient>
+              <View style={styles.partnerTextContainer}>
+                <ThemedText style={styles.partnerTitle}>Partner Program</ThemedText>
+                <ThemedText style={styles.partnerDescription}>Level 1 • Earn rewards</ThemedText>
+              </View>
+              <View style={styles.partnerArrowContainer}>
+                <Ionicons name="chevron-forward" size={22} color={COLORS.primary} />
+              </View>
+            </View>
+          </View>
+        ) : (
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.9)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.partnerCardGradient}
+          >
+            <LinearGradient
+              colors={['rgba(255, 200, 87, 0.2)', 'rgba(255, 200, 87, 0.15)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.partnerIconContainer}
+            >
+              <Ionicons name="star" size={26} color={COLORS.gold} />
+            </LinearGradient>
+            <View style={styles.partnerTextContainer}>
+              <ThemedText style={styles.partnerTitle}>Partner Program</ThemedText>
+              <ThemedText style={styles.partnerDescription}>Level 1 • Earn rewards</ThemedText>
+            </View>
+            <View style={styles.partnerArrowContainer}>
+              <Ionicons name="chevron-forward" size={22} color={COLORS.primary} />
+            </View>
+          </LinearGradient>
+        )}
       </TouchableOpacity>
     </LinearGradient>
   );
@@ -373,6 +418,18 @@ export default function ProfileMenuModal({
 
               {menuSections?.map(renderMenuSection)}
 
+              {/* Logout Button at Bottom */}
+              <View style={styles.logoutContainer}>
+                <TouchableOpacity
+                  style={styles.logoutButtonBottom}
+                  onPress={handleLogout}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
+                  <ThemedText style={styles.logoutTextBottom}>Sign Out</ThemedText>
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.footerSpace} />
             </ScrollView>
           </Animated.View>
@@ -391,34 +448,47 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: MODAL_WIDTH,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: Platform.OS === 'web' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.9)',
     borderTopLeftRadius: 28,
     borderBottomLeftRadius: 28,
     shadowColor: '#000',
     shadowOffset: { width: -8, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 40,
-    elevation: 25,
+    shadowOpacity: 0.25,
+    shadowRadius: 48,
+    elevation: 30,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.5)',
     borderRightWidth: 0,
+    ...Platform.select({
+      web: {
+        // @ts-ignore - web only
+        backdropFilter: 'blur(60px) saturate(200%)',
+        // @ts-ignore - web only
+        WebkitBackdropFilter: 'blur(60px) saturate(200%)',
+        boxShadow: `
+          0 25px 50px rgba(0, 0, 0, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.6)
+        `,
+      },
+    }),
   },
   webGlassBackground: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
     // @ts-ignore - web only
-    backdropFilter: 'blur(60px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(60px) saturate(180%)',
+    backdropFilter: 'blur(60px) saturate(200%)',
+    // @ts-ignore - web only
+    WebkitBackdropFilter: 'blur(60px) saturate(200%)',
   },
 
   // Header
   headerContainer: {
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
     borderTopLeftRadius: 28,
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   headerGlassOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -431,22 +501,40 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   closeButtonInner: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    ...Platform.select({
+      web: {
+        // @ts-ignore - web only
+        backdropFilter: 'blur(20px)',
+        // @ts-ignore - web only
+        WebkitBackdropFilter: 'blur(20px)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
+      },
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
 
   // User Section
   userSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 30,
-    marginBottom: 20,
+    marginTop: 20,
+    marginBottom: 12,
   },
   avatarWrapper: {
     position: 'relative',
@@ -504,13 +592,31 @@ const styles = StyleSheet.create({
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
     alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    ...Platform.select({
+      web: {
+        // @ts-ignore - web only
+        backdropFilter: 'blur(20px)',
+        // @ts-ignore - web only
+        WebkitBackdropFilter: 'blur(20px)',
+        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)',
+      },
+      ios: {
+        shadowColor: COLORS.success,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   verifiedText: {
     fontSize: 12,
@@ -519,15 +625,35 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
-  // Stats Row
+  // Stats Row - Premium Glass Card
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: Platform.OS === 'web' 
+      ? 'rgba(255, 255, 255, 0.2)' 
+      : 'rgba(255, 255, 255, 0.18)',
     borderRadius: 16,
     padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    ...Platform.select({
+      web: {
+        // @ts-ignore - web only
+        backdropFilter: 'blur(30px) saturate(180%)',
+        // @ts-ignore - web only
+        WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
+      },
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   statItem: {
     flex: 1,
@@ -537,10 +663,26 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: 'rgba(255, 200, 87, 0.2)',
+    backgroundColor: 'rgba(255, 200, 87, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 200, 87, 0.3)',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(255, 200, 87, 0.2)',
+      },
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   statValue: {
     fontSize: 16,
@@ -558,47 +700,165 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
 
-  // Logout Button
-  logoutButton: {
+  // Partner Card - Premium Glass Design (TASK.md compliant)
+  partnerCard: {
+    marginTop: 12,
+    marginBottom: -12,
+    zIndex: 10,
+    paddingHorizontal: 0,
+  },
+  // Web: Glass Card with backdrop-filter
+  partnerCardGlass: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    // @ts-ignore - web only
+    backdropFilter: 'blur(40px) saturate(180%)',
+    // @ts-ignore - web only
+    WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
+      },
+    }),
+  },
+  partnerCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  // Native: Gradient fallback
+  partnerCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  partnerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 200, 87, 0.4)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 16px rgba(255, 200, 87, 0.25)',
+      },
+    }),
+  },
+  partnerTextContainer: {
+    flex: 1,
+  },
+  partnerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 3,
+    letterSpacing: 0.15,
+    lineHeight: 20,
+  },
+  partnerDescription: {
+    fontSize: 12.5,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+    lineHeight: 16,
+  },
+  partnerArrowContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
+  },
+  
+  // Logout Button at Bottom
+  logoutContainer: {
+    marginTop: 20,
+    marginBottom: 8,
+    paddingHorizontal: 0,
+  },
+  logoutButtonBottom: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingVertical: 12,
-    borderRadius: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: Platform.OS === 'web'
+      ? 'rgba(255, 255, 255, 0.85)'
+      : 'rgba(255, 255, 255, 0.98)',
+    paddingVertical: 14,
+    borderRadius: 16,
+    shadowColor: COLORS.error,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    ...Platform.select({
+      web: {
+        // @ts-ignore - web only
+        backdropFilter: 'blur(40px) saturate(180%)',
+        // @ts-ignore - web only
+        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+        boxShadow: '0 8px 24px rgba(239, 68, 68, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
+      },
+    }),
   },
-  logoutText: {
-    fontSize: 15,
-    fontWeight: '600',
+  logoutTextBottom: {
+    fontSize: 16,
+    fontWeight: '700',
     color: COLORS.error,
-    marginLeft: 8,
+    marginLeft: 10,
+    letterSpacing: 0.2,
   },
 
   // Menu Container
   menuContainer: {
     flex: 1,
-    backgroundColor: 'rgba(247, 250, 252, 0.8)',
+    backgroundColor: Platform.OS === 'web' 
+      ? 'rgba(247, 250, 252, 0.6)' 
+      : 'rgba(247, 250, 252, 0.85)',
   },
   menuContent: {
     paddingTop: 20,
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingHorizontal: 12,
+    paddingBottom: 32,
   },
 
   // Quick Actions Header
   quickActionsHeader: {
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingTop: 0,
   },
   quickActionsTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.textPrimary,
-    marginBottom: 8,
+    marginBottom: 6,
+    letterSpacing: 0.2,
   },
   quickActionsTitleLine: {
     width: 40,
@@ -611,8 +871,8 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 12,
+    marginTop: 12,
+    marginBottom: 8,
   },
   sectionHeaderAccent: {
     width: 4,
@@ -630,39 +890,78 @@ const styles = StyleSheet.create({
 
   // Menu Section
   menuSection: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
 
-  // Menu Item
+  // Menu Item - Premium Glass Card
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: Platform.OS === 'web' 
+      ? 'rgba(255, 255, 255, 0.7)' 
+      : 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
     padding: 14,
-    marginBottom: 10,
+    marginBottom: 8,
     shadowColor: COLORS.navy,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowRadius: 16,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderColor: 'rgba(0, 192, 106, 0.1)',
+    ...Platform.select({
+      web: {
+        // @ts-ignore - web only
+        backdropFilter: 'blur(40px) saturate(180%)',
+        // @ts-ignore - web only
+        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
+      },
+    }),
   },
   menuItemGold: {
-    backgroundColor: 'rgba(255, 200, 87, 0.12)',
-    borderColor: 'rgba(255, 200, 87, 0.3)',
+    backgroundColor: Platform.OS === 'web'
+      ? 'rgba(255, 200, 87, 0.15)'
+      : 'rgba(255, 200, 87, 0.12)',
+    borderColor: 'rgba(255, 200, 87, 0.35)',
+    borderWidth: 1.5,
     shadowColor: COLORS.gold,
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
+    ...Platform.select({
+      web: {
+        // @ts-ignore - web only
+        backdropFilter: 'blur(40px) saturate(180%)',
+        // @ts-ignore - web only
+        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+        boxShadow: '0 8px 32px rgba(255, 200, 87, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
+      },
+    }),
   },
   menuIconContainer: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(0, 192, 106, 0.15)',
+      },
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   menuIconGold: {
     backgroundColor: COLORS.goldLight,
@@ -675,11 +974,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textPrimary,
     letterSpacing: 0.1,
+    lineHeight: 18,
   },
   menuDescription: {
     fontSize: 12,
     color: COLORS.textMuted,
     marginTop: 2,
+    lineHeight: 15,
   },
   menuRight: {
     flexDirection: 'row',
