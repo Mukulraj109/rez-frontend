@@ -362,9 +362,8 @@ export function useHomepageNavigation() {
           router.push({
             pathname: '/ProductPage',
             params: {
-              id: item.id,
-              cardType: sectionId,
-              cardData: JSON.stringify(cardData)
+              cardId: item.id,
+              cardType: 'product'
             }
           });
         } catch (error) {

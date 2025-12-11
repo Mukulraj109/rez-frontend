@@ -353,7 +353,7 @@ function HomeDeliverySection({ backgroundImage = DEFAULT_BACKGROUND_IMAGE }: Hom
   // Handle Increase Quantity
   const handleIncreaseQuantity = useCallback(async (product: HomeDeliverySectionProduct) => {
     try {
-      const cartItem = cartState.items.find(item => item.id === product.id);
+      const cartItem = cartState.items.find(item => item.productId === product.id || item.id === product.id);
       if (cartItem) {
         await cartActions.updateQuantity(cartItem.id, cartItem.quantity + 1);
       }
@@ -366,7 +366,7 @@ function HomeDeliverySection({ backgroundImage = DEFAULT_BACKGROUND_IMAGE }: Hom
   // Handle Decrease Quantity
   const handleDecreaseQuantity = useCallback(async (product: HomeDeliverySectionProduct) => {
     try {
-      const cartItem = cartState.items.find(item => item.id === product.id);
+      const cartItem = cartState.items.find(item => item.productId === product.id || item.id === product.id);
       if (cartItem) {
         if (cartItem.quantity > 1) {
           await cartActions.updateQuantity(cartItem.id, cartItem.quantity - 1);
@@ -383,7 +383,7 @@ function HomeDeliverySection({ backgroundImage = DEFAULT_BACKGROUND_IMAGE }: Hom
 
   // Get quantity in cart for a product
   const getQuantityInCart = useCallback((productId: string) => {
-    const cartItem = cartState.items.find(item => item.id === productId);
+    const cartItem = cartState.items.find(item => item.productId === productId || item.id === productId);
     return cartItem?.quantity || 0;
   }, [cartState.items]);
 

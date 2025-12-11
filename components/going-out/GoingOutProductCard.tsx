@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -13,6 +13,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { GoingOutProductCardProps } from '@/types/going-out.types';
 import { normalizeProductPrice, normalizeProductRating } from '@/utils/productDataNormalizer';
 import { formatPrice } from '@/utils/priceFormatter';
+import { useCart } from '@/contexts/CartContext';
 
 export function GoingOutProductCard({
   product,
@@ -25,6 +26,19 @@ export function GoingOutProductCard({
 }: GoingOutProductCardProps) {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const { state: cartState, actions: cartActions } = useCart();
+
+  // Get product ID and check if in cart
+  const productId = product._id || product.id;
+  const { cartItem, quantityInCart, isInCart } = useMemo(() => {
+    const item = cartState.items.find(i => i.productId === productId || i.id === productId);
+    const qty = item?.quantity || 0;
+    return {
+      cartItem: item,
+      quantityInCart: qty,
+      isInCart: qty > 0
+    };
+  }, [productId, cartState.items]);
 
   // Normalize price and rating using utility functions
   const normalizedPrice = normalizeProductPrice(product);
@@ -44,6 +58,55 @@ export function GoingOutProductCard({
       onAddToCart(product);
     }
   };
+
+  // Internal add to cart using cartActions directly
+  const handleAddToCartInternal = useCallback(async (e: any) => {
+    e.stopPropagation();
+
+    // If external handler provided, use it
+    if (onAddToCart) {
+      onAddToCart(product);
+      return;
+    }
+
+    // Otherwise use cartActions directly
+    try {
+      const price = normalizedPrice.current || 0;
+      const originalPrice = normalizedPrice.original || price;
+
+      await cartActions.addItem({
+        id: productId,
+        name: product.name,
+        image: product.image || '',
+        price: price,
+        originalPrice: originalPrice,
+        discountedPrice: price,
+        quantity: 1,
+        cashback: product.cashback?.percentage || 0,
+        category: product.categoryId || 'general',
+      });
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+    }
+  }, [onAddToCart, product, productId, normalizedPrice, cartActions]);
+
+  const handleDecreaseQuantity = useCallback(async (e: any) => {
+    e.stopPropagation();
+    if (cartItem) {
+      if (quantityInCart > 1) {
+        await cartActions.updateQuantity(cartItem.id, quantityInCart - 1);
+      } else {
+        await cartActions.removeItem(cartItem.id);
+      }
+    }
+  }, [quantityInCart, cartItem, cartActions]);
+
+  const handleIncreaseQuantity = useCallback(async (e: any) => {
+    e.stopPropagation();
+    if (cartItem) {
+      await cartActions.updateQuantity(cartItem.id, quantityInCart + 1);
+    }
+  }, [quantityInCart, cartItem, cartActions]);
 
   const handleImageLoad = () => {
     setImageLoading(false);
@@ -234,19 +297,47 @@ export function GoingOutProductCard({
             )}
           </View>
 
-          {/* Add to Cart Button */}
-          {showAddToCart && onAddToCart && product.availabilityStatus === 'in_stock' && (
-            <TouchableOpacity
-              style={styles.addToCartButton}
-              onPress={handleAddToCart}
-              activeOpacity={0.8}
-              accessibilityLabel={`Add ${product.name} to cart`}
-              accessibilityRole="button"
-              accessibilityHint="Double tap to add this product to your shopping cart"
-            >
-              <Ionicons name="add-circle-outline" size={16} color="#8B5CF6" />
-              <ThemedText style={styles.addToCartText}>Add</ThemedText>
-            </TouchableOpacity>
+          {/* Add to Cart Button / Quantity Controls */}
+          {showAddToCart && product.availabilityStatus !== 'out_of_stock' && (
+            <>
+              {isInCart ? (
+                // Quantity Controls
+                <View style={styles.quantityControls}>
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={handleDecreaseQuantity}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="remove" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+
+                  <View style={styles.quantityDisplay}>
+                    <ThemedText style={styles.quantityText}>{quantityInCart}</ThemedText>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={handleIncreaseQuantity}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="add" size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                // Add to Cart Button
+                <TouchableOpacity
+                  style={styles.addToCartButton}
+                  onPress={handleAddToCartInternal}
+                  activeOpacity={0.8}
+                  accessibilityLabel={`Add ${product.name} to cart`}
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to add this product to your shopping cart"
+                >
+                  <Ionicons name="cart-outline" size={16} color="#FFFFFF" />
+                  <ThemedText style={styles.addToCartText}>Add to Cart</ThemedText>
+                </TouchableOpacity>
+              )}
+            </>
           )}
 
           {/* Out of Stock */}
@@ -474,33 +565,58 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingVertical: 8,
+    backgroundColor: '#00C06A',
+    paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#8B5CF6',
     ...Platform.select({
       ios: {
-        shadowColor: '#8B5CF6',
+        shadowColor: '#00C06A',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.2,
         shadowRadius: 4,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
       web: {
-        boxShadow: '0px 2px 4px rgba(139, 92, 246, 0.1)',
+        boxShadow: '0px 2px 4px rgba(0, 192, 106, 0.2)',
       },
     }),
   },
   addToCartText: {
     fontSize: 12,
-    color: '#8B5CF6',
+    color: '#FFFFFF',
     fontWeight: '700',
     marginLeft: 6,
     letterSpacing: 0.2,
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#00C06A',
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  quantityButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityDisplay: {
+    minWidth: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantityText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   outOfStockContainer: {
     backgroundColor: '#FEE2E2',

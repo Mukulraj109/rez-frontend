@@ -176,6 +176,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         // Add new item
         const newItem: CartItemWithQuantity = {
           ...action.payload,
+          productId: action.payload.id, // Ensure productId is set for cart item lookup
           quantity: 1,
           selected: true,
           addedAt: new Date().toISOString(),
@@ -559,6 +560,7 @@ export function CartProvider({ children }: CartProviderProps) {
       } else {
         const newItem: CartItemWithQuantity = {
           ...item,
+          productId: item.id, // Ensure productId is set for cart item lookup
           quantity: 1,
           selected: true,
           addedAt: new Date().toISOString(),

@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#00C06A',
   },
   productBadge: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
   },
   typeBadgeText: {
     fontSize: 10,
