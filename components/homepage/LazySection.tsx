@@ -143,7 +143,6 @@ const LazySection: React.FC<LazySectionProps> = ({
   // Track if section has ever been loaded
   useEffect(() => {
     if (isVisible && !hasLoaded) {
-      console.log(`[LazySection] Loading section: ${sectionId}`);
       setHasLoaded(true);
 
       // Fade in animation
@@ -153,14 +152,7 @@ const LazySection: React.FC<LazySectionProps> = ({
         useNativeDriver: true,
       }).start();
     }
-  }, [isVisible, hasLoaded, sectionId, fadeAnim]);
-
-  // Cleanup when unmounting
-  useEffect(() => {
-    return () => {
-      console.log(`[LazySection] Unmounting section: ${sectionId}`);
-    };
-  }, [sectionId]);
+  }, [isVisible, hasLoaded, fadeAnim]);
 
   // Decide whether to render content
   const shouldRenderContent = hasLoaded && (keepMounted || isVisible || !unloadWhenOffscreen);

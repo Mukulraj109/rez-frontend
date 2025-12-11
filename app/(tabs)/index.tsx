@@ -102,7 +102,7 @@ export default function HomeScreen() {
   const { handleMenuItemPress } = useProfileMenu();
   const { state: cartState, refreshCart } = useCart();
   const { state: authState, actions: authActions } = useAuth();
-  const { state: subscriptionState } = useSubscription();
+  const { state: subscriptionState, actions: subscriptionActions } = useSubscription();
   const [refreshing, setRefreshing] = React.useState(false);
   const [showDetailedLocation, setShowDetailedLocation] = React.useState(false);
   const [userPoints, setUserPoints] = React.useState(0);
@@ -124,6 +124,7 @@ export default function HomeScreen() {
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
   const scrollY = React.useRef(new Animated.Value(0)).current; // For sticky header
   const statsLoadedRef = React.useRef(false); // Prevent redundant loads
+  const lastFocusRefreshRef = React.useRef(0); // Throttle focus refreshes
 
   // Initialize push notifications
   usePushNotifications();
@@ -166,186 +167,151 @@ export default function HomeScreen() {
     loadCategories();
   }, []);
 
-  // Load quick actions data (vouchers and new offers)
-  React.useEffect(() => {
-    const loadQuickActionsData = async () => {
-      // Only load if user is authenticated
-      if (!authState.isAuthenticated || !authState.user) {
-        setVoucherCount(0);
-        setNewOffersCount(0);
-        return;
+  // Load quick actions data (vouchers and new offers) - extracted as callback for reuse
+  const loadQuickActionsData = useCallback(async () => {
+    // Only load if user is authenticated
+    if (!authState.isAuthenticated || !authState.user) {
+      setVoucherCount(0);
+      setNewOffersCount(0);
+      return;
+    }
+
+    try {
+      // Fetch active vouchers count - include BOTH gift card vouchers AND offer redemptions
+      const [vouchersResponse, redemptionsResponse] = await Promise.all([
+        vouchersService.getUserVouchers({
+          status: 'active',
+          page: 1,
+          limit: 50,
+        }).catch((error) => {
+          console.error('❌ [HOME] Error fetching vouchers:', error);
+          return { success: false, data: [], meta: undefined };
+        }),
+        realOffersApi.getUserRedemptions({
+          status: 'active',
+          page: 1,
+          limit: 50,
+        }).catch((error) => {
+          console.error('❌ [HOME] Error fetching offer redemptions:', error);
+          return { success: false, data: [], meta: undefined };
+        }),
+      ]);
+
+      let totalVoucherCount = 0;
+
+      // Count gift card vouchers
+      if (vouchersResponse.success) {
+        const activeVouchers = vouchersResponse.data || [];
+        const paginationTotal = vouchersResponse.meta?.pagination?.total;
+        totalVoucherCount += paginationTotal !== undefined ? paginationTotal : activeVouchers.length;
       }
 
-      try {
-        // Fetch active vouchers count - include BOTH gift card vouchers AND offer redemptions
-        // This matches what the My Vouchers page shows
-        // Note: API limit is max 50, so we use that and rely on pagination.total for accurate count
-        const [vouchersResponse, redemptionsResponse] = await Promise.all([
-          vouchersService.getUserVouchers({
-            status: 'active',
-            page: 1,
-            limit: 50, // API max limit is 50
-          }).catch((error) => {
-            console.error('❌ [HOME] Error fetching vouchers:', error);
-            return { success: false, data: [], meta: undefined };
-          }),
-          realOffersApi.getUserRedemptions({
-            status: 'active',
-            page: 1,
-            limit: 50, // API max limit is 50
-          }).catch((error) => {
-            console.error('❌ [HOME] Error fetching offer redemptions:', error);
-            return { success: false, data: [], meta: undefined };
-          }),
+      // Count offer redemptions
+      if (redemptionsResponse.success) {
+        const activeRedemptions = redemptionsResponse.data || [];
+        const paginationTotal = redemptionsResponse.meta?.pagination?.total;
+        totalVoucherCount += paginationTotal !== undefined ? paginationTotal : activeRedemptions.length;
+      }
+
+      // If we got 0 with 'active' status, try fetching all vouchers
+      if (totalVoucherCount === 0) {
+        const [allVouchersResponse, allRedemptionsResponse] = await Promise.all([
+          vouchersService.getUserVouchers({ page: 1, limit: 50 }).catch(() => ({ success: false, data: [], meta: undefined })),
+          realOffersApi.getUserRedemptions({ page: 1, limit: 50 }).catch(() => ({ success: false, data: [], meta: undefined })),
         ]);
 
-        console.log('🔍 [HOME] Vouchers response:', JSON.stringify(vouchersResponse, null, 2));
-        console.log('🔍 [HOME] Redemptions response:', JSON.stringify(redemptionsResponse, null, 2));
-
-        let totalVoucherCount = 0;
-
-        // Count gift card vouchers - use pagination total if available, otherwise count array
-        if (vouchersResponse.success) {
-          const activeVouchers = vouchersResponse.data || [];
-          const paginationTotal = vouchersResponse.meta?.pagination?.total;
-          
-          if (paginationTotal !== undefined) {
-            totalVoucherCount += paginationTotal;
-            console.log('✅ [HOME] Gift card vouchers count (from pagination):', paginationTotal);
-          } else {
-            totalVoucherCount += activeVouchers.length;
-            console.log('✅ [HOME] Gift card vouchers count (from array):', activeVouchers.length);
-          }
+        let allCount = 0;
+        if (allVouchersResponse.success) {
+          const paginationTotal = allVouchersResponse.meta?.pagination?.total;
+          allCount += paginationTotal !== undefined ? paginationTotal : (allVouchersResponse.data || []).length;
+        }
+        if (allRedemptionsResponse.success) {
+          const paginationTotal = allRedemptionsResponse.meta?.pagination?.total;
+          allCount += paginationTotal !== undefined ? paginationTotal : (allRedemptionsResponse.data || []).length;
         }
 
-        // Count offer redemptions (cashback vouchers) - use pagination total if available
-        if (redemptionsResponse.success) {
-          const activeRedemptions = redemptionsResponse.data || [];
-          const paginationTotal = redemptionsResponse.meta?.pagination?.total;
-          
-          if (paginationTotal !== undefined) {
-            totalVoucherCount += paginationTotal;
-            console.log('✅ [HOME] Offer redemptions count (from pagination):', paginationTotal);
-          } else {
-            totalVoucherCount += activeRedemptions.length;
-            console.log('✅ [HOME] Offer redemptions count (from array):', activeRedemptions.length);
-          }
+        if (allCount > 0) {
+          setVoucherCount(allCount);
+          // Continue to load offers count
         }
-
-        // If we got 0 with 'active' status, try fetching all vouchers (no status filter)
-        // This handles cases where vouchers might not have the exact status we expect
-        if (totalVoucherCount === 0) {
-          console.log('⚠️ [HOME] No active vouchers found, trying to fetch all vouchers...');
-          
-          const allVouchersResponse = await vouchersService.getUserVouchers({
-            page: 1,
-            limit: 50, // API max limit is 50
-          }).catch(() => ({ success: false, data: [], meta: undefined }));
-          
-          const allRedemptionsResponse = await realOffersApi.getUserRedemptions({
-            page: 1,
-            limit: 50, // API max limit is 50
-          }).catch(() => ({ success: false, data: [], meta: undefined }));
-          
-          let allCount = 0;
-          
-          if (allVouchersResponse.success) {
-            const allVouchers = allVouchersResponse.data || [];
-            const paginationTotal = allVouchersResponse.meta?.pagination?.total;
-            allCount += paginationTotal !== undefined ? paginationTotal : allVouchers.length;
-            console.log('✅ [HOME] All gift card vouchers count:', paginationTotal !== undefined ? paginationTotal : allVouchers.length);
-          }
-          
-          if (allRedemptionsResponse.success) {
-            const allRedemptions = allRedemptionsResponse.data || [];
-            const paginationTotal = allRedemptionsResponse.meta?.pagination?.total;
-            allCount += paginationTotal !== undefined ? paginationTotal : allRedemptions.length;
-            console.log('✅ [HOME] All offer redemptions count:', paginationTotal !== undefined ? paginationTotal : allRedemptions.length);
-          }
-          
-          if (allCount > 0) {
-            console.log('✅ [HOME] Found vouchers without status filter, using total:', allCount);
-            setVoucherCount(allCount);
-            return; // Exit early since we found vouchers
-          }
-        }
-
-        console.log('✅ [HOME] Total vouchers count:', totalVoucherCount);
+      } else {
         setVoucherCount(totalVoucherCount);
-
-        // Fetch active offers count (all available offers, not just "new" ones)
-        // This gives a better representation of available offers to the user
-        const offersResponse = await realOffersApi.getOffers({
-          page: 1,
-          limit: 1, // We only need the total count from pagination
-        }).catch((error) => {
-          console.error('❌ [HOME] Error fetching offers count:', error);
-          return { success: false, data: { items: [], totalCount: 0 } };
-        });
-
-        if (offersResponse.success && offersResponse.data) {
-          // PaginatedResponse has items array and totalCount
-          const paginatedData = offersResponse.data;
-          const totalOffersCount = paginatedData.totalCount || 0;
-          console.log('✅ [HOME] Offers count loaded:', totalOffersCount);
-          setNewOffersCount(totalOffersCount);
-        } else {
-          // If API call fails, try to get count from items array as fallback
-          console.warn('⚠️ [HOME] Could not get offers totalCount, trying fallback');
-          const fallbackResponse = await realOffersApi.getOffers({
-            page: 1,
-            limit: 100,
-          }).catch(() => ({ success: false, data: { items: [] } }));
-          
-          if (fallbackResponse.success && fallbackResponse.data) {
-            const items = fallbackResponse.data.items || [];
-            console.log('✅ [HOME] Offers count (fallback):', items.length);
-            setNewOffersCount(items.length);
-          } else {
-            console.warn('⚠️ [HOME] Could not load offers count');
-            setNewOffersCount(0);
-          }
-        }
-      } catch (error) {
-        console.error('❌ [HOME] Error loading quick actions data:', error);
-        // Don't set to 0 on error, keep previous values
       }
-    };
 
-    // Only load after interactions complete to avoid blocking initial render
+      // Fetch active offers count
+      const offersResponse = await realOffersApi.getOffers({
+        page: 1,
+        limit: 1,
+      }).catch(() => ({ success: false, data: { items: [], totalCount: 0 } }));
+
+      if (offersResponse.success && offersResponse.data) {
+        const totalOffersCount = offersResponse.data.totalCount || 0;
+        setNewOffersCount(totalOffersCount);
+      } else {
+        // Fallback
+        const fallbackResponse = await realOffersApi.getOffers({ page: 1, limit: 100 })
+          .catch(() => ({ success: false, data: { items: [] } }));
+        if (fallbackResponse.success && fallbackResponse.data) {
+          setNewOffersCount(fallbackResponse.data.items?.length || 0);
+        }
+      }
+    } catch (error) {
+      console.error('❌ [HOME] Error loading quick actions data:', error);
+    }
+  }, [authState.isAuthenticated, authState.user]);
+
+  // Initial load of quick actions data after interactions complete
+  React.useEffect(() => {
     if (interactionsComplete && authState.isAuthenticated) {
       loadQuickActionsData();
     }
-  }, [authState.isAuthenticated, authState.user, interactionsComplete]);
+  }, [authState.isAuthenticated, interactionsComplete, loadQuickActionsData]);
 
-  // Load user points and statistics (optimized with cache check)
+  // Load user points and statistics on first login
   React.useEffect(() => {
     // Load stats when user is authenticated, regardless of interactionsComplete
     // This ensures coin balance shows immediately after login
-    if (authState.user && !statsLoadedRef.current && !isLoadingStats) {
+    if (authState.user && authState.isAuthenticated && !statsLoadedRef.current && !isLoadingStats) {
       statsLoadedRef.current = true;
       loadUserStatistics();
     }
-  }, [authState.user, authState.isAuthenticated]);
+    // Reset the ref when user logs out so it loads again on next login
+    if (!authState.user && !authState.isAuthenticated) {
+      statsLoadedRef.current = false;
+    }
+  }, [authState.user, authState.isAuthenticated, isLoadingStats]);
 
-  // Refresh wallet balance, cart data, and recently viewed when screen comes into focus
+  // Refresh all dynamic data when screen comes into focus (throttled to prevent continuous refreshing)
   useFocusEffect(
     useCallback(() => {
+      const now = Date.now();
+      const timeSinceLastRefresh = now - lastFocusRefreshRef.current;
+
+      // Throttle: only refresh if more than 5 seconds since last refresh
+      if (timeSinceLastRefresh < 5000) {
+        return;
+      }
+
+      lastFocusRefreshRef.current = now;
+
       // Always refresh recently viewed items when returning to homepage
       refreshRecentlyViewed();
 
       // Only refresh user data if authenticated
-      if (authState.user) {
-        // Always refresh cart data to update cart badge
+      if (authState.user && authState.isAuthenticated) {
+        // Refresh cart data to update cart badge
         refreshCart();
 
-        // Refresh wallet balance (only if we've done initial load to avoid double-loading on mount)
-        if (statsLoadedRef.current) {
-          statsLoadedRef.current = false;
-          loadUserStatistics();
-        }
+        // Refresh wallet/coin balance
+        loadUserStatistics();
+
+        // Refresh voucher and offers count
+        loadQuickActionsData();
+
+        // Refresh subscription status (in case user upgraded/downgraded)
+        subscriptionActions.refreshSubscription().catch(() => {});
       }
-    }, [authState.user, refreshCart, refreshRecentlyViewed])
+    }, [authState.user, authState.isAuthenticated, refreshCart, refreshRecentlyViewed, loadQuickActionsData, subscriptionActions])
   );
 
   const loadUserStatistics = async () => {
@@ -463,36 +429,23 @@ export default function HomeScreen() {
         // Refresh sections first (visual feedback)
         await actions.refreshAllSections();
 
-        // Refresh user statistics in background (non-blocking)
-        if (authState.user) {
-          statsLoadedRef.current = false; // Allow reload
+        // Refresh all user data in background (non-blocking)
+        if (authState.user && authState.isAuthenticated) {
+          // Refresh wallet/coin balance
           loadUserStatistics().catch(err => {
             console.error('Failed to refresh stats:', err);
           });
 
-          // Refresh quick actions data (vouchers and offers)
-          Promise.all([
-            Promise.all([
-              vouchersService.getUserVouchers({ status: 'active', page: 1, limit: 50 }),
-              realOffersApi.getUserRedemptions({ status: 'active', page: 1, limit: 50 }),
-            ])
-              .then(([vouchersRes, redemptionsRes]) => {
-                let count = 0;
-                if (vouchersRes.success) count += (vouchersRes.data || []).length;
-                if (redemptionsRes.success) count += (redemptionsRes.data || []).length;
-                setVoucherCount(count);
-              })
-              .catch(() => {}),
-            realOffersApi.getOffers({ page: 1, limit: 1 })
-              .then(res => {
-                if (res.success && res.data) {
-                  const paginatedData = res.data;
-                  const count = paginatedData.totalCount || 0;
-                  setNewOffersCount(count);
-                }
-              })
-              .catch(() => {}),
-          ]).catch(() => {});
+          // Refresh vouchers and offers count
+          loadQuickActionsData().catch(err => {
+            console.error('Failed to refresh quick actions:', err);
+          });
+
+          // Refresh cart
+          refreshCart();
+
+          // Refresh recently viewed
+          refreshRecentlyViewed();
         }
       } catch (error) {
         console.error('❌ [HOME] Failed to refresh homepage:', error);
@@ -500,7 +453,7 @@ export default function HomeScreen() {
         setRefreshing(false);
       }
     },
-    [actions, authState.user]);
+    [actions, authState.user, authState.isAuthenticated, loadQuickActionsData, refreshCart, refreshRecentlyViewed]);
 
   const handleFashionPress = () => {
     router.push('/MainCategory/fashion');
@@ -621,15 +574,6 @@ export default function HomeScreen() {
 
   return (
     <View style={viewStyles.mainContainer}>
-      {/* Sticky Search Header with Glass Effect */}
-      <StickySearchHeader
-        scrollY={scrollY}
-        showThreshold={280}
-        onSearchPress={handleSearchPress}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-      />
-
       <Animated.ScrollView
         style={viewStyles.container}
         showsVerticalScrollIndicator={false}
@@ -1026,6 +970,15 @@ export default function HomeScreen() {
         <QuickAccessFAB />
       </Suspense>
       </Animated.ScrollView>
+
+      {/* Sticky Search Header with Glass Effect - Rendered after ScrollView to avoid blocking touches */}
+      <StickySearchHeader
+        scrollY={scrollY}
+        showThreshold={350}
+        onSearchPress={handleSearchPress}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+      />
     </View>
   );
 }

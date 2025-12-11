@@ -173,10 +173,9 @@ const OptimizedHorizontalScrollSection = React.memo<OptimizedHorizontalScrollSec
      */
     const handleEndReached = useCallback(() => {
       if (enablePagination && onEndReached) {
-        console.log(`[Virtualization] Section ${section.id} reached end - loading more`);
         onEndReached();
       }
-    }, [enablePagination, onEndReached, section.id]);
+    }, [enablePagination, onEndReached]);
 
     /**
      * Track scroll performance

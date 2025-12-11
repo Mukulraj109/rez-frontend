@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -128,16 +129,22 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
           <Text style={styles.searchPlaceholder}>Search for products and services</Text>
         </TouchableOpacity>
 
-        {/* ReZCoin Display - Pill Style */}
+        {/* ReZCoin Display - Wallet Style with overlapping balance */}
         <TouchableOpacity
-          style={styles.coinPill}
+          style={styles.coinContainer}
           onPress={onCoinPress}
           activeOpacity={0.85}
         >
-          <View style={styles.coinIcon}>
-            <Text style={styles.coinIconText}>R</Text>
+          <View style={styles.coinIconCircle}>
+            <Image
+              source={require('@/assets/images/rez-coin.png')}
+              style={styles.coinImage}
+              resizeMode="contain"
+            />
           </View>
-          <Text style={styles.coinBalance}>{coinBalance}</Text>
+          <View style={styles.coinBalanceCloud}>
+            <Text style={styles.coinBalance}>{coinBalance}</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -281,47 +288,47 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     flex: 1,
   },
-  coinPill: {
-    flexDirection: 'row',
+  coinContainer: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'flex-start',
+    minWidth: 50,
+    marginTop: -2,
+  },
+  coinIconCircle: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    paddingLeft: 4,
-    paddingRight: 12,
-    paddingVertical: 4,
-    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coinImage: {
+    width: 32,
+    height: 32,
+  },
+  coinBalanceCloud: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginTop: -8,
     ...Platform.select({
       ios: {
-        shadowColor: '#FFC857',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
       },
       android: {
-        elevation: 3,
+        elevation: 2,
       },
       web: {
-        boxShadow: '0px 2px 8px rgba(255, 200, 87, 0.3)',
+        boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.1)',
       },
     }),
   },
-  coinIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFC857',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#00C06A',
-  },
-  coinIconText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0B2240',
-  },
   coinBalance: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '700',
     color: '#1a1a1a',
   },

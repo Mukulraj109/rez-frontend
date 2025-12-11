@@ -42,18 +42,14 @@ function HotDealsSection({
     try {
       setLoading(true);
       setError(null);
-      console.log('🔥 [HOT DEALS UI] Fetching hot deals...');
       const response = await productApi.getHotDeals({ limit });
 
       if (response.success && response.data) {
-        console.log('✅ [HOT DEALS UI] Got', response.data.length, 'products');
         setProducts(response.data as HotDealProduct[]);
       } else {
-        console.log('❌ [HOT DEALS UI] Failed:', response);
         setError('Failed to load hot deals');
       }
     } catch (err) {
-      console.error('❌ [HOT DEALS UI] Error:', err);
       setError('Failed to load hot deals');
     } finally {
       setLoading(false);

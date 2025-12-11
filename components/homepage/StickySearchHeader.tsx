@@ -135,6 +135,11 @@ const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
   // Calculate padding top
   const paddingTop = insets.top + 8;
 
+  // Don't render anything when not visible to avoid blocking touches
+  if (!isVisible) {
+    return null;
+  }
+
   // Native platforms with blur
   if (Platform.OS !== 'web') {
     return (
@@ -146,12 +151,13 @@ const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
             transform: [{ translateY: headerTranslateY }],
           },
         ]}
-        pointerEvents={isVisible ? 'auto' : 'none'}
+        pointerEvents="box-none"
       >
         <BlurView
           intensity={90}
           tint="light"
           style={styles.blurContainer}
+          pointerEvents="auto"
         >
           <HeaderContentComponent
             paddingTop={paddingTop}
@@ -176,14 +182,16 @@ const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
           transform: [{ translateY: headerTranslateY }],
         },
       ]}
-      pointerEvents={isVisible ? 'auto' : 'none'}
+      pointerEvents="box-none"
     >
-      <HeaderContentComponent
-        paddingTop={paddingTop}
-        onSearchPress={handleSearchPress}
-        selectedCategory={selectedCategory}
-        onCategoryChange={onCategoryChange}
-      />
+      <View style={styles.contentWrapper} pointerEvents="auto">
+        <HeaderContentComponent
+          paddingTop={paddingTop}
+          onSearchPress={handleSearchPress}
+          selectedCategory={selectedCategory}
+          onCategoryChange={onCategoryChange}
+        />
+      </View>
     </Animated.View>
   );
 };
@@ -215,6 +223,9 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     paddingBottom: 0,
+  },
+  contentWrapper: {
+    // Wrapper to contain pointer events within the actual content
   },
   searchContainer: {
     flexDirection: 'row',
