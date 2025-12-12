@@ -12,8 +12,8 @@ import {
   Animated,
   ViewStyle,
   TextStyle,
+  Image,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useGamification } from '@/contexts/GamificationContext';
 import { useRouter } from 'expo-router';
 
@@ -128,9 +128,11 @@ export default function CoinBalance({
         ]}
       >
         {showIcon && (
-          <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
-            <Ionicons name="diamond" size={sizeStyles.icon} color={color} />
-          </View>
+          <Image
+            source={require('@/assets/images/rez-coin.png')}
+            style={{ width: sizeStyles.icon + 8, height: sizeStyles.icon + 8 }}
+            resizeMode="contain"
+          />
         )}
         <View style={styles.textContainer}>
           {showLabel && <Text style={styles.label}>Coins</Text>}

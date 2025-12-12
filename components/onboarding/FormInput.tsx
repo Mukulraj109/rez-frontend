@@ -84,7 +84,10 @@ export default function FormInput({
         )}
         {prefix && (
           <Text
-            style={styles.prefixText}
+            style={[
+              styles.prefixText,
+              leftIcon && styles.prefixWithIcon
+            ]}
             accessible={false}
             importantForAccessibility="no"
           >
@@ -161,6 +164,9 @@ const styles = StyleSheet.create({
     color: '#374151',
     fontWeight: '500',
     alignSelf: 'center',
+  },
+  prefixWithIcon: {
+    paddingLeft: 0,
   },
   input: {
     flex: 1,

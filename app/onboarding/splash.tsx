@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -139,16 +139,11 @@ export default function SplashScreen() {
               { transform: [{ rotateY: coinSpin }] },
             ]}
           >
-            <LinearGradient
-              colors={[COLORS.gold, COLORS.goldDark]}
-              style={styles.coinGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.coinInner}>
-                <Text style={styles.coinText}>R</Text>
-              </View>
-            </LinearGradient>
+            <Image
+              source={require('@/assets/images/rez-coin.png')}
+              style={styles.coinImage}
+              resizeMode="contain"
+            />
           </Animated.View>
         </Animated.View>
 
@@ -262,36 +257,17 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
+    overflow: 'hidden',
     shadowColor: COLORS.gold,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.5,
     shadowRadius: 24,
     elevation: 15,
   },
-  coinGradient: {
+  coinImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 5,
-    borderColor: '#B8860B',
-  },
-  coinInner: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#DAA520',
-  },
-  coinText: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: COLORS.textPrimary,
-    letterSpacing: -1,
   },
 
   // Brand

@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import paybillApi from '@/services/paybillApi';
@@ -182,8 +182,9 @@ export default function PayBillPage() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Header */}
-      <LinearGradient colors={['#7C3AED', '#8B5CF6']} style={styles.header}>
+      <LinearGradient colors={['#00C06A', '#00A16B', '#00796B']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
@@ -198,7 +199,7 @@ export default function PayBillPage() {
       >
         {/* Store Info */}
         <View style={styles.storeCard}>
-          <Ionicons name="storefront" size={32} color="#7C3AED" />
+          <Ionicons name="storefront" size={32} color="#00C06A" />
           <View style={styles.storeInfo}>
             <Text style={styles.storeName}>{storeName}</Text>
             <Text style={styles.storeSubtext}>Enter your bill details below</Text>
@@ -392,7 +393,7 @@ export default function PayBillPage() {
 
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={20} color="#7C3AED" />
+          <Ionicons name="information-circle-outline" size={20} color="#00C06A" />
           <Text style={styles.infoText}>
             Use your PayBill balance to get instant discounts. Pay now and enjoy your meal!
           </Text>
@@ -513,7 +514,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
     borderRadius: 12,
     paddingVertical: 14,
     gap: 8,
@@ -536,7 +537,7 @@ const styles = StyleSheet.create({
   changeButton: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#7C3AED',
+    color: '#00C06A',
   },
   billCard: {
     backgroundColor: '#FFFFFF',
@@ -595,7 +596,7 @@ const styles = StyleSheet.create({
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#ECFDF5',
     padding: 12,
     borderRadius: 8,
     marginTop: 8,
@@ -608,7 +609,7 @@ const styles = StyleSheet.create({
   totalAmount: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#7C3AED',
+    color: '#00C06A',
   },
   paymentSection: {
     backgroundColor: '#FFFFFF',
@@ -627,8 +628,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   paymentMethodSelected: {
-    borderColor: '#7C3AED',
-    backgroundColor: '#F3E8FF',
+    borderColor: '#00C06A',
+    backgroundColor: '#ECFDF5',
   },
   paymentMethodLeft: {
     flexDirection: 'row',
@@ -654,7 +655,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#7C3AED',
+    borderColor: '#00C06A',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -662,13 +663,13 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
   },
   payButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#00C06A',
     borderRadius: 12,
     paddingVertical: 16,
     gap: 8,
@@ -682,7 +683,7 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#ECFDF5',
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -690,7 +691,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#7C3AED',
+    color: '#059669',
     lineHeight: 18,
   },
 });

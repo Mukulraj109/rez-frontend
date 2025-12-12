@@ -12,14 +12,7 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  Stop,
-  Text as SvgText,
-} from 'react-native-svg';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Image } from 'react-native';
 
 // Brand colors from TASK.md
 const BRAND_COLORS = {
@@ -65,51 +58,14 @@ export const ReZCoin: React.FC<ReZCoinProps> = ({
   const config = SIZES[size];
 
   /**
-   * CoinIcon - SVG coin with gradient ring and R mark
+   * CoinIcon - Renders the rez-coin.png image
    */
   const CoinIcon = () => (
-    <Svg
-      width={config.coin}
-      height={config.coin}
-      viewBox="0 0 44 44"
-      style={styles.coinSvg}
-    >
-      <Defs>
-        {/* Green gradient ring */}
-        <SvgLinearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <Stop offset="0%" stopColor={BRAND_COLORS.primaryGreen} />
-          <Stop offset="100%" stopColor={BRAND_COLORS.deepGreen} />
-        </SvgLinearGradient>
-        {/* Gold inner gradient */}
-        <SvgLinearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <Stop offset="0%" stopColor={BRAND_COLORS.sunGold} />
-          <Stop offset="100%" stopColor={BRAND_COLORS.goldDark} />
-        </SvgLinearGradient>
-      </Defs>
-
-      {/* Outer green ring */}
-      <Circle cx="22" cy="22" r="21" fill="url(#ringGradient)" />
-
-      {/* Inner gold circle */}
-      <Circle cx="22" cy="22" r="16" fill="url(#goldGradient)" />
-
-      {/* R mark in center */}
-      <SvgText
-        x="22"
-        y="28"
-        textAnchor="middle"
-        fill={BRAND_COLORS.midnightNavy}
-        fontSize="18"
-        fontWeight="700"
-        fontFamily={Platform.select({
-          ios: 'Poppins-Bold',
-          android: 'Poppins-Bold',
-          default: 'System',
-        })}
-      >
-        R
-      </SvgText>
-    </Svg>
+    <Image
+      source={require('@/assets/images/rez-coin.png')}
+      style={{ width: config.coin, height: config.coin }}
+      resizeMode="contain"
+    />
   );
 
   /**
@@ -179,9 +135,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 4,
     gap: 6,
-  },
-  coinSvg: {
-    // Ensure crisp rendering
   },
   balance: {
     color: '#FFFFFF',

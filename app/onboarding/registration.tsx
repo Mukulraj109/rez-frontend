@@ -193,7 +193,7 @@ export default function RegistrationScreen() {
             {/* Form */}
             <View style={styles.form}>
               <FormInput
-                placeholder="Enter your mobile number"
+                placeholder="Mobile number"
                 value={formData.phoneNumber}
                 onChangeText={(value) => handleInputChange('phoneNumber', value)}
                 keyboardType="phone-pad"

@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -229,12 +230,11 @@ export default function SignInScreen() {
         <View style={styles.header}>
           {/* Coin Icon */}
           <View style={styles.coinIconContainer}>
-            <LinearGradient
-              colors={[COLORS.gold, '#FF9F1C']}
-              style={styles.coinIcon}
-            >
-              <Text style={styles.coinIconText}>R</Text>
-            </LinearGradient>
+            <Image
+              source={require('@/assets/images/rez-coin.png')}
+              style={styles.coinImage}
+              resizeMode="contain"
+            />
           </View>
 
           <Text style={styles.title}>Welcome Back!</Text>
@@ -254,7 +254,7 @@ export default function SignInScreen() {
         {/* Form */}
         <View style={styles.form}>
           <FormInput
-            placeholder="Enter your mobile number"
+            placeholder="Mobile number"
             value={formData.phoneNumber}
             onChangeText={(value) => handleInputChange('phoneNumber', value)}
             keyboardType="phone-pad"
@@ -569,6 +569,10 @@ const styles = StyleSheet.create({
 
   // Coin Icon
   coinIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: 'hidden',
     marginBottom: 20,
     shadowColor: COLORS.gold,
     shadowOffset: { width: 0, height: 8 },
@@ -576,19 +580,10 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 10,
   },
-  coinIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#B8860B',
-  },
-  coinIconText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
+  coinImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
 
   // Shield Icon (OTP step)

@@ -88,7 +88,7 @@ const PayBillCard: React.FC<PayBillCardProps> = ({ productData, discountPercenta
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.iconContainer}>
-            <Ionicons name="wallet" size={24} color="#8B5CF6" />
+            <Ionicons name="wallet" size={24} color="#059669" />
           </View>
           <View>
             <Text style={styles.title}>Add Money to PayBill</Text>
@@ -144,7 +144,7 @@ const PayBillCard: React.FC<PayBillCardProps> = ({ productData, discountPercenta
       </TouchableOpacity>
 
       <View style={styles.infoContainer}>
-        <Ionicons name="information-circle-outline" size={16} color="#8B5CF6" />
+        <Ionicons name="information-circle-outline" size={16} color="#059669" />
         <Text style={styles.infoText}>
           Add money now, use it later at checkout. Get {discountPercentage}% extra bonus on every topup!
         </Text>
@@ -219,7 +219,7 @@ const PayBillCard: React.FC<PayBillCardProps> = ({ productData, discountPercenta
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F8F4FF',
+    backgroundColor: '#ECFDF5',
     borderRadius: 16,
     padding: 16,
     marginHorizontal: 16,
@@ -264,13 +264,13 @@ const styles = StyleSheet.create({
   },
   savingsLabel: {
     fontSize: 11,
-    color: '#8B5CF6',
+    color: '#059669',
     fontWeight: '600',
   },
   savingsAmount: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   breakdownContainer: {
     backgroundColor: '#fff',
@@ -326,10 +326,10 @@ const styles = StyleSheet.create({
   totalAmount: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
   addMoneyButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 12,
-    color: '#8B5CF6',
+    color: '#059669',
     lineHeight: 16,
   },
   modalOverlay: {

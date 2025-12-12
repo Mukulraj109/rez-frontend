@@ -65,6 +65,7 @@ interface CategoryTabBarProps {
   onCategorySelect?: (categoryId: string) => void;
   isSticky?: boolean;
   style?: any;
+  activeThemeColor?: string; // Dynamic theme color for active icons
 }
 
 // Memoized category tab item for web to prevent image flickering
@@ -72,9 +73,10 @@ interface WebCategoryTabItemProps {
   category: typeof CATEGORIES[0];
   isActive: boolean;
   onPress: (category: typeof CATEGORIES[0]) => void;
+  themeColor: string;
 }
 
-const WebCategoryTabItem = memo<WebCategoryTabItemProps>(({ category, isActive, onPress }) => {
+const WebCategoryTabItem = memo<WebCategoryTabItemProps>(({ category, isActive, onPress, themeColor }) => {
   const handlePress = useCallback(() => {
     onPress(category);
   }, [category, onPress]);
@@ -88,7 +90,7 @@ const WebCategoryTabItem = memo<WebCategoryTabItemProps>(({ category, isActive, 
       {/* Image Container */}
       <View style={[
         webStyles.imageContainer,
-        isActive && webStyles.imageContainerActive
+        isActive && [webStyles.imageContainerActive, { backgroundColor: themeColor, shadowColor: themeColor }]
       ]}>
         <Image
           source={category.image}
@@ -104,23 +106,25 @@ const WebCategoryTabItem = memo<WebCategoryTabItemProps>(({ category, isActive, 
       {/* Label */}
       <Text style={[
         webStyles.label,
-        isActive && webStyles.labelActive
+        isActive && [webStyles.labelActive, { color: themeColor }]
       ]}>
         {category.label.toUpperCase()}
       </Text>
     </TouchableOpacity>
   );
 }, (prevProps, nextProps) => {
-  // Only re-render if isActive changes
+  // Only re-render if isActive or themeColor changes
   return prevProps.isActive === nextProps.isActive &&
-         prevProps.category.id === nextProps.category.id;
+         prevProps.category.id === nextProps.category.id &&
+         prevProps.themeColor === nextProps.themeColor;
 });
 
 // Web component with glassy effect - using React Native components for proper image handling
-const WebCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style }) => {
+const WebCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style, activeThemeColor }) => {
   const router = useRouter();
   const pathname = usePathname();
   const scrollViewRef = useRef<ScrollView>(null);
+  const themeColor = activeThemeColor || COLORS.primary;
 
   // Memoize active category to prevent unnecessary recalculations
   const activeCategory = useMemo(() => {
@@ -167,6 +171,7 @@ const WebCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style }) => {
             category={category}
             isActive={activeCategory === category.id}
             onPress={handleCategoryClick}
+            themeColor={themeColor}
           />
         ))}
       </ScrollView>
@@ -177,7 +182,7 @@ const WebCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style }) => {
 // Web-specific styles
 const webStyles = StyleSheet.create({
   container: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    backgroundColor: 'transparent',
     borderBottomWidth: 0,
   },
   scrollContent: {
@@ -199,7 +204,7 @@ const webStyles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(245, 245, 245, 0.8)',
+    backgroundColor: 'transparent',
     marginBottom: 4,
     overflow: 'hidden',
   },
@@ -231,9 +236,10 @@ interface NativeCategoryTabItemProps {
   category: typeof CATEGORIES[0];
   isActive: boolean;
   onPress: (category: typeof CATEGORIES[0]) => void;
+  themeColor: string;
 }
 
-const NativeCategoryTabItem = memo<NativeCategoryTabItemProps>(({ category, isActive, onPress }) => {
+const NativeCategoryTabItem = memo<NativeCategoryTabItemProps>(({ category, isActive, onPress, themeColor }) => {
   const handlePress = useCallback(() => {
     onPress(category);
   }, [category, onPress]);
@@ -244,7 +250,10 @@ const NativeCategoryTabItem = memo<NativeCategoryTabItemProps>(({ category, isAc
       onPress={handlePress}
       activeOpacity={0.7}
     >
-      <View style={[styles.imageContainer, isActive && styles.imageContainerActive]}>
+      <View style={[
+        styles.imageContainer,
+        isActive && [styles.imageContainerActive, { backgroundColor: themeColor, shadowColor: themeColor }]
+      ]}>
         <Image
           source={category.image}
           style={styles.categoryImage}
@@ -252,22 +261,27 @@ const NativeCategoryTabItem = memo<NativeCategoryTabItemProps>(({ category, isAc
           fadeDuration={0}
         />
       </View>
-      <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+      <Text style={[
+        styles.tabLabel,
+        isActive && [styles.tabLabelActive, { color: themeColor }]
+      ]}>
         {category.label.toUpperCase()}
       </Text>
     </TouchableOpacity>
   );
 }, (prevProps, nextProps) => {
-  // Only re-render if isActive changes
+  // Only re-render if isActive or themeColor changes
   return prevProps.isActive === nextProps.isActive &&
-         prevProps.category.id === nextProps.category.id;
+         prevProps.category.id === nextProps.category.id &&
+         prevProps.themeColor === nextProps.themeColor;
 });
 
 // Native component
-const NativeCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style, isSticky }) => {
+const NativeCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style, isSticky, activeThemeColor }) => {
   const router = useRouter();
   const pathname = usePathname();
   const scrollViewRef = useRef<ScrollView>(null);
+  const themeColor = activeThemeColor || COLORS.primary;
 
   // Memoize active category to prevent unnecessary recalculations
   const activeCategory = useMemo(() => {
@@ -313,6 +327,7 @@ const NativeCategoryTabBar: React.FC<CategoryTabBarProps> = memo(({ style, isSti
           category={category}
           isActive={activeCategory === category.id}
           onPress={handleCategoryPress}
+          themeColor={themeColor}
         />
       ))}
     </ScrollView>
@@ -342,13 +357,13 @@ const CategoryTabBar: React.FC<CategoryTabBarProps> = memo((props) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'transparent',
+    borderBottomWidth: 0,
+    borderBottomColor: 'transparent',
   },
   scrollContent: {
     paddingHorizontal: 10,
-    paddingTop: 8,
+    paddingTop: 2,
     paddingBottom: 1,
   },
   tabItem: {
@@ -365,7 +380,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(245, 245, 245, 0.8)',
+    backgroundColor: 'transparent',
     marginBottom: 4,
     overflow: 'hidden',
   },
