@@ -281,33 +281,37 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
         end={{ x: 0.5, y: 1 }}
         style={styles.middleSection}
       >
-        {/* Search Row with ReZCoin */}
+        {/* Search Row with Promo Banner */}
         <View style={styles.searchRow}>
+          {/* Compact Search Bar */}
           <TouchableOpacity
-            style={styles.searchContainer}
+            style={styles.searchContainerCompact}
             onPress={onSearchPress}
             activeOpacity={0.85}
           >
-            <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-            <Text style={styles.searchPlaceholder}>Search for products and services</Text>
+            <Ionicons name="search" size={18} color="#9CA3AF" style={styles.searchIcon} />
+            <Text style={styles.searchPlaceholderCompact}>Search products...</Text>
           </TouchableOpacity>
 
-          {/* ReZCoin Display - Wallet Style with overlapping balance */}
+          {/* Promotional Banner */}
           <TouchableOpacity
-            style={styles.coinContainer}
-            onPress={onCoinPress}
-            activeOpacity={0.85}
+            style={styles.promoBannerContainer}
+            activeOpacity={0.9}
           >
-            <View style={styles.coinIconCircle}>
-              <Image
-                source={require('@/assets/images/rez-coin.png')}
-                style={styles.coinImage}
-                resizeMode="contain"
-              />
-            </View>
-            <View style={styles.coinBalanceCloud}>
-              <Text style={styles.coinBalance}>{coinBalance}</Text>
-            </View>
+            <LinearGradient
+              colors={['#FFF5F5', '#FFFFFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.promoBannerGradient}
+            >
+              <View style={styles.promoBannerContent}>
+                <Text style={styles.promoBannerTitle}>FRESH</Text>
+                <Text style={styles.promoBannerSubtitle}>DEALS</Text>
+              </View>
+              <View style={styles.promoBannerIconWrapper}>
+                <Ionicons name="pricetag" size={20} color="#DC2626" />
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -431,14 +435,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 10,
   },
-  searchContainer: {
-    flex: 1,
+  // Compact Search Bar (smaller width)
+  searchContainerCompact: {
+    flex: 2,
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -455,56 +460,61 @@ const styles = StyleSheet.create({
     }),
   },
   searchIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
-  searchPlaceholder: {
-    fontSize: 14,
+  searchPlaceholderCompact: {
+    fontSize: 13,
     color: '#9CA3AF',
     flex: 1,
   },
-  coinContainer: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    minWidth: 50,
-    marginTop: -2,
-  },
-  coinIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coinImage: {
-    width: 32,
-    height: 32,
-  },
-  coinBalanceCloud: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginTop: -8,
+  // Promotional Banner
+  promoBannerContainer: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
+        shadowOpacity: 0.08,
+        shadowRadius: 3,
       },
       android: {
         elevation: 2,
       },
-      web: {
-        boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.1)',
-      },
     }),
   },
-  coinBalance: {
+  promoBannerGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  promoBannerContent: {
+    flex: 1,
+  },
+  promoBannerTitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontWeight: '900',
+    color: '#DC2626',
+    letterSpacing: 0.5,
+  },
+  promoBannerSubtitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#991B1B',
+    letterSpacing: 0.3,
+    marginTop: -2,
+  },
+  promoBannerIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // Category TabBar Container
   categoryContainer: {

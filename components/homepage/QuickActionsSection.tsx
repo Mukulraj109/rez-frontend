@@ -72,15 +72,14 @@ export default function QuickActionsSection({
       title: 'Wallet',
       icon: 'wallet-outline',
       route: '/WalletScreen',
-      value: formatWalletBalance(walletBalance),
+      value: 'Load',
     },
     {
       id: 'offers',
       title: 'Offers',
       icon: 'pricetag-outline',
       route: '/offers',
-      value: formatOffersCount(newOffersCount),
-      valueColor: newOffersCount > 0 ? COLORS.primary : undefined,
+      value: `${newOffersCount} New`,
     },
     {
       id: 'store',
@@ -88,7 +87,6 @@ export default function QuickActionsSection({
       icon: 'storefront-outline',
       route: '/Store',
       value: 'Explore',
-      valueColor: COLORS.deepTeal,
     },
   ];
 
@@ -107,14 +105,35 @@ export default function QuickActionsSection({
             </View>
             <ThemedText style={styles.actionTitle}>{action.title}</ThemedText>
             {action.value && (
-              <ThemedText
-                style={[
-                  styles.actionValue,
-                  ...(action.valueColor ? [{ color: action.valueColor }] : []),
-                ]}
-              >
-                {action.value}
-              </ThemedText>
+              <View style={[
+                styles.valuePill,
+                action.id === 'wallet' && styles.walletPill,
+                action.id === 'offers' && styles.offersPill
+              ]}>
+                {action.id === 'offers' ? (
+                  <View style={styles.offersContent}>
+                    <ThemedText style={styles.offersNumber}>{newOffersCount}</ThemedText>
+                    <ThemedText style={styles.offersNewText}>New</ThemedText>
+                  </View>
+                ) : action.id === 'voucher' ? (
+                  <View style={styles.offersContent}>
+                    <ThemedText style={styles.offersNumber}>{voucherCount}</ThemedText>
+                    <ThemedText style={styles.offersNewText}>New</ThemedText>
+                  </View>
+                ) : (
+                  <ThemedText style={[
+                    styles.actionValue,
+                    action.id === 'wallet' && styles.walletText
+                  ]}>
+                    {action.value}
+                  </ThemedText>
+                )}
+                {action.id === 'wallet' && (
+                  <View style={styles.plusButton}>
+                    <Ionicons name="add" size={12} color="#FFFFFF" />
+                  </View>
+                )}
+              </View>
             )}
           </TouchableOpacity>
         ))}
@@ -127,7 +146,7 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 0,
     paddingTop: 0,
-    paddingBottom: 0,
+    paddingBottom: 16,
     backgroundColor: '#FFFFFF',
     marginTop: 0,
   },
@@ -149,19 +168,65 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F5F1',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   actionTitle: {
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.midnightNavy,
     textAlign: 'center',
-    marginBottom: 2,
+    marginBottom: 4,
+  },
+  // Gray rectangular background for values
+  valuePill: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   actionValue: {
     fontSize: 11,
-    fontWeight: '500',
-    color: COLORS.coolGray,
+    fontWeight: '600',
+    color: '#6B7280',
     textAlign: 'center',
+  },
+  // Wallet specific styles
+  walletPill: {
+    backgroundColor: '#F3F4F6',
+    paddingRight: 5,
+  },
+  walletText: {
+    color: '#6B7280',
+  },
+  plusButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    backgroundColor: '#374151',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Offers specific styles
+  offersPill: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  offersContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  offersNumber: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  offersNewText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6B7280',
   },
 });

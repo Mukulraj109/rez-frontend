@@ -413,6 +413,13 @@ export default function RootLayout() {
                   {/* Services Pages */}
                   <Stack.Screen name="services" options={{ headerShown: false }} />
 
+                  {/* Pay In Store Flow */}
+                  <Stack.Screen name="pay-in-store/index" options={{ headerShown: false }} />
+                  <Stack.Screen name="pay-in-store/enter-amount" options={{ headerShown: false }} />
+                  <Stack.Screen name="pay-in-store/offers" options={{ headerShown: false }} />
+                  <Stack.Screen name="pay-in-store/payment" options={{ headerShown: false }} />
+                  <Stack.Screen name="pay-in-store/success" options={{ headerShown: false }} />
+
                   <Stack.Screen name="+not-found" />
                 </Stack>
                 <StatusBar style="auto" />

@@ -96,32 +96,32 @@ export const TYPOGRAPHY = {
 
 // ==================== COLORS ====================
 export const COLORS = {
-  // Primary brand colors
+  // Primary brand colors - ReZ Green
   primary: {
-    50: '#EEF2FF',
-    100: '#E0E7FF',
-    200: '#C7D2FE',
-    300: '#A5B4FC',
-    400: '#818CF8',
-    500: '#6366F1', // Main brand color
-    600: '#4F46E5',
-    700: '#4338CA',
-    800: '#3730A3',
-    900: '#312E81',
+    50: '#E8F5EE',
+    100: '#C6E7D5',
+    200: '#9DD9B9',
+    300: '#6ECA99',
+    400: '#3ABF7A',
+    500: '#00C06A', // Main ReZ brand green
+    600: '#00A05A',
+    700: '#008048',
+    800: '#006038',
+    900: '#004028',
   },
 
-  // Secondary/accent
+  // Secondary/accent - Gold/Orange for rewards
   secondary: {
-    50: '#ECFDF5',
-    100: '#D1FAE5',
-    200: '#A7F3D0',
-    300: '#6EE7B7',
-    400: '#34D399',
-    500: '#10B981', // Success green
-    600: '#059669',
-    700: '#047857',
-    800: '#065F46',
-    900: '#064E3B',
+    50: '#FFF8E1',
+    100: '#FFECB3',
+    200: '#FFE082',
+    300: '#FFD54F',
+    400: '#FFCA28',
+    500: '#FFC857', // ReZ Gold
+    600: '#FFB300',
+    700: '#FFA000',
+    800: '#FF8F00',
+    900: '#FF6F00',
   },
 
   // Neutral grays
@@ -152,10 +152,12 @@ export const COLORS = {
     700: '#B45309',
   },
   success: {
-    50: '#ECFDF5',
-    100: '#D1FAE5',
-    500: '#22C55E', // Main success green
-    700: '#15803D',
+    50: '#E8F5EE',
+    100: '#C6E7D5',
+    400: '#3ABF7A',
+    500: '#00C06A', // ReZ green (matches primary)
+    600: '#00A05A',
+    700: '#008048',
   },
   info: {
     50: '#EFF6FF',

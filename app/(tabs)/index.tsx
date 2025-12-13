@@ -596,8 +596,9 @@ export default function HomeScreen() {
         style={viewStyles.header}
       >
         <View style={viewStyles.headerTop}>
+          {/* Modern Location Pill */}
           <Pressable
-            style={viewStyles.locationContainer}
+            style={viewStyles.locationPill}
             onPress={() => {
               const newState = !showDetailedLocation;
               setShowDetailedLocation(newState);
@@ -620,6 +621,9 @@ export default function HomeScreen() {
             accessibilityHint={showDetailedLocation ? "Double tap to collapse location details" : "Double tap to expand location details"}
             accessibilityState={{ expanded: showDetailedLocation }}
           >
+            <View style={viewStyles.locationIconWrapper}>
+              <Ionicons name="location" size={14} color="#FFFFFF" />
+            </View>
             <LocationDisplay
               compact={true}
               showCoordinates={false}
@@ -628,37 +632,42 @@ export default function HomeScreen() {
               style={viewStyles.locationDisplay}
               textStyle={textStyles.locationText}
             />
-            <Ionicons
-              name={showDetailedLocation ? "chevron-up" : "chevron-down"}
-              size={16}
-              color="#1a1a1a"
-              style={viewStyles.locationArrow}
-            />
+            <View style={viewStyles.locationChevron}>
+              <Ionicons
+                name={showDetailedLocation ? "chevron-up" : "chevron-down"}
+                size={14}
+                color="#666"
+              />
+            </View>
           </Pressable>
 
-          <View style={viewStyles.headerRight}>
+          {/* Modern Header Actions */}
+          <View style={viewStyles.headerActions}>
+            {/* Coin Balance Display - Stacked Style */}
             <TouchableOpacity
               onPress={() => {
                 if (Platform.OS === 'ios') {
-                  setTimeout(() => router.push('/subscription/plans'), 50);
+                  setTimeout(() => router.push('/CoinPage'), 50);
                 } else {
-                  router.push('/subscription/plans');
+                  router.push('/CoinPage');
                 }
               }}
               activeOpacity={0.7}
-              style={{ marginRight: 12 }}
-              accessibilityLabel={`Subscription tier: ${subscriptionState.currentSubscription?.tier || 'free'}`}
-              accessibilityRole="button"
-              accessibilityHint="Double tap to view subscription plans and upgrade options"
+              style={viewStyles.headerCoinContainer}
             >
-              <TierBadge
-                tier={subscriptionState.currentSubscription?.tier || 'free'}
-                size="small"
-              />
+              <View style={viewStyles.headerCoinCircle}>
+                <Image
+                  source={require('@/assets/images/rez-coin.png')}
+                  style={viewStyles.headerCoinImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={viewStyles.headerCoinBalancePill}>
+                <Text style={viewStyles.headerCoinText}>{userPoints}</Text>
+              </View>
             </TouchableOpacity>
 
-            <NotificationBell iconSize={24} iconColor="#1a1a1a" />
-
+            {/* Cart Button with Modern Badge */}
             <TouchableOpacity
               onPress={() => {
                 if (Platform.OS === 'ios') {
@@ -667,46 +676,28 @@ export default function HomeScreen() {
                   router.push('/CartPage');
                 }
               }}
-              activeOpacity={Platform.OS === 'ios' ? 0.6 : 0.7}
-              delayPressIn={Platform.OS === 'ios' ? 50 : 0}
+              activeOpacity={0.7}
               accessibilityLabel={`Shopping cart: ${cartState.totalItems} items`}
               accessibilityRole="button"
               accessibilityHint="Double tap to view your shopping cart"
-              style={{ position: 'relative' }}
+              style={viewStyles.headerIconButton}
             >
-              <Ionicons name="cart-outline" size={24} color="#1a1a1a" />
+              <Ionicons name="cart-outline" size={22} color="#1a1a1a" />
               {cartState.totalItems > 0 && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: -6,
-                    right: -6,
-                    backgroundColor: '#FF5252',
-                    borderRadius: 10,
-                    minWidth: 18,
-                    height: 18,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    paddingHorizontal: 4,
-                  }}
+                <LinearGradient
+                  colors={['#FF6B6B', '#FF5252']}
+                  style={viewStyles.cartBadgeModern}
                 >
-                  <Text
-                    style={{
-                      color: 'white',
-                      fontSize: 10,
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    {cartState.totalItems > 99 ? '99+' : cartState.totalItems}
+                  <Text style={viewStyles.cartBadgeTextModern}>
+                    {cartState.totalItems > 9 ? '9+' : cartState.totalItems}
                   </Text>
-                </View>
+                </LinearGradient>
               )}
             </TouchableOpacity>
 
+            {/* Modern Profile Avatar */}
             <TouchableOpacity
-              style={viewStyles.profileAvatar}
               onPress={() => {
-                // Only open modal if user is authenticated
                 if (authState.isAuthenticated && authState.user) {
                   showModal();
                 }
@@ -715,13 +706,19 @@ export default function HomeScreen() {
               accessibilityLabel="User profile menu"
               accessibilityRole="button"
               accessibilityHint="Double tap to open profile menu and account settings"
+              style={viewStyles.profileAvatarWrapper}
             >
-              <ThemedText style={textStyles.profileText}>
-                {user?.initials ||
-                  (authState.user?.profile?.firstName ? authState.user.profile.firstName.charAt(0).toUpperCase() :
-                    (authState.isAuthenticated ? 'U' : '?')
-                  )}
-              </ThemedText>
+              <LinearGradient
+                colors={['#FFD93D', '#FF9F1C']}
+                style={viewStyles.profileAvatarModern}
+              >
+                <Text style={viewStyles.profileTextModern}>
+                  {user?.initials ||
+                    (authState.user?.profile?.firstName ? authState.user.profile.firstName.charAt(0).toUpperCase() :
+                      (authState.isAuthenticated ? 'U' : '?')
+                    )}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -1107,6 +1104,116 @@ const viewStyles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
+  },
+  // Modern Location Pill Style
+  locationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  locationIconWrapper: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#00C06A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  locationChevron: {
+    marginLeft: 4,
+  },
+  // Modern Header Actions
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  // Header Coin - Stacked Style (circle + balance below)
+  headerCoinContainer: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginTop: -4,
+  },
+  headerCoinCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCoinImage: {
+    width: 28,
+    height: 28,
+  },
+  headerCoinBalancePill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    marginTop: -6,
+  },
+  headerCoinText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  headerIconButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  cartBadgeModern: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeTextModern: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  profileAvatarWrapper: {
+    // Wrapper for shadow on Android
+  },
+  profileAvatarModern: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FF9F1C',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  profileTextModern: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   locationDisplay: {
     backgroundColor: 'transparent',

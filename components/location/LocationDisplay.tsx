@@ -417,7 +417,7 @@ export default function LocationDisplay({
         onPress={onPress || handleRefresh}
         activeOpacity={0.7}
       >
-        <Text style={[styles.locationText, textStyle]}>📍 Select Location</Text>
+        <Text style={[styles.locationText, textStyle]}>Select Location</Text>
         {showRefreshButton && Platform.OS === 'web' && (
           <TouchableOpacity
             style={[styles.refreshButton, buttonStyle]}
@@ -479,7 +479,6 @@ export default function LocationDisplay({
       <View style={styles.content}>
         {/* Location Text */}
         <View style={styles.locationContainer}>
-          <Text style={styles.locationIcon}>📍</Text>
           <View style={styles.locationTextContainer}>
             <Text
               style={[styles.locationText, textStyle]}

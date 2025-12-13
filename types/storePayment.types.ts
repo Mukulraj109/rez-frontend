@@ -1,0 +1,368 @@
+/**
+ * Store Payment Types
+ *
+ * Type definitions for the store payment flow including:
+ * - QR code scanning and store lookup
+ * - Payment settings and methods
+ * - Offers and rewards
+ * - Payment processing
+ */
+
+// ==================== QR CODE TYPES ====================
+
+export interface QRCodeData {
+  type: 'REZ_STORE_PAYMENT';
+  code: string;
+  v: string; // version
+}
+
+export interface StoreQRInfo {
+  hasQR: boolean;
+  code?: string;
+  qrImageUrl?: string;
+  isActive?: boolean;
+  generatedAt?: Date;
+}
+
+// ==================== STORE TYPES ====================
+
+export interface StorePaymentInfo {
+  _id: string;
+  name: string;
+  slug: string;
+  logo?: string;
+  category: {
+    _id: string;
+    name: string;
+    slug: string;
+    icon?: string;
+  };
+  location: {
+    address: string;
+    city: string;
+    state?: string;
+    pincode?: string;
+    coordinates?: [number, number];
+  };
+  paymentSettings: StorePaymentSettings;
+  rewardRules: StoreRewardRules;
+  ratings: {
+    average: number;
+    count: number;
+  };
+  isActive: boolean;
+}
+
+// ==================== PAYMENT SETTINGS ====================
+
+export interface StorePaymentSettings {
+  // Payment Methods
+  acceptUPI: boolean;
+  acceptCards: boolean;
+  acceptPayLater: boolean;
+
+  // Coin Settings
+  acceptRezCoins: boolean;
+  acceptPromoCoins: boolean;
+  acceptPayBill: boolean;
+  maxCoinRedemptionPercent: number;
+
+  // Hybrid Payment
+  allowHybridPayment: boolean;
+
+  // Offers
+  allowOffers: boolean;
+  allowCashback: boolean;
+
+  // UPI Details
+  upiId?: string;
+  upiName?: string;
+}
+
+export interface StoreRewardRules {
+  baseCashbackPercent: number;
+  reviewBonusCoins: number;
+  socialShareBonusCoins: number;
+  minimumAmountForReward: number;
+  extraRewardThreshold?: number;
+  extraRewardCoins?: number;
+  visitMilestoneRewards?: {
+    visits: number;
+    coinsReward: number;
+  }[];
+}
+
+// ==================== PAYMENT METHOD TYPES ====================
+
+export type PaymentMethodType = 'upi' | 'card' | 'credit_card' | 'debit_card' | 'netbanking' | 'wallet';
+
+export interface PaymentMethod {
+  id: string;
+  type: PaymentMethodType;
+  name: string;
+  icon: string;
+  isAvailable: boolean;
+  description?: string;
+}
+
+// ==================== COIN TYPES ====================
+
+export type CoinType = 'rezCoins' | 'promoCoins' | 'payBill';
+
+export interface CoinBalance {
+  type: CoinType;
+  name: string;
+  balance: number;
+  icon?: string;
+  maxUsable?: number; // Maximum that can be used for this transaction
+}
+
+export interface CoinRedemption {
+  rezCoins: number;
+  promoCoins: number;
+  payBill: number;
+  totalAmount: number;
+}
+
+// ==================== OFFER TYPES ====================
+
+export type OfferType = 'CASHBACK' | 'DISCOUNT' | 'BONUS_COINS' | 'FLAT_OFF' | 'PERCENTAGE_OFF' | 'BOGO';
+export type OfferSource = 'STORE' | 'BANK' | 'REZ';
+export type OfferValueType = 'PERCENTAGE' | 'FIXED' | 'FIXED_COINS';
+
+export interface StorePaymentOffer {
+  id: string;
+  type: OfferType;
+  source: OfferSource;
+  title: string;
+  description: string;
+  value: number;
+  valueType: OfferValueType;
+  minAmount?: number;
+  maxDiscount?: number;
+  code?: string;
+  expiryDate?: string;
+  isAutoApplied: boolean;
+  isBestOffer?: boolean;
+  terms?: string[];
+  // Bank offer specific
+  bankName?: string;
+  cardType?: string;
+}
+
+export interface OffersResponse {
+  storeOffers: StorePaymentOffer[];
+  bankOffers: StorePaymentOffer[];
+  rezOffers: StorePaymentOffer[];
+  bestOffer: StorePaymentOffer | null;
+}
+
+// ==================== PAYMENT REQUEST/RESPONSE ====================
+
+export interface StorePaymentRequest {
+  storeId: string;
+  amount: number;
+  paymentMethod: PaymentMethodType;
+  coinsToRedeem?: CoinRedemption;
+  offersApplied?: string[]; // Offer IDs
+  upiDetails?: {
+    vpa?: string;
+    app?: string;
+  };
+}
+
+export interface StorePaymentInitResponse {
+  paymentId: string;
+  storeId: string;
+  storeName: string;
+  billAmount: number;
+  coinRedemption: number;
+  remainingAmount: number;
+  paymentMethod: PaymentMethodType;
+  upiId?: string;
+  offersApplied: string[];
+  status: PaymentStatus;
+  expiresAt: string;
+}
+
+export type PaymentStatus = 'INITIATED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'EXPIRED';
+
+export interface StorePaymentConfirmRequest {
+  paymentId: string;
+  transactionId?: string;
+  paymentProof?: string;
+}
+
+export interface StorePaymentConfirmResponse {
+  paymentId: string;
+  status: PaymentStatus;
+  transactionId: string;
+  completedAt: string;
+  rewards: PaymentRewards;
+}
+
+export interface PaymentRewards {
+  cashbackEarned: number;
+  coinsEarned: number;
+  loyaltyProgress: {
+    currentVisits: number;
+    nextMilestone: number;
+    milestoneReward: string;
+  };
+}
+
+// ==================== PAYMENT SUMMARY ====================
+
+export interface PaymentSummary {
+  billAmount: number;
+
+  // Discounts
+  discountApplied: number;
+  discountDetails: {
+    offerId: string;
+    offerName: string;
+    discount: number;
+  }[];
+
+  // Coins
+  coinsRedeemed: CoinRedemption;
+  coinsValue: number;
+
+  // Final
+  totalDiscount: number;
+  amountToPay: number;
+
+  // Rewards to earn
+  cashbackToEarn: number;
+  coinsToEarn: number;
+}
+
+// ==================== TRANSACTION HISTORY ====================
+
+export interface StorePaymentTransaction {
+  id: string;
+  paymentId: string;
+  storeId: string;
+  storeName: string;
+  storeLogo?: string;
+  amount: number;
+  coinsUsed: number;
+  paymentMethod: PaymentMethodType;
+  status: PaymentStatus;
+  rewards: PaymentRewards;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface PaymentHistoryResponse {
+  transactions: StorePaymentTransaction[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+  };
+}
+
+// ==================== HOOK TYPES ====================
+
+export interface UseStorePaymentState {
+  // Current state
+  store: StorePaymentInfo | null;
+  amount: number;
+  selectedOffers: StorePaymentOffer[];
+  coinRedemption: CoinRedemption;
+  paymentMethod: PaymentMethod | null;
+  paymentSummary: PaymentSummary | null;
+
+  // Available options
+  availableOffers: OffersResponse | null;
+  availableCoins: CoinBalance[];
+  availablePaymentMethods: PaymentMethod[];
+
+  // Loading states
+  isLoadingStore: boolean;
+  isLoadingOffers: boolean;
+  isProcessingPayment: boolean;
+
+  // Error state
+  error: string | null;
+}
+
+export interface UseStorePaymentActions {
+  // Setup
+  setStore: (store: StorePaymentInfo) => void;
+  setAmount: (amount: number) => void;
+  loadStoreByQR: (qrCode: string) => Promise<void>;
+
+  // Offers
+  loadOffers: () => Promise<void>;
+  selectOffer: (offer: StorePaymentOffer) => void;
+  removeOffer: (offerId: string) => void;
+  applyBestOffer: () => void;
+
+  // Coins
+  setCoinRedemption: (coins: Partial<CoinRedemption>) => void;
+  resetCoinRedemption: () => void;
+
+  // Payment
+  setPaymentMethod: (method: PaymentMethod) => void;
+  calculateSummary: () => void;
+  initiatePayment: () => Promise<StorePaymentInitResponse>;
+  confirmPayment: (data: StorePaymentConfirmRequest) => Promise<StorePaymentConfirmResponse>;
+
+  // Reset
+  reset: () => void;
+}
+
+export type UseStorePaymentReturn = UseStorePaymentState & UseStorePaymentActions;
+
+// ==================== NAVIGATION PARAMS ====================
+
+export interface PayInStoreParams {
+  storeId?: string;
+  qrCode?: string;
+  storeName?: string;
+}
+
+export interface EnterAmountParams {
+  storeId: string;
+  storeName: string;
+  storeLogo?: string;
+}
+
+export interface OffersScreenParams {
+  storeId: string;
+  amount: number;
+  storeName: string;
+}
+
+export interface PaymentScreenParams {
+  storeId: string;
+  amount: number;
+  storeName: string;
+  selectedOffers?: string; // JSON stringified
+}
+
+export interface SuccessScreenParams {
+  paymentId: string;
+  storeId: string;
+  storeName: string;
+  amount: number;
+  rewards: string; // JSON stringified PaymentRewards
+}
+
+// ==================== API RESPONSE TYPES ====================
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  error?: string;
+}
+
+export type QRLookupResponse = ApiResponse<StorePaymentInfo>;
+export type OffersApiResponse = ApiResponse<OffersResponse>;
+export type PaymentInitApiResponse = ApiResponse<StorePaymentInitResponse>;
+export type PaymentConfirmApiResponse = ApiResponse<StorePaymentConfirmResponse>;
+export type PaymentHistoryApiResponse = ApiResponse<PaymentHistoryResponse>;

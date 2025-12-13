@@ -236,6 +236,12 @@ const DEFAULT_BUTTON_CONFIGS: Record<ActionButtonId, {
     backgroundColor: ['#00C06A', '#00796B'] as const, // ReZ Green gradient
     textColor: '#FFFFFF',
   },
+  pay: {
+    title: 'Pay Here',
+    iconName: 'wallet-outline',
+    backgroundColor: ['#6366F1', '#4F46E5'] as const, // Primary brand gradient
+    textColor: '#FFFFFF',
+  },
   custom: {
     title: 'Action',
     iconName: 'arrow-forward-outline',
@@ -250,8 +256,8 @@ const DEFAULT_BUTTON_CONFIGS: Record<ActionButtonId, {
 export const DEFAULT_STORE_ACTION_BUTTONS: StoreActionButtonsConfigFromStore = {
   enabled: true,
   buttons: [
-    { id: 'call', enabled: true, label: 'Call', order: 0 },
-    { id: 'product', enabled: true, label: 'Products', order: 1 },
+    { id: 'pay', enabled: true, label: 'Pay Here', order: 0 },
+    { id: 'call', enabled: true, label: 'Call', order: 1 },
     { id: 'location', enabled: true, label: 'Location', order: 2 },
   ],
 };
@@ -328,6 +334,17 @@ export function handleButtonDestination(
           router.push(`/StoreProductsPage?storeId=${storeData.storeId}&storeName=${storeName}`);
         } else {
           showError('Store Not Found', 'Unable to load store products.', 'cube');
+        }
+        break;
+
+      case 'pay':
+        // Navigate to Pay In Store screen
+        if (router && storeData?.storeId) {
+          const storeName = encodeURIComponent(storeData.storeName || storeData.name || 'Store');
+          router.push(`/pay-in-store/enter-amount?storeId=${storeData.storeId}&storeName=${storeName}`);
+        } else {
+          // Fallback to pay-in-store entry screen
+          router?.push('/pay-in-store');
         }
         break;
     }
@@ -425,6 +442,9 @@ export function createButtonConfigsFromStore(
         return !!(storeData?.location?.coordinates || storeData?.location?.address);
       case 'product':
         // Products button needs storeId
+        return !!(storeData?.storeId);
+      case 'pay':
+        // Pay button needs storeId
         return !!(storeData?.storeId);
       default:
         return true;

@@ -19,10 +19,10 @@ interface BottomNavigationProps {
   style?: any;
 }
 
-// Curved background SVG - creates white navbar with semi-circle dip in center
+// Curved background SVG - creates transparent navbar with semi-circle dip in center
 const CurvedBackground = () => {
   const width = SCREEN_WIDTH;
-  const height = 80;
+  const height = 70;
   const scale = width / 375; // Scale based on 375px design
 
   // SVG path: flat on sides, curves DOWN in center to create semi-circle dip
@@ -42,7 +42,7 @@ const CurvedBackground = () => {
   return (
     <View style={curvedBgStyles.container}>
       <Svg width={width} height={height}>
-        <Path d={path} fill="#FFFFFF" />
+        <Path d={path} fill="rgba(255, 255, 255, 0.92)" />
       </Svg>
     </View>
   );
@@ -55,11 +55,11 @@ const curvedBgStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
+    height: 70,
     // Shadow to make the curve visible
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 10,
   },
@@ -75,7 +75,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
     '/onboarding',
     '/index', // Landing page
   ];
-  
+
   const shouldHide = hidePages.some(page => pathname?.startsWith(page));
   
   if (shouldHide) {
@@ -169,7 +169,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
     },
     {
       name: 'Pay in Store',
-      route: '/PayInStore',
+      route: '/pay-in-store',
       icon: 'qr-code',
       isActive: false,
       isCenter: true,
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 110, // Taller to accommodate floating button
+    height: 95, // Taller to accommodate floating button
     zIndex: 1000,
     overflow: 'visible',
   },
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#666666',
-    marginTop: 4,
+    marginTop: 8,
     textAlign: 'center',
   },
 
@@ -326,10 +326,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 65,
+    height: 60,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 4,
     zIndex: 10,
   },
 
@@ -358,14 +358,14 @@ const styles = StyleSheet.create({
   tab: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
 
   // Tab label text
   tabLabelText: {
     fontSize: 10,
     fontWeight: '600',
-    marginTop: 4,
+    marginTop: 2,
     textAlign: 'center',
   },
 });

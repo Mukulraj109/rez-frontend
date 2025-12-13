@@ -10,7 +10,7 @@ export type StoreType = 'PRODUCT' | 'SERVICE';
 export type ActionButtonDestinationType = 'phone' | 'url' | 'maps' | 'internal';
 
 // Button IDs
-export type ActionButtonId = 'call' | 'product' | 'location' | 'custom';
+export type ActionButtonId = 'call' | 'product' | 'location' | 'custom' | 'pay';
 
 // Single button configuration from store
 export interface StoreActionButtonConfig {

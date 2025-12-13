@@ -110,6 +110,7 @@ export default function StoreActionButtons({
   const productScaleAnim = useRef(new Animated.Value(1)).current;
   const locationScaleAnim = useRef(new Animated.Value(1)).current;
   const customScaleAnim = useRef(new Animated.Value(1)).current;
+  const payScaleAnim = useRef(new Animated.Value(1)).current;
 
   // Animation helper
   const animateScale = (animValue: Animated.Value, toValue: number) => {
@@ -206,9 +207,9 @@ export default function StoreActionButtons({
       return;
     }
 
-    // For other store action buttons (product, location, custom),
+    // For other store action buttons (product, location, custom, pay),
     // just call onPress directly - they handle their own logic
-    if (['product', 'location', 'custom'].includes(buttonId)) {
+    if (['product', 'location', 'custom', 'pay'].includes(buttonId)) {
       config.onPress();
       return;
     }
@@ -242,6 +243,7 @@ export default function StoreActionButtons({
       case 'product': return productScaleAnim;
       case 'location': return locationScaleAnim;
       case 'custom': return customScaleAnim;
+      case 'pay': return payScaleAnim;
       default: return buyScaleAnim;
     }
   };
@@ -321,7 +323,7 @@ export default function StoreActionButtons({
         </TouchableOpacity>
       </Animated.View>
     );
-  }, [buttonState, stateManager, layout.buttonWidth, handleButtonPress, buttonStyle, textStyle, buyScaleAnim, lockScaleAnim, bookingScaleAnim, callScaleAnim, productScaleAnim, locationScaleAnim, customScaleAnim, animateScale]);
+  }, [buttonState, stateManager, layout.buttonWidth, handleButtonPress, buttonStyle, textStyle, buyScaleAnim, lockScaleAnim, bookingScaleAnim, callScaleAnim, productScaleAnim, locationScaleAnim, customScaleAnim, payScaleAnim, animateScale]);
 
   // Don't render if no buttons are visible
   if (buttonConfigs.length === 0) {
