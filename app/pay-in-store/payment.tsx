@@ -23,7 +23,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Slider from '@react-native-community/slider';
+// Note: @react-native-community/slider doesn't work on web, using custom coin selector
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '@/constants/DesignTokens';
 import {
   PaymentScreenParams,
@@ -112,31 +112,38 @@ export default function PaymentScreen() {
       setIsLoading(true);
       setError(null);
 
-      // Load user's coin balances
-      const walletResponse = await apiClient.get('/users/wallet');
-      if (walletResponse.data?.success) {
-        const wallet = walletResponse.data.data;
-        setCoinBalances([
-          {
-            type: 'rezCoins',
-            name: 'ReZ Coins',
-            balance: wallet.rezCoins || 0,
-            icon: 'diamond',
-          },
-          {
-            type: 'promoCoins',
-            name: 'Promo Coins',
-            balance: wallet.promoCoins || 0,
-            icon: 'gift',
-          },
-          {
-            type: 'payBill',
-            name: 'PayBill Balance',
-            balance: wallet.payBillBalance || 0,
-            icon: 'wallet',
-          },
-        ]);
+      // Load user's coin balances - handle 404 gracefully
+      let wallet = { rezCoins: 0, promoCoins: 0, payBillBalance: 0 };
+      try {
+        const walletResponse = await apiClient.get('/users/wallet');
+        if (walletResponse.data?.success) {
+          wallet = walletResponse.data.data;
+        }
+      } catch (walletError) {
+        // Wallet endpoint might not exist yet - use defaults
+        console.log('[Payment] Wallet endpoint not available, using defaults');
       }
+
+      setCoinBalances([
+        {
+          type: 'rezCoins',
+          name: 'ReZ Coins',
+          balance: wallet.rezCoins || 0,
+          icon: 'diamond',
+        },
+        {
+          type: 'promoCoins',
+          name: 'Promo Coins',
+          balance: wallet.promoCoins || 0,
+          icon: 'gift',
+        },
+        {
+          type: 'payBill',
+          name: 'PayBill Balance',
+          balance: wallet.payBillBalance || 0,
+          icon: 'wallet',
+        },
+      ]);
 
       // Load store payment settings
       const storeResponse = await apiClient.get(`/stores/${storeId}`);
@@ -417,24 +424,55 @@ export default function PaymentScreen() {
                   </Text>
                 </View>
 
-                <View style={styles.sliderRow}>
-                  <Slider
-                    style={styles.slider}
-                    value={currentValue}
-                    onValueChange={(value) =>
-                      handleCoinChange(coin.type as any, value)
-                    }
-                    minimumValue={0}
-                    maximumValue={maxUsable}
-                    step={1}
-                    minimumTrackTintColor={COLORS.primary[500]}
-                    maximumTrackTintColor={COLORS.neutral[200]}
-                    thumbTintColor={COLORS.primary[500]}
-                    disabled={maxUsable === 0}
-                  />
-                  <Text style={styles.coinValue}>
-                    {currentValue} {coin.type === 'payBill' ? '₹' : ''}
-                  </Text>
+                <View style={styles.coinControlRow}>
+                  {/* Decrement Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.coinButton,
+                      currentValue === 0 && styles.coinButtonDisabled,
+                    ]}
+                    onPress={() => handleCoinChange(coin.type as any, Math.max(0, currentValue - 10))}
+                    disabled={currentValue === 0}
+                  >
+                    <Ionicons name="remove" size={20} color={currentValue === 0 ? COLORS.neutral[400] : COLORS.primary[500]} />
+                  </TouchableOpacity>
+
+                  {/* Value Display */}
+                  <View style={styles.coinValueContainer}>
+                    <Text style={styles.coinValue}>
+                      {coin.type === 'payBill' ? '₹' : ''}{currentValue}
+                    </Text>
+                    <Text style={styles.coinMaxText}>/ {maxUsable}</Text>
+                  </View>
+
+                  {/* Increment Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.coinButton,
+                      currentValue >= maxUsable && styles.coinButtonDisabled,
+                    ]}
+                    onPress={() => handleCoinChange(coin.type as any, Math.min(maxUsable, currentValue + 10))}
+                    disabled={currentValue >= maxUsable || maxUsable === 0}
+                  >
+                    <Ionicons name="add" size={20} color={currentValue >= maxUsable ? COLORS.neutral[400] : COLORS.primary[500]} />
+                  </TouchableOpacity>
+
+                  {/* Use All Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.useAllButton,
+                      (currentValue === maxUsable || maxUsable === 0) && styles.useAllButtonDisabled,
+                    ]}
+                    onPress={() => handleCoinChange(coin.type as any, maxUsable)}
+                    disabled={currentValue === maxUsable || maxUsable === 0}
+                  >
+                    <Text style={[
+                      styles.useAllText,
+                      (currentValue === maxUsable || maxUsable === 0) && styles.useAllTextDisabled,
+                    ]}>
+                      Use All
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
                 {maxUsable === 0 && coin.balance > 0 && (
@@ -674,19 +712,56 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     color: COLORS.text.secondary,
   },
-  sliderRow: {
+  coinControlRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: SPACING.sm,
   },
-  slider: {
-    flex: 1,
+  coinButton: {
+    width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.primary[200],
+  },
+  coinButtonDisabled: {
+    backgroundColor: COLORS.neutral[100],
+    borderColor: COLORS.neutral[200],
+  },
+  coinValueContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
   },
   coinValue: {
-    ...TYPOGRAPHY.button,
+    ...TYPOGRAPHY.h4,
     color: COLORS.primary[600],
-    minWidth: 50,
-    textAlign: 'right',
+  },
+  coinMaxText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.text.tertiary,
+  },
+  useAllButton: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.primary[500],
+  },
+  useAllButtonDisabled: {
+    backgroundColor: COLORS.neutral[200],
+  },
+  useAllText: {
+    ...TYPOGRAPHY.caption,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  useAllTextDisabled: {
+    color: COLORS.neutral[500],
   },
   coinLimitText: {
     ...TYPOGRAPHY.caption,

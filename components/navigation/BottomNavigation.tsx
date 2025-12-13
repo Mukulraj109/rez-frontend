@@ -69,11 +69,15 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Hide bottom navigation on auth/onboarding pages
+  // Hide bottom navigation on auth/onboarding pages and payment sub-flows
   const hidePages = [
     '/sign-in',
     '/onboarding',
     '/index', // Landing page
+    '/pay-in-store/store-search',
+    '/pay-in-store/enter-amount',
+    '/pay-in-store/payment',
+    '/pay-in-store/offers',
   ];
 
   const shouldHide = hidePages.some(page => pathname?.startsWith(page));

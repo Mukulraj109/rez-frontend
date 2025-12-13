@@ -117,16 +117,42 @@ const storePaymentApi = {
     limit?: number;
     storeId?: string;
   }): Promise<PaymentHistoryResponse> {
-    const response = await apiClient.get<PaymentHistoryApiResponse>(
-      `${STORE_PAYMENT_BASE}/history`,
-      { params }
-    );
+    try {
+      const response = await apiClient.get<PaymentHistoryApiResponse>(
+        `${STORE_PAYMENT_BASE}/history`,
+        { params }
+      );
 
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.error || 'Failed to load history');
+      if (!response.data.success || !response.data.data) {
+        // Return empty history instead of throwing - no history is valid
+        return {
+          transactions: [],
+          pagination: {
+            page: 1,
+            limit: params?.limit || 10,
+            total: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false,
+          },
+        };
+      }
+
+      return response.data.data;
+    } catch (error) {
+      // Return empty history on error - API might not be implemented yet
+      return {
+        transactions: [],
+        pagination: {
+          page: 1,
+          limit: params?.limit || 10,
+          total: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
+      };
     }
-
-    return response.data.data;
   },
 
   /**
@@ -152,17 +178,31 @@ const storePaymentApi = {
     promoCoins: number;
     payBillBalance: number;
   }> {
-    const response = await apiClient.get('/users/wallet');
+    try {
+      const response = await apiClient.get('/users/wallet');
 
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Failed to load wallet');
+      if (!response.data.success) {
+        // Return default values if endpoint fails
+        return {
+          rezCoins: 0,
+          promoCoins: 0,
+          payBillBalance: 0,
+        };
+      }
+
+      return {
+        rezCoins: response.data.data?.rezCoins || 0,
+        promoCoins: response.data.data?.promoCoins || 0,
+        payBillBalance: response.data.data?.payBillBalance || 0,
+      };
+    } catch (error) {
+      // Return default values on error - endpoint might not exist yet
+      return {
+        rezCoins: 0,
+        promoCoins: 0,
+        payBillBalance: 0,
+      };
     }
-
-    return {
-      rezCoins: response.data.data?.rezCoins || 0,
-      promoCoins: response.data.data?.promoCoins || 0,
-      payBillBalance: response.data.data?.payBillBalance || 0,
-    };
   },
 
   /**

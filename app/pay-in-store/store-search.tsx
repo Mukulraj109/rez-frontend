@@ -47,7 +47,8 @@ import {
   EmptySearchState,
 } from '@/components/pay-store-search';
 
-const AnimatedScrollView = Animated.createAnimatedComponent(Animated.ScrollView);
+// Use Animated.ScrollView directly from reanimated
+const AnimatedScrollView = Animated.ScrollView;
 
 export default function StoreSearchScreen() {
   const router = useRouter();
@@ -258,6 +259,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: PAYMENT_SEARCH_COLORS.background,
+    width: '100%',
   },
   scrollView: {
     flex: 1,

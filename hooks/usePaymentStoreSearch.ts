@@ -236,8 +236,13 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
         const stores = (await Promise.all(storePromises)).filter(Boolean) as PaymentStoreInfo[];
         setRecentStores(stores);
       }
-    } catch (error) {
-      console.error('Error fetching recent stores:', error);
+    } catch (error: any) {
+      // Silently handle - no payment history is normal for new users
+      // Only log in development for debugging
+      if (__DEV__) {
+        console.log('[PaymentStoreSearch] No payment history available:', error.message);
+      }
+      setRecentStores([]);
     } finally {
       setIsLoadingRecent(false);
     }

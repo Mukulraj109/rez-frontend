@@ -19,7 +19,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -143,15 +143,17 @@ export default function EnterAmountScreen() {
   const quickAmounts = [100, 200, 500, 1000, 2000];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        {/* Header */}
-        <View style={styles.header}>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          style={{ flex: 1, width: '100%' }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          {/* Header */}
+          <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
+            <Ionicons name="arrow-back" size={22} color="#111827" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Enter Amount</Text>
           <View style={styles.placeholder} />
@@ -164,7 +166,7 @@ export default function EnterAmountScreen() {
               {storeLogo ? (
                 <Image source={{ uri: storeLogo }} style={styles.storeLogo} />
               ) : (
-                <Ionicons name="storefront" size={32} color={COLORS.primary[500]} />
+                <Ionicons name="storefront" size={24} color="#9CA3AF" />
               )}
             </View>
             <View style={styles.storeInfo}>
@@ -199,7 +201,12 @@ export default function EnterAmountScreen() {
             </View>
 
             {/* Quick Amount Buttons */}
-            <View style={styles.quickAmounts}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.quickAmountsScroll}
+              contentContainerStyle={styles.quickAmounts}
+            >
               {quickAmounts.map((quickAmount) => (
                 <TouchableOpacity
                   key={quickAmount}
@@ -219,11 +226,11 @@ export default function EnterAmountScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
             {error && (
               <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={16} color={COLORS.error[500]} />
+                <Ionicons name="alert-circle" size={16} color="#DC2626" />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             )}
@@ -236,8 +243,8 @@ export default function EnterAmountScreen() {
 
               <View style={styles.rewardsGrid}>
                 <View style={styles.rewardItem}>
-                  <View style={[styles.rewardIcon, { backgroundColor: COLORS.success[50] }]}>
-                    <Ionicons name="cash-outline" size={20} color={COLORS.success[500]} />
+                  <View style={[styles.rewardIcon, { backgroundColor: '#DCFCE7' }]}>
+                    <Ionicons name="cash-outline" size={20} color="#16A34A" />
                   </View>
                   <Text style={styles.rewardValue}>
                     ₹{meetsMinimum ? estimatedCashback : 0}
@@ -248,8 +255,12 @@ export default function EnterAmountScreen() {
                 <View style={styles.rewardDivider} />
 
                 <View style={styles.rewardItem}>
-                  <View style={[styles.rewardIcon, { backgroundColor: COLORS.primary[50] }]}>
-                    <Ionicons name="diamond-outline" size={20} color={COLORS.primary[500]} />
+                  <View style={[styles.rewardIcon, { backgroundColor: '#FFF8E1' }]}>
+                    <Image
+                      source={require('@/assets/images/rez-coin.png')}
+                      style={styles.coinImage}
+                      resizeMode="contain"
+                    />
                   </View>
                   <Text style={styles.rewardValue}>
                     {meetsMinimum ? estimatedCoins : 0}
@@ -260,7 +271,7 @@ export default function EnterAmountScreen() {
 
               {!meetsMinimum && rewardRules?.minimumAmountForReward && (
                 <View style={styles.minimumWarning}>
-                  <Ionicons name="information-circle" size={16} color={COLORS.warning[500]} />
+                  <Ionicons name="information-circle" size={16} color="#F59E0B" />
                   <Text style={styles.minimumWarningText}>
                     Spend ₹{rewardRules.minimumAmountForReward} or more to earn rewards
                   </Text>
@@ -272,7 +283,7 @@ export default function EnterAmountScreen() {
           {/* Extra Reward Banner */}
           {rewardRules?.extraRewardThreshold && numericAmount >= rewardRules.extraRewardThreshold && (
             <LinearGradient
-              colors={[COLORS.secondary[500], COLORS.secondary[600]]}
+              colors={['#FFC857', '#F59E0B']}
               style={styles.extraRewardBanner}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -287,7 +298,7 @@ export default function EnterAmountScreen() {
             </LinearGradient>
           )}
 
-          <View style={{ height: 120 }} />
+          <View style={{ height: 20 }} />
         </ScrollView>
 
         {/* Bottom Action Buttons */}
@@ -297,7 +308,7 @@ export default function EnterAmountScreen() {
             onPress={handleCheckOffers}
             disabled={!amount || numericAmount <= 0}
           >
-            <Ionicons name="pricetag-outline" size={20} color={COLORS.primary[500]} />
+            <Ionicons name="pricetag-outline" size={18} color="#00C06A" />
             <Text style={styles.checkOffersText}>Check Offers</Text>
           </TouchableOpacity>
 
@@ -312,26 +323,35 @@ export default function EnterAmountScreen() {
             <Text style={styles.payNowText}>Pay Now</Text>
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background.secondary,
+    backgroundColor: '#F8FAFC',
+    width: '100%',
+    ...Platform.select({
+      web: {
+        maxWidth: '100%',
+        minHeight: '100vh',
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.background.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border.light,
+    borderBottomColor: '#E5E7EB',
+    width: '100%',
   },
   backButton: {
     width: 40,
@@ -339,79 +359,92 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F3F4F6',
   },
   headerTitle: {
-    ...TYPOGRAPHY.h4,
-    color: COLORS.text.primary,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
   },
   placeholder: {
     width: 40,
   },
   content: {
     flex: 1,
-    padding: SPACING.md,
+    padding: 16,
+    width: '100%',
   },
   storeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background.primary,
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.sm,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   storeIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: COLORS.primary[50],
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   storeLogo: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
   },
   storeInfo: {
     flex: 1,
-    marginLeft: SPACING.md,
+    marginLeft: 12,
   },
   storeName: {
-    ...TYPOGRAPHY.h4,
-    color: COLORS.text.primary,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
   },
   storeCategory: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.text.secondary,
+    fontSize: 13,
+    color: '#6B7280',
     marginTop: 2,
   },
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.warning[50],
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    borderRadius: BORDER_RADIUS.sm,
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   ratingText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.warning[700],
+    fontSize: 12,
+    color: '#B45309',
     fontWeight: '600',
     marginLeft: 4,
   },
   amountSection: {
-    backgroundColor: COLORS.background.primary,
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.lg,
-    ...SHADOWS.sm,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   amountLabel: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.text.secondary,
-    marginBottom: SPACING.sm,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -419,71 +452,81 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 2,
-    borderBottomColor: COLORS.primary[500],
-    paddingBottom: SPACING.sm,
+    borderBottomColor: '#00C06A',
+    paddingBottom: 8,
+    marginBottom: 16,
   },
   currencySymbol: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '700',
-    color: COLORS.text.primary,
-    marginRight: SPACING.sm,
+    color: '#111827',
+    marginRight: 4,
   },
   amountInput: {
     flex: 1,
-    fontSize: 48,
+    fontSize: 40,
     fontWeight: '700',
-    color: COLORS.text.primary,
+    color: '#111827',
     padding: 0,
+  },
+  quickAmountsScroll: {
+    marginHorizontal: -16,
+    marginTop: 4,
   },
   quickAmounts: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: SPACING.lg,
-    gap: SPACING.sm,
+    paddingHorizontal: 16,
+    gap: 10,
   },
   quickAmountButton: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.full,
-    backgroundColor: COLORS.neutral[100],
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
     borderWidth: 1,
-    borderColor: COLORS.border.light,
+    borderColor: '#E5E7EB',
   },
   quickAmountButtonActive: {
-    backgroundColor: COLORS.primary[50],
-    borderColor: COLORS.primary[500],
+    backgroundColor: '#E8FFF3',
+    borderColor: '#00C06A',
   },
   quickAmountText: {
-    ...TYPOGRAPHY.buttonSmall,
-    color: COLORS.text.secondary,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
   },
   quickAmountTextActive: {
-    color: COLORS.primary[600],
+    color: '#00C06A',
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: SPACING.md,
-    padding: SPACING.sm,
-    backgroundColor: COLORS.error[50],
-    borderRadius: BORDER_RADIUS.md,
+    marginTop: 12,
+    padding: 10,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
   },
   errorText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.error[500],
-    marginLeft: SPACING.xs,
+    fontSize: 13,
+    color: '#DC2626',
+    marginLeft: 6,
   },
   rewardsPreview: {
-    backgroundColor: COLORS.background.primary,
-    padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   rewardsTitle: {
-    ...TYPOGRAPHY.h4,
-    color: COLORS.text.primary,
-    marginBottom: SPACING.md,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 12,
   },
   rewardsGrid: {
     flexDirection: 'row',
@@ -494,101 +537,109 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rewardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 8,
+  },
+  coinImage: {
+    width: 24,
+    height: 24,
   },
   rewardValue: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.text.primary,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
   },
   rewardLabel: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.text.secondary,
+    fontSize: 12,
+    color: '#6B7280',
     marginTop: 2,
   },
   rewardDivider: {
     width: 1,
-    height: 60,
-    backgroundColor: COLORS.border.light,
-    marginHorizontal: SPACING.md,
+    height: 50,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 16,
   },
   minimumWarning: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: SPACING.md,
-    padding: SPACING.sm,
-    backgroundColor: COLORS.warning[50],
-    borderRadius: BORDER_RADIUS.md,
+    marginTop: 12,
+    padding: 10,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 8,
   },
   minimumWarningText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.warning[700],
-    marginLeft: SPACING.xs,
+    fontSize: 12,
+    color: '#B45309',
+    marginLeft: 6,
     flex: 1,
   },
   extraRewardBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.md,
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   extraRewardContent: {
-    marginLeft: SPACING.md,
+    marginLeft: 12,
     flex: 1,
   },
   extraRewardTitle: {
-    ...TYPOGRAPHY.button,
+    fontSize: 14,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   extraRewardText: {
-    ...TYPOGRAPHY.caption,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 2,
   },
   bottomActions: {
     flexDirection: 'row',
-    padding: SPACING.md,
-    paddingBottom: Platform.OS === 'ios' ? SPACING.xl : SPACING.md,
-    backgroundColor: COLORS.background.primary,
+    padding: 16,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: COLORS.border.light,
-    gap: SPACING.md,
+    borderTopColor: '#E5E7EB',
+    gap: 12,
   },
   checkOffersButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
+    paddingVertical: 14,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: COLORS.primary[500],
-    gap: SPACING.sm,
+    borderColor: '#00C06A',
+    gap: 6,
   },
   checkOffersText: {
-    ...TYPOGRAPHY.button,
-    color: COLORS.primary[500],
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#00C06A',
   },
   payNowButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.primary[500],
-    gap: SPACING.sm,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#00C06A',
+    gap: 6,
   },
   payNowButtonDisabled: {
-    backgroundColor: COLORS.neutral[300],
+    backgroundColor: '#D1D5DB',
   },
   payNowText: {
-    ...TYPOGRAPHY.button,
+    fontSize: 14,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });
