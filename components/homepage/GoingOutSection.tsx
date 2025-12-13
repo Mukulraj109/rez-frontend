@@ -54,7 +54,7 @@ const DEFAULT_BACKGROUND_IMAGE = require('@/assets/images/homepage-sections/goin
 
 // Card dimensions - matching New Arrivals style
 const NEW_CARD_WIDTH = 170;
-const NEW_IMAGE_HEIGHT = 140;
+const NEW_IMAGE_HEIGHT = 170;
 const NEW_CARD_HEIGHT = 310;
 
 // Skeleton Loading Card
@@ -387,7 +387,7 @@ function GoingOutSection({ backgroundImage = DEFAULT_BACKGROUND_IMAGE }: GoingOu
     return cartItem?.quantity || 0;
   }, [cartState.items]);
 
-  // Render category tabs
+  // Render category tabs with images
   const renderCategoryTabs = () => (
     <View style={styles.tabsWrapper}>
       <ScrollView
@@ -402,7 +402,7 @@ function GoingOutSection({ backgroundImage = DEFAULT_BACKGROUND_IMAGE }: GoingOu
           return (
             <TouchableOpacity
               key={subcategory.id}
-              style={[styles.tab, isActive && styles.tabActive]}
+              style={[styles.categoryTab, isActive && styles.categoryTabActive]}
               onPress={() => handleSubcategoryPress(subcategory.id)}
               onLayout={(event) => {
                 const { x, width } = event.nativeEvent.layout;
@@ -412,23 +412,28 @@ function GoingOutSection({ backgroundImage = DEFAULT_BACKGROUND_IMAGE }: GoingOu
                   underlineWidth.value = width;
                 }
               }}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <Ionicons
-                name={subcategory.icon as any}
-                size={18}
-                color={isActive ? GOING_OUT_COLORS.primary : GOING_OUT_COLORS.textPrimary}
-                style={styles.tabIcon}
-              />
-              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+              <View style={[styles.categoryImageWrapper, isActive && styles.categoryImageWrapperActive]}>
+                <Image
+                  source={subcategory.image}
+                  style={styles.categoryImage}
+                  resizeMode="cover"
+                />
+                {isActive && (
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0, 192, 106, 0.3)']}
+                    style={styles.categoryImageOverlay}
+                  />
+                )}
+              </View>
+              <Text style={[styles.categoryLabel, isActive && styles.categoryLabelActive]} numberOfLines={1}>
                 {subcategory.label}
               </Text>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
-      {/* Animated underline */}
-      <AnimatedView style={[styles.tabUnderline, underlineStyle]} />
     </View>
   );
 
@@ -611,43 +616,84 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     paddingRight: 16,
-    gap: 4,
+    gap: 12,
     paddingBottom: 8,
   },
   tabsScroll: {
     marginHorizontal: -16,
     paddingHorizontal: 16,
   },
-  tab: {
-    flexDirection: 'row',
+  // New image-based category tab styles
+  categoryTab: {
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: 20,
+    width: 84,
   },
-  tabActive: {
-    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+  categoryTabActive: {
+    transform: [{ scale: 1.05 }],
   },
-  tabIcon: {
-    marginRight: 6,
+  categoryImageWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 3px 8px rgba(0, 0, 0, 0.15)',
+      },
+    }),
   },
-  tabLabel: {
-    fontSize: 13,
+  categoryImageWrapperActive: {
+    borderWidth: 2.5,
+    borderColor: GOING_OUT_COLORS.primary,
+    ...Platform.select({
+      ios: {
+        shadowColor: GOING_OUT_COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 192, 106, 0.35)',
+      },
+    }),
+  },
+  categoryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  categoryImageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  categoryLabel: {
+    fontSize: 11,
     fontWeight: '600',
     color: GOING_OUT_COLORS.textPrimary,
+    marginTop: 6,
+    textAlign: 'center',
+    maxWidth: 72,
   },
-  tabLabelActive: {
+  categoryLabelActive: {
     fontWeight: '700',
     color: GOING_OUT_COLORS.primary,
-  },
-  tabUnderline: {
-    position: 'absolute',
-    bottom: 0,
-    height: 3,
-    backgroundColor: GOING_OUT_COLORS.primary,
-    borderRadius: 1.5,
   },
   productsContainer: {
     paddingLeft: 8,

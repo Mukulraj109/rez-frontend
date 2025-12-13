@@ -8,14 +8,23 @@ export interface GoingOutSubcategory {
   label: string;
   slug: string;
   icon: string;
+  image: any;
 }
+
+// Category images
+const CATEGORY_IMAGES = {
+  cafes: require('@/assets/images/going-out-categories/cafes.png'),
+  familyRestaurants: require('@/assets/images/going-out-categories/family-restaurants.png'),
+  fineDining: require('@/assets/images/going-out-categories/fine-dining.png'),
+  qsrFastFood: require('@/assets/images/going-out-categories/qsr-fast-food.png'),
+};
 
 // 4 Food & Dining subcategories for the Going Out section
 export const GOING_OUT_SUBCATEGORIES: GoingOutSubcategory[] = [
-  { id: 'cafes', label: 'Cafes', slug: 'cafes', icon: 'cafe-outline' },
-  { id: 'family-restaurants', label: 'Family Restaurants', slug: 'family-restaurants', icon: 'people-outline' },
-  { id: 'fine-dining', label: 'Fine Dining', slug: 'fine-dining', icon: 'wine-outline' },
-  { id: 'qsr-fast-food', label: 'QSR/Fast Food', slug: 'qsr-fast-food', icon: 'fast-food-outline' },
+  { id: 'cafes', label: 'Cafes', slug: 'cafes', icon: 'cafe-outline', image: CATEGORY_IMAGES.cafes },
+  { id: 'family-restaurants', label: 'Family Restaurants', slug: 'family-restaurants', icon: 'people-outline', image: CATEGORY_IMAGES.familyRestaurants },
+  { id: 'fine-dining', label: 'Fine Dining', slug: 'fine-dining', icon: 'wine-outline', image: CATEGORY_IMAGES.fineDining },
+  { id: 'qsr-fast-food', label: 'QSR/Fast Food', slug: 'qsr-fast-food', icon: 'fast-food-outline', image: CATEGORY_IMAGES.qsrFastFood },
 ];
 
 // Section configuration
