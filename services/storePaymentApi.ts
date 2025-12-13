@@ -156,6 +156,50 @@ const storePaymentApi = {
   },
 
   /**
+   * Get store payment details by paymentId
+   */
+  async getPaymentDetails(paymentId: string): Promise<{
+    id: string;
+    paymentId: string;
+    storeId: string;
+    storeName: string;
+    storeLogo?: string;
+    billAmount: number;
+    discountAmount: number;
+    coinRedemption: {
+      rezCoins: number;
+      promoCoins: number;
+      payBill: number;
+      totalAmount: number;
+    };
+    coinsUsed: number;
+    remainingAmount: number;
+    paymentMethod: string;
+    offersApplied: string[];
+    status: string;
+    rewards?: {
+      cashbackEarned: number;
+      coinsEarned: number;
+      bonusCoins: number;
+    };
+    transactionId?: string;
+    createdAt: string;
+    completedAt?: string;
+  }> {
+    const url = `${STORE_PAYMENT_BASE}/details/${encodeURIComponent(paymentId)}`;
+    console.log('📜 [StorePaymentAPI] Fetching payment details:', url);
+
+    const response = await apiClient.get(url);
+    console.log('📜 [StorePaymentAPI] Response:', response.status, response.data);
+
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error || response.data.message || 'Payment not found');
+    }
+
+    return response.data.data;
+  },
+
+  /**
    * Get store payment info by store ID
    */
   async getStorePaymentInfo(storeId: string): Promise<StorePaymentInfo> {
@@ -247,6 +291,7 @@ export const {
   initiatePayment,
   confirmPayment,
   getHistory,
+  getPaymentDetails,
   getStorePaymentInfo,
   getCoinBalances,
   calculatePaymentSummary,

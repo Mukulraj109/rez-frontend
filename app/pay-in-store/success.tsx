@@ -387,6 +387,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.sm,
   },
+  coinImage: {
+    width: 40,
+    height: 40,
+  },
   rewardValue: {
     ...TYPOGRAPHY.h2,
     color: '#FFFFFF',
@@ -538,11 +542,12 @@ const styles = StyleSheet.create({
   bottomActions: {
     flexDirection: 'row',
     padding: SPACING.md,
-    paddingBottom: Platform.OS === 'ios' ? SPACING.xl : SPACING.md,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
     backgroundColor: COLORS.background.primary,
     borderTopWidth: 1,
     borderTopColor: COLORS.border.light,
     gap: SPACING.md,
+    ...SHADOWS.lg,
   },
   receiptButton: {
     flex: 1,
@@ -561,11 +566,13 @@ const styles = StyleSheet.create({
   },
   homeButton: {
     flex: 1,
+    borderRadius: BORDER_RADIUS.lg,
+    overflow: 'hidden',
+  },
+  homeButtonGradient: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.primary[500],
   },
   homeButtonText: {
     ...TYPOGRAPHY.button,

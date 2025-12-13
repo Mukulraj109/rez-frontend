@@ -31,6 +31,7 @@ const storeImages = {
   organic: require('@/assets/images/stores/organic.png'),
   lowestPrice: require('@/assets/images/stores/lowest-price.png'),
   cashStore: require('@/assets/images/stores/cash-store.png'),
+  rezMall: require('@/assets/images/tabs/rez-mall.png'),
 };
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
@@ -133,6 +134,7 @@ const FALLBACK_STORES: Store[] = [
     title: 'Rez Mall',
     accent: '#60A5FA',
     icon: 'storefront',
+    image: storeImages.rezMall,
     gradient: ['#60A5FA', '#3B82F6'] as const,
     badge: 'Mall',
     description: 'Complete shopping experience'
@@ -177,6 +179,7 @@ const mapCategoryToStore = (category: StoreCategory): Store => {
     'organic': storeImages.organic,
     'lowestPrice': storeImages.lowestPrice,
     'cashStore': storeImages.cashStore,
+    'mall': storeImages.rezMall,
   };
 
   // Get gradient colors based on the category color
