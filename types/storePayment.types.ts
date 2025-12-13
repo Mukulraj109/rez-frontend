@@ -183,6 +183,8 @@ export interface StorePaymentInitResponse {
   offersApplied: string[];
   status: PaymentStatus;
   expiresAt: string;
+  // Stripe payment integration
+  clientSecret?: string;
 }
 
 export type PaymentStatus = 'INITIATED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'EXPIRED';
@@ -349,6 +351,7 @@ export interface SuccessScreenParams {
   storeId: string;
   storeName: string;
   amount: number;
+  coinsUsed?: string; // Total coins used in payment
   rewards: string; // JSON stringified PaymentRewards
 }
 

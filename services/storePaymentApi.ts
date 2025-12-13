@@ -172,6 +172,7 @@ const storePaymentApi = {
 
   /**
    * Get user's coin balances for payment
+   * Uses /wallet/balance endpoint which returns coin balances
    */
   async getCoinBalances(): Promise<{
     rezCoins: number;
@@ -179,7 +180,7 @@ const storePaymentApi = {
     payBillBalance: number;
   }> {
     try {
-      const response = await apiClient.get('/users/wallet');
+      const response = await apiClient.get('/wallet/balance');
 
       if (!response.data.success) {
         // Return default values if endpoint fails
@@ -190,13 +191,15 @@ const storePaymentApi = {
         };
       }
 
+      // Backend returns: { balance: { coins, promoCoins, payBill }, ... }
+      const balance = response.data.data?.balance || {};
       return {
-        rezCoins: response.data.data?.rezCoins || 0,
-        promoCoins: response.data.data?.promoCoins || 0,
-        payBillBalance: response.data.data?.payBillBalance || 0,
+        rezCoins: balance.coins || 0,
+        promoCoins: balance.promoCoins || 0,
+        payBillBalance: balance.payBill || 0,
       };
     } catch (error) {
-      // Return default values on error - endpoint might not exist yet
+      // Return default values on error
       return {
         rezCoins: 0,
         promoCoins: 0,

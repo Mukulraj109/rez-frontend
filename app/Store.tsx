@@ -20,6 +20,18 @@ import { profileMenuSections } from '@/data/profileData';
 import { useRouter } from 'expo-router';
 import deal from '@/assets/images/deal.png';
 import { Image } from 'react-native';
+
+// Store category images
+const storeImages = {
+  fastDelivery: require('@/assets/images/stores/fast-delivery.png'),
+  budgetFriendly: require('@/assets/images/stores/one-rupee-store.png'),
+  ninetyNineStore: require('@/assets/images/stores/cash-store.png'),
+  premium: require('@/assets/images/stores/luxury-store.png'),
+  alliance: require('@/assets/images/stores/alliance-store.png'),
+  organic: require('@/assets/images/stores/organic.png'),
+  lowestPrice: require('@/assets/images/stores/lowest-price.png'),
+  cashStore: require('@/assets/images/stores/cash-store.png'),
+};
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { LocationDisplay } from '@/components/location';
@@ -37,6 +49,7 @@ type Store = {
   title: string;
   accent?: string;
   icon?: string;
+  image?: any; // Store category image
   gradient?: readonly string[];
   badge?: string;
   description?: string;
@@ -50,6 +63,7 @@ const FALLBACK_STORES: Store[] = [
     title: '30 min delivery',
     accent: '#00C06A',
     icon: 'flash',
+    image: storeImages.fastDelivery,
     gradient: ['#00C06A', '#00796B'] as const,
     badge: '30 min',
     description: 'Lightning fast delivery'
@@ -59,6 +73,7 @@ const FALLBACK_STORES: Store[] = [
     title: '1 rupees store',
     accent: '#00A05A',
     icon: 'cash',
+    image: storeImages.budgetFriendly,
     gradient: ['#00A05A', '#00C06A'] as const,
     badge: '₹1',
     description: 'Everything at ₹1'
@@ -68,6 +83,7 @@ const FALLBACK_STORES: Store[] = [
     title: '99 Rupees store',
     accent: '#00796B',
     icon: 'wallet',
+    image: storeImages.ninetyNineStore,
     gradient: ['#00796B', '#00C06A'] as const,
     badge: '₹99',
     description: 'Budget friendly shopping'
@@ -77,6 +93,7 @@ const FALLBACK_STORES: Store[] = [
     title: 'Luxury store',
     accent: '#FFC857',
     icon: 'diamond',
+    image: storeImages.premium,
     gradient: ['#FFC857', '#FFD97D'] as const,
     badge: 'Premium',
     description: 'Luxury & premium brands'
@@ -86,6 +103,7 @@ const FALLBACK_STORES: Store[] = [
     title: 'Alliance Store',
     accent: '#00C06A',
     icon: 'people',
+    image: storeImages.alliance,
     gradient: ['#00C06A', '#00A05A'] as const,
     badge: 'Partner',
     description: 'Partner stores network'
@@ -95,6 +113,7 @@ const FALLBACK_STORES: Store[] = [
     title: 'Organic Store',
     accent: '#34D399',
     icon: 'leaf',
+    image: storeImages.organic,
     gradient: ['#34D399', '#10B981'] as const,
     badge: 'Organic',
     description: 'Natural & organic products'
@@ -104,6 +123,7 @@ const FALLBACK_STORES: Store[] = [
     title: 'Lowest Price',
     accent: '#22D3EE',
     icon: 'trending-down',
+    image: storeImages.lowestPrice,
     gradient: ['#22D3EE', '#06B6D4'] as const,
     badge: 'Best Price',
     description: 'Guaranteed lowest prices'
@@ -122,6 +142,7 @@ const FALLBACK_STORES: Store[] = [
     title: 'Cash Store',
     accent: '#00C06A',
     icon: 'card',
+    image: storeImages.cashStore,
     gradient: ['#00C06A', '#00796B'] as const,
     badge: 'Cash',
     description: 'Cashback & rewards'
@@ -146,6 +167,18 @@ const mapCategoryToStore = (category: StoreCategory): Store => {
     '💵': 'card',
   };
 
+  // Map category ID to image
+  const imageMap: { [key: string]: any } = {
+    'fastDelivery': storeImages.fastDelivery,
+    'budgetFriendly': storeImages.budgetFriendly,
+    'ninetyNineStore': storeImages.ninetyNineStore,
+    'premium': storeImages.premium,
+    'alliance': storeImages.alliance,
+    'organic': storeImages.organic,
+    'lowestPrice': storeImages.lowestPrice,
+    'cashStore': storeImages.cashStore,
+  };
+
   // Get gradient colors based on the category color
   const baseColor = displayInfo.color;
   const gradient: readonly string[] = [baseColor, baseColor] as const;
@@ -168,6 +201,7 @@ const mapCategoryToStore = (category: StoreCategory): Store => {
     title: displayInfo.name,
     accent: displayInfo.color,
     icon: iconMap[displayInfo.icon] || 'storefront',
+    image: imageMap[category.id],
     gradient,
     badge: badgeMap[category.id] || '',
     description: category.description,
@@ -178,10 +212,12 @@ const mapCategoryToStore = (category: StoreCategory): Store => {
 
 function ModernCardIllustration({
   icon,
+  image,
   gradient = ['#00C06A', '#00796B'] as const,
   badge
-}: { 
+}: {
   icon?: string;
+  image?: any;
   gradient?: readonly string[];
   badge?: string;
 }) {
@@ -200,17 +236,23 @@ function ModernCardIllustration({
             <Text style={styles.badgeText}>{badge}</Text>
           </View>
         )}
-        
-        {/* Icon */}
-        {icon && (
+
+        {/* Show Image if available, otherwise show Icon */}
+        {image ? (
+          <Image
+            source={image}
+            style={styles.categoryImage}
+            resizeMode="contain"
+          />
+        ) : icon ? (
           <View style={styles.iconContainer}>
             <Ionicons name={icon as any} size={32} color="white" />
           </View>
-        )}
-        
-        {/* Decorative Elements */}
-        <View style={styles.decorativeCircle1} />
-        <View style={styles.decorativeCircle2} />
+        ) : null}
+
+        {/* Decorative Elements - only show if no image */}
+        {!image && <View style={styles.decorativeCircle1} />}
+        {!image && <View style={styles.decorativeCircle2} />}
       </LinearGradient>
     </View>
   );
@@ -246,8 +288,9 @@ function StoreCard({ item }: { item: Store }) {
       accessibilityHint={`Double tap to browse ${item.title} stores. ${item.description || ''}`}
     >
       <View style={styles.cardIllustration}>
-        <ModernCardIllustration 
+        <ModernCardIllustration
           icon={item.icon}
+          image={item.image}
           gradient={item.gradient}
           badge={item.badge}
         />
@@ -727,6 +770,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+  },
+
+  categoryImage: {
+    width: 70,
+    height: 70,
   },
 
   decorativeCircle1: {

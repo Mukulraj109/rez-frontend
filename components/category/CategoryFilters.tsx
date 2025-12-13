@@ -8,7 +8,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
+import Slider from '@/components/common/CrossPlatformSlider';
 
 import { ThemedText } from '@/components/ThemedText';
 import { CategoryFilter } from '@/types/category.types';

@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
+import Slider from '@/components/common/CrossPlatformSlider';
 
 export interface FilterOptions {
   deliveryTime: {

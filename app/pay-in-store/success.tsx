@@ -18,6 +18,7 @@ import {
   Share,
   Platform,
   Animated,
+  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,13 +31,23 @@ import { SuccessScreenParams, PaymentRewards } from '@/types/storePayment.types'
 export default function PaymentSuccessScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<SuccessScreenParams>();
-  const { paymentId, storeId, storeName, amount, rewards: rewardsParam } = params;
+  const { paymentId, storeId, storeName, amount, coinsUsed, rewards: rewardsParam } = params;
 
-  const rewards: PaymentRewards = rewardsParam
-    ? JSON.parse(rewardsParam)
-    : { cashbackEarned: 0, coinsEarned: 0, loyaltyProgress: { currentVisits: 0, nextMilestone: 0, milestoneReward: '' } };
+  // Parse rewards - handle both old and new format
+  const rawRewards = rewardsParam ? JSON.parse(rewardsParam) : {};
+  const rewards: PaymentRewards = {
+    cashbackEarned: rawRewards.cashbackEarned || rawRewards.cashback || 0,
+    coinsEarned: rawRewards.coinsEarned || 0,
+    bonusCoins: rawRewards.bonusCoins || 0,
+    loyaltyProgress: rawRewards.loyaltyProgress || {
+      currentVisits: 0,
+      nextMilestone: 5,
+      milestoneReward: 'Bonus 50 Coins',
+    },
+  };
 
   const billAmount = parseFloat(amount || '0');
+  const coinsRedeemed = parseInt(coinsUsed || '0', 10);
 
   // Animations
   const checkmarkScale = useRef(new Animated.Value(0)).current;
@@ -136,6 +147,11 @@ export default function PaymentSuccessScreen() {
           <Text style={styles.successSubtitle}>
             Paid ₹{billAmount.toFixed(0)} to {storeName}
           </Text>
+          {coinsRedeemed > 0 && (
+            <Text style={styles.coinsUsedText}>
+              Used {coinsRedeemed} ReZ Coins
+            </Text>
+          )}
           <Text style={styles.transactionId}>Transaction ID: {paymentId?.slice(-8).toUpperCase()}</Text>
         </Animated.View>
 
@@ -167,7 +183,11 @@ export default function PaymentSuccessScreen() {
 
               <View style={styles.rewardItem}>
                 <View style={styles.rewardIconContainer}>
-                  <Ionicons name="diamond-outline" size={24} color="#FFFFFF" />
+                  <Image
+                    source={require('@/assets/images/rez-coin.png')}
+                    style={styles.coinImage}
+                    resizeMode="contain"
+                  />
                 </View>
                 <Text style={styles.rewardValue}>{rewards.coinsEarned}</Text>
                 <Text style={styles.rewardLabel}>ReZ Coins</Text>
@@ -261,7 +281,7 @@ export default function PaymentSuccessScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: 140 }} />
       </ScrollView>
 
       {/* Bottom Actions */}
@@ -272,7 +292,14 @@ export default function PaymentSuccessScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.homeButton} onPress={handleBackToHome}>
-          <Text style={styles.homeButtonText}>Back to Home</Text>
+          <LinearGradient
+            colors={[COLORS.primary[500], COLORS.primary[600]]}
+            style={styles.homeButtonGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Text style={styles.homeButtonText}>Back to Home</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -316,6 +343,11 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     color: COLORS.text.secondary,
     textAlign: 'center',
+  },
+  coinsUsedText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.primary[600],
+    marginTop: SPACING.xs,
   },
   transactionId: {
     ...TYPOGRAPHY.caption,
