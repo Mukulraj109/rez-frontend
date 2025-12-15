@@ -428,6 +428,158 @@ class GamificationAPI {
       throw error;
     }
   }
+
+  // ==================== PLAY & EARN HUB ====================
+
+  /**
+   * Get all play & earn hub data in one call
+   * Includes: daily spin, challenges, streak, surprise drops
+   */
+  async getPlayAndEarnData(): Promise<ApiResponse<{
+    dailySpin: {
+      spinsRemaining: number;
+      maxSpins: number;
+      lastSpinAt: string | null;
+      canSpin: boolean;
+      nextSpinAt: string | null;
+    };
+    challenges: {
+      active: Array<{
+        id: string;
+        title: string;
+        progress: {
+          current: number;
+          target: number;
+          percentage: number;
+        };
+        reward: number;
+        expiresAt: string;
+      }>;
+      totalActive: number;
+      completedToday: number;
+    };
+    streak: {
+      type: string;
+      currentStreak: number;
+      longestStreak: number;
+      nextMilestone: { day: number; coins: number };
+      todayCheckedIn: boolean;
+    };
+    surpriseDrop: {
+      id?: string;
+      available: boolean;
+      coins: number;
+      message: string | null;
+      expiresAt: string | null;
+      reason?: string;
+    };
+    coinBalance: number;
+  }>> {
+    try {
+      const response = await apiClient.get<{
+        dailySpin: {
+          spinsRemaining: number;
+          maxSpins: number;
+          lastSpinAt: string | null;
+          canSpin: boolean;
+          nextSpinAt: string | null;
+        };
+        challenges: {
+          active: Array<{
+            id: string;
+            title: string;
+            progress: {
+              current: number;
+              target: number;
+              percentage: number;
+            };
+            reward: number;
+            expiresAt: string;
+          }>;
+          totalActive: number;
+          completedToday: number;
+        };
+        streak: {
+          type: string;
+          currentStreak: number;
+          longestStreak: number;
+          nextMilestone: { day: number; coins: number };
+          todayCheckedIn: boolean;
+        };
+        surpriseDrop: {
+          id?: string;
+          available: boolean;
+          coins: number;
+          message: string | null;
+          expiresAt: string | null;
+          reason?: string;
+        };
+        coinBalance: number;
+      }>('/gamification/play-and-earn');
+      return response;
+    } catch (error: any) {
+      console.error('Error getting play and earn data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Claim a surprise coin drop
+   */
+  async claimSurpriseDrop(dropId: string): Promise<ApiResponse<{
+    coins: number;
+    newBalance: number;
+    message: string;
+  }>> {
+    try {
+      const response = await apiClient.post<{
+        coins: number;
+        newBalance: number;
+        message: string;
+      }>('/gamification/surprise-drop/claim', { dropId });
+      return response;
+    } catch (error: any) {
+      console.error('Error claiming surprise drop:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check in for daily streak
+   */
+  async streakCheckin(): Promise<ApiResponse<{
+    streakUpdated: boolean;
+    currentStreak: number;
+    longestStreak?: number;
+    coinsEarned: number;
+    milestoneReached: {
+      day: number;
+      coins: number;
+      badge?: string;
+    } | null;
+    newBalance?: number;
+    message: string;
+  }>> {
+    try {
+      const response = await apiClient.post<{
+        streakUpdated: boolean;
+        currentStreak: number;
+        longestStreak?: number;
+        coinsEarned: number;
+        milestoneReached: {
+          day: number;
+          coins: number;
+          badge?: string;
+        } | null;
+        newBalance?: number;
+        message: string;
+      }>('/gamification/streak/checkin');
+      return response;
+    } catch (error: any) {
+      console.error('Error checking in for streak:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance

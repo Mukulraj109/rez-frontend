@@ -14,7 +14,7 @@ import Svg, { Path } from 'react-native-svg';
 import CategoryTabBar from './CategoryTabBar';
 import CategoryCashbackGrid from './CategoryCashbackGrid';
 
-export type TabId = 'rez' | 'rez-mall' | 'cash-store' | '1-rupee-store';
+export type TabId = 'rez' | 'rez-mall' | 'cash-store';
 
 // Comprehensive theme configuration for each tab
 const TAB_THEMES: Record<TabId, {
@@ -49,14 +49,6 @@ const TAB_THEMES: Record<TabId, {
     categoryIconColor: '#166534',
     containerBg: '#F0FDF4',
   },
-  '1-rupee-store': {
-    heroGradient: ['#99F6E4', '#5EEAD4', '#2DD4BF'],
-    tabActiveColor: '#0891B2',
-    tabActiveTextColor: '#FFFFFF',
-    tabInactiveTextColor: '#0891B2',
-    categoryIconColor: '#0891B2',
-    containerBg: '#ECFEF7',
-  },
 };
 
 // Tab position interface for curve calculations
@@ -76,7 +68,7 @@ interface HomeTabSectionProps {
 }
 
 // Tab order for layout calculations
-const TAB_ORDER: TabId[] = ['rez', 'rez-mall', 'cash-store', '1-rupee-store'];
+const TAB_ORDER: TabId[] = ['rez', 'rez-mall', 'cash-store'];
 
 const HomeTabSection: React.FC<HomeTabSectionProps> = ({
   activeTab,
@@ -93,7 +85,6 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
     'rez': { x: 0, width: 0 },
     'rez-mall': { x: 0, width: 0 },
     'cash-store': { x: 0, width: 0 },
-    '1-rupee-store': { x: 0, width: 0 },
   });
 
   // Handle container layout measurement
@@ -236,37 +227,6 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
             <Text style={[
               styles.tabTextLarge,
               { color: activeTab === 'cash-store'
-                ? '#FFFFFF'
-                : TAB_THEMES[activeTab].tabInactiveTextColor
-              }
-            ]}>Store</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Tab 4: 1₹ Store */}
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => onTabChange('1-rupee-store')}
-          activeOpacity={0.85}
-          onLayout={(e) => handleTabLayout('1-rupee-store', e)}
-        >
-          <View style={[
-            styles.tab,
-            styles.tabPill,
-            activeTab === '1-rupee-store'
-              ? styles.tabActiveTransparent
-              : styles.tabInactive
-          ]}>
-            <Text style={[
-              styles.tabTextSmall,
-              { color: activeTab === '1-rupee-store'
-                ? '#FFFFFF'
-                : TAB_THEMES[activeTab].tabInactiveTextColor
-              }
-            ]}>1₹</Text>
-            <Text style={[
-              styles.tabTextLarge,
-              { color: activeTab === '1-rupee-store'
                 ? '#FFFFFF'
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }

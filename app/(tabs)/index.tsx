@@ -56,6 +56,8 @@ import HomeDeliverySection from '@/components/homepage/HomeDeliverySection';
 import ServiceSection from '@/components/homepage/ServiceSection';
 import ExclusiveRewardsSection from '@/components/homepage/ExclusiveRewardsSection';
 import WalletSnapshotCard from '@/components/homepage/WalletSnapshotCard';
+import PlayAndEarnSection from '@/components/homepage/PlayAndEarnSection';
+import SocialProofSection from '@/components/homepage/SocialProofSection';
 import { DiscoverAndShopSection } from '@/components/discover';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import {
@@ -1045,13 +1047,18 @@ export default function HomeScreen() {
         {/* Wallet Snapshot Card - Shows coin balance, cashback earned, and quick actions - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <WalletSnapshotCard />}
 
+        {/* Play & Earn More Section - Daily spin, challenges, streak rewards, surprise drops - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <PlayAndEarnSection />}
+
+        {/* Social Proof Section - People near you are earning - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <SocialProofSection />}
+
         {/* Show content for other tabs when not "rez" */}
         {activeTab !== 'rez' && (
           <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
             <ThemedText style={{ fontSize: 16, color: '#9AA7B2' }}>
               {activeTab === 'rez-mall' && 'Rez Mall content coming soon...'}
               {activeTab === 'cash-store' && 'Cash Store content coming soon...'}
-              {activeTab === '1-rupee-store' && '1₹ Store content coming soon...'}
             </ThemedText>
           </View>
         )}

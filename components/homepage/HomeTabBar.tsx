@@ -7,7 +7,7 @@ import {
   Platform,
 } from 'react-native';
 
-export type TabId = 'rez' | 'rez-mall' | 'cash-store' | '1-rupee-store';
+export type TabId = 'rez' | 'rez-mall' | 'cash-store';
 
 interface HomeTabBarProps {
   activeTab: TabId;
@@ -79,23 +79,6 @@ const HomeTabBar: React.FC<HomeTabBarProps> = ({
             ]}>Store</Text>
           </View>
         </TouchableOpacity>
-
-        {/* Tab 4: 1₹ Store */}
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => onTabChange('1-rupee-store')}
-          activeOpacity={0.85}
-        >
-          <View style={[
-            styles.tab,
-            activeTab === '1-rupee-store' ? styles.tabActive : styles.tabInactive
-          ]}>
-            <Text style={[
-              styles.tabTextMedium,
-              activeTab === '1-rupee-store' ? styles.tabTextActive : styles.tabTextInactive
-            ]}>1₹ Store</Text>
-          </View>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -159,10 +142,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     lineHeight: 18,
-  },
-  tabTextMedium: {
-    fontSize: 14,
-    fontWeight: '700',
   },
   // Active text - White
   tabTextActive: {
