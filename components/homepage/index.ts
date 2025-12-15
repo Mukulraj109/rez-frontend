@@ -2,6 +2,7 @@
 export { default as HorizontalScrollSection } from './HorizontalScrollSection';
 export { default as ReZCoin } from './ReZCoin';
 export { default as CategoryTabBar } from './CategoryTabBar';
+export { default as HeroBanner } from './HeroBanner';
 export { default as HomeTabBar } from './HomeTabBar';
 export { default as StickySearchHeader } from './StickySearchHeader';
 export { default as CategoryGridSection } from './CategoryGridSection';

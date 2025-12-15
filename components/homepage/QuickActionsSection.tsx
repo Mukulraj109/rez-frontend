@@ -32,6 +32,7 @@ interface QuickActionItem {
   route: string;
   value?: string | number;
   valueColor?: string;
+  description: string;
 }
 
 export default function QuickActionsSection({
@@ -66,6 +67,7 @@ export default function QuickActionsSection({
       icon: 'ticket-outline',
       route: '/my-vouchers',
       value: voucherCount.toString(),
+      description: 'Use & save',
     },
     {
       id: 'wallet',
@@ -73,6 +75,7 @@ export default function QuickActionsSection({
       icon: 'wallet-outline',
       route: '/WalletScreen',
       value: 'Load',
+      description: 'Your rewards',
     },
     {
       id: 'offers',
@@ -80,6 +83,7 @@ export default function QuickActionsSection({
       icon: 'pricetag-outline',
       route: '/offers',
       value: `${newOffersCount} New`,
+      description: 'Extra savings',
     },
     {
       id: 'store',
@@ -87,6 +91,7 @@ export default function QuickActionsSection({
       icon: 'storefront-outline',
       route: '/Store',
       value: 'Explore',
+      description: 'Explore nearby',
     },
   ];
 
@@ -135,6 +140,7 @@ export default function QuickActionsSection({
                 )}
               </View>
             )}
+            <ThemedText style={styles.actionDescription}>{action.description}</ThemedText>
           </TouchableOpacity>
         ))}
       </View>
@@ -144,38 +150,38 @@ export default function QuickActionsSection({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 0,
-    paddingTop: 0,
-    paddingBottom: 16,
+    paddingHorizontal: 8,
+    paddingTop: 6,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
-    marginTop: 0,
+    marginTop: -4,
   },
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 2,
+    gap: 4,
   },
   actionItem: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 2,
+    paddingHorizontal: 4,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
+    width: 46,
+    height: 46,
     borderRadius: 14,
     backgroundColor: '#E8F5F1',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   actionTitle: {
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.midnightNavy,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   // Gray rectangular background for values
   valuePill: {
@@ -228,5 +234,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#6B7280',
+  },
+  actionDescription: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 4,
   },
 });

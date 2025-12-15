@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import CategoryTabBar from './CategoryTabBar';
+import CategoryCashbackGrid from './CategoryCashbackGrid';
 
 export type TabId = 'rez' | 'rez-mall' | 'cash-store' | '1-rupee-store';
 
@@ -309,22 +310,18 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
                 <Text style={styles.promoBannerSubtitle}>DEALS</Text>
               </View>
               <View style={styles.promoBannerIconWrapper}>
-                <Ionicons name="pricetag" size={20} color="#DC2626" />
+                <Ionicons name="pricetag" size={18} color="#DC2626" />
               </View>
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
-        {/* Category TabBar - Only show when rez tab is selected */}
+        {/* Category Cashback Grid - Only show when rez tab is selected */}
         {activeTab === 'rez' && (
-          <View style={styles.categoryContainer}>
-            <CategoryTabBar
-              selectedCategory={selectedCategory}
-              onCategorySelect={onCategoryChange}
-              style={styles.categoryTabBar}
-              activeThemeColor={theme.categoryIconColor}
-            />
-          </View>
+          <CategoryCashbackGrid
+            onCategoryPress={onCategoryChange}
+            style={styles.categoryCashbackGrid}
+          />
         )}
       </LinearGradient>
     </View>
@@ -488,45 +485,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 9,
   },
   promoBannerContent: {
     flex: 1,
   },
   promoBannerTitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '900',
     color: '#DC2626',
     letterSpacing: 0.5,
   },
   promoBannerSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '900',
     color: '#991B1B',
     letterSpacing: 0.3,
     marginTop: -2,
   },
   promoBannerIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(220, 38, 38, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Category TabBar Container
-  categoryContainer: {
-    marginTop: -12,
-    borderRadius: 0,
-    overflow: 'visible',
-    marginHorizontal: 0,
+  // Category Cashback Grid Container
+  categoryCashbackGrid: {
+    marginTop: 8,
     backgroundColor: 'transparent',
-  },
-  categoryTabBar: {
-    backgroundColor: 'transparent',
-    borderBottomWidth: 0,
   },
 });
 

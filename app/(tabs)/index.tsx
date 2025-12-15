@@ -17,6 +17,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Defs, ClipPath, Image as SvgImage, Text as SvgText, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import MaskedView from '@react-native-masked-view/masked-view';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -40,8 +42,10 @@ import {
   BestDiscountSection,
   BestSellerSection,
   QuickActionsSection,
+  HeroBanner,
 } from '@/components/homepage';
 import HomeTabSection, { TabId } from '@/components/homepage/HomeTabSection';
+import HowRezWorksCard from '@/components/homepage/HowRezWorksCard';
 import ServiceCategoriesSection from '@/components/homepage/ServiceCategoriesSection';
 import PopularServicesSection from '@/components/homepage/PopularServicesSection';
 import PromoBanner from '@/components/homepage/PromoBanner';
@@ -51,6 +55,7 @@ import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import GoingOutSection from '@/components/homepage/GoingOutSection';
 import HomeDeliverySection from '@/components/homepage/HomeDeliverySection';
 import ServiceSection from '@/components/homepage/ServiceSection';
+import ExclusiveRewardsSection from '@/components/homepage/ExclusiveRewardsSection';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import {
   EventItem,
@@ -96,6 +101,41 @@ const ModalFallback = () => null; // No loader for modals
 
 const FABFallback = () => null; // No loader for FAB
 
+// Badge/Shield shaped avatar component - green/golden light mix with person icon
+interface BadgeAvatarProps {
+  size?: number;
+}
+
+const BadgeAvatar: React.FC<BadgeAvatarProps> = ({ size = 24 }) => {
+  const width = size;
+  const height = size * 1.23;
+
+  // Shield path with tapered sides and smooth rounded bottom
+  const shieldPath = `
+    M ${width * 0.15} 0
+    Q 0 0 0 ${height * 0.12}
+    L 0 ${height * 0.55}
+    Q 0 ${height * 0.7} ${width * 0.2} ${height * 0.78}
+    Q ${width * 0.35} ${height * 0.88} ${width * 0.5} ${height * 0.92}
+    Q ${width * 0.65} ${height * 0.88} ${width * 0.8} ${height * 0.78}
+    Q ${width} ${height * 0.7} ${width} ${height * 0.55}
+    L ${width} ${height * 0.12}
+    Q ${width} 0 ${width * 0.85} 0
+    Z
+  `;
+
+  return (
+    <View style={{ width, height }}>
+      <Svg width={width} height={height}>
+        <Path d={shieldPath} fill="#C4B078" />
+      </Svg>
+      <View style={{ position: 'absolute', width, height, justifyContent: 'center', alignItems: 'center', paddingBottom: height * 0.1 }}>
+        <Ionicons name="person" size={size * 0.5} color="#A89860" />
+      </View>
+    </View>
+  );
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const { state, actions } = useHomepage();
@@ -119,6 +159,7 @@ export default function HomeScreen() {
   const [voucherCount, setVoucherCount] = React.useState(0); // Active voucher count
   const [newOffersCount, setNewOffersCount] = React.useState(0); // New offers count
   const [isLocationModalVisible, setIsLocationModalVisible] = React.useState(false); // Location picker modal
+  const [totalSaved, setTotalSaved] = React.useState(0); // Total savings (cashback + refunds)
 
   // Get current location hook for editable location
   const { currentLocation, updateLocation: updateUserLocation } = useCurrentLocation();
@@ -353,6 +394,15 @@ export default function HomeScreen() {
             const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
             const actualWalletCoins = wasilCoin?.amount || 0;
 
+            // Calculate total savings from wallet statistics
+            const walletStats = walletResponse.data.statistics;
+            if (walletStats) {
+              const cashback = walletStats.totalCashback || 0;
+              const refunds = walletStats.totalRefunds || 0;
+              const totalSavings = cashback + refunds;
+              setTotalSaved(totalSavings);
+            }
+
             // If loyalty points > wallet coins, sync the difference
             if (totalLoyaltyPoints > actualWalletCoins) {
               const difference = totalLoyaltyPoints - actualWalletCoins;
@@ -394,23 +444,26 @@ export default function HomeScreen() {
           } else {
             console.warn('⚠️ [HOME] Could not get wallet balance, using calculated loyalty points');
             setUserPoints(totalLoyaltyPoints);
+            setTotalSaved(0);
           }
         } catch (walletError) {
           console.error('❌ [HOME] Error syncing with wallet:', walletError);
           // Fallback to calculated loyalty points
           setUserPoints(totalLoyaltyPoints);
+          setTotalSaved(0);
         }
       } else {
         // Fallback to wallet data if statistics API fails
         const loyaltyPoints = authState.user?.wallet?.totalEarned || authState.user?.wallet?.balance || 0;
         setUserPoints(loyaltyPoints);
-
+        setTotalSaved(0);
       }
     } catch (error) {
       console.error('❌ [HOME] Error loading user statistics:', error);
       // Fallback to wallet data
       const loyaltyPoints = authState.user?.wallet?.totalEarned || authState.user?.wallet?.balance || 0;
       setUserPoints(loyaltyPoints);
+      setTotalSaved(0);
     } finally {
       setIsLoadingStats(false);
     }
@@ -721,7 +774,7 @@ export default function HomeScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Modern Profile Avatar */}
+            {/* Profile Badge Avatar with Savings - Badge then text pill */}
             <TouchableOpacity
               onPress={() => {
                 if (authState.isAuthenticated && authState.user) {
@@ -732,19 +785,18 @@ export default function HomeScreen() {
               accessibilityLabel="User profile menu"
               accessibilityRole="button"
               accessibilityHint="Double tap to open profile menu and account settings"
-              style={viewStyles.profileAvatarWrapper}
+              style={viewStyles.profileSavingsContainer}
             >
-              <LinearGradient
-                colors={['#FFD93D', '#FF9F1C']}
-                style={viewStyles.profileAvatarModern}
-              >
-                <Text style={viewStyles.profileTextModern}>
-                  {user?.initials ||
-                    (authState.user?.profile?.firstName ? authState.user.profile.firstName.charAt(0).toUpperCase() :
-                      (authState.isAuthenticated ? 'U' : '?')
-                    )}
+              {/* Badge on left */}
+              <View style={viewStyles.badgeOverlay}>
+                <BadgeAvatar />
+              </View>
+              {/* Text pill - overlaps badge slightly with negative margin */}
+              <View style={viewStyles.savedTextPill}>
+                <Text style={viewStyles.savedText}>
+                  ₹{totalSaved} saved
                 </Text>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -812,6 +864,9 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
+        {/* Hero Banner - Dynamic content based on user */}
+        <HeroBanner totalSaved={totalSaved} />
+
         </LinearGradient>
 
       {/* Home Tab Section - Outside gradient */}
@@ -841,6 +896,12 @@ export default function HomeScreen() {
             newOffersCount={newOffersCount}
           />
         )}
+
+        {/* How ReZ Works Card - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <HowRezWorksCard />}
+
+        {/* Exclusive ReZ Rewards Section - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <ExclusiveRewardsSection />}
 
         {/* Online Voucher Button (Exclusive Deals) - Lazy Loaded - Only show when "rez" tab is active */}
         {activeTab === 'rez' && (
@@ -1223,6 +1284,46 @@ const viewStyles = StyleSheet.create({
   profileAvatarWrapper: {
     // Wrapper for shadow on Android
   },
+  // Container for badge + text pill - badge overlaps pill
+  profileSavingsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // Text pill with background - positioned to the right of badge
+  savedTextPill: {
+    backgroundColor: 'rgba(180, 140, 80, 0.18)',
+    paddingLeft: 6,
+    paddingRight: 8,
+    paddingVertical: 3,
+    borderRadius: 0,
+    marginLeft: -6,
+    marginTop: -8,
+  },
+  // Badge overlay - no special positioning needed
+  badgeOverlay: {
+    zIndex: 1,
+  },
+  // Savings text
+  savedText: {
+    color: '#8B7355',
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  // Badge avatar wrapper with shadow (legacy - not used)
+  profileBadgeWrapper: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FF9F1C',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  // Legacy styles - kept for backward compatibility
   profileAvatarModern: {
     width: 42,
     height: 42,
@@ -1231,6 +1332,7 @@ const viewStyles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#FF9F1C',

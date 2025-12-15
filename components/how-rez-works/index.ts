@@ -1,0 +1,13 @@
+export { default as HowRezWorksHeader } from './HowRezWorksHeader';
+export { default as HeroSection } from './HeroSection';
+export { default as StepsSection } from './StepsSection';
+export { default as WalletSection } from './WalletSection';
+export { default as WalletTransparencySection } from './WalletTransparencySection';
+export { default as OfflineStoresSection } from './OfflineStoresSection';
+export { default as BillUploadCard } from './BillUploadCard';
+export { default as OnlineShoppingSection } from './OnlineShoppingSection';
+export { default as ProductLockSection } from './ProductLockSection';
+export { default as LoyaltySection } from './LoyaltySection';
+export { default as EarnByShareSection } from './EarnByShareSection';
+export { default as TrustPrivacySection } from './TrustPrivacySection';
+export { default as FooterCTA } from './FooterCTA';
