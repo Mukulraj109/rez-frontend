@@ -1,6 +1,7 @@
 /**
  * Going Out Section Configuration
  * Defines subcategories and settings for the homepage "Going Out" section
+ * Now displays stores instead of products
  */
 
 export interface GoingOutSubcategory {
@@ -8,35 +9,26 @@ export interface GoingOutSubcategory {
   label: string;
   slug: string;
   icon: string;
-  image: any;
 }
-
-// Category images
-const CATEGORY_IMAGES = {
-  cafes: require('@/assets/images/going-out-categories/cafes.png'),
-  familyRestaurants: require('@/assets/images/going-out-categories/family-restaurants.png'),
-  fineDining: require('@/assets/images/going-out-categories/fine-dining.png'),
-  qsrFastFood: require('@/assets/images/going-out-categories/qsr-fast-food.png'),
-};
 
 // 4 Food & Dining subcategories for the Going Out section
 export const GOING_OUT_SUBCATEGORIES: GoingOutSubcategory[] = [
-  { id: 'cafes', label: 'Cafes', slug: 'cafes', icon: 'cafe-outline', image: CATEGORY_IMAGES.cafes },
-  { id: 'family-restaurants', label: 'Family Restaurants', slug: 'family-restaurants', icon: 'people-outline', image: CATEGORY_IMAGES.familyRestaurants },
-  { id: 'fine-dining', label: 'Fine Dining', slug: 'fine-dining', icon: 'wine-outline', image: CATEGORY_IMAGES.fineDining },
-  { id: 'qsr-fast-food', label: 'QSR/Fast Food', slug: 'qsr-fast-food', icon: 'fast-food-outline', image: CATEGORY_IMAGES.qsrFastFood },
+  { id: 'cafes', label: 'Cafes', slug: 'cafes', icon: 'cafe-outline' },
+  { id: 'family-restaurants', label: 'Family Restaurants', slug: 'family-restaurants', icon: 'people-outline' },
+  { id: 'fine-dining', label: 'Fine Dining', slug: 'fine-dining', icon: 'wine-outline' },
+  { id: 'qsr-fast-food', label: 'QSR/Fast Food', slug: 'qsr-fast-food', icon: 'fast-food-outline' },
 ];
 
 // Section configuration
 export const GOING_OUT_SECTION_CONFIG = {
   title: 'Going Out',
   subtitle: 'Discover restaurants, cafes & more',
-  badgeText: 'Best Deals',
-  productsPerCategory: 6,
-  cardWidth: 160,
-  cardHeight: 220,
+  storesPerCategory: 6,
+  cardWidth: 200,
+  cardHeight: 240,
   cardGap: 12,
-  imageHeight: 100,
+  imageHeight: 120,
+  avgOrderValue: 500, // Used to calculate earn amount from cashback %
 };
 
 // ReZ Brand Colors for the section

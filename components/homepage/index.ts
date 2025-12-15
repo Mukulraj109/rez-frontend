@@ -5,7 +5,6 @@ export { default as CategoryTabBar } from './CategoryTabBar';
 export { default as HeroBanner } from './HeroBanner';
 export { default as HomeTabBar } from './HomeTabBar';
 export { default as StickySearchHeader } from './StickySearchHeader';
-export { default as CategoryGridSection } from './CategoryGridSection';
 export { default as PopularProductsSection } from './PopularProductsSection';
 export { default as NearbyProductsSection } from './NearbyProductsSection';
 export { default as HotDealsSection } from './HotDealsSection';
@@ -15,6 +14,7 @@ export { default as BestDiscountSection } from './BestDiscountSection';
 export { default as BestSellerSection } from './BestSellerSection';
 export { default as QuickActionsSection } from './QuickActionsSection';
 export { default as GoingOutSection } from './GoingOutSection';
+export { default as StoreDiscoverySection } from './StoreDiscoverySection';
 
 // Card Components
 export { default as EventCard } from './cards/EventCard';
@@ -25,6 +25,8 @@ export { default as RecommendationCard } from './cards/RecommendationCard';
 export { default as HomepageProductCard } from './cards/HomepageProductCard';
 export { default as CategoryProductCard } from './cards/CategoryProductCard';
 export { default as CategorySectionCard } from './cards/CategorySectionCard';
+export { default as TopStoreCard } from './cards/TopStoreCard';
+export { default as PopularStoreCard } from './cards/PopularStoreCard';
 
 // Skeleton Loading Components
 export { 

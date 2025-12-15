@@ -22,12 +22,12 @@ export const HOME_DELIVERY_SUBCATEGORIES: HomeDeliverySubcategory[] = [
 export const HOME_DELIVERY_SECTION_CONFIG = {
   title: 'Home Delivery',
   subtitle: 'Everything delivered to your door',
-  badgeText: 'Under ₹99',
-  productsPerCategory: 6,
-  cardWidth: 160,
-  cardHeight: 220,
+  storesPerCategory: 6,
+  cardWidth: 200,
+  cardHeight: 240,
   cardGap: 12,
-  imageHeight: 100,
+  imageHeight: 120,
+  avgOrderValue: 500, // Used to calculate earn amount from cashback %
 };
 
 // ReZ Brand Colors for the section

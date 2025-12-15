@@ -34,7 +34,6 @@ import {
   ReZCoin,
   CategoryTabBar,
   StickySearchHeader,
-  CategoryGridSection,
   PopularProductsSection,
   NearbyProductsSection,
   HotDealsSection,
@@ -43,10 +42,10 @@ import {
   BestSellerSection,
   QuickActionsSection,
   HeroBanner,
+  StoreDiscoverySection,
 } from '@/components/homepage';
 import HomeTabSection, { TabId } from '@/components/homepage/HomeTabSection';
 import HowRezWorksCard from '@/components/homepage/HowRezWorksCard';
-import ServiceCategoriesSection from '@/components/homepage/ServiceCategoriesSection';
 import PopularServicesSection from '@/components/homepage/PopularServicesSection';
 import PromoBanner from '@/components/homepage/PromoBanner';
 import GlobeBanner from '@/components/homepage/GlobeBanner';
@@ -56,6 +55,8 @@ import GoingOutSection from '@/components/homepage/GoingOutSection';
 import HomeDeliverySection from '@/components/homepage/HomeDeliverySection';
 import ServiceSection from '@/components/homepage/ServiceSection';
 import ExclusiveRewardsSection from '@/components/homepage/ExclusiveRewardsSection';
+import WalletSnapshotCard from '@/components/homepage/WalletSnapshotCard';
+import { DiscoverAndShopSection } from '@/components/discover';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import {
   EventItem,
@@ -992,10 +993,8 @@ export default function HomeScreen() {
             ));
         }, [activeTab, state.sections, handleItemPress, actions, renderEventCard, renderRecommendationCard, renderStoreCard, renderBrandedStoreCard, renderProductCard])}
 
-        {/* Categories Grid Section - Shows all 11 main categories - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && (
-          <CategoryGridSection title="Categories" maxCategories={11} />
-        )}
+        {/* Store Discovery Section - Today's Top Stores & Popular Near You - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <StoreDiscoverySection limit={10} />}
 
         {/* Promotional Banner - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <PromoBanner />}
@@ -1009,6 +1008,18 @@ export default function HomeScreen() {
         {/* Popular Products Section - Shows products with highest order count - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <PopularProductsSection title="Popular" limit={10} />}
 
+        {/* Discover & Shop Section - UGC Reels, Posts, Articles, Images with product tagging - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && (
+          <View style={{ marginHorizontal: -20, marginTop: 16 }}>
+            <DiscoverAndShopSection
+              showHeader={true}
+              showCategories={true}
+              initialTab="reels"
+              maxHeight={600}
+            />
+          </View>
+        )}
+
         {/* In Your Area Section - Shows products from nearby stores - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <NearbyProductsSection title="In Your Area" limit={10} radius={10} />}
 
@@ -1016,7 +1027,6 @@ export default function HomeScreen() {
         {activeTab === 'rez' && <GlobeBanner />}
 
         {/* Services Sections - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <ServiceCategoriesSection />}
         {activeTab === 'rez' && <PopularServicesSection />}
 
         {/* Hot Deals Section - Shows products with hot-deal tag or high cashback - Only show when "rez" tab is active */}
@@ -1031,6 +1041,9 @@ export default function HomeScreen() {
             <FeatureHighlights />
           </Suspense>
         )}
+
+        {/* Wallet Snapshot Card - Shows coin balance, cashback earned, and quick actions - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <WalletSnapshotCard />}
 
         {/* Show content for other tabs when not "rez" */}
         {activeTab !== 'rez' && (

@@ -1,118 +1,113 @@
 /**
  * useHomeDeliverySection Hook
  * Custom hook for the homepage "Home Delivery" section
- * Handles subcategory selection, API fetching, and caching
+ * Handles subcategory selection, API fetching for stores, and caching
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import productsApi from '@/services/productsApi';
+import storesApi from '@/services/storesApi';
 import { HOME_DELIVERY_SUBCATEGORIES, HOME_DELIVERY_SECTION_CONFIG } from '@/config/homeDeliverySectionConfig';
 
-// Product type for the Home Delivery section
-export interface HomeDeliverySectionProduct {
+// Store type for the Home Delivery section
+export interface HomeDeliverySectionStore {
   id: string;
   name: string;
-  brand?: string;
-  image: string | null;
-  price: {
-    current: number;
-    original?: number;
-    currency: string;
-    discount?: number;
-  };
-  cashback: {
-    percentage: number;
-    maxAmount?: number;
-  };
-  rating?: {
-    value: number;
+  slug: string;
+  logo: string | null;
+  banner: string | null;
+  rating: {
+    average: number;
     count: number;
   };
-  deliveryTime?: string;
-  priceForTwo?: number;
-  store?: {
-    id: string;
-    name: string;
-    logo?: string;
+  category: string[];
+  distance?: string;
+  earnAmount: number;
+  priceLevel?: string;
+  location: {
+    address: string;
+    city: string;
   };
 }
 
 export interface UseHomeDeliverySectionReturn {
   activeSubcategory: string;
-  products: HomeDeliverySectionProduct[];
+  stores: HomeDeliverySectionStore[];
   loading: boolean;
   error: string | null;
   setActiveSubcategory: (id: string) => void;
-  refreshProducts: () => Promise<void>;
+  refreshStores: () => Promise<void>;
 }
 
-// Helper function to map backend product to section product
-const mapBackendProductToSection = (product: any): HomeDeliverySectionProduct => {
-  // Extract image
-  let image: string | null = null;
-  if (Array.isArray(product.images) && product.images.length > 0) {
-    image = product.images[0]?.url || product.images[0];
-  } else if (product.image) {
-    image = product.image;
-  } else if (product.thumbnail) {
-    image = product.thumbnail;
-  } else if (product.media && Array.isArray(product.media) && product.media.length > 0) {
-    image = product.media[0]?.url || product.media[0];
+// Helper function to map backend store to section store
+const mapBackendStoreToSection = (store: any): HomeDeliverySectionStore => {
+  // Extract image - prefer banner[0], then logo
+  let banner: string | null = null;
+  if (Array.isArray(store.banner) && store.banner.length > 0) {
+    banner = store.banner[0];
+  } else if (typeof store.banner === 'string') {
+    banner = store.banner;
   }
 
-  // Calculate discount
-  const originalPrice = product.price?.original || product.pricing?.compare;
-  const currentPrice = product.price?.current || product.pricing?.selling || 0;
-  const discount = originalPrice && currentPrice
-    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-    : (product.price?.discount || 0);
+  const logo = store.logo || null;
+
+  // Calculate earn amount from cashback percentage
+  const cashbackPercent = store.offers?.cashback || 0;
+  const earnAmount = Math.round((cashbackPercent * HOME_DELIVERY_SECTION_CONFIG.avgOrderValue) / 100);
+
+  // Extract category/tags
+  const category: string[] = [];
+  if (Array.isArray(store.tags)) {
+    category.push(...store.tags.slice(0, 3));
+  }
+  if (store.category?.name && !category.includes(store.category.name)) {
+    category.unshift(store.category.name);
+  }
+
+  // Determine price level from minOrderAmount or tags
+  let priceLevel = '₹₹';
+  if (store.operationalInfo?.minimumOrder) {
+    const minOrder = store.operationalInfo.minimumOrder;
+    if (minOrder < 100) priceLevel = '₹';
+    else if (minOrder < 300) priceLevel = '₹₹';
+    else if (minOrder < 500) priceLevel = '₹₹₹';
+    else priceLevel = '₹₹₹₹';
+  }
 
   return {
-    id: product._id || product.id,
-    name: product.name || product.title,
-    brand: product.brand,
-    image,
-    price: {
-      current: currentPrice,
-      original: originalPrice,
-      currency: product.price?.currency || '₹',
-      discount,
+    id: store._id || store.id,
+    name: store.name,
+    slug: store.slug,
+    logo,
+    banner,
+    rating: {
+      average: store.ratings?.average || 0,
+      count: store.ratings?.count || 0,
     },
-    cashback: {
-      percentage: product.cashback?.percentage || 5,
-      maxAmount: product.cashback?.maxAmount,
+    category: category.slice(0, 3),
+    distance: store.distance ? `${store.distance.toFixed(1)} km` : undefined,
+    earnAmount,
+    priceLevel,
+    location: {
+      address: store.location?.address || '',
+      city: store.location?.city || '',
     },
-    rating: product.rating ? {
-      value: product.rating.value || product.rating.average || 0,
-      count: product.rating.count || 0,
-    } : (product.ratings ? {
-      value: product.ratings.average || 0,
-      count: product.ratings.count || 0,
-    } : undefined),
-    deliveryTime: product.deliveryTime || product.estimatedDelivery || '30-45 min',
-    priceForTwo: product.priceForTwo || (currentPrice ? currentPrice * 2 : undefined),
-    store: product.store ? {
-      id: product.store._id || product.store.id || '',
-      name: product.store.name || 'Store',
-      logo: product.store.logo || product.store.image,
-    } : undefined,
   };
 };
 
 export function useHomeDeliverySection(): UseHomeDeliverySectionReturn {
   const [activeSubcategory, setActiveSubcategoryState] = useState(HOME_DELIVERY_SUBCATEGORIES[0].id);
-  const [products, setProducts] = useState<HomeDeliverySectionProduct[]>([]);
+  const [stores, setStores] = useState<HomeDeliverySectionStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Cache products by subcategory to avoid redundant API calls
-  const cache = useRef<Record<string, HomeDeliverySectionProduct[]>>({});
+  // Cache stores by subcategory to avoid redundant API calls
+  const cache = useRef<Record<string, HomeDeliverySectionStore[]>>({});
   const fetchInProgress = useRef<Record<string, boolean>>({});
 
-  const fetchProducts = useCallback(async (subcategorySlug: string) => {
+  const fetchStores = useCallback(async (subcategorySlug: string) => {
     // Check cache first
     if (cache.current[subcategorySlug] && cache.current[subcategorySlug].length > 0) {
-      setProducts(cache.current[subcategorySlug]);
+      setStores(cache.current[subcategorySlug]);
       setLoading(false);
       setError(null);
       return;
@@ -128,42 +123,44 @@ export function useHomeDeliverySection(): UseHomeDeliverySectionReturn {
     setError(null);
 
     try {
-      const response = await productsApi.getProductsBySubcategory(
+      const response = await storesApi.getStoresBySubcategorySlug(
         subcategorySlug,
-        HOME_DELIVERY_SECTION_CONFIG.productsPerCategory
+        HOME_DELIVERY_SECTION_CONFIG.storesPerCategory
       );
 
       console.log('[useHomeDeliverySection] API Response:', JSON.stringify(response, null, 2));
 
       if (response.success && response.data) {
-        const rawProducts = Array.isArray(response.data) ? response.data : [];
+        const rawStores = Array.isArray(response.data)
+          ? response.data
+          : (response.data.stores || []);
 
-        console.log('[useHomeDeliverySection] Raw products count:', rawProducts.length);
-        if (rawProducts.length > 0) {
-          console.log('[useHomeDeliverySection] First raw product:', JSON.stringify(rawProducts[0], null, 2));
+        console.log('[useHomeDeliverySection] Raw stores count:', rawStores.length);
+        if (rawStores.length > 0) {
+          console.log('[useHomeDeliverySection] First raw store:', JSON.stringify(rawStores[0], null, 2));
         }
 
-        const mappedProducts = rawProducts.map(mapBackendProductToSection);
+        const mappedStores = rawStores.map(mapBackendStoreToSection);
 
-        console.log('[useHomeDeliverySection] Mapped products count:', mappedProducts.length);
-        if (mappedProducts.length > 0) {
-          console.log('[useHomeDeliverySection] First mapped product:', JSON.stringify(mappedProducts[0], null, 2));
+        console.log('[useHomeDeliverySection] Mapped stores count:', mappedStores.length);
+        if (mappedStores.length > 0) {
+          console.log('[useHomeDeliverySection] First mapped store:', JSON.stringify(mappedStores[0], null, 2));
         }
 
         // Cache the results
-        cache.current[subcategorySlug] = mappedProducts;
-        setProducts(mappedProducts);
+        cache.current[subcategorySlug] = mappedStores;
+        setStores(mappedStores);
         setError(null);
       } else {
-        // If API returns no products, set empty array (not an error)
+        // If API returns no stores, set empty array (not an error)
         cache.current[subcategorySlug] = [];
-        setProducts([]);
+        setStores([]);
         setError(null);
       }
     } catch (err: any) {
-      console.error('[useHomeDeliverySection] Error fetching products:', err);
+      console.error('[useHomeDeliverySection] Error fetching stores:', err);
       setError('Failed to load. Tap to retry.');
-      setProducts([]);
+      setStores([]);
     } finally {
       setLoading(false);
       fetchInProgress.current[subcategorySlug] = false;
@@ -174,34 +171,34 @@ export function useHomeDeliverySection(): UseHomeDeliverySectionReturn {
     setActiveSubcategoryState(id);
     const subcategory = HOME_DELIVERY_SUBCATEGORIES.find(s => s.id === id);
     if (subcategory) {
-      fetchProducts(subcategory.slug);
+      fetchStores(subcategory.slug);
     }
-  }, [fetchProducts]);
+  }, [fetchStores]);
 
-  const refreshProducts = useCallback(async () => {
+  const refreshStores = useCallback(async () => {
     // Clear cache for current subcategory and refetch
     const subcategory = HOME_DELIVERY_SUBCATEGORIES.find(s => s.id === activeSubcategory);
     if (subcategory) {
       delete cache.current[subcategory.slug];
-      await fetchProducts(subcategory.slug);
+      await fetchStores(subcategory.slug);
     }
-  }, [activeSubcategory, fetchProducts]);
+  }, [activeSubcategory, fetchStores]);
 
-  // Fetch initial products on mount
+  // Fetch initial stores on mount
   useEffect(() => {
     const initialSubcategory = HOME_DELIVERY_SUBCATEGORIES[0];
     if (initialSubcategory) {
-      fetchProducts(initialSubcategory.slug);
+      fetchStores(initialSubcategory.slug);
     }
-  }, [fetchProducts]);
+  }, [fetchStores]);
 
   return {
     activeSubcategory,
-    products,
+    stores,
     loading,
     error,
     setActiveSubcategory,
-    refreshProducts,
+    refreshStores,
   };
 }
 

@@ -1,0 +1,348 @@
+// DiscoverAndShopHeader.tsx - Header with category cards for Discover & Shop
+// ReZ Brand Colors: Green (#00C06A) and Golden (#FFC857) with modern glassy UI
+import React from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Platform,
+  Image,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { CategoryCard } from '@/types/discover.types';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = 140;
+const CARD_HEIGHT = 165;
+
+// ReZ Brand Color Palette - Green/Golden with different shades
+const REZ_COLORS = {
+  // Primary Greens
+  primaryGreen: '#00C06A',
+  darkGreen: '#00796B',
+  lightGreen: '#10B981',
+  mintGreen: '#34D399',
+  paleGreen: '#A7F3D0',
+
+  // Accent Golds
+  primaryGold: '#FFC857',
+  darkGold: '#D4A843',
+  lightGold: '#FFD98C',
+  amber: '#F59E0B',
+
+  // Neutrals
+  navy: '#0B2240',
+  gray: '#6B7280',
+};
+
+// Default category cards with ReZ Green/Golden gradients
+const DEFAULT_CATEGORIES: CategoryCard[] = [
+  {
+    id: 'fashion',
+    label: 'Fashion',
+    icon: 'shirt-outline',
+    productName: 'Summer Collection',
+    cashback: '20%',
+    gradient: ['#00C06A', '#10B981'], // Primary green gradient
+    categoryId: 'fashion',
+  },
+  {
+    id: 'electronics',
+    label: 'Electronics',
+    icon: 'phone-portrait-outline',
+    productName: 'Latest Gadgets',
+    cashback: '15%',
+    gradient: ['#FFC857', '#F59E0B'], // Golden gradient
+    categoryId: 'electronics',
+  },
+  {
+    id: 'beauty',
+    label: 'Beauty',
+    icon: 'sparkles-outline',
+    productName: 'Skincare Essentials',
+    cashback: '18%',
+    gradient: ['#00796B', '#00C06A'], // Dark to light green
+    categoryId: 'beauty',
+  },
+  {
+    id: 'home',
+    label: 'Home',
+    icon: 'home-outline',
+    productName: 'Decor & Living',
+    cashback: '12%',
+    gradient: ['#34D399', '#A7F3D0'], // Mint green gradient
+    categoryId: 'home',
+  },
+  {
+    id: 'food',
+    label: 'Food',
+    icon: 'restaurant-outline',
+    productName: 'Gourmet Delights',
+    cashback: '25%',
+    gradient: ['#D4A843', '#FFC857'], // Dark to light gold
+    categoryId: 'food',
+  },
+];
+
+interface DiscoverAndShopHeaderProps {
+  categories?: CategoryCard[];
+  onCategoryPress?: (category: CategoryCard) => void;
+  showCategories?: boolean;
+}
+
+export default function DiscoverAndShopHeader({
+  categories = DEFAULT_CATEGORIES,
+  onCategoryPress,
+  showCategories = true,
+}: DiscoverAndShopHeaderProps) {
+  return (
+    <View style={styles.container}>
+      {/* Title Row */}
+      <View style={styles.titleRow}>
+        <View style={styles.titleLeft}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="bag-handle" size={18} color="#FFFFFF" />
+          </View>
+          <Text style={styles.title}>Discover & Shop</Text>
+        </View>
+        <TouchableOpacity style={styles.viewAllButton}>
+          <Text style={styles.viewAllText}>View All</Text>
+          <Ionicons name="chevron-forward" size={14} color={REZ_COLORS.primaryGreen} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Subtitle */}
+      <Text style={styles.subtitle}>Tap products to buy & earn rewards</Text>
+
+      {/* Category Cards - Modern Glassy Design */}
+      {showCategories && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cardsContainer}
+          decelerationRate="fast"
+          snapToInterval={CARD_WIDTH + 12}
+        >
+          {categories.map((category, index) => (
+            <TouchableOpacity
+              key={category.id}
+              activeOpacity={0.85}
+              onPress={() => onCategoryPress?.(category)}
+              accessibilityLabel={`${category.label} category. ${category.productName}. ${category.cashback} cashback`}
+              accessibilityRole="button"
+              style={styles.cardWrapper}
+            >
+              <LinearGradient
+                colors={category.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.categoryCard}
+              >
+                {/* Glassy overlay effect */}
+                <View style={styles.glassOverlay} />
+
+                {/* Decorative circles for depth */}
+                <View style={styles.decorCircle1} />
+                <View style={styles.decorCircle2} />
+
+                {/* Icon Container with glass effect */}
+                <View style={styles.iconWrapper}>
+                  <View style={styles.iconCircle}>
+                    <Ionicons
+                      name={category.icon as any}
+                      size={28}
+                      color="#FFFFFF"
+                    />
+                  </View>
+                </View>
+
+                {/* Category Label */}
+                <Text style={styles.categoryLabel}>{category.label}</Text>
+
+                {/* Product Name */}
+                <Text style={styles.productName} numberOfLines={1}>
+                  {category.productName}
+                </Text>
+
+                {/* Cashback Badge - Glassy pill */}
+                <View style={styles.cashbackBadge}>
+                  <Ionicons name="trending-up" size={10} color="#FFFFFF" />
+                  <Text style={styles.cashbackText}>{category.cashback} Cashback</Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    paddingTop: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 6,
+  },
+  titleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: REZ_COLORS.primaryGreen,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: REZ_COLORS.primaryGreen,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: REZ_COLORS.navy,
+    letterSpacing: -0.3,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+  },
+  viewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: REZ_COLORS.primaryGreen,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: REZ_COLORS.gray,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  cardsContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  cardWrapper: {
+    marginRight: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  categoryCard: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    borderRadius: 20,
+    padding: 14,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  glassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 20,
+  },
+  decorCircle1: {
+    position: 'absolute',
+    top: -30,
+    right: -30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  decorCircle2: {
+    position: 'absolute',
+    bottom: -20,
+    left: -20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  iconWrapper: {
+    alignSelf: 'flex-start',
+  },
+  iconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    // Glassmorphism effect
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
+  },
+  categoryLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontWeight: '500',
+    marginTop: 8,
+  },
+  productName: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  cashbackBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  cashbackText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+});
