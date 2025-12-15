@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, memo } from "react";
+import React, { useCallback, useRef, useState, memo, useEffect } from "react";
 import {
   View,
   TouchableOpacity,
@@ -10,10 +10,14 @@ import {
   ViewToken,
   Platform,
   Animated,
+  ScrollView,
+  Linking,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { triggerImpact, triggerNotification } from "@/utils/haptics";
 import { GlassCard } from "@/components/ui";
+import { ThemedText } from "@/components/ThemedText";
 import {
   Colors,
   Spacing,
@@ -21,6 +25,8 @@ import {
   BorderRadius,
   IconSize,
   Timing,
+  Typography,
+  Gradients,
 } from "@/constants/DesignSystem";
 
 interface ProductImage {
@@ -33,6 +39,14 @@ interface ProductDisplayProps {
   onSharePress?: () => void;
   onFavoritePress?: () => void;
   isFavorited?: boolean;
+  // New Magicpin-inspired props
+  rating?: number;
+  reviewCount?: number;
+  categoryTags?: string[];
+  phoneNumber?: string;
+  locationCoords?: { lat: number; lng: number };
+  onDirectionsPress?: () => void;
+  onCallPress?: () => void;
 }
 
 const DEFAULT_IMAGES: ProductImage[] = [
@@ -46,21 +60,114 @@ export default memo(function ProductDisplay({
   onSharePress,
   onFavoritePress,
   isFavorited = false,
+  // New Magicpin-inspired props
+  rating,
+  reviewCount,
+  categoryTags = [],
+  phoneNumber,
+  locationCoords,
+  onDirectionsPress,
+  onCallPress,
 }: ProductDisplayProps) {
   const { width } = Dimensions.get("window");
   const isTablet = width >= 768;
   const imageCardWidth = Math.round(width * (isTablet ? 0.7 : 0.92));
-  // Increased height ratio to fill more screen space
-  const imageHeight = Math.round(imageCardWidth * (isTablet ? 0.95 : 1.25));
+  // Reduced height ratio for less whitespace - edge-to-edge look
+  const imageHeight = Math.round(imageCardWidth * (isTablet ? 0.7 : 0.8));
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const flatRef = useRef<FlatList<any> | null>(null);
 
+  // Format rating display
+  const formattedRating = rating ? rating.toFixed(1) : null;
+  const formattedReviewCount = reviewCount
+    ? reviewCount >= 1000
+      ? `${(reviewCount / 1000).toFixed(1)}K`
+      : reviewCount.toString()
+    : null;
+
   // Animation refs for micro-interactions
   const shareScaleAnim = useRef(new Animated.Value(1)).current;
   const favoriteScaleAnim = useRef(new Animated.Value(1)).current;
   const imageScaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Pulse animation for favorited heart
+  const heartPulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Animated pagination dots
+  const dotAnimations = useRef(images.map(() => new Animated.Value(0))).current;
+
+  // CTA button animations
+  const directionsScaleAnim = useRef(new Animated.Value(1)).current;
+  const callScaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Category tag entrance animations
+  const tagAnimations = useRef(categoryTags.map(() => new Animated.Value(0))).current;
+
+  // Category icon mapping
+  const getCategoryIcon = (tag: string): keyof typeof Ionicons.glyphMap => {
+    const lowerTag = tag.toLowerCase();
+    if (lowerTag.includes('coffee') || lowerTag.includes('cafe')) return 'cafe-outline';
+    if (lowerTag.includes('art')) return 'color-palette-outline';
+    if (lowerTag.includes('food') || lowerTag.includes('restaurant') || lowerTag.includes('dining')) return 'restaurant-outline';
+    if (lowerTag.includes('local')) return 'location-outline';
+    if (lowerTag.includes('fashion') || lowerTag.includes('clothing')) return 'shirt-outline';
+    if (lowerTag.includes('beauty') || lowerTag.includes('spa')) return 'sparkles-outline';
+    if (lowerTag.includes('health') || lowerTag.includes('fitness')) return 'fitness-outline';
+    if (lowerTag.includes('grocery')) return 'cart-outline';
+    return 'pricetag-outline';
+  };
+
+  // Heart pulse animation effect
+  useEffect(() => {
+    if (isFavorited) {
+      const pulseAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(heartPulseAnim, {
+            toValue: 1.2,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(heartPulseAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseAnimation.start();
+      return () => pulseAnimation.stop();
+    } else {
+      heartPulseAnim.setValue(1);
+    }
+  }, [isFavorited, heartPulseAnim]);
+
+  // Animate pagination dots on index change
+  useEffect(() => {
+    dotAnimations.forEach((anim, i) => {
+      Animated.spring(anim, {
+        toValue: i === currentIndex ? 1 : 0,
+        useNativeDriver: false,
+        tension: 50,
+        friction: 7,
+      }).start();
+    });
+  }, [currentIndex, dotAnimations]);
+
+  // Staggered entrance animation for category tags
+  useEffect(() => {
+    if (categoryTags.length > 0) {
+      categoryTags.forEach((_, index) => {
+        Animated.timing(tagAnimations[index], {
+          toValue: 1,
+          duration: 300,
+          delay: index * 80,
+          useNativeDriver: true,
+        }).start();
+      });
+    }
+  }, [categoryTags, tagAnimations]);
 
   // viewability config + callback to track current index reliably
   const viewabilityConfig = useRef({
@@ -99,6 +206,30 @@ export default memo(function ProductDisplay({
     if (onFavoritePress) onFavoritePress();
   }, [onFavoritePress]);
 
+  // New handlers for Magicpin-style actions
+  const handleDirectionsPress = useCallback(() => {
+    triggerImpact('Medium');
+    if (onDirectionsPress) {
+      onDirectionsPress();
+    } else if (locationCoords) {
+      const url = Platform.select({
+        ios: `maps:0,0?q=${locationCoords.lat},${locationCoords.lng}`,
+        android: `geo:${locationCoords.lat},${locationCoords.lng}?q=${locationCoords.lat},${locationCoords.lng}`,
+        default: `https://www.google.com/maps/search/?api=1&query=${locationCoords.lat},${locationCoords.lng}`,
+      });
+      Linking.openURL(url);
+    }
+  }, [onDirectionsPress, locationCoords]);
+
+  const handleCallPress = useCallback(() => {
+    triggerImpact('Medium');
+    if (onCallPress) {
+      onCallPress();
+    } else if (phoneNumber) {
+      Linking.openURL(`tel:${phoneNumber}`);
+    }
+  }, [onCallPress, phoneNumber]);
+
   const renderImage = useCallback(
     ({ item }: ListRenderItemInfo<ProductImage>) => {
       const hasError = imageErrors.has(item.id);
@@ -110,9 +241,15 @@ export default memo(function ProductDisplay({
             <Image
               source={{ uri: hasError ? fallbackUri : item.uri }}
               style={[styles.image, { width: imageCardWidth, height: imageHeight }]}
-              resizeMode="contain"
+              resizeMode="cover"
               onError={() => handleImageError(item.id)}
               defaultSource={require('@/assets/images/icon.png')}
+            />
+            {/* Gradient Overlay for Depth */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0, 0, 0, 0.4)']}
+              style={styles.imageGradientOverlay}
+              pointerEvents="none"
             />
             {hasError && (
               <View style={styles.errorOverlay}>
@@ -149,77 +286,199 @@ export default memo(function ProductDisplay({
         accessibilityRole="list"
       />
 
-      {/* Glassmorphic Floating Action Buttons */}
+      {/* Glassmorphic Floating Action Buttons - Enhanced */}
       <View style={[styles.actionCol, { top: Spacing.lg }]}>
         {/* Share Button with Animation */}
         <Animated.View style={{ transform: [{ scale: shareScaleAnim }] }}>
-          <GlassCard
-            variant="light"
-            intensity={80}
-            borderRadius={BorderRadius.full}
-            shadow={true}
-            style={styles.actionBtn}
-          >
-            <TouchableOpacity
-              onPress={handleSharePress}
-              onPressIn={() => animateScale(shareScaleAnim, 0.90)}
-              onPressOut={() => animateScale(shareScaleAnim, 1)}
-              style={styles.actionBtnTouchable}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Share product"
+          <View style={styles.actionBtnShadow}>
+            <GlassCard
+              variant="dark"
+              intensity={70}
+              borderRadius={BorderRadius.full}
+              shadow={true}
+              style={styles.actionBtn}
             >
-              <Ionicons name="share-social-outline" size={IconSize.sm} color={Colors.gray[700]} />
-            </TouchableOpacity>
-          </GlassCard>
+              <TouchableOpacity
+                onPress={handleSharePress}
+                onPressIn={() => animateScale(shareScaleAnim, 0.88)}
+                onPressOut={() => animateScale(shareScaleAnim, 1)}
+                style={styles.actionBtnTouchable}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Share product"
+              >
+                <Ionicons name="share-social-outline" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
         </Animated.View>
 
-        {/* Favorite Button with Animation */}
-        <Animated.View style={{ transform: [{ scale: favoriteScaleAnim }] }}>
-          <GlassCard
-            variant="light"
-            intensity={80}
-            borderRadius={BorderRadius.full}
-            shadow={true}
-            style={styles.actionBtn}
-          >
-            <TouchableOpacity
-              onPress={handleFavoritePress}
-              onPressIn={() => animateScale(favoriteScaleAnim, 0.90)}
-              onPressOut={() => animateScale(favoriteScaleAnim, 1)}
-              style={styles.actionBtnTouchable}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
+        {/* Favorite Button with Pulse Animation */}
+        <Animated.View style={{
+          transform: [
+            { scale: Animated.multiply(favoriteScaleAnim, heartPulseAnim) }
+          ]
+        }}>
+          <View style={[styles.actionBtnShadow, isFavorited && styles.actionBtnGlow]}>
+            <GlassCard
+              variant="dark"
+              intensity={70}
+              borderRadius={BorderRadius.full}
+              shadow={true}
+              style={styles.actionBtn}
             >
-              <Ionicons
-                name={isFavorited ? "heart" : "heart-outline"}
-                size={IconSize.sm}
-                color={isFavorited ? Colors.error : Colors.gray[700]}
-              />
-            </TouchableOpacity>
-          </GlassCard>
+              <TouchableOpacity
+                onPress={handleFavoritePress}
+                onPressIn={() => animateScale(favoriteScaleAnim, 0.88)}
+                onPressOut={() => animateScale(favoriteScaleAnim, 1)}
+                style={styles.actionBtnTouchable}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
+              >
+                <Ionicons
+                  name={isFavorited ? "heart" : "heart-outline"}
+                  size={22}
+                  color={isFavorited ? "#FF4757" : "#FFFFFF"}
+                />
+              </TouchableOpacity>
+            </GlassCard>
+          </View>
         </Animated.View>
       </View>
 
-      {/* Modern Pagination Dots */}
+      {/* Modern Animated Pagination Dots */}
       {images.length > 1 && (
         <View style={styles.pagination}>
-          {images.map((_, i) => {
-            const isActive = i === currentIndex;
-            return (
-              <View
-                key={i}
-                style={[
-                  styles.dotBase,
-                  isActive ? styles.dotActive : styles.dotInactive,
-                  isActive ? styles.dotActiveWide : undefined,
-                ]}
-                accessibilityLabel={`Image ${i + 1} of ${images.length}`}
-                accessibilityState={{ selected: isActive }}
-              />
-            );
-          })}
+          <View style={styles.paginationInner}>
+            {images.map((_, i) => {
+              return (
+                <Animated.View
+                  key={i}
+                  style={[
+                    styles.dotBase,
+                    {
+                      width: dotAnimations[i]?.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [8, 24],
+                      }) || 8,
+                      backgroundColor: dotAnimations[i]?.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['rgba(255,255,255,0.5)', '#00C06A'],
+                      }) || 'rgba(255,255,255,0.5)',
+                    },
+                  ]}
+                  accessibilityLabel={`Image ${i + 1} of ${images.length}`}
+                  accessibilityState={{ selected: i === currentIndex }}
+                />
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {/* Rating Badge Overlay - Magicpin Style */}
+      {formattedRating && (
+        <View style={styles.ratingBadgeContainer}>
+          <GlassCard
+            variant="light"
+            intensity={90}
+            borderRadius={BorderRadius.xl}
+            shadow={true}
+            style={styles.ratingBadge}
+          >
+            <View style={styles.ratingBadgeInner}>
+              <Ionicons name="star" size={16} color={Colors.gold} />
+              <ThemedText style={styles.ratingText}>{formattedRating}</ThemedText>
+              {formattedReviewCount && (
+                <>
+                  <View style={styles.ratingDivider} />
+                  <ThemedText style={styles.reviewCountText}>
+                    {formattedReviewCount} reviews
+                  </ThemedText>
+                </>
+              )}
+            </View>
+          </GlassCard>
+        </View>
+      )}
+
+      {/* Category Tags - Compact Single Line */}
+      {categoryTags.length > 0 && (
+        <View style={styles.categoryTagsContainer}>
+          <View style={styles.categoryTagsRow}>
+            {categoryTags.slice(0, 4).map((tag, index) => (
+              <Animated.View
+                key={index}
+                style={{
+                  opacity: tagAnimations[index] || 1,
+                  transform: [{
+                    translateY: tagAnimations[index]?.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [8, 0],
+                    }) || 0,
+                  }],
+                }}
+              >
+                <View style={styles.categoryTag}>
+                  <Ionicons
+                    name={getCategoryIcon(tag)}
+                    size={12}
+                    color="#00875A"
+                  />
+                  <ThemedText style={styles.categoryTagText}>{tag}</ThemedText>
+                </View>
+              </Animated.View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Quick Actions Bar - Centered */}
+      {(locationCoords || phoneNumber) && (
+        <View style={styles.quickActionsBar}>
+          {/* Directions Button */}
+          {locationCoords && (
+            <Animated.View style={{ transform: [{ scale: directionsScaleAnim }] }}>
+              <TouchableOpacity
+                style={styles.directionsButton}
+                onPress={handleDirectionsPress}
+                onPressIn={() => animateScale(directionsScaleAnim, 0.97)}
+                onPressOut={() => animateScale(directionsScaleAnim, 1)}
+                activeOpacity={0.9}
+                accessibilityRole="button"
+                accessibilityLabel="Get directions to store"
+              >
+                <LinearGradient
+                  colors={['#00C06A', '#00A85A']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.directionsButtonGradient}
+                >
+                  <Ionicons name="navigate" size={14} color="#FFFFFF" />
+                  <ThemedText style={styles.directionsButtonText}>Directions</ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
+          {/* Call Button */}
+          {phoneNumber && (
+            <Animated.View style={{ transform: [{ scale: callScaleAnim }] }}>
+              <TouchableOpacity
+                style={styles.callButton}
+                onPress={handleCallPress}
+                onPressIn={() => animateScale(callScaleAnim, 0.97)}
+                onPressOut={() => animateScale(callScaleAnim, 1)}
+                activeOpacity={0.9}
+                accessibilityRole="button"
+                accessibilityLabel="Call store"
+              >
+                <Ionicons name="call" size={14} color="#00875A" />
+                <ThemedText style={styles.callButtonText}>Call</ThemedText>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
         </View>
       )}
     </View>
@@ -233,18 +492,29 @@ const styles = StyleSheet.create({
   imageWrapper: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8FAFC", // Modern light gray background
+    // Removed background color for cleaner look
   },
   imageCard: {
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.xl,
     overflow: "hidden",
-    backgroundColor: Colors.background.primary,
-    ...Shadows.medium,
+    backgroundColor: Colors.gray[100],
+    // Enhanced shadow for depth
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   image: {
     width: "100%",
     height: "100%",
-    backgroundColor: Colors.gray[50], // Light background for contain mode
+  },
+  imageGradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
   },
   errorOverlay: {
     position: "absolute",
@@ -257,52 +527,173 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  // Glassmorphic Action Buttons
+  // Enhanced Glassmorphic Action Buttons
   actionCol: {
     position: "absolute",
-    right: Spacing.base + 2,
+    right: Spacing.lg,
     zIndex: 20,
     justifyContent: "flex-start",
     alignItems: "center",
   },
+  actionBtnShadow: {
+    borderRadius: BorderRadius.full,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+    marginBottom: Spacing.sm,
+  },
+  actionBtnGlow: {
+    shadowColor: "#FF4757",
+    shadowOpacity: 0.4,
+  },
   actionBtn: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: Spacing.md,
   },
   actionBtnTouchable: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     justifyContent: "center",
     alignItems: "center",
   },
 
-  // Modern Pagination Dots
+  // Modern Animated Pagination Dots
   pagination: {
     position: "absolute",
-    bottom: Spacing.md,
+    bottom: Spacing.lg,
     left: 0,
     right: 0,
-    flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    gap: Spacing.sm,
+  },
+  paginationInner: {
+    flexDirection: "row",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
   },
   dotBase: {
     height: 8,
-    borderRadius: BorderRadius.sm,
-    marginHorizontal: 4,
+    borderRadius: 4,
   },
-  dotActive: {
-    backgroundColor: Colors.primary[700],
+
+  // Rating Badge - Magicpin Style
+  ratingBadgeContainer: {
+    position: "absolute",
+    bottom: 60,
+    left: Spacing.lg,
+    zIndex: 30,
   },
-  dotActiveWide: {
-    width: 28,
+  ratingBadge: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
-  dotInactive: {
-    backgroundColor: Colors.gray[200],
-    width: 8,
+  ratingBadgeInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  ratingText: {
+    ...Typography.label,
+    color: Colors.text.primary,
+    fontWeight: "700",
+  },
+  ratingDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: Colors.gray[300],
+    marginHorizontal: Spacing.xs,
+  },
+  reviewCountText: {
+    ...Typography.bodySmall,
+    color: Colors.gray[600],
+  },
+
+  // Category Tags - Compact Single Line
+  categoryTagsContainer: {
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.base,
+  },
+  categoryTagsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "nowrap",
+    gap: 8,
+  },
+  categoryTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: "rgba(0, 192, 106, 0.2)",
+    backgroundColor: "rgba(0, 192, 106, 0.06)",
+    gap: 4,
+  },
+  categoryTagText: {
+    fontSize: 11,
+    color: "#00875A",
+    fontWeight: "600",
+  },
+
+  // Quick Actions Bar - Left & Right with Center Gap
+  quickActionsBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: Spacing.md,
+    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.base,
+  },
+  directionsButton: {
+    width: 110,
+    borderRadius: 8,
+    overflow: "hidden",
+    shadowColor: "#00C06A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  directionsButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    gap: 5,
+  },
+  directionsButtonText: {
+    fontSize: 12,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  callButton: {
+    width: 110,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 7,
+    gap: 5,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "rgba(0, 192, 106, 0.25)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  callButtonText: {
+    fontSize: 12,
+    color: "#00875A",
+    fontWeight: "600",
   },
 });

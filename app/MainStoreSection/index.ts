@@ -26,5 +26,19 @@ export { default as VisitStoreButton } from './VisitStoreButton';
 // Phase 9: Store Products Grid
 export { default as StoreProducts } from './StoreProducts';
 
+// Phase 10: Store Hero Metrics (Magicpin-inspired)
+export { default as StoreHeroMetrics } from './StoreHeroMetrics';
+
+// Phase 11: Voucher Cards Section (Magicpin-inspired)
+export { default as VoucherCardsSection } from './VoucherCardsSection';
+export type { VoucherCard } from './VoucherCardsSection';
+
+// Phase 12: Rating Breakdown Section (Magicpin-inspired)
+export { default as RatingBreakdownSection } from './RatingBreakdownSection';
+export type { RatingCategory } from './RatingBreakdownSection';
+
+// Phase 13: AI Review Summary (Magicpin-inspired)
+export { default as AIReviewSummary } from './AIReviewSummary';
+
 // Default export for the main component
 export { default } from './MainStoreHeader';

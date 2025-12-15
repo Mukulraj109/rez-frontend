@@ -6,6 +6,7 @@ import recommendationService, {
   ProductRecommendation,
   BundleItem
 } from '@/services/recommendationApi';
+import productsApi from '@/services/productsApi';
 import { ProductItem } from '@/types/homepage.types';
 
 export interface UseRecommendationsOptions {
@@ -174,19 +175,82 @@ export function usePersonalizedRecommendations({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch personalized recommendations
+  // Fetch personalized recommendations with fallback to featured products
   const fetch = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await recommendationService.getPersonalizedRecommendations(limit, excludeProducts);
-      if (response.success && response.data) {
-        setRecommendations(response.data.recommendations);
+      let gotProducts = false;
+
+      // Try personalized recommendations first
+      try {
+        const response = await recommendationService.getPersonalizedRecommendations(limit, excludeProducts);
+        if (response.success && response.data?.recommendations?.length > 0) {
+          setRecommendations(response.data.recommendations);
+          gotProducts = true;
+        }
+      } catch (personalizedErr) {
+        // Personalized API failed, will try fallback
+      }
+
+      // If personalized failed or returned empty, fallback to featured products
+      if (!gotProducts) {
+        try {
+          const featuredResponse = await productsApi.getFeaturedProducts(limit);
+
+          if (featuredResponse.success && featuredResponse.data && featuredResponse.data.length > 0) {
+            // Convert featured products to recommendation format
+            const featuredAsRecommendations = featuredResponse.data.map((product: any) => ({
+              id: product.id || product._id,
+              product: product,
+              score: 0.8,
+              reason: 'Featured product',
+              storeId: product.storeId || product.store?.id || product.store,
+              name: product.name || product.title,
+              image: product.image || product.images?.[0]?.url || product.images?.[0],
+              price: product.price,
+              ...product
+            }));
+            setRecommendations(featuredAsRecommendations);
+            gotProducts = true;
+          }
+        } catch (featuredErr) {
+          // Featured products API failed, will try fallback
+        }
+      }
+
+      // If still no products, try getting all products
+      if (!gotProducts) {
+        try {
+          const allProductsResponse = await productsApi.getProducts({ limit });
+
+          if (allProductsResponse.success && allProductsResponse.data) {
+            const products = Array.isArray(allProductsResponse.data)
+              ? allProductsResponse.data
+              : (allProductsResponse.data as any).products || [];
+
+            if (products.length > 0) {
+              const productsAsRecommendations = products.slice(0, limit).map((product: any) => ({
+                id: product.id || product._id,
+                product: product,
+                score: 0.7,
+                reason: 'Popular product',
+                storeId: product.storeId || product.store?.id || product.store,
+                name: product.name || product.title,
+                image: product.image || product.images?.[0]?.url || product.images?.[0],
+                price: product.price,
+                ...product
+              }));
+              setRecommendations(productsAsRecommendations);
+            }
+          }
+        } catch (allErr) {
+          // All products fallback failed
+        }
       }
     } catch (err: any) {
-      console.error('[usePersonalizedRecommendations] Error fetching recommendations:', err);
-      setError(err.message || 'Failed to fetch personalized recommendations');
+      setError(err.message || 'Failed to fetch recommendations');
     } finally {
       setLoading(false);
     }

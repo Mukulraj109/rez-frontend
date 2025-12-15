@@ -23,11 +23,13 @@ export interface BundleProduct extends ProductItem {
 
 interface FrequentlyBoughtTogetherProps {
   currentProduct: ProductItem;
+  storeId?: string; // Optional: If provided, fetch products from this store instead
   onBundleAdded?: () => void;
 }
 
 export default function FrequentlyBoughtTogether({
   currentProduct,
+  storeId,
   onBundleAdded,
 }: FrequentlyBoughtTogetherProps) {
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
@@ -43,8 +45,11 @@ export default function FrequentlyBoughtTogether({
 
   // Load frequently bought together products
   useEffect(() => {
-    loadBundleProducts();
-  }, [currentProduct.id]);
+    // Only load if we have a valid storeId or productId
+    if (storeId || currentProduct.id) {
+      loadBundleProducts();
+    }
+  }, [currentProduct.id, storeId]);
 
   // Auto-select current product by default
   useEffect(() => {
@@ -56,46 +61,83 @@ export default function FrequentlyBoughtTogether({
   const loadBundleProducts = async () => {
     try {
       setLoading(true);
+      let response;
 
-      // Try to fetch from API
-      const response = await productsService.getFrequentlyBoughtTogether(currentProduct.id, 4);
+      // If storeId is provided, fetch products from that store
+      if (storeId && storeId.length > 0) {
+        try {
+          // Get products by store
+          const storeResponse = await productsService.getProductsByStore(storeId, {});
+
+          if (storeResponse.success && storeResponse.data) {
+            // Handle the store products response format
+            const dataArray = Array.isArray(storeResponse.data) ? storeResponse.data : [storeResponse.data];
+            if (dataArray.length > 0) {
+              const storeData = dataArray[0];
+              if (storeData && storeData.products && Array.isArray(storeData.products)) {
+                const storeProducts = storeData.products
+                  .filter((p: any) => p._id !== currentProduct.id && p.id !== currentProduct.id)
+                  .slice(0, 4);
+                response = { success: true, data: storeProducts };
+              }
+            }
+          }
+
+          if (!response) {
+            response = { success: false, data: [] };
+          }
+        } catch (err) {
+          console.error('[FrequentlyBoughtTogether] Error fetching products:', err);
+          response = { success: false, data: [] };
+        }
+      } else {
+        // Use the frequently bought together API for product pages
+        response = await productsService.getFrequentlyBoughtTogether(currentProduct.id, 4);
+      }
 
       if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
-        // Map API response to BundleProduct format
-        const products: BundleProduct[] = response.data.map((product: any) => ({
-          id: product.id,
-          type: 'product',
-          name: product.name,
-          brand: product.brand || 'Unknown Brand',
-          image: product.image || product.images?.[0]?.url || '',
-          description: product.description,
-          title: product.name,
-          price: {
-            current: product.pricing?.basePrice || product.price?.current || 0,
-            original: product.pricing?.salePrice || product.price?.original,
-            currency: 'INR',
-            discount: product.price?.discount || 0,
-          },
-          category: product.category?.name || product.category || 'General',
-          rating: product.ratings ? {
-            value: product.ratings.average,
-            count: product.ratings.count,
-          } : undefined,
-          availabilityStatus: product.status === 'active' ? 'in_stock' : 'out_of_stock',
-          tags: product.tags || [],
-          bundleDiscount: Math.floor(Math.random() * 10) + 5, // 5-15% bundle discount
-          purchaseCorrelation: 0.7 + Math.random() * 0.3, // 70-100% correlation
-        }));
+        // Map API response to BundleProduct format and filter invalid products
+        const products: BundleProduct[] = response.data
+          .filter((product: any) => {
+            // Only filter out products with ₹0 or missing price - be lenient on images
+            const price = product.pricing?.basePrice || product.pricing?.selling || product.price?.current || product.price || 0;
+            const hasValidPrice = price && price > 0;
+            return hasValidPrice;
+          })
+          .map((product: any) => ({
+            id: product.id || product._id,
+            type: 'product',
+            name: product.name,
+            brand: product.brand || 'Unknown Brand',
+            image: product.image || product.images?.[0]?.url || product.images?.[0] || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400',
+            description: product.description,
+            title: product.name,
+            price: {
+              current: product.pricing?.selling || product.pricing?.basePrice || product.price?.current || product.price || 0,
+              original: product.pricing?.mrp || product.pricing?.original || product.price?.original,
+              currency: 'INR',
+              discount: product.pricing?.discount || product.price?.discount || 0,
+            },
+            category: product.category?.name || product.category || 'General',
+            rating: product.ratings ? {
+              value: product.ratings.average,
+              count: product.ratings.count,
+            } : undefined,
+            availabilityStatus: (product.isActive !== false && product.inventory?.isAvailable !== false) ? 'in_stock' : 'out_of_stock',
+            tags: product.tags || [],
+            bundleDiscount: 10, // Fixed bundle discount instead of random
+            purchaseCorrelation: 0.8, // Fixed correlation instead of random
+          }));
 
         setBundleProducts(products);
       } else {
-        // Fallback to mock data if API fails or returns empty
-        setBundleProducts(generateMockBundleProducts());
+        // No mock data - just show empty if API returns nothing
+        setBundleProducts([]);
       }
     } catch (error) {
       console.error('Error loading bundle products:', error);
-      // Use mock data on error
-      setBundleProducts(generateMockBundleProducts());
+      // No mock data on error - just show empty
+      setBundleProducts([]);
     } finally {
       setLoading(false);
     }
@@ -347,13 +389,19 @@ export default function FrequentlyBoughtTogether({
     setAddingToCart(false);
   };
 
+  // Use different title for store pages vs product pages
+  const sectionTitle = storeId ? 'Popular Products' : 'Frequently Bought Together';
+  const subtitle = storeId
+    ? 'Top picks from this store'
+    : 'Customers who bought this item also purchased';
+
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Frequently Bought Together</Text>
+        <Text style={styles.title}>{sectionTitle}</Text>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#00C06A" />
-          <Text style={styles.loadingText}>Loading bundle products...</Text>
+          <Text style={styles.loadingText}>Loading products...</Text>
         </View>
       </View>
     );
@@ -370,8 +418,8 @@ export default function FrequentlyBoughtTogether({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name="gift" size={24} color="#00C06A" />
-          <Text style={styles.title}>Frequently Bought Together</Text>
+          <Ionicons name={storeId ? "cube" : "gift"} size={24} color="#00C06A" />
+          <Text style={styles.title}>{sectionTitle}</Text>
         </View>
         {savings > 0 && (
           <View style={styles.savingsBadge}>
@@ -381,7 +429,7 @@ export default function FrequentlyBoughtTogether({
       </View>
 
       <Text style={styles.subtitle}>
-        Customers who bought this item also purchased
+        {subtitle}
       </Text>
 
       {/* Products List */}

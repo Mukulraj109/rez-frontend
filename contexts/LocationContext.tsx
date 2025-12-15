@@ -108,7 +108,6 @@ export function LocationProvider({ children }: LocationProviderProps) {
               dispatch({ type: 'SET_CURRENT_LOCATION', payload: serverLocation });
             }
           } catch (serverError) {
-            console.log('Server location failed, trying GPS...');
             try {
               // Fallback to GPS location
               const coordinates = await locationService.getCurrentLocation();
@@ -158,17 +157,37 @@ export function LocationProvider({ children }: LocationProviderProps) {
   const updateLocation = async (
     coordinates: LocationCoordinates,
     address?: string,
-    source: 'manual' | 'gps' | 'ip' = 'gps'
+    source: 'manual' | 'gps' | 'ip' = 'gps',
+    extraData?: { city?: string; state?: string; pincode?: string }
   ): Promise<void> => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'CLEAR_ERROR' });
 
-      const userLocation = await locationService.updateUserLocation(coordinates, address, source);
+      const userLocation = await locationService.updateUserLocation(coordinates, address, source, extraData);
       dispatch({ type: 'SET_CURRENT_LOCATION', payload: userLocation });
     } catch (error) {
       console.error('Update location error:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to update location' });
+      throw error;
+    }
+  };
+
+  // Set manual location - works for both authenticated and unauthenticated users
+  // This caches locally and updates state without requiring server authentication
+  const setManualLocation = async (location: UserLocation): Promise<void> => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'CLEAR_ERROR' });
+
+      // Cache the location locally
+      await locationService.cacheLocation(location);
+
+      // Update the context state
+      dispatch({ type: 'SET_CURRENT_LOCATION', payload: location });
+    } catch (error) {
+      console.error('Set manual location error:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to set location' });
       throw error;
     }
   };
@@ -248,7 +267,6 @@ export function LocationProvider({ children }: LocationProviderProps) {
           try {
             await locationService.updateUserLocation(coordinates, geocodedLocation.formattedAddress, 'gps');
           } catch (serverError) {
-            console.log('Server update failed, storing locally');
             // Store locally if server update fails
             await locationService.cacheLocation(userLocation);
           }
@@ -305,6 +323,7 @@ export function LocationProvider({ children }: LocationProviderProps) {
   const contextValue: LocationContextType = {
     state,
     updateLocation,
+    setManualLocation,
     getCurrentLocation,
     getLocationHistory,
     clearLocationHistory,

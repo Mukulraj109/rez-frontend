@@ -39,16 +39,12 @@ export function useLocationPermission() {
  * Hook for getting and updating current location
  */
 export function useCurrentLocation() {
-  const { state, getCurrentLocation, updateLocation } = useLocationContext();
+  const { state, getCurrentLocation, updateLocation, setManualLocation } = useLocationContext();
   const { state: authState } = useAuth();
-  
+
   const [isUpdating, setIsUpdating] = useState(false);
 
   const refreshLocation = useCallback(async () => {
-    if (!authState.isAuthenticated) {
-      return null;
-    }
-
     setIsUpdating(true);
     try {
       const location = await getCurrentLocation();
@@ -56,24 +52,40 @@ export function useCurrentLocation() {
     } finally {
       setIsUpdating(false);
     }
-  }, [getCurrentLocation, authState.isAuthenticated]);
+  }, [getCurrentLocation]);
 
   const updateUserLocation = useCallback(async (
     coordinates: LocationCoordinates,
     address?: string,
-    source: 'manual' | 'gps' | 'ip' = 'manual'
+    source: 'manual' | 'gps' | 'ip' = 'manual',
+    extraData?: { city?: string; state?: string; pincode?: string }
   ) => {
-    if (!authState.isAuthenticated) {
-      throw new Error('User not authenticated');
-    }
-
     setIsUpdating(true);
     try {
-      await updateLocation(coordinates, address, source);
+      if (authState.isAuthenticated) {
+        // For authenticated users, update on server
+        await updateLocation(coordinates, address, source, extraData);
+      } else {
+        // For unauthenticated users, use local-only storage
+        const userLocation: UserLocation = {
+          coordinates,
+          address: {
+            address: address || '',
+            city: extraData?.city || extractCityFromAddress(address),
+            state: extraData?.state || '',
+            country: 'India',
+            pincode: extraData?.pincode || '',
+            formattedAddress: address || '',
+          },
+          lastUpdated: new Date(),
+          source,
+        };
+        await setManualLocation(userLocation);
+      }
     } finally {
       setIsUpdating(false);
     }
-  }, [updateLocation, authState.isAuthenticated]);
+  }, [updateLocation, setManualLocation, authState.isAuthenticated]);
 
   return {
     currentLocation: state.currentLocation,
@@ -82,6 +94,21 @@ export function useCurrentLocation() {
     refreshLocation,
     updateLocation: updateUserLocation,
   };
+}
+
+/**
+ * Helper function to extract city name from formatted address
+ */
+function extractCityFromAddress(address?: string): string {
+  if (!address) return '';
+  // Try to extract city from comma-separated address
+  // Usually format is "Street, Area, City, State, Country"
+  const parts = address.split(',').map(p => p.trim());
+  if (parts.length >= 3) {
+    // Return the third-to-last part (usually city)
+    return parts[parts.length - 3] || parts[0];
+  }
+  return parts[0] || '';
 }
 
 /**

@@ -40,8 +40,12 @@ const CurvedBackground = () => {
   `.trim();
 
   return (
-    <View style={curvedBgStyles.container}>
-      <Svg width={width} height={height}>
+    <View style={curvedBgStyles.container} pointerEvents="none">
+      <Svg
+        width={width}
+        height={height}
+        style={{ pointerEvents: 'none' } as any}
+      >
         <Path d={path} fill="rgba(255, 255, 255, 0.92)" />
       </Svg>
     </View>
@@ -56,12 +60,22 @@ const curvedBgStyles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 70,
+    zIndex: 1, // Lowest z-index - behind everything
     // Shadow to make the curve visible
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 10,
+      },
+      web: {
+        boxShadow: '0 -3px 6px rgba(0, 0, 0, 0.08)',
+      },
+    }),
   },
 });
 
@@ -229,12 +243,12 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
   );
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, style]} pointerEvents="box-none">
       {/* Layer 1: Curved white background */}
       <CurvedBackground />
 
       {/* Layer 2: Floating center button (above the curve) */}
-      <View style={styles.floatingButtonContainer}>
+      <View style={styles.floatingButtonContainer} pointerEvents="box-none">
         <TouchableOpacity
           style={styles.floatingButton}
           onPress={() => handleTabPress(centerTab.route)}
@@ -334,7 +348,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingBottom: Platform.OS === 'ios' ? 8 : 4,
-    zIndex: 10,
+    zIndex: 50, // Higher than curved background, but below floating button
   },
 
   // Left tabs section (Home, Categories)
@@ -343,6 +357,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingLeft: 10,
+    zIndex: 60,
   },
 
   // Center spacer for floating button
@@ -356,13 +371,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingRight: 10,
+    zIndex: 60,
   },
 
   // Individual tab button
   tab: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    minWidth: 60,
+    minHeight: 44, // Minimum touch target size
   },
 
   // Tab label text

@@ -2,6 +2,7 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef, Suspense, lazy } from "react";
 import {
   Alert,
+  Animated,
   Dimensions,
   Platform,
   ScrollView,
@@ -14,9 +15,13 @@ import {
   View,
   ActivityIndicator,
   Image,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { ThemedText } from "@/components/ThemedText";
 import { useFocusEffect } from "@react-navigation/native";
 import { ThemedView } from "@/components/ThemedView";
 import {
@@ -29,13 +34,19 @@ import {
   UGCSection,
   VisitStoreButton,
   StoreProducts,
+  // New Magicpin-inspired components
+  StoreHeroMetrics,
+  VoucherCardsSection,
+  RatingBreakdownSection,
+  AIReviewSummary,
 } from "./MainStoreSection";
 import Section2 from "./StoreSection/Section2";
 import Section3 from "./StoreSection/Section3";
 import Section4 from "./StoreSection/Section4";
 import Section5 from "./StoreSection/Section5";
 import FollowStoreSection from "./StoreSection/FollowStoreSection";
-import Section6 from "./StoreSection/Section6";
+// Section6 removed - was redundant with VoucherCardsSection
+// import Section6 from "./StoreSection/Section6";
 import ProductInfo from "./StoreSection/ProductInfo";
 import StoreActionButtons from "./StoreSection/StoreActionButtons";
 import { MainStoreProduct, MainStorePageProps, CartItemFromProduct } from "@/types/mainstore";
@@ -73,6 +84,10 @@ import {
   SectionLoader
 } from "@/components/lazy";
 import WriteReviewModal from "@/components/WriteReviewModal";
+import StarRating from "@/components/StarRating";
+import RatingBreakdown from "@/components/RatingBreakdown";
+import ReviewCard from "@/components/ReviewCard";
+import UGCGrid from "@/components/UGCGrid";
 
 // ============================================================================
 // CUSTOM HOOKS - Data Management & State Logic Extraction
@@ -218,20 +233,6 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
             locationValue = fetchedStoreData.location;
           }
         }
-
-        // Debug logging for image fields
-        console.log('[MainStorePage] Raw fetchedStoreData image fields:', {
-          banner: fetchedStoreData.banner,
-          logo: fetchedStoreData.logo,
-          image: fetchedStoreData.image,
-          fullData: {
-            _id: fetchedStoreData._id,
-            name: fetchedStoreData.name,
-            banner: fetchedStoreData.banner,
-            logo: fetchedStoreData.logo,
-            image: fetchedStoreData.image,
-          }
-        });
 
         const transformedData: DynamicStoreData = {
           id: fetchedStoreData._id || fetchedStoreData.id || storeIdParam,
@@ -413,18 +414,51 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
     };
   }, []);
 
-  const [activeTab, setActiveTab] = useState<TabKey>("deals");
+  const [activeTab, setActiveTab] = useState<TabKey>("about"); // Default to Overview tab
   const [isFavorited, setIsFavorited] = useState(false);
+
+  // Sticky tab navigation state
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [showStickyTabs, setShowStickyTabs] = useState(false);
+  const tabsContainerRef = useRef<View>(null);
+  const tabsPositionY = useRef(0);
+  const tabsPositionMeasured = useRef(false);
+
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true); // Master page loading state
   const [refreshing, setRefreshing] = useState(false); // Pull-to-refresh state
+
+  // Measure tabs position after page loads
+  useEffect(() => {
+    if (!pageLoading) {
+      // Delay to ensure layout is complete
+      const timer = setTimeout(() => {
+        // Try to measure via ref first
+        if (tabsContainerRef.current && (tabsContainerRef.current as any).measure) {
+          (tabsContainerRef.current as any).measure(
+            (x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+              const position = y + height;
+              tabsPositionY.current = position;
+              tabsPositionMeasured.current = true;
+            }
+          );
+        } else {
+          // Fallback: Use estimated position based on typical layout
+          tabsPositionY.current = 550;
+          tabsPositionMeasured.current = true;
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [pageLoading]);
   const [error, setError] = useState<string | null>(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showDealsModal, setShowDealsModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showWriteReviewModal, setShowWriteReviewModal] = useState(false);
   const [canReview, setCanReview] = useState<boolean | null>(null);
+  const [reviewInnerTab, setReviewInnerTab] = useState<'reviews' | 'ugc'>('reviews'); // Inner tab for reviews section
   const [checkingCanReview, setCheckingCanReview] = useState(false);
 
   // Always fetch reviews when store ID is available (not just when modal opens)
@@ -461,9 +495,9 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
   const [ugcContent, setUgcContent] = useState<any[]>([]);
   const [ugcLoading, setUgcLoading] = useState(false);
 
-  // Check if user can review when review modal opens
+  // Check if user can review when reviews tab is active or review modal opens
   useEffect(() => {
-    if (showReviewModal && reviewStoreId) {
+    if ((activeTab === "reviews" || showReviewModal) && reviewStoreId) {
       const checkCanReview = async () => {
         try {
           setCheckingCanReview(true);
@@ -480,7 +514,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       };
       checkCanReview();
     }
-  }, [showReviewModal, reviewStoreId]);
+  }, [activeTab, showReviewModal, reviewStoreId]);
 
   // Check if user is following this store (for ProductDisplay heart icon)
   useEffect(() => {
@@ -522,9 +556,9 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
     }, [storeIdParam, storeData?.id, isAuthenticated])
   );
 
-  // Fetch UGC content when review modal is shown
+  // Fetch UGC content when reviews tab is active or review modal is shown
   useEffect(() => {
-    if (showReviewModal && reviewStoreId) {
+    if ((activeTab === "reviews" || showReviewModal) && reviewStoreId) {
       const fetchUGC = async () => {
         try {
           setUgcLoading(true);
@@ -538,7 +572,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
             const transformed = content.map((item: any) => ({
               id: item._id || item.id,
               userId: item.userId || item.user?._id,
-              userName: item.user?.profile?.firstName 
+              userName: item.user?.profile?.firstName
                 ? `${item.user.profile.firstName} ${item.user.profile.lastName || ''}`.trim()
                 : 'Anonymous',
               userAvatar: item.user?.profile?.avatar || '',
@@ -562,7 +596,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       };
       fetchUGC();
     }
-  }, [showReviewModal, reviewStoreId]);
+  }, [activeTab, showReviewModal, reviewStoreId]);
 
   // Refetch store data when review stats change (e.g., after approval)
   // Use a ref to track last fetched values to prevent unnecessary refetches
@@ -848,18 +882,11 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
     }
   }, [isAuthenticated, isFavorited, storeIdParam, storeData?.id, productData.storeId, productData.title, productData.storeName, router]);
 
-  // FIX: Allow reopening modals even if tab is already active
+  // Tab-based content: Change active tab to show different sections
+  // All content is rendered inline based on activeTab state
   const handleTabChange = useCallback((tab: TabKey) => {
     setActiveTab(tab);
-
-    if (tab === "about") {
-      setShowAboutModal(true);
-    } else if (tab === "deals") {
-      setShowDealsModal(true);
-    } else if (tab === "reviews") {
-      setShowReviewModal(true);
-    }
-  }, [isDynamic, storeData, fetchedStoreData]);
+  }, []);
 
   const handleCloseAboutModal = useCallback(() => setShowAboutModal(false), []);
   const handleCloseDealsModal = useCallback(() => setShowDealsModal(false), []);
@@ -919,6 +946,8 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    setShowStickyTabs(false); // Hide sticky tabs during refresh
+    tabsPositionMeasured.current = false; // Reset measurement for re-layout
     try {
       // Refetch store data if storeId is provided
       if (storeIdParam && !storeDataParam) {
@@ -974,8 +1003,21 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         />
       </LinearGradient>
 
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          {
+            useNativeDriver: false,
+            listener: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+              const y = event.nativeEvent.contentOffset.y;
+              // Show sticky tabs when original tabs scroll out of view
+              const shouldShow = tabsPositionMeasured.current && y > tabsPositionY.current;
+              setShowStickyTabs(shouldShow);
+            }
+          }
+        )}
         contentContainerStyle={[
           styles.scrollContent,
           isWeb && styles.webScrollContent
@@ -1018,87 +1060,434 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
                   onSharePress={handleSharePress}
                   onFavoritePress={handleFavoritePress}
                   isFavorited={isFavorited}
+                  // New Magicpin-inspired props
+                  rating={reviewStats?.averageRating || storeData?.rating || 0}
+                  reviewCount={reviewStats?.totalReviews || storeData?.ratingCount || 0}
+                  categoryTags={storeData?.tags || []}
+                  phoneNumber={storeData?.contact?.phone}
+                  locationCoords={
+                    storeData?.location && typeof storeData.location === 'object'
+                      ? {
+                          lat: (storeData.location as any).coordinates?.lat || 0,
+                          lng: (storeData.location as any).coordinates?.lng || 0,
+                        }
+                      : undefined
+                  }
                 />
-                {/* Circular Logo Overlay - Positioned at bottom */}
-                {productData.logo && (
-                  <View style={styles.logoOverlay}>
-                    <View style={styles.logoContainer}>
+              </View>
+            </View>
+
+            {/* Store Info Row - Logo on left with store name and rating */}
+            {(productData.logo || productData.title) && (() => {
+              const rating = reviewStats?.averageRating || storeData?.rating || 0;
+              const reviewCount = reviewStats?.totalReviews || storeData?.ratingCount || 0;
+
+              return (
+                <View style={styles.storeInfoRow}>
+                  {/* Logo on Left */}
+                  {productData.logo && (
+                    <View style={styles.storeLogoWrapper}>
                       <Image
                         source={{ uri: productData.logo }}
-                        style={styles.logoImage}
+                        style={styles.storeLogo}
                         resizeMode="cover"
                       />
                     </View>
+                  )}
+
+                  {/* Store Name and Info */}
+                  <View style={styles.storeInfoContent}>
+                    <View style={styles.storeNameRow}>
+                      <ThemedText style={styles.storeNameText} numberOfLines={1}>
+                        {productData.title || storeData?.name || 'Store'}
+                      </ThemedText>
+                      {(storeData as any)?.isVerified && (
+                        <View style={styles.verifiedBadge}>
+                          <Ionicons name="checkmark-circle" size={16} color="#00C06A" />
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Rating and Review Count - Only show if rating > 0 */}
+                    {rating > 0 ? (
+                      <View style={styles.storeRatingRow}>
+                        <Ionicons name="star" size={14} color="#FFB800" />
+                        <ThemedText style={styles.storeRatingText}>
+                          {rating.toFixed(1)}
+                        </ThemedText>
+                        {reviewCount > 0 && (
+                          <ThemedText style={styles.storeReviewCount}>
+                            ({reviewCount} reviews)
+                          </ThemedText>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={styles.storeMetaRow}>
+                        <View style={styles.storeMetaTag}>
+                          <Ionicons name="storefront-outline" size={12} color="#6B7280" />
+                          <ThemedText style={styles.storeMetaText}>
+                            {storeData?.category || productData.category || 'Store'}
+                          </ThemedText>
+                        </View>
+                        {productData.isOpen !== undefined && (
+                          <View style={[styles.storeMetaTag, productData.isOpen ? styles.openTag : styles.closedTag]}>
+                            <View style={[styles.statusDot, productData.isOpen ? styles.openDot : styles.closedDot]} />
+                            <ThemedText style={[styles.storeMetaText, productData.isOpen ? styles.openText : styles.closedText]}>
+                              {productData.isOpen ? 'Open' : 'Closed'}
+                            </ThemedText>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Quick Follow Button */}
+                  <TouchableOpacity
+                    style={[styles.quickFollowBtn, isFavorited && styles.quickFollowBtnActive]}
+                    onPress={handleFavoritePress}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name={isFavorited ? "heart" : "heart-outline"}
+                      size={20}
+                      color={isFavorited ? "#EF4444" : "#00C06A"}
+                    />
+                  </TouchableOpacity>
+                </View>
+              );
+            })()}
+
+            {/* Store Hero Metrics - REMOVED: Was using random demo data
+                TODO: Re-enable when real analytics API is available
+            {isDynamic && storeData?.analytics && (
+              <View style={{ paddingHorizontal: HORIZONTAL_PADDING }}>
+                <StoreHeroMetrics
+                  visits={storeData.analytics.visits}
+                  followersCount={storeData.analytics.followers}
+                  saveRate={storeData.analytics.recommendRate}
+                  isVerified={storeData.isVerified}
+                  savingsPercent={storeData.cashback || storeData.discount}
+                />
+              </View>
+            )}
+            */}
+
+            <View
+              ref={tabsContainerRef}
+              style={styles.tabsContainer}
+              onLayout={(e) => {
+                // Measure tab position for sticky header trigger
+                const position = e.nativeEvent.layout.y + e.nativeEvent.layout.height;
+                tabsPositionY.current = position;
+                tabsPositionMeasured.current = true;
+              }}
+            >
+              <TabNavigation
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+                // New Magicpin-inspired props
+                maxSavingsPercent={
+                  typeof storeData?.cashback === 'number'
+                    ? storeData.cashback
+                    : typeof storeData?.discount === 'number'
+                      ? storeData.discount
+                      : undefined
+                }
+                reviewCount={reviewStats?.totalReviews || storeData?.ratingCount}
+                photoCount={storeData?.photoCount} // Only show if real data exists
+              />
+            </View>
+
+            {/* ===== TAB-BASED CONTENT SECTIONS ===== */}
+
+            {/* OVERVIEW TAB (about) */}
+            {activeTab === "about" && (
+              <>
+                {/* Product Details - Only on Overview tab */}
+                <View style={styles.sectionCard}>
+                  <ProductDetails
+                    title={productData.title}
+                    description={productData.description}
+                    location={productData.location}
+                    distance={productData.distance}
+                    isOpen={productData.isOpen}
+                    // New Magicpin-inspired props
+                    isVerified={true}
+                    operatingHours={storeData?.operationalInfo?.hours}
+                  />
+                </View>
+
+                {/* Cashback Offer */}
+                <View style={styles.sectionCard}>
+                  <CashbackOffer
+                    percentage={productData.cashbackPercentage}
+                    title="Cash back"
+                    onPress={() => platformAlert('Cashback Details', `Get ${productData.cashbackPercentage}% cashback on purchases from this store!`)}
+                  />
+                </View>
+
+                {/* Store Products Grid */}
+                {isDynamic && storeData && (
+                  <View style={styles.sectionCard}>
+                    <ErrorBoundary>
+                      <StoreProducts storeId={productData.storeId} storeName={productData.storeName} />
+                    </ErrorBoundary>
                   </View>
                 )}
-              </View>
-            </View>
 
-            <View style={styles.tabsContainer}>
-              <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
-            </View>
-
-            <View style={styles.sectionCard}>
-              <ProductDetails
-                title={productData.title}
-                description={productData.description}
-                location={productData.location}
-                distance={productData.distance}
-                isOpen={productData.isOpen}
-              />
-            </View>
-
-            {/* Cashback Offer */}
-            <View style={styles.sectionCard}>
-              <CashbackOffer
-                percentage={productData.cashbackPercentage}
-                title="Cash back"
-                onPress={() => platformAlert('Cashback Details', `Get ${productData.cashbackPercentage}% cashback on purchases from this store!`)}
-              />
-            </View>
-
-            {/* Store Products Grid */}
-            {isDynamic && storeData && (
-              <View style={styles.sectionCard}>
-                <ErrorBoundary>
-                  <StoreProducts storeId={productData.storeId} storeName={productData.storeName} />
-                </ErrorBoundary>
-              </View>
+                {/* Frequently Bought Together / Popular Products */}
+                {isDynamic && storeData && productData.storeId && (
+                  <View style={styles.sectionCard}>
+                    <ErrorBoundary>
+                      <FrequentlyBoughtTogether
+                        storeId={productData.storeId}
+                        currentProduct={{
+                          id: productData.id,
+                          type: 'product',
+                          name: productData.title,
+                          brand: productData.storeName,
+                          image: productData.images[0]?.uri || '',
+                          title: productData.title,
+                          description: productData.description,
+                          price: {
+                            current: parsePrice(productData.price, { fallback: 1000 }),
+                            currency: 'INR',
+                            discount: 0,
+                          },
+                          category: productData.category,
+                          availabilityStatus: productData.isOpen ? 'in_stock' : 'out_of_stock',
+                          tags: [],
+                        }}
+                        onBundleAdded={() => {
+                          platformAlert('Added to Cart', 'Bundle products have been added to your cart!');
+                        }}
+                      />
+                    </ErrorBoundary>
+                  </View>
+                )}
+              </>
             )}
 
-            {/* Frequently Bought Together */}
-            {isDynamic && storeData && (
-              <View style={styles.sectionCard}>
-                <ErrorBoundary>
-                  <FrequentlyBoughtTogether
-                    currentProduct={{
-                      id: productData.id,
-                      type: 'product',
-                      name: productData.title,
-                      brand: productData.storeName,
-                      image: productData.images[0]?.uri || '',
-                      title: productData.title,
-                      description: productData.description,
-                      price: {
-                        current: parsePrice(productData.price, { fallback: 1000 }), // Use safe price parser
-                        currency: 'INR',
-                        discount: 0,
-                      },
-                      category: productData.category,
-                      availabilityStatus: productData.isOpen ? 'in_stock' : 'out_of_stock',
-                      tags: [],
+            {/* OFFERS TAB (deals) */}
+            {activeTab === "deals" && (
+              <>
+                {/* Voucher Cards Section */}
+                {isDynamic && storeData && (
+                  <View style={styles.sectionCard}>
+                    <VoucherCardsSection
+                      storeId={productData.storeId}
+                      onBuyVoucher={(voucherId) => {
+                        platformAlert('Buy Voucher', `Purchasing voucher ${voucherId}...`);
+                      }}
+                      onSeeAllPress={() => {
+                        platformAlert('All Vouchers', 'View all available vouchers');
+                      }}
+                    />
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* REVIEWS TAB - Full Inline Review Section */}
+            {activeTab === "reviews" && (
+              <>
+                {/* Reviews Header */}
+                <View style={styles.sectionCard}>
+                  <View style={styles.reviewsHeader}>
+                    <ThemedText style={styles.reviewsHeaderTitle}>Reviews & Ratings</ThemedText>
+                    <ThemedText style={styles.reviewsStoreName}>
+                      {isDynamic && storeData ? storeData.name || storeData.title : productData.storeName}
+                    </ThemedText>
+                  </View>
+                </View>
+
+                {/* Rating Summary Card */}
+                <View style={styles.sectionCard}>
+                  <View style={styles.ratingSummaryCard}>
+                    <View style={styles.averageRatingContainer}>
+                      <ThemedText style={styles.averageRatingNumber}>
+                        {(reviewStats?.averageRating || storeData?.rating || 0).toFixed(1)}
+                      </ThemedText>
+                      <ThemedText style={styles.outOfFive}> / 5</ThemedText>
+                    </View>
+                    <View style={styles.starsContainer}>
+                      <StarRating
+                        rating={reviewStats?.averageRating || storeData?.rating || 0}
+                        size="large"
+                        showHalf={true}
+                      />
+                    </View>
+                    <ThemedText style={styles.totalReviewsText}>
+                      Based on {(reviewStats?.totalReviews || storeData?.ratingCount || 0).toLocaleString()} reviews
+                    </ThemedText>
+                  </View>
+                </View>
+
+                {/* Rating Breakdown */}
+                <View style={styles.sectionCard}>
+                  <RatingBreakdown
+                    ratingBreakdown={{
+                      fiveStars: reviewRatingBreakdown[5] || 0,
+                      fourStars: reviewRatingBreakdown[4] || 0,
+                      threeStars: reviewRatingBreakdown[3] || 0,
+                      twoStars: reviewRatingBreakdown[2] || 0,
+                      oneStar: reviewRatingBreakdown[1] || 0,
                     }}
-                    onBundleAdded={() => {
-                      platformAlert('Added to Cart', 'Bundle products have been added to your cart!');
-                    }}
+                    totalReviews={reviewStats?.totalReviews || storeData?.ratingCount || 0}
                   />
-                </ErrorBoundary>
-              </View>
+                </View>
+
+                {/* Write Review Button */}
+                <View style={styles.sectionCard}>
+                  {canReview === false ? (
+                    <View style={styles.alreadyReviewedBanner}>
+                      <View style={styles.alreadyReviewedContent}>
+                        <View style={styles.alreadyReviewedIconContainer}>
+                          <Ionicons name="star" size={20} color="#FFC857" />
+                        </View>
+                        <ThemedText style={styles.alreadyReviewedText}>
+                          You have already reviewed this store
+                        </ThemedText>
+                        <TouchableOpacity style={styles.editReviewButton}>
+                          <Ionicons name="create-outline" size={18} color="#00C06A" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.writeReviewButton}
+                      onPress={() => setShowWriteReviewModal(true)}
+                    >
+                      <LinearGradient
+                        colors={['#00C06A', '#00796B']}
+                        style={styles.writeReviewGradient}
+                      >
+                        <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+                        <ThemedText style={styles.writeReviewText}>Write a Review</ThemedText>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Inner Tabs - Reviews / UGC Content */}
+                <View style={styles.sectionCard}>
+                  <View style={styles.reviewInnerTabsContainer}>
+                    <TouchableOpacity
+                      style={[styles.reviewInnerTab, reviewInnerTab === 'reviews' && styles.reviewInnerTabActive]}
+                      onPress={() => setReviewInnerTab('reviews')}
+                    >
+                      {reviewInnerTab === 'reviews' ? (
+                        <LinearGradient
+                          colors={['#00C06A', '#00796B']}
+                          style={styles.reviewInnerTabGradient}
+                        >
+                          <ThemedText style={styles.reviewInnerTabTextActive}>
+                            Reviews ({reviewStats?.totalReviews || storeData?.ratingCount || 0})
+                          </ThemedText>
+                        </LinearGradient>
+                      ) : (
+                        <ThemedText style={styles.reviewInnerTabText}>
+                          Reviews ({reviewStats?.totalReviews || storeData?.ratingCount || 0})
+                        </ThemedText>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.reviewInnerTab, reviewInnerTab === 'ugc' && styles.reviewInnerTabActive]}
+                      onPress={() => setReviewInnerTab('ugc')}
+                    >
+                      {reviewInnerTab === 'ugc' ? (
+                        <LinearGradient
+                          colors={['#00C06A', '#00796B']}
+                          style={styles.reviewInnerTabGradient}
+                        >
+                          <ThemedText style={styles.reviewInnerTabTextActive}>UGC Content</ThemedText>
+                        </LinearGradient>
+                      ) : (
+                        <ThemedText style={styles.reviewInnerTabText}>UGC Content</ThemedText>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Reviews List or UGC Content */}
+                {reviewInnerTab === 'reviews' ? (
+                  <View style={styles.sectionCard}>
+                    {reviewsLoading ? (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#00C06A" />
+                        <ThemedText style={styles.loadingText}>Loading reviews...</ThemedText>
+                      </View>
+                    ) : storeReviews.length === 0 ? (
+                      <View style={styles.emptyReviewState}>
+                        <LinearGradient
+                          colors={['#00C06A', '#00796B']}
+                          style={styles.emptyIconContainer}
+                        >
+                          <Ionicons name="chatbubble-outline" size={32} color="#FFFFFF" />
+                        </LinearGradient>
+                        <ThemedText style={styles.emptyStateTitle}>No reviews yet</ThemedText>
+                        <ThemedText style={styles.emptyStateText}>
+                          Be the first to review this store!
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      <View style={styles.reviewListContainer}>
+                        {storeReviews.map((review) => (
+                          <View key={review.id} style={styles.reviewCardWrapper}>
+                            <ReviewCard
+                              review={review}
+                              onLike={handleReviewLike ? () => handleReviewLike(review.id) : undefined}
+                              onReport={handleReviewReport ? () => handleReviewReport(review.id) : undefined}
+                              onHelpful={handleReviewHelpful ? () => handleReviewHelpful(review.id) : undefined}
+                            />
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.sectionCard}>
+                    {ugcLoading ? (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#00C06A" />
+                        <ThemedText style={styles.loadingText}>Loading UGC content...</ThemedText>
+                      </View>
+                    ) : ugcContent.length === 0 ? (
+                      <View style={styles.emptyReviewState}>
+                        <LinearGradient
+                          colors={['#FFC857', '#E5A500']}
+                          style={styles.emptyIconContainer}
+                        >
+                          <Ionicons name="images-outline" size={32} color="#0B2240" />
+                        </LinearGradient>
+                        <ThemedText style={styles.emptyStateTitle}>No content yet</ThemedText>
+                        <ThemedText style={styles.emptyStateText}>
+                          User-generated content will appear here.
+                        </ThemedText>
+                      </View>
+                    ) : (
+                      <UGCGrid
+                        ugcContent={ugcContent}
+                        onContentPress={() => {}}
+                        onLikeContent={() => {}}
+                      />
+                    )}
+                  </View>
+                )}
+              </>
             )}
 
-            {/* Cross-Store Products Recommendations */}
-            {(() => {
-              return (
+            {/* PHOTOS TAB */}
+            {activeTab === "photos" && (
+              <>
+                {/* Photos content will be moved here - see StoreGallerySection and UGCSection below */}
+              </>
+            )}
+
+            {/* OVERVIEW TAB - Additional Sections */}
+            {activeTab === "about" && (
+              <>
+                {/* Cross-Store Products Recommendations */}
                 <View style={styles.sectionCard}>
                   <ErrorBoundary>
                     <CrossStoreProductsSection
@@ -1113,119 +1502,8 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
                     />
                   </ErrorBoundary>
                 </View>
-              );
-            })()}
 
-            <View style={styles.sectionCard}>
-              {(() => {
-                return (
-                  <ErrorBoundary>
-                    <UGCSection
-                      storeId={productData.storeId}
-                      onViewAllPress={handleViewAllPress}
-                      onImagePress={handleImagePress}
-                    />
-                  </ErrorBoundary>
-                );
-              })()}
-            </View>
-
-            {/* Additional Store Sections */}
-            {/* Store Gallery Section - Real API data */}
-            {storeIdParam && (
-              <View style={styles.sectionCard}>
-                <ErrorBoundary>
-                  <StoreGallerySection storeId={storeIdParam} />
-                </ErrorBoundary>
-              </View>
-            )}
-
-            <View style={styles.sectionCard}>
-              <Section2 dynamicData={isDynamic && storeData ? {
-                store: {
-                  phone: (storeData as any).phone || (storeData as any).contact?.phone,
-                  contact: (storeData as any).contact?.phone || (storeData as any).phone,
-                  email: (storeData as any).contact?.email || (storeData as any).email,
-                  location: typeof storeData.location === 'object' ? {
-                    lat: (storeData.location as any).lat,
-                    lng: (storeData.location as any).lng,
-                    address: (storeData.location as LocationData).address || (storeData.location as LocationData).city
-                  } : undefined
-                },
-                id: storeData.id, // This is the storeId for navigation
-                _id: storeData.id,
-                name: storeData.name,
-                title: storeData.title,
-                contact: storeData.contact,
-              } : null} />
-            </View>
-
-            <View style={styles.sectionCard}>
-              <ErrorBoundary>
-                <Section3 productPrice={parsePrice(productData.price, { fallback: 1000 })} storeId={productData.storeId} />
-              </ErrorBoundary>
-            </View>
-
-            <View style={styles.sectionCard}>
-              <ErrorBoundary>
-                <Section4
-                  productPrice={parsePrice(productData.price, { fallback: 1000 })}
-                  storeId={productData.storeId}
-                  onPress={() => {
-                    router.push({
-                      pathname: '/CardOffersPage',
-                      params: {
-                        storeId: productData.storeId,
-                        storeName: productData.storeName,
-                        orderValue: parsePrice(productData.price, { fallback: 1000 }).toString(),
-                      },
-                    } as any);
-                  }}
-                />
-              </ErrorBoundary>
-            </View>
-
-            <View style={styles.sectionCard}>
-              <FollowStoreSection
-                storeData={isDynamic && storeData ? {
-                  id: storeData.id,
-                  _id: storeData.id,
-                  name: (storeData as any).name || (storeData as any).title,
-                  title: (storeData as any).title || (storeData as any).name,
-                  image: (storeData as any).image,
-                  logo: (storeData as any).logo,
-                  category: (storeData as any).category,
-                  cashback: typeof (storeData as any).cashback === 'number'
-                    ? (storeData as any).cashback
-                    : (storeData as any).cashback?.percentage,
-                  discount: typeof (storeData as any).discount === 'number'
-                    ? (storeData as any).discount
-                    : undefined,
-                } : null}
-                isFollowingProp={isFavorited}
-                onFollowChange={setIsFavorited}
-              />
-            </View>
-
-            <View style={styles.sectionCard}>
-              <ErrorBoundary>
-                <Section6 dynamicData={isDynamic && storeData ? {
-                  id: storeData.id,
-                  _id: storeData.id,
-                  title: (storeData as any).title || (storeData as any).name,
-                  name: (storeData as any).name || (storeData as any).title,
-                  store: {
-                    id: storeData.id,
-                    _id: storeData.id,
-                    name: (storeData as any).name || (storeData as any).title
-                  }
-                } : null} />
-              </ErrorBoundary>
-            </View>
-
-            {/* Similar Stores Recommendations */}
-            {(() => {
-              return (
+                {/* Similar Stores Recommendations */}
                 <View style={styles.sectionCard}>
                   <ErrorBoundary>
                     <SimilarStoresSection
@@ -1245,13 +1523,139 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
                     />
                   </ErrorBoundary>
                 </View>
-              );
-            })()}
+              </>
+            )}
+
+            {/* OFFERS TAB - Additional Sections */}
+            {activeTab === "deals" && (
+              <>
+                {/* Mega Sale Offers */}
+                <View style={styles.sectionCard}>
+                  <ErrorBoundary>
+                    <Section3 productPrice={parsePrice(productData.price, { fallback: 1000 })} storeId={productData.storeId} />
+                  </ErrorBoundary>
+                </View>
+
+                {/* Card Offers */}
+                <View style={styles.sectionCard}>
+                  <ErrorBoundary>
+                    <Section4
+                      productPrice={parsePrice(productData.price, { fallback: 1000 })}
+                      storeId={productData.storeId}
+                      onPress={() => {
+                        router.push({
+                          pathname: '/CardOffersPage',
+                          params: {
+                            storeId: productData.storeId,
+                            storeName: productData.storeName,
+                            orderValue: parsePrice(productData.price, { fallback: 1000 }).toString(),
+                          },
+                        } as any);
+                      }}
+                    />
+                  </ErrorBoundary>
+                </View>
+
+                {/* Follow Store Section */}
+                <View style={styles.sectionCard}>
+                  <FollowStoreSection
+                    storeData={isDynamic && storeData ? {
+                      id: storeData.id,
+                      _id: storeData.id,
+                      name: (storeData as any).name || (storeData as any).title,
+                      title: (storeData as any).title || (storeData as any).name,
+                      image: (storeData as any).image,
+                      logo: (storeData as any).logo,
+                      category: (storeData as any).category,
+                      cashback: typeof (storeData as any).cashback === 'number'
+                        ? (storeData as any).cashback
+                        : (storeData as any).cashback?.percentage,
+                      discount: typeof (storeData as any).discount === 'number'
+                        ? (storeData as any).discount
+                        : undefined,
+                    } : null}
+                    isFollowingProp={isFavorited}
+                    onFollowChange={setIsFavorited}
+                  />
+                </View>
+              </>
+            )}
+
+            {/* PHOTOS TAB - Gallery and UGC Sections */}
+            {activeTab === "photos" && (
+              <>
+                {/* Store Gallery Section */}
+                {storeIdParam && (
+                  <View style={styles.sectionCard}>
+                    <ErrorBoundary>
+                      <StoreGallerySection storeId={storeIdParam} />
+                    </ErrorBoundary>
+                  </View>
+                )}
+
+                {/* UGC Section */}
+                <View style={styles.sectionCard}>
+                  <ErrorBoundary>
+                    <UGCSection
+                      storeId={productData.storeId}
+                      onViewAllPress={handleViewAllPress}
+                      onImagePress={handleImagePress}
+                    />
+                  </ErrorBoundary>
+                </View>
+              </>
+            )}
+
+            {/* Quick Actions - Always visible */}
+            <View style={styles.sectionCard}>
+              <Section2 dynamicData={isDynamic && storeData ? {
+                store: {
+                  phone: (storeData as any).phone || (storeData as any).contact?.phone,
+                  contact: (storeData as any).contact?.phone || (storeData as any).phone,
+                  email: (storeData as any).contact?.email || (storeData as any).email,
+                  location: typeof storeData.location === 'object' ? {
+                    lat: (storeData.location as any).lat,
+                    lng: (storeData.location as any).lng,
+                    address: (storeData.location as LocationData).address || (storeData.location as LocationData).city
+                  } : undefined
+                },
+                id: storeData.id,
+                _id: storeData.id,
+                name: storeData.name,
+                title: storeData.title,
+                contact: storeData.contact,
+              } : null} />
+            </View>
+
+            {/* Section6 REMOVED - Was redundant with VoucherCardsSection */}
 
           </>
         )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+
+      {/* Sticky Tab Navigation - Appears when original tabs scroll out of view */}
+      {showStickyTabs && (
+        <View style={styles.stickyTabsContainer}>
+          <View style={styles.stickyTabsInner}>
+            <TabNavigation
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              maxSavingsPercent={
+                typeof storeData?.cashback === 'number'
+                  ? storeData.cashback
+                  : typeof storeData?.discount === 'number'
+                    ? storeData.discount
+                    : undefined
+              }
+              reviewCount={reviewStats?.totalReviews || storeData?.ratingCount}
+              photoCount={storeData?.photoCount}
+              compact // Use compact mode for sticky header
+            />
+          </View>
+        </View>
+      )}
+
       {error && (
         <View style={styles.errorToast}>
           <TouchableOpacity onPress={() => setError(null)} activeOpacity={0.8}>
@@ -1553,43 +1957,43 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
     },
     imageSection: {
       paddingHorizontal: HORIZONTAL_PADDING,
-      paddingTop: 16,
-      paddingBottom: 16, // Increased bottom padding to accommodate logo overlay (half outside)
+      paddingTop: 12,
+      paddingBottom: 8, // Reduced - no logo overlay to accommodate
     },
     imageCard: {
       backgroundColor: "rgba(255, 255, 255, 0.95)",
-      borderRadius: 24,
-      overflow: "visible", // Changed to visible to allow logo to extend outside
+      borderRadius: 20,
+      overflow: "hidden", // Changed back to hidden - logo is now separate
       shadowColor: "#00C06A",
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.15,
-      shadowRadius: 20,
-      elevation: 12,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      elevation: 10,
       padding: 0,
       borderWidth: 1,
       borderColor: "rgba(0, 192, 106, 0.1)",
-      position: "relative",
-      marginBottom: 0, // No margin needed since logo is positioned absolutely
     },
     tabsContainer: {
-      marginTop: 24,
+      marginTop: 16, // Reduced since store info row is now above
       marginHorizontal: HORIZONTAL_PADDING,
       marginBottom: 12,
     },
     sectionCard: {
       marginHorizontal: HORIZONTAL_PADDING,
-      marginTop: 20,
-      backgroundColor: "rgba(255, 255, 255, 0.95)",
-      borderRadius: 20,
-      paddingVertical: 20,
-      paddingHorizontal: 20,
-      shadowColor: "#00C06A",
+      marginTop: 12,
+      backgroundColor: "#FFFFFF",
+      borderRadius: 16,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      // Subtle shadow for depth
+      shadowColor: "#0B2240",
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
+      shadowOpacity: 0.06,
       shadowRadius: 12,
       elevation: 4,
+      // Subtle border for definition
       borderWidth: 1,
-      borderColor: "rgba(0, 192, 106, 0.1)",
+      borderColor: "rgba(0, 0, 0, 0.03)",
     },
     cashbackFullWidth: {
       marginHorizontal: HORIZONTAL_PADDING,
@@ -1610,36 +2014,136 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
       right: HORIZONTAL_PADDING + 4,
       top: Platform.OS === "ios" ? 60 : 44,
     },
-    logoOverlay: {
-      position: "absolute",
-      bottom: -1, // Positioned below the image card (half outside for modern look)
-      left: 20,
-      zIndex: 10,
-      // Add subtle background for better visibility
+    // Store Info Row - Logo on left with store name
+    storeInfoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginHorizontal: HORIZONTAL_PADDING,
+      marginTop: 12,
+      marginBottom: 4,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
       backgroundColor: "rgba(255, 255, 255, 0.98)",
-      borderRadius: 40,
-      padding: 6,
-      // Enhanced shadow for separation from image
+      borderRadius: 16,
+      gap: 14,
+      // Subtle shadow
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: "rgba(0, 192, 106, 0.08)",
+    },
+    storeLogoWrapper: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: "#fff",
+      overflow: "hidden",
+      borderWidth: 2,
+      borderColor: "rgba(0, 192, 106, 0.15)",
+      // Shadow for logo
       shadowColor: "#00C06A",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 16,
-      elevation: 10,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    storeLogo: {
+      width: "100%",
+      height: "100%",
+    },
+    storeInfoContent: {
+      flex: 1,
+      gap: 4,
+    },
+    storeNameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    storeNameText: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: "#0B2240",
+      flex: 1,
+    },
+    verifiedBadge: {
+      marginLeft: 2,
+    },
+    storeRatingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    storeRatingText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#0B2240",
+    },
+    storeReviewCount: {
+      fontSize: 13,
+      color: "#6B7280",
+      marginLeft: 2,
+    },
+    quickFollowBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: "rgba(0, 192, 106, 0.08)",
+      alignItems: "center",
+      justifyContent: "center",
       borderWidth: 1,
       borderColor: "rgba(0, 192, 106, 0.15)",
     },
-    logoContainer: {
-      width: 72, // Reduced from 100 to 72 for better proportion
-      height: 72, // Reduced from 100 to 72 for better proportion
-      borderRadius: 36,
-      backgroundColor: "#fff",
-      borderWidth: 3, // Reduced border width
-      borderColor: "#fff",
-      overflow: "hidden",
+    quickFollowBtnActive: {
+      backgroundColor: "rgba(239, 68, 68, 0.08)",
+      borderColor: "rgba(239, 68, 68, 0.2)",
     },
-    logoImage: {
-      width: "100%",
-      height: "100%",
+    // Store meta row - shown when no rating
+    storeMetaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 2,
+    },
+    storeMetaTag: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: "rgba(107, 114, 128, 0.08)",
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    storeMetaText: {
+      fontSize: 11,
+      fontWeight: "500",
+      color: "#6B7280",
+    },
+    openTag: {
+      backgroundColor: "rgba(0, 192, 106, 0.1)",
+    },
+    closedTag: {
+      backgroundColor: "rgba(239, 68, 68, 0.1)",
+    },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    openDot: {
+      backgroundColor: "#00C06A",
+    },
+    closedDot: {
+      backgroundColor: "#EF4444",
+    },
+    openText: {
+      color: "#00875A",
+    },
+    closedText: {
+      color: "#DC2626",
     },
     errorInner: {
       backgroundColor: "#FEF2F2",
@@ -1660,5 +2164,238 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
       color: "#991B1B",
       fontSize: 14,
       fontWeight: "600",
+    },
+    // Sticky Tab Navigation
+    stickyTabsContainer: {
+      position: 'absolute',
+      top: Platform.OS === 'ios' ? 120 : Platform.OS === 'web' ? 160 : 100,
+      left: 0,
+      right: 0,
+      zIndex: 1000,
+      backgroundColor: '#FFFFFF',
+      borderBottomLeftRadius: 20,
+      borderBottomRightRadius: 20,
+      paddingTop: 2,
+      paddingBottom: 6,
+      overflow: 'hidden',
+      // Shadow for elevated appearance
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 12,
+        },
+        android: {
+          elevation: 12,
+        },
+        web: {
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+        },
+      }),
+    },
+    stickyTabsInner: {
+      paddingHorizontal: 0,
+      marginHorizontal: 0,
+    },
+    // Inline Reviews Section Styles
+    reviewsHeader: {
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    reviewsHeaderTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: '#1F2937',
+      letterSpacing: -0.3,
+    },
+    reviewsStoreName: {
+      fontSize: 15,
+      color: '#00C06A',
+      fontWeight: '600',
+      marginTop: 4,
+    },
+    ratingSummaryCard: {
+      alignItems: 'center',
+      padding: 20,
+      backgroundColor: 'rgba(0, 192, 106, 0.08)',
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(0, 192, 106, 0.2)',
+    },
+    averageRatingContainer: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+    },
+    averageRatingNumber: {
+      fontSize: 44,
+      fontWeight: '800',
+      color: '#1F2937',
+      letterSpacing: -1,
+    },
+    outOfFive: {
+      fontSize: 18,
+      color: '#6B7280',
+      fontWeight: '500',
+    },
+    starsContainer: {
+      marginVertical: 10,
+    },
+    totalReviewsText: {
+      fontSize: 14,
+      color: '#6B7280',
+      fontWeight: '500',
+    },
+    alreadyReviewedBanner: {
+      backgroundColor: 'rgba(255, 200, 87, 0.12)',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 200, 87, 0.35)',
+      overflow: 'hidden',
+    },
+    alreadyReviewedContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 14,
+      gap: 12,
+    },
+    alreadyReviewedIconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(255, 200, 87, 0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    alreadyReviewedText: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#1F2937',
+    },
+    editReviewButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(255, 255, 255, 0.85)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(0, 192, 106, 0.2)',
+    },
+    writeReviewButton: {
+      borderRadius: 14,
+      overflow: 'hidden',
+    },
+    writeReviewGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      gap: 8,
+    },
+    writeReviewText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    reviewInnerTabsContainer: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    reviewInnerTab: {
+      flex: 1,
+      borderRadius: 24,
+      overflow: 'hidden',
+      backgroundColor: 'rgba(255, 255, 255, 0.85)',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.5)',
+    },
+    reviewInnerTabActive: {
+      borderColor: '#00C06A',
+    },
+    reviewInnerTabGradient: {
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    reviewInnerTabText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#6B7280',
+      textAlign: 'center',
+      paddingVertical: 12,
+    },
+    reviewInnerTabTextActive: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    reviewListContainer: {
+      gap: 12,
+    },
+    reviewCardWrapper: {
+      backgroundColor: 'rgba(255, 255, 255, 0.85)',
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.5)',
+      overflow: 'hidden',
+      ...Platform.select({
+        ios: {
+          shadowColor: '#0B2240',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 2,
+        },
+      }),
+    },
+    loadingContainer: {
+      padding: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 14,
+      color: '#6B7280',
+      fontWeight: '500',
+    },
+    emptyReviewState: {
+      padding: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyIconContainer: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 16,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#00C06A',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 4,
+        },
+      }),
+    },
+    emptyStateTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: '#1F2937',
+      marginBottom: 8,
+    },
+    emptyStateText: {
+      fontSize: 14,
+      color: '#6B7280',
+      textAlign: 'center',
+      lineHeight: 20,
     },
   });

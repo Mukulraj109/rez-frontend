@@ -62,7 +62,9 @@ import {
 } from '@/types/homepage.types';
 import { useProfile, useProfileMenu } from '@/contexts/ProfileContext';
 import { profileMenuSections } from '@/data/profileData';
-import { GreetingDisplay, LocationDisplay } from '@/components/location';
+import { GreetingDisplay, LocationDisplay, LocationPickerModal } from '@/components/location';
+import { useCurrentLocation } from '@/hooks/useLocation';
+import { AddressSearchResult } from '@/types/location.types';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import authService from '@/services/authApi';
@@ -116,6 +118,10 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = React.useState<TabId>('rez'); // Home tab bar state
   const [voucherCount, setVoucherCount] = React.useState(0); // Active voucher count
   const [newOffersCount, setNewOffersCount] = React.useState(0); // New offers count
+  const [isLocationModalVisible, setIsLocationModalVisible] = React.useState(false); // Location picker modal
+
+  // Get current location hook for editable location
+  const { currentLocation, updateLocation: updateUserLocation } = useCurrentLocation();
 
   // Get recently viewed items
   const { items: recentlyViewedItems, isLoading: isLoadingRecentlyViewed, refresh: refreshRecentlyViewed } = useRecentlyViewed();
@@ -491,6 +497,26 @@ export default function HomeScreen() {
     router.push(`/category/${categorySlug}` as any);
   };
 
+  // Handle location selection from the picker modal
+  const handleLocationSelect = async (selectedLocation: AddressSearchResult) => {
+    try {
+      const coordinates = {
+        latitude: selectedLocation.coordinates.latitude,
+        longitude: selectedLocation.coordinates.longitude,
+      };
+      // Pass city/state/pincode from search results
+      await updateUserLocation(coordinates, selectedLocation.formattedAddress, 'manual', {
+        city: selectedLocation.city,
+        state: selectedLocation.state,
+        pincode: selectedLocation.pincode,
+      });
+      setIsLocationModalVisible(false);
+    } catch (error) {
+      console.error('Failed to update location:', error);
+      Alert.alert('Error', 'Failed to update location. Please try again.');
+    }
+  };
+
   // Memoize card renderers to prevent unnecessary re-renders
   const renderEventCard = React.useCallback((item: HomepageSectionItem) => {
     const event = item as EventItem;
@@ -596,7 +622,7 @@ export default function HomeScreen() {
         style={viewStyles.header}
       >
         <View style={viewStyles.headerTop}>
-          {/* Modern Location Pill */}
+          {/* Modern Location Pill - Tap to expand details */}
           <Pressable
             style={viewStyles.locationPill}
             onPress={() => {
@@ -618,7 +644,7 @@ export default function HomeScreen() {
               ]).start();
             }}
             accessibilityLabel="Current location"
-            accessibilityHint={showDetailedLocation ? "Double tap to collapse location details" : "Double tap to expand location details"}
+            accessibilityHint={showDetailedLocation ? "Tap to collapse location details" : "Tap to expand location details"}
             accessibilityState={{ expanded: showDetailedLocation }}
           >
             <View style={viewStyles.locationIconWrapper}>
@@ -730,7 +756,7 @@ export default function HomeScreen() {
             {
               height: animatedHeight.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, 120], // Adjust based on content height
+                outputRange: [0, 145], // Height for address and change button only
               }),
               opacity: animatedOpacity,
               overflow: 'hidden',
@@ -754,33 +780,35 @@ export default function HomeScreen() {
               />
             </View>
 
-            {/* Coordinates Section */}
-            <View style={viewStyles.coordinatesSection}>
-              <View style={viewStyles.coordinatesHeader}>
-                <Ionicons name="navigate" size={14} color="#666" />
-                <Text style={viewStyles.coordinatesHeaderText}>Coordinates</Text>
+            {/* Change Location Button */}
+            <TouchableOpacity
+              style={viewStyles.changeLocationButton}
+              onPress={() => {
+                setShowDetailedLocation(false);
+                // Collapse animation then open modal
+                Animated.parallel([
+                  Animated.timing(animatedHeight, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: false,
+                  }),
+                  Animated.timing(animatedOpacity, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: true,
+                  }),
+                ]).start(() => {
+                  setIsLocationModalVisible(true);
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={viewStyles.changeLocationIconWrapper}>
+                <Ionicons name="search" size={12} color="#FFFFFF" />
               </View>
-              <LocationDisplay
-                compact={true}
-                showCoordinates={true}
-                showLastUpdated={false}
-                showRefreshButton={false}
-                style={viewStyles.coordinatesDisplay}
-                textStyle={viewStyles.coordinatesText}
-              />
-            </View>
-
-            {/* Refresh Button */}
-            <View style={viewStyles.refreshSection}>
-              <LocationDisplay
-                compact={true}
-                showCoordinates={false}
-                showLastUpdated={true}
-                showRefreshButton={true}
-                style={viewStyles.refreshDisplay}
-                textStyle={viewStyles.refreshText}
-              />
-            </View>
+              <Text style={viewStyles.changeLocationText}>Change Location</Text>
+              <Ionicons name="chevron-forward" size={14} color="#00C06A" />
+            </TouchableOpacity>
           </View>
         </Animated.View>
 
@@ -961,6 +989,14 @@ export default function HomeScreen() {
           <ProfileMenuModal visible={isModalVisible} onClose={hideModal} user={user} menuSections={profileMenuSections} onMenuItemPress={handleMenuItemPress} />
         </Suspense>
       )}
+
+      {/* Location Picker Modal */}
+      <LocationPickerModal
+        visible={isLocationModalVisible}
+        onClose={() => setIsLocationModalVisible(false)}
+        onLocationSelect={handleLocationSelect}
+        currentLocation={currentLocation}
+      />
 
       {/* Quick Access FAB - Lazy Loaded */}
       <Suspense fallback={<FABFallback />}>
@@ -1244,7 +1280,7 @@ const viewStyles = StyleSheet.create({
     padding: 16,
   },
   addressSection: {
-    marginBottom: 12,
+    marginBottom: -10,
   },
   addressHeader: {
     flexDirection: 'row',
@@ -1302,6 +1338,31 @@ const viewStyles = StyleSheet.create({
     color: '#666',
     fontSize: 12,
     textAlign: 'center',
+  },
+  changeLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  changeLocationIconWrapper: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#00C06A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  changeLocationText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#00C06A',
   },
   detailedLocationDisplay: {
     backgroundColor: 'transparent',

@@ -125,7 +125,8 @@ class LocationService {
   async updateUserLocation(
     coordinates: LocationCoordinates,
     address?: string,
-    source: 'manual' | 'gps' | 'ip' = 'gps'
+    source: 'manual' | 'gps' | 'ip' = 'gps',
+    extraData?: { city?: string; state?: string; pincode?: string }
   ): Promise<UserLocation> {
     try {
       const response = await this.apiClient.post('/location/update', {
@@ -133,22 +134,76 @@ class LocationService {
         longitude: coordinates.longitude,
         address,
         source,
+        city: extraData?.city,
+        state: extraData?.state,
+        pincode: extraData?.pincode,
       });
 
-      const locationData = response.data.data.location;
-      
+      // Handle different response structures
+      const locationData = response.data?.data?.location || response.data?.location || response.data?.data || response.data;
+
+      if (!locationData) {
+        console.error('[LocationService] No location data in response');
+        throw new Error('No location data in response');
+      }
+
+      // Handle different coordinate formats
+      let lat = coordinates.latitude;
+      let lng = coordinates.longitude;
+      if (locationData.coordinates) {
+        if (Array.isArray(locationData.coordinates)) {
+          lat = locationData.coordinates[1];
+          lng = locationData.coordinates[0];
+        } else if (locationData.coordinates.latitude !== undefined) {
+          lat = locationData.coordinates.latitude;
+          lng = locationData.coordinates.longitude;
+        }
+      } else if (locationData.latitude !== undefined) {
+        lat = locationData.latitude;
+        lng = locationData.longitude;
+      }
+
+      // Extract city/state from address if not provided
+      const fullAddress = locationData.address || address || '';
+      let city = locationData.city || '';
+      let state = locationData.state || '';
+
+      // Try to extract city/state from formatted address if empty
+      if (!city || !state) {
+        const addressParts = fullAddress.split(',').map((p: string) => p.trim());
+        if (addressParts.length >= 2) {
+          // Usually format is "City, State, Country" or "Area, City, State, Country"
+          if (!city && addressParts.length >= 1) {
+            // Find city name (first non-pincode, non-country part)
+            for (const part of addressParts) {
+              if (part && !part.match(/^\d{6}$/) && part !== 'India') {
+                city = part.replace(/\s*-?\s*\d{6}\s*/, '').trim();
+                break;
+              }
+            }
+          }
+          if (!state && addressParts.length >= 2) {
+            // State is usually second to last (before country)
+            const stateCandidate = addressParts[addressParts.length - 2];
+            if (stateCandidate && stateCandidate !== 'India') {
+              state = stateCandidate.replace(/\s*-?\s*\d{6}\s*/, '').trim();
+            }
+          }
+        }
+      }
+
       const userLocation: UserLocation = {
         coordinates: {
-          latitude: locationData.coordinates[1],
-          longitude: locationData.coordinates[0],
+          latitude: lat,
+          longitude: lng,
         },
         address: {
-          address: locationData.address,
-          city: locationData.city,
-          state: locationData.state,
-          country: 'India', // Default for now
-          pincode: locationData.pincode,
-          formattedAddress: locationData.address,
+          address: fullAddress,
+          city: city,
+          state: state,
+          country: locationData.country || 'India',
+          pincode: locationData.pincode || '',
+          formattedAddress: locationData.formattedAddress || fullAddress,
         },
         timezone: locationData.timezone,
         lastUpdated: new Date(),
@@ -160,7 +215,7 @@ class LocationService {
 
       return userLocation;
     } catch (error) {
-      console.error('Update location error:', error);
+      console.error('[LocationService] Update location error:', error);
       throw new Error('Failed to update location');
     }
   }
@@ -257,18 +312,29 @@ class LocationService {
         query,
         limit,
       });
-      
-      return response.data.data.results.map((result: any) => ({
-        address: result.address,
+
+      // Handle different response structures
+      const results = response.data?.data?.results || response.data?.results || [];
+
+      if (!Array.isArray(results)) {
+        return [];
+      }
+
+      return results.map((result: any) => ({
+        address: result.address || result.formattedAddress || '',
         coordinates: {
-          latitude: result.coordinates[1],
-          longitude: result.coordinates[0],
+          latitude: Array.isArray(result.coordinates) ? result.coordinates[1] : result.coordinates?.latitude || 0,
+          longitude: Array.isArray(result.coordinates) ? result.coordinates[0] : result.coordinates?.longitude || 0,
         },
-        formattedAddress: result.formattedAddress,
+        formattedAddress: result.formattedAddress || result.address || '',
         placeId: result.placeId,
+        city: result.city || '',
+        state: result.state || '',
+        country: result.country || 'India',
+        pincode: result.pincode || '',
       }));
     } catch (error) {
-      console.error('Address search error:', error);
+      console.error('[LocationService] Address search error:', error);
       return [];
     }
   }

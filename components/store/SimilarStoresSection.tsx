@@ -37,17 +37,26 @@ interface Store {
   [key: string]: any;
 }
 
+// Calculate card width based on screen
+const getCardWidth = () => {
+  if (isWeb) {
+    if (SCREEN_WIDTH >= 1024) return 280;
+    if (SCREEN_WIDTH >= 768) return 260;
+  }
+  return 240;
+};
+
 const SimilarStoresSection: React.FC<SimilarStoresSectionProps> = ({
   currentStoreId,
   currentStoreCategory,
   onStorePress,
   limit = 8,
 }) => {
-  console.log('🏪 [SimilarStoresSection] Rendering with:', { currentStoreId, currentStoreCategory });
   const router = useRouter();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cardWidth = getCardWidth();
 
   const fetchSimilarStores = useCallback(async () => {
     try {
@@ -78,17 +87,10 @@ const SimilarStoresSection: React.FC<SimilarStoresSectionProps> = ({
         }
 
         setStores(filteredStores);
-        console.log('🏪 [SimilarStoresSection] Fetched stores:', {
-          total: response.data.length,
-          filtered: filteredStores.length,
-          stores: filteredStores.slice(0, 2)
-        });
       } else {
         setStores([]);
-        console.log('🏪 [SimilarStoresSection] No data in response');
       }
     } catch (err) {
-      console.error('🏪 [SimilarStoresSection] Error fetching similar stores:', err);
       setError('Failed to load similar stores');
       setStores([]);
     } finally {
@@ -181,7 +183,10 @@ const SimilarStoresSection: React.FC<SimilarStoresSectionProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <ThemedText style={styles.title}>Explore Similar Stores</ThemedText>
+        <View style={styles.headerLeft}>
+          <Ionicons name="storefront" size={22} color="#00C06A" />
+          <ThemedText style={styles.title}>Similar Stores</ThemedText>
+        </View>
         <TouchableOpacity
           style={styles.viewAllLink}
           onPress={handleViewAll}
@@ -189,7 +194,7 @@ const SimilarStoresSection: React.FC<SimilarStoresSectionProps> = ({
           accessibilityRole="button"
         >
           <ThemedText style={styles.viewAllText}>View All</ThemedText>
-          <Ionicons name="chevron-forward" size={16} color="#00C06A" />
+          <Ionicons name="chevron-forward" size={14} color="#00C06A" />
         </TouchableOpacity>
       </View>
 
@@ -199,10 +204,11 @@ const SimilarStoresSection: React.FC<SimilarStoresSectionProps> = ({
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item, index) => item.id || item._id || `store-${index}`}
         renderItem={({ item }) => (
-          <View style={styles.cardWrapper}>
+          <View style={{ width: cardWidth }}>
             <StoreCard
               store={item}
               onPress={() => handleStorePress(item)}
+              width={cardWidth}
             />
           </View>
         )}
@@ -232,33 +238,23 @@ const SimilarStoresSection: React.FC<SimilarStoresSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-      },
-    }),
+    // No background/shadow - parent sectionCard provides that
+    paddingVertical: 4,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingHorizontal: 0,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#1F2937',
   },
@@ -266,23 +262,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
   },
   viewAllText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#00C06A',
   },
   listContent: {
     paddingVertical: 4,
-  },
-  cardWrapper: {
-    width: isTablet ? 280 : isWeb ? 260 : 240,
+    paddingHorizontal: 0,
   },
   separator: {
     width: 12,
   },
   listFooter: {
-    width: 8,
+    width: 4,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -347,14 +345,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+    borderRadius: 8,
   },
   bottomViewAllText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#00C06A',
   },

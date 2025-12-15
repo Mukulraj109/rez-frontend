@@ -5,10 +5,8 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
-  Easing,
   LayoutChangeEvent,
   Platform,
-  InteractionManager,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { triggerImpact } from "@/utils/haptics";
@@ -16,74 +14,67 @@ import { ThemedText } from "@/components/ThemedText";
 import {
   Colors,
   Spacing,
-  Shadows,
   BorderRadius,
-  Typography,
-  IconSize,
-  Timing,
 } from "@/constants/DesignSystem";
 
-export type TabKey = "about" | "deals" | "reviews";
+export type TabKey = "about" | "deals" | "reviews" | "photos";
 
 interface TabData {
   key: TabKey;
   title: string;
   icon: string;
+  activeIcon: string;
+  badgeText?: string;
+  showBadgeCount?: boolean;
 }
 
-const tabs: TabData[] = [
-  { key: "about", title: "ABOUT", icon: "information-circle-outline" },
-  { key: "deals", title: "Walk-In Deals", icon: "walk-outline" },
-  { key: "reviews", title: "Reviews", icon: "star-outline" },
+const defaultTabs: TabData[] = [
+  { key: "about", title: "Overview", icon: "information-circle-outline", activeIcon: "information-circle" },
+  { key: "deals", title: "Offers", icon: "pricetag-outline", activeIcon: "pricetag", badgeText: "5% OFF" },
+  { key: "reviews", title: "Reviews", icon: "star-outline", activeIcon: "star", showBadgeCount: true },
+  { key: "photos", title: "Photos", icon: "images-outline", activeIcon: "images" },
 ];
 
 interface TabNavigationProps {
   activeTab: TabKey;
   onTabChange: (tabKey: TabKey) => void;
+  maxSavingsPercent?: number;
+  reviewCount?: number;
+  photoCount?: number;
+  compact?: boolean; // For sticky header version
 }
 
-/**
- * Modern TabNavigation with animated underline.
- * - measures width to support responsive layouts
- * - animates translateX using native driver
- * - animates underline width (non-native) for smooth resizing
- */
-export default function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
+export default function TabNavigation({
+  activeTab,
+  onTabChange,
+  maxSavingsPercent,
+  reviewCount,
+  photoCount,
+  compact = false,
+}: TabNavigationProps) {
   const [containerWidth, setContainerWidth] = useState<number>(Dimensions.get("window").width);
+
+  // Build tabs with dynamic badges
+  const tabs = React.useMemo(() => {
+    return defaultTabs.map((tab) => {
+      if (tab.key === "deals" && maxSavingsPercent) {
+        return { ...tab, badgeText: `${maxSavingsPercent}% OFF` };
+      }
+      return tab;
+    });
+  }, [maxSavingsPercent]);
+
   const tabCount = tabs.length;
   const tabWidth = containerWidth / tabCount;
 
-  // Animated values
-  const translateX = useRef(new Animated.Value(0)).current; // native-driven transform
-  const underlineWidth = useRef(new Animated.Value(tabWidth * 0.5)).current; // animate width (non-native)
+  // Animated values for each tab
+  const scaleAnims = useRef(tabs.map(() => new Animated.Value(1))).current;
+  const bgAnims = useRef(tabs.map(() => new Animated.Value(0))).current;
 
-  // update layout when screen rotates / container resizes
-  useEffect(() => {
-    const onChange = () => {
-      const w = Dimensions.get("window").width;
-      setContainerWidth(w);
-      // reset underline width to half of new tab width
-      underlineWidth.setValue((w / tabCount) * 0.5);
-      // move underline to current active tab position
-      const idx = tabs.findIndex((t) => t.key === activeTab);
-      const targetX = computeUnderlineX(idx, w);
-      translateX.setValue(targetX);
-    };
-    const sub = Dimensions.addEventListener ? Dimensions.addEventListener("change", onChange) : undefined;
-    return () => {
-      if (sub && typeof sub.remove === "function") sub.remove();
-      else if (sub && "removeEventListener" in Dimensions) {
-        // older RN
-        (Dimensions as any).removeEventListener("change", onChange);
-      }
-    };
-  }, [activeTab, tabCount, underlineWidth, translateX]);
 
   useEffect(() => {
-    // when activeTab changes, animate underline
     const idx = tabs.findIndex((t) => t.key === activeTab);
     animateToIndex(idx);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, containerWidth]);
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -91,168 +82,292 @@ export default function TabNavigation({ activeTab, onTabChange }: TabNavigationP
     setContainerWidth(w);
   };
 
-  const computeUnderlineWidth = (w: number) => {
-    // underline takes ~50% of tab width (adjust if you want thicker/narrower)
-    return w / tabCount * 0.5;
-  };
-
-  const computeUnderlineX = (index: number, w?: number) => {
-    const cw = typeof w === "number" ? w : containerWidth;
-    const tw = cw / tabCount;
-    const underlineW = computeUnderlineWidth(cw);
-    // center underline under tab: tabLeft + (tabWidth - underlineWidth)/2
-    return index * tw + (tw - underlineW) / 2;
-  };
-
   const animateToIndex = (index: number) => {
-    const targetX = computeUnderlineX(index);
-    const targetW = computeUnderlineWidth(containerWidth);
+    // Animate tab backgrounds
+    tabs.forEach((_, i) => {
+      Animated.timing(bgAnims[i], {
+        toValue: i === index ? 1 : 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    });
+  };
 
-    // translateX animation (native driver for smoothness)
-    const animX = Animated.timing(translateX, {
-      toValue: targetX,
-      duration: Timing.normal,
-      easing: Easing.out(Easing.cubic),
+  const handlePressIn = (index: number) => {
+    Animated.spring(scaleAnims[index], {
+      toValue: 0.92,
+      tension: 100,
+      friction: 8,
       useNativeDriver: true,
-    });
+    }).start();
+  };
 
-    // Create width animation (all platforms)
-    const animW = Animated.timing(underlineWidth, {
-      toValue: targetW,
-      duration: Timing.normal,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false, // Width animation cannot use native driver
-    });
-
-    // Use InteractionManager on iOS to defer animation start until interactions complete
-    // This prevents conflicts with other ongoing animations without disabling the effect
-    if (Platform.OS === 'ios') {
-      InteractionManager.runAfterInteractions(() => {
-        // Animate both position and width on iOS, but after interactions
-        Animated.parallel([animX, animW]).start();
-      });
-    } else {
-      // On other platforms, start animations immediately
-      Animated.parallel([animX, animW]).start();
-    }
+  const handlePressOut = (index: number) => {
+    Animated.spring(scaleAnims[index], {
+      toValue: 1,
+      tension: 100,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handlePress = (tabKey: TabKey) => {
-    // Haptic feedback on tab press
     triggerImpact('Light');
+    onTabChange(tabKey);
+  };
 
-    // Always trigger onTabChange for about and deals tabs to open modals
-    // For other tabs, only trigger if different from active tab
-    if (tabKey === "about" || tabKey === "deals" || tabKey !== activeTab) {
-      onTabChange(tabKey);
+  const formatBadgeCount = (count: number): string => {
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+    return count.toString();
+  };
+
+  const getBadgeContent = (tab: TabData): { text: string; type: 'savings' | 'count' } | null => {
+    if (tab.key === "deals" && tab.badgeText) {
+      return { text: tab.badgeText, type: 'savings' };
     }
+    if (tab.key === "reviews" && tab.showBadgeCount && reviewCount && reviewCount > 0) {
+      return { text: formatBadgeCount(reviewCount), type: 'count' };
+    }
+    if (tab.key === "photos" && photoCount && photoCount > 0) {
+      return { text: formatBadgeCount(photoCount), type: 'count' };
+    }
+    return null;
   };
 
-  // underline style uses animated translateX (native) and width (non-native)
-  const underlineAnimatedStyle = {
-    transform: [
-      {
-        translateX: translateX, // this is native-driven
-      },
-    ],
-    width: underlineWidth, // animated value (non-native)
-  };
+  // Compact mode styles
+  const iconSize = compact ? 18 : 22;
+  const iconWrapperSize = compact ? 28 : 36;
 
   return (
-    <View style={styles.container} onLayout={onLayout}>
-      <View style={styles.tabsRow}>
-        {tabs.map((tab) => {
-          const isActive = tab.key === activeTab;
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, { width: tabWidth }]}
-              onPress={() => handlePress(tab.key)}
-              activeOpacity={0.75}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-              accessibilityLabel={tab.title}
-            >
-              <View style={styles.tabContent}>
-                <Ionicons
-                  name={tab.icon as any}
-                  size={IconSize.sm}
-                  color={isActive ? Colors.primary[700] : Colors.gray[400]}
-                  style={styles.icon}
-                />
-                <ThemedText style={[styles.label, isActive ? styles.labelActive : styles.labelInactive]}>
-                  {tab.title}
-                </ThemedText>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+    <View style={[styles.wrapper, compact && styles.wrapperCompact]}>
+      <View style={[styles.container, compact && styles.containerCompact]} onLayout={onLayout}>
+        <View style={[styles.tabsRow, compact && styles.tabsRowCompact]}>
+          {tabs.map((tab, index) => {
+            const isActive = tab.key === activeTab;
+            const badge = compact ? null : getBadgeContent(tab); // Hide badges in compact mode
 
-      <View style={styles.underlineContainer} pointerEvents="none">
-        <Animated.View style={[styles.underline, underlineAnimatedStyle]} />
+            const bgColor = bgAnims[index].interpolate({
+              inputRange: [0, 1],
+              outputRange: ['transparent', 'rgba(0, 192, 106, 0.08)'],
+            });
+
+            return (
+              <Animated.View
+                key={tab.key}
+                style={[
+                  styles.tabWrapper,
+                  { width: tabWidth },
+                  { transform: [{ scale: scaleAnims[index] }] },
+                ]}
+              >
+                <Animated.View style={[styles.tabBg, compact && styles.tabBgCompact, { backgroundColor: bgColor }]} />
+                <TouchableOpacity
+                  style={[styles.tab, compact && styles.tabCompact]}
+                  onPress={() => handlePress(tab.key)}
+                  onPressIn={() => handlePressIn(index)}
+                  onPressOut={() => handlePressOut(index)}
+                  activeOpacity={1}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                >
+                  <View style={[styles.tabContent, compact && styles.tabContentCompact]}>
+                    {/* Icon */}
+                    <View style={[
+                      styles.iconWrapper,
+                      isActive && styles.iconWrapperActive,
+                      compact && { width: iconWrapperSize, height: iconWrapperSize, borderRadius: iconWrapperSize / 2 }
+                    ]}>
+                      <Ionicons
+                        name={(isActive ? tab.activeIcon : tab.icon) as any}
+                        size={iconSize}
+                        color={isActive ? "#00C06A" : "#9CA3AF"}
+                      />
+                    </View>
+
+                    {/* Label */}
+                    <ThemedText style={[
+                      styles.label,
+                      isActive && styles.labelActive,
+                      compact && styles.labelCompact
+                    ]}>
+                      {tab.title}
+                    </ThemedText>
+
+                    {/* Badge - Hide in compact mode */}
+                    {!compact && (
+                      <View style={styles.badgeContainer}>
+                        {badge ? (
+                          <View style={[styles.badge, badge.type === 'savings' ? styles.savingsBadge : styles.countBadge]}>
+                            <ThemedText style={[styles.badgeText, badge.type === 'savings' ? styles.savingsBadgeText : styles.countBadgeText]}>
+                              {badge.text}
+                            </ThemedText>
+                          </View>
+                        ) : (
+                          <View style={styles.badgePlaceholder} />
+                        )}
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </View>
+
       </View>
     </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({
-  // Modern Tab Container
+  wrapper: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginHorizontal: 0,
+    // 3D Shadow effect
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+      },
+    }),
+  },
   container: {
-    backgroundColor: Colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.gray[100],
-    ...Shadows.subtle,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   tabsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    paddingVertical: 6,
+    alignItems: "stretch",
+    justifyContent: "space-between",
+    paddingTop: 6,
+    paddingBottom: 6,
+  },
+  tabWrapper: {
+    position: 'relative',
+  },
+  tabBg: {
+    position: 'absolute',
+    top: 4,
+    left: 8,
+    right: 8,
+    bottom: 4,
+    borderRadius: 12,
   },
   tab: {
-    paddingVertical: Spacing.md,
-    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 4,
     alignItems: "center",
+    justifyContent: "center",
   },
   tabContent: {
     alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.xs,
+    justifyContent: "flex-start",
+    gap: 2,
+    paddingTop: 2,
   },
-  icon: {
-    marginBottom: 2,
+  iconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
-
-  // Modern Typography
+  iconWrapperActive: {
+    backgroundColor: 'rgba(0, 192, 106, 0.12)',
+  },
   label: {
-    ...Typography.caption,
+    fontSize: 11,
     fontWeight: "600",
-    letterSpacing: 0.4,
+    color: "#9CA3AF",
     textAlign: "center",
-    lineHeight: 14,
+    letterSpacing: 0.3,
   },
   labelActive: {
-    color: Colors.text.primary,
+    color: "#1F2937",
     fontWeight: "700",
   },
-  labelInactive: {
-    color: Colors.gray[400],
-    fontWeight: "600",
+
+  // Badge Styles
+  badgeContainer: {
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgePlaceholder: {
+    height: 14,
+  },
+  badge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    minHeight: 14,
+    justifyContent: 'center',
+  },
+  savingsBadge: {
+    backgroundColor: "#FEF3C7",
+    borderWidth: 0.5,
+    borderColor: "#FCD34D",
+  },
+  countBadge: {
+    backgroundColor: "#F3F4F6",
+    borderWidth: 0.5,
+    borderColor: "#E5E7EB",
+  },
+  badgeText: {
+    fontSize: 7,
+    fontWeight: "700",
+    textAlign: "center",
+    lineHeight: 10,
+  },
+  savingsBadgeText: {
+    color: "#D97706",
+  },
+  countBadgeText: {
+    color: "#6B7280",
   },
 
-  // Modern Animated Underline
-  underlineContainer: {
-    height: 4,
-    position: "relative",
-    backgroundColor: "transparent",
+  // Compact mode styles (for sticky header)
+  wrapperCompact: {
+    borderRadius: 0,
+    marginHorizontal: 0,
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  underline: {
-    position: "absolute",
-    left: 0,
-    bottom: 6,
-    height: 4,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.primary[700],
+  containerCompact: {
+    borderRadius: 0,
+  },
+  tabsRowCompact: {
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  tabBgCompact: {
+    top: 2,
+    bottom: 2,
+    left: 4,
+    right: 4,
+    borderRadius: 8,
+  },
+  tabCompact: {
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+  },
+  tabContentCompact: {
+    gap: 1,
+    paddingTop: 0,
+  },
+  labelCompact: {
+    fontSize: 9,
+    letterSpacing: 0.2,
   },
 });

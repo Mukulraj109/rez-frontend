@@ -41,7 +41,8 @@ export interface LocationState {
 
 export interface LocationContextType {
   state: LocationState;
-  updateLocation: (coordinates: LocationCoordinates, address?: string, source?: 'manual' | 'gps' | 'ip') => Promise<void>;
+  updateLocation: (coordinates: LocationCoordinates, address?: string, source?: 'manual' | 'gps' | 'ip', extraData?: { city?: string; state?: string; pincode?: string }) => Promise<void>;
+  setManualLocation: (location: UserLocation) => Promise<void>;
   getCurrentLocation: () => Promise<UserLocation | null>;
   getLocationHistory: () => Promise<LocationHistoryEntry[]>;
   clearLocationHistory: () => Promise<void>;
@@ -57,6 +58,10 @@ export interface AddressSearchResult {
   coordinates: LocationCoordinates;
   formattedAddress: string;
   placeId?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
 }
 
 export interface GeocodeResult {

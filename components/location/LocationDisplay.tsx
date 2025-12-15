@@ -359,12 +359,17 @@ export default function LocationDisplay({
       return location.address.city;
     }
 
-    // For full mode, show city and state
+    // For full mode, show the complete formatted address
+    if (location.address.formattedAddress) {
+      return location.address.formattedAddress;
+    }
+
+    // Fallback: show city and state if no formatted address
     const parts = [];
     if (location.address.city) parts.push(location.address.city);
     if (location.address.state) parts.push(location.address.state);
 
-    return parts.join(', ') || location.address.formattedAddress || 'Unknown Location';
+    return parts.join(', ') || 'Unknown Location';
   };
 
   const getPermissionStatusText = () => {
@@ -397,7 +402,10 @@ export default function LocationDisplay({
   const isLocationLoading = Platform.OS === 'web' ? (webLoading || isRefreshing) : (isLoading || isRefreshing);
 
   // Determine current location and error based on platform
-  const effectiveLocation = Platform.OS === 'web' ? webLocation : currentLocation;
+  // Prioritize currentLocation from context (updated via modal) over webLocation (auto-detected)
+  const effectiveLocation = Platform.OS === 'web'
+    ? (currentLocation || webLocation)  // Use context location first, then web auto-detect
+    : currentLocation;
   const effectiveError = Platform.OS === 'web' ? webError : error;
 
   if (isLocationLoading) {
@@ -484,9 +492,7 @@ export default function LocationDisplay({
               style={[styles.locationText, textStyle]}
               numberOfLines={0}
             >
-              {Platform.OS === 'web' && webLocation
-                ? getWebLocationText(webLocation)
-                : effectiveLocation
+              {effectiveLocation
                 ? getLocationText(effectiveLocation)
                 : 'Location not available'
               }
@@ -497,20 +503,14 @@ export default function LocationDisplay({
         {/* Coordinates (if enabled) */}
         {showCoordinates && effectiveLocation && (
           <Text style={[styles.coordinatesText, textStyle]}>
-            {Platform.OS === 'web' && webLocation
-              ? `${webLocation.coordinates.latitude.toFixed(4)}, ${webLocation.coordinates.longitude.toFixed(4)}`
-              : `${effectiveLocation.coordinates.latitude.toFixed(4)}, ${effectiveLocation.coordinates.longitude.toFixed(4)}`
-            }
+            {`${effectiveLocation.coordinates.latitude.toFixed(4)}, ${effectiveLocation.coordinates.longitude.toFixed(4)}`}
           </Text>
         )}
 
         {/* Last Updated */}
         {showLastUpdated && effectiveLocation && (
           <Text style={[styles.lastUpdatedText, textStyle]}>
-            Updated {Platform.OS === 'web' && webLocation
-              ? formatLastUpdated(new Date(webLocation.timestamp))
-              : formatLastUpdated(effectiveLocation.lastUpdated)
-            }
+            Updated {formatLastUpdated(effectiveLocation.lastUpdated)}
           </Text>
         )}
       </View>

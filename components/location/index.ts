@@ -2,6 +2,7 @@
 export { default as GreetingDisplay, CompactGreetingDisplay, FullGreetingDisplay } from './GreetingDisplay';
 export { default as LocationDisplay, CompactLocationDisplay, FullLocationDisplay } from './LocationDisplay';
 export { default as LocationDropdown } from './LocationDropdown';
+export { default as LocationPickerModal } from './LocationPickerModal';
 export { default as TimeDisplay, CompactTimeDisplay, FullTimeDisplay } from './TimeDisplay';
 export { default as LocationPermission, CompactLocationPermission, FullLocationPermission } from './LocationPermission';
 export { default as AddressSearch, CompactAddressSearch, FullAddressSearch } from './AddressSearch';

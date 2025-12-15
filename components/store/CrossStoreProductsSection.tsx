@@ -37,7 +37,6 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
   onProductPress,
   limit = 10,
 }) => {
-  console.log('🛍️ [CrossStoreProductsSection] Rendering with currentStoreId:', currentStoreId);
   const router = useRouter();
   const [cardWidth] = useState(getCardWidth());
 
@@ -58,19 +57,34 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
     excludeProducts,
   });
 
-  console.log('🛍️ [CrossStoreProductsSection] Hook state:', {
-    loading,
-    error,
-    recommendationsCount: recommendations?.length || 0,
-    recommendations: recommendations?.slice(0, 2), // Log first 2 for debugging
-  });
-
-  // Filter out products from current store
+  // Filter out products from current store and invalid products (no price or no image)
   const filteredRecommendations = useMemo(() => {
-    if (!currentStoreId) return recommendations;
-    return recommendations.filter(
-      (product) => product.storeId !== currentStoreId
-    );
+    let filtered = recommendations;
+
+    // Filter out current store products
+    if (currentStoreId) {
+      filtered = filtered.filter((rec: any) => {
+        const productData = rec.product || rec;
+        const productStoreId = productData.storeId || productData.store?._id || productData.store;
+        return productStoreId !== currentStoreId;
+      });
+    }
+
+    // Filter out products with invalid price (0 or missing) or missing image
+    filtered = filtered.filter((rec: any) => {
+      const productData = rec.product || rec;
+      // Check multiple price field formats
+      const price = productData.pricing?.selling || productData.pricing?.basePrice || productData.price?.current || productData.price || 0;
+      // Check multiple image field formats
+      const image = productData.image || productData.images?.[0] || productData.imageUrl;
+
+      const hasValidPrice = price && price > 0;
+      const hasValidImage = image && typeof image === 'string' && !image.includes('placeholder');
+
+      return hasValidPrice && hasValidImage;
+    });
+
+    return filtered;
   }, [recommendations, currentStoreId]);
 
   // Convert recommendations to ProductItem format
@@ -80,6 +94,18 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
       // Handle both direct product data and nested product structure
       const productData = rec.product || rec;
 
+      // Extract price from multiple possible formats
+      const currentPrice = productData.pricing?.selling || productData.pricing?.basePrice || productData.price?.current || productData.price || 0;
+      const originalPrice = productData.pricing?.original || productData.pricing?.mrp || productData.price?.original;
+      const discount = productData.pricing?.discount || productData.price?.discount || 0;
+
+      // Extract image from multiple possible formats
+      const image = productData.image || productData.images?.[0] || productData.imageUrl || '';
+
+      // Extract rating from multiple possible formats
+      const ratingValue = productData.ratings?.average || productData.rating?.value || 0;
+      const ratingCount = productData.ratings?.count || productData.rating?.count || 0;
+
       return {
         id: productData.id || productData._id,
         _id: productData._id || productData.id,
@@ -87,32 +113,28 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
         name: productData.name,
         title: productData.name,
         brand: productData.brand || 'Brand',
-        image: productData.image || productData.imageUrl || 'https://via.placeholder.com/200x200?text=No+Image',
+        image: image,
         description: productData.description,
         price: {
-          current: productData.price?.current || productData.price || 0,
-          original: productData.price?.original,
-          currency: productData.price?.currency || 'INR',
-          discount: productData.price?.discount || 0,
+          current: currentPrice,
+          original: originalPrice,
+          currency: 'INR',
+          discount: discount,
         },
-        category: productData.category || 'General',
-        subcategory: productData.subcategory,
-        rating: productData.rating
-          ? {
-              value: typeof productData.rating.value === 'string'
-                ? parseFloat(productData.rating.value)
-                : productData.rating.value,
-              count: productData.rating.count || 0,
-            }
-          : undefined,
+        category: productData.category?.name || productData.category || 'General',
+        subcategory: productData.subCategory?.name || productData.subcategory,
+        rating: ratingValue > 0 ? {
+          value: ratingValue,
+          count: ratingCount,
+        } : undefined,
         cashback: productData.cashback,
-        availabilityStatus: productData.availabilityStatus || 'in_stock',
+        availabilityStatus: productData.inventory?.isAvailable !== false ? 'in_stock' : 'out_of_stock',
         inventory: productData.inventory,
         tags: productData.tags || [],
         isNewArrival: productData.isNewArrival,
         isRecommended: true,
         storeName: productData.storeName || productData.store?.name,
-        storeId: productData.storeId || productData.store?._id,
+        storeId: productData.storeId || productData.store?._id || productData.store,
         // Include recommendation metadata if available
         recommendationScore: rec.score,
         recommendationReasons: rec.reasons,
@@ -208,17 +230,7 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
           width={cardWidth}
           showAddToCart={true}
         />
-        {/* Store Badge Overlay */}
-        {item.storeName && (
-          <View style={styles.storeBadgeContainer}>
-            <View style={styles.storeBadge}>
-              <Ionicons name="storefront" size={12} color="#00C06A" />
-              <ThemedText style={styles.storeBadgeText} numberOfLines={1}>
-                From {item.storeName}
-              </ThemedText>
-            </View>
-          </View>
-        )}
+        {/* Store Badge removed - was overlapping with card content */}
       </View>
     );
   };
@@ -295,25 +307,14 @@ export default CrossStoreProductsSection;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingVertical: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    // No background/shadow - parent sectionCard provides that
+    paddingVertical: 4,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     marginBottom: 12,
   },
   headerLeft: {
@@ -342,10 +343,10 @@ const styles = StyleSheet.create({
     color: '#00C06A',
   },
   content: {
-    minHeight: 200,
+    minHeight: 180,
   },
   listContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
   },
   itemSeparator: {
     width: 12,
@@ -355,27 +356,32 @@ const styles = StyleSheet.create({
   },
   storeBadgeContainer: {
     position: 'absolute',
-    bottom: 48,
+    bottom: 90, // Moved higher to avoid overlapping with price/cart section
     left: 0,
     right: 0,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     zIndex: 1,
   },
   storeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0, 192, 106, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    gap: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.2)',
+    borderColor: 'rgba(0, 192, 106, 0.3)',
     alignSelf: 'flex-start',
-    maxWidth: '100%',
+    maxWidth: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   storeBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
     color: '#00796B',
     flexShrink: 1,
