@@ -59,6 +59,8 @@ import WalletSnapshotCard from '@/components/homepage/WalletSnapshotCard';
 import PlayAndEarnSection from '@/components/homepage/PlayAndEarnSection';
 import SocialProofSection from '@/components/homepage/SocialProofSection';
 import { DiscoverAndShopSection } from '@/components/discover';
+import MallSectionContainer from '@/components/mall/MallSectionContainer';
+import CashStoreSectionContainer from '@/components/cash-store/CashStoreSectionContainer';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import {
   EventItem,
@@ -890,7 +892,10 @@ export default function HomeScreen() {
       />
 
       {/* Content */}
-      <View style={viewStyles.content}>
+      <View style={[
+        viewStyles.content,
+        activeTab === 'rez-mall' && viewStyles.mallContent
+      ]}>
         {/* Quick Actions Section - Voucher, Wallet, Offers, Store - Only show when "rez" tab is active */}
         {activeTab === 'rez' && (
           <QuickActionsSection
@@ -1053,14 +1058,14 @@ export default function HomeScreen() {
         {/* Social Proof Section - People near you are earning - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <SocialProofSection />}
 
-        {/* Show content for other tabs when not "rez" */}
-        {activeTab !== 'rez' && (
-          <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
-            <ThemedText style={{ fontSize: 16, color: '#9AA7B2' }}>
-              {activeTab === 'rez-mall' && 'Rez Mall content coming soon...'}
-              {activeTab === 'cash-store' && 'Cash Store content coming soon...'}
-            </ThemedText>
-          </View>
+        {/* ReZ Mall Tab Content */}
+        {activeTab === 'rez-mall' && (
+          <MallSectionContainer />
+        )}
+
+        {/* Cash Store Tab Content */}
+        {activeTab === 'cash-store' && (
+          <CashStoreSectionContainer />
         )}
       </View>
 
@@ -1601,6 +1606,11 @@ const viewStyles = StyleSheet.create({
     padding: 20,
     paddingBottom: 100,
     backgroundColor: '#FFFFFF',
+  },
+  mallContent: {
+    padding: 0,
+    paddingBottom: 0,
+    backgroundColor: 'transparent',
   },
   partnerCard: {
     backgroundColor: 'white',

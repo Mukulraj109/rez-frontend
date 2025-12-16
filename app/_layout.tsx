@@ -422,6 +422,9 @@ export default function RootLayout() {
                   <Stack.Screen name="pay-in-store/payment" options={{ headerShown: false }} />
                   <Stack.Screen name="pay-in-store/success" options={{ headerShown: false }} />
 
+                  {/* Mall Module */}
+                  <Stack.Screen name="mall" options={{ headerShown: false }} />
+
                   <Stack.Screen name="+not-found" />
                 </Stack>
                 <StatusBar style="auto" />
