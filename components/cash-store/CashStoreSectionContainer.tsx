@@ -22,8 +22,12 @@ import {
   ActivityIndicator,
   Text,
   Linking,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 import { useRouter } from 'expo-router';
 import { useCashStoreSection } from '../../hooks/useCashStoreSection';
 import cashStoreApi from '../../services/cashStoreApi';
@@ -38,7 +42,6 @@ import {
 } from '../../types/cash-store.types';
 
 // Section Components
-import CashbackSummaryCard from './sections/CashbackSummaryCard';
 import CashStoreHeroBanner from './sections/CashStoreHeroBanner';
 import CashStoreQuickActions from './sections/CashStoreQuickActions';
 import TopOnlineBrands from './sections/TopOnlineBrands';
@@ -249,30 +252,29 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-      nestedScrollEnabled={true}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefreshing}
-          onRefresh={refresh}
-          tintColor="#00C06A"
-          colors={['#00C06A']}
-        />
-      }
-    >
-      {/* 1. Cashback Summary Card */}
-      <CashbackSummaryCard
-        total={cashbackSummary.total}
-        pending={cashbackSummary.pending}
-        confirmed={cashbackSummary.confirmed}
-        available={cashbackSummary.available}
-        isLoading={isLoading}
+    <View style={styles.outerContainer}>
+      {/* Gradient Background - Starts from HomeTabSection's end color for seamless transition */}
+      <LinearGradient
+        colors={['#4ADE80', '#6EE7B7', '#A7F3D0', '#D1FAE5', '#ECFDF5', '#F9FAFB', '#FFFFFF']}
+        locations={[0, 0.08, 0.2, 0.35, 0.5, 0.7, 1]}
+        style={styles.gradientBackground}
       />
 
-      {/* 2. Hero Banner */}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refresh}
+            tintColor="#00C06A"
+            colors={['#00C06A']}
+          />
+        }
+      >
+        {/* 1. Hero Banner */}
       <CashStoreHeroBanner
         banners={heroBanners}
         isLoading={isLoading && !heroBanners.length}
@@ -345,18 +347,32 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
 
       {/* Bottom spacing */}
       <View style={styles.bottomSpacer} />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  outerContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  gradientBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0, // Gradient covers full container
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: 'transparent', // Make transparent to show gradient
   },
   contentContainer: {
     paddingTop: 0,
     paddingBottom: 32,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
   },
   loadingContainer: {
     flex: 1,

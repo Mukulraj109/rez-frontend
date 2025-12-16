@@ -21,8 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { MallBanner } from '../../types/mall.types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BANNER_WIDTH = SCREEN_WIDTH - 48;
-const BANNER_HEIGHT = 220;
+const BANNER_WIDTH = SCREEN_WIDTH - 32;
+const BANNER_HEIGHT = 180;
 const AUTO_SCROLL_INTERVAL = 5000;
 
 interface MallHeroBannerProps {
@@ -72,8 +72,15 @@ const MallHeroBanner: React.FC<MallHeroBannerProps> = ({
     onBannerPress?.(banner);
   }, [onBannerPress]);
 
+  // Helper to check if string is a valid image URL
+  const isValidImageUrl = useCallback((url: string | undefined): boolean => {
+    if (!url || typeof url !== 'string') return false;
+    return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
+  }, []);
+
   const renderBanner = useCallback(({ item }: { item: MallBanner }) => {
     const gradientColors = item.gradientColors || ['#00C06A', '#00A05A'];
+    const hasValidImage = isValidImageUrl(item.image);
 
     return (
       <TouchableOpacity
@@ -87,8 +94,8 @@ const MallHeroBanner: React.FC<MallHeroBannerProps> = ({
           end={{ x: 1, y: 1 }}
           style={styles.bannerGradient}
         >
-          {/* Banner Image (if available) */}
-          {item.image && (
+          {/* Banner Image (if available and valid URL) */}
+          {hasValidImage && (
             <Image
               source={{ uri: item.image }}
               style={styles.bannerImage}
@@ -134,7 +141,7 @@ const MallHeroBanner: React.FC<MallHeroBannerProps> = ({
         </LinearGradient>
       </TouchableOpacity>
     );
-  }, [handleBannerPress]);
+  }, [handleBannerPress, isValidImageUrl]);
 
   // Loading state
   if (isLoading) {
@@ -167,12 +174,12 @@ const MallHeroBanner: React.FC<MallHeroBannerProps> = ({
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        snapToInterval={BANNER_WIDTH + 16}
+        snapToInterval={BANNER_WIDTH}
         decelerationRate="fast"
         contentContainerStyle={styles.listContent}
         getItemLayout={(_, index) => ({
-          length: BANNER_WIDTH + 16,
-          offset: (BANNER_WIDTH + 16) * index,
+          length: BANNER_WIDTH,
+          offset: BANNER_WIDTH * index,
           index,
         })}
       />
@@ -201,14 +208,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   listContent: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     backgroundColor: 'transparent',
   },
   bannerContainer: {
     width: BANNER_WIDTH,
     height: BANNER_HEIGHT,
-    marginRight: 16,
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
     ...Platform.select({
       ios: {

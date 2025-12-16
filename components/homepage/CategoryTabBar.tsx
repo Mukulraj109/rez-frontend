@@ -36,7 +36,7 @@ const COLORS = {
 const CATEGORY_IMAGES = {
   dining: require('../../assets/category-icons/FOOD-DINING/Family-restaurants.png'),
   events: require('../../assets/category-icons/ENTERTAINMENT/Live-events.png'),
-  stores: require('../../assets/category-icons/Shopping/Fashion.png'),
+  stores: require('../../assets/images/stores/shopping-bags.png'),
   grocery: require('../../assets/category-icons/GROCERY-ESSENTIALS/Supermarkets.png'),
   beauty: require('../../assets/category-icons/BEAUTY-WELLNESS/Beauty-services.png'),
   health: require('../../assets/category-icons/HEALTHCARE/Pharmacy.png'),

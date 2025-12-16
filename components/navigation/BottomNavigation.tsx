@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import logger from '@/utils/logger';
+import { useHomeTab } from '@/contexts/HomeTabContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -83,6 +84,19 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Get active home tab from context (with fallback for when context is not available)
+  let isRezMallActive = false;
+  let isCashStoreActive = false;
+  try {
+    const homeTabContext = useHomeTab();
+    isRezMallActive = homeTabContext.isRezMallActive;
+    isCashStoreActive = homeTabContext.isCashStoreActive;
+  } catch {
+    // Context not available, use default tabs
+    isRezMallActive = false;
+    isCashStoreActive = false;
+  }
+
   // Hide bottom navigation on auth/onboarding pages and payment sub-flows
   const hidePages = [
     '/sign-in',
@@ -95,7 +109,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
   ];
 
   const shouldHide = hidePages.some(page => pathname?.startsWith(page));
-  
+
   if (shouldHide) {
     return null;
   }
@@ -107,45 +121,116 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
       logger.debug('[BOTTOM NAV] ✅ Home tab active (empty/root pathname)');
       return 'Home';
     }
-    
+
     // Normalize pathname for comparison (remove trailing slash)
     const normalizedPath = pathname.replace(/\/$/, '');
-    
+
     logger.debug('[BOTTOM NAV] Checking pathname:', normalizedPath || '(empty)');
-    
-    // Check for Categories tab - multiple formats
-    if (
-      normalizedPath === '/categories' ||
-      normalizedPath === '/(tabs)/categories' ||
-      normalizedPath.startsWith('/categories/') ||
-      normalizedPath.startsWith('/(tabs)/categories/')
-    ) {
-      logger.debug('[BOTTOM NAV] ✅ Categories tab active');
-      return 'Categories';
+
+    // Cash Store tabs: Home, Wallet, Coins, Profile
+    if (isCashStoreActive) {
+      // Check for Wallet tab
+      if (
+        normalizedPath === '/WalletScreen' ||
+        normalizedPath === '/wallet' ||
+        normalizedPath.startsWith('/wallet/')
+      ) {
+        logger.debug('[BOTTOM NAV] ✅ Wallet tab active');
+        return 'Wallet';
+      }
+
+      // Check for Coins tab
+      if (
+        normalizedPath === '/CoinPage' ||
+        normalizedPath === '/coin-detail' ||
+        normalizedPath.startsWith('/coin')
+      ) {
+        logger.debug('[BOTTOM NAV] ✅ Coins tab active');
+        return 'Coins';
+      }
+
+      // Check for Profile tab
+      if (
+        normalizedPath === '/account' ||
+        normalizedPath.startsWith('/account/')
+      ) {
+        logger.debug('[BOTTOM NAV] ✅ Profile tab active');
+        return 'Profile';
+      }
+    }
+    // ReZ Mall tabs: Home, Explore, Pay at Store, Offers, Profile
+    else if (isRezMallActive) {
+      // Check for Explore tab - multiple formats (search, categories)
+      if (
+        normalizedPath === '/categories' ||
+        normalizedPath === '/(tabs)/categories' ||
+        normalizedPath.startsWith('/categories/') ||
+        normalizedPath.startsWith('/(tabs)/categories/') ||
+        normalizedPath === '/search' ||
+        normalizedPath.startsWith('/search/')
+      ) {
+        logger.debug('[BOTTOM NAV] ✅ Explore tab active');
+        return 'Explore';
+      }
+
+      // Check for Offers tab - multiple formats
+      if (
+        normalizedPath === '/mall/offers' ||
+        normalizedPath.startsWith('/mall/offers/') ||
+        normalizedPath === '/offers' ||
+        normalizedPath.startsWith('/offers/') ||
+        normalizedPath === '/cash-store/brands' ||
+        normalizedPath.startsWith('/cash-store/')
+      ) {
+        logger.debug('[BOTTOM NAV] ✅ Offers tab active');
+        return 'Offers';
+      }
+
+      // Check for Profile tab - multiple formats
+      if (
+        normalizedPath === '/account' ||
+        normalizedPath.startsWith('/account/')
+      ) {
+        logger.debug('[BOTTOM NAV] ✅ Profile tab active');
+        return 'Profile';
+      }
+    } else {
+      // Default tabs: Home, Categories, Pay in Store, Play, Earn
+
+      // Check for Categories tab - multiple formats
+      if (
+        normalizedPath === '/categories' ||
+        normalizedPath === '/(tabs)/categories' ||
+        normalizedPath.startsWith('/categories/') ||
+        normalizedPath.startsWith('/(tabs)/categories/')
+      ) {
+        logger.debug('[BOTTOM NAV] ✅ Categories tab active');
+        return 'Categories';
+      }
+
+      // Check for Play tab - multiple formats
+      if (
+        normalizedPath === '/play' ||
+        normalizedPath === '/(tabs)/play' ||
+        normalizedPath.startsWith('/play/') ||
+        normalizedPath.startsWith('/(tabs)/play/')
+      ) {
+        logger.debug('[BOTTOM NAV] ✅ Play tab active');
+        return 'Play';
+      }
+
+      // Check for Earn tab - multiple formats
+      if (
+        normalizedPath === '/earn' ||
+        normalizedPath === '/(tabs)/earn' ||
+        normalizedPath.startsWith('/earn/') ||
+        normalizedPath.startsWith('/(tabs)/earn/')
+      ) {
+        logger.debug('[BOTTOM NAV] ✅ Earn tab active');
+        return 'Earn';
+      }
     }
 
-    // Check for Play tab - multiple formats (check first to avoid conflicts)
-    if (
-      normalizedPath === '/play' ||
-      normalizedPath === '/(tabs)/play' ||
-      normalizedPath.startsWith('/play/') ||
-      normalizedPath.startsWith('/(tabs)/play/')
-    ) {
-      logger.debug('[BOTTOM NAV] ✅ Play tab active');
-      return 'Play';
-    }
-    
-    // Check for Earn tab - multiple formats (check first to avoid conflicts)
-    if (
-      normalizedPath === '/earn' ||
-      normalizedPath === '/(tabs)/earn' ||
-      normalizedPath.startsWith('/earn/') ||
-      normalizedPath.startsWith('/(tabs)/earn/')
-    ) {
-      logger.debug('[BOTTOM NAV] ✅ Earn tab active');
-      return 'Earn';
-    }
-    
     // Check for Home tab - handle multiple formats
     // Home is at /(tabs) or /(tabs)/index, or root /
     // IMPORTANT: Check home last, after other tabs, to avoid conflicts
@@ -162,66 +247,23 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
       logger.debug('[BOTTOM NAV] ✅ Home tab active');
       return 'Home';
     }
-    
-    // Default: no tab is active on other pages (offers, store, etc.)
+
+    // Default: no tab is active on other pages
     logger.debug('[BOTTOM NAV] ❌ No tab active');
     return null;
   };
 
   const activeTab = getActiveTab();
 
-  const tabs = [
-    {
-      name: 'Home',
-      route: '/(tabs)',
-      icon: 'home',
-      isActive: activeTab === 'Home',
-      isCenter: false,
-    },
-    {
-      name: 'Categories',
-      route: '/(tabs)/categories',
-      icon: 'grid-outline',
-      isActive: activeTab === 'Categories',
-      isCenter: false,
-    },
-    {
-      name: 'Pay in Store',
-      route: '/pay-in-store',
-      icon: 'qr-code',
-      isActive: false,
-      isCenter: true,
-    },
-    {
-      name: 'Play',
-      route: '/(tabs)/play',
-      icon: 'play-circle',
-      isActive: activeTab === 'Play',
-      isCenter: false,
-    },
-    {
-      name: 'Earn',
-      route: '/(tabs)/earn',
-      icon: 'wallet',
-      isActive: activeTab === 'Earn',
-      isCenter: false,
-    },
-  ];
-
   const handleTabPress = (route: string) => {
     router.push(route as any);
   };
 
-  // Split tabs: left (Home, Categories), center (Pay in Store), right (Play, Earn)
-  const leftTabs = tabs.filter(t => !t.isCenter).slice(0, 2);
-  const rightTabs = tabs.filter(t => !t.isCenter).slice(2);
-  const centerTab = tabs.find(t => t.isCenter)!;
-
   // Render a regular tab item
-  const renderTab = (tab: typeof tabs[0]) => (
+  const renderTab = (tab: { name: string; route: string; icon: string; isActive: boolean }, index?: number) => (
     <TouchableOpacity
       key={tab.name}
-      style={styles.tab}
+      style={isCashStoreActive ? styles.cashStoreTab : styles.tab}
       onPress={() => handleTabPress(tab.route)}
       activeOpacity={0.7}
       accessibilityLabel={`${tab.name} tab`}
@@ -241,6 +283,138 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
       </Text>
     </TouchableOpacity>
   );
+
+  // =====================================================
+  // CASH STORE LAYOUT - 4 tabs, no center floating button
+  // =====================================================
+  if (isCashStoreActive) {
+    const cashStoreTabs = [
+      {
+        name: 'Home',
+        route: '/(tabs)',
+        icon: 'home',
+        isActive: activeTab === 'Home',
+      },
+      {
+        name: 'Wallet',
+        route: '/WalletScreen',
+        icon: 'wallet-outline',
+        isActive: activeTab === 'Wallet',
+      },
+      {
+        name: 'Coins',
+        route: '/CoinPage',
+        icon: 'server-outline',
+        isActive: activeTab === 'Coins',
+      },
+      {
+        name: 'Profile',
+        route: '/account',
+        icon: 'person-outline',
+        isActive: activeTab === 'Profile',
+      },
+    ];
+
+    return (
+      <View style={[styles.cashStoreContainer, style]}>
+        {/* Simple flat background */}
+        <View style={styles.cashStoreBackground} />
+
+        {/* 4 equal tabs */}
+        <View style={styles.cashStoreTabBar}>
+          {cashStoreTabs.map((tab, index) => renderTab(tab, index))}
+        </View>
+      </View>
+    );
+  }
+
+  // =====================================================
+  // REZ MALL / DEFAULT LAYOUT - 5 tabs with center floating button
+  // =====================================================
+
+  // Different tabs based on active home tab
+  const tabs = isRezMallActive
+    ? [
+        // ReZ Mall tabs: Home, Explore, Pay at Store, Offers, Profile
+        {
+          name: 'Home',
+          route: '/(tabs)',
+          icon: 'home',
+          isActive: activeTab === 'Home',
+          isCenter: false,
+        },
+        {
+          name: 'Explore',
+          route: '/search',
+          icon: 'compass',
+          isActive: activeTab === 'Explore',
+          isCenter: false,
+        },
+        {
+          name: 'Pay at Store',
+          route: '/pay-in-store',
+          icon: 'qr-code',
+          isActive: false,
+          isCenter: true,
+        },
+        {
+          name: 'Offers',
+          route: '/cash-store/brands',
+          icon: 'pricetag',
+          isActive: activeTab === 'Offers',
+          isCenter: false,
+        },
+        {
+          name: 'Profile',
+          route: '/account',
+          icon: 'person',
+          isActive: activeTab === 'Profile',
+          isCenter: false,
+        },
+      ]
+    : [
+        // Default tabs: Home, Categories, Pay in Store, Play, Earn
+        {
+          name: 'Home',
+          route: '/(tabs)',
+          icon: 'home',
+          isActive: activeTab === 'Home',
+          isCenter: false,
+        },
+        {
+          name: 'Categories',
+          route: '/(tabs)/categories',
+          icon: 'grid-outline',
+          isActive: activeTab === 'Categories',
+          isCenter: false,
+        },
+        {
+          name: 'Pay in Store',
+          route: '/pay-in-store',
+          icon: 'qr-code',
+          isActive: false,
+          isCenter: true,
+        },
+        {
+          name: 'Play',
+          route: '/(tabs)/play',
+          icon: 'play-circle',
+          isActive: activeTab === 'Play',
+          isCenter: false,
+        },
+        {
+          name: 'Earn',
+          route: '/(tabs)/earn',
+          icon: 'wallet',
+          isActive: activeTab === 'Earn',
+          isCenter: false,
+        },
+      ];
+
+  // Split tabs: left (first 2), center (floating), right (last 2)
+  const leftTabs = tabs.filter(t => !t.isCenter).slice(0, 2);
+  const rightTabs = tabs.filter(t => !t.isCenter).slice(2);
+  const centerTab = tabs.find(t => t.isCenter)!;
 
   return (
     <View style={[styles.container, style]} pointerEvents="box-none">
@@ -268,17 +442,17 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
 
       {/* Layer 3: Tab bar with left and right tabs */}
       <View style={styles.tabBar}>
-        {/* Left tabs: Home, Categories */}
+        {/* Left tabs */}
         <View style={styles.leftTabs}>
-          {leftTabs.map(renderTab)}
+          {leftTabs.map(tab => renderTab(tab))}
         </View>
 
         {/* Center spacer (for the floating button area) */}
         <View style={styles.centerSpacer} />
 
-        {/* Right tabs: Play, Earn */}
+        {/* Right tabs */}
         <View style={styles.rightTabs}>
-          {rightTabs.map(renderTab)}
+          {rightTabs.map(tab => renderTab(tab))}
         </View>
       </View>
     </View>
@@ -286,6 +460,10 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
 };
 
 const styles = StyleSheet.create({
+  // =====================================================
+  // DEFAULT / REZ MALL STYLES (with floating center button)
+  // =====================================================
+
   // Main container - holds everything
   container: {
     position: 'absolute',
@@ -351,7 +529,7 @@ const styles = StyleSheet.create({
     zIndex: 50, // Higher than curved background, but below floating button
   },
 
-  // Left tabs section (Home, Categories)
+  // Left tabs section
   leftTabs: {
     flex: 1,
     flexDirection: 'row',
@@ -365,7 +543,7 @@ const styles = StyleSheet.create({
     width: 80,
   },
 
-  // Right tabs section (Play, Earn)
+  // Right tabs section
   rightTabs: {
     flex: 1,
     flexDirection: 'row',
@@ -390,6 +568,69 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
     textAlign: 'center',
+  },
+
+  // =====================================================
+  // CASH STORE STYLES (4 equal tabs, no floating button)
+  // =====================================================
+
+  // Cash Store container - simpler, no floating button
+  cashStoreContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+    zIndex: 1000,
+  },
+
+  // Cash Store flat background
+  cashStoreBackground: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.06)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0 -2px 4px rgba(0, 0, 0, 0.06)',
+      },
+    }),
+  },
+
+  // Cash Store tab bar - 4 equal tabs
+  cashStoreTabBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingBottom: Platform.OS === 'ios' ? 8 : 4,
+    paddingHorizontal: 16,
+  },
+
+  // Cash Store individual tab
+  cashStoreTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    minHeight: 50,
   },
 });
 

@@ -23,12 +23,47 @@ interface MallCollectionCardProps {
   height?: number;
 }
 
+// Helper to check if string is a valid image URL
+const isValidImageUrl = (url: string | undefined): boolean => {
+  if (!url || typeof url !== 'string') return false;
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
+};
+
 const MallCollectionCard: React.FC<MallCollectionCardProps> = ({
   collection,
   onPress,
   width = 160,
   height = 180,
 }) => {
+  const hasValidImage = isValidImageUrl(collection.image);
+
+  // If no valid image, render with gradient only
+  if (!hasValidImage) {
+    return (
+      <TouchableOpacity
+        style={[styles.container, { width, height }]}
+        onPress={() => onPress(collection)}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={['#8B5CF6', '#6366F1']}
+          style={styles.fallbackGradient}
+        >
+          <View style={styles.content}>
+            <Text style={styles.collectionName} numberOfLines={2}>
+              {collection.name}
+            </Text>
+            {collection.brandCount > 0 && (
+              <Text style={styles.brandCount}>
+                {collection.brandCount} brands
+              </Text>
+            )}
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
       style={[styles.container, { width, height }]}
@@ -86,6 +121,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   gradient: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 12,
+    borderRadius: 16,
+  },
+  fallbackGradient: {
     flex: 1,
     justifyContent: 'flex-end',
     padding: 12,

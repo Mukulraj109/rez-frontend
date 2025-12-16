@@ -1,10 +1,11 @@
 /**
  * CashbackActivitySection Component
  *
- * Section showing user's recent cashback activity/transactions
+ * Premium section showing user's recent cashback activity/transactions
+ * Features: Timeline design, animated status dots, color-coded indicators, expandable details
  */
 
-import React, { memo } from 'react';
+import React, { memo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +13,9 @@ import {
   TouchableOpacity,
   Image,
   Platform,
+  Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { CashbackActivity, formatCurrency } from '../../../types/cash-store.types';
 
@@ -39,20 +42,36 @@ const getStatusColor = (status: CashbackActivity['status']): string => {
   }
 };
 
+const getStatusGradient = (status: CashbackActivity['status']): string[] => {
+  switch (status) {
+    case 'pending':
+      return ['#F59E0B', '#D97706'];
+    case 'confirmed':
+      return ['#3B82F6', '#2563EB'];
+    case 'available':
+      return ['#00C06A', '#059669'];
+    case 'expired':
+    case 'cancelled':
+      return ['#EF4444', '#DC2626'];
+    default:
+      return ['#6B7280', '#4B5563'];
+  }
+};
+
 const getStatusIcon = (status: CashbackActivity['status']): string => {
   switch (status) {
     case 'pending':
-      return 'time-outline';
+      return 'time';
     case 'confirmed':
-      return 'checkmark-circle-outline';
+      return 'checkmark-circle';
     case 'available':
-      return 'wallet-outline';
+      return 'wallet';
     case 'expired':
-      return 'alert-circle-outline';
+      return 'alert-circle';
     case 'cancelled':
-      return 'close-circle-outline';
+      return 'close-circle';
     default:
-      return 'help-circle-outline';
+      return 'help-circle';
   }
 };
 
@@ -73,65 +92,207 @@ const formatDate = (dateString: string): string => {
 
 const ActivityItem: React.FC<{
   activity: CashbackActivity;
+  index: number;
+  isLast: boolean;
   onPress: () => void;
-}> = ({ activity, onPress }) => {
+}> = memo(({ activity, index, isLast, onPress }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Staggered entry animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Pulse animation for pending status
+    if (activity.status === 'pending') {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [index, activity.status]);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const statusColor = getStatusColor(activity.status);
+  const statusGradient = getStatusGradient(activity.status);
   const statusIcon = getStatusIcon(activity.status);
 
   return (
-    <TouchableOpacity style={styles.activityItem} onPress={onPress} activeOpacity={0.7}>
-      {/* Brand Logo */}
-      <View style={styles.logoContainer}>
-        {activity.brand.logo ? (
-          <Image
-            source={{ uri: activity.brand.logo }}
-            style={styles.brandLogo}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoInitial}>{activity.brand.name.charAt(0)}</Text>
-          </View>
-        )}
-      </View>
+    <Animated.View
+      style={[
+        styles.activityItemWrapper,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateX: slideAnim }, { scale: scaleAnim }],
+        },
+      ]}
+    >
+      {/* Timeline Line */}
+      {!isLast && <View style={styles.timelineLine} />}
 
-      {/* Content */}
-      <View style={styles.activityContent}>
-        <Text style={styles.brandName}>{activity.brand.name}</Text>
-        <Text style={styles.purchaseAmount}>
-          Purchase: {formatCurrency(activity.purchaseAmount)}
-        </Text>
-        <Text style={styles.dateText}>{formatDate(activity.date)}</Text>
-      </View>
+      {/* Timeline Dot */}
+      <Animated.View
+        style={[
+          styles.timelineDotContainer,
+          activity.status === 'pending' && { transform: [{ scale: pulseAnim }] },
+        ]}
+      >
+        <LinearGradient colors={statusGradient} style={styles.timelineDot}>
+          <Ionicons name={statusIcon as any} size={12} color="#FFFFFF" />
+        </LinearGradient>
+      </Animated.View>
 
-      {/* Cashback Amount & Status */}
-      <View style={styles.activityRight}>
-        <Text style={[styles.cashbackAmount, { color: statusColor }]}>
-          +{formatCurrency(activity.cashbackAmount)}
-        </Text>
-        <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15` }]}>
-          <Ionicons name={statusIcon as any} size={12} color={statusColor} />
-          <Text style={[styles.statusText, { color: statusColor }]}>
-            {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
+      {/* Activity Card */}
+      <TouchableOpacity
+        style={styles.activityItem}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
+        {/* Brand Logo */}
+        <View style={styles.logoContainer}>
+          {activity.brand.logo ? (
+            <Image
+              source={{ uri: activity.brand.logo }}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
+          ) : (
+            <LinearGradient colors={['#00C06A', '#059669']} style={styles.logoPlaceholder}>
+              <Text style={styles.logoInitial}>{activity.brand.name.charAt(0)}</Text>
+            </LinearGradient>
+          )}
+        </View>
+
+        {/* Content */}
+        <View style={styles.activityContent}>
+          <Text style={styles.brandName}>{activity.brand.name}</Text>
+          <Text style={styles.purchaseAmount}>
+            Purchase: {formatCurrency(activity.purchaseAmount)}
           </Text>
+          <View style={styles.dateRow}>
+            <Ionicons name="calendar-outline" size={10} color="#9CA3AF" />
+            <Text style={styles.dateText}>{formatDate(activity.date)}</Text>
+          </View>
+        </View>
+
+        {/* Cashback Amount & Status */}
+        <View style={styles.activityRight}>
+          <Text style={[styles.cashbackAmount, { color: statusColor }]}>
+            +{formatCurrency(activity.cashbackAmount)}
+          </Text>
+          <LinearGradient
+            colors={[`${statusColor}20`, `${statusColor}10`]}
+            style={styles.statusBadge}
+          >
+            <Ionicons name={statusIcon as any} size={10} color={statusColor} />
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
+            </Text>
+          </LinearGradient>
+        </View>
+
+        {/* Arrow Indicator */}
+        <View style={styles.arrowIndicator}>
+          <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
+const SkeletonItem: React.FC<{ index: number }> = memo(({ index }) => {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1000,
+          delay: index * 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [index]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.activityItemWrapper,
+        {
+          opacity: shimmerAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.5, 1],
+          }),
+        },
+      ]}
+    >
+      <View style={styles.timelineDotContainer}>
+        <View style={[styles.timelineDot, styles.skeleton]} />
+      </View>
+      <View style={styles.activityItem}>
+        <View style={[styles.logoContainer, styles.skeleton]} />
+        <View style={styles.activityContent}>
+          <View style={[styles.skeletonText, { width: 100 }]} />
+          <View style={[styles.skeletonText, { width: 80 }]} />
+          <View style={[styles.skeletonText, { width: 60 }]} />
+        </View>
+        <View style={styles.activityRight}>
+          <View style={[styles.skeletonText, { width: 60 }]} />
+          <View style={[styles.skeletonBadge]} />
         </View>
       </View>
-    </TouchableOpacity>
+    </Animated.View>
   );
-};
-
-const SkeletonItem: React.FC = () => (
-  <View style={styles.activityItem}>
-    <View style={[styles.logoContainer, styles.skeleton]} />
-    <View style={styles.activityContent}>
-      <View style={[styles.skeletonText, { width: 100 }]} />
-      <View style={[styles.skeletonText, { width: 80 }]} />
-    </View>
-    <View style={styles.activityRight}>
-      <View style={[styles.skeletonText, { width: 60 }]} />
-    </View>
-  </View>
-);
+});
 
 const CashbackActivitySection: React.FC<CashbackActivitySectionProps> = ({
   activities,
@@ -139,24 +300,53 @@ const CashbackActivitySection: React.FC<CashbackActivitySectionProps> = ({
   onActivityPress,
   onViewAllPress,
 }) => {
+  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(headerFadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   if (activities.length === 0 && !isLoading) {
     return (
       <View style={styles.container}>
         {/* Header */}
-        <View style={styles.header}>
+        <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
           <View style={styles.titleRow}>
-            <Ionicons name="receipt-outline" size={18} color="#00C06A" />
+            <LinearGradient
+              colors={['#00C06A', '#059669']}
+              style={styles.headerIconContainer}
+            >
+              <Ionicons name="receipt" size={16} color="#FFFFFF" />
+            </LinearGradient>
             <Text style={styles.title}>Your Cashback Activity</Text>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Empty State */}
         <View style={styles.emptyState}>
-          <Ionicons name="wallet-outline" size={48} color="#D1D5DB" />
+          <LinearGradient
+            colors={['#F9FAFB', '#F3F4F6']}
+            style={styles.emptyIconContainer}
+          >
+            <Ionicons name="wallet-outline" size={40} color="#D1D5DB" />
+          </LinearGradient>
           <Text style={styles.emptyTitle}>No activity yet</Text>
           <Text style={styles.emptySubtitle}>
             Start shopping to earn cashback rewards
           </Text>
+          <TouchableOpacity style={styles.emptyButton}>
+            <LinearGradient
+              colors={['#00C06A', '#059669']}
+              style={styles.emptyButtonGradient}
+            >
+              <Text style={styles.emptyButtonText}>Start Shopping</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -165,25 +355,41 @@ const CashbackActivitySection: React.FC<CashbackActivitySectionProps> = ({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <Ionicons name="receipt-outline" size={18} color="#00C06A" />
-          <Text style={styles.title}>Your Cashback Activity</Text>
+      <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
+        <View style={styles.headerLeft}>
+          <View style={styles.titleRow}>
+            <LinearGradient
+              colors={['#00C06A', '#059669']}
+              style={styles.headerIconContainer}
+            >
+              <Ionicons name="receipt" size={16} color="#FFFFFF" />
+            </LinearGradient>
+            <Text style={styles.title}>Your Cashback Activity</Text>
+          </View>
+          <Text style={styles.subtitle}>Track your earnings</Text>
         </View>
-        <TouchableOpacity onPress={onViewAllPress} style={styles.viewAllButton}>
+        <TouchableOpacity
+          onPress={onViewAllPress}
+          style={styles.viewAllButton}
+          activeOpacity={0.7}
+        >
           <Text style={styles.viewAllText}>View All</Text>
-          <Ionicons name="chevron-forward" size={16} color="#00C06A" />
+          <View style={styles.viewAllArrow}>
+            <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+          </View>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      {/* Activity List */}
+      {/* Activity List with Timeline */}
       <View style={styles.activityList}>
         {isLoading
-          ? Array.from({ length: 3 }).map((_, index) => <SkeletonItem key={`skeleton-${index}`} />)
-          : activities.map((activity) => (
+          ? Array.from({ length: 3 }).map((_, index) => <SkeletonItem key={`skeleton-${index}`} index={index} />)
+          : activities.map((activity, index) => (
               <ActivityItem
                 key={activity.id}
                 activity={activity}
+                index={index}
+                isLast={index === activities.length - 1}
                 onPress={() => onActivityPress(activity)}
               />
             ))}
@@ -194,9 +400,10 @@ const CashbackActivitySection: React.FC<CashbackActivitySectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    borderRadius: 24,
   },
   header: {
     flexDirection: 'row',
@@ -205,117 +412,232 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
   },
+  headerLeft: {
+    flex: 1,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    marginBottom: 4,
+  },
+  headerIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#1F2937',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginLeft: 42,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    backgroundColor: '#00C06A',
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
   },
   viewAllText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#00C06A',
+    color: '#FFFFFF',
+  },
+  viewAllArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   activityList: {
     paddingHorizontal: 16,
+    paddingLeft: 24,
+  },
+  activityItemWrapper: {
+    flexDirection: 'row',
+    position: 'relative',
+    marginBottom: 4,
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 12,
+    top: 36,
+    bottom: -4,
+    width: 2,
+    backgroundColor: '#E5E7EB',
+  },
+  timelineDotContainer: {
+    position: 'absolute',
+    left: 0,
+    top: 16,
+    zIndex: 1,
+  },
+  timelineDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   activityItem: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 36,
     paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingRight: 10,
+    paddingLeft: 14,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   logoContainer: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   brandLogo: {
-    width: 34,
-    height: 34,
+    width: 30,
+    height: 30,
   },
   logoPlaceholder: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E5E7EB',
   },
   logoInitial: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#9CA3AF',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   activityContent: {
     flex: 1,
   },
   brandName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#374151',
-    marginBottom: 2,
+    marginBottom: 3,
   },
   purchaseAmount: {
     fontSize: 12,
     color: '#6B7280',
-    marginBottom: 2,
+    marginBottom: 3,
+    fontWeight: '500',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   dateText: {
     fontSize: 11,
     color: '#9CA3AF',
+    fontWeight: '500',
   },
   activityRight: {
     alignItems: 'flex-end',
+    marginRight: 8,
   },
   cashbackAmount: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     marginBottom: 4,
+    letterSpacing: -0.3,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 10,
   },
   statusText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  arrowIndicator: {
+    marginLeft: 4,
   },
   // Empty State
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 16,
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#374151',
-    marginTop: 12,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   emptySubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
+    marginBottom: 20,
+  },
+  emptyButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  emptyButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  emptyButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   // Skeleton
   skeleton: {
@@ -326,6 +648,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
     borderRadius: 4,
     marginBottom: 6,
+  },
+  skeletonBadge: {
+    width: 70,
+    height: 22,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 10,
   },
 });
 

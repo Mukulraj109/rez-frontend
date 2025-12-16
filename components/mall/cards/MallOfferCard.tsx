@@ -30,6 +30,12 @@ const BADGE_COLORS: Record<OfferBadge, { bg: string; text: string }> = {
   'best-deal': { bg: '#8B5CF6', text: '#FFFFFF' },
 };
 
+// Helper to check if string is a valid image URL
+const isValidImageUrl = (url: string | undefined): boolean => {
+  if (!url || typeof url !== 'string') return false;
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image');
+};
+
 const MallOfferCard: React.FC<MallOfferCardProps> = ({
   offer,
   onPress,
@@ -59,11 +65,18 @@ const MallOfferCard: React.FC<MallOfferCardProps> = ({
       <View style={styles.card}>
         {/* Offer Image */}
         <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: offer.image }}
-            style={styles.offerImage}
-            resizeMode="cover"
-          />
+          {isValidImageUrl(offer.image) ? (
+            <Image
+              source={{ uri: offer.image }}
+              style={styles.offerImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <LinearGradient
+              colors={['#8B5CF6', '#6366F1']}
+              style={styles.offerImage}
+            />
+          )}
 
           {/* Badge */}
           {offer.badge && (

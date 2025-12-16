@@ -232,14 +232,29 @@ export function useCashStoreSection(
    */
   const fetchCashbackSummary = useCallback(async () => {
     try {
+      console.log('[Cash Store] Fetching cashback summary...');
       const response = await cashbackService.getCashbackSummary();
+      console.log('[Cash Store] API Response:', JSON.stringify(response, null, 2));
+
       if (response.success && response.data && isMountedRef.current) {
         const summary = response.data;
-        setCashbackSummary({
-          total: summary.totalEarned || 0,
-          pending: summary.pending || 0,
-          confirmed: summary.credited || 0,
-          available: summary.credited || 0, // Available = credited
+        console.log('[Cash Store] Summary data:', JSON.stringify(summary, null, 2));
+
+        // Handle both naming conventions from backend
+        const mappedSummary = {
+          total: summary.totalEarned ?? summary.total ?? 0,
+          pending: summary.pending ?? 0,
+          confirmed: summary.credited ?? summary.confirmed ?? 0,
+          available: summary.credited ?? summary.available ?? 0, // Available = credited
+        };
+
+        console.log('[Cash Store] Mapped summary:', mappedSummary);
+        setCashbackSummary(mappedSummary);
+      } else {
+        console.warn('[Cash Store] Response not successful or no data:', {
+          success: response.success,
+          hasData: !!response.data,
+          message: response.message,
         });
       }
     } catch (err) {

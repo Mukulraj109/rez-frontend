@@ -1,10 +1,11 @@
 /**
  * BuyCouponSection Component
  *
- * Section for buying gift cards/coupons with discounts
+ * Premium section for buying gift cards/coupons with discounts
+ * Features: Animated cards, brand-colored headers, savings preview, ratings
  */
 
-import React, { memo } from 'react';
+import React, { memo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +14,7 @@ import {
   Image,
   FlatList,
   Platform,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,68 +29,259 @@ interface BuyCouponSectionProps {
 
 const GiftCardCard: React.FC<{
   brand: GiftCardBrand;
+  index: number;
   onPress: () => void;
-}> = ({ brand, onPress }) => (
-  <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-    {/* Brand Header */}
-    <View style={[styles.cardHeader, { backgroundColor: brand.backgroundColor || '#F3F4F6' }]}>
-      {brand.logo ? (
-        <Image source={{ uri: brand.logo }} style={styles.brandLogo} resizeMode="contain" />
-      ) : (
-        <View style={styles.logoPlaceholder}>
-          <Text style={styles.logoInitial}>{brand.name.charAt(0)}</Text>
+}> = memo(({ brand, index, onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Staggered entry animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: index * 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        delay: index * 80,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Subtle shimmer on header
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [index]);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const isBestValue = brand.cashbackRate && brand.cashbackRate >= 8;
+  const minDenom = brand.denominations[0] || 100;
+  const maxDenom = brand.denominations[brand.denominations.length - 1] || 10000;
+  const potentialSavings = Math.round((maxDenom * (brand.cashbackRate || 0)) / 100);
+
+  // Generate brand gradient colors
+  const brandGradient = brand.backgroundColor
+    ? [brand.backgroundColor, adjustColor(brand.backgroundColor, -20)]
+    : ['#6366F1', '#4F46E5'];
+
+  return (
+    <Animated.View
+      style={[
+        styles.cardWrapper,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.card}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
+        {/* Best Value Badge */}
+        {isBestValue && (
+          <View style={styles.bestValueBadge}>
+            <Ionicons name="trophy" size={10} color="#FFFFFF" />
+            <Text style={styles.bestValueText}>BEST VALUE</Text>
+          </View>
+        )}
+
+        {/* Brand Header with Gradient */}
+        <LinearGradient
+          colors={brandGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardHeader}
+        >
+          {/* Decorative elements */}
+          <View style={styles.decorativeCircle1} />
+          <View style={styles.decorativeCircle2} />
+
+          {brand.logo ? (
+            <View style={styles.logoWrapper}>
+              <Image source={{ uri: brand.logo }} style={styles.brandLogo} resizeMode="contain" />
+            </View>
+          ) : (
+            <View style={styles.logoWrapper}>
+              <Text style={styles.logoInitial}>{brand.name.charAt(0)}</Text>
+            </View>
+          )}
+        </LinearGradient>
+
+        {/* Content */}
+        <View style={styles.cardContent}>
+          <Text style={styles.brandName} numberOfLines={1}>
+            {brand.name}
+          </Text>
+
+          {/* Denominations Preview */}
+          <Text style={styles.denominationsText}>
+            ₹{minDenom.toLocaleString()} - ₹{maxDenom.toLocaleString()}
+          </Text>
+
+          {/* Cashback Highlight */}
+          <LinearGradient
+            colors={['#00C06A', '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.cashbackBadge}
+          >
+            <Ionicons name="gift" size={12} color="#FFFFFF" />
+            <Text style={styles.cashbackText}>{brand.cashbackRate}% Cashback</Text>
+          </LinearGradient>
+
+          {/* Potential Savings Preview */}
+          {potentialSavings > 0 && (
+            <View style={styles.savingsRow}>
+              <Ionicons name="wallet-outline" size={12} color="#059669" />
+              <Text style={styles.savingsText}>Save up to ₹{potentialSavings.toLocaleString()}</Text>
+            </View>
+          )}
+
+          {/* Badges */}
+          <View style={styles.badgeRow}>
+            {brand.isNewlyAdded && (
+              <View style={[styles.badge, styles.newBadge]}>
+                <Ionicons name="sparkles" size={8} color="#3B82F6" />
+                <Text style={[styles.badgeText, { color: '#3B82F6' }]}>NEW</Text>
+              </View>
+            )}
+            {brand.isFeatured && (
+              <View style={[styles.badge, styles.featuredBadge]}>
+                <Ionicons name="star" size={8} color="#F59E0B" />
+                <Text style={[styles.badgeText, { color: '#F59E0B' }]}>Featured</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Rating */}
+          {brand.rating && (
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={12} color="#F59E0B" />
+              <Text style={styles.ratingText}>{brand.rating.toFixed(1)}</Text>
+              <Text style={styles.reviewCount}>({brand.reviewCount || 0})</Text>
+            </View>
+          )}
         </View>
-      )}
-    </View>
 
-    {/* Content */}
-    <View style={styles.cardContent}>
-      <Text style={styles.brandName} numberOfLines={1}>
-        {brand.name}
-      </Text>
+        {/* Buy Button */}
+        <TouchableOpacity style={styles.buyButton} onPress={onPress} activeOpacity={0.8}>
+          <LinearGradient
+            colors={['#00C06A', '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.buyButtonGradient}
+          >
+            <Text style={styles.buyButtonText}>Buy Now</Text>
+            <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
 
-      {/* Denominations Preview */}
-      <Text style={styles.denominationsText}>
-        ₹{brand.denominations[0]} - ₹{brand.denominations[brand.denominations.length - 1]}
-      </Text>
+// Helper function to adjust color brightness
+function adjustColor(color: string, percent: number): string {
+  const num = parseInt(color.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = (num >> 16) + amt;
+  const G = ((num >> 8) & 0x00ff) + amt;
+  const B = (num & 0x0000ff) + amt;
+  return (
+    '#' +
+    (
+      0x1000000 +
+      (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+      (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
+      (B < 255 ? (B < 1 ? 0 : B) : 255)
+    )
+      .toString(16)
+      .slice(1)
+  );
+}
 
-      {/* Cashback */}
-      <View style={styles.cashbackRow}>
-        <Ionicons name="gift-outline" size={14} color="#00C06A" />
-        <Text style={styles.cashbackText}>{brand.cashbackRate}% Cashback</Text>
+const SkeletonCard: React.FC<{ index: number }> = memo(({ index }) => {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1000,
+          delay: index * 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [index]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.cardWrapper,
+        {
+          opacity: shimmerAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.5, 1],
+          }),
+        },
+      ]}
+    >
+      <View style={styles.card}>
+        <View style={[styles.cardHeader, styles.skeleton]} />
+        <View style={styles.cardContent}>
+          <View style={[styles.skeletonText, { width: 100 }]} />
+          <View style={[styles.skeletonText, { width: 80 }]} />
+          <View style={[styles.skeletonBadge]} />
+        </View>
+        <View style={[styles.skeletonButton]} />
       </View>
-
-      {/* Badges */}
-      <View style={styles.badgeRow}>
-        {brand.isNewlyAdded && (
-          <View style={[styles.badge, { backgroundColor: '#DBEAFE' }]}>
-            <Text style={[styles.badgeText, { color: '#3B82F6' }]}>NEW</Text>
-          </View>
-        )}
-        {brand.isFeatured && (
-          <View style={[styles.badge, { backgroundColor: '#FEF3C7' }]}>
-            <Text style={[styles.badgeText, { color: '#F59E0B' }]}>Featured</Text>
-          </View>
-        )}
-      </View>
-    </View>
-
-    {/* Buy Button */}
-    <TouchableOpacity style={styles.buyButton} onPress={onPress}>
-      <Text style={styles.buyButtonText}>Buy Now</Text>
-    </TouchableOpacity>
-  </TouchableOpacity>
-);
-
-const SkeletonCard: React.FC = () => (
-  <View style={styles.card}>
-    <View style={[styles.cardHeader, styles.skeleton]} />
-    <View style={styles.cardContent}>
-      <View style={[styles.skeletonText, { width: 80 }]} />
-      <View style={[styles.skeletonText, { width: 60 }]} />
-    </View>
-  </View>
-);
+    </Animated.View>
+  );
+});
 
 const BuyCouponSection: React.FC<BuyCouponSectionProps> = ({
   brands,
@@ -96,6 +289,33 @@ const BuyCouponSection: React.FC<BuyCouponSectionProps> = ({
   onBrandPress,
   onViewAllPress,
 }) => {
+  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+  const giftBounceAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(headerFadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+
+    // Gift icon bounce animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(giftBounceAnim, {
+          toValue: -4,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(giftBounceAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
   if (brands.length === 0 && !isLoading) {
     return null;
   }
@@ -103,26 +323,38 @@ const BuyCouponSection: React.FC<BuyCouponSectionProps> = ({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Buy Coupon & Save Instantly</Text>
+      <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
+        <View style={styles.headerLeft}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Buy Coupon & Save</Text>
+            <Animated.View style={{ transform: [{ translateY: giftBounceAnim }] }}>
+              <Ionicons name="gift" size={20} color="#8B5CF6" />
+            </Animated.View>
+          </View>
           <Text style={styles.subtitle}>Get extra cashback on gift cards</Text>
         </View>
-        <TouchableOpacity onPress={onViewAllPress} style={styles.viewAllButton}>
+        <TouchableOpacity
+          onPress={onViewAllPress}
+          style={styles.viewAllButton}
+          activeOpacity={0.7}
+        >
           <Text style={styles.viewAllText}>View All</Text>
-          <Ionicons name="chevron-forward" size={16} color="#00C06A" />
+          <View style={styles.viewAllArrow}>
+            <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+          </View>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* Horizontal List */}
       <FlatList
         data={isLoading ? Array.from({ length: 4 }) : brands}
         renderItem={({ item, index }) =>
           isLoading ? (
-            <SkeletonCard key={`skeleton-${index}`} />
+            <SkeletonCard key={`skeleton-${index}`} index={index} />
           ) : (
             <GiftCardCard
               brand={item as GiftCardBrand}
+              index={index}
               onPress={() => onBrandPress(item as GiftCardBrand)}
             />
           )
@@ -138,9 +370,10 @@ const BuyCouponSection: React.FC<BuyCouponSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    borderRadius: 24,
   },
   header: {
     flexDirection: 'row',
@@ -149,42 +382,130 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
   },
+  headerLeft: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#1F2937',
-    marginBottom: 2,
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 13,
     color: '#6B7280',
+    fontWeight: '500',
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    backgroundColor: '#8B5CF6',
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
   },
   viewAllText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#00C06A',
+    color: '#FFFFFF',
+  },
+  viewAllArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContent: {
     paddingHorizontal: 16,
-    gap: 12,
+  },
+  cardWrapper: {
+    marginRight: 12,
   },
   card: {
-    width: 160,
+    width: 175,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: 'rgba(139, 92, 246, 0.1)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  bestValueBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+    zIndex: 10,
+  },
+  bestValueText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  cardHeader: {
+    height: 90,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  decorativeCircle1: {
+    position: 'absolute',
+    top: -30,
+    right: -30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  decorativeCircle2: {
+    position: 'absolute',
+    bottom: -20,
+    left: -20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  logoWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.1,
         shadowRadius: 4,
       },
       android: {
@@ -192,74 +513,111 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  cardHeader: {
-    height: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   brandLogo: {
-    width: 60,
-    height: 60,
-  },
-  logoPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 40,
+    height: 40,
   },
   logoInitial: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#6B7280',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#6366F1',
   },
   cardContent: {
-    padding: 12,
+    padding: 14,
   },
   brandName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#374151',
     marginBottom: 4,
   },
   denominationsText: {
     fontSize: 12,
     color: '#6B7280',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  cashbackRow: {
+  cashbackBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 6,
+    marginBottom: 10,
   },
   cashbackText: {
     fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  savingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 10,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  savingsText: {
+    fontSize: 11,
     fontWeight: '600',
-    color: '#00C06A',
+    color: '#059669',
   },
   badgeRow: {
     flexDirection: 'row',
     gap: 6,
+    marginBottom: 8,
   },
   badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 6,
+    gap: 3,
+  },
+  newBadge: {
+    backgroundColor: '#DBEAFE',
+  },
+  featuredBadge: {
+    backgroundColor: '#FEF3C7',
   },
   badgeText: {
     fontSize: 9,
+    fontWeight: '700',
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  ratingText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#374151',
+  },
+  reviewCount: {
+    fontSize: 11,
+    color: '#9CA3AF',
   },
   buyButton: {
-    backgroundColor: '#00C06A',
-    paddingVertical: 10,
+    borderRadius: 0,
+    overflow: 'hidden',
+  },
+  buyButtonGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   buyButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   // Skeleton
@@ -267,10 +625,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
   skeletonText: {
-    height: 12,
+    height: 14,
     backgroundColor: '#E5E7EB',
     borderRadius: 4,
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  skeletonBadge: {
+    width: 100,
+    height: 28,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  skeletonButton: {
+    height: 44,
+    backgroundColor: '#E5E7EB',
   },
 });
 

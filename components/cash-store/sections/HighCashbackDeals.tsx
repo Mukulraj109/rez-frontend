@@ -1,10 +1,11 @@
 /**
  * HighCashbackDeals Component
  *
- * Section showing high cashback deals with Shop Now button
+ * Premium section showing high cashback deals (10%+) with animated percentage display
+ * Features: Large animated numbers, gradient borders, Shop Now with arrow animation
  */
 
-import React, { memo } from 'react';
+import React, { memo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +14,7 @@ import {
   Image,
   FlatList,
   Platform,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,69 +29,236 @@ interface HighCashbackDealsProps {
 
 const DealCard: React.FC<{
   deal: HighCashbackDeal;
+  index: number;
   onPress: () => void;
-}> = ({ deal, onPress }) => (
-  <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-    {/* Badge */}
-    {deal.badge && (
-      <View style={[styles.badge, { backgroundColor: getBadgeColor(deal.badge) }]}>
-        <Text style={styles.badgeText}>{deal.badge.toUpperCase()}</Text>
-      </View>
-    )}
+}> = memo(({ deal, index, onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const arrowAnim = useRef(new Animated.Value(0)).current;
+  const percentAnim = useRef(new Animated.Value(0.8)).current;
 
-    {/* Brand Section */}
-    <View style={styles.brandSection}>
-      <View style={styles.logoContainer}>
-        {deal.brand.logo ? (
-          <Image source={{ uri: deal.brand.logo }} style={styles.brandLogo} resizeMode="contain" />
-        ) : (
-          <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoInitial}>{deal.brand.name.charAt(0)}</Text>
+  useEffect(() => {
+    // Staggered entry animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: index * 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        delay: index * 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(percentAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 50,
+        delay: index * 80 + 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Arrow animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(arrowAnim, {
+          toValue: 4,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arrowAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [index]);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const isLimitedStock = deal.badge === 'hot' || deal.badge === 'best-deal';
+
+  return (
+    <Animated.View
+      style={[
+        styles.cardWrapper,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.card}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
+        {/* Badge */}
+        {deal.badge && (
+          <LinearGradient
+            colors={[getBadgeColor(deal.badge), getBadgeColor(deal.badge)]}
+            style={styles.badge}
+          >
+            <Ionicons
+              name={deal.badge === 'hot' ? 'flame' : 'star'}
+              size={10}
+              color="#FFFFFF"
+            />
+            <Text style={styles.badgeText}>{deal.badge.toUpperCase()}</Text>
+          </LinearGradient>
+        )}
+
+        {/* Limited Stock Indicator */}
+        {isLimitedStock && (
+          <View style={styles.limitedStock}>
+            <Ionicons name="warning" size={10} color="#EF4444" />
+            <Text style={styles.limitedStockText}>Limited</Text>
           </View>
         )}
-      </View>
-      <View style={styles.brandInfo}>
-        <Text style={styles.brandName}>{deal.brand.name}</Text>
-        <Text style={styles.dealTitle} numberOfLines={1}>
-          {deal.title}
-        </Text>
-      </View>
-    </View>
 
-    {/* Cashback Highlight */}
-    <View style={styles.cashbackHighlight}>
-      <Text style={styles.cashbackRate}>{deal.cashbackRate}%</Text>
-      <Text style={styles.cashbackLabel}>Cashback</Text>
-    </View>
+        {/* Brand Section */}
+        <View style={styles.brandSection}>
+          <View style={styles.logoContainer}>
+            {deal.brand.logo ? (
+              <Image
+                source={{ uri: deal.brand.logo }}
+                style={styles.brandLogo}
+                resizeMode="contain"
+              />
+            ) : (
+              <LinearGradient
+                colors={['#00C06A', '#059669']}
+                style={styles.logoPlaceholder}
+              >
+                <Text style={styles.logoInitial}>{deal.brand.name.charAt(0)}</Text>
+              </LinearGradient>
+            )}
+          </View>
+          <View style={styles.brandInfo}>
+            <Text style={styles.brandName} numberOfLines={1}>
+              {deal.brand.name}
+            </Text>
+            <Text style={styles.dealTitle} numberOfLines={1}>
+              {deal.title || 'Special Offer'}
+            </Text>
+          </View>
+        </View>
 
-    {/* Bonus Coins */}
-    {deal.bonusCoins && (
-      <View style={styles.bonusRow}>
-        <Ionicons name="flash" size={14} color="#FFC857" />
-        <Text style={styles.bonusText}>+{deal.bonusCoins} bonus coins</Text>
+        {/* Cashback Highlight - Animated */}
+        <Animated.View
+          style={[
+            styles.cashbackHighlight,
+            {
+              transform: [{ scale: percentAnim }],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={['#00C06A', '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cashbackGradient}
+          >
+            <Text style={styles.cashbackRate}>{deal.cashbackRate}%</Text>
+            <Text style={styles.cashbackLabel}>Cashback</Text>
+          </LinearGradient>
+        </Animated.View>
+
+        {/* Bonus Coins */}
+        {deal.bonusCoins && (
+          <View style={styles.bonusRow}>
+            <Ionicons name="flash" size={14} color="#F59E0B" />
+            <Text style={styles.bonusText}>+{deal.bonusCoins} bonus coins</Text>
+          </View>
+        )}
+
+        {/* Shop Now Button */}
+        <TouchableOpacity style={styles.shopButton} onPress={onPress} activeOpacity={0.8}>
+          <LinearGradient
+            colors={['#00C06A', '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.shopButtonGradient}
+          >
+            <Text style={styles.shopButtonText}>Shop Now</Text>
+            <Animated.View style={{ transform: [{ translateX: arrowAnim }] }}>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+            </Animated.View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
+const SkeletonCard: React.FC<{ index: number }> = memo(({ index }) => {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1000,
+          delay: index * 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [index]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.cardWrapper,
+        {
+          opacity: shimmerAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.5, 1],
+          }),
+        },
+      ]}
+    >
+      <View style={styles.card}>
+        <View style={styles.brandSection}>
+          <View style={[styles.logoContainer, styles.skeleton]} />
+          <View style={styles.brandInfo}>
+            <View style={[styles.skeletonText, { width: 80 }]} />
+            <View style={[styles.skeletonText, { width: 100 }]} />
+          </View>
+        </View>
+        <View style={[styles.skeletonCashback]} />
+        <View style={[styles.skeletonButton]} />
       </View>
-    )}
-
-    {/* Shop Now Button */}
-    <TouchableOpacity style={styles.shopButton} onPress={onPress}>
-      <Text style={styles.shopButtonText}>Shop Now</Text>
-      <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-    </TouchableOpacity>
-  </TouchableOpacity>
-);
-
-const SkeletonCard: React.FC = () => (
-  <View style={styles.card}>
-    <View style={styles.brandSection}>
-      <View style={[styles.logoContainer, styles.skeleton]} />
-      <View style={styles.brandInfo}>
-        <View style={[styles.skeletonText, { width: 80 }]} />
-        <View style={[styles.skeletonText, { width: 100 }]} />
-      </View>
-    </View>
-    <View style={[styles.cashbackHighlight, styles.skeleton]} />
-  </View>
-);
+    </Animated.View>
+  );
+});
 
 const HighCashbackDeals: React.FC<HighCashbackDealsProps> = ({
   deals,
@@ -97,6 +266,33 @@ const HighCashbackDeals: React.FC<HighCashbackDealsProps> = ({
   onDealPress,
   onViewAllPress,
 }) => {
+  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+  const rocketAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(headerFadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+
+    // Rocket bounce animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(rocketAnim, {
+          toValue: -4,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rocketAnim, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
   if (deals.length === 0 && !isLoading) {
     return null;
   }
@@ -104,34 +300,45 @@ const HighCashbackDeals: React.FC<HighCashbackDealsProps> = ({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View>
+      <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
+        <View style={styles.headerLeft}>
           <View style={styles.titleRow}>
             <Text style={styles.headerTitle}>High Cashback Deals</Text>
-            <Ionicons name="rocket" size={18} color="#00C06A" />
+            <Animated.View style={{ transform: [{ translateY: rocketAnim }] }}>
+              <Ionicons name="rocket" size={20} color="#00C06A" />
+            </Animated.View>
           </View>
-          <Text style={styles.subtitle}>Best cashback offers today</Text>
+          <Text style={styles.subtitle}>10%+ cashback on these brands</Text>
         </View>
-        <TouchableOpacity onPress={onViewAllPress} style={styles.viewAllButton}>
+        <TouchableOpacity
+          onPress={onViewAllPress}
+          style={styles.viewAllButton}
+          activeOpacity={0.7}
+        >
           <Text style={styles.viewAllText}>View All</Text>
-          <Ionicons name="chevron-forward" size={16} color="#00C06A" />
+          <View style={styles.viewAllArrow}>
+            <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+          </View>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* Horizontal List */}
       <FlatList
         data={isLoading ? Array.from({ length: 3 }) : deals}
         renderItem={({ item, index }) =>
           isLoading ? (
-            <SkeletonCard key={`skeleton-${index}`} />
+            <SkeletonCard key={`skeleton-${index}`} index={index} />
           ) : (
             <DealCard
               deal={item as HighCashbackDeal}
+              index={index}
               onPress={() => onDealPress(item as HighCashbackDeal)}
             />
           )
         }
-        keyExtractor={(item, index) => (isLoading ? `skeleton-${index}` : (item as HighCashbackDeal).id)}
+        keyExtractor={(item, index) =>
+          isLoading ? `skeleton-${index}` : (item as HighCashbackDeal).id
+        }
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
@@ -142,9 +349,10 @@ const HighCashbackDeals: React.FC<HighCashbackDealsProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    borderRadius: 24,
   },
   header: {
     flexDirection: 'row',
@@ -153,153 +361,214 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
   },
+  headerLeft: {
+    flex: 1,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#1F2937',
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 13,
     color: '#6B7280',
-    marginTop: 2,
+    fontWeight: '500',
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    backgroundColor: '#00C06A',
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
   },
   viewAllText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#00C06A',
+    color: '#FFFFFF',
+  },
+  viewAllArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContent: {
     paddingHorizontal: 16,
-    gap: 12,
+  },
+  cardWrapper: {
+    marginRight: 12,
   },
   card: {
-    width: 180,
+    width: 190,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
     position: 'relative',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
     }),
   },
   badge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+    zIndex: 1,
   },
   badgeText: {
-    fontSize: 8,
-    fontWeight: '700',
+    fontSize: 9,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  limitedStock: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+    zIndex: 1,
+  },
+  limitedStockText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#EF4444',
   },
   brandSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
+    marginTop: 24,
   },
   logoContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   brandLogo: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
   },
   logoPlaceholder: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E5E7EB',
   },
   logoInitial: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#9CA3AF',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   brandInfo: {
     flex: 1,
   },
   brandName: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#374151',
     marginBottom: 2,
   },
   dealTitle: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
+    fontWeight: '500',
   },
   cashbackHighlight: {
-    backgroundColor: '#ECFDF5',
-    borderRadius: 12,
-    padding: 12,
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  cashbackGradient: {
+    padding: 16,
     alignItems: 'center',
-    marginBottom: 10,
+    borderRadius: 16,
   },
   cashbackRate: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#00C06A',
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+    textShadowColor: 'rgba(0,0,0,0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   cashbackLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#00796B',
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
   },
   bonusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    marginBottom: 12,
+    gap: 6,
+    marginBottom: 14,
+    backgroundColor: '#FFFBEB',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
   },
   bonusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFC857',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D97706',
   },
   shopButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  shopButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#00C06A',
-    paddingVertical: 10,
-    borderRadius: 10,
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   shopButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   // Skeleton
@@ -307,10 +576,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
   skeletonText: {
-    height: 12,
+    height: 14,
     backgroundColor: '#E5E7EB',
     borderRadius: 4,
     marginBottom: 6,
+  },
+  skeletonCashback: {
+    height: 80,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 16,
+    marginBottom: 12,
+  },
+  skeletonButton: {
+    height: 44,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 14,
   },
 });
 

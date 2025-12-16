@@ -62,7 +62,9 @@ import SocialProofSection from '@/components/homepage/SocialProofSection';
 import { DiscoverAndShopSection } from '@/components/discover';
 import MallSectionContainer from '@/components/mall/MallSectionContainer';
 import CashStoreSectionContainer from '@/components/cash-store/CashStoreSectionContainer';
+import CashbackSummaryHeaderCard from '@/components/cash-store/sections/CashbackSummaryHeaderCard';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
+import { useCashStoreSection } from '@/hooks/useCashStoreSection';
 import {
   EventItem,
   StoreItem,
@@ -86,6 +88,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import categoriesApi from '@/services/categoriesApi';
 import vouchersService from '@/services/realVouchersApi';
 import realOffersApi from '@/services/realOffersApi';
+import { useHomeTab } from '@/contexts/HomeTabContext';
 
 // Lazy-loaded components (below-the-fold)
 const ProfileMenuModal = React.lazy(() => import('@/components/profile/ProfileMenuModal'));
@@ -150,6 +153,7 @@ export default function HomeScreen() {
   const { state: cartState, refreshCart } = useCart();
   const { state: authState, actions: authActions } = useAuth();
   const { state: subscriptionState, actions: subscriptionActions } = useSubscription();
+  const { setActiveHomeTab } = useHomeTab(); // Get context setter for bottom nav
   const [refreshing, setRefreshing] = React.useState(false);
   const [showDetailedLocation, setShowDetailedLocation] = React.useState(false);
   const [userPoints, setUserPoints] = React.useState(0);
@@ -160,11 +164,18 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = React.useState('for-you'); // Category tab state
   const [homeCategories, setHomeCategories] = React.useState<any[]>([]); // Homepage category icons
   const [categoriesLoading, setCategoriesLoading] = React.useState(true);
-  const [activeTab, setActiveTab] = React.useState<TabId>('rez'); // Home tab bar state
+  const [activeTab, setActiveTabLocal] = React.useState<TabId>('rez'); // Home tab bar state
   const [voucherCount, setVoucherCount] = React.useState(0); // Active voucher count
   const [newOffersCount, setNewOffersCount] = React.useState(0); // New offers count
   const [isLocationModalVisible, setIsLocationModalVisible] = React.useState(false); // Location picker modal
   const [totalSaved, setTotalSaved] = React.useState(0); // Total savings (cashback + refunds)
+
+  // Sync active tab with context for bottom navigation
+  const setActiveTab = React.useCallback((tab: TabId) => {
+    setActiveTabLocal(tab);
+    // Update context so BottomNavigation knows which tabs to show
+    setActiveHomeTab(tab as 'rez' | 'rez-mall' | 'cash-store');
+  }, [setActiveHomeTab]);
 
   // Get current location hook for editable location
   const { currentLocation, updateLocation: updateUserLocation } = useCurrentLocation();
@@ -174,6 +185,12 @@ export default function HomeScreen() {
 
   // Get mall section data for hero banners
   const { heroBanners: mallHeroBanners, isLoading: isMallLoading } = useMallSection();
+
+  // Get cash store data for header card - only fetch when tab is active
+  const {
+    cashbackSummary: cashStoreSummary,
+    isLoading: isCashStoreLoading
+  } = useCashStoreSection({ autoFetch: activeTab === 'cash-store' });
 
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
@@ -879,6 +896,17 @@ export default function HomeScreen() {
           />
         )}
 
+        {/* Cash Store Header - Cashback Summary Card for "cash-store" tab */}
+        {activeTab === 'cash-store' && (
+          <CashbackSummaryHeaderCard
+            total={cashStoreSummary.total}
+            pending={cashStoreSummary.pending}
+            confirmed={cashStoreSummary.confirmed}
+            available={cashStoreSummary.available}
+            isLoading={isCashStoreLoading}
+          />
+        )}
+
         </LinearGradient>
 
       {/* Home Tab Section - Outside gradient */}
@@ -901,7 +929,8 @@ export default function HomeScreen() {
       {/* Content */}
       <View style={[
         viewStyles.content,
-        activeTab === 'rez-mall' && viewStyles.mallContent
+        activeTab === 'rez-mall' && viewStyles.mallContent,
+        activeTab === 'cash-store' && viewStyles.cashStoreContent
       ]}>
         {/* Quick Actions Section - Voucher, Wallet, Offers, Store - Only show when "rez" tab is active */}
         {activeTab === 'rez' && (
@@ -1600,6 +1629,11 @@ const viewStyles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   mallContent: {
+    padding: 0,
+    paddingBottom: 0,
+    backgroundColor: 'transparent',
+  },
+  cashStoreContent: {
     padding: 0,
     paddingBottom: 0,
     backgroundColor: 'transparent',

@@ -1,16 +1,18 @@
 /**
  * HowItWorksPreview Component
  *
- * Simple 4-step preview of how Cash Store works with Learn More link
+ * Premium animated 4-step preview of how Cash Store works
+ * Features: Animated step progression, interactive elements, animated connectors
  */
 
-import React, { memo } from 'react';
+import React, { memo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Platform,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +28,7 @@ const STEPS = [
     title: 'Browse',
     description: 'Find your favorite brand',
     color: '#3B82F6',
+    gradient: ['#3B82F6', '#2563EB'],
   },
   {
     id: 2,
@@ -33,6 +36,7 @@ const STEPS = [
     title: 'Shop',
     description: 'Click through to shop',
     color: '#8B5CF6',
+    gradient: ['#8B5CF6', '#7C3AED'],
   },
   {
     id: 3,
@@ -40,6 +44,7 @@ const STEPS = [
     title: 'Purchase',
     description: 'Complete your order',
     color: '#F59E0B',
+    gradient: ['#F59E0B', '#D97706'],
   },
   {
     id: 4,
@@ -47,22 +52,151 @@ const STEPS = [
     title: 'Earn',
     description: 'Get cashback credited',
     color: '#00C06A',
+    gradient: ['#00C06A', '#059669'],
   },
 ];
 
-const HowItWorksPreview: React.FC<HowItWorksPreviewProps> = ({ onLearnMore }) => {
+const StepItem: React.FC<{
+  step: (typeof STEPS)[0];
+  index: number;
+  isLast: boolean;
+}> = memo(({ step, index, isLast }) => {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const iconBounceAnim = useRef(new Animated.Value(0)).current;
+  const connectorAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Staggered step animation
+    Animated.sequence([
+      Animated.delay(index * 200),
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+        Animated.timing(connectorAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]),
+    ]).start();
+
+    // Icon bounce loop
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(index * 100),
+        Animated.timing(iconBounceAnim, {
+          toValue: -3,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(iconBounceAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [index]);
+
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={[
+        styles.stepItem,
+        {
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      {/* Step Icon with Gradient */}
+      <Animated.View style={{ transform: [{ translateY: iconBounceAnim }] }}>
+        <LinearGradient colors={step.gradient} style={styles.stepIconContainer}>
+          <Ionicons name={step.icon as any} size={22} color="#FFFFFF" />
+        </LinearGradient>
+      </Animated.View>
+
+      {/* Step Number Badge */}
+      <View style={[styles.stepNumber, { backgroundColor: step.color }]}>
+        <Text style={styles.stepNumberText}>{step.id}</Text>
+      </View>
+
+      {/* Step Content */}
+      <Text style={styles.stepTitle}>{step.title}</Text>
+      <Text style={styles.stepDescription}>{step.description}</Text>
+
+      {/* Animated Connector Line */}
+      {!isLast && (
+        <View style={styles.connectorContainer}>
+          <Animated.View
+            style={[
+              styles.connector,
+              {
+                width: connectorAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%'],
+                }),
+              },
+            ]}
+          />
+          <View style={styles.connectorDot} />
+        </View>
+      )}
+    </Animated.View>
+  );
+});
+
+const HowItWorksPreview: React.FC<HowItWorksPreviewProps> = ({ onLearnMore }) => {
+  const containerFadeAnim = useRef(new Animated.Value(0)).current;
+  const arrowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(containerFadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    // Arrow animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(arrowAnim, {
+          toValue: 4,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arrowAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Animated.View style={[styles.container, { opacity: containerFadeAnim }]}>
       <LinearGradient
         colors={['#F0FDF4', '#ECFDF5', '#FFFFFF']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={styles.gradient}
       >
+        {/* Decorative Elements */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.titleRow}>
-            <Ionicons name="help-circle" size={20} color="#00C06A" />
+            <LinearGradient
+              colors={['#00C06A', '#059669']}
+              style={styles.headerIconContainer}
+            >
+              <Ionicons name="help-circle" size={18} color="#FFFFFF" />
+            </LinearGradient>
             <Text style={styles.title}>How It Works</Text>
           </View>
           <TouchableOpacity onPress={onLearnMore} style={styles.learnMoreButton}>
@@ -74,34 +208,39 @@ const HowItWorksPreview: React.FC<HowItWorksPreviewProps> = ({ onLearnMore }) =>
         {/* Steps */}
         <View style={styles.stepsContainer}>
           {STEPS.map((step, index) => (
-            <View key={step.id} style={styles.stepItem}>
-              {/* Step Icon */}
-              <View style={[styles.stepIconContainer, { backgroundColor: `${step.color}15` }]}>
-                <Ionicons name={step.icon as any} size={20} color={step.color} />
-              </View>
-
-              {/* Step Number */}
-              <View style={[styles.stepNumber, { backgroundColor: step.color }]}>
-                <Text style={styles.stepNumberText}>{step.id}</Text>
-              </View>
-
-              {/* Step Content */}
-              <Text style={styles.stepTitle}>{step.title}</Text>
-              <Text style={styles.stepDescription}>{step.description}</Text>
-
-              {/* Connector Line */}
-              {index < STEPS.length - 1 && <View style={styles.connector} />}
-            </View>
+            <StepItem
+              key={step.id}
+              step={step}
+              index={index}
+              isLast={index === STEPS.length - 1}
+            />
           ))}
         </View>
 
-        {/* CTA */}
-        <TouchableOpacity style={styles.ctaButton} onPress={onLearnMore}>
-          <Text style={styles.ctaText}>See Detailed Guide</Text>
-          <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+        {/* Info Box */}
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle" size={16} color="#00C06A" />
+          <Text style={styles.infoText}>
+            Cashback is typically credited within 24-72 hours after delivery
+          </Text>
+        </View>
+
+        {/* CTA Button */}
+        <TouchableOpacity style={styles.ctaButton} onPress={onLearnMore} activeOpacity={0.8}>
+          <LinearGradient
+            colors={['#00C06A', '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.ctaGradient}
+          >
+            <Text style={styles.ctaText}>See Detailed Guide</Text>
+            <Animated.View style={{ transform: [{ translateX: arrowAnim }] }}>
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            </Animated.View>
+          </LinearGradient>
         </TouchableOpacity>
       </LinearGradient>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -113,42 +252,74 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   gradient: {
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 20,
     borderWidth: 1,
     borderColor: 'rgba(0, 192, 106, 0.15)',
+    position: 'relative',
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#00C06A',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 3,
+        elevation: 4,
       },
     }),
+  },
+  decorativeCircle1: {
+    position: 'absolute',
+    top: -40,
+    right: -40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(0, 192, 106, 0.05)',
+  },
+  decorativeCircle2: {
+    position: 'absolute',
+    bottom: -30,
+    left: -30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0, 192, 106, 0.03)',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+  },
+  headerIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#1F2937',
+    letterSpacing: -0.3,
   },
   learnMoreButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   learnMoreText: {
     fontSize: 13,
@@ -166,35 +337,57 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   stepIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   stepNumber: {
     position: 'absolute',
-    top: 32,
-    right: '30%',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    top: 36,
+    right: '28%',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   stepNumberText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   stepTitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#374151',
-    marginBottom: 2,
+    marginBottom: 4,
     textAlign: 'center',
   },
   stepDescription: {
@@ -202,28 +395,75 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 14,
+    fontWeight: '500',
+    paddingHorizontal: 4,
+  },
+  connectorContainer: {
+    position: 'absolute',
+    top: 25,
+    right: -8,
+    width: 18,
+    height: 3,
+    justifyContent: 'center',
   },
   connector: {
+    height: 3,
+    backgroundColor: '#00C06A',
+    borderRadius: 2,
+  },
+  connectorDot: {
     position: 'absolute',
-    top: 22,
-    right: -15,
-    width: 30,
-    height: 2,
-    backgroundColor: '#E5E7EB',
+    right: 0,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#00C06A',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
+    lineHeight: 16,
   },
   ctaButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  ctaGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#00C06A',
-    paddingVertical: 12,
-    borderRadius: 12,
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
   },
   ctaText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
+    letterSpacing: -0.2,
   },
 });
 

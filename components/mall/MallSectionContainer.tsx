@@ -200,10 +200,10 @@ const MallSectionContainer: React.FC<MallSectionContainerProps> = ({
 
   return (
     <View style={styles.outerContainer}>
-      {/* Gradient Background - Matches Mall tab hero gradient end color, fading to white */}
+      {/* Gradient Background - Starts from HomeTabSection's end color for seamless transition */}
       <LinearGradient
         colors={['#34D399', '#6EE7B7', '#A7F3D0', '#D1FAE5', '#ECFDF5', '#F9FAFB', '#FFFFFF']}
-        locations={[0, 0.05, 0.15, 0.3, 0.45, 0.6, 1]}
+        locations={[0, 0.08, 0.2, 0.35, 0.5, 0.7, 1]}
         style={styles.gradientBackground}
       />
 
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingTop: 12,
     paddingBottom: 32,
-    paddingHorizontal: 8,
+    paddingHorizontal: 0,
     backgroundColor: 'transparent',
   },
   loadingContainer: {

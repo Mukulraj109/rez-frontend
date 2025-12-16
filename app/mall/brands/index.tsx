@@ -35,6 +35,8 @@ const FILTER_CONFIG: Record<FilterType, {
   icon: string;
   colors: [string, string];
   description: string;
+  isLuxury?: boolean;
+  accentColor?: string;
 }> = {
   'all': {
     title: 'All Stores',
@@ -61,10 +63,12 @@ const FILTER_CONFIG: Record<FilterType, {
     description: 'Highest rated by our users'
   },
   'luxury': {
-    title: 'Premium Stores',
+    title: 'Luxury Zone',
     icon: 'diamond',
-    colors: ['#8B5CF6', '#7C3AED'],
-    description: 'Exclusive premium partners'
+    colors: ['#0F172A', '#1E293B'],
+    description: 'Exclusive access to world-class luxury brands',
+    isLuxury: true,
+    accentColor: '#FFD700'
   },
 };
 
@@ -238,6 +242,9 @@ export default function BrandsListingPage() {
   const keyExtractor = useCallback((item: MallBrand) =>
     item.id || item._id, []);
 
+  const isLuxuryTheme = filterConfig.isLuxury;
+  const accentColor = filterConfig.accentColor || '#FFFFFF';
+
   const ListHeader = useMemo(() => (
     <View style={styles.listHeaderContainer}>
       {/* Premium Header */}
@@ -249,13 +256,30 @@ export default function BrandsListingPage() {
       >
         {/* Decorative Elements */}
         <View style={styles.headerDecor}>
-          <View style={[styles.decorCircle, styles.decorCircle1]} />
-          <View style={[styles.decorCircle, styles.decorCircle2]} />
+          {isLuxuryTheme ? (
+            <>
+              <LinearGradient
+                colors={['rgba(255, 215, 0, 0.15)', 'rgba(255, 215, 0, 0)']}
+                style={[styles.decorCircle, styles.decorCircle1, { backgroundColor: 'transparent' }]}
+              />
+              <LinearGradient
+                colors={['rgba(255, 215, 0, 0.1)', 'rgba(255, 215, 0, 0)']}
+                style={[styles.decorCircle, styles.decorCircle2, { backgroundColor: 'transparent' }]}
+              />
+              <View style={styles.luxuryDecorLine1} />
+              <View style={styles.luxuryDecorLine2} />
+            </>
+          ) : (
+            <>
+              <View style={[styles.decorCircle, styles.decorCircle1]} />
+              <View style={[styles.decorCircle, styles.decorCircle2]} />
+            </>
+          )}
         </View>
 
         {/* Back Button */}
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, isLuxuryTheme && styles.luxuryBackButton]}
           onPress={() => router.back()}
           activeOpacity={0.8}
         >
@@ -264,24 +288,52 @@ export default function BrandsListingPage() {
 
         {/* Header Content */}
         <View style={styles.headerContent}>
-          <View style={styles.headerIconWrapper}>
-            <Ionicons name={filterConfig.icon as any} size={28} color="#FFFFFF" />
-          </View>
+          {isLuxuryTheme ? (
+            <LinearGradient
+              colors={['#FFD700', '#F59E0B']}
+              style={styles.luxuryIconWrapper}
+            >
+              <Ionicons name={filterConfig.icon as any} size={28} color="#0F172A" />
+            </LinearGradient>
+          ) : (
+            <View style={styles.headerIconWrapper}>
+              <Ionicons name={filterConfig.icon as any} size={28} color="#FFFFFF" />
+            </View>
+          )}
           <Text style={styles.headerTitle}>{filterConfig.title}</Text>
-          <Text style={styles.headerDescription}>{filterConfig.description}</Text>
+          {isLuxuryTheme && (
+            <View style={styles.luxuryPremiumBadge}>
+              <Ionicons name="star" size={10} color="#FFD700" />
+              <Text style={styles.luxuryPremiumText}>PREMIUM</Text>
+            </View>
+          )}
+          <Text style={[styles.headerDescription, isLuxuryTheme && styles.luxuryDescription]}>
+            {filterConfig.description}
+          </Text>
         </View>
 
         {/* Stats Row */}
-        <View style={styles.statsRow}>
+        <View style={[styles.statsRow, isLuxuryTheme && styles.luxuryStatsRow]}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{brands.length}</Text>
+            <Text style={[styles.statValue, isLuxuryTheme && styles.luxuryStatValue]}>
+              {brands.length}
+            </Text>
             <Text style={styles.statLabel}>Stores</Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, isLuxuryTheme && styles.luxuryStatDivider]} />
           <View style={styles.statItem}>
             <Ionicons name="gift" size={18} color="#FFD700" />
-            <Text style={styles.statLabel}>Earn Coins</Text>
+            <Text style={styles.statLabel}>{isLuxuryTheme ? 'Premium Rewards' : 'Earn Coins'}</Text>
           </View>
+          {isLuxuryTheme && (
+            <>
+              <View style={[styles.statDivider, styles.luxuryStatDivider]} />
+              <View style={styles.statItem}>
+                <Ionicons name="shield-checkmark" size={18} color="#FFD700" />
+                <Text style={styles.statLabel}>Verified</Text>
+              </View>
+            </>
+          )}
         </View>
       </LinearGradient>
 
@@ -303,12 +355,14 @@ export default function BrandsListingPage() {
       {/* Results Count */}
       <View style={styles.resultsHeader}>
         <Text style={styles.resultsTitle}>Results</Text>
-        <View style={styles.resultsCountBadge}>
-          <Text style={styles.resultsCount}>{brands.length} stores</Text>
+        <View style={[styles.resultsCountBadge, isLuxuryTheme && styles.luxuryResultsBadge]}>
+          <Text style={[styles.resultsCount, isLuxuryTheme && styles.luxuryResultsCount]}>
+            {brands.length} stores
+          </Text>
         </View>
       </View>
     </View>
-  ), [brands.length, filterConfig, searchQuery, activeFilter, insets.top, router, handleSearch, handleFilterChange]);
+  ), [brands.length, filterConfig, searchQuery, activeFilter, insets.top, router, handleSearch, handleFilterChange, isLuxuryTheme]);
 
   const ListFooter = useMemo(() => {
     if (isLoadingMore) {
@@ -586,5 +640,87 @@ const styles = StyleSheet.create({
   loadingMoreText: {
     fontSize: 14,
     color: '#6B7280',
+  },
+  // Luxury Theme Styles
+  luxuryDecorLine1: {
+    position: 'absolute',
+    top: 60,
+    right: 0,
+    width: 80,
+    height: 1,
+    backgroundColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  luxuryDecorLine2: {
+    position: 'absolute',
+    bottom: 80,
+    left: 0,
+    width: 60,
+    height: 1,
+    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+  },
+  luxuryBackButton: {
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  luxuryIconWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FFD700',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  luxuryPremiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  luxuryPremiumText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFD700',
+    letterSpacing: 1.5,
+  },
+  luxuryDescription: {
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  luxuryStatsRow: {
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.2)',
+    marginHorizontal: 20,
+  },
+  luxuryStatValue: {
+    color: '#FFD700',
+  },
+  luxuryStatDivider: {
+    backgroundColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  luxuryResultsBadge: {
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  luxuryResultsCount: {
+    color: '#B45309',
   },
 });

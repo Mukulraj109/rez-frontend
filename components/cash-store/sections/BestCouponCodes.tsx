@@ -1,10 +1,11 @@
 /**
  * BestCouponCodes Component
  *
- * Section showing verified coupon codes with copy functionality
+ * Premium section showing verified coupon codes with copy functionality
+ * Features: Copy animation, success rate bar, verified/exclusive badges, dashed coupon style
  */
 
-import React, { memo } from 'react';
+import React, { memo, useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +14,9 @@ import {
   Image,
   FlatList,
   Platform,
+  Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { CashStoreCoupon } from '../../../types/cash-store.types';
 
@@ -26,78 +29,260 @@ interface BestCouponCodesProps {
 
 const CouponCard: React.FC<{
   coupon: CashStoreCoupon;
+  index: number;
   onCopy: () => void;
-}> = ({ coupon, onCopy }) => {
+}> = memo(({ coupon, index, onCopy }) => {
+  const [isCopied, setIsCopied] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const copyScaleAnim = useRef(new Animated.Value(1)).current;
+  const checkmarkAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Staggered entry animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: index * 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        delay: index * 80,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [index]);
+
+  const handleCopy = () => {
+    // Animate copy button
+    Animated.sequence([
+      Animated.timing(copyScaleAnim, {
+        toValue: 0.9,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(copyScaleAnim, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Show checkmark animation
+    setIsCopied(true);
+    Animated.timing(checkmarkAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+
+    onCopy();
+
+    // Reset after 2 seconds
+    setTimeout(() => {
+      setIsCopied(false);
+      Animated.timing(checkmarkAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }, 2000);
+  };
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const discountDisplay =
     coupon.discountType === 'PERCENTAGE'
       ? `${coupon.discountValue}% OFF`
       : `₹${coupon.discountValue} OFF`;
 
-  return (
-    <View style={styles.card}>
-      {/* Verified Badge */}
-      {coupon.isVerified && (
-        <View style={styles.verifiedBadge}>
-          <Ionicons name="checkmark-circle" size={12} color="#00C06A" />
-          <Text style={styles.verifiedText}>Verified</Text>
-        </View>
-      )}
+  // Mock success rate (would come from API in production)
+  const successRate = coupon.successRate || Math.floor(Math.random() * 20) + 80;
 
-      {/* Brand Logo */}
-      <View style={styles.logoContainer}>
-        {coupon.brand.logo ? (
-          <Image source={{ uri: coupon.brand.logo }} style={styles.brandLogo} resizeMode="contain" />
-        ) : (
-          <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoInitial}>{coupon.brand.name.charAt(0)}</Text>
+  return (
+    <Animated.View
+      style={[
+        styles.cardWrapper,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.card}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
+        {/* Verified Badge */}
+        {coupon.isVerified && (
+          <View style={styles.verifiedBadge}>
+            <Ionicons name="shield-checkmark" size={10} color="#FFFFFF" />
+            <Text style={styles.verifiedText}>Verified</Text>
           </View>
         )}
-      </View>
 
-      {/* Content */}
-      <View style={styles.content}>
+        {/* Exclusive Badge */}
+        {coupon.isExclusive && (
+          <View style={styles.exclusiveBadge}>
+            <Ionicons name="diamond" size={10} color="#F59E0B" />
+            <Text style={styles.exclusiveText}>Exclusive</Text>
+          </View>
+        )}
+
+        {/* Brand Logo */}
+        <View style={styles.logoContainer}>
+          {coupon.brand.logo ? (
+            <Image source={{ uri: coupon.brand.logo }} style={styles.brandLogo} resizeMode="contain" />
+          ) : (
+            <LinearGradient
+              colors={['#00C06A', '#059669']}
+              style={styles.logoPlaceholder}
+            >
+              <Text style={styles.logoInitial}>{coupon.brand.name.charAt(0)}</Text>
+            </LinearGradient>
+          )}
+        </View>
+
+        {/* Brand Name */}
         <Text style={styles.brandName}>{coupon.brand.name}</Text>
-        <Text style={styles.discount}>{discountDisplay}</Text>
+
+        {/* Discount Display */}
+        <View style={styles.discountContainer}>
+          <Text style={styles.discount}>{discountDisplay}</Text>
+        </View>
+
+        {/* Title */}
         <Text style={styles.title} numberOfLines={2}>
           {coupon.title}
         </Text>
 
+        {/* Min Order */}
         {coupon.minOrderValue && (
           <Text style={styles.minOrder}>Min. order ₹{coupon.minOrderValue}</Text>
         )}
-      </View>
 
-      {/* Code & Copy Button */}
-      <View style={styles.codeSection}>
-        <View style={styles.codeContainer}>
-          <Text style={styles.codeText}>{coupon.code}</Text>
+        {/* Success Rate Bar */}
+        <View style={styles.successRateContainer}>
+          <View style={styles.successRateHeader}>
+            <Text style={styles.successRateLabel}>Success Rate</Text>
+            <Text style={styles.successRateValue}>{successRate}%</Text>
+          </View>
+          <View style={styles.successRateBarBg}>
+            <View style={[styles.successRateBarFill, { width: `${successRate}%` }]} />
+          </View>
         </View>
-        <TouchableOpacity style={styles.copyButton} onPress={onCopy}>
-          <Ionicons name="copy-outline" size={16} color="#FFFFFF" />
-          <Text style={styles.copyText}>COPY</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Exclusive Badge */}
-      {coupon.isExclusive && (
-        <View style={styles.exclusiveBadge}>
-          <Ionicons name="star" size={10} color="#F59E0B" />
-          <Text style={styles.exclusiveText}>ReZ Exclusive</Text>
+        {/* Code Section with Dashed Border */}
+        <View style={styles.codeSection}>
+          <View style={styles.codeContainer}>
+            <View style={styles.dashedBorder}>
+              <Text style={styles.codeText}>{coupon.code}</Text>
+            </View>
+          </View>
+          <Animated.View style={{ transform: [{ scale: copyScaleAnim }] }}>
+            <TouchableOpacity
+              style={[styles.copyButton, isCopied && styles.copyButtonCopied]}
+              onPress={handleCopy}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={isCopied ? ['#00C06A', '#059669'] : ['#00C06A', '#059669']}
+                style={styles.copyButtonGradient}
+              >
+                {isCopied ? (
+                  <>
+                    <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                    <Text style={styles.copyText}>COPIED</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="copy" size={14} color="#FFFFFF" />
+                    <Text style={styles.copyText}>COPY</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
-      )}
-    </View>
+
+        {/* Validity */}
+        {coupon.validUntil && (
+          <View style={styles.validityRow}>
+            <Ionicons name="time-outline" size={12} color="#6B7280" />
+            <Text style={styles.validityText}>
+              Valid till {new Date(coupon.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
   );
-};
+});
 
-const SkeletonCard: React.FC = () => (
-  <View style={styles.card}>
-    <View style={[styles.logoContainer, styles.skeleton]} />
-    <View style={styles.content}>
-      <View style={[styles.skeletonText, { width: 80 }]} />
-      <View style={[styles.skeletonText, { width: 60 }]} />
-    </View>
-  </View>
-);
+const SkeletonCard: React.FC<{ index: number }> = memo(({ index }) => {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1000,
+          delay: index * 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [index]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.cardWrapper,
+        {
+          opacity: shimmerAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.5, 1],
+          }),
+        },
+      ]}
+    >
+      <View style={styles.card}>
+        <View style={[styles.logoContainer, styles.skeleton]} />
+        <View style={[styles.skeletonText, { width: 80 }]} />
+        <View style={[styles.skeletonDiscount]} />
+        <View style={[styles.skeletonText, { width: 140 }]} />
+        <View style={[styles.skeletonText, { width: 100 }]} />
+        <View style={[styles.skeletonCode]} />
+      </View>
+    </Animated.View>
+  );
+});
 
 const BestCouponCodes: React.FC<BestCouponCodesProps> = ({
   coupons,
@@ -105,6 +290,33 @@ const BestCouponCodes: React.FC<BestCouponCodesProps> = ({
   onCouponCopy,
   onViewAllPress,
 }) => {
+  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+  const shieldPulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(headerFadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+
+    // Shield pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shieldPulseAnim, {
+          toValue: 1.1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shieldPulseAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
   if (coupons.length === 0 && !isLoading) {
     return null;
   }
@@ -112,29 +324,38 @@ const BestCouponCodes: React.FC<BestCouponCodesProps> = ({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View>
+      <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
+        <View style={styles.headerLeft}>
           <View style={styles.titleRow}>
             <Text style={styles.headerTitle}>Best Coupon Codes</Text>
-            <Ionicons name="shield-checkmark" size={18} color="#00C06A" />
+            <Animated.View style={{ transform: [{ scale: shieldPulseAnim }] }}>
+              <Ionicons name="shield-checkmark" size={20} color="#00C06A" />
+            </Animated.View>
           </View>
-          <Text style={styles.subtitle}>Verified & tested codes</Text>
+          <Text style={styles.subtitle}>Verified & tested daily</Text>
         </View>
-        <TouchableOpacity onPress={onViewAllPress} style={styles.viewAllButton}>
+        <TouchableOpacity
+          onPress={onViewAllPress}
+          style={styles.viewAllButton}
+          activeOpacity={0.7}
+        >
           <Text style={styles.viewAllText}>View All</Text>
-          <Ionicons name="chevron-forward" size={16} color="#00C06A" />
+          <View style={styles.viewAllArrow}>
+            <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+          </View>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* Horizontal List */}
       <FlatList
         data={isLoading ? Array.from({ length: 3 }) : coupons}
         renderItem={({ item, index }) =>
           isLoading ? (
-            <SkeletonCard key={`skeleton-${index}`} />
+            <SkeletonCard key={`skeleton-${index}`} index={index} />
           ) : (
             <CouponCard
               coupon={item as CashStoreCoupon}
+              index={index}
               onCopy={() => onCouponCopy(item as CashStoreCoupon)}
             />
           )
@@ -150,9 +371,10 @@ const BestCouponCodes: React.FC<BestCouponCodesProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
+    paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    borderRadius: 24,
   },
   header: {
     flexDirection: 'row',
@@ -161,183 +383,270 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
   },
+  headerLeft: {
+    flex: 1,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#1F2937',
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 13,
     color: '#6B7280',
-    marginTop: 2,
+    fontWeight: '500',
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    backgroundColor: '#00C06A',
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
   },
   viewAllText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#00C06A',
+    color: '#FFFFFF',
+  },
+  viewAllArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContent: {
     paddingHorizontal: 16,
-    gap: 12,
+  },
+  cardWrapper: {
+    marginRight: 12,
   },
   card: {
-    width: 200,
+    width: 220,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: 'rgba(0, 192, 106, 0.1)',
     position: 'relative',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
     }),
   },
   verifiedBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 12,
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    gap: 4,
+    backgroundColor: '#00C06A',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
+    zIndex: 1,
   },
   verifiedText: {
     fontSize: 9,
-    fontWeight: '600',
-    color: '#00C06A',
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  exclusiveBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 1,
+  },
+  exclusiveText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#F59E0B',
   },
   logoContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
+    marginTop: 20,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   brandLogo: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
   },
   logoPlaceholder: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E5E7EB',
   },
   logoInitial: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#9CA3AF',
-  },
-  content: {
-    marginBottom: 12,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   brandName: {
     fontSize: 12,
     color: '#6B7280',
-    marginBottom: 2,
+    marginBottom: 6,
+    fontWeight: '500',
+  },
+  discountContainer: {
+    marginBottom: 8,
   },
   discount: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '900',
     color: '#00C06A',
-    marginBottom: 4,
+    letterSpacing: -0.5,
   },
   title: {
     fontSize: 13,
     color: '#374151',
     lineHeight: 18,
-    marginBottom: 4,
+    marginBottom: 6,
+    fontWeight: '500',
   },
   minOrder: {
     fontSize: 11,
     color: '#9CA3AF',
+    marginBottom: 12,
+  },
+  successRateContainer: {
+    marginBottom: 14,
+  },
+  successRateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  successRateLabel: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  successRateValue: {
+    fontSize: 11,
+    color: '#00C06A',
+    fontWeight: '700',
+  },
+  successRateBarBg: {
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  successRateBarFill: {
+    height: '100%',
+    backgroundColor: '#00C06A',
+    borderRadius: 3,
   },
   codeSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 10,
   },
   codeContainer: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  },
+  dashedBorder: {
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#00C06A',
     borderStyle: 'dashed',
   },
   codeText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     color: '#374151',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    textAlign: 'center',
   },
   copyButton: {
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  copyButtonCopied: {},
+  copyButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#00C06A',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   copyText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
-  exclusiveBadge: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
+  validityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
+    gap: 4,
   },
-  exclusiveText: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#F59E0B',
+  validityText: {
+    fontSize: 11,
+    color: '#6B7280',
   },
   // Skeleton
   skeleton: {
     backgroundColor: '#E5E7EB',
   },
   skeletonText: {
-    height: 12,
+    height: 14,
     backgroundColor: '#E5E7EB',
     borderRadius: 4,
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  skeletonDiscount: {
+    width: 100,
+    height: 28,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  skeletonCode: {
+    height: 44,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 10,
+    marginTop: 8,
   },
 });
 

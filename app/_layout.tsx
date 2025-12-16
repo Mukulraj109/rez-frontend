@@ -38,6 +38,7 @@ import { GamificationProvider } from '@/contexts/GamificationContext';
 import { OfflineQueueProvider } from '@/contexts/OfflineQueueContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { RecommendationProvider } from '@/contexts/RecommendationContext';
+import { HomeTabProvider } from '@/contexts/HomeTabContext';
 import ToastManager from '@/components/common/ToastManager';
 import BottomNavigation from '@/components/navigation/BottomNavigation';
 import { billUploadAnalytics } from '@/services/billUploadAnalytics';
@@ -279,6 +280,7 @@ export default function RootLayout() {
                                     <SecurityProvider>
                                       <AppPreferencesProvider>
                                         <RecommendationProvider>
+                                          <HomeTabProvider>
                                           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
                   {/* App Entry Point */}
@@ -439,6 +441,7 @@ export default function RootLayout() {
                 {/* {process.env.NODE_ENV === 'development' && <AuthDebugger />} */}
 
                                           </ThemeProvider>
+                                          </HomeTabProvider>
                                         </RecommendationProvider>
                                       </AppPreferencesProvider>
                                     </SecurityProvider>
