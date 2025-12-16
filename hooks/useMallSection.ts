@@ -1,7 +1,14 @@
 /**
  * useMallSection Hook
  *
- * Custom hook for managing mall section data and state
+ * Custom hook for managing mall section data and state.
+ *
+ * ReZ Mall = In-app delivery marketplace
+ * - Fetches stores with deliveryCategories.mall === true
+ * - Users browse stores, order products, earn ReZ Coins
+ *
+ * When useStores=true (default), fetches from Store model
+ * When useStores=false, fetches from MallBrand model (legacy/affiliate)
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -43,12 +50,70 @@ interface UseMallSectionReturn {
 interface UseMallSectionOptions {
   autoFetch?: boolean;
   cacheTimeout?: number;
+  /** When true, fetches stores with mall=true. When false, uses legacy MallBrand data */
+  useStores?: boolean;
 }
 
 const CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Transform store data to MallBrand format for compatibility with existing components
+ */
+function transformStoreToMallBrand(store: any): MallBrand {
+  // Handle category - it might be a string ID, an object with name, or null
+  let mallCategory = null;
+  if (store.category) {
+    if (typeof store.category === 'string') {
+      mallCategory = { _id: store.category, id: store.category, name: store.category, slug: store.category.toLowerCase() };
+    } else if (store.category.name) {
+      mallCategory = store.category;
+    }
+  }
+
+  // Check if store is new (created within last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const isNewArrival = store.createdAt ? new Date(store.createdAt) > thirtyDaysAgo : false;
+
+  return {
+    _id: store._id,
+    id: store._id,
+    name: store.name,
+    slug: store.slug || store.name.toLowerCase().replace(/\s+/g, '-'),
+    description: store.description || '',
+    logo: store.logo,
+    banner: store.banner?.[0] || '',
+    externalUrl: '', // No external URL for in-app stores
+    mallCategory,
+    tier: store.deliveryCategories?.premium ? 'premium' : 'standard',
+    badges: [
+      ...(store.isFeatured ? ['exclusive' as const] : []),
+      ...(store.isVerified ? ['verified' as const] : []),
+    ],
+    cashback: {
+      percentage: store.rewardRules?.baseCashbackPercent || store.offers?.cashback || 0,
+      maxAmount: store.rewardRules?.maxCashback || store.offers?.maxCashback,
+      minPurchase: store.operationalInfo?.minimumOrder || store.rewardRules?.minimumAmountForReward,
+    },
+    ratings: {
+      average: store.ratings?.average || 0,
+      count: store.ratings?.count || 0,
+      successRate: 95, // Default for in-app stores
+      distribution: store.ratings?.distribution || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+    },
+    isFeatured: store.isFeatured || false,
+    isActive: store.isActive !== false,
+    isNewArrival,
+    isLuxury: store.deliveryCategories?.premium || false,
+    tags: store.tags || [],
+    collections: [],
+    createdAt: store.createdAt,
+    updatedAt: store.updatedAt,
+  };
+}
+
 export function useMallSection(options: UseMallSectionOptions = {}): UseMallSectionReturn {
-  const { autoFetch = true, cacheTimeout = CACHE_TIMEOUT } = options;
+  const { autoFetch = true, cacheTimeout = CACHE_TIMEOUT, useStores = true } = options;
 
   // State
   const [heroBanners, setHeroBanners] = useState<MallBanner[]>([]);
@@ -71,6 +136,8 @@ export function useMallSection(options: UseMallSectionOptions = {}): UseMallSect
 
   /**
    * Fetch all mall data
+   * When useStores=true, fetches from Store model (in-app delivery marketplace)
+   * When useStores=false, fetches from MallBrand model (legacy/affiliate)
    */
   const fetchMallData = useCallback(async (forceRefresh: boolean = false) => {
     // Check cache
@@ -85,20 +152,65 @@ export function useMallSection(options: UseMallSectionOptions = {}): UseMallSect
       }
       setError(null);
 
-      const data: MallHomepageData = await mallApi.getMallHomepage();
+      if (useStores) {
+        // Fetch from Store model (in-app delivery marketplace)
+        console.log('[useMallSection] Fetching mall stores data...');
 
-      if (isMountedRef.current) {
-        setHeroBanners(data.banners || []);
-        setFeaturedBrands(data.featuredBrands || []);
-        setCollections(data.collections || []);
-        setCategories(data.categories || []);
-        setExclusiveOffers(data.exclusiveOffers || []);
-        setNewArrivals(data.newArrivals || []);
-        setTopRatedBrands(data.topRatedBrands || []);
-        setLuxuryBrands(data.luxuryBrands || []);
+        // Fetch store data and banners in parallel
+        const [storeData, bannersData] = await Promise.all([
+          mallApi.getMallStoresHomepage(),
+          mallApi.getHeroBanners().catch(() => []), // Fetch banners, fallback to empty if fails
+        ]);
 
-        lastFetchRef.current = now;
-        setIsInitialLoad(false);
+        if (isMountedRef.current) {
+          // Set banners (use existing MallBanner data)
+          setHeroBanners(bannersData || []);
+
+          // Transform stores to MallBrand format for compatibility
+          setFeaturedBrands((storeData.featuredStores || []).map(transformStoreToMallBrand));
+          setNewArrivals((storeData.newStores || []).map(transformStoreToMallBrand));
+          setTopRatedBrands((storeData.topRatedStores || []).map(transformStoreToMallBrand));
+          setLuxuryBrands((storeData.premiumStores || []).map(transformStoreToMallBrand));
+
+          // Transform categories
+          setCategories((storeData.categories || []).map((cat: any) => ({
+            _id: cat._id,
+            id: cat._id,
+            name: cat.name,
+            slug: cat.slug,
+            icon: cat.icon || 'storefront',
+            color: '#00C06A',
+            brandCount: cat.storeCount || 0,
+            maxCashback: cat.maxCoinReward || 0,
+            sortOrder: 0,
+            isActive: true,
+          })));
+
+          // Clear other sections (not applicable for store-based mall)
+          setCollections([]);
+          setExclusiveOffers([]);
+
+          lastFetchRef.current = now;
+          setIsInitialLoad(false);
+        }
+      } else {
+        // Legacy: Fetch from MallBrand model (affiliate brands)
+        console.log('[useMallSection] Fetching legacy mall brand data...');
+        const data: MallHomepageData = await mallApi.getMallHomepage();
+
+        if (isMountedRef.current) {
+          setHeroBanners(data.banners || []);
+          setFeaturedBrands(data.featuredBrands || []);
+          setCollections(data.collections || []);
+          setCategories(data.categories || []);
+          setExclusiveOffers(data.exclusiveOffers || []);
+          setNewArrivals(data.newArrivals || []);
+          setTopRatedBrands(data.topRatedBrands || []);
+          setLuxuryBrands(data.luxuryBrands || []);
+
+          lastFetchRef.current = now;
+          setIsInitialLoad(false);
+        }
       }
     } catch (err) {
       if (isMountedRef.current) {
@@ -111,7 +223,7 @@ export function useMallSection(options: UseMallSectionOptions = {}): UseMallSect
         setIsRefreshing(false);
       }
     }
-  }, [cacheTimeout]);
+  }, [cacheTimeout, useStores]);
 
   /**
    * Refresh data (pull-to-refresh)
@@ -136,42 +248,79 @@ export function useMallSection(options: UseMallSectionOptions = {}): UseMallSect
    */
   const loadMore = useCallback(async (section: string) => {
     try {
-      switch (section) {
-        case 'featuredBrands':
-          const moreFeatured = await mallApi.getFeaturedBrands(featuredBrands.length + 10);
-          if (isMountedRef.current) {
-            setFeaturedBrands(moreFeatured);
-          }
-          break;
+      if (useStores) {
+        // Store-based mall
+        switch (section) {
+          case 'featuredBrands':
+            const moreFeaturedStores = await mallApi.getFeaturedMallStores(featuredBrands.length + 10);
+            if (isMountedRef.current) {
+              setFeaturedBrands(moreFeaturedStores.map(transformStoreToMallBrand));
+            }
+            break;
 
-        case 'newArrivals':
-          const moreNewArrivals = await mallApi.getNewArrivals(newArrivals.length + 10);
-          if (isMountedRef.current) {
-            setNewArrivals(moreNewArrivals);
-          }
-          break;
+          case 'newArrivals':
+            const moreNewStores = await mallApi.getNewMallStores(newArrivals.length + 10);
+            if (isMountedRef.current) {
+              setNewArrivals(moreNewStores.map(transformStoreToMallBrand));
+            }
+            break;
 
-        case 'luxuryBrands':
-          const moreLuxury = await mallApi.getLuxuryBrands(luxuryBrands.length + 10);
-          if (isMountedRef.current) {
-            setLuxuryBrands(moreLuxury);
-          }
-          break;
+          case 'luxuryBrands':
+            const morePremiumStores = await mallApi.getPremiumMallStores(luxuryBrands.length + 10);
+            if (isMountedRef.current) {
+              setLuxuryBrands(morePremiumStores.map(transformStoreToMallBrand));
+            }
+            break;
 
-        case 'exclusiveOffers':
-          const moreOffers = await mallApi.getExclusiveOffers(exclusiveOffers.length + 10);
-          if (isMountedRef.current) {
-            setExclusiveOffers(moreOffers);
-          }
-          break;
+          case 'topRatedBrands':
+            const moreTopRatedStores = await mallApi.getTopRatedMallStores(topRatedBrands.length + 10);
+            if (isMountedRef.current) {
+              setTopRatedBrands(moreTopRatedStores.map(transformStoreToMallBrand));
+            }
+            break;
 
-        default:
-          console.warn(`Unknown section: ${section}`);
+          default:
+            console.warn(`Unknown section: ${section}`);
+        }
+      } else {
+        // Legacy brand-based mall
+        switch (section) {
+          case 'featuredBrands':
+            const moreFeatured = await mallApi.getFeaturedBrands(featuredBrands.length + 10);
+            if (isMountedRef.current) {
+              setFeaturedBrands(moreFeatured);
+            }
+            break;
+
+          case 'newArrivals':
+            const moreNewArrivals = await mallApi.getNewArrivals(newArrivals.length + 10);
+            if (isMountedRef.current) {
+              setNewArrivals(moreNewArrivals);
+            }
+            break;
+
+          case 'luxuryBrands':
+            const moreLuxury = await mallApi.getLuxuryBrands(luxuryBrands.length + 10);
+            if (isMountedRef.current) {
+              setLuxuryBrands(moreLuxury);
+            }
+            break;
+
+          case 'exclusiveOffers':
+            const moreOffers = await mallApi.getExclusiveOffers(exclusiveOffers.length + 10);
+            if (isMountedRef.current) {
+              setExclusiveOffers(moreOffers);
+            }
+            break;
+
+          default:
+            console.warn(`Unknown section: ${section}`);
+        }
       }
     } catch (err) {
       console.error(`Error loading more ${section}:`, err);
     }
-  }, [featuredBrands.length, newArrivals.length, luxuryBrands.length, exclusiveOffers.length]);
+  }, [useStores, featuredBrands.length, newArrivals.length, luxuryBrands.length, topRatedBrands.length, exclusiveOffers.length]);
 
   // Initial fetch
   useEffect(() => {

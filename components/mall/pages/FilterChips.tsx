@@ -1,7 +1,7 @@
 /**
  * FilterChips Component
  *
- * Filter pills for mall pages (Featured, New, Top-Rated, Luxury)
+ * Premium filter pills for mall pages with gradient active states
  */
 
 import React, { memo } from 'react';
@@ -11,7 +11,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 export type FilterType = 'all' | 'featured' | 'new' | 'top-rated' | 'luxury';
@@ -20,14 +22,15 @@ interface FilterOption {
   key: FilterType;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
+  activeColors: [string, string];
 }
 
 const FILTER_OPTIONS: FilterOption[] = [
-  { key: 'all', label: 'All', icon: 'grid-outline' },
-  { key: 'featured', label: 'Featured', icon: 'star-outline' },
-  { key: 'new', label: 'New', icon: 'sparkles-outline' },
-  { key: 'top-rated', label: 'Top Rated', icon: 'trending-up-outline' },
-  { key: 'luxury', label: 'Luxury', icon: 'diamond-outline' },
+  { key: 'all', label: 'All', icon: 'grid-outline', activeColors: ['#00C06A', '#059669'] },
+  { key: 'featured', label: 'Featured', icon: 'star', activeColors: ['#F59E0B', '#D97706'] },
+  { key: 'new', label: 'New', icon: 'sparkles', activeColors: ['#EC4899', '#DB2777'] },
+  { key: 'top-rated', label: 'Top Rated', icon: 'trending-up', activeColors: ['#3B82F6', '#2563EB'] },
+  { key: 'luxury', label: 'Premium', icon: 'diamond', activeColors: ['#8B5CF6', '#7C3AED'] },
 ];
 
 interface FilterChipsProps {
@@ -50,18 +53,38 @@ const FilterChips: React.FC<FilterChipsProps> = ({
         return (
           <TouchableOpacity
             key={option.key}
-            style={[styles.chip, isActive && styles.chipActive]}
             onPress={() => onFilterChange(option.key)}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
+            style={styles.chipWrapper}
           >
-            <Ionicons
-              name={option.icon}
-              size={16}
-              color={isActive ? '#FFFFFF' : '#6B7280'}
-            />
-            <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-              {option.label}
-            </Text>
+            {isActive ? (
+              <LinearGradient
+                colors={option.activeColors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.chipActive}
+              >
+                <Ionicons
+                  name={option.icon}
+                  size={16}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.chipTextActive}>
+                  {option.label}
+                </Text>
+              </LinearGradient>
+            ) : (
+              <View style={styles.chip}>
+                <Ionicons
+                  name={option.icon}
+                  size={16}
+                  color="#6B7280"
+                />
+                <Text style={styles.chipText}>
+                  {option.label}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -72,24 +95,44 @@ const FilterChips: React.FC<FilterChipsProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingVertical: 12,
     gap: 10,
+  },
+  chipWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 14,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 20,
-    gap: 6,
+    borderRadius: 24,
+    gap: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   chipActive: {
-    backgroundColor: '#00C06A',
-    borderColor: '#00C06A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    gap: 8,
   },
   chipText: {
     fontSize: 14,
@@ -97,6 +140,8 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   chipTextActive: {
+    fontSize: 14,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });

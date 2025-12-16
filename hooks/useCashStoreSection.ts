@@ -5,12 +5,14 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, Clipboard } from 'react-native';
+import { Alert, Clipboard, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import cashbackService, { CashbackSummary } from '../services/cashbackApi';
 import realVouchersApi from '../services/realVouchersApi';
 import realOffersApi, { Offer } from '../services/realOffersApi';
 import couponService, { Coupon } from '../services/couponApi';
+import cashStoreApi from '../services/cashStoreApi';
 import {
   CashStoreBrand,
   TrendingDeal,
@@ -505,18 +507,50 @@ export function useCashStoreSection(
   }, []);
 
   /**
-   * Navigate to brand
+   * Navigate to brand with affiliate tracking
+   * For external brands, tracks the click and opens with tracking URL
    */
   const navigateToBrand = useCallback(
-    (brand: CashStoreBrand) => {
+    async (brand: CashStoreBrand) => {
       trackBrandClick(brand.id);
 
       if (brand.brandType === 'in-app' && brand.storeId) {
+        // In-app stores - navigate to store page
         router.push(`/MainStorePage?storeId=${brand.storeId}` as any);
       } else if (brand.externalUrl) {
-        // For external affiliates, we would open a WebView or external browser
-        // For now, just log it
-        console.log('[Cash Store] Navigate to external:', brand.externalUrl);
+        // External affiliate brands - track click and open with tracking URL
+        try {
+          // Track the click and get tracking URL
+          const trackingResult = await cashStoreApi.trackAffiliateClick(brand.id);
+
+          // Use tracking URL if available, fallback to external URL
+          const urlToOpen = trackingResult?.trackingUrl || brand.externalUrl;
+
+          console.log('[Cash Store] Opening affiliate link:', urlToOpen);
+
+          // Open in in-app browser for better tracking
+          await WebBrowser.openBrowserAsync(urlToOpen, {
+            toolbarColor: '#00C06A',
+            controlsColor: '#FFFFFF',
+            enableBarCollapsing: true,
+            showTitle: true,
+          });
+
+          // Show toast/alert after returning from browser
+          if (trackingResult) {
+            Alert.alert(
+              'Cashback Tracking Active',
+              `Complete your purchase on ${brand.name} to earn up to ${trackingResult.brand.cashback}% cashback!`,
+              [{ text: 'Got it' }]
+            );
+          }
+        } catch (error) {
+          console.error('[Cash Store] Error opening affiliate link:', error);
+          // Fallback to direct open if tracking fails
+          if (brand.externalUrl) {
+            await Linking.openURL(brand.externalUrl);
+          }
+        }
       }
     },
     [router, trackBrandClick]

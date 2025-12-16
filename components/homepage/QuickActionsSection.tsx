@@ -4,19 +4,37 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  Text,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from '@/components/ThemedText';
 
-// ReZ Brand Colors from TASK.md
-const COLORS = {
-  primary: '#00C06A',        // ReZ Green
-  deepTeal: '#00796B',       // Accent
-  sunGold: '#FFC857',        // Coin highlight
-  midnightNavy: '#0B2240',   // Dark text
-  slate: '#1F2D3D',          // Body text
-  coolGray: '#9AA7B2',       // Muted text
+// Color themes for each action
+const ACTION_THEMES = {
+  voucher: {
+    iconBg: '#FEF3C7',      // Amber light
+    iconColor: '#D97706',    // Amber dark
+    descBg: '#FEF3C7',
+    descColor: '#92400E',
+  },
+  wallet: {
+    iconBg: '#DBEAFE',      // Blue light
+    iconColor: '#2563EB',    // Blue
+    descBg: '#DBEAFE',
+    descColor: '#1E40AF',
+  },
+  offers: {
+    iconBg: '#FCE7F3',      // Pink light
+    iconColor: '#DB2777',    // Pink
+    descBg: '#FCE7F3',
+    descColor: '#9D174D',
+  },
+  store: {
+    iconBg: '#D1FAE5',      // Green light
+    iconColor: '#059669',    // Green
+    descBg: '#D1FAE5',
+    descColor: '#065F46',
+  },
 };
 
 interface QuickActionsSectionProps {
@@ -26,12 +44,10 @@ interface QuickActionsSectionProps {
 }
 
 interface QuickActionItem {
-  id: string;
+  id: 'voucher' | 'wallet' | 'offers' | 'store';
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
   route: string;
-  value?: string | number;
-  valueColor?: string;
   description: string;
 }
 
@@ -46,27 +62,12 @@ export default function QuickActionsSection({
     router.push(route as any);
   };
 
-  // Format wallet balance
-  const formatWalletBalance = (balance: number) => {
-    if (balance === 0) return '₹ 0';
-    return `₹ ${balance.toLocaleString('en-IN')}`;
-  };
-
-  // Format offers count
-  const formatOffersCount = (count: number): string | undefined => {
-    // Always show count, even if 0
-    if (count === 0) return '0';
-    // Show total count of available offers
-    return count > 99 ? '99+' : count.toString();
-  };
-
   const QUICK_ACTIONS: QuickActionItem[] = [
     {
       id: 'voucher',
       title: 'Voucher',
       icon: 'ticket-outline',
       route: '/my-vouchers',
-      value: voucherCount.toString(),
       description: 'Use & save',
     },
     {
@@ -74,7 +75,6 @@ export default function QuickActionsSection({
       title: 'Wallet',
       icon: 'wallet-outline',
       route: '/WalletScreen',
-      value: 'Load',
       description: 'Your rewards',
     },
     {
@@ -82,7 +82,6 @@ export default function QuickActionsSection({
       title: 'Offers',
       icon: 'pricetag-outline',
       route: '/offers',
-      value: `${newOffersCount} New`,
       description: 'Extra savings',
     },
     {
@@ -90,59 +89,73 @@ export default function QuickActionsSection({
       title: 'Store',
       icon: 'storefront-outline',
       route: '/Store',
-      value: 'Explore',
-      description: 'Explore nearby',
+      description: 'Nearby',
     },
   ];
+
+  const renderValue = (actionId: string) => {
+    const theme = ACTION_THEMES[actionId as keyof typeof ACTION_THEMES];
+
+    switch (actionId) {
+      case 'voucher':
+        return (
+          <View style={[styles.valuePill, { backgroundColor: theme.iconBg }]}>
+            <Text style={[styles.valueNumber, { color: theme.iconColor }]}>{voucherCount}</Text>
+            <Text style={[styles.valueLabel, { color: theme.iconColor }]}>New</Text>
+          </View>
+        );
+      case 'wallet':
+        return (
+          <View style={[styles.valuePill, styles.walletPill, { backgroundColor: theme.iconBg }]}>
+            <Text style={[styles.valueText, { color: theme.iconColor }]}>Load</Text>
+            <View style={[styles.plusButton, { backgroundColor: theme.iconColor }]}>
+              <Ionicons name="add" size={10} color="#FFFFFF" />
+            </View>
+          </View>
+        );
+      case 'offers':
+        return (
+          <View style={[styles.valuePill, { backgroundColor: theme.iconBg }]}>
+            <Text style={[styles.valueNumber, { color: theme.iconColor }]}>{newOffersCount}</Text>
+            <Text style={[styles.valueLabel, { color: theme.iconColor }]}>New</Text>
+          </View>
+        );
+      case 'store':
+        return (
+          <View style={[styles.valuePill, { backgroundColor: theme.iconBg }]}>
+            <Text style={[styles.valueText, { color: theme.iconColor }]}>Explore</Text>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.actionsRow}>
-        {QUICK_ACTIONS.map((action) => (
-          <TouchableOpacity
-            key={action.id}
-            style={styles.actionItem}
-            onPress={() => handlePress(action.route)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconContainer}>
-              <Ionicons name={action.icon} size={24} color={COLORS.deepTeal} />
-            </View>
-            <ThemedText style={styles.actionTitle}>{action.title}</ThemedText>
-            {action.value && (
-              <View style={[
-                styles.valuePill,
-                action.id === 'wallet' && styles.walletPill,
-                action.id === 'offers' && styles.offersPill
-              ]}>
-                {action.id === 'offers' ? (
-                  <View style={styles.offersContent}>
-                    <ThemedText style={styles.offersNumber}>{newOffersCount}</ThemedText>
-                    <ThemedText style={styles.offersNewText}>New</ThemedText>
-                  </View>
-                ) : action.id === 'voucher' ? (
-                  <View style={styles.offersContent}>
-                    <ThemedText style={styles.offersNumber}>{voucherCount}</ThemedText>
-                    <ThemedText style={styles.offersNewText}>New</ThemedText>
-                  </View>
-                ) : (
-                  <ThemedText style={[
-                    styles.actionValue,
-                    action.id === 'wallet' && styles.walletText
-                  ]}>
-                    {action.value}
-                  </ThemedText>
-                )}
-                {action.id === 'wallet' && (
-                  <View style={styles.plusButton}>
-                    <Ionicons name="add" size={12} color="#FFFFFF" />
-                  </View>
-                )}
+        {QUICK_ACTIONS.map((action) => {
+          const theme = ACTION_THEMES[action.id];
+          return (
+            <TouchableOpacity
+              key={action.id}
+              style={styles.actionItem}
+              onPress={() => handlePress(action.route)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.iconContainer, { backgroundColor: theme.iconBg }]}>
+                <Ionicons name={action.icon} size={22} color={theme.iconColor} />
               </View>
-            )}
-            <ThemedText style={styles.actionDescription}>{action.description}</ThemedText>
-          </TouchableOpacity>
-        ))}
+              <Text style={styles.actionTitle}>{action.title}</Text>
+              {renderValue(action.id)}
+              <View style={[styles.descriptionPill, { backgroundColor: theme.descBg }]}>
+                <Text style={[styles.actionDescription, { color: theme.descColor }]}>
+                  {action.description}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -150,96 +163,78 @@ export default function QuickActionsSection({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 8,
-    paddingTop: 6,
-    paddingBottom: 12,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 14,
     backgroundColor: '#FFFFFF',
     marginTop: -4,
   },
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 4,
+    alignItems: 'stretch',
+    gap: 8,
   },
   actionItem: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   iconContainer: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: '#E8F5F1',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   actionTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.midnightNavy,
+    color: '#0B2240',
     textAlign: 'center',
-    marginBottom: 3,
+    marginBottom: 4,
   },
-  // Gray rectangular background for values
   valuePill: {
-    backgroundColor: '#F3F4F6',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
+    marginBottom: 4,
   },
-  actionValue: {
+  valueNumber: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  valueLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  valueText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#6B7280',
-    textAlign: 'center',
   },
-  // Wallet specific styles
   walletPill: {
-    backgroundColor: '#F3F4F6',
-    paddingRight: 5,
-  },
-  walletText: {
-    color: '#6B7280',
+    paddingRight: 4,
   },
   plusButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    backgroundColor: '#374151',
+    width: 16,
+    height: 16,
+    borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // Offers specific styles
-  offersPill: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-  },
-  offersContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  offersNumber: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#6B7280',
-  },
-  offersNewText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6B7280',
+  descriptionPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 2,
   },
   actionDescription: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '500',
-    color: '#9CA3AF',
     textAlign: 'center',
-    marginTop: 4,
   },
 });

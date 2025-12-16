@@ -193,12 +193,7 @@ function ServiceSection() {
   }, [setActiveSubcategory]);
 
   const handleStorePress = useCallback((store: ServiceSectionStore) => {
-    router.push({
-      pathname: '/store/[storeId]',
-      params: {
-        storeId: store.id,
-      },
-    } as any);
+    router.push(`/MainStorePage?storeId=${store.id}` as any);
   }, [router]);
 
   const handleViewAll = useCallback(() => {

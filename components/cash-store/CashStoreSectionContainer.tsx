@@ -1,8 +1,16 @@
 /**
  * CashStoreSectionContainer Component
  *
- * Main container that orchestrates all cash store sections
- * with pull-to-refresh and loading states
+ * Main container that orchestrates all Cash Store sections
+ * with pull-to-refresh and loading states.
+ *
+ * Cash Store = Affiliate Cashback System
+ * - External brand websites (Amazon, Myntra, Flipkart, etc.)
+ * - Users click through and shop on external sites
+ * - Brand sends webhook when purchase is made
+ * - Users earn real cashback (rupees)
+ *
+ * NOTE: This is different from ReZ Mall (in-app delivery marketplace with ReZ Coins)
  */
 
 import React, { memo, useCallback } from 'react';
@@ -13,9 +21,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   Text,
+  Linking,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
 import { useCashStoreSection } from '../../hooks/useCashStoreSection';
+import cashStoreApi from '../../services/cashStoreApi';
 import {
   CashStoreBrand,
   TrendingDeal,
@@ -77,9 +88,29 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
   );
 
   const handleTrendingDealPress = useCallback(
-    (deal: TrendingDeal) => {
+    async (deal: TrendingDeal) => {
       trackBrandClick(deal.brand.id);
-      router.push(`/offers/${deal.id}` as any);
+
+      // If deal has external URL, track affiliate click and open in browser
+      if (deal.externalUrl) {
+        try {
+          const trackingResult = await cashStoreApi.trackAffiliateClick(deal.brand.id);
+          const urlToOpen = trackingResult?.trackingUrl || deal.externalUrl;
+
+          await WebBrowser.openBrowserAsync(urlToOpen, {
+            toolbarColor: '#00C06A',
+            controlsColor: '#FFFFFF',
+          });
+        } catch (error) {
+          console.error('[Cash Store] Error opening trending deal:', error);
+          if (deal.externalUrl) {
+            await Linking.openURL(deal.externalUrl);
+          }
+        }
+      } else {
+        // Navigate to in-app offer detail
+        router.push(`/offers/${deal.id}` as any);
+      }
     },
     [router, trackBrandClick]
   );
@@ -99,9 +130,29 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
   );
 
   const handleHighCashbackPress = useCallback(
-    (deal: HighCashbackDeal) => {
+    async (deal: HighCashbackDeal) => {
       trackBrandClick(deal.brand.id);
-      router.push(`/offers` as any);
+
+      // If deal has external URL, track affiliate click and open in browser
+      if (deal.externalUrl) {
+        try {
+          const trackingResult = await cashStoreApi.trackAffiliateClick(deal.brand.id);
+          const urlToOpen = trackingResult?.trackingUrl || deal.externalUrl;
+
+          await WebBrowser.openBrowserAsync(urlToOpen, {
+            toolbarColor: '#00C06A',
+            controlsColor: '#FFFFFF',
+          });
+        } catch (error) {
+          console.error('[Cash Store] Error opening high cashback deal:', error);
+          if (deal.externalUrl) {
+            await Linking.openURL(deal.externalUrl);
+          }
+        }
+      } else {
+        // Navigate to offers page
+        router.push(`/offers` as any);
+      }
     },
     [router, trackBrandClick]
   );

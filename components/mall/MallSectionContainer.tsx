@@ -2,7 +2,14 @@
  * MallSectionContainer Component
  *
  * Main container that orchestrates all mall sections
- * with pull-to-refresh and loading states
+ * with pull-to-refresh and loading states.
+ *
+ * ReZ Mall = In-app delivery marketplace
+ * - Fetches stores with deliveryCategories.mall === true
+ * - Users browse stores, order products, earn ReZ Coins
+ * - Navigates to /store/[storeId] for store pages
+ *
+ * NOTE: This is different from Cash Store (affiliate cashback for external websites)
  */
 
 import React, { memo, useCallback } from 'react';
@@ -65,10 +72,12 @@ const MallSectionContainer: React.FC<MallSectionContainerProps> = ({
   // Navigation handlers
   const handleBrandPress = useCallback(
     (brand: MallBrand) => {
-      const brandId = brand.id || brand._id;
-      trackBrandClick(brandId);
-      // Navigate to brand detail page
-      router.push(`/mall/brand/${brandId}` as any);
+      const storeId = brand.id || brand._id;
+      trackBrandClick(storeId);
+
+      // ReZ Mall navigates to in-app store page (not external brand page)
+      // The store page shows products, allows ordering, and users earn ReZ Coins
+      router.push(`/MainStorePage?storeId=${storeId}` as any);
     },
     [router, trackBrandClick]
   );
@@ -211,12 +220,7 @@ const MallSectionContainer: React.FC<MallSectionContainerProps> = ({
           />
         }
       >
-        {/* 1. Hero Banner Carousel */}
-        <MallHeroBanner
-          banners={heroBanners}
-          isLoading={isLoading && !heroBanners.length}
-          onBannerPress={handleBannerPress}
-        />
+        {/* Hero Banner moved to header area - MallHeroCarousel in index.tsx */}
 
       {/* 2. Featured Brands */}
       <MallFeaturedBrands

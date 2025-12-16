@@ -1,7 +1,8 @@
 /**
- * Brands Listing Page
+ * Mall Stores Listing Page (ReZ Mall)
  *
- * Displays all brands with search and filter functionality
+ * Premium design with gradient header, background, and proper spacing
+ * Displays all mall stores with search and filter functionality.
  */
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
@@ -12,9 +13,13 @@ import {
   RefreshControl,
   ActivityIndicator,
   Text,
+  TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 import { mallApi } from '../../../services/mallApi';
 import { MallBrand } from '../../../types/mall.types';
@@ -23,6 +28,99 @@ import FilterChips, { FilterType } from '../../../components/mall/pages/FilterCh
 import BrandFullWidthCard from '../../../components/mall/pages/BrandFullWidthCard';
 import MallEmptyState from '../../../components/mall/pages/MallEmptyState';
 import MallLoadingSkeleton from '../../../components/mall/pages/MallLoadingSkeleton';
+
+// Filter config for header styling
+const FILTER_CONFIG: Record<FilterType, {
+  title: string;
+  icon: string;
+  colors: [string, string];
+  description: string;
+}> = {
+  'all': {
+    title: 'All Stores',
+    icon: 'storefront',
+    colors: ['#00C06A', '#059669'],
+    description: 'Browse all ReZ Mall stores'
+  },
+  'featured': {
+    title: 'Featured Stores',
+    icon: 'star',
+    colors: ['#F59E0B', '#D97706'],
+    description: 'Hand-picked stores with best deals'
+  },
+  'new': {
+    title: 'New Stores',
+    icon: 'sparkles',
+    colors: ['#EC4899', '#DB2777'],
+    description: 'Recently added to ReZ Mall'
+  },
+  'top-rated': {
+    title: 'Top Rated',
+    icon: 'trophy',
+    colors: ['#3B82F6', '#2563EB'],
+    description: 'Highest rated by our users'
+  },
+  'luxury': {
+    title: 'Premium Stores',
+    icon: 'diamond',
+    colors: ['#8B5CF6', '#7C3AED'],
+    description: 'Exclusive premium partners'
+  },
+};
+
+/**
+ * Transform store data to MallBrand format for compatibility
+ */
+function transformStoreToMallBrand(store: any): MallBrand {
+  let mallCategory = null;
+  if (store.category) {
+    if (typeof store.category === 'string') {
+      mallCategory = { _id: store.category, id: store.category, name: store.category, slug: store.category.toLowerCase() };
+    } else if (store.category.name) {
+      mallCategory = store.category;
+    }
+  }
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const isNewArrival = store.createdAt ? new Date(store.createdAt) > thirtyDaysAgo : false;
+
+  return {
+    _id: store._id,
+    id: store._id,
+    name: store.name,
+    slug: store.slug || store.name.toLowerCase().replace(/\s+/g, '-'),
+    description: store.description || '',
+    logo: store.logo,
+    banner: store.banner?.[0] || '',
+    externalUrl: '',
+    mallCategory,
+    tier: store.deliveryCategories?.premium ? 'premium' : 'standard',
+    badges: [
+      ...(store.isFeatured ? ['exclusive' as const] : []),
+      ...(store.isVerified ? ['verified' as const] : []),
+    ],
+    cashback: {
+      percentage: store.rewardRules?.baseCashbackPercent || store.offers?.cashback || 0,
+      maxAmount: store.rewardRules?.maxCashback || store.offers?.maxCashback,
+      minPurchase: store.operationalInfo?.minimumOrder || store.rewardRules?.minimumAmountForReward,
+    },
+    ratings: {
+      average: store.ratings?.average || 0,
+      count: store.ratings?.count || 0,
+      successRate: 95,
+      distribution: store.ratings?.distribution || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+    },
+    isFeatured: store.isFeatured || false,
+    isActive: store.isActive !== false,
+    isNewArrival,
+    isLuxury: store.deliveryCategories?.premium || false,
+    tags: store.tags || [],
+    collections: [],
+    createdAt: store.createdAt,
+    updatedAt: store.updatedAt,
+  };
+}
 
 export default function BrandsListingPage() {
   const { filter: initialFilter } = useLocalSearchParams<{ filter?: string }>();
@@ -41,6 +139,8 @@ export default function BrandsListingPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
+  const filterConfig = FILTER_CONFIG[activeFilter] || FILTER_CONFIG.all;
+
   const fetchBrands = useCallback(async (
     pageNum: number = 1,
     append: boolean = false
@@ -50,28 +150,29 @@ export default function BrandsListingPage() {
       let data: MallBrand[] = [];
       let total = 0;
 
-      // Handle search
       if (searchQuery.length >= 2) {
-        data = await mallApi.searchBrands(searchQuery, 50);
+        const stores = await mallApi.searchMallStores(searchQuery, 50);
+        data = stores.map(transformStoreToMallBrand);
         total = data.length;
-      }
-      // Handle filters
-      else if (activeFilter === 'featured') {
-        data = await mallApi.getFeaturedBrands(50);
+      } else if (activeFilter === 'featured') {
+        const stores = await mallApi.getFeaturedMallStores(50);
+        data = stores.map(transformStoreToMallBrand);
         total = data.length;
       } else if (activeFilter === 'new') {
-        data = await mallApi.getNewArrivals(50);
+        const stores = await mallApi.getNewMallStores(50);
+        data = stores.map(transformStoreToMallBrand);
         total = data.length;
       } else if (activeFilter === 'top-rated') {
-        data = await mallApi.getTopRatedBrands(50);
+        const stores = await mallApi.getTopRatedMallStores(50);
+        data = stores.map(transformStoreToMallBrand);
         total = data.length;
       } else if (activeFilter === 'luxury') {
-        data = await mallApi.getLuxuryBrands(50);
+        const stores = await mallApi.getPremiumMallStores(50);
+        data = stores.map(transformStoreToMallBrand);
         total = data.length;
       } else {
-        // All brands with pagination
-        const result = await mallApi.getBrands({ page: pageNum, limit: 20 });
-        data = result.brands;
+        const result = await mallApi.getMallStores({ page: pageNum, limit: 20 });
+        data = result.stores.map(transformStoreToMallBrand);
         total = result.total;
         setTotalPages(result.pages);
       }
@@ -82,8 +183,8 @@ export default function BrandsListingPage() {
         setBrands(data);
       }
     } catch (err: any) {
-      console.error('Error fetching brands:', err);
-      setError(err.message || 'Failed to load brands');
+      console.error('Error fetching stores:', err);
+      setError(err.message || 'Failed to load stores');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -114,7 +215,7 @@ export default function BrandsListingPage() {
   }, [page, totalPages, isLoadingMore, activeFilter, searchQuery, fetchBrands]);
 
   const handleBrandPress = useCallback((brand: MallBrand) => {
-    router.push(`/mall/brand/${brand.id || brand._id}` as any);
+    router.push(`/MainStorePage?storeId=${brand.id || brand._id}` as any);
   }, [router]);
 
   const handleSearch = useCallback((query: string) => {
@@ -130,24 +231,6 @@ export default function BrandsListingPage() {
     setActiveFilter('all');
   }, []);
 
-  const getHeaderTitle = useMemo(() => {
-    if (searchQuery) {
-      return `Results for "${searchQuery}"`;
-    }
-    switch (activeFilter) {
-      case 'featured':
-        return 'Featured Brands';
-      case 'new':
-        return 'New Arrivals';
-      case 'top-rated':
-        return 'Top Rated';
-      case 'luxury':
-        return 'Luxury Brands';
-      default:
-        return 'All Brands';
-    }
-  }, [activeFilter, searchQuery]);
-
   const renderItem = useCallback(({ item }: { item: MallBrand }) => (
     <BrandFullWidthCard brand={item} onPress={handleBrandPress} />
   ), [handleBrandPress]);
@@ -156,33 +239,99 @@ export default function BrandsListingPage() {
     item.id || item._id, []);
 
   const ListHeader = useMemo(() => (
-    <View style={styles.listHeader}>
-      <Text style={styles.resultCount}>
-        {brands.length} {brands.length === 1 ? 'brand' : 'brands'} found
-      </Text>
+    <View style={styles.listHeaderContainer}>
+      {/* Premium Header */}
+      <LinearGradient
+        colors={filterConfig.colors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.headerGradient, { paddingTop: insets.top + 10 }]}
+      >
+        {/* Decorative Elements */}
+        <View style={styles.headerDecor}>
+          <View style={[styles.decorCircle, styles.decorCircle1]} />
+          <View style={[styles.decorCircle, styles.decorCircle2]} />
+        </View>
+
+        {/* Back Button */}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        {/* Header Content */}
+        <View style={styles.headerContent}>
+          <View style={styles.headerIconWrapper}>
+            <Ionicons name={filterConfig.icon as any} size={28} color="#FFFFFF" />
+          </View>
+          <Text style={styles.headerTitle}>{filterConfig.title}</Text>
+          <Text style={styles.headerDescription}>{filterConfig.description}</Text>
+        </View>
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{brands.length}</Text>
+            <Text style={styles.statLabel}>Stores</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Ionicons name="gift" size={18} color="#FFD700" />
+            <Text style={styles.statLabel}>Earn Coins</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Search Bar */}
+      <View style={styles.searchSection}>
+        <SearchBar
+          placeholder="Search stores..."
+          value={searchQuery}
+          onSearch={handleSearch}
+        />
+      </View>
+
+      {/* Filter Chips */}
+      <FilterChips
+        activeFilter={activeFilter}
+        onFilterChange={handleFilterChange}
+      />
+
+      {/* Results Count */}
+      <View style={styles.resultsHeader}>
+        <Text style={styles.resultsTitle}>Results</Text>
+        <View style={styles.resultsCountBadge}>
+          <Text style={styles.resultsCount}>{brands.length} stores</Text>
+        </View>
+      </View>
     </View>
-  ), [brands.length]);
+  ), [brands.length, filterConfig, searchQuery, activeFilter, insets.top, router, handleSearch, handleFilterChange]);
 
   const ListFooter = useMemo(() => {
     if (isLoadingMore) {
       return (
         <View style={styles.loadingMore}>
           <ActivityIndicator size="small" color="#00C06A" />
+          <Text style={styles.loadingMoreText}>Loading more...</Text>
         </View>
       );
     }
-    return null;
-  }, [isLoadingMore]);
+    // Add padding for tab bar
+    return <View style={{ height: insets.bottom + 100 }} />;
+  }, [isLoadingMore, insets.bottom]);
 
   const ListEmpty = useMemo(() => {
     if (isLoading) return null;
 
     return (
       <MallEmptyState
-        title={searchQuery ? 'No brands found' : 'No brands available'}
+        title={searchQuery ? 'No stores found' : 'No stores available'}
         message={
           searchQuery
-            ? `No brands match "${searchQuery}"`
+            ? `No stores match "${searchQuery}"`
             : 'Try adjusting your filters'
         }
         icon={searchQuery ? 'search-outline' : 'storefront-outline'}
@@ -194,37 +343,64 @@ export default function BrandsListingPage() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerTitle: getHeaderTitle,
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top > 0 ? 0 : 8 }]}>
-        {/* Search Bar */}
-        <SearchBar
-          placeholder="Search brands..."
-          value={searchQuery}
-          onSearch={handleSearch}
-        />
-
-        {/* Filter Chips */}
-        <FilterChips
-          activeFilter={activeFilter}
-          onFilterChange={handleFilterChange}
+      <View style={styles.container}>
+        {/* Background Gradient */}
+        <LinearGradient
+          colors={['#F0FDF4', '#ECFDF5', '#F9FAFB']}
+          style={StyleSheet.absoluteFillObject}
         />
 
         {/* Loading State */}
         {isLoading ? (
-          <MallLoadingSkeleton count={6} type="list" />
+          <View style={styles.loadingWrapper}>
+            <LinearGradient
+              colors={filterConfig.colors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.headerGradient, styles.loadingHeader, { paddingTop: insets.top + 10 }]}
+            >
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+              <View style={styles.headerContent}>
+                <View style={styles.headerIconWrapper}>
+                  <Ionicons name={filterConfig.icon as any} size={28} color="#FFFFFF" />
+                </View>
+                <Text style={styles.headerTitle}>{filterConfig.title}</Text>
+              </View>
+            </LinearGradient>
+            <MallLoadingSkeleton count={6} type="list" />
+          </View>
         ) : error ? (
-          <MallEmptyState
-            title="Something went wrong"
-            message={error}
-            icon="alert-circle-outline"
-            actionLabel="Try Again"
-            onAction={handleRefresh}
-          />
+          <View style={styles.errorWrapper}>
+            <LinearGradient
+              colors={filterConfig.colors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.headerGradient, styles.loadingHeader, { paddingTop: insets.top + 10 }]}
+            >
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+            </LinearGradient>
+            <MallEmptyState
+              title="Something went wrong"
+              message={error}
+              icon="alert-circle-outline"
+              actionLabel="Try Again"
+              onAction={handleRefresh}
+            />
+          </View>
         ) : (
           <FlatList
             data={brands}
@@ -260,20 +436,155 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  listContent: {
+  loadingWrapper: {
+    flex: 1,
+  },
+  errorWrapper: {
+    flex: 1,
+  },
+  headerGradient: {
     paddingBottom: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  listHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  loadingHeader: {
+    paddingBottom: 30,
   },
-  resultCount: {
+  headerDecor: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  decorCircle: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  decorCircle1: {
+    width: 200,
+    height: 200,
+    top: -60,
+    right: -40,
+  },
+  decorCircle2: {
+    width: 120,
+    height: 120,
+    bottom: -30,
+    left: -30,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 16,
+    marginBottom: 16,
+  },
+  headerContent: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  headerIconWrapper: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 6,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  headerDescription: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    marginHorizontal: 40,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  statItem: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  statValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  listHeaderContainer: {
+    backgroundColor: 'transparent',
+  },
+  searchSection: {
+    marginTop: -20,
+    zIndex: 10,
+  },
+  resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  resultsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  resultsCountBadge: {
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  resultsCount: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#6B7280',
+    fontWeight: '600',
+    color: '#059669',
+  },
+  listContent: {
+    paddingBottom: 20,
   },
   loadingMore: {
-    paddingVertical: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 10,
+  },
+  loadingMoreText: {
+    fontSize: 14,
+    color: '#6B7280',
   },
 });

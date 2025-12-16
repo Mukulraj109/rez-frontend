@@ -28,63 +28,63 @@ const COLORS = {
   cardShadow: 'rgba(0, 0, 0, 0.1)',
 };
 
-// Reward categories data - using different shades of ReZ brand colors (green & gold)
+// Reward categories data - distinct vibrant colors for each category
 const rewardCategories = [
   {
     id: 'students',
     title: 'Students',
     subtitle: 'Campus Zone Deals',
     icon: 'school-outline',
-    gradientColors: ['#00C06A', '#00A859', '#008F4A'] as const, // Primary green
+    gradientColors: ['#3B82F6', '#2563EB', '#1D4ED8'] as const, // Blue
   },
   {
     id: 'employees',
     title: 'Employees',
     subtitle: 'Corporate Zone Offers',
     icon: 'briefcase-outline',
-    gradientColors: ['#FFC857', '#F5B740', '#E6A830'] as const, // Primary gold
+    gradientColors: ['#8B5CF6', '#7C3AED', '#6D28D9'] as const, // Purple
   },
   {
     id: 'women',
     title: 'Women Exclusive',
     subtitle: 'Special Rewards',
     icon: 'heart-outline',
-    gradientColors: ['#26C97D', '#1DBF70', '#14B563'] as const, // Light green
+    gradientColors: ['#EC4899', '#DB2777', '#BE185D'] as const, // Pink
   },
   {
     id: 'birthday',
     title: 'Birthday Specials',
     subtitle: 'Celebrate & Save',
     icon: 'gift-outline',
-    gradientColors: ['#FFD87A', '#FFCE5C', '#FFC23D'] as const, // Light gold
+    gradientColors: ['#F97316', '#EA580C', '#DC2626'] as const, // Orange to Red
   },
   {
     id: 'loyalty',
     title: 'Loyalty Progress',
     subtitle: 'Tier-based Rewards',
     icon: 'star-outline',
-    gradientColors: ['#00A159', '#008F4A', '#007D3B'] as const, // Deep green
+    gradientColors: ['#FBBF24', '#F59E0B', '#D97706'] as const, // Gold/Amber
   },
   {
     id: 'army',
     title: 'Armed Forces',
     subtitle: 'Military Heroes Deals',
     icon: 'shield-outline',
-    gradientColors: ['#F5A623', '#E69515', '#D68507'] as const, // Deep gold/amber
+    gradientColors: ['#475569', '#334155', '#1E293B'] as const, // Slate/Navy
   },
   {
     id: 'medical',
     title: 'Doctor / Nurse',
     subtitle: 'Healthcare Heroes',
     icon: 'medkit-outline',
-    gradientColors: ['#4DD294', '#3DC987', '#2DC07A'] as const, // Mint green
+    gradientColors: ['#14B8A6', '#0D9488', '#0F766E'] as const, // Teal
   },
   {
     id: 'disabled',
     title: 'Specially Abled',
     subtitle: 'Inclusive Rewards',
     icon: 'accessibility-outline',
-    gradientColors: ['#FFB020', '#FFA010', '#FF9000'] as const, // Orange gold
+    gradientColors: ['#22C55E', '#16A34A', '#15803D'] as const, // Green
   },
 ];
 

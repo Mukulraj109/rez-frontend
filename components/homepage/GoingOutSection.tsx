@@ -194,12 +194,7 @@ function GoingOutSection() {
   }, [setActiveSubcategory]);
 
   const handleStorePress = useCallback((store: GoingOutSectionStore) => {
-    router.push({
-      pathname: '/store/[storeId]',
-      params: {
-        storeId: store.id,
-      },
-    } as any);
+    router.push(`/MainStorePage?storeId=${store.id}` as any);
   }, [router]);
 
   const handleViewAll = useCallback(() => {

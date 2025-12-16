@@ -1,10 +1,11 @@
 /**
  * MallBrandCard Component
  *
- * Card component for displaying mall brand information
+ * Card component for displaying mall store information
+ * Redesigned for better visual appeal
  */
 
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import {
   View,
   Text,
@@ -24,6 +25,18 @@ interface MallBrandCardProps {
   showCategory?: boolean;
 }
 
+// Vibrant gradient colors for fallback backgrounds
+const GRADIENT_COLORS: string[][] = [
+  ['#667eea', '#764ba2'],
+  ['#f093fb', '#f5576c'],
+  ['#4facfe', '#00f2fe'],
+  ['#43e97b', '#38f9d7'],
+  ['#fa709a', '#fee140'],
+  ['#a18cd1', '#fbc2eb'],
+  ['#ff9a9e', '#fecfef'],
+  ['#ffecd2', '#fcb69f'],
+];
+
 const BADGE_COLORS: Record<BrandBadge, { bg: string; text: string }> = {
   exclusive: { bg: '#00C06A', text: '#FFFFFF' },
   premium: { bg: '#8B5CF6', text: '#FFFFFF' },
@@ -36,27 +49,74 @@ const BADGE_COLORS: Record<BrandBadge, { bg: string; text: string }> = {
 const MallBrandCard: React.FC<MallBrandCardProps> = ({
   brand,
   onPress,
-  width = 150,
+  width = 160,
   showCategory = false,
 }) => {
-  const cashbackDisplay = brand.cashback.maxAmount
-    ? `Earn ₹${brand.cashback.maxAmount} cashback`
-    : `Earn ${brand.cashback.percentage}% cashback`;
+  const [imageError, setImageError] = useState(false);
+
+  // For in-app stores (no externalUrl), show ReZ Coins. For external brands, show cashback.
+  const isInAppStore = !brand.externalUrl;
+  const rewardDisplay = isInAppStore
+    ? (brand.cashback.percentage > 0
+        ? `Earn ${brand.cashback.percentage}% coins`
+        : 'Earn ReZ Coins')
+    : (brand.cashback.maxAmount
+        ? `Earn ₹${brand.cashback.maxAmount} cashback`
+        : `Earn ${brand.cashback.percentage}% cashback`);
+
+  // Get initials for fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Get consistent gradient based on brand name
+  const getGradientColors = (name: string): string[] => {
+    const index = name.charCodeAt(0) % GRADIENT_COLORS.length;
+    return GRADIENT_COLORS[index];
+  };
+
+  const gradientColors = getGradientColors(brand.name);
 
   return (
     <TouchableOpacity
       style={[styles.container, { width }]}
       onPress={() => onPress(brand)}
-      activeOpacity={0.85}
+      activeOpacity={0.9}
     >
       <View style={styles.card}>
-        {/* Logo Container */}
-        <View style={styles.logoContainer}>
-          <Image
-            source={{ uri: brand.logo }}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+        {/* Logo Container with gradient background */}
+        <View style={styles.logoWrapper}>
+          {!imageError && brand.logo ? (
+            <View style={styles.logoContainer}>
+              <Image
+                source={{ uri: brand.logo }}
+                style={styles.logo}
+                resizeMode="cover"
+                onError={() => setImageError(true)}
+              />
+            </View>
+          ) : (
+            <LinearGradient
+              colors={gradientColors as [string, string]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.logoFallback}
+            >
+              <Text style={styles.logoFallbackText}>{getInitials(brand.name)}</Text>
+            </LinearGradient>
+          )}
+
+          {/* New Badge Overlay */}
+          {brand.isNewArrival && (
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>NEW</Text>
+            </View>
+          )}
         </View>
 
         {/* Brand Info */}
@@ -65,33 +125,42 @@ const MallBrandCard: React.FC<MallBrandCardProps> = ({
             {brand.name}
           </Text>
 
-          {/* Rating */}
-          {brand.ratings.average > 0 && (
-            <View style={styles.ratingRow}>
-              <Ionicons name="star" size={12} color="#FFC107" />
-              <Text style={styles.ratingText}>{brand.ratings.average.toFixed(1)}</Text>
-            </View>
-          )}
+          {/* Rating Row */}
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={12} color="#FFC107" />
+            <Text style={styles.ratingText}>
+              {brand.ratings.average > 0 ? brand.ratings.average.toFixed(1) : '5.0'}
+            </Text>
+          </View>
 
-          {/* Cashback */}
-          <Text style={styles.cashbackText}>{cashbackDisplay}</Text>
+          {/* Reward (Coins for stores, Cashback for external brands) */}
+          <View style={styles.rewardContainer}>
+            <Ionicons
+              name={isInAppStore ? "flash" : "cash-outline"}
+              size={12}
+              color="#00C06A"
+            />
+            <Text style={styles.cashbackText}>{rewardDisplay}</Text>
+          </View>
 
           {/* Badges */}
-          <View style={styles.badgesContainer}>
-            {brand.badges.slice(0, 2).map((badge, index) => (
-              <View
-                key={badge}
-                style={[
-                  styles.badge,
-                  { backgroundColor: BADGE_COLORS[badge]?.bg || '#6B7280' },
-                ]}
-              >
-                <Text style={styles.badgeText}>
-                  {badge.charAt(0).toUpperCase() + badge.slice(1)}
-                </Text>
-              </View>
-            ))}
-          </View>
+          {brand.badges && brand.badges.length > 0 && (
+            <View style={styles.badgesContainer}>
+              {[...new Set(brand.badges)].filter(b => b !== brand.tier).slice(0, 1).map((badge) => (
+                <View
+                  key={badge}
+                  style={[
+                    styles.badge,
+                    { backgroundColor: BADGE_COLORS[badge]?.bg || '#00C06A' },
+                  ]}
+                >
+                  <Text style={styles.badgeText}>
+                    {badge.charAt(0).toUpperCase() + badge.slice(1)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Category */}
           {showCategory && brand.mallCategory && (
@@ -100,13 +169,6 @@ const MallBrandCard: React.FC<MallBrandCardProps> = ({
             </Text>
           )}
         </View>
-
-        {/* New Badge Overlay */}
-        {brand.isNewArrival && (
-          <View style={styles.newBadge}>
-            <Text style={styles.newBadgeText}>NEW</Text>
-          </View>
-        )}
       </View>
     </TouchableOpacity>
   );
@@ -120,43 +182,76 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 12,
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 3,
+        elevation: 4,
       },
       web: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
       },
     }),
   },
+  logoWrapper: {
+    width: '100%',
+    height: 90,
+    position: 'relative',
+  },
   logoContainer: {
     width: '100%',
-    height: 60,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    height: '100%',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    overflow: 'hidden',
   },
   logo: {
-    width: '70%',
-    height: '70%',
+    width: '100%',
+    height: '100%',
+  },
+  logoFallback: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoFallbackText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  newBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  newBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   infoContainer: {
-    flex: 1,
+    padding: 12,
   },
   brandName: {
     fontSize: 14,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -169,11 +264,16 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginLeft: 4,
   },
+  rewardContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 4,
+  },
   cashbackText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#00C06A',
-    marginBottom: 8,
   },
   badgesContainer: {
     flexDirection: 'row',
@@ -182,32 +282,18 @@ const styles = StyleSheet.create({
   },
   badge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 6,
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   categoryText: {
     fontSize: 11,
     color: '#9CA3AF',
     marginTop: 6,
-  },
-  newBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  newBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 });
 

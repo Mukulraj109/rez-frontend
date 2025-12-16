@@ -17,15 +17,16 @@ import {
   Platform,
   StatusBar,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 
 import { mallApi } from '../../../services/mallApi';
 import { MallBrand, BrandBadge, BrandTier } from '../../../types/mall.types';
-import BrandWebView from '../../../components/mall/BrandWebView';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.35;
@@ -55,7 +56,17 @@ export default function BrandDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showWebView, setShowWebView] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+
+  // Get initials for fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const fetchBrand = useCallback(async () => {
     if (!id) {
@@ -104,28 +115,29 @@ export default function BrandDetailPage() {
   const handleShopNow = useCallback(async () => {
     if (!brand?.externalUrl) return;
 
-    // Track click
-    await mallApi.trackBrandClick(brand.id || brand._id);
+    const brandId = brand.id || brand._id;
 
-    // Show in-app WebView
-    setShowWebView(true);
+    // Track click with affiliate system and get tracking URL
+    const trackingResult = await mallApi.trackAffiliateClick(brandId);
+
+    // Use tracking URL if available, otherwise fallback to direct URL
+    const urlToOpen = trackingResult?.trackingUrl || brand.externalUrl;
+
+    console.log('[BrandDetail] Shop Now clicked:', {
+      brandId,
+      clickId: trackingResult?.clickId,
+      trackingUrl: urlToOpen,
+    });
+
+    // Open in browser (works on both web and mobile)
+    if (Platform.OS === 'web') {
+      // On web, open in new tab
+      window.open(urlToOpen, '_blank');
+    } else {
+      // On mobile, use expo-web-browser for in-app browser
+      await WebBrowser.openBrowserAsync(urlToOpen);
+    }
   }, [brand]);
-
-  const handleCloseWebView = useCallback(() => {
-    setShowWebView(false);
-  }, []);
-
-  // Show WebView
-  if (showWebView && brand?.externalUrl) {
-    return (
-      <BrandWebView
-        url={brand.externalUrl}
-        brandName={brand.name}
-        cashbackPercentage={brand.cashback.percentage}
-        onClose={handleCloseWebView}
-      />
-    );
-  }
 
   // Loading state
   if (isLoading) {
@@ -208,11 +220,18 @@ export default function BrandDetailPage() {
             {/* Logo & Brand Name */}
             <View style={styles.heroContent}>
               <View style={styles.logoContainer}>
-                <Image
-                  source={{ uri: brand.logo }}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
+                {!logoError && brand.logo ? (
+                  <Image
+                    source={{ uri: brand.logo }}
+                    style={styles.logo}
+                    resizeMode="contain"
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <View style={styles.logoFallback}>
+                    <Text style={styles.logoFallbackText}>{getInitials(brand.name)}</Text>
+                  </View>
+                )}
               </View>
               <Text style={styles.brandName}>{brand.name}</Text>
 
@@ -357,35 +376,35 @@ export default function BrandDetailPage() {
             </View>
           )}
 
-          {/* Bottom Spacer for CTA button */}
+          {/* Shop Now CTA Button */}
+          {brand.externalUrl && (
+            <View style={styles.ctaContainer}>
+              <TouchableOpacity
+                style={styles.ctaButton}
+                onPress={handleShopNow}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={['#00C06A', '#00A05A']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.ctaGradient}
+                >
+                  <Ionicons name="cart-outline" size={22} color="#FFFFFF" />
+                  <Text style={styles.ctaText}>Shop Now</Text>
+                  <View style={styles.ctaCashback}>
+                    <Text style={styles.ctaCashbackText}>
+                      Earn {brand.cashback.percentage}%
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Bottom Spacer for tab bar */}
           <View style={styles.bottomSpacer} />
         </ScrollView>
-
-        {/* Fixed CTA Button */}
-        {brand.externalUrl && (
-          <View style={[styles.ctaContainer, { paddingBottom: insets.bottom + 16 }]}>
-            <TouchableOpacity
-              style={styles.ctaButton}
-              onPress={handleShopNow}
-              activeOpacity={0.9}
-            >
-              <LinearGradient
-                colors={['#00C06A', '#00A05A']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.ctaGradient}
-              >
-                <Ionicons name="cart-outline" size={22} color="#FFFFFF" />
-                <Text style={styles.ctaText}>Shop Now</Text>
-                <View style={styles.ctaCashback}>
-                  <Text style={styles.ctaCashbackText}>
-                    Earn {brand.cashback.percentage}%
-                  </Text>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
     </>
   );
@@ -503,6 +522,19 @@ const styles = StyleSheet.create({
   logo: {
     width: '70%',
     height: '70%',
+  },
+  logoFallback: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#00C06A',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoFallbackText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   brandName: {
     fontSize: 28,
@@ -728,19 +760,13 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   bottomSpacer: {
-    height: 180,
+    height: 100,
   },
   // CTA Button
   ctaContainer: {
-    position: 'absolute',
-    bottom: 80, // Account for tab bar height
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 8,
   },
   ctaButton: {
     borderRadius: 16,

@@ -31,6 +31,20 @@ const MALL_ENDPOINTS = {
   OFFERS_EXCLUSIVE: '/mall/offers/exclusive',
   BANNERS: '/mall/banners',
   BANNERS_HERO: '/mall/banners/hero',
+  // Affiliate tracking endpoints (legacy - use Cash Store instead)
+  AFFILIATE_CLICK: '/mall/affiliate/click',
+  AFFILIATE_CLICKS: '/mall/affiliate/clicks',
+  AFFILIATE_PURCHASES: '/mall/affiliate/purchases',
+  AFFILIATE_SUMMARY: '/mall/affiliate/summary',
+  // Store-based mall endpoints (in-app delivery marketplace)
+  STORES_HOMEPAGE: '/mall/stores/homepage',
+  STORES: '/mall/stores',
+  STORES_FEATURED: '/mall/stores/featured',
+  STORES_NEW: '/mall/stores/new',
+  STORES_TOP_RATED: '/mall/stores/top-rated',
+  STORES_PREMIUM: '/mall/stores/premium',
+  STORES_SEARCH: '/mall/stores/search',
+  STORES_CATEGORIES: '/mall/stores/categories',
 };
 
 class MallApiService {
@@ -344,7 +358,29 @@ class MallApiService {
   }
 
   /**
-   * Track brand click
+   * Track brand click for affiliate cashback tracking
+   * Returns tracking URL to redirect user through
+   */
+  async trackAffiliateClick(brandId: string): Promise<{
+    clickId: string;
+    trackingUrl: string;
+    brand: { name: string; cashback: number };
+  } | null> {
+    try {
+      const response = await apiClient.post<MallApiResponse<{
+        clickId: string;
+        trackingUrl: string;
+        brand: { name: string; cashback: number };
+      }>>(MALL_ENDPOINTS.AFFILIATE_CLICK, { brandId });
+      return response.data.data || null;
+    } catch (error) {
+      console.warn('Failed to track affiliate click:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Track brand click (legacy - for view tracking only)
    */
   async trackBrandClick(brandId: string): Promise<void> {
     try {
@@ -365,6 +401,328 @@ class MallApiService {
       });
     } catch (error) {
       console.warn('Failed to track brand purchase:', error);
+    }
+  }
+
+  /**
+   * Get user's click history
+   */
+  async getUserClicks(page: number = 1, limit: number = 20): Promise<{
+    clicks: any[];
+    total: number;
+    pages: number;
+  }> {
+    try {
+      const response = await apiClient.get<MallApiResponse<any[]>>(
+        `${MALL_ENDPOINTS.AFFILIATE_CLICKS}?page=${page}&limit=${limit}`
+      );
+      return {
+        clicks: response.data.data || [],
+        total: response.data.meta?.pagination?.total || 0,
+        pages: response.data.meta?.pagination?.pages || 0
+      };
+    } catch (error) {
+      console.error('Error fetching user clicks:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's purchase history
+   */
+  async getUserPurchases(page: number = 1, limit: number = 20): Promise<{
+    purchases: any[];
+    total: number;
+    pages: number;
+  }> {
+    try {
+      const response = await apiClient.get<MallApiResponse<any[]>>(
+        `${MALL_ENDPOINTS.AFFILIATE_PURCHASES}?page=${page}&limit=${limit}`
+      );
+      return {
+        purchases: response.data.data || [],
+        total: response.data.meta?.pagination?.total || 0,
+        pages: response.data.meta?.pagination?.pages || 0
+      };
+    } catch (error) {
+      console.error('Error fetching user purchases:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's cashback summary
+   */
+  async getCashbackSummary(): Promise<{
+    totalEarned: number;
+    pending: number;
+    credited: number;
+    totalClicks: number;
+    totalPurchases: number;
+    conversionRate: number;
+    recentActivity: any[];
+  } | null> {
+    try {
+      const response = await apiClient.get<MallApiResponse<{
+        totalEarned: number;
+        pending: number;
+        credited: number;
+        totalClicks: number;
+        totalPurchases: number;
+        conversionRate: number;
+        recentActivity: any[];
+      }>>(MALL_ENDPOINTS.AFFILIATE_SUMMARY);
+      return response.data.data || null;
+    } catch (error) {
+      console.error('Error fetching cashback summary:', error);
+      return null;
+    }
+  }
+
+  // ==================== STORE-BASED MALL METHODS ====================
+  // These methods fetch from Store model where deliveryCategories.mall === true
+  // For the in-app delivery marketplace (users earn ReZ Coins)
+
+  /**
+   * Get mall stores homepage data
+   * Returns featured, new, top-rated, and premium stores
+   */
+  async getMallStoresHomepage(): Promise<{
+    featuredStores: any[];
+    newStores: any[];
+    topRatedStores: any[];
+    premiumStores: any[];
+    categories: any[];
+  }> {
+    try {
+      const response = await apiClient.get<MallApiResponse<{
+        featuredStores: any[];
+        newStores: any[];
+        topRatedStores: any[];
+        premiumStores: any[];
+        categories: any[];
+      }>>(MALL_ENDPOINTS.STORES_HOMEPAGE);
+      return response.data.data || {
+        featuredStores: [],
+        newStores: [],
+        topRatedStores: [],
+        premiumStores: [],
+        categories: [],
+      };
+    } catch (error) {
+      console.error('Error fetching mall stores homepage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all mall stores with filters
+   */
+  async getMallStores(filters?: {
+    category?: string;
+    premium?: boolean;
+    minCoinReward?: number;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    stores: any[];
+    total: number;
+    pages: number;
+  }> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.category) params.append('category', filters.category);
+      if (filters?.premium) params.append('premium', 'true');
+      if (filters?.minCoinReward) params.append('minCoinReward', filters.minCoinReward.toString());
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.page) params.append('page', filters.page.toString());
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+
+      const response = await apiClient.get<MallApiResponse<any[]>>(
+        `${MALL_ENDPOINTS.STORES}?${params.toString()}`
+      );
+
+      return {
+        stores: response.data.data || [],
+        total: response.data.meta?.pagination?.total || 0,
+        pages: response.data.meta?.pagination?.pages || 0,
+      };
+    } catch (error) {
+      console.error('Error fetching mall stores:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get featured mall stores
+   */
+  async getFeaturedMallStores(limit: number = 10): Promise<any[]> {
+    try {
+      const response = await apiClient.get<MallApiResponse<any[]>>(
+        `${MALL_ENDPOINTS.STORES_FEATURED}?limit=${limit}`
+      );
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching featured mall stores:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get new mall stores
+   */
+  async getNewMallStores(limit: number = 10): Promise<any[]> {
+    try {
+      const response = await apiClient.get<MallApiResponse<any[]>>(
+        `${MALL_ENDPOINTS.STORES_NEW}?limit=${limit}`
+      );
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching new mall stores:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get top rated mall stores
+   */
+  async getTopRatedMallStores(limit: number = 10): Promise<any[]> {
+    try {
+      const response = await apiClient.get<MallApiResponse<any[]>>(
+        `${MALL_ENDPOINTS.STORES_TOP_RATED}?limit=${limit}`
+      );
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching top rated mall stores:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get premium mall stores
+   */
+  async getPremiumMallStores(limit: number = 10): Promise<any[]> {
+    try {
+      const response = await apiClient.get<MallApiResponse<any[]>>(
+        `${MALL_ENDPOINTS.STORES_PREMIUM}?limit=${limit}`
+      );
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching premium mall stores:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search mall stores
+   */
+  async searchMallStores(query: string, limit: number = 20): Promise<any[]> {
+    try {
+      if (!query || query.length < 2) return [];
+
+      const response = await apiClient.get<MallApiResponse<any[]>>(
+        `${MALL_ENDPOINTS.STORES_SEARCH}?q=${encodeURIComponent(query)}&limit=${limit}`
+      );
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error searching mall stores:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get mall store categories
+   */
+  async getMallStoreCategories(): Promise<any[]> {
+    try {
+      const response = await apiClient.get<MallApiResponse<any[]>>(
+        MALL_ENDPOINTS.STORES_CATEGORIES
+      );
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching mall store categories:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get mall store by ID
+   */
+  async getMallStoreById(storeId: string): Promise<any | null> {
+    try {
+      const response = await apiClient.get<MallApiResponse<any>>(
+        `${MALL_ENDPOINTS.STORES}/${storeId}`
+      );
+      return response.data.data || null;
+    } catch (error) {
+      console.error('Error fetching mall store:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get mall stores by category
+   */
+  async getMallStoresByCategory(
+    categoryId: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{
+    stores: any[];
+    total: number;
+  }> {
+    try {
+      const response = await apiClient.get<MallApiResponse<any[]>>(
+        `${MALL_ENDPOINTS.STORES}/category/${categoryId}?page=${page}&limit=${limit}`
+      );
+
+      return {
+        stores: response.data.data || [],
+        total: response.data.meta?.pagination?.total || 0,
+      };
+    } catch (error) {
+      console.error('Error fetching mall stores by category:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get mall stores by category slug
+   * Used by frontend category pages that use slug in URL
+   */
+  async getMallStoresByCategorySlug(
+    categorySlug: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{
+    category: any;
+    stores: any[];
+    total: number;
+    pages: number;
+  }> {
+    try {
+      const response = await apiClient.get<MallApiResponse<{
+        category: any;
+        stores: any[];
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          pages: number;
+        };
+      }>>(`${MALL_ENDPOINTS.STORES}/category-slug/${categorySlug}?page=${page}&limit=${limit}`);
+
+      const data = response.data.data;
+      return {
+        category: data?.category || null,
+        stores: data?.stores || [],
+        total: data?.pagination?.total || 0,
+        pages: data?.pagination?.pages || 0,
+      };
+    } catch (error) {
+      console.error('Error fetching mall stores by category slug:', error);
+      throw error;
     }
   }
 }

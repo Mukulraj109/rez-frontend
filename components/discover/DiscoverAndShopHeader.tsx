@@ -10,10 +10,20 @@ import {
   Dimensions,
   Platform,
   Image,
+  ImageSourcePropType,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CategoryCard } from '@/types/discover.types';
+
+// Category icon images
+const CATEGORY_IMAGES = {
+  fashion: require('@/assets/category-icons/Shopping/Fashion.png'),
+  electronics: require('@/assets/category-icons/Shopping/Mobile-accessories.png'),
+  beauty: require('@/assets/category-icons/BEAUTY-WELLNESS/Beauty-services.png'),
+  home: require('@/assets/category-icons/HOME-SERVICES/Cleaning.png'),
+  food: require('@/assets/category-icons/FOOD-DINING/Cafes.png'),
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = 140;
@@ -149,14 +159,22 @@ export default function DiscoverAndShopHeader({
                 <View style={styles.decorCircle1} />
                 <View style={styles.decorCircle2} />
 
-                {/* Icon Container with glass effect */}
+                {/* Icon/Image Container with glass effect */}
                 <View style={styles.iconWrapper}>
                   <View style={styles.iconCircle}>
-                    <Ionicons
-                      name={category.icon as any}
-                      size={28}
-                      color="#FFFFFF"
-                    />
+                    {CATEGORY_IMAGES[category.id as keyof typeof CATEGORY_IMAGES] ? (
+                      <Image
+                        source={CATEGORY_IMAGES[category.id as keyof typeof CATEGORY_IMAGES]}
+                        style={styles.categoryImage}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Ionicons
+                        name={category.icon as any}
+                        size={28}
+                        color="#FFFFFF"
+                      />
+                    )}
                   </View>
                 </View>
 
@@ -306,6 +324,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+    overflow: 'hidden',
     // Glassmorphism effect
     ...Platform.select({
       ios: {
@@ -315,6 +334,11 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
       },
     }),
+  },
+  categoryImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
   },
   categoryLabel: {
     fontSize: 12,

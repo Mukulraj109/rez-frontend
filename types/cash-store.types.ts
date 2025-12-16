@@ -1,7 +1,15 @@
 /**
  * Cash Store Types
  *
- * TypeScript interfaces for ReZ Cash Store feature
+ * TypeScript interfaces for ReZ Cash Store feature.
+ *
+ * Cash Store = Affiliate Cashback System
+ * - External brand websites (Amazon, Myntra, Flipkart, etc.)
+ * - Users click through and shop on external sites
+ * - Brand sends webhook when purchase is made
+ * - Users earn real cashback (rupees)
+ *
+ * NOTE: This is different from ReZ Mall (in-app delivery marketplace with ReZ Coins)
  */
 
 // Re-export from existing services for convenience
@@ -87,6 +95,8 @@ export interface TrendingDeal {
   badge?: DealBadge;
   isFlashSale: boolean;
   priority: number;
+  externalUrl?: string; // External affiliate URL
+  storeId?: string; // For in-app stores
 }
 
 // ============================================================================

@@ -1,7 +1,8 @@
 /**
  * MallFeaturedBrands Component
  *
- * Horizontal scrolling section for featured brands
+ * Horizontal scrolling section for featured stores
+ * Redesigned with better header and "View All" visibility
  */
 
 import React, { memo, useCallback } from 'react';
@@ -12,7 +13,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { MallBrand } from '../../types/mall.types';
 import MallBrandCard from './cards/MallBrandCard';
@@ -32,7 +35,7 @@ const MallFeaturedBrands: React.FC<MallFeaturedBrandsProps> = ({
 }) => {
   const renderBrand = useCallback(
     ({ item }: { item: MallBrand }) => (
-      <MallBrandCard brand={item} onPress={onBrandPress} />
+      <MallBrandCard brand={item} onPress={onBrandPress} width={160} />
     ),
     [onBrandPress]
   );
@@ -45,13 +48,15 @@ const MallFeaturedBrands: React.FC<MallFeaturedBrandsProps> = ({
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.titleContainer}>
-            <Ionicons name="star" size={20} color="#00C06A" />
-            <Text style={styles.title}>Featured Brands</Text>
+            <View style={styles.iconContainer}>
+              <Ionicons name="star" size={16} color="#FFFFFF" />
+            </View>
+            <Text style={styles.title}>Featured Stores</Text>
           </View>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#00C06A" />
-          <Text style={styles.loadingText}>Loading brands...</Text>
+          <Text style={styles.loadingText}>Loading stores...</Text>
         </View>
       </View>
     );
@@ -66,25 +71,33 @@ const MallFeaturedBrands: React.FC<MallFeaturedBrandsProps> = ({
     <View style={styles.container}>
       {/* Section Header */}
       <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Ionicons name="star" size={20} color="#00C06A" />
-          <Text style={styles.title}>Featured Brands</Text>
-        </View>
-        {onViewAllPress && (
-          <TouchableOpacity
-            style={styles.viewAllButton}
-            onPress={onViewAllPress}
-          >
-            <Text style={styles.viewAllText}>View All</Text>
-            <Ionicons name="chevron-forward" size={16} color="#00C06A" />
-          </TouchableOpacity>
-        )}
-      </View>
+        <View style={styles.titleRow}>
+          <View style={styles.titleContainer}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="star" size={16} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={styles.title}>Featured Stores</Text>
+              <Text style={styles.subtitle}>
+                Earn ReZ Coins on every purchase
+              </Text>
+            </View>
+          </View>
 
-      {/* Subtitle */}
-      <Text style={styles.subtitle}>
-        Top picks with best cashback rewards
-      </Text>
+          {onViewAllPress && (
+            <TouchableOpacity
+              style={styles.viewAllButton}
+              onPress={onViewAllPress}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.viewAllText}>View All</Text>
+              <View style={styles.viewAllArrow}>
+                <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
       {/* Brands List */}
       <FlatList
@@ -105,40 +118,87 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   header: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 4,
   },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    flex: 1,
+  },
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#00C06A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   title: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#111827',
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 13,
     color: '#6B7280',
-    paddingHorizontal: 16,
-    marginBottom: 14,
+    marginTop: 2,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    backgroundColor: '#00C06A',
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   viewAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#00C06A',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  viewAllArrow: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   listContent: {
     paddingHorizontal: 16,
+    paddingBottom: 4,
   },
   loadingContainer: {
     flexDirection: 'row',

@@ -1,7 +1,7 @@
 /**
  * SearchBar Component
  *
- * Search input with debounce for mall pages
+ * Premium search input with debounce for mall pages
  */
 
 import React, { memo, useState, useEffect, useCallback } from 'react';
@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 interface SearchBarProps {
@@ -54,74 +55,117 @@ const SearchBar: React.FC<SearchBarProps> = ({
   }, [onSearch]);
 
   return (
-    <View style={[styles.container, isFocused && styles.containerFocused]}>
-      <Ionicons
-        name="search"
-        size={20}
-        color={isFocused ? '#00C06A' : '#9CA3AF'}
-        style={styles.searchIcon}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
-        value={query}
-        onChangeText={setQuery}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        autoFocus={autoFocus}
-        autoCapitalize="none"
-        autoCorrect={false}
-        returnKeyType="search"
-      />
-      {query.length > 0 && (
-        <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
-          <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-        </TouchableOpacity>
+    <View style={styles.wrapper}>
+      {isFocused && (
+        <LinearGradient
+          colors={['#00C06A', '#059669']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.focusBorder}
+        />
       )}
+      <View style={[styles.container, isFocused && styles.containerFocused]}>
+        <View style={[styles.iconWrapper, isFocused && styles.iconWrapperFocused]}>
+          <Ionicons
+            name="search"
+            size={18}
+            color={isFocused ? '#FFFFFF' : '#9CA3AF'}
+          />
+        </View>
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor="#9CA3AF"
+          value={query}
+          onChangeText={setQuery}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          autoFocus={autoFocus}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="search"
+        />
+        {query.length > 0 && (
+          <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+            <View style={styles.clearButtonInner}>
+              <Ionicons name="close" size={14} color="#6B7280" />
+            </View>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    borderRadius: 16,
+    position: 'relative',
+  },
+  focusBorder: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    borderRadius: 18,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 12,
-    height: 48,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  containerFocused: {
     backgroundColor: '#FFFFFF',
-    borderColor: '#00C06A',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    height: 52,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.06,
         shadowRadius: 8,
       },
       android: {
-        elevation: 4,
+        elevation: 2,
       },
     }),
   },
-  searchIcon: {
-    marginRight: 10,
+  containerFocused: {
+    borderColor: 'transparent',
+  },
+  iconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  iconWrapperFocused: {
+    backgroundColor: '#00C06A',
   },
   input: {
     flex: 1,
     fontSize: 16,
     color: '#111827',
     paddingVertical: 0,
+    fontWeight: '500',
   },
   clearButton: {
     padding: 4,
+    marginLeft: 8,
+  },
+  clearButtonInner: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

@@ -45,8 +45,9 @@ import {
   StoreDiscoverySection,
 } from '@/components/homepage';
 import HomeTabSection, { TabId } from '@/components/homepage/HomeTabSection';
+import MallHeroBanner from '@/components/mall/MallHeroBanner';
 import HowRezWorksCard from '@/components/homepage/HowRezWorksCard';
-import PopularServicesSection from '@/components/homepage/PopularServicesSection';
+import { useMallSection } from '@/hooks/useMallSection';
 import PromoBanner from '@/components/homepage/PromoBanner';
 import GlobeBanner from '@/components/homepage/GlobeBanner';
 import RecentlyViewedSection from '@/components/category/RecentlyViewedSection';
@@ -88,7 +89,6 @@ import realOffersApi from '@/services/realOffersApi';
 
 // Lazy-loaded components (below-the-fold)
 const ProfileMenuModal = React.lazy(() => import('@/components/profile/ProfileMenuModal'));
-const VoucherNavButton = React.lazy(() => import('@/components/voucher/VoucherNavButton'));
 const NavigationShortcuts = React.lazy(() => import('@/components/navigation/NavigationShortcuts'));
 const QuickAccessFAB = React.lazy(() => import('@/components/navigation/QuickAccessFAB'));
 const FeatureHighlights = React.lazy(() => import('@/components/homepage/FeatureHighlights'));
@@ -132,10 +132,10 @@ const BadgeAvatar: React.FC<BadgeAvatarProps> = ({ size = 24 }) => {
   return (
     <View style={{ width, height }}>
       <Svg width={width} height={height}>
-        <Path d={shieldPath} fill="#C4B078" />
+        <Path d={shieldPath} fill="#4ADE80" />
       </Svg>
       <View style={{ position: 'absolute', width, height, justifyContent: 'center', alignItems: 'center', paddingBottom: height * 0.1 }}>
-        <Ionicons name="person" size={size * 0.5} color="#A89860" />
+        <Ionicons name="person" size={size * 0.5} color="#16A34A" />
       </View>
     </View>
   );
@@ -171,6 +171,9 @@ export default function HomeScreen() {
 
   // Get recently viewed items
   const { items: recentlyViewedItems, isLoading: isLoadingRecentlyViewed, refresh: refreshRecentlyViewed } = useRecentlyViewed();
+
+  // Get mall section data for hero banners
+  const { heroBanners: mallHeroBanners, isLoading: isMallLoading } = useMallSection();
 
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
@@ -727,7 +730,7 @@ export default function HomeScreen() {
 
           {/* Modern Header Actions */}
           <View style={viewStyles.headerActions}>
-            {/* Coin Balance Display - Stacked Style */}
+            {/* Coin Balance Display - Horizontal Pill Style */}
             <TouchableOpacity
               onPress={() => {
                 if (Platform.OS === 'ios') {
@@ -739,16 +742,12 @@ export default function HomeScreen() {
               activeOpacity={0.7}
               style={viewStyles.headerCoinContainer}
             >
-              <View style={viewStyles.headerCoinCircle}>
-                <Image
-                  source={require('@/assets/images/rez-coin.png')}
-                  style={viewStyles.headerCoinImage}
-                  resizeMode="contain"
-                />
-              </View>
-              <View style={viewStyles.headerCoinBalancePill}>
-                <Text style={viewStyles.headerCoinText}>{userPoints}</Text>
-              </View>
+              <Image
+                source={require('@/assets/images/rez-coin.png')}
+                style={viewStyles.headerCoinImage}
+                resizeMode="contain"
+              />
+              <Text style={viewStyles.headerCoinText}>{userPoints}</Text>
             </TouchableOpacity>
 
             {/* Cart Button with Modern Badge */}
@@ -766,7 +765,7 @@ export default function HomeScreen() {
               accessibilityHint="Double tap to view your shopping cart"
               style={viewStyles.headerIconButton}
             >
-              <Ionicons name="cart-outline" size={22} color="#1a1a1a" />
+              <Ionicons name="cart-outline" size={24} color="#1a1a1a" />
               {cartState.totalItems > 0 && (
                 <LinearGradient
                   colors={['#FF6B6B', '#FF5252']}
@@ -792,15 +791,15 @@ export default function HomeScreen() {
               accessibilityHint="Double tap to open profile menu and account settings"
               style={viewStyles.profileSavingsContainer}
             >
-              {/* Badge on left */}
-              <View style={viewStyles.badgeOverlay}>
-                <BadgeAvatar />
-              </View>
-              {/* Text pill - overlaps badge slightly with negative margin */}
+              {/* Text pill - on left */}
               <View style={viewStyles.savedTextPill}>
                 <Text style={viewStyles.savedText}>
                   ₹{totalSaved} saved
                 </Text>
+              </View>
+              {/* Badge on right - overlaps text slightly with negative margin */}
+              <View style={viewStyles.badgeOverlay}>
+                <BadgeAvatar />
               </View>
             </TouchableOpacity>
           </View>
@@ -869,8 +868,16 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        {/* Hero Banner - Dynamic content based on user */}
-        <HeroBanner totalSaved={totalSaved} />
+        {/* Hero Banner - Dynamic content based on user - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <HeroBanner totalSaved={totalSaved} />}
+
+        {/* Mall Hero Banner - Auto-scrolling carousel for "rez-mall" tab */}
+        {activeTab === 'rez-mall' && (
+          <MallHeroBanner
+            banners={mallHeroBanners}
+            isLoading={isMallLoading && !mallHeroBanners.length}
+          />
+        )}
 
         </LinearGradient>
 
@@ -910,13 +917,6 @@ export default function HomeScreen() {
 
         {/* Exclusive ReZ Rewards Section - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <ExclusiveRewardsSection />}
-
-        {/* Online Voucher Button (Exclusive Deals) - Lazy Loaded - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && (
-          <Suspense fallback={<BelowFoldFallback />}>
-            <VoucherNavButton variant="minimal" style={{ marginBottom: 20 }} />
-          </Suspense>
-        )}
 
         {/* Recently Viewed Section - Only show when "rez" tab is active */}
         {activeTab === 'rez' && recentlyViewedItems.length > 0 && (
@@ -1033,9 +1033,6 @@ export default function HomeScreen() {
         {/* Globe Banner - Best Deals on Internet - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <GlobeBanner />}
 
-        {/* Services Sections - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <PopularServicesSection />}
-
         {/* Hot Deals Section - Shows products with hot-deal tag or high cashback - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <HotDealsSection title="Hot deals" limit={10} />}
 
@@ -1091,9 +1088,10 @@ export default function HomeScreen() {
       </Animated.ScrollView>
 
       {/* Sticky Search Header with Glass Effect - Rendered after ScrollView to avoid blocking touches */}
+      {/* showThreshold should be high enough so sticky header only appears after category section scrolls out of view */}
       <StickySearchHeader
         scrollY={scrollY}
-        showThreshold={350}
+        showThreshold={580}
         onSearchPress={handleSearchPress}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
@@ -1252,33 +1250,26 @@ const viewStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  // Header Coin - Stacked Style (circle + balance below)
+  // Header Coin - Horizontal Pill Style
   headerCoinContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: -4,
-  },
-  headerCoinCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 200, 87, 0.18)',
+    borderRadius: 14,
+    paddingVertical: 2,
+    paddingLeft: 2,
+    paddingRight: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 200, 87, 0.35)',
+    gap: 4,
+    marginTop: -12,
   },
   headerCoinImage: {
-    width: 28,
-    height: 28,
-  },
-  headerCoinBalancePill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 8,
-    marginTop: -6,
+    width: 22,
+    height: 22,
   },
   headerCoinText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '700',
     color: '#1a1a1a',
   },
@@ -1289,6 +1280,7 @@ const viewStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    marginTop: -6,
   },
   cartBadgeModern: {
     position: 'absolute',
@@ -1314,23 +1306,23 @@ const viewStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  // Text pill with background - positioned to the right of badge
+  // Text pill with background - positioned to the left of badge
   savedTextPill: {
-    backgroundColor: 'rgba(180, 140, 80, 0.18)',
-    paddingLeft: 6,
-    paddingRight: 8,
+    backgroundColor: 'rgba(34, 197, 94, 0.18)',
+    paddingLeft: 8,
+    paddingRight: 6,
     paddingVertical: 3,
     borderRadius: 0,
-    marginLeft: -6,
+    marginRight: -6,
     marginTop: -8,
   },
-  // Badge overlay - no special positioning needed
+  // Badge overlay - overlaps text from right
   badgeOverlay: {
     zIndex: 1,
   },
   // Savings text
   savedText: {
-    color: '#8B7355',
+    color: '#15803D',
     fontSize: 9,
     fontWeight: '600',
   },
