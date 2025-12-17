@@ -160,6 +160,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const startQRDetection = () => {
     // Use BarcodeDetector if available (Chrome, Edge)
     if ('BarcodeDetector' in window) {
+      console.log('🔍 BarcodeDetector available, starting QR detection');
       const barcodeDetector = new (window as any).BarcodeDetector({
         formats: ['qr_code'],
       });
@@ -169,6 +170,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
           try {
             const barcodes = await barcodeDetector.detect(videoRef.current);
             if (barcodes.length > 0) {
+              console.log('📱 QR Code detected:', barcodes[0].rawValue);
               handleQRCodeDetected(barcodes[0].rawValue);
             }
           } catch (err) {
@@ -178,30 +180,44 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
       }, 200);
     } else {
       // Fallback: Show message that QR scanning not supported
-      console.log('BarcodeDetector not available, using manual entry');
+      console.log('⚠️ BarcodeDetector NOT available in this browser, please use manual entry');
+      setError('QR scanning not supported in this browser. Please enter code manually.');
+      setShowManualEntry(true);
       // Keep camera running but show manual entry option prominently
     }
   };
 
   const handleQRCodeDetected = (data: string) => {
-    if (hasScannedRef.current) return;
+    console.log('🎯 handleQRCodeDetected called with:', data);
+
+    if (hasScannedRef.current) {
+      console.log('⏭️ Already scanned, skipping');
+      return;
+    }
     hasScannedRef.current = true;
 
     try {
       // Try parsing as JSON first
+      console.log('🔄 Trying to parse as JSON...');
       const qrData: QRCodeData = JSON.parse(data);
+      console.log('✅ Parsed JSON:', qrData);
       if (qrData.type === 'REZ_STORE_PAYMENT' && qrData.code) {
+        console.log('✅ Valid REZ QR code, calling onScan with:', qrData.code);
         stopScanning();
         onScan(qrData.code);
         return;
       }
-    } catch {}
+    } catch (e) {
+      console.log('⚠️ Not JSON, trying as plain text');
+    }
 
     // Try as plain text
     if (data.startsWith('REZ-STORE-') || data.length >= 6) {
+      console.log('✅ Valid plain text code, calling onScan with:', data);
       stopScanning();
       onScan(data);
     } else {
+      console.log('❌ Invalid QR code format');
       hasScannedRef.current = false;
       setError('Invalid QR code. Please scan a ReZ store QR.');
       setTimeout(() => setError(null), 3000);
