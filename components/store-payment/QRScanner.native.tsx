@@ -76,44 +76,28 @@ export default function QRScanner({ onScan, onClose, onManualEntry }: QRScannerP
   }, []);
 
   const handleBarCodeScanned = (result: BarcodeScanningResult) => {
-    console.log('📱 [Native] Barcode scanned:', result);
-    console.log('📱 [Native] Barcode data:', result.data);
-    console.log('📱 [Native] Barcode type:', result.type);
-
-    if (scanned) {
-      console.log('⏭️ [Native] Already scanned, skipping');
-      return;
-    }
+    if (scanned) return;
 
     try {
       const data = result.data;
-      console.log('🔄 [Native] Processing data:', data);
 
       try {
         const qrData: QRCodeData = JSON.parse(data);
-        console.log('✅ [Native] Parsed JSON:', qrData);
-
         if (qrData.type !== 'REZ_STORE_PAYMENT' || !qrData.code) {
-          console.log('❌ [Native] Invalid QR type or no code');
           showError('Invalid QR code. Please scan a ReZ store QR.');
           return;
         }
-        console.log('✅ [Native] Valid REZ QR, calling onScan with:', qrData.code);
         setScanned(true);
         onScan(qrData.code);
       } catch {
-        console.log('⚠️ [Native] Not JSON, checking plain text');
         if (data.startsWith('REZ-STORE-')) {
-          console.log('✅ [Native] Valid plain text code, calling onScan');
           setScanned(true);
           onScan(data);
         } else {
-          console.log('❌ [Native] Invalid format:', data);
           showError('Invalid QR code format.');
         }
       }
     } catch (err) {
-      console.error('❌ [Native] Error processing QR:', err);
       showError('Failed to process QR code.');
     }
   };

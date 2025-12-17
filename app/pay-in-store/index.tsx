@@ -108,32 +108,18 @@ export default function PayInStoreScreen() {
       setError(null);
       setShowScanner(false);
 
-      console.log('========================================');
-      console.log('🔍 handleQRScan called with QR code:', qrCode);
-      console.log('📡 Making API call to:', `/store-payment/lookup/${qrCode}`);
-
       const response = await apiClient.get(`/store-payment/lookup/${qrCode}`);
-
-      console.log('📦 Full API response:', JSON.stringify(response, null, 2));
-      console.log('📊 response.success:', response.success);
-      console.log('📊 response.data:', response.data);
-      console.log('📊 response.error:', response.error);
 
       if (response.success && response.data) {
         const store = response.data as StorePaymentInfo;
-        console.log('✅ Store found:', store.name, 'ID:', store._id);
         navigateToEnterAmount(store._id, store.name, store.logo);
       } else {
-        console.log('❌ Store not found. Response:', response);
         setError(response.error || 'Store not found. Please try again.');
       }
     } catch (err: any) {
-      console.error('❌ QR lookup error:', err);
-      console.error('❌ Error details:', JSON.stringify(err, null, 2));
       setError(err.message || 'Failed to find store. Please try again.');
     } finally {
       setIsLoading(false);
-      console.log('========================================');
     }
   };
 

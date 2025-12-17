@@ -1,6 +1,7 @@
 /**
  * CategoryCashbackGrid Component
  * 2-column grid of category cards showing cashback percentages
+ * With horizontal slider - 3 rows per page
  */
 
 import React, { useState, useEffect, memo, useCallback, useRef } from 'react';
@@ -13,6 +14,9 @@ import {
   Image,
   Animated,
   Dimensions,
+  ScrollView,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -111,10 +115,27 @@ const CategoryCashbackGridSkeleton: React.FC = memo(() => {
 
 CategoryCashbackGridSkeleton.displayName = 'CategoryCashbackGridSkeleton';
 
+// Constants for slider
+const ITEMS_PER_PAGE = 6; // 3 rows x 2 columns
+const PAGE_GAP = 16; // Gap between pages
+const SLIDER_WIDTH = SCREEN_WIDTH - 32; // Account for container padding
+const PAGE_WIDTH = SLIDER_WIDTH + PAGE_GAP; // Width including gap for snap
+
 const CategoryCashbackGrid: React.FC<CategoryCashbackGridProps> = memo(({ onCategoryPress, style }) => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [cashbackRates, setCashbackRates] = useState<Record<string, number>>({});
+  const [currentPage, setCurrentPage] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(CATEGORIES.length / ITEMS_PER_PAGE);
+
+  // Split categories into pages
+  const categoryPages = [];
+  for (let i = 0; i < CATEGORIES.length; i += ITEMS_PER_PAGE) {
+    categoryPages.push(CATEGORIES.slice(i, i + ITEMS_PER_PAGE));
+  }
 
   useEffect(() => {
     fetchCashbackRates();
@@ -178,6 +199,22 @@ const CategoryCashbackGrid: React.FC<CategoryCashbackGridProps> = memo(({ onCate
     }
   }, [router, onCategoryPress]);
 
+  // Handle scroll end to update current page
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const page = Math.round(offsetX / PAGE_WIDTH);
+    setCurrentPage(page);
+  }, []);
+
+  // Handle pagination dot press
+  const handleDotPress = useCallback((pageIndex: number) => {
+    scrollViewRef.current?.scrollTo({
+      x: pageIndex * PAGE_WIDTH,
+      animated: true,
+    });
+    setCurrentPage(pageIndex);
+  }, []);
+
   if (loading) {
     return (
       <View style={[styles.container, style]}>
@@ -200,31 +237,66 @@ const CategoryCashbackGrid: React.FC<CategoryCashbackGridProps> = memo(({ onCate
       </View>
       <Text style={styles.headerSubtitle}>Shop smarter across all your needs</Text>
 
-      {/* Grid */}
-      <View style={styles.grid}>
-        {CATEGORIES.map((category) => (
+      {/* Slider */}
+      <View style={styles.sliderWrapper}>
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          pagingEnabled={false}
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleScroll}
+          decelerationRate="fast"
+          snapToInterval={PAGE_WIDTH}
+          snapToAlignment="start"
+          contentContainerStyle={styles.sliderContainer}
+          nestedScrollEnabled
+        >
+          {categoryPages.map((pageCategories, pageIndex) => (
+            <View key={pageIndex} style={styles.page}>
+              <View style={styles.grid}>
+                {pageCategories.map((category) => (
+                  <TouchableOpacity
+                    key={category.id}
+                    style={styles.card}
+                    onPress={() => handleCategoryPress(category)}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${category.label} category with ${getCashbackRate(category.id)}% cashback`}
+                  >
+                    <View style={[styles.iconContainer, { backgroundColor: category.iconBg }]}>
+                      <Image
+                        source={category.image}
+                        style={styles.categoryIcon}
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <View style={styles.textContainer}>
+                      <Text style={styles.categoryName}>{category.label}</Text>
+                      <Text style={styles.cashbackText}>
+                        Earn up to {getCashbackRate(category.id)}% Cashback
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Pagination Dots */}
+      <View style={styles.paginationContainer}>
+        {Array.from({ length: totalPages }).map((_, index) => (
           <TouchableOpacity
-            key={category.id}
-            style={styles.card}
-            onPress={() => handleCategoryPress(category)}
-            activeOpacity={0.7}
+            key={index}
+            onPress={() => handleDotPress(index)}
+            style={[
+              styles.paginationDot,
+              currentPage === index && styles.paginationDotActive,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel={`${category.label} category with ${getCashbackRate(category.id)}% cashback`}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: category.iconBg }]}>
-              <Image
-                source={category.image}
-                style={styles.categoryIcon}
-                resizeMode="contain"
-              />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={styles.categoryName}>{category.label}</Text>
-              <Text style={styles.cashbackText}>
-                Earn up to {getCashbackRate(category.id)}% Cashback
-              </Text>
-            </View>
-          </TouchableOpacity>
+            accessibilityLabel={`Go to page ${index + 1}`}
+          />
         ))}
       </View>
 
@@ -260,7 +332,7 @@ const CategoryCashbackGrid: React.FC<CategoryCashbackGridProps> = memo(({ onCate
 
 CategoryCashbackGrid.displayName = 'CategoryCashbackGrid';
 
-const CARD_WIDTH = (SCREEN_WIDTH - 56) / 2; // narrower cards with more gap
+const CARD_WIDTH = (SLIDER_WIDTH - 24) / 2; // 2 cards per row with gap
 
 const styles = StyleSheet.create({
   container: {
@@ -285,19 +357,51 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 12,
     color: '#6B7280',
-    marginBottom: 10,
+    marginBottom: 8,
+  },
+  // Slider styles
+  sliderWrapper: {
+    height: 276, // Fixed height for 3 rows: 3 × (84 card height + 8 margin) = 276
+    overflow: 'hidden',
+  },
+  sliderContainer: {
+    alignItems: 'flex-start',
+  },
+  page: {
+    width: SLIDER_WIDTH,
+    marginRight: PAGE_GAP,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
+  // Pagination styles
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 2,
+    gap: 8,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D1D5DB',
+  },
+  paginationDotActive: {
+    backgroundColor: '#059669',
+    width: 24,
+    borderRadius: 4,
+  },
   card: {
     width: CARD_WIDTH,
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 12,
-    marginBottom: 10,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'stretch',
     ...Platform.select({
@@ -345,7 +449,7 @@ const styles = StyleSheet.create({
   },
   // Promo Card styles
   promoCard: {
-    marginTop: 14,
+    marginTop: 10,
     marginBottom: 8,
     borderRadius: 18,
     paddingVertical: 24,

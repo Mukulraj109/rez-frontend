@@ -161,7 +161,6 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   };
 
   const startQRDetection = () => {
-    console.log('🔍 Starting QR detection with jsQR...');
     setScannerStatus('scanning');
 
     // Create canvas for jsQR processing
@@ -189,47 +188,36 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             });
 
             if (code) {
-              console.log('📱 QR Code detected by jsQR:', code.data);
               setScannerStatus('detected');
               handleQRCodeDetected(code.data);
             }
           }
         }
       }
-    }, 150); // Scan every 150ms for better performance
+    }, 150);
   };
 
   const handleQRCodeDetected = (data: string) => {
-    console.log('🎯 handleQRCodeDetected called with:', data);
-
-    if (hasScannedRef.current) {
-      console.log('⏭️ Already scanned, skipping');
-      return;
-    }
+    if (hasScannedRef.current) return;
     hasScannedRef.current = true;
 
     try {
       // Try parsing as JSON first
-      console.log('🔄 Trying to parse as JSON...');
       const qrData: QRCodeData = JSON.parse(data);
-      console.log('✅ Parsed JSON:', qrData);
       if (qrData.type === 'REZ_STORE_PAYMENT' && qrData.code) {
-        console.log('✅ Valid REZ QR code, calling onScan with:', qrData.code);
         stopScanning();
         onScan(qrData.code);
         return;
       }
     } catch (e) {
-      console.log('⚠️ Not JSON, trying as plain text');
+      // Not JSON, try as plain text
     }
 
     // Try as plain text
     if (data.startsWith('REZ-STORE-') || data.length >= 6) {
-      console.log('✅ Valid plain text code, calling onScan with:', data);
       stopScanning();
       onScan(data);
     } else {
-      console.log('❌ Invalid QR code format');
       hasScannedRef.current = false;
       setError('Invalid QR code. Please scan a ReZ store QR.');
       setTimeout(() => setError(null), 3000);

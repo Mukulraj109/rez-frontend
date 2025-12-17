@@ -6,25 +6,23 @@
  * - Option to check offers or pay directly
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   Image,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '@/constants/DesignTokens';
-import { EnterAmountParams, StorePaymentInfo, StoreRewardRules } from '@/types/storePayment.types';
+import { COLORS } from '@/constants/DesignTokens';
+import { EnterAmountParams, StorePaymentInfo } from '@/types/storePayment.types';
 import apiClient from '@/services/apiClient';
 
 export default function EnterAmountScreen() {
@@ -50,28 +48,23 @@ export default function EnterAmountScreen() {
 
     try {
       setIsLoading(true);
-      // Use the lookup endpoint to get store payment info
       const response = await apiClient.get(`/stores/${storeId}`);
       if (response.success && response.data) {
         setStore(response.data);
       }
     } catch (err: any) {
       console.error('Failed to load store:', err);
-      // Continue anyway - we have the basic info from params
     } finally {
       setIsLoading(false);
     }
   };
 
   const formatAmount = (value: string) => {
-    // Remove non-numeric characters except decimal
     const cleaned = value.replace(/[^0-9.]/g, '');
-    // Ensure only one decimal point
     const parts = cleaned.split('.');
     if (parts.length > 2) {
       return parts[0] + '.' + parts.slice(1).join('');
     }
-    // Limit decimal places to 2
     if (parts[1] && parts[1].length > 2) {
       return parts[0] + '.' + parts[1].slice(0, 2);
     }
@@ -86,13 +79,12 @@ export default function EnterAmountScreen() {
   const numericAmount = parseFloat(amount) || 0;
   const rewardRules = store?.rewardRules;
 
-  // Calculate estimated rewards
   const estimatedCashback = rewardRules
     ? Math.floor((numericAmount * (rewardRules.baseCashbackPercent || 5)) / 100)
     : Math.floor(numericAmount * 0.05);
 
   const estimatedCoins = rewardRules
-    ? Math.floor(numericAmount / 10) // 1 coin per ₹10 spent (default)
+    ? Math.floor(numericAmount / 10)
     : Math.floor(numericAmount / 10);
 
   const meetsMinimum = !rewardRules?.minimumAmountForReward ||
@@ -145,13 +137,9 @@ export default function EnterAmountScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView
-          style={{ flex: 1, width: '100%' }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          {/* Header */}
-          <View style={styles.header}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color="#111827" />
           </TouchableOpacity>
@@ -159,7 +147,11 @@ export default function EnterAmountScreen() {
           <View style={styles.placeholder} />
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Store Info */}
           <View style={styles.storeCard}>
             <View style={styles.storeIconContainer}>
@@ -185,7 +177,7 @@ export default function EnterAmountScreen() {
 
           {/* Amount Input */}
           <View style={styles.amountSection}>
-            <Text style={styles.amountLabel}>Bill Amount</Text>
+            <Text style={styles.amountLabel}>BILL AMOUNT</Text>
             <View style={styles.amountInputContainer}>
               <Text style={styles.currencySymbol}>₹</Text>
               <TextInput
@@ -194,19 +186,14 @@ export default function EnterAmountScreen() {
                 onChangeText={handleAmountChange}
                 keyboardType="decimal-pad"
                 placeholder="0"
-                placeholderTextColor={COLORS.text.tertiary}
+                placeholderTextColor="#9CA3AF"
                 maxLength={8}
                 autoFocus
               />
             </View>
 
             {/* Quick Amount Buttons */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.quickAmountsScroll}
-              contentContainerStyle={styles.quickAmounts}
-            >
+            <View style={styles.quickAmountsContainer}>
               {quickAmounts.map((quickAmount) => (
                 <TouchableOpacity
                   key={quickAmount}
@@ -226,7 +213,7 @@ export default function EnterAmountScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
 
             {error && (
               <View style={styles.errorContainer}>
@@ -298,7 +285,7 @@ export default function EnterAmountScreen() {
             </LinearGradient>
           )}
 
-          <View style={{ height: 20 }} />
+          <View style={{ height: 100 }} />
         </ScrollView>
 
         {/* Bottom Action Buttons */}
@@ -323,8 +310,7 @@ export default function EnterAmountScreen() {
             <Text style={styles.payNowText}>Pay Now</Text>
             <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
+        </View>
       </SafeAreaView>
     </>
   );
@@ -334,13 +320,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-    width: '100%',
-    ...Platform.select({
-      web: {
-        maxWidth: '100%',
-        minHeight: '100vh',
-      },
-    }),
   },
   header: {
     flexDirection: 'row',
@@ -351,7 +330,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
-    width: '100%',
   },
   backButton: {
     width: 40,
@@ -369,13 +347,18 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
-  content: {
+  scrollView: {
     flex: 1,
-    padding: 16,
-    width: '100%',
+  },
+  scrollContent: {
+    paddingVertical: 16,
+    paddingLeft: 90,
+    paddingRight: 10,
+    marginLeft: 70,
+    marginRight: -130,
   },
   storeCard: {
-    flexDirection: 'row',
+    
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     padding: 16,
@@ -445,13 +428,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
     marginBottom: 8,
-    textTransform: 'uppercase',
     letterSpacing: 1,
   },
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
     borderBottomWidth: 2,
     borderBottomColor: '#00C06A',
     paddingBottom: 8,
@@ -469,25 +450,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     padding: 0,
-    textAlign: 'left',
-    ...Platform.select({
-      web: {
-        outlineStyle: 'none',
-      },
-    }),
   },
-  quickAmountsScroll: {
-    marginHorizontal: -16,
-    marginTop: 4,
-  },
-  quickAmounts: {
+  quickAmountsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   quickAmountButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
