@@ -451,6 +451,7 @@ const styles = StyleSheet.create({
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-start',
     borderBottomWidth: 2,
     borderBottomColor: '#00C06A',
     paddingBottom: 8,
@@ -468,6 +469,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     padding: 0,
+    textAlign: 'left',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
   },
   quickAmountsScroll: {
     marginHorizontal: -16,

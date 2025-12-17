@@ -2,7 +2,7 @@
  * QR Scanner Component - Web
  *
  * Premium QR scanner UI for web with:
- * - Live camera feed with QR detection
+ * - Live camera feed with QR detection using jsQR
  * - Dark themed camera-style background
  * - Promo banner showing rewards
  * - Animated scan frame
@@ -24,6 +24,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import jsQR from 'jsqr';
 import { QRCodeData } from '@/types/storePayment.types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -53,8 +54,10 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   const [hasWebcam, setHasWebcam] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [scannerStatus, setScannerStatus] = useState<'idle' | 'scanning' | 'no-detector' | 'detected'>('idle');
   const scanLineAnim = useRef(new Animated.Value(0)).current;
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasScannedRef = useRef(false);
@@ -158,31 +161,42 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   };
 
   const startQRDetection = () => {
-    // Use BarcodeDetector if available (Chrome 88+, Edge 88+)
-    if ('BarcodeDetector' in window) {
-      console.log('🔍 BarcodeDetector available, starting QR detection');
-      const barcodeDetector = new (window as any).BarcodeDetector({
-        formats: ['qr_code'],
-      });
+    console.log('🔍 Starting QR detection with jsQR...');
+    setScannerStatus('scanning');
 
-      scanIntervalRef.current = setInterval(async () => {
-        if (videoRef.current && !hasScannedRef.current && videoRef.current.readyState === 4) {
-          try {
-            const barcodes = await barcodeDetector.detect(videoRef.current);
-            if (barcodes.length > 0) {
-              console.log('📱 QR Code detected:', barcodes[0].rawValue);
-              handleQRCodeDetected(barcodes[0].rawValue);
+    // Create canvas for jsQR processing
+    if (!canvasRef.current) {
+      const canvas = document.createElement('canvas');
+      canvasRef.current = canvas;
+    }
+
+    scanIntervalRef.current = setInterval(() => {
+      if (videoRef.current && !hasScannedRef.current && videoRef.current.readyState === 4) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+
+        if (canvas && video.videoWidth > 0) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: 'dontInvert',
+            });
+
+            if (code) {
+              console.log('📱 QR Code detected by jsQR:', code.data);
+              setScannerStatus('detected');
+              handleQRCodeDetected(code.data);
             }
-          } catch (err) {
-            // Ignore detection errors
           }
         }
-      }, 200);
-    } else {
-      // No BarcodeDetector - show manual entry but keep camera for visual feedback
-      console.log('⚠️ BarcodeDetector not available, showing manual entry');
-      setShowManualEntry(true);
-    }
+      }
+    }, 150); // Scan every 150ms for better performance
   };
 
   const handleQRCodeDetected = (data: string) => {
@@ -237,8 +251,10 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
       videoRef.current.srcObject = null;
     }
 
+    canvasRef.current = null;
     setIsScanning(false);
     setCameraReady(false);
+    setScannerStatus('idle');
   };
 
   const validateAndSubmit = () => {
@@ -364,6 +380,30 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
         {/* Scanning indicator */}
         {cameraReady && (
           <Text style={styles.scanHint}>Point camera at QR code</Text>
+        )}
+
+        {/* Scanner Status Indicator */}
+        {cameraReady && (
+          <View style={styles.statusContainer}>
+            {scannerStatus === 'scanning' && (
+              <View style={[styles.statusBadge, styles.statusScanning]}>
+                <Ionicons name="scan" size={16} color="#FFFFFF" />
+                <Text style={styles.statusText}>Scanner Active - Looking for QR</Text>
+              </View>
+            )}
+            {scannerStatus === 'no-detector' && (
+              <View style={[styles.statusBadge, styles.statusError]}>
+                <Ionicons name="warning" size={16} color="#FFFFFF" />
+                <Text style={styles.statusText}>QR Detection Not Supported - Use Manual Entry</Text>
+              </View>
+            )}
+            {scannerStatus === 'detected' && (
+              <View style={[styles.statusBadge, styles.statusSuccess]}>
+                <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                <Text style={styles.statusText}>QR Detected!</Text>
+              </View>
+            )}
+          </View>
         )}
       </View>
 
@@ -790,5 +830,31 @@ const styles = StyleSheet.create({
     fontSize: 6,
     color: 'rgba(255,255,255,0.5)',
     letterSpacing: 0.3,
+  },
+  statusContainer: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  statusScanning: {
+    backgroundColor: REZ_COLORS.primary,
+  },
+  statusError: {
+    backgroundColor: '#EF4444',
+  },
+  statusSuccess: {
+    backgroundColor: '#10B981',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

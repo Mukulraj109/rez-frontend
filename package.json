@@ -71,6 +71,7 @@
     "expo-system-ui": "~3.0.7",
     "expo-web-browser": "~13.0.3",
     "inline-style-prefixer": "^6.0.4",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.539.0",
     "pako": "^2.1.0",
     "react": "18.2.0",
