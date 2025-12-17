@@ -56,23 +56,22 @@ export default function OffersScreen() {
       else setIsLoading(true);
       setError(null);
 
-      const response = await apiClient.get(`/store-payment/offers/${storeId}`, {
-        params: { amount: numericAmount },
-      });
+      const response = await apiClient.get<OffersResponse>(`/store-payment/offers/${storeId}`, { amount: numericAmount });
+      console.log('Offers API response:', response);
 
-      if (response.data?.success && response.data?.data) {
-        setOffers(response.data.data);
+      if (response.success && response.data) {
+        setOffers(response.data);
 
         // Auto-select best offer
-        if (response.data.data.bestOffer) {
-          setSelectedOffers([response.data.data.bestOffer]);
+        if (response.data.bestOffer) {
+          setSelectedOffers([response.data.bestOffer]);
         }
       } else {
-        setError('Failed to load offers');
+        setError(response.error || 'Failed to load offers');
       }
     } catch (err: any) {
       console.error('Failed to load offers:', err);
-      setError(err.response?.data?.error || 'Failed to load offers');
+      setError(err.message || 'Failed to load offers');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
