@@ -17,6 +17,7 @@ export { default as GoingOutSection } from './GoingOutSection';
 export { default as StoreDiscoverySection } from './StoreDiscoverySection';
 export { default as PlayAndEarnSection } from './PlayAndEarnSection';
 export { default as SocialProofSection } from './SocialProofSection';
+export { StoreExperiencesSection } from './StoreExperiencesSection';
 
 // Card Components
 export { default as EventCard } from './cards/EventCard';
@@ -29,6 +30,7 @@ export { default as CategoryProductCard } from './cards/CategoryProductCard';
 export { default as CategorySectionCard } from './cards/CategorySectionCard';
 export { default as TopStoreCard } from './cards/TopStoreCard';
 export { default as PopularStoreCard } from './cards/PopularStoreCard';
+export { StoreExperienceCard } from './cards/StoreExperienceCard';
 
 // Play & Earn Card Components
 export { default as DailySpinCard } from './cards/DailySpinCard';

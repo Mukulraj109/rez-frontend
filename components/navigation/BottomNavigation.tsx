@@ -6,10 +6,14 @@ import {
   StyleSheet,
   Platform,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+
+// Import the Pay in Store GIF icon (compressed)
+const payInStoreIcon = require('@/assets/images/pay-in-store-icon-compressed.gif');
 import Svg, { Path } from 'react-native-svg';
 import logger from '@/utils/logger';
 import { useHomeTab } from '@/contexts/HomeTabContext';
@@ -430,12 +434,13 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
           accessibilityLabel={`${centerTab.name} tab`}
           accessibilityRole="tab"
         >
-          <LinearGradient
-            colors={['#00C06A', '#00A05A']}
-            style={styles.floatingButtonGradient}
-          >
-            <Ionicons name="qr-code" size={26} color="white" />
-          </LinearGradient>
+          <View style={styles.floatingButtonCircle}>
+            <Image
+              source={payInStoreIcon}
+              style={styles.payInStoreGif}
+              resizeMode="contain"
+            />
+          </View>
         </TouchableOpacity>
         <Text style={styles.floatingButtonLabel}>{centerTab.name}</Text>
       </View>
@@ -490,7 +495,7 @@ const styles = StyleSheet.create({
     // No extra styling needed
   },
 
-  // The gradient circle button
+  // The gradient circle button (kept for reference)
   floatingButtonGradient: {
     width: 56,
     height: 56,
@@ -505,6 +510,31 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
+  },
+
+  // White circle container for the GIF
+  floatingButtonCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: '#00C06A',
+    // Shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+
+  // Pay in Store GIF icon
+  payInStoreGif: {
+    width: 32,
+    height: 32,
   },
 
   // Label below floating button

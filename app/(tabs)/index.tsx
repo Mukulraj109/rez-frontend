@@ -57,6 +57,7 @@ import HomeDeliverySection from '@/components/homepage/HomeDeliverySection';
 import ServiceSection from '@/components/homepage/ServiceSection';
 import ExclusiveRewardsSection from '@/components/homepage/ExclusiveRewardsSection';
 import WalletSnapshotCard from '@/components/homepage/WalletSnapshotCard';
+import { StoreExperiencesSection } from '@/components/homepage/StoreExperiencesSection';
 import PlayAndEarnSection from '@/components/homepage/PlayAndEarnSection';
 import SocialProofSection from '@/components/homepage/SocialProofSection';
 import { DiscoverAndShopSection } from '@/components/discover';
@@ -84,6 +85,7 @@ import authService from '@/services/authApi';
 import TierBadge from '@/components/subscription/TierBadge';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import NotificationBell from '@/components/common/NotificationBell';
+import WhatsNewBadge from '@/components/common/WhatsNewBadge';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import categoriesApi from '@/services/categoriesApi';
 import vouchersService from '@/services/realVouchersApi';
@@ -767,6 +769,12 @@ export default function HomeScreen() {
               <Text style={viewStyles.headerCoinText}>{userPoints}</Text>
             </TouchableOpacity>
 
+            {/* What's New Badge */}
+            <WhatsNewBadge
+              onPress={() => router.push('/whats-new')}
+              style={viewStyles.whatsNewBadge}
+            />
+
             {/* Cart Button with Modern Badge */}
             <TouchableOpacity
               onPress={() => {
@@ -1078,6 +1086,9 @@ export default function HomeScreen() {
         {/* Wallet Snapshot Card - Shows coin balance, cashback earned, and quick actions - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <WalletSnapshotCard />}
 
+        {/* Store Experiences Section - 60-min delivery, ₹1 store, luxury, organic - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <StoreExperiencesSection />}
+
         {/* Play & Earn More Section - Daily spin, challenges, streak rewards, surprise drops - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <PlayAndEarnSection />}
 
@@ -1277,39 +1288,41 @@ const viewStyles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 4,
+  },
+  // What's New Badge
+  whatsNewBadge: {
+    // aligned with other elements
   },
   // Header Coin - Horizontal Pill Style
   headerCoinContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 200, 87, 0.18)',
-    borderRadius: 14,
+    borderRadius: 12,
     paddingVertical: 2,
     paddingLeft: 2,
-    paddingRight: 8,
+    paddingRight: 6,
     borderWidth: 1,
     borderColor: 'rgba(255, 200, 87, 0.35)',
-    gap: 4,
-    marginTop: -12,
+    gap: 2,
   },
   headerCoinImage: {
-    width: 22,
-    height: 22,
+    width: 18,
+    height: 18,
   },
   headerCoinText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
     color: '#1a1a1a',
   },
   headerIconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginTop: -6,
   },
   cartBadgeModern: {
     position: 'absolute',
@@ -1338,12 +1351,11 @@ const viewStyles = StyleSheet.create({
   // Text pill with background - positioned to the left of badge
   savedTextPill: {
     backgroundColor: 'rgba(34, 197, 94, 0.18)',
-    paddingLeft: 8,
-    paddingRight: 6,
-    paddingVertical: 3,
+    paddingLeft: 6,
+    paddingRight: 4,
+    paddingVertical: 2,
     borderRadius: 0,
-    marginRight: -6,
-    marginTop: -8,
+    marginRight: -4,
   },
   // Badge overlay - overlaps text from right
   badgeOverlay: {
@@ -1352,7 +1364,7 @@ const viewStyles = StyleSheet.create({
   // Savings text
   savedText: {
     color: '#15803D',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
   },
   // Badge avatar wrapper with shadow (legacy - not used)
