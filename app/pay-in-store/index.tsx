@@ -73,10 +73,10 @@ export default function PayInStoreScreen() {
     try {
       setLoadingRecentStores(true);
       const response = await apiClient.get('/store-payment/history?limit=5');
-      if (response.data?.success && response.data?.data?.transactions) {
+      if (response.success && response.data?.transactions) {
         const stores: StorePaymentInfo[] = [];
         const seenIds = new Set<string>();
-        for (const tx of response.data.data.transactions) {
+        for (const tx of response.data.transactions) {
           if (!seenIds.has(tx.storeId)) {
             seenIds.add(tx.storeId);
             stores.push({
@@ -108,17 +108,21 @@ export default function PayInStoreScreen() {
       setError(null);
       setShowScanner(false);
 
+      console.log('🔍 Looking up QR code:', qrCode);
       const response = await apiClient.get(`/store-payment/lookup/${qrCode}`);
+      console.log('📦 Lookup response:', response);
 
-      if (response.data?.success && response.data?.data) {
-        const store = response.data.data as StorePaymentInfo;
+      if (response.success && response.data) {
+        const store = response.data as StorePaymentInfo;
+        console.log('✅ Store found:', store.name);
         navigateToEnterAmount(store._id, store.name, store.logo);
       } else {
-        setError(response.data?.error || 'Store not found. Please try again.');
+        console.log('❌ Store not found:', response.error);
+        setError(response.error || 'Store not found. Please try again.');
       }
     } catch (err: any) {
       console.error('QR lookup error:', err);
-      setError(err.response?.data?.error || 'Failed to find store. Please try again.');
+      setError(err.message || 'Failed to find store. Please try again.');
     } finally {
       setIsLoading(false);
     }

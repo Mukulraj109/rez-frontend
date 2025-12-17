@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   },
   overlayTextContainer: {
     position: 'absolute',
-    bottom: 180,
+    bottom: 220,
     left: 20,
     right: 20,
     zIndex: 10,
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 100,
     left: 20,
     right: 20,
     backgroundColor: '#FFFFFF',

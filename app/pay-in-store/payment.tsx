@@ -164,8 +164,8 @@ export default function PaymentScreen() {
 
       // Load store payment settings
       const storeResponse = await apiClient.get(`/stores/${storeId}`);
-      if (storeResponse.data?.success) {
-        const store = storeResponse.data.data;
+      if (storeResponse.success && storeResponse.data) {
+        const store = storeResponse.data;
         setMaxCoinRedemptionPercent(store.paymentSettings?.maxCoinRedemptionPercent || 100);
       }
 
@@ -174,11 +174,11 @@ export default function PaymentScreen() {
         const offersResponse = await apiClient.get(`/store-payment/offers/${storeId}`, {
           params: { amount: billAmount },
         });
-        if (offersResponse.data?.success) {
+        if (offersResponse.success && offersResponse.data) {
           const allOffers = [
-            ...(offersResponse.data.data.storeOffers || []),
-            ...(offersResponse.data.data.bankOffers || []),
-            ...(offersResponse.data.data.rezOffers || []),
+            ...(offersResponse.data.storeOffers || []),
+            ...(offersResponse.data.bankOffers || []),
+            ...(offersResponse.data.rezOffers || []),
           ];
           const selectedOffers = allOffers.filter((o: any) => selectedOfferIds.includes(o.id));
 

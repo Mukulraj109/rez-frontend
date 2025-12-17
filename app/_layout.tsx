@@ -40,6 +40,8 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import { RecommendationProvider } from '@/contexts/RecommendationContext';
 import { HomeTabProvider } from '@/contexts/HomeTabContext';
 import ToastManager from '@/components/common/ToastManager';
+import { RewardPopupProvider } from '@/contexts/RewardPopupContext';
+import RewardPopupManager from '@/components/gamification/RewardPopupManager';
 import BottomNavigation from '@/components/navigation/BottomNavigation';
 import { billUploadAnalytics } from '@/services/billUploadAnalytics';
 import { errorReporter } from '@/utils/errorReporter';
@@ -281,6 +283,7 @@ export default function RootLayout() {
                                       <AppPreferencesProvider>
                                         <RecommendationProvider>
                                           <HomeTabProvider>
+                                            <RewardPopupProvider>
                                           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
                 <Stack>
                   {/* App Entry Point */}
@@ -434,6 +437,9 @@ export default function RootLayout() {
                 {/* Toast Manager for notifications */}
                 <ToastManager />
 
+                {/* Reward Popup Manager for coin/reward notifications */}
+                <RewardPopupManager />
+
                 {/* Global Bottom Navigation - appears on all pages */}
                 <BottomNavigation />
 
@@ -441,6 +447,7 @@ export default function RootLayout() {
                 {/* {process.env.NODE_ENV === 'development' && <AuthDebugger />} */}
 
                                           </ThemeProvider>
+                                            </RewardPopupProvider>
                                           </HomeTabProvider>
                                         </RecommendationProvider>
                                       </AppPreferencesProvider>

@@ -52,8 +52,8 @@ export default function EnterAmountScreen() {
       setIsLoading(true);
       // Use the lookup endpoint to get store payment info
       const response = await apiClient.get(`/stores/${storeId}`);
-      if (response.data?.success) {
-        setStore(response.data.data);
+      if (response.success && response.data) {
+        setStore(response.data);
       }
     } catch (err: any) {
       console.error('Failed to load store:', err);

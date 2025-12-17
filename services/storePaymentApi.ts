@@ -38,11 +38,11 @@ const storePaymentApi = {
       `${STORE_PAYMENT_BASE}/lookup/${encodeURIComponent(qrCode)}`
     );
 
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.error || 'Store not found');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Store not found');
     }
 
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -54,11 +54,11 @@ const storePaymentApi = {
       { qrCode }
     );
 
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.error || 'Store not found');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Store not found');
     }
 
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -70,11 +70,11 @@ const storePaymentApi = {
       { params: { amount } }
     );
 
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.error || 'Failed to load offers');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to load offers');
     }
 
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -86,11 +86,11 @@ const storePaymentApi = {
       request
     );
 
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.error || 'Failed to initiate payment');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to initiate payment');
     }
 
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -102,11 +102,11 @@ const storePaymentApi = {
       request
     );
 
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.error || 'Failed to confirm payment');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Failed to confirm payment');
     }
 
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -123,7 +123,7 @@ const storePaymentApi = {
         { params }
       );
 
-      if (!response.data.success || !response.data.data) {
+      if (!response.success || !response.data) {
         // Return empty history instead of throwing - no history is valid
         return {
           transactions: [],
@@ -138,7 +138,7 @@ const storePaymentApi = {
         };
       }
 
-      return response.data.data;
+      return response.data;
     } catch (error) {
       // Return empty history on error - API might not be implemented yet
       return {
@@ -190,13 +190,13 @@ const storePaymentApi = {
     console.log('📜 [StorePaymentAPI] Fetching payment details:', url);
 
     const response = await apiClient.get(url);
-    console.log('📜 [StorePaymentAPI] Response:', response.status, response.data);
+    console.log('📜 [StorePaymentAPI] Response:', response);
 
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.error || response.data.message || 'Payment not found');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || response.message || 'Payment not found');
     }
 
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -207,11 +207,11 @@ const storePaymentApi = {
       `/stores/${storeId}`
     );
 
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.error || 'Store not found');
+    if (!response.success || !response.data) {
+      throw new Error(response.error || 'Store not found');
     }
 
-    return response.data.data;
+    return response.data;
   },
 
   /**
@@ -226,7 +226,7 @@ const storePaymentApi = {
     try {
       const response = await apiClient.get('/wallet/balance');
 
-      if (!response.data.success) {
+      if (!response.success) {
         // Return default values if endpoint fails
         return {
           rezCoins: 0,
@@ -236,7 +236,7 @@ const storePaymentApi = {
       }
 
       // Backend returns: { balance: { coins, promoCoins, payBill }, ... }
-      const balance = response.data.data?.balance || {};
+      const balance = response.data?.balance || {};
       return {
         rezCoins: balance.coins || 0,
         promoCoins: balance.promoCoins || 0,

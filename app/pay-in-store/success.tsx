@@ -27,11 +27,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '@/constants/DesignTokens';
 import { SuccessScreenParams, PaymentRewards } from '@/types/storePayment.types';
+import { useRewardPopup } from '@/contexts/RewardPopupContext';
 
 export default function PaymentSuccessScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<SuccessScreenParams>();
   const { paymentId, storeId, storeName, amount, coinsUsed, rewards: rewardsParam } = params;
+  const { showCoinsEarned, showCashbackEarned, showRewardPopup } = useRewardPopup();
 
   // Parse rewards - handle both old and new format
   const rawRewards = rewardsParam ? JSON.parse(rewardsParam) : {};
@@ -82,6 +84,28 @@ export default function PaymentSuccessScreen() {
         }),
       ]),
     ]).start();
+
+    // Show reward popup after a short delay (let the success screen animate first)
+    const popupTimer = setTimeout(() => {
+      // Show coins earned popup if any coins were earned
+      if (rewards.coinsEarned > 0) {
+        showCoinsEarned(
+          rewards.coinsEarned,
+          'ReZ Coins earned from purchase',
+          () => router.push('/WalletScreen')
+        );
+      }
+      // Show cashback popup if any cashback was earned (after coins popup)
+      else if (rewards.cashbackEarned > 0) {
+        showCashbackEarned(
+          rewards.cashbackEarned,
+          `₹${rewards.cashbackEarned} added to your wallet`,
+          () => router.push('/WalletScreen')
+        );
+      }
+    }, 1500); // Show popup 1.5s after screen loads
+
+    return () => clearTimeout(popupTimer);
   }, []);
 
   const handleShare = async () => {
