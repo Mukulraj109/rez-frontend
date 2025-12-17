@@ -259,7 +259,7 @@ export default function EnterAmountScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+            <Ionicons name="chevron-back" size={24} color="#111827" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.storeName} numberOfLines={1}>{displayStoreName}</Text>
@@ -267,8 +267,8 @@ export default function EnterAmountScreen() {
           </View>
         </View>
 
-        {/* Distance Warning Banner - Only show if distance > 1km */}
-        {distance !== null && distance > 1 && (
+        {/* Distance Warning Banner - Only show if user is far from store (> 500m) */}
+        {distance !== null && distance > 0.5 && (
           <View style={styles.distanceWarning}>
             <Text style={styles.distanceText}>
               You're <Text style={styles.distanceBold}>{formatDistance(distance)}</Text> away from this store
@@ -292,7 +292,7 @@ export default function EnterAmountScreen() {
 
           {/* EMI Banner */}
           <LinearGradient
-            colors={['#1E40AF', '#3B82F6']}
+            colors={['#008048', '#00C06A']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.emiBanner}
@@ -430,7 +430,7 @@ export default function EnterAmountScreen() {
               style={styles.keypadButton}
               onPress={() => handleKeyPress('backspace')}
             >
-              <Ionicons name="backspace-outline" size={22} color="#FFFFFF" />
+              <Ionicons name="backspace-outline" size={22} color="#111827" />
             </TouchableOpacity>
           </View>
         </View>
@@ -442,13 +442,16 @@ export default function EnterAmountScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     width: 40,
@@ -463,31 +466,33 @@ const styles = StyleSheet.create({
   storeName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#111827',
   },
   storeAddress: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
     marginTop: 2,
   },
   distanceWarning: {
-    backgroundColor: '#C2410C',
+    backgroundColor: '#FEF3C7',
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginHorizontal: 16,
     borderRadius: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFC857',
   },
   distanceText: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#92400E',
   },
   distanceBold: {
     fontWeight: '700',
   },
   distanceSubtext: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#B45309',
     marginTop: 2,
   },
   scrollView: {
@@ -500,16 +505,17 @@ const styles = StyleSheet.create({
   amountLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#111827',
     marginBottom: 12,
+    marginTop: 16,
   },
   amountInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1F1F1F',
+    backgroundColor: '#F9FAFB',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#3F3F3F',
+    borderWidth: 2,
+    borderColor: '#00C06A',
     paddingHorizontal: 20,
     paddingVertical: 20,
     marginBottom: 20,
@@ -517,13 +523,13 @@ const styles = StyleSheet.create({
   currencySymbol: {
     fontSize: 32,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#00C06A',
     marginRight: 4,
   },
   amountDisplay: {
     fontSize: 32,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#111827',
   },
   emiBanner: {
     flexDirection: 'row',
@@ -537,7 +543,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -557,7 +563,7 @@ const styles = StyleSheet.create({
   },
   emiSubtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   knowMoreText: {
     fontSize: 14,
@@ -568,7 +574,7 @@ const styles = StyleSheet.create({
   offersTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#111827',
     marginBottom: 12,
   },
   offersContainer: {
@@ -577,16 +583,23 @@ const styles = StyleSheet.create({
   },
   offerCard: {
     width: SCREEN_WIDTH * 0.55,
-    backgroundColor: '#1F1F1F',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   offerIconContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0, 192, 106, 0.15)',
+    backgroundColor: '#E8F5EE',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -594,12 +607,12 @@ const styles = StyleSheet.create({
   offerTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#111827',
     marginBottom: 4,
   },
   offerDescription: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
     lineHeight: 16,
   },
   offersLoading: {
@@ -611,8 +624,10 @@ const styles = StyleSheet.create({
     height: 80,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1F1F1F',
+    backgroundColor: '#F9FAFB',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   noOffersText: {
     fontSize: 14,
@@ -621,6 +636,7 @@ const styles = StyleSheet.create({
   proceedContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
   },
   proceedButton: {
     flexDirection: 'row',
@@ -630,9 +646,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 4,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   proceedButtonDisabled: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: '#E5E7EB',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   proceedText: {
     fontSize: 16,
@@ -640,13 +663,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   proceedTextDisabled: {
-    color: '#6B7280',
+    color: '#9CA3AF',
   },
   keypadContainer: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#F9FAFB',
     paddingHorizontal: 6,
     paddingTop: 6,
     paddingBottom: Platform.OS === 'ios' ? 16 : 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
   keypadRow: {
     flexDirection: 'row',
@@ -659,17 +684,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     marginHorizontal: 3,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: '#FFFFFF',
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   keypadText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#111827',
   },
   keypadSubText: {
     fontSize: 8,
-    color: '#6B7280',
+    color: '#9CA3AF',
     marginTop: 1,
     letterSpacing: 1,
   },

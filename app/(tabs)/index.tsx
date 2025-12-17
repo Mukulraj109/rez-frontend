@@ -57,6 +57,7 @@ import HomeDeliverySection from '@/components/homepage/HomeDeliverySection';
 import ServiceSection from '@/components/homepage/ServiceSection';
 import ExclusiveRewardsSection from '@/components/homepage/ExclusiveRewardsSection';
 import WalletSnapshotCard from '@/components/homepage/WalletSnapshotCard';
+import ZeroEMICard from '@/components/homepage/ZeroEMICard';
 import { StoreExperiencesSection } from '@/components/homepage/StoreExperiencesSection';
 import PlayAndEarnSection from '@/components/homepage/PlayAndEarnSection';
 import SocialProofSection from '@/components/homepage/SocialProofSection';
@@ -1085,6 +1086,9 @@ export default function HomeScreen() {
 
         {/* Wallet Snapshot Card - Shows coin balance, cashback earned, and quick actions - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <WalletSnapshotCard />}
+
+        {/* Zero EMI Card - Promotional card for 0% EMI payment option - Only show when "rez" tab is active */}
+        {activeTab === 'rez' && <ZeroEMICard />}
 
         {/* Store Experiences Section - 60-min delivery, ₹1 store, luxury, organic - Only show when "rez" tab is active */}
         {activeTab === 'rez' && <StoreExperiencesSection />}

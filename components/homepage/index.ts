@@ -18,6 +18,7 @@ export { default as StoreDiscoverySection } from './StoreDiscoverySection';
 export { default as PlayAndEarnSection } from './PlayAndEarnSection';
 export { default as SocialProofSection } from './SocialProofSection';
 export { StoreExperiencesSection } from './StoreExperiencesSection';
+export { default as ZeroEMICard } from './ZeroEMICard';
 
 // Card Components
 export { default as EventCard } from './cards/EventCard';
