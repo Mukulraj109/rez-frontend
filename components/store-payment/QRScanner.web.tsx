@@ -10,7 +10,7 @@
  * - Security badges
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -144,7 +144,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
             startQRDetection();
           }).catch((err) => {
             console.error('Video play error:', err);
-            setError('Failed to start camera');
+            setError('Failed to start camera. Use manual entry.');
             setShowManualEntry(true);
           });
         }
@@ -158,7 +158,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
   };
 
   const startQRDetection = () => {
-    // Use BarcodeDetector if available (Chrome, Edge)
+    // Use BarcodeDetector if available (Chrome 88+, Edge 88+)
     if ('BarcodeDetector' in window) {
       console.log('🔍 BarcodeDetector available, starting QR detection');
       const barcodeDetector = new (window as any).BarcodeDetector({
@@ -179,11 +179,9 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
         }
       }, 200);
     } else {
-      // Fallback: Show message that QR scanning not supported
-      console.log('⚠️ BarcodeDetector NOT available in this browser, please use manual entry');
-      setError('QR scanning not supported in this browser. Please enter code manually.');
+      // No BarcodeDetector - show manual entry but keep camera for visual feedback
+      console.log('⚠️ BarcodeDetector not available, showing manual entry');
       setShowManualEntry(true);
-      // Keep camera running but show manual entry option prominently
     }
   };
 
@@ -320,7 +318,6 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                 height: '100%',
                 objectFit: 'cover',
                 borderRadius: 24,
-                transform: 'scaleX(-1)', // Mirror for front camera
               }}
               playsInline
               muted
@@ -335,12 +332,14 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
           <View style={[styles.corner, styles.bottomRight]} />
 
           {/* Animated Scan Line */}
-          <Animated.View
-            style={[
-              styles.scanLine,
-              { transform: [{ translateY }], opacity },
-            ]}
-          />
+          {cameraReady && (
+            <Animated.View
+              style={[
+                styles.scanLine,
+                { transform: [{ translateY }], opacity },
+              ]}
+            />
+          )}
 
           {/* Center Content when not scanning */}
           {!cameraReady && (
