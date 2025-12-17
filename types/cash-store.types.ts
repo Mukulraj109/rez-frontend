@@ -37,6 +37,30 @@ export type CashStoreBrandCategory =
   | 'finance'
   | 'others';
 
+// ============================================================================
+// CATEGORY FILTER TYPES
+// ============================================================================
+
+// Special filter keys that are not direct category matches
+export type CashStoreSpecialFilter = 'all' | 'most-popular' | 'high-cashback';
+
+// Combined filter key type
+export type CashStoreCategoryFilterKey =
+  | CashStoreSpecialFilter
+  | CashStoreBrandCategory;
+
+// Filter configuration interface
+export interface CashStoreCategoryFilter {
+  id: string;
+  key: CashStoreCategoryFilterKey;
+  label: string;
+  icon: string;
+  image?: string;
+  backgroundColor: string;
+  iconColor: string;
+  isSpecialFilter: boolean;
+}
+
 // Deal badge type
 export type DealBadge = 'trending' | 'hot' | 'limited-time' | 'exclusive' | 'new' | 'best-deal';
 
@@ -334,6 +358,11 @@ export interface UseCashStoreSectionReturn {
   highCashbackDeals: HighCashbackDeal[];
   travelDeals: TravelDeal[];
   recentActivity: CashbackActivity[];
+
+  // Category filter
+  selectedCategory: CashStoreCategoryFilterKey;
+  setSelectedCategory: (category: CashStoreCategoryFilterKey) => void;
+  filteredTopBrands: CashStoreBrand[];
 
   // Loading states
   isLoading: boolean;

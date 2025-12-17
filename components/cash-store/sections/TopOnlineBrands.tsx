@@ -29,6 +29,8 @@ interface TopOnlineBrandsProps {
   onBrandPress: (brand: CashStoreBrand) => void;
   onViewAllPress: () => void;
   totalBrandsCount?: number;
+  activeFilter?: string;
+  onResetFilter?: () => void;
 }
 
 const BrandCard: React.FC<{
@@ -264,12 +266,86 @@ const EmptyState: React.FC<{ onViewAllPress: () => void }> = memo(({ onViewAllPr
   );
 });
 
+// Map filter keys to display names
+const FILTER_DISPLAY_NAMES: Record<string, string> = {
+  'all': 'All',
+  'most-popular': 'Popular',
+  'high-cashback': 'High Cashback',
+  'fashion': 'Fashion',
+  'electronics': 'Electronics',
+  'food': 'Food',
+  'travel': 'Travel',
+  'beauty': 'Beauty',
+  'shopping': 'Shopping',
+  'groceries': 'Groceries',
+  'entertainment': 'Entertainment',
+  'finance': 'Finance',
+};
+
+// Filtered Empty State Component - when filter returns no results
+const FilteredEmptyState: React.FC<{
+  filterName: string;
+  onResetFilter?: () => void;
+}> = memo(({ filterName, onResetFilter }) => {
+  const displayName = FILTER_DISPLAY_NAMES[filterName] || filterName;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.filteredEmptyContainer,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      <View style={styles.filteredEmptyIconContainer}>
+        <Ionicons name="search-outline" size={40} color="#D1D5DB" />
+      </View>
+      <Text style={styles.filteredEmptyTitle}>No brands found</Text>
+      <Text style={styles.filteredEmptySubtitle}>
+        No brands match "{displayName}". Try another category.
+      </Text>
+      {onResetFilter && (
+        <TouchableOpacity
+          onPress={onResetFilter}
+          style={styles.resetFilterButton}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="refresh-outline" size={16} color="#00C06A" />
+          <Text style={styles.resetFilterText}>Show All Brands</Text>
+        </TouchableOpacity>
+      )}
+    </Animated.View>
+  );
+});
+
 const TopOnlineBrands: React.FC<TopOnlineBrandsProps> = ({
   brands,
   isLoading = false,
   onBrandPress,
   onViewAllPress,
   totalBrandsCount,
+  activeFilter,
+  onResetFilter,
 }) => {
   const displayBrands = brands.slice(0, 9); // Max 9 for 3x3 grid
   const headerFadeAnim = useRef(new Animated.Value(0)).current;
@@ -287,8 +363,10 @@ const TopOnlineBrands: React.FC<TopOnlineBrandsProps> = ({
     }).start();
   }, []);
 
-  // Don't render the section if not loading and no brands
+  // Check if there's an active filter (not 'all') and no brands match
+  const hasActiveFilter = activeFilter && activeFilter !== 'all';
   const hasNoBrands = !isLoading && brands.length === 0;
+  const isFilteredEmpty = hasNoBrands && hasActiveFilter;
 
   return (
     <View style={styles.container}>
@@ -318,7 +396,12 @@ const TopOnlineBrands: React.FC<TopOnlineBrandsProps> = ({
       </Animated.View>
 
       {/* Content - Grid or Empty State */}
-      {hasNoBrands ? (
+      {isFilteredEmpty ? (
+        <FilteredEmptyState
+          filterName={activeFilter}
+          onResetFilter={onResetFilter}
+        />
+      ) : hasNoBrands ? (
         <EmptyState onViewAllPress={onViewAllPress} />
       ) : (
         <View style={styles.grid}>
@@ -626,6 +709,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  // Filtered empty state styles
+  filteredEmptyContainer: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  filteredEmptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  filteredEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  filteredEmptySubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  resetFilterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    gap: 8,
+  },
+  resetFilterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#00C06A',
   },
 });
 

@@ -39,11 +39,13 @@ import {
   HighCashbackDeal,
   TravelDeal,
   CashbackActivity,
+  CashStoreCategoryFilterKey,
 } from '../../types/cash-store.types';
 
 // Section Components
 import CashStoreHeroBanner from './sections/CashStoreHeroBanner';
 import CashStoreQuickActions from './sections/CashStoreQuickActions';
+import CategoryFilterRow from './sections/CategoryFilterRow';
 import TopOnlineBrands from './sections/TopOnlineBrands';
 import TrendingCashback from './sections/TrendingCashback';
 import BuyCouponSection from './sections/BuyCouponSection';
@@ -73,6 +75,9 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
     highCashbackDeals,
     travelDeals,
     recentActivity,
+    selectedCategory,
+    setSelectedCategory,
+    filteredTopBrands,
     isLoading,
     isRefreshing,
     error,
@@ -199,6 +204,14 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
     [router]
   );
 
+  // Category filter handler
+  const handleCategorySelect = useCallback(
+    (category: CashStoreCategoryFilterKey) => {
+      setSelectedCategory(category);
+    },
+    [setSelectedCategory]
+  );
+
   // View all handlers
   const handleViewAllBrands = useCallback(() => {
     router.push('/cash-store/brands' as any);
@@ -286,12 +299,21 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
         onActionPress={handleQuickActionPress}
       />
 
-      {/* 4. Top Online Brands */}
+      {/* 4. Top Categories - Category Filter */}
+      <CategoryFilterRow
+        selectedCategory={selectedCategory}
+        onCategorySelect={handleCategorySelect}
+        isLoading={isLoading && !topBrands.length}
+      />
+
+      {/* 5. Top Online Brands - Filtered by category */}
       <TopOnlineBrands
-        brands={topBrands}
+        brands={filteredTopBrands}
         isLoading={isLoading && !topBrands.length}
         onBrandPress={handleBrandPress}
         onViewAllPress={handleViewAllBrands}
+        activeFilter={selectedCategory}
+        onResetFilter={() => setSelectedCategory('all')}
       />
 
       {/* 5. Trending Cashback */}

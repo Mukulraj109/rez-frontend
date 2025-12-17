@@ -4,7 +4,7 @@
  * Custom hook for managing cash store section data and state
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Alert, Clipboard, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -23,6 +23,7 @@ import {
   CashbackActivity,
   CashStoreHeroBanner,
   CashStoreQuickAction,
+  CashStoreCategoryFilterKey,
   UseCashStoreSectionReturn,
   getTimeRemainingMs,
 } from '../types/cash-store.types';
@@ -146,6 +147,9 @@ export function useCashStoreSection(
   const [travelDeals, setTravelDeals] = useState<TravelDeal[]>(DEFAULT_TRAVEL_DEALS);
   const [recentActivity, setRecentActivity] = useState<CashbackActivity[]>([]);
 
+  // Category filter state
+  const [selectedCategory, setSelectedCategory] = useState<CashStoreCategoryFilterKey>('all');
+
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -154,6 +158,26 @@ export function useCashStoreSection(
   // Refs for caching
   const lastFetchRef = useRef<number>(0);
   const isMountedRef = useRef(true);
+
+  /**
+   * Filtered top brands based on selected category
+   */
+  const filteredTopBrands = useMemo(() => {
+    if (selectedCategory === 'all') {
+      return topBrands;
+    }
+
+    if (selectedCategory === 'most-popular') {
+      return topBrands.filter(brand => brand.isTopBrand || brand.isFeatured);
+    }
+
+    if (selectedCategory === 'high-cashback') {
+      return topBrands.filter(brand => brand.cashbackRate >= 10);
+    }
+
+    // Filter by category
+    return topBrands.filter(brand => brand.category === selectedCategory);
+  }, [topBrands, selectedCategory]);
 
   /**
    * Transform offer to trending deal
@@ -274,7 +298,8 @@ export function useCashStoreSection(
       });
 
       if (response.success && response.data && isMountedRef.current) {
-        const offers = response.data.items || [];
+        // Handle both formats: { items: [...] } or direct array
+        const offers = Array.isArray(response.data) ? response.data : (response.data.items || []);
         const brandsMap = new Map<string, CashStoreBrand>();
 
         offers.forEach((offer: Offer) => {
@@ -316,7 +341,7 @@ export function useCashStoreSection(
       });
 
       if (response.success && response.data && isMountedRef.current) {
-        const offers = response.data.items || [];
+        const offers = Array.isArray(response.data) ? response.data : (response.data.items || []);
         setTrendingDeals(offers.map(transformOfferToTrendingDeal));
       }
     } catch (err) {
@@ -388,7 +413,7 @@ export function useCashStoreSection(
       });
 
       if (response.success && response.data && isMountedRef.current) {
-        const offers = response.data.items || [];
+        const offers = Array.isArray(response.data) ? response.data : (response.data.items || []);
         // Filter for high cashback (10%+) and sort by cashback percentage
         const highCashbackOffers = offers
           .filter((offer: Offer) => offer.cashbackPercentage >= 10)
@@ -596,6 +621,11 @@ export function useCashStoreSection(
     highCashbackDeals,
     travelDeals,
     recentActivity,
+
+    // Category filter
+    selectedCategory,
+    setSelectedCategory,
+    filteredTopBrands,
 
     // Loading states
     isLoading,

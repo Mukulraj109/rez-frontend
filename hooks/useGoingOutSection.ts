@@ -105,8 +105,11 @@ export function useGoingOutSection(): UseGoingOutSectionReturn {
   const fetchInProgress = useRef<Record<string, boolean>>({});
 
   const fetchStores = useCallback(async (subcategorySlug: string) => {
+    console.log('[useGoingOutSection] 🔍 Fetching stores for subcategory:', subcategorySlug);
+
     // Check cache first
     if (cache.current[subcategorySlug] && cache.current[subcategorySlug].length > 0) {
+      console.log('[useGoingOutSection] ✅ Using cached stores for:', subcategorySlug, 'Count:', cache.current[subcategorySlug].length);
       setStores(cache.current[subcategorySlug]);
       setLoading(false);
       setError(null);
@@ -115,6 +118,7 @@ export function useGoingOutSection(): UseGoingOutSectionReturn {
 
     // Prevent duplicate fetches
     if (fetchInProgress.current[subcategorySlug]) {
+      console.log('[useGoingOutSection] ⏳ Fetch already in progress for:', subcategorySlug);
       return;
     }
 
@@ -123,12 +127,13 @@ export function useGoingOutSection(): UseGoingOutSectionReturn {
     setError(null);
 
     try {
+      console.log('[useGoingOutSection] 📡 Making API call for subcategory:', subcategorySlug);
       const response = await storesApi.getStoresBySubcategorySlug(
         subcategorySlug,
         GOING_OUT_SECTION_CONFIG.storesPerCategory
       );
 
-      console.log('[useGoingOutSection] API Response:', JSON.stringify(response, null, 2));
+      console.log('[useGoingOutSection] 📦 API Response for', subcategorySlug, ':', JSON.stringify(response, null, 2));
 
       if (response.success && response.data) {
         const rawStores = Array.isArray(response.data)
@@ -142,10 +147,8 @@ export function useGoingOutSection(): UseGoingOutSectionReturn {
 
         const mappedStores = rawStores.map(mapBackendStoreToSection);
 
-        console.log('[useGoingOutSection] Mapped stores count:', mappedStores.length);
-        if (mappedStores.length > 0) {
-          console.log('[useGoingOutSection] First mapped store:', JSON.stringify(mappedStores[0], null, 2));
-        }
+        console.log('[useGoingOutSection] ✅ Mapped stores for', subcategorySlug, '- Count:', mappedStores.length);
+        console.log('[useGoingOutSection] 📋 Store names:', mappedStores.map((s: any) => s.name).join(', '));
 
         // Cache the results
         cache.current[subcategorySlug] = mappedStores;
@@ -168,10 +171,14 @@ export function useGoingOutSection(): UseGoingOutSectionReturn {
   }, []);
 
   const setActiveSubcategory = useCallback((id: string) => {
+    console.log('[useGoingOutSection] 🔄 Tab changed to ID:', id);
     setActiveSubcategoryState(id);
     const subcategory = GOING_OUT_SUBCATEGORIES.find(s => s.id === id);
     if (subcategory) {
+      console.log('[useGoingOutSection] 📋 Found subcategory:', subcategory.label, '-> slug:', subcategory.slug);
       fetchStores(subcategory.slug);
+    } else {
+      console.log('[useGoingOutSection] ❌ Subcategory not found for ID:', id);
     }
   }, [fetchStores]);
 

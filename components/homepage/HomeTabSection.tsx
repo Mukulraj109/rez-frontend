@@ -165,7 +165,7 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
             <Text style={[
               styles.rezText,
               { color: activeTab === 'rez'
-                ? '#FFFFFF'
+                ? '#059669' // Dark green for visibility on light green background
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }
             ]}>Rez</Text>
@@ -189,14 +189,14 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
             <Text style={[
               styles.tabTextSmall,
               { color: activeTab === 'rez-mall'
-                ? '#FFFFFF'
+                ? '#0D9488' // Teal for visibility on light green background
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }
             ]}>Rez</Text>
             <Text style={[
               styles.tabTextLarge,
               { color: activeTab === 'rez-mall'
-                ? '#FFFFFF'
+                ? '#0D9488' // Teal for visibility on light green background
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }
             ]}>Mall.</Text>
@@ -220,14 +220,14 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
             <Text style={[
               styles.tabTextSmall,
               { color: activeTab === 'cash-store'
-                ? '#FFFFFF'
+                ? '#166534' // Dark green for visibility on light green background
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }
             ]}>Cash</Text>
             <Text style={[
               styles.tabTextLarge,
               { color: activeTab === 'cash-store'
-                ? '#FFFFFF'
+                ? '#166534' // Dark green for visibility on light green background
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }
             ]}>Store</Text>

@@ -95,7 +95,7 @@ export default function PaymentScreen() {
   const { storeId, storeName, amount, selectedOffers: selectedOffersParam } = params;
   const { state } = useAuth();
   const user = state.user;
-  const { state: gamificationState, spendCoins } = useGamification();
+  const { state: gamificationState, actions: gamificationActions } = useGamification();
 
   const billAmount = parseFloat(amount || '0');
   const selectedOfferIds: string[] = selectedOffersParam ? JSON.parse(selectedOffersParam) : [];
@@ -482,14 +482,16 @@ export default function PaymentScreen() {
   };
 
   const navigateToSuccess = async (paymentResult: any) => {
-    // Deduct coins from wallet if any were used
-    if (coinRedemption.rezCoins > 0) {
+    // Backend has already deducted coins from wallet in confirmStorePayment
+    // We just need to refresh the frontend state to reflect the updated balance
+    if (coinRedemption.totalAmount > 0) {
       try {
-        await spendCoins(coinRedemption.rezCoins, `Store payment at ${storeName}`);
-        console.log(`[Payment] Spent ${coinRedemption.rezCoins} ReZ coins`);
+        // Sync wallet balance from backend (coins already deducted there)
+        await gamificationActions.syncCoinsFromWallet();
+        console.log(`[Payment] Wallet synced after ${coinRedemption.totalAmount} coins used`);
       } catch (err) {
-        console.error('[Payment] Failed to deduct coins:', err);
-        // Continue anyway - backend should have already deducted
+        console.error('[Payment] Failed to sync wallet balance:', err);
+        // Continue anyway - balance will update on next screen load
       }
     }
 

@@ -235,12 +235,20 @@ const storePaymentApi = {
         };
       }
 
-      // Backend returns: { balance: { coins, promoCoins, payBill }, ... }
+      // Backend returns: { balance: { total, available, pending, paybill }, coins: [...] }
+      // The 'available' balance is the ReZ Coins (wasil coins)
+      // The 'coins' array contains individual coin type balances
       const balance = response.data?.balance || {};
+      const coins = response.data?.coins || [];
+
+      // Get promo coins from the coins array if available
+      const promoCoin = coins.find((c: any) => c.type === 'promotion');
+      const promoCoins = promoCoin?.amount || 0;
+
       return {
-        rezCoins: balance.coins || 0,
-        promoCoins: balance.promoCoins || 0,
-        payBillBalance: balance.payBill || 0,
+        rezCoins: balance.available || 0,  // ReZ coins are in available balance
+        promoCoins: promoCoins,
+        payBillBalance: balance.paybill || 0,
       };
     } catch (error) {
       // Return default values on error

@@ -1,7 +1,7 @@
 /**
  * HomeDeliverySection Component
  * Section for home delivery stores - groceries, pharmacy, cloud kitchens
- * Displays stores with category tabs and modern card design
+ * Displays stores with category tabs and Cobone-style list design
  */
 
 import React, { useCallback, memo, useRef } from 'react';
@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   Image,
   Platform,
-  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,37 +20,33 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  FadeInRight,
+  FadeIn,
   Layout,
 } from 'react-native-reanimated';
-import { ThemedText } from '@/components/ThemedText';
 import { useHomeDeliverySection, HomeDeliverySectionStore } from '@/hooks/useHomeDeliverySection';
+import { ThemedText } from '@/components/ThemedText';
 import {
   HOME_DELIVERY_SUBCATEGORIES,
   HOME_DELIVERY_SECTION_CONFIG,
   HOME_DELIVERY_COLORS,
 } from '@/config/homeDeliverySectionConfig';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 // Animated components
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedView = Animated.View;
 
-// Card dimensions
-const CARD_WIDTH = 200;
-const CARD_IMAGE_HEIGHT = 140;
+// List item dimensions
+const LIST_IMAGE_SIZE = 85;
+const MAX_VISIBLE_STORES = 3;
 
-// Skeleton Loading Card
-const SkeletonCard = memo(() => (
-  <View style={styles.storeCard}>
-    <View style={[styles.storeImageContainer, styles.skeletonImage]}>
-      <View style={styles.skeletonShimmer} />
-    </View>
-    <View style={styles.storeInfo}>
-      <View style={[styles.skeletonText, { width: '70%', height: 16 }]} />
-      <View style={[styles.skeletonText, { width: '40%', height: 14, marginTop: 8 }]} />
-      <View style={[styles.skeletonText, { width: '90%', height: 12, marginTop: 8 }]} />
+// Skeleton Loading List Item
+const SkeletonListItem = memo(() => (
+  <View style={styles.listItem}>
+    <View style={[styles.listImageContainer, styles.skeletonImage]} />
+    <View style={styles.listItemContent}>
+      <View style={[styles.skeletonText, { width: '80%', height: 16 }]} />
+      <View style={[styles.skeletonText, { width: '50%', height: 14, marginTop: 8 }]} />
+      <View style={[styles.skeletonText, { width: '30%', height: 12, marginTop: 8 }]} />
     </View>
   </View>
 ));
@@ -77,8 +72,8 @@ const CategoryChip = memo(({
   </TouchableOpacity>
 ));
 
-// Store Card Component
-const StoreCard = memo(({
+// Store List Item Component (Cobone-style)
+const StoreListItem = memo(({
   store,
   index,
   onPress,
@@ -94,7 +89,7 @@ const StoreCard = memo(({
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.97, { damping: 15 });
+    scale.value = withSpring(0.98, { damping: 15 });
   };
 
   const handlePressOut = () => {
@@ -104,71 +99,88 @@ const StoreCard = memo(({
   // Get display image
   const displayImage = store.banner || store.logo;
 
+  // Check if store is a "Best Seller" (rating >= 4.5)
+  const isBestSeller = store.rating.average >= 4.5;
+
+  // Calculate savings percentage from earnAmount (simulated)
+  const savingsPercent = store.earnAmount > 0 ? Math.min(Math.round((store.earnAmount / 50) * 10), 25) : 0;
+
+  // Simulated original price (for display purposes)
+  const estimatedValue = store.earnAmount > 0 ? store.earnAmount * 5 : 0;
+  const originalPrice = estimatedValue + store.earnAmount;
+
   return (
     <AnimatedView
-      entering={FadeInRight.delay(index * 80).springify()}
+      entering={FadeIn.delay(index * 60).springify()}
       layout={Layout.springify()}
     >
       <AnimatedTouchable
-        style={[styles.storeCard, animatedStyle]}
+        style={[styles.listItem, animatedStyle]}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={1}
       >
-        {/* Store Image */}
-        <View style={styles.storeImageContainer}>
-          {displayImage ? (
-            <Image
-              source={{ uri: displayImage }}
-              style={styles.storeImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.storeImagePlaceholder}>
-              <Ionicons name="storefront-outline" size={40} color={HOME_DELIVERY_COLORS.textMuted} />
+        {/* Store Image with Best Seller Badge */}
+        <View style={styles.listImageWrapper}>
+          <View style={styles.listImageContainer}>
+            {displayImage ? (
+              <Image
+                source={{ uri: displayImage }}
+                style={styles.listImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.listImagePlaceholder}>
+                <Ionicons name="storefront-outline" size={32} color={HOME_DELIVERY_COLORS.textMuted} />
+              </View>
+            )}
+          </View>
+          {isBestSeller && (
+            <View style={styles.bestSellerBadge}>
+              <Ionicons name="checkmark-circle" size={10} color="#fff" />
+              <Text style={styles.bestSellerText}>Best Seller</Text>
             </View>
           )}
         </View>
 
-        {/* Store Info */}
-        <View style={styles.storeInfo}>
-          {/* Store Name and Earn Badge Row */}
-          <View style={styles.storeNameRow}>
-            <Text style={styles.storeName} numberOfLines={1}>
-              {store.name}
-            </Text>
-            {store.earnAmount > 0 && (
-              <View style={styles.earnBadge}>
-                <Text style={styles.earnBadgeText}>Earn ₹{store.earnAmount}</Text>
+        {/* Store Info - Right Side */}
+        <View style={styles.listItemContent}>
+          {/* Store Name */}
+          <Text style={styles.listItemTitle} numberOfLines={2}>
+            {store.name}
+          </Text>
+
+          {/* Category/Location */}
+          <Text style={styles.listItemSubtitle} numberOfLines={1}>
+            {store.category.length > 0 ? store.category.slice(0, 2).join(' • ') : 'Store'}
+          </Text>
+
+          {/* Pricing Row */}
+          <View style={styles.pricingRow}>
+            <Text style={styles.currencySymbol}>₹</Text>
+            <Text style={styles.currentPrice}>{estimatedValue || 'Free'}</Text>
+            {originalPrice > 0 && store.earnAmount > 0 && (
+              <Text style={styles.originalPrice}>{originalPrice}</Text>
+            )}
+            {savingsPercent > 0 && (
+              <View style={styles.saveBadge}>
+                <Text style={styles.saveBadgeText}>Save {savingsPercent}%</Text>
               </View>
             )}
           </View>
-
-          {/* Rating and Price Level Row */}
-          <View style={styles.ratingRow}>
-            {store.rating.average > 0 && (
-              <>
-                <Ionicons name="star" size={14} color="#F59E0B" />
-                <Text style={styles.ratingText}>{store.rating.average.toFixed(1)}</Text>
-              </>
-            )}
-            {store.priceLevel && (
-              <>
-                <Text style={styles.dotSeparator}>•</Text>
-                <Text style={styles.priceLevelText}>{store.priceLevel}</Text>
-              </>
-            )}
-          </View>
-
-          {/* Category and Distance Row */}
-          <View style={styles.categoryRow}>
-            <Text style={styles.categoryText} numberOfLines={1}>
-              {store.category.length > 0 ? store.category.join(' • ') : 'Store'}
-              {store.distance && ` • ${store.distance}`}
-            </Text>
-          </View>
         </View>
+
+        {/* Right side logo/brand indicator */}
+        {store.logo && store.banner && (
+          <View style={styles.brandLogoContainer}>
+            <Image
+              source={{ uri: store.logo }}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
+          </View>
+        )}
       </AnimatedTouchable>
     </AnimatedView>
   );
@@ -227,21 +239,16 @@ function HomeDeliverySection() {
     </ScrollView>
   );
 
-  // Render store cards or states
+  // Render store list items (vertical list - Cobone style)
   const renderStores = () => {
     // Loading state
     if (loading) {
       return (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.storesContainer}
-          style={styles.storesScroll}
-        >
+        <View style={styles.storesListContainer}>
           {[1, 2, 3].map((_, index) => (
-            <SkeletonCard key={`skeleton-${index}`} />
+            <SkeletonListItem key={`skeleton-${index}`} />
           ))}
-        </ScrollView>
+        </View>
       );
     }
 
@@ -266,23 +273,20 @@ function HomeDeliverySection() {
       );
     }
 
-    // Stores list
+    // Vertical stores list (limited to MAX_VISIBLE_STORES)
+    const visibleStores = stores.slice(0, MAX_VISIBLE_STORES);
+
     return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.storesContainer}
-        style={styles.storesScroll}
-      >
-        {stores.map((store, index) => (
-          <StoreCard
+      <View style={styles.storesListContainer}>
+        {visibleStores.map((store, index) => (
+          <StoreListItem
             key={store.id}
             store={store}
             index={index}
             onPress={() => handleStorePress(store)}
           />
         ))}
-      </ScrollView>
+      </View>
     );
   };
 
@@ -290,198 +294,234 @@ function HomeDeliverySection() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <ThemedText style={styles.sectionTitle}>
-            {HOME_DELIVERY_SECTION_CONFIG.title}
-          </ThemedText>
-          <ThemedText style={styles.sectionSubtitle}>
-            {HOME_DELIVERY_SECTION_CONFIG.subtitle}
-          </ThemedText>
-        </View>
-        <TouchableOpacity onPress={handleViewAll} activeOpacity={0.7}>
-          <Text style={styles.viewAllText}>View All</Text>
-        </TouchableOpacity>
+        <ThemedText style={styles.sectionTitle}>
+          {HOME_DELIVERY_SECTION_CONFIG.title}
+        </ThemedText>
+        <ThemedText style={styles.sectionSubtitle}>
+          {HOME_DELIVERY_SECTION_CONFIG.subtitle}
+        </ThemedText>
       </View>
 
-      {/* Category Chips */}
+      {/* Category Tabs - Horizontal Scroll */}
       {renderCategoryChips()}
 
-      {/* Store Cards */}
+      {/* Store List Items - Vertical */}
       {renderStores()}
+
+      {/* View All Button - Bottom */}
+      {stores.length > 0 && !loading && !error && (
+        <TouchableOpacity
+          style={styles.viewAllButton}
+          onPress={handleViewAll}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.viewAllButtonText}>View All</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 16,
-    paddingHorizontal: 16,
+    marginVertical: 8,
+    backgroundColor: HOME_DELIVERY_COLORS.white,
+    borderRadius: 16,
+    marginHorizontal: 16,
+    paddingVertical: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+      },
+    }),
   },
   // Header styles
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  headerLeft: {
-    flex: 1,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: HOME_DELIVERY_COLORS.textPrimary,
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 13,
-    color: HOME_DELIVERY_COLORS.textSecondary,
+    color: HOME_DELIVERY_COLORS.textMuted,
     fontWeight: '400',
   },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: HOME_DELIVERY_COLORS.primary,
-  },
-  // Category Chips styles
+  // Category Chips/Tabs styles (horizontal scroll at top)
   chipsContainer: {
-    paddingRight: 16,
-    gap: 10,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 12,
   },
   chipsScroll: {
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
+    marginBottom: 4,
   },
   categoryChip: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: HOME_DELIVERY_COLORS.white,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    paddingVertical: 8,
+    borderRadius: 4,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
   categoryChipActive: {
-    borderColor: HOME_DELIVERY_COLORS.primary,
-    backgroundColor: HOME_DELIVERY_COLORS.white,
+    borderBottomColor: HOME_DELIVERY_COLORS.primary,
   },
   categoryChipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: HOME_DELIVERY_COLORS.textSecondary,
+    color: HOME_DELIVERY_COLORS.textMuted,
   },
   categoryChipTextActive: {
     color: HOME_DELIVERY_COLORS.primary,
     fontWeight: '600',
   },
-  // Store Cards styles
-  storesContainer: {
-    paddingRight: 16,
-    gap: 12,
+  // Stores List Container (vertical)
+  storesListContainer: {
+    paddingHorizontal: 12,
   },
-  storesScroll: {
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
+  // List Item Styles (Cobone-style)
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  storeCard: {
-    width: CARD_WIDTH,
-    backgroundColor: HOME_DELIVERY_COLORS.white,
-    borderRadius: 12,
+  listImageWrapper: {
+    position: 'relative',
+  },
+  listImageContainer: {
+    width: LIST_IMAGE_SIZE,
+    height: LIST_IMAGE_SIZE,
+    borderRadius: 8,
     overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-      web: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-      },
-    }),
-  },
-  storeImageContainer: {
-    width: '100%',
-    height: CARD_IMAGE_HEIGHT,
     backgroundColor: '#F9FAFB',
   },
-  storeImage: {
+  listImage: {
     width: '100%',
     height: '100%',
   },
-  storeImagePlaceholder: {
+  listImagePlaceholder: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
   },
-  storeInfo: {
-    padding: 12,
-  },
-  storeNameRow: {
+  // Best Seller Badge
+  bestSellerBadge: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: HOME_DELIVERY_COLORS.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
+    gap: 3,
   },
-  storeName: {
+  bestSellerText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  // List Item Content (right side)
+  listItemContent: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  listItemTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: HOME_DELIVERY_COLORS.textPrimary,
-    flex: 1,
-    marginRight: 8,
-  },
-  earnBadge: {
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  earnBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: HOME_DELIVERY_COLORS.primary,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 4,
+    lineHeight: 20,
   },
-  ratingText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: HOME_DELIVERY_COLORS.textPrimary,
-    marginLeft: 4,
-  },
-  dotSeparator: {
-    fontSize: 13,
-    color: HOME_DELIVERY_COLORS.textMuted,
-    marginHorizontal: 6,
-  },
-  priceLevelText: {
-    fontSize: 13,
-    color: HOME_DELIVERY_COLORS.textSecondary,
-  },
-  categoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  categoryText: {
+  listItemSubtitle: {
     fontSize: 12,
     color: HOME_DELIVERY_COLORS.textMuted,
+    marginBottom: 8,
+  },
+  // Pricing Row
+  pricingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  currencySymbol: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: HOME_DELIVERY_COLORS.textPrimary,
+  },
+  currentPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: HOME_DELIVERY_COLORS.textPrimary,
+  },
+  originalPrice: {
+    fontSize: 13,
+    color: HOME_DELIVERY_COLORS.textMuted,
+    textDecorationLine: 'line-through',
+    marginLeft: 4,
+  },
+  saveBadge: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginLeft: 6,
+  },
+  saveBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  // Brand Logo (right side)
+  brandLogoContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#F9FAFB',
+    marginLeft: 8,
+  },
+  brandLogo: {
+    width: '100%',
+    height: '100%',
+  },
+  // View All Button (bottom)
+  viewAllButton: {
+    marginTop: 12,
+    marginHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: 'flex-start',
+  },
+  viewAllButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: HOME_DELIVERY_COLORS.textSecondary,
   },
   // Skeleton styles
   skeletonImage: {
     backgroundColor: '#E5E7EB',
-  },
-  skeletonShimmer: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#F3F4F6',
   },
   skeletonText: {
     backgroundColor: '#E5E7EB',

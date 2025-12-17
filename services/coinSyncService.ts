@@ -58,8 +58,9 @@ class CoinSyncService {
       const response = await walletApi.getBalance();
 
       if (response.success && response.data) {
-        const wasilCoin = response.data.coins.find((c: any) => c.type === 'wasil');
-        const balance = wasilCoin?.amount || 0;
+        // Wallet balance structure: { balance: { total, available, pending, paybill } }
+        // The 'available' balance is the usable ReZ coins
+        const balance = response.data.balance?.available || 0;
 
         console.log(`✅ [COIN SYNC] Wallet balance: ${balance}`);
         return balance;

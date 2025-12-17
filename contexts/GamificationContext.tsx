@@ -307,16 +307,16 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
       const walletResponse = await walletApi.getBalance();
 
       if (walletResponse.success && walletResponse.data) {
-        // Extract wasil coin from wallet
-        const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
-        const walletCoins = wasilCoin?.amount || 0;
+        // Wallet balance structure: { balance: { total, available, pending, paybill } }
+        // The 'available' balance is the usable ReZ coins
+        const walletCoins = walletResponse.data.balance?.available || 0;
 
         // Update coin balance with wallet data
         const coinBalance: CoinBalance = {
           total: walletCoins,
           earned: walletResponse.data.statistics?.totalEarned || 0,
           spent: walletResponse.data.statistics?.totalSpent || 0,
-          pending: walletResponse.data.balance.pending || 0,
+          pending: walletResponse.data.balance?.pending || 0,
           lifetimeEarned: walletResponse.data.statistics?.totalEarned || 0,
           lifetimeSpent: walletResponse.data.statistics?.totalSpent || 0,
         };
