@@ -20,6 +20,7 @@ import useRecommendations from "@/hooks/useRecommendations";
 import SimilarProducts from "@/components/products/SimilarProducts";
 import FrequentlyBoughtTogether from "@/components/products/FrequentlyBoughtTogether";
 import BundleDeals from "@/components/products/BundleDeals";
+import PriceAndRewardsSection from "@/components/product/PriceAndRewardsSection";
 import { useLocation } from "@/contexts/LocationContext";
 
 // Haversine formula for distance calculation between two coordinates
@@ -235,20 +236,6 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
             {productDescription}
           </Text>
 
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>₹{productPrice}</Text>
-            {/* Show original price if there's a discount */}
-            {dynamicData?.originalPrice?.original && dynamicData.originalPrice.original > productPrice && (
-              <Text style={styles.originalPrice}>₹{dynamicData.originalPrice.original}</Text>
-            )}
-            {/* Show discount percentage */}
-            {dynamicData?.originalPrice?.discount && (
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>{dynamicData.originalPrice.discount}% OFF</Text>
-              </View>
-            )}
-          </View>
-          
           {/* Location Row */}
           <View style={styles.locationRow}>
             <Ionicons name="location" size={16} color="#00C06A" />
@@ -379,6 +366,17 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
           {/* small spacing */}
         </View>
 
+        {/* Price & Rewards Section */}
+        {productPrice > 0 && (
+          <PriceAndRewardsSection
+            price={productPrice}
+            originalPrice={dynamicData?.originalPrice?.original || dynamicData?.pricing?.compare}
+            earnableCoins={Math.floor(productPrice * 0.1)}
+            cashbackAmount={Math.floor(productPrice * 0.05)}
+            bonusCoins={50}
+          />
+        )}
+
         {/* Recommendation Sections */}
 
         {/* Similar Products Section */}
@@ -455,22 +453,6 @@ const styles = StyleSheet.create({
     color: "#6366F1",
   },
   description: { fontSize: 14, color: "#555", marginBottom: 12 },
-  priceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  price: { fontSize: 24, fontWeight: "800", color: "#00C06A" },
-  originalPrice: { 
-    fontSize: 18, fontWeight: "500", color: "#999", 
-    textDecorationLine: "line-through", marginLeft: 8 
-  },
-  discountBadge: {
-    backgroundColor: "#EF4444", paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: 6, marginLeft: 8
-  },
-  discountText: { fontSize: 12, fontWeight: "700", color: "#fff" },
   locationRow: {
     flexDirection: "row",
     alignItems: "center",

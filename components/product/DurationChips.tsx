@@ -86,7 +86,7 @@ export const DurationChips: React.FC<DurationChipsProps> = ({
               {/* Clock Icon */}
               <Ionicons
                 name="time-outline"
-                size={16}
+                size={20}
                 color={isSelected ? '#FFFFFF' : '#6B7280'}
               />
 
@@ -100,12 +100,18 @@ export const DurationChips: React.FC<DurationChipsProps> = ({
                 {label}
               </Text>
 
-              {/* Fee Badge (shown when selected) */}
-              {isSelected && (
-                <View style={styles.feeBadge}>
-                  <Text style={styles.feeText}>{feePercentage}%</Text>
-                </View>
-              )}
+              {/* Fee Badge (shown for all, highlighted when selected) */}
+              <View style={[
+                styles.feeBadge,
+                !isSelected && styles.feeBadgeUnselected,
+              ]}>
+                <Text style={[
+                  styles.feeText,
+                  !isSelected && styles.feeTextUnselected,
+                ]}>
+                  {feePercentage}%
+                </Text>
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -140,19 +146,19 @@ const styles = StyleSheet.create({
 
   chipsContainer: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
+    gap: 12,
+    marginBottom: 16,
   },
 
   chip: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: '#E5E7EB',
@@ -161,22 +167,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    minHeight: 80,
   },
 
   chipSelected: {
     backgroundColor: '#00C06A',
     borderColor: '#00C06A',
     shadowColor: '#00C06A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
   chipLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#374151',
+    textAlign: 'center',
   },
 
   chipLabelSelected: {
@@ -184,16 +192,25 @@ const styles = StyleSheet.create({
   },
 
   feeBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 2,
   },
 
   feeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+
+  feeBadgeUnselected: {
+    backgroundColor: '#F3F4F6',
+  },
+
+  feeTextUnselected: {
+    color: '#6B7280',
   },
 
   feeInfo: {

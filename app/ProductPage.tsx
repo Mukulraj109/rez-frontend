@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ScrollView, StyleSheet, View, Modal, TouchableOpacity, Alert, ActivityIndicator, Platform, Dimensions } from 'react-native';
+import { ScrollView, StyleSheet, View, Modal, TouchableOpacity, Alert, ActivityIndicator, Platform, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '@/components/ThemedView';
@@ -22,10 +22,6 @@ import LockPriceModal from '@/components/product/LockPriceModal';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 // NEW COMPONENTS FOR REDESIGNED PRODUCT PAGE
-import PriceSectionCard from '@/components/product/PriceSectionCard';
-import EarnCoinsCard from '@/components/product/EarnCoinsCard';
-import CashbackCard from '@/components/product/CashbackCard';
-import BonusSharingCard from '@/components/product/BonusSharingCard';
 import LockProductSection from '@/components/product/LockProductSection';
 import CompletePurchaseSection from '@/components/product/CompletePurchaseSection';
 import PayWithRezSection from '@/components/product/PayWithRezSection';
@@ -33,6 +29,7 @@ import DeliveryPickupCards from '@/components/product/DeliveryPickupCards';
 import WhyGoodDealSection from '@/components/product/WhyGoodDealSection';
 import ProductTabbedSection from '@/components/product/ProductTabbedSection';
 import BottomBanner from '@/components/product/BottomBanner';
+import ProductStickyBottomBar from '@/components/product/ProductStickyBottomBar';
 import { showAlert } from '@/components/common/CrossPlatformAlert';
 import homepageDataService from '@/services/homepageDataService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -181,6 +178,8 @@ export default function StorePage() {
   const [quantity] = useState(1); // Default quantity for lock
   const [showLockPriceModal, setShowLockPriceModal] = useState(false);
   const fetchedProductIdRef = useRef<string | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const lockSectionYRef = useRef<number>(0);
 
   // Responsive breakpoints
   const screenWidth = Dimensions.get('window').width;
@@ -540,6 +539,17 @@ export default function StorePage() {
     );
   };
 
+  // Handle Lock Now button from sticky bottom bar
+  const handleStickyLockPress = () => {
+    // Scroll to the lock section
+    if (scrollViewRef.current && lockSectionYRef.current > 0) {
+      scrollViewRef.current.scrollTo({
+        y: lockSectionYRef.current - 100, // Offset for header
+        animated: true,
+      });
+    }
+  };
+
   const handleBookingPress = async () => {
     try {
       if (!cardData?.store?.id && !cardData?.store?._id) {
@@ -569,8 +579,12 @@ export default function StorePage() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView
+        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={isWeb ? styles.webScrollContent : undefined}
+        contentContainerStyle={[
+          isWeb ? styles.webScrollContent : undefined,
+          { paddingBottom: 100 }, // Space for sticky bottom bar
+        ]}
       >
         <View style={[
           styles.contentWrapper,
@@ -612,37 +626,24 @@ export default function StorePage() {
 
           {/* ========== NEW REDESIGNED SECTIONS ========== */}
 
-          {/* 3. Earn Coins Card */}
-          {!isLoadingBackend && cardData && earnableCoins > 0 && (
-            <EarnCoinsCard earnableCoins={earnableCoins} />
-          )}
-
-          {/* 5. Cashback Card */}
-          {!isLoadingBackend && cardData && cashbackAmount > 0 && (
-            <CashbackCard cashbackAmount={cashbackAmount} />
-          )}
-
-          {/* 6. Bonus Sharing Card */}
-          {!isLoadingBackend && cardData && (
-            <BonusSharingCard
-              bonusCoins={50}
-              productId={cardData.id || cardData._id}
-              productName={cardData.title || cardData.name}
-            />
-          )}
-
           {/* 7. Lock Product Section (Inline - Replaces Modal) */}
           {!isLoadingBackend && cardData && (cardData.id || cardData._id) && !isLocked && (
-            <LockProductSection
-              productId={cardData.id || cardData._id || ''}
-              productName={cardData.title || cardData.name || ''}
-              productPrice={productPrice}
-              quantity={quantity}
-              variant={cardData.selectedVariant as any}
-              onLockSuccess={(details) => {
-                handleLockSuccess(details);
+            <View
+              onLayout={(event) => {
+                lockSectionYRef.current = event.nativeEvent.layout.y;
               }}
-            />
+            >
+              <LockProductSection
+                productId={cardData.id || cardData._id || ''}
+                productName={cardData.title || cardData.name || ''}
+                productPrice={productPrice}
+                quantity={quantity}
+                variant={cardData.selectedVariant as any}
+                onLockSuccess={(details) => {
+                  handleLockSuccess(details);
+                }}
+              />
+            </View>
           )}
 
           {/* Locked Product Badge (when already locked) */}
@@ -949,6 +950,17 @@ export default function StorePage() {
           quantity={quantity}
           variant={cardData.selectedVariant as any}
           onLockSuccess={handleLockSuccess}
+        />
+      )}
+
+      {/* Sticky Bottom Bar with Price and Lock Now Button */}
+      {cardData && productPrice > 0 && (
+        <ProductStickyBottomBar
+          price={productPrice}
+          originalPrice={originalPrice}
+          isLocked={isLocked}
+          onLockPress={handleStickyLockPress}
+          onAddToCart={handleBuyPress}
         />
       )}
     </ThemedView>
