@@ -159,6 +159,15 @@ export function toProduct(data: any): Product {
     keywords: data.keywords,
     shipping: data.shipping,
     metadata: data.metadata,
+    // Preserve raw backend fields for components that need them
+    pricing: data.pricing,
+    ratings: data.ratings,
+    analytics: data.analytics,
+    computedCashback: data.computedCashback,
+    computedDelivery: data.computedDelivery,
+    todayPurchases: data.todayPurchases,
+    todayViews: data.todayViews || data.analytics?.todayViews,
+    deliveryInfo: data.deliveryInfo,
   };
 }
 
@@ -187,6 +196,7 @@ export function toProductPrice(data: any): ProductPrice {
     priceField?.original ||
     priceField?.compare ||
     priceField?.basePrice ||
+    pricingField?.original ||
     pricingField?.compare ||
     pricingField?.mrp ||
     pricingField?.basePrice ||

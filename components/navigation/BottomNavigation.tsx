@@ -111,6 +111,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
     '/pay-in-store/payment',
     '/pay-in-store/offers',
     '/ProductPage', // Product detail page has its own sticky bottom bar
+    '/MainStorePage', // Main store page has its own sticky bottom bar
   ];
 
   const shouldHide = hidePages.some(page => pathname?.startsWith(page));

@@ -211,8 +211,6 @@ export default function StorePage() {
 
       if (response.success && response.data) {
         const productData = response.data;
-        console.log('✅ [ProductPage] Backend returned product:', productData.name || productData.title);
-        console.log('💰 [ProductPage] Backend price:', productData.pricing?.selling || productData.price?.current);
 
         // Update cardData with real backend data using the correct structure
         const productType = (productData as any).productType || 'product';
@@ -224,13 +222,17 @@ export default function StorePage() {
             (productData as any).pricing?.selling ||
             (productData as any).pricing?.basePrice ||
             0);
+        // Get original price - check unified price object first, then raw pricing
+        const unifiedPriceOriginal = (productData as any).price?.original;
         const originalPriceField = (productData as any).originalPrice;
-        const actualOriginalPrice = typeof originalPriceField === 'number' ? originalPriceField :
-          (originalPriceField?.original ||
-            (productData as any).price?.original ||
-            (productData as any).pricing?.compare ||
-            (productData as any).pricing?.mrp ||
-            undefined);
+        const actualOriginalPrice =
+          unifiedPriceOriginal ||
+          (typeof originalPriceField === 'number' ? originalPriceField : null) ||
+          originalPriceField?.original ||
+          (productData as any).pricing?.original ||
+          (productData as any).pricing?.compare ||
+          (productData as any).pricing?.mrp ||
+          undefined;
         const actualDiscount = (productData as any).discount ||
           (productData as any).price?.discount ||
           (productData as any).pricing?.discount ||

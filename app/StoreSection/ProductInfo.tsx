@@ -367,15 +367,38 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
         </View>
 
         {/* Price & Rewards Section */}
-        {productPrice > 0 && (
-          <PriceAndRewardsSection
-            price={productPrice}
-            originalPrice={dynamicData?.originalPrice?.original || dynamicData?.pricing?.compare}
-            earnableCoins={Math.floor(productPrice * 0.1)}
-            cashbackAmount={Math.floor(productPrice * 0.05)}
-            bonusCoins={50}
-          />
-        )}
+        {productPrice > 0 && (() => {
+          // Calculate original price - check multiple sources
+          let originalPrice = typeof dynamicData?.originalPrice === 'number'
+            ? dynamicData.originalPrice
+            : (dynamicData?.originalPrice?.original ||
+               dynamicData?.pricing?.original ||
+               dynamicData?.pricing?.compare ||
+               dynamicData?.pricing?.mrp);
+
+          // If no original price but we have discount %, calculate it
+          if (!originalPrice && dynamicData?.discount && dynamicData.discount > 0) {
+            originalPrice = Math.round(productPrice / (1 - dynamicData.discount / 100));
+          }
+
+          // Get discount percentage
+          const discountPercent = dynamicData?.discount || dynamicData?.pricing?.discount || 0;
+
+          // Calculate cashback amount
+          const cashbackAmount = dynamicData?.computedCashback?.amount
+            || dynamicData?.cashback?.maxAmount
+            || (dynamicData?.cashback?.percentage ? Math.floor(productPrice * dynamicData.cashback.percentage / 100) : Math.floor(productPrice * 0.05));
+
+          return (
+            <PriceAndRewardsSection
+              price={productPrice}
+              originalPrice={originalPrice}
+              earnableCoins={Math.floor(productPrice * 0.1)}
+              cashbackAmount={cashbackAmount}
+              bonusCoins={50}
+            />
+          );
+        })()}
 
         {/* Recommendation Sections */}
 
