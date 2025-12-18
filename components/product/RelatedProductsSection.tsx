@@ -28,7 +28,7 @@ interface RelatedProductsSectionProps {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = 160;
+const CARD_WIDTH = 170;
 
 export const RelatedProductsSection: React.FC<RelatedProductsSectionProps> = ({
   productId,
@@ -81,7 +81,7 @@ export const RelatedProductsSection: React.FC<RelatedProductsSectionProps> = ({
             activeOpacity={0.7}
           >
             <ThemedText style={styles.viewAllText}>View All</ThemedText>
-            <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+            <Ionicons name="chevron-forward" size={16} color="#00C06A" />
           </TouchableOpacity>
         )}
       </View>
@@ -89,7 +89,7 @@ export const RelatedProductsSection: React.FC<RelatedProductsSectionProps> = ({
       {/* Loading State */}
       {isLoading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#8B5CF6" />
+          <ActivityIndicator size="small" color="#00C06A" />
           <ThemedText style={styles.loadingText}>Loading recommendations...</ThemedText>
         </View>
       )}
@@ -100,7 +100,7 @@ export const RelatedProductsSection: React.FC<RelatedProductsSectionProps> = ({
           <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
           <ThemedText style={styles.errorText}>{error}</ThemedText>
           <TouchableOpacity style={styles.retryButton} onPress={refresh} activeOpacity={0.8}>
-            <Ionicons name="reload" size={16} color="#8B5CF6" />
+            <Ionicons name="reload" size={16} color="#00C06A" />
             <ThemedText style={styles.retryText}>Retry</ThemedText>
           </TouchableOpacity>
         </View>
@@ -113,7 +113,8 @@ export const RelatedProductsSection: React.FC<RelatedProductsSectionProps> = ({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           decelerationRate="fast"
-          snapToInterval={CARD_WIDTH + 12}
+          snapToInterval={CARD_WIDTH + 16}
+          snapToAlignment="start"
         >
           {products.map((product, index) => (
             <ProductCard
@@ -160,7 +161,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, isFirst, is
     >
       {/* Product Image */}
       <View style={styles.imageContainer}>
-        <Image source={{ uri: product.image }} style={styles.image} resizeMode="cover" />
+        <Image 
+          source={{ uri: product.image }} 
+          style={styles.image} 
+          resizeMode="cover"
+        />
 
         {/* Discount Badge */}
         {product.discount && product.discount > 0 && (
@@ -172,7 +177,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, isFirst, is
         {/* Cashback Badge */}
         {product.cashback && (
           <View style={styles.cashbackBadge}>
-            <Ionicons name="gift-outline" size={10} color="#FFF" />
+            <Ionicons name="gift-outline" size={11} color="#FFF" />
             <ThemedText style={styles.cashbackText}>Cashback</ThemedText>
           </View>
         )}
@@ -201,7 +206,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, isFirst, is
 
         {/* Rating */}
         <View style={styles.ratingRow}>
-          <Ionicons name="star" size={12} color="#FFD700" />
+          <Ionicons name="star" size={13} color="#F59E0B" />
           <ThemedText style={styles.rating}>{rating.toFixed(1)}</ThemedText>
           <ThemedText style={styles.reviewCount}>({reviewCount})</ThemedText>
         </View>
@@ -215,6 +220,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, isFirst, is
             </ThemedText>
           )}
         </View>
+
+        {/* Earnable Coins Badge */}
+        {price > 0 && (
+          <View style={styles.coinsBadge}>
+            <ThemedText style={styles.coinsText}>
+              +{Math.floor(price * 0.1)} coins
+            </ThemedText>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -222,10 +236,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, isFirst, is
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFF',
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 24,
+    paddingHorizontal: 0,
+    marginTop: 8,
   },
 
   // Header
@@ -233,23 +247,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     color: '#111827',
+    letterSpacing: -0.5,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   viewAllText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00C06A',
+    letterSpacing: 0.2,
   },
 
   // Loading
@@ -280,7 +298,7 @@ const styles = StyleSheet.create({
   retryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#E8F5EE',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -290,40 +308,46 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B5CF6',
+    color: '#00C06A',
   },
 
   // Scroll Content
   scrollContent: {
-    paddingLeft: 16,
+    paddingLeft: 20,
+    paddingRight: 20,
   },
 
   // Product Card
   card: {
     width: CARD_WIDTH,
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginRight: 16,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E8F5EE',
   },
   cardFirst: {
     // First card already has left padding from scrollContent
   },
   cardLast: {
-    marginRight: 16,
+    marginRight: 20,
   },
 
   // Image
   imageContainer: {
     width: '100%',
-    height: 160,
-    backgroundColor: '#F3F4F6',
+    height: 180,
+    backgroundColor: '#F9FAFB',
     position: 'relative',
+    overflow: 'hidden',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   image: {
     width: '100%',
@@ -331,91 +355,129 @@ const styles = StyleSheet.create({
   },
   discountBadge: {
     position: 'absolute',
-    top: 8,
-    left: 8,
+    top: 10,
+    left: 10,
     backgroundColor: '#EF4444',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   discountText: {
     fontSize: 10,
     fontWeight: '700',
     color: '#FFF',
+    letterSpacing: 0.3,
   },
   cashbackBadge: {
     position: 'absolute',
-    bottom: 8,
-    left: 8,
+    bottom: 10,
+    left: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: 'rgba(0, 192, 106, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
     gap: 4,
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   cashbackText: {
     fontSize: 9,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#FFF',
+    letterSpacing: 0.2,
   },
 
   // Info
   infoContainer: {
-    padding: 12,
+    padding: 14,
+    paddingTop: 12,
   },
   category: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#8B5CF6',
-    marginBottom: 2,
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#00C06A',
+    marginBottom: 4,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   brand: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     color: '#6B7280',
-    marginBottom: 4,
+    marginBottom: 5,
+    lineHeight: 16,
   },
   name: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
-    lineHeight: 16,
-    marginBottom: 6,
-    height: 32,
+    color: '#111827',
+    lineHeight: 20,
+    marginBottom: 8,
+    minHeight: 40,
+    letterSpacing: -0.2,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
-    gap: 3,
+    marginBottom: 8,
+    gap: 4,
   },
   rating: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: '#374151',
+    marginLeft: 2,
   },
   reviewCount: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#9CA3AF',
+    marginLeft: 2,
   },
   priceRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    alignItems: 'baseline',
+    gap: 8,
+    marginBottom: 6,
   },
   price: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
     color: '#111827',
+    letterSpacing: -0.3,
   },
   originalPrice: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#9CA3AF',
     textDecorationLine: 'line-through',
+    fontWeight: '500',
+  },
+
+  // Earnable coins badge
+  coinsBadge: {
+    marginTop: 4,
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+  },
+  coinsText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F59E0B',
+    letterSpacing: 0.2,
   },
 });
 

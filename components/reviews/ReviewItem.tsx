@@ -22,6 +22,10 @@ interface ReviewItemProps {
   onDeletePress?: (reviewId: string) => void;
   showActions?: boolean;
   isOwnReview?: boolean;
+  /** Cashback earned for this review (optional) */
+  cashbackEarned?: number;
+  /** Currency symbol */
+  currency?: string;
 }
 
 export default function ReviewItem({
@@ -31,7 +35,9 @@ export default function ReviewItem({
   onEditPress,
   onDeletePress,
   showActions = true,
-  isOwnReview = false
+  isOwnReview = false,
+  cashbackEarned,
+  currency = '₹',
 }: ReviewItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHelpful, setIsHelpful] = useState(false);
@@ -259,6 +265,16 @@ export default function ReviewItem({
           )}
         </View>
       )}
+
+      {/* Cashback Earned Badge */}
+      {cashbackEarned && cashbackEarned > 0 && (
+        <View style={styles.cashbackBadge}>
+          <Ionicons name="wallet" size={14} color="#10B981" />
+          <ThemedText style={styles.cashbackText}>
+            Earned {currency}{cashbackEarned} cashback
+          </ThemedText>
+        </View>
+      )}
     </ThemedView>
 );
 }
@@ -407,5 +423,22 @@ const styles = StyleSheet.create({
   },
   actionTextActive: {
     color: '#8B5CF6',
+  },
+  // Cashback earned badge
+  cashbackBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+    alignSelf: 'flex-start',
+  },
+  cashbackText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10B981',
   },
 });

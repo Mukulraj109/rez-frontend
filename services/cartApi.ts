@@ -124,7 +124,7 @@ export interface LockWithPaymentRequest {
   productId: string;
   quantity?: number;
   variant?: { type: string; value: string };
-  duration: 3; // 3 hours lock only
+  duration: 2 | 4 | 8; // Variable lock duration: 2hr=5%, 4hr=10%, 8hr=15%
   paymentMethod: 'wallet' | 'upi';
 }
 
@@ -1111,11 +1111,11 @@ class CartService {
         };
       }
 
-      if (data.duration !== 3) {
+      if (![2, 4, 8].includes(data.duration)) {
         return {
           success: false,
           error: 'Invalid duration',
-          message: 'Please select a valid lock duration (3 hours)',
+          message: 'Please select a valid lock duration (2, 4, or 8 hours)',
         };
       }
 

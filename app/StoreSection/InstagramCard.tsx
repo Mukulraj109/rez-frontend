@@ -104,10 +104,11 @@ export default function InstagramCard({ productData, disabled = false, onError }
       accessibilityState={{ disabled: disabled || isNavigating, busy: isNavigating }}
     >
       <LinearGradient
-        colors={disabled ? ['#D1D5DB', '#9CA3AF'] : ['#EC4899', '#8B5CF6']}
+        colors={disabled ? ['#D1D5DB', '#9CA3AF'] : ['#EC4899', '#8B5CF6', '#7C3AED']}
         style={[styles.gradientBackground, { padding: responsivePadding }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
+        locations={[0, 0.5, 1]}
       >
         <View style={styles.content}>
           <View style={styles.iconContainer}>
@@ -128,38 +129,55 @@ export default function InstagramCard({ productData, disabled = false, onError }
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    borderRadius: 20,
+    shadowColor: '#EC4899',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 12,
+    // Additional 3D effect layers
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   containerDisabled: {
     opacity: 0.6,
-    shadowOpacity: 0.05,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    elevation: 3,
   },
   gradientBackground: {
-    borderRadius: 16,
+    borderRadius: 20,
+    // Inner shadow effect
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
+    // 3D icon container
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.2,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });

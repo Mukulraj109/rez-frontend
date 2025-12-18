@@ -22,6 +22,10 @@ import {
   PaymentInitApiResponse,
   PaymentConfirmApiResponse,
   PaymentHistoryApiResponse,
+  AppliedCoins,
+  EnhancedPaymentMethod,
+  StoreMembership,
+  AutoOptimizeResponse,
 } from '@/types/storePayment.types';
 
 const STORE_PAYMENT_BASE = '/store-payment';
@@ -279,6 +283,108 @@ const storePaymentApi = {
       amountToPay,
       totalSavings,
     };
+  },
+
+  // ==================== NEW PREMIUM PAYMENT METHODS ====================
+
+  /**
+   * Get all available coins for user at a specific store
+   */
+  async getCoinsForStore(storeId: string): Promise<AppliedCoins> {
+    try {
+      const response = await apiClient.get(`${STORE_PAYMENT_BASE}/coins/${storeId}`);
+
+      if (!response.success || !response.data) {
+        return {
+          rezCoins: { available: 0, using: 0, enabled: true },
+          promoCoins: { available: 0, using: 0, enabled: true, expiringToday: false },
+          brandedCoins: null,
+          totalApplied: 0,
+        };
+      }
+
+      return response.data;
+    } catch (error) {
+      return {
+        rezCoins: { available: 0, using: 0, enabled: true },
+        promoCoins: { available: 0, using: 0, enabled: true, expiringToday: false },
+        brandedCoins: null,
+        totalApplied: 0,
+      };
+    }
+  },
+
+  /**
+   * Get enhanced payment methods with bank-specific offers
+   */
+  async getEnhancedPaymentMethods(storeId: string, amount?: number): Promise<EnhancedPaymentMethod[]> {
+    try {
+      const response = await apiClient.get(
+        `${STORE_PAYMENT_BASE}/payment-methods/${storeId}`,
+        { params: amount ? { amount } : undefined }
+      );
+
+      if (!response.success || !response.data) {
+        return [];
+      }
+
+      return response.data;
+    } catch (error) {
+      return [];
+    }
+  },
+
+  /**
+   * Auto-optimize coin allocation for maximum savings
+   */
+  async autoOptimizeCoins(storeId: string, billAmount: number): Promise<AutoOptimizeResponse> {
+    try {
+      const response = await apiClient.post(`${STORE_PAYMENT_BASE}/auto-optimize`, {
+        storeId,
+        billAmount,
+      });
+
+      if (!response.success || !response.data) {
+        return {
+          rezCoins: { available: 0, using: 0, enabled: false },
+          promoCoins: { available: 0, using: 0, enabled: false, expiringToday: false },
+          brandedCoins: null,
+          totalApplied: 0,
+          maxAllowed: 0,
+          optimizationStrategy: 'none',
+          savings: { coinsUsed: 0, percentOfBill: 0 },
+        };
+      }
+
+      return response.data;
+    } catch (error) {
+      return {
+        rezCoins: { available: 0, using: 0, enabled: false },
+        promoCoins: { available: 0, using: 0, enabled: false, expiringToday: false },
+        brandedCoins: null,
+        totalApplied: 0,
+        maxAllowed: 0,
+        optimizationStrategy: 'none',
+        savings: { coinsUsed: 0, percentOfBill: 0 },
+      };
+    }
+  },
+
+  /**
+   * Get user's membership tier for a store
+   */
+  async getStoreMembership(storeId: string): Promise<StoreMembership | null> {
+    try {
+      const response = await apiClient.get(`${STORE_PAYMENT_BASE}/membership/${storeId}`);
+
+      if (!response.success || !response.data) {
+        return null;
+      }
+
+      return response.data;
+    } catch (error) {
+      return null;
+    }
   },
 };
 

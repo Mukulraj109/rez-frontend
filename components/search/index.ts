@@ -8,3 +8,7 @@ export { default as StoreResultCard } from './StoreResultCard';
 export { default as RecentSearches } from './RecentSearches';
 export { default as VirtualizedResultsList } from './VirtualizedResultsList';
 export { default as OptimizedCategoryCard } from './OptimizedCategoryCard';
+export { default as SellerComparisonCard } from './SellerComparisonCard';
+export { default as ProductGroupHeader } from './ProductGroupHeader';
+export { default as SearchResultsSummary } from './SearchResultsSummary';
+export { default as FilterBar } from './FilterBar';

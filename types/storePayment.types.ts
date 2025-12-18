@@ -93,7 +93,7 @@ export interface StoreRewardRules {
 
 // ==================== PAYMENT METHOD TYPES ====================
 
-export type PaymentMethodType = 'upi' | 'card' | 'credit_card' | 'debit_card' | 'netbanking' | 'wallet';
+export type PaymentMethodType = 'upi' | 'card' | 'credit_card' | 'debit_card' | 'netbanking' | 'wallet' | 'pay_later';
 
 export interface PaymentMethod {
   id: string;
@@ -102,6 +102,166 @@ export interface PaymentMethod {
   icon: string;
   isAvailable: boolean;
   description?: string;
+}
+
+// ==================== PREMIUM PAYMENT TYPES ====================
+
+/**
+ * Applied coins structure with breakdown by type
+ */
+/**
+ * Applied Coins Structure
+ * 
+ * Three coin types per ReZ Wallet design:
+ * 1. ReZ Coins (Green #00C06A) - Universal, 30-day expiry, no redemption cap
+ * 2. Promo Coins (Gold #FFC857) - Limited-time, expiry countdown, max 20% per bill
+ * 3. Branded Coins (Merchant color) - Store-specific, no expiry, no cap
+ * 
+ * Usage Order: Promo → Branded → ReZ (for maximum savings)
+ */
+export interface AppliedCoins {
+  rezCoins: {
+    available: number;
+    using: number;
+    enabled: boolean;
+    color?: string; // #00C06A (ReZ Green)
+    icon?: string;
+    description?: string;
+    expiryDays?: number | null; // 30 days default
+    redemptionCap?: number | null; // null = no cap
+  };
+  promoCoins: {
+    available: number;
+    using: number;
+    enabled: boolean;
+    expiringToday: boolean;
+    expiresIn?: number | null; // Days until expiry
+    color?: string; // #FFC857 (ReZ Gold)
+    icon?: string;
+    description?: string;
+    redemptionCap?: number; // Max 20% per bill default
+  };
+  brandedCoins: {
+    available: number;
+    using: number;
+    enabled: boolean;
+    storeName: string;
+    storeId: string;
+    color?: string; // Merchant color
+    logo?: string;
+    icon?: string;
+    description?: string;
+    redemptionCap?: number | null; // null = no cap
+  } | null;
+  totalApplied: number;
+  usageOrder?: string[]; // ['promo', 'branded', 'rez']
+  usageOrderDescription?: string;
+}
+
+/**
+ * Payment method offer types
+ */
+export type PaymentMethodOfferType = 'cashback' | 'discount' | 'emi' | 'bonus_coins';
+
+/**
+ * Individual offer on a payment method
+ */
+export interface PaymentMethodOffer {
+  type: PaymentMethodOfferType;
+  title: string;
+  description: string;
+  value: number;
+  banks?: string[];
+}
+
+/**
+ * Badge types for payment methods
+ */
+export type PaymentBadgeType = 'best' | 'popular' | 'new';
+
+/**
+ * Enhanced payment method with offers and badges
+ */
+export interface EnhancedPaymentMethod extends PaymentMethod {
+  badge?: PaymentBadgeType;
+  offers: PaymentMethodOffer[];
+  providers?: string[];
+}
+
+/**
+ * Savings summary showing breakdown of user savings
+ */
+export interface SavingsSummary {
+  coinsUsed: number;
+  bankOffers: number;
+  loyaltyBenefit: number;
+  totalSaved: number;
+}
+
+/**
+ * Preview of rewards user will earn
+ */
+export interface RewardsPreview {
+  cashback: number;
+  coinsToEarn: number;
+}
+
+/**
+ * Membership tier types
+ */
+export type MembershipTier = 'new' | 'bronze' | 'silver' | 'gold';
+
+/**
+ * Store membership information
+ */
+export interface StoreMembership {
+  tier: MembershipTier;
+  tierName: string;
+  visitCount: number;
+  nextTier: string | null;
+  visitsToNextTier: number;
+  benefits: {
+    cashbackBonus: number;
+    prioritySupport: boolean;
+    exclusiveOffers: boolean;
+  };
+  isEarningRewards: boolean;
+}
+
+/**
+ * External wallet provider types
+ */
+export type ExternalWalletProvider = 'paytm' | 'amazonpay' | 'mobikwik' | 'phonepe' | 'gpay';
+
+/**
+ * External wallet information
+ */
+export interface ExternalWallet {
+  id: string;
+  name: string;
+  provider: ExternalWalletProvider;
+  isLinked: boolean;
+  linkedEmail?: string;
+  linkedPhone?: string;
+  balance?: number;
+  icon: string;
+  color: string;
+}
+
+/**
+ * Auto-optimization response
+ */
+export interface AutoOptimizeResponse {
+  rezCoins: AppliedCoins['rezCoins'];
+  promoCoins: AppliedCoins['promoCoins'];
+  brandedCoins: AppliedCoins['brandedCoins'];
+  totalApplied: number;
+  maxAllowed: number;
+  optimizationStrategy: string;
+  savings: {
+    coinsUsed: number;
+    percentOfBill: number;
+  };
 }
 
 // ==================== COIN TYPES ====================

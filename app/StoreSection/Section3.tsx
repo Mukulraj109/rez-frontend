@@ -429,13 +429,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.primary[600],
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.sm,
+    // 3D effect for icon
+    shadowColor: Colors.primary[600],
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   headerTitle: {
     ...Typography.h4,
@@ -444,10 +452,18 @@ const styles = StyleSheet.create({
   },
   countBadge: {
     backgroundColor: Colors.primary[100],
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     marginLeft: Spacing.sm,
+    // 3D effect for badge
+    shadowColor: Colors.primary[600],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: Colors.primary[200],
   },
   countText: {
     ...Typography.caption,
@@ -467,26 +483,47 @@ const styles = StyleSheet.create({
     marginRight: CARD_MARGIN,
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    ...Shadows.medium,
+    // Enhanced 3D shadow effects
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+    // Additional depth
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
   },
   discountCardLocked: {
     opacity: 0.85,
+    shadowOpacity: 0.1,
+    elevation: 4,
   },
   cardGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.md,
     minHeight: 90,
+    // Inner shadow effect for depth
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
 
   // Discount Badge
   discountBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
     borderRadius: BorderRadius.md,
     paddingHorizontal: 12,
     paddingVertical: 8,
     alignItems: 'center',
     marginRight: Spacing.md,
+    // 3D effect for badge
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   discountBadgeText: {
     fontSize: 20,
@@ -506,9 +543,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     borderRadius: 12,
-    padding: 4,
+    padding: 6,
+    // 3D effect
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
 
   // Card Content

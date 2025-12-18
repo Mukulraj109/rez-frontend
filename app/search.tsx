@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -42,8 +42,13 @@ import {
   SearchViewMode,
 } from '@/types/search.types';
 import { SearchHeader, SearchSection as SearchSectionComponent, FilterModal } from '@/components/search';
+import SellerComparisonCard from '@/components/search/SellerComparisonCard';
+import ProductGroupHeader from '@/components/search/ProductGroupHeader';
+import SearchResultsSummary from '@/components/search/SearchResultsSummary';
+import FilterBar, { SortOption } from '@/components/search/FilterBar';
 import { useSearchPage } from '@/hooks/useSearchPage';
 import useDebouncedSearch from '@/hooks/useDebouncedSearch';
+import { useCurrentLocation } from '@/hooks/useLocation';
 import type { FilterState } from '@/components/search/FilterModal';
 
 const { width } = Dimensions.get('window');
@@ -53,7 +58,10 @@ export default function SearchPage() {
   const initialQuery = (params.q as string) || '';
 
   // Use the new search page hook
-  const { state: searchState, actions } = useSearchPage();
+  const { state: searchState, groupedProducts, searchSummary, actions } = useSearchPage();
+
+  // Get user location for distance calculation
+  const { currentLocation } = useCurrentLocation();
 
   // Use debounced search hook
   const { value: searchQuery, debouncedValue: debouncedQuery, isDebouncing, setValue: setSearchQuery } = useDebouncedSearch(initialQuery, { delay: 300, minLength: 2 });
@@ -61,6 +69,8 @@ export default function SearchPage() {
   const [viewMode, setViewMode] = useState<SearchViewMode>(initialQuery ? 'results' : 'categories');
   const [inputFocused, setInputFocused] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [currentSort, setCurrentSort] = useState<SortOption>('best_value');
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [currentFilters, setCurrentFilters] = useState<FilterState>({
     priceRange: { min: 0, max: 100000 },
     rating: null,
@@ -69,19 +79,58 @@ export default function SearchPage() {
     cashbackMin: 0,
   });
 
-  useEffect(() => {
-    // Perform search if initial query exists
-    if (initialQuery) {
-      actions.performSearch(initialQuery);
+  // Prepare user location for search (memoized to avoid recreation)
+  const userLocation = useMemo(() => {
+    if (currentLocation?.coordinates) {
+      return {
+        latitude: currentLocation.coordinates.latitude,
+        longitude: currentLocation.coordinates.longitude,
+      };
     }
-  }, [initialQuery, actions]);
+    return undefined;
+  }, [currentLocation?.coordinates?.latitude, currentLocation?.coordinates?.longitude]);
 
-  // Perform search when debounced query changes
+  // Extract location coordinates to avoid object recreation issues
+  const userLat = currentLocation?.coordinates?.latitude;
+  const userLon = currentLocation?.coordinates?.longitude;
+
+  // Store function and location in refs to avoid dependency issues
+  const performGroupedSearchRef = useRef(actions.performGroupedSearch);
+  const userLocationRef = useRef<{ latitude: number; longitude: number } | undefined>(undefined);
+  
+  // Update refs (using useLayoutEffect to avoid render issues)
+  useLayoutEffect(() => {
+    performGroupedSearchRef.current = actions.performGroupedSearch;
+    userLocationRef.current = userLat && userLon ? { latitude: userLat, longitude: userLon } : undefined;
+  }, [actions.performGroupedSearch, userLat, userLon]);
+
+  // Track last search to prevent duplicate searches
+  const lastSearchedQuery = useRef<string>('');
+
+  // Perform grouped search if initial query exists (only once on mount)
+  const hasSearchedInitial = useRef(false);
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim().length >= 2 && !hasSearchedInitial.current) {
+      hasSearchedInitial.current = true;
+      lastSearchedQuery.current = initialQuery;
+      performGroupedSearchRef.current(initialQuery, userLocationRef.current);
+      setViewMode('results');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]); // Only run once when initialQuery is set
+
+  // Perform grouped search when debounced query changes
   useEffect(() => {
     if (debouncedQuery && debouncedQuery.trim().length >= 2) {
-      actions.performSearch(debouncedQuery);
+      // Only search if query actually changed
+      if (lastSearchedQuery.current !== debouncedQuery) {
+        lastSearchedQuery.current = debouncedQuery;
+        performGroupedSearchRef.current(debouncedQuery, userLocationRef.current);
+        setViewMode('results');
+      }
     }
-  }, [debouncedQuery, actions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery]); // Only depend on debouncedQuery - location is in ref
 
   const handleBack = () => {
     router.back();
@@ -98,12 +147,13 @@ export default function SearchPage() {
     }
   };
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     if (searchState.query.trim()) {
-      actions.handleSearchSubmit(searchState.query);
+      lastSearchedQuery.current = searchState.query;
+      performGroupedSearchRef.current(searchState.query, userLocationRef.current);
       setViewMode('results');
     }
-  };
+  }, [searchState.query]);
 
   const handleSuggestionPress = (suggestion: SearchSuggestion) => {
     actions.handleSearchChange(suggestion.text);
@@ -150,6 +200,88 @@ export default function SearchPage() {
       });
     }
   };
+
+  const handleSellerPress = (seller: any) => {
+    // Navigate to product page with store context
+    if (seller.productId) {
+      router.push({
+        pathname: '/ProductPage' as any,
+        params: {
+          cardId: seller.productId,
+          cardType: 'product',
+          storeId: seller.storeId
+        }
+      });
+    }
+  };
+
+  const handleFilterPress = (filter: string) => {
+    if (filter === 'filters') {
+      setShowFilterModal(true);
+    } else {
+      // Toggle filter
+      setActiveFilters(prev => {
+        if (prev.includes(filter)) {
+          return prev.filter(f => f !== filter);
+        }
+        return [...prev, filter];
+      });
+    }
+  };
+
+  const handleSortChange = (sort: SortOption) => {
+    setCurrentSort(sort);
+  };
+
+  // Apply sorting to grouped products based on current sort option
+  const sortedGroupedProducts = useMemo(() => {
+    if (!groupedProducts || groupedProducts.length === 0) return groupedProducts;
+
+    return groupedProducts.map(productGroup => {
+      const sortedSellers = [...productGroup.sellers].sort((a, b) => {
+        switch (currentSort) {
+          case 'price_low':
+            return a.price.current - b.price.current;
+          case 'price_high':
+            return b.price.current - a.price.current;
+          case 'cashback_high':
+            return b.cashback.amount - a.cashback.amount;
+          case 'distance':
+            // Sort by distance (closer first)
+            const distA = a.distance ?? 999;
+            const distB = b.distance ?? 999;
+            return distA - distB;
+          case 'rating':
+            // Sort by rating (higher first)
+            if (b.rating !== a.rating) {
+              return b.rating - a.rating;
+            }
+            // If ratings are equal, sort by review count
+            return b.reviewCount - a.reviewCount;
+          case 'best_value':
+          default:
+            // Best value: considers price, cashback, rating, and distance
+            // Lower score = better value
+            const scoreA = 
+              (a.price.current * 0.4) - 
+              (a.cashback.amount * 0.3) - 
+              (a.rating * 100 * 0.2) + 
+              ((a.distance || 999) * 0.1);
+            const scoreB = 
+              (b.price.current * 0.4) - 
+              (b.cashback.amount * 0.3) - 
+              (b.rating * 100 * 0.2) + 
+              ((b.distance || 999) * 0.1);
+            return scoreA - scoreB;
+        }
+      });
+
+      return {
+        ...productGroup,
+        sellers: sortedSellers
+      };
+    });
+  }, [groupedProducts, currentSort]);
 
   const handleViewAll = (sectionId: string) => {
     actions.handleViewAllSection(sectionId);
@@ -209,100 +341,114 @@ export default function SearchPage() {
   };
 
   const renderHeader = () => (
-    <LinearGradient
-      colors={[COLORS.primary, COLORS.primaryDark]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.header}
-    >
-      {/* Glass overlay */}
-      <View style={styles.glassOverlay} />
+    <View style={styles.headerWrapper}>
+      <LinearGradient
+        colors={['#00C06A', '#00A85A', '#008F4A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        {/* Subtle decorative elements */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
+        <View style={styles.decorativeCircle3} />
 
-      <View style={styles.headerContent}>
-        <TouchableOpacity
-          onPress={handleBack}
-          style={styles.backButton}
-          activeOpacity={0.8}
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          accessibilityHint="Returns to the previous screen"
-        >
-          <View style={styles.backButtonContainer}>
-            <Ionicons name="arrow-back" size={20} color="white" />
-          </View>
-        </TouchableOpacity>
-
-        <View style={styles.searchContainer}>
-          <View style={[styles.searchInputContainer, inputFocused && styles.searchInputFocused]}>
-            <View style={styles.searchIconWrapper}>
-              <Ionicons name="search" size={18} color={COLORS.primary} />
+        <View style={styles.headerContent}>
+          {/* Back Button - Modern design */}
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backButton}
+            activeOpacity={0.8}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+            accessibilityHint="Returns to the previous screen"
+          >
+            <View style={styles.backButtonContainer}>
+              <Ionicons name="arrow-back" size={24} color="white" />
             </View>
-            <TextInput
-              style={[
-                styles.searchInput,
-                Platform.OS === 'web'
-                  ? ({
-                      outlineWidth: 0,
-                      outlineColor: 'transparent',
-                      outlineStyle: 'none',
-                      WebkitTapHighlightColor: 'transparent',
-                    } as any)
-                  : undefined,
-              ]}
-              placeholder="Search for a service, store or category"
-              placeholderTextColor={COLORS.muted}
-              value={searchState.query}
-              onChangeText={handleQueryChange}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-              autoFocus={!initialQuery}
-              underlineColorAndroid="transparent"
-              importantForAutofill="no"
-              accessibilityLabel="Search input"
-              accessibilityRole="search"
-              accessibilityHint="Enter keywords to search for services, stores or categories"
-              accessibilityValue={{ text: searchState.query }}
-            />
+          </TouchableOpacity>
 
-            {searchState.query.length > 0 && (
-              <TouchableOpacity
-                onPress={() => handleQueryChange('')}
-                style={styles.clearButton}
-                accessibilityLabel="Clear search"
-                accessibilityRole="button"
-                accessibilityHint="Clears the current search text"
-              >
-                <Ionicons name="close-circle" size={20} color={COLORS.muted} />
-              </TouchableOpacity>
+          {/* Search Container - Premium design */}
+          <View style={styles.searchContainer}>
+            <View style={[styles.searchInputContainer, inputFocused && styles.searchInputFocused]}>
+              <View style={styles.searchIconWrapper}>
+                <Ionicons name="search" size={16} color={COLORS.primary} />
+              </View>
+              <TextInput
+                style={[
+                  styles.searchInput,
+                  Platform.OS === 'web'
+                    ? ({
+                        outlineWidth: 0,
+                        outlineColor: 'transparent',
+                        outlineStyle: 'none',
+                        WebkitTapHighlightColor: 'transparent',
+                      } as any)
+                    : undefined,
+                ]}
+                placeholder="Search for a service, store or category"
+                placeholderTextColor="#9CA3AF"
+                value={searchState.query}
+                onChangeText={handleQueryChange}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
+                onSubmitEditing={handleSearch}
+                returnKeyType="search"
+                autoFocus={!initialQuery}
+                underlineColorAndroid="transparent"
+                importantForAutofill="no"
+                accessibilityLabel="Search input"
+                accessibilityRole="search"
+                accessibilityHint="Enter keywords to search for services, stores or categories"
+                accessibilityValue={{ text: searchState.query }}
+              />
+
+              {searchState.query.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => handleQueryChange('')}
+                  style={styles.clearButton}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Clear search"
+                  accessibilityRole="button"
+                  accessibilityHint="Clears the current search text"
+                >
+                  <View style={styles.clearButtonInner}>
+                    <Ionicons name="close" size={14} color="#6B7280" />
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Filter Button - Premium design */}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              Object.keys(searchState.activeFilters).length > 0 && styles.filterButtonActive
+            ]}
+            activeOpacity={0.8}
+            onPress={handleOpenFilters}
+            accessibilityLabel={`Filters${Object.keys(searchState.activeFilters).length > 0 ? `, ${Object.keys(searchState.activeFilters).length} active` : ''}`}
+            accessibilityRole="button"
+            accessibilityHint="Opens filter options to refine search results"
+            accessibilityState={{ selected: Object.keys(searchState.activeFilters).length > 0 }}
+          >
+            <View style={styles.filterIconContainer}>
+              <Ionicons 
+                name="options-outline" 
+                size={18} 
+                color={Object.keys(searchState.activeFilters).length > 0 ? '#FFC857' : 'white'} 
+              />
+            </View>
+            {Object.keys(searchState.activeFilters).length > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{Object.keys(searchState.activeFilters).length}</Text>
+              </View>
             )}
-          </View>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={styles.filterButton}
-          activeOpacity={0.8}
-          onPress={handleOpenFilters}
-          accessibilityLabel={`Filters${Object.keys(searchState.activeFilters).length > 0 ? `, ${Object.keys(searchState.activeFilters).length} active` : ''}`}
-          accessibilityRole="button"
-          accessibilityHint="Opens filter options to refine search results"
-          accessibilityState={{ selected: Object.keys(searchState.activeFilters).length > 0 }}
-        >
-          <Ionicons name="options-outline" size={20} color="white" />
-          {Object.keys(searchState.activeFilters).length > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{Object.keys(searchState.activeFilters).length}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Decorative elements */}
-      <View style={styles.floatingElement1} />
-      <View style={styles.floatingElement2} />
-      <View style={styles.floatingElement3} />
-    </LinearGradient>
+      </LinearGradient>
+    </View>
   );
 
   const renderCategories = () => (
@@ -408,75 +554,143 @@ export default function SearchPage() {
     </View>
   );
 
-  const renderResults = () => (
-    <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-      {/* Search Results Header */}
-      <View style={styles.searchResultsHeader}>
-        <View style={styles.searchResultsTitleContainer}>
-          <Ionicons name="search" size={20} color={COLORS.primary} />
-          <Text style={styles.searchResultsTitle}>
-            Search Results
+  const renderResults = () => {
+    // Use grouped products if available, otherwise fall back to regular results
+    if (groupedProducts.length > 0) {
+      return (
+        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Search Results Summary */}
+          {searchSummary && (
+            <SearchResultsSummary query={searchState.query} summary={searchSummary} />
+          )}
+
+          {/* Filter Bar */}
+          <FilterBar
+            onFilterPress={handleFilterPress}
+            onSortChange={handleSortChange}
+            currentSort={currentSort}
+            activeFilters={activeFilters}
+          />
+
+          {/* Promotional Banner - ReZ Brand Colors */}
+          <LinearGradient
+            colors={['rgba(0, 192, 106, 0.1)', 'rgba(255, 200, 87, 0.08)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.promoBanner}
+          >
+            <View style={styles.promoIconContainer}>
+              <Ionicons name="cash-outline" size={18} color={COLORS.primary} />
+            </View>
+            <Text style={styles.promoText}>
+              Cashback & rezcoins auto-applied at checkout for maximum savings
+            </Text>
+            <Ionicons name="sparkles" size={16} color={COLORS.gold} />
+          </LinearGradient>
+
+          {/* Grouped Products */}
+          {sortedGroupedProducts.map((productGroup) => (
+            <View key={productGroup.productId} style={styles.productGroup}>
+              <ProductGroupHeader product={productGroup} />
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeaderContent}>
+                  <Text style={styles.sectionTitle}>Same product • Compare sellers</Text>
+                  <Text style={styles.sectionSubtitle}>Find the best deal across sellers.</Text>
+                </View>
+                <View style={styles.brandAccent} />
+              </View>
+              {productGroup.sellers.map((seller, index) => (
+                <SellerComparisonCard
+                  key={`${seller.storeId}-${index}`}
+                  seller={seller}
+                  onPress={handleSellerPress}
+                  onFavorite={(seller) => {
+                    // TODO: Implement favorite functionality
+                    console.log('Favorite seller:', seller);
+                  }}
+                  onShare={(seller) => {
+                    // TODO: Implement share functionality
+                    console.log('Share seller:', seller);
+                  }}
+                />
+              ))}
+            </View>
+          ))}
+        </ScrollView>
+      );
+    }
+
+    // Fallback to regular results display
+    return (
+      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Search Results Header */}
+        <View style={styles.searchResultsHeader}>
+          <View style={styles.searchResultsTitleContainer}>
+            <Ionicons name="search" size={20} color={COLORS.primary} />
+            <Text style={styles.searchResultsTitle}>
+              Search Results
+            </Text>
+          </View>
+          <Text style={styles.searchResultsCount}>
+            {searchState.loading ? 'Searching...' : `${searchState.results.length} ${searchState.results.length === 1 ? 'result' : 'results'} found`}
+          </Text>
+          <Text style={styles.searchQueryText}>
+            for "{searchState.query}"
           </Text>
         </View>
-        <Text style={styles.searchResultsCount}>
-          {searchState.loading ? 'Searching...' : `${searchState.results.length} ${searchState.results.length === 1 ? 'result' : 'results'} found`}
-        </Text>
-        <Text style={styles.searchQueryText}>
-          for "{searchState.query}"
-        </Text>
-      </View>
 
-      {/* Results Grid */}
-      <View style={styles.resultsGrid}>
-        {searchState.results.map((result, index) => (
-          <TouchableOpacity
-            key={result.id}
-            style={styles.resultCard}
-            onPress={() => handleResultPress(result, index + 1)}
-            activeOpacity={0.9}
-            accessibilityLabel={`${result.title}, ${result.category}, ${result.cashbackPercentage}% cashback`}
-            accessibilityRole="button"
-            accessibilityHint={`Opens details page for ${result.title}`}
-          >
-            <View style={styles.resultImageContainer}>
-              {result.image ? (
-                <Image
-                  source={{ uri: result.image }}
-                  style={styles.resultImage}
-                  resizeMode="cover"
-                  accessibilityLabel={`${result.title} image`}
-                  accessibilityRole="image"
-                />
-              ) : (
-                <View
-                  style={styles.resultImagePlaceholder}
-                  accessibilityLabel={`${result.title} placeholder image`}
-                >
-                  <Text style={styles.resultImageText}>{result.title.charAt(0)}</Text>
-                </View>
-              )}
-            </View>
+        {/* Results Grid */}
+        <View style={styles.resultsGrid}>
+          {searchState.results.map((result, index) => (
+            <TouchableOpacity
+              key={result.id}
+              style={styles.resultCard}
+              onPress={() => handleResultPress(result, index + 1)}
+              activeOpacity={0.9}
+              accessibilityLabel={`${result.title}, ${result.category}, ${result.cashbackPercentage}% cashback`}
+              accessibilityRole="button"
+              accessibilityHint={`Opens details page for ${result.title}`}
+            >
+              <View style={styles.resultImageContainer}>
+                {result.image ? (
+                  <Image
+                    source={{ uri: result.image }}
+                    style={styles.resultImage}
+                    resizeMode="cover"
+                    accessibilityLabel={`${result.title} image`}
+                    accessibilityRole="image"
+                  />
+                ) : (
+                  <View
+                    style={styles.resultImagePlaceholder}
+                    accessibilityLabel={`${result.title} placeholder image`}
+                  >
+                    <Text style={styles.resultImageText}>{result.title.charAt(0)}</Text>
+                  </View>
+                )}
+              </View>
 
-            <View style={styles.resultInfo}>
-              <Text style={styles.resultTitle} numberOfLines={2}>{result.title}</Text>
-              <Text style={styles.resultDescription} numberOfLines={2}>
-                {result.description}
-              </Text>
-              <View style={styles.resultMeta}>
-                <View style={styles.resultCashback}>
-                  <Ionicons name="cash-outline" size={14} color={COLORS.primary} />
-                  <Text style={styles.resultCashbackText}>{result.cashbackPercentage}% cashback</Text>
-                </View>
-                <View style={styles.categoryTag}>
-                  <Text style={styles.categoryTagText}>{result.category}</Text>
+              <View style={styles.resultInfo}>
+                <Text style={styles.resultTitle} numberOfLines={2}>{result.title}</Text>
+                <Text style={styles.resultDescription} numberOfLines={2}>
+                  {result.description}
+                </Text>
+                <View style={styles.resultMeta}>
+                  <View style={styles.resultCashback}>
+                    <Ionicons name="cash-outline" size={14} color={COLORS.primary} />
+                    <Text style={styles.resultCashbackText}>{result.cashbackPercentage}% cashback</Text>
+                  </View>
+                  <View style={styles.categoryTag}>
+                    <Text style={styles.categoryTagText}>{result.category}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </ScrollView>
-  );
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+    );
+  };
 
   const renderErrorState = () => (
     <View
@@ -526,7 +740,7 @@ export default function SearchPage() {
       accessibilityRole="alert"
     >
       <View style={styles.emptyIconContainer}>
-        <Ionicons name="search-outline" size={80} color="#D1D5DB" accessibilityLabel="Search icon" />
+        <Ionicons name="search-outline" size={80} color="rgba(0, 192, 106, 0.2)" accessibilityLabel="Search icon" />
       </View>
       <Text style={styles.emptyTitle}>No results found</Text>
       <Text style={styles.emptyMessage}>
@@ -558,7 +772,7 @@ export default function SearchPage() {
       accessibilityLabel="Search hint"
       accessibilityRole="alert"
     >
-      <Ionicons name="information-circle-outline" size={48} color="#D1D5DB" accessibilityLabel="Information icon" />
+      <Ionicons name="information-circle-outline" size={48} color="rgba(0, 192, 106, 0.3)" accessibilityLabel="Information icon" />
       <Text style={styles.searchHintTitle}>Keep typing...</Text>
       <Text style={styles.searchHintText}>
         Enter at least 2 characters to start searching
@@ -587,7 +801,7 @@ export default function SearchPage() {
         if (searchState.query.trim().length < 2) {
           return renderSearchHint();
         }
-        if (searchState.results.length === 0 && !searchState.loading) {
+        if ((groupedProducts.length === 0 && searchState.results.length === 0) && !searchState.loading) {
           return renderEmptyState();
         }
         return renderResults();
@@ -628,98 +842,137 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.surface,
   },
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 12 : 20,
-    paddingBottom: 22,
-    paddingHorizontal: 16,
-    position: 'relative',
-    overflow: 'hidden',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+  headerWrapper: {
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.35,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
         shadowRadius: 16,
       },
       android: {
-        elevation: 12,
+        elevation: 8,
       },
       web: {
-        boxShadow: '0px 8px 32px rgba(0, 192, 106, 0.35)',
+        boxShadow: '0px 4px 24px rgba(0, 0, 0, 0.1)',
       },
     }),
   },
-  glassOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 48 : (StatusBar.currentHeight || 0) + 10,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  decorativeCircle1: {
+    position: 'absolute',
+    top: -60,
+    right: -30,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    zIndex: 1,
+  },
+  decorativeCircle2: {
+    position: 'absolute',
+    top: 20,
+    left: -50,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 200, 87, 0.15)',
+    zIndex: 1,
+  },
+  decorativeCircle3: {
+    position: 'absolute',
+    bottom: -40,
+    right: 80,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    zIndex: 1,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     zIndex: 2,
+    position: 'relative',
   },
   backButton: {
     zIndex: 3,
   },
   backButtonContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
     ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
       web: {
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255,255,255,0.3)',
       },
     }),
   },
   searchContainer: {
     flex: 1,
-    marginLeft: 8,
-    marginRight: 8,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 0,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.1,
-        shadowRadius: 12,
+        shadowRadius: 10,
       },
       android: {
-        elevation: 4,
+        elevation: 5,
       },
       web: {
-        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255,255,255,0.5)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        boxShadow: '0px 3px 16px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255,255,255,0.8)',
       },
     }),
   },
   searchInputFocused: {
+    borderWidth: 1.5,
     borderColor: COLORS.primary,
     ...Platform.select({
       ios: {
         shadowColor: COLORS.primary,
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
       },
       web: {
-        boxShadow: '0px 4px 20px rgba(0, 192, 106, 0.15), inset 0 1px 0 rgba(255,255,255,0.5)',
+        boxShadow: '0px 4px 18px rgba(0, 192, 106, 0.18), inset 0 1px 0 rgba(255,255,255,0.8)',
       },
     }),
   },
@@ -727,104 +980,121 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    backgroundColor: 'rgba(0, 192, 106, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
   searchIcon: {
     marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    color: COLORS.navy,
+    fontSize: 14,
+    color: '#1F2937',
     fontWeight: '500',
     borderWidth: 0,
     padding: 0,
+    letterSpacing: 0.1,
+    lineHeight: 18,
   },
   clearButton: {
-    padding: 4,
+    marginLeft: 4,
   },
-  filterButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  clearButtonInner: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  filterButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
     position: 'relative',
+    overflow: 'visible',
     ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
       web: {
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255,255,255,0.3)',
       },
     }),
   },
-  filterBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: COLORS.gold,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
+  filterButtonActive: {
+    backgroundColor: 'rgba(0, 192, 106, 0.3)',
+    borderColor: '#FFC857',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.gold,
+        shadowColor: '#FFC857',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.35,
-        shadowRadius: 4,
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
       },
       android: {
         elevation: 4,
       },
       web: {
-        boxShadow: '0px 2px 8px rgba(255, 200, 87, 0.35)',
+        boxShadow: '0px 3px 14px rgba(255, 200, 87, 0.3), inset 0 0 0 1px rgba(0, 192, 106, 0.25)',
+      },
+    }),
+  },
+  filterIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#FFC857',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FFC857',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 5,
+      },
+      web: {
+        boxShadow: '0px 3px 12px rgba(255, 200, 87, 0.4)',
       },
     }),
   },
   filterBadgeText: {
-    color: COLORS.navy,
+    color: '#1F2937',
     fontSize: 10,
     fontWeight: '800',
-  },
-  floatingElement1: {
-    position: 'absolute',
-    top: -30,
-    right: 30,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    zIndex: 1,
-  },
-  floatingElement2: {
-    position: 'absolute',
-    top: 50,
-    left: -30,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255, 200, 87, 0.15)',
-    zIndex: 1,
-  },
-  floatingElement3: {
-    position: 'absolute',
-    bottom: -20,
-    right: 80,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    zIndex: 1,
+    letterSpacing: 0.2,
   },
   content: {
     flex: 1,
@@ -859,31 +1129,32 @@ const styles = StyleSheet.create({
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(0, 192, 106, 0.1)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.2)',
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0, 192, 106, 0.12)',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 192, 106, 0.3)',
     ...Platform.select({
       ios: {
         shadowColor: COLORS.primary,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
       web: {
-        boxShadow: '0px 2px 8px rgba(0, 192, 106, 0.1)',
+        boxShadow: '0px 3px 12px rgba(0, 192, 106, 0.15)',
       },
     }),
   },
   viewAllText: {
     fontSize: 14,
     color: COLORS.primaryDark,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   categoriesGrid: {
     flexDirection: 'row',
@@ -954,37 +1225,37 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cashbackBadge: {
-    backgroundColor: 'rgba(0, 192, 106, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.2)',
+    backgroundColor: 'rgba(0, 192, 106, 0.18)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 192, 106, 0.3)',
     ...Platform.select({
       ios: {
         shadowColor: COLORS.primary,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
       web: {
-        boxShadow: '0px 2px 6px rgba(0, 192, 106, 0.15)',
+        boxShadow: '0px 3px 10px rgba(0, 192, 106, 0.2)',
       },
     }),
   },
   cashbackBadgeText: {
     color: COLORS.primaryDark,
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   categoryCashback: {
     fontSize: 12,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   suggestionsContainer: {
     backgroundColor: 'white',
@@ -1058,7 +1329,7 @@ const styles = StyleSheet.create({
   },
   searchResultsCount: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.primary,
     marginBottom: 4,
   },
@@ -1150,20 +1421,34 @@ const styles = StyleSheet.create({
   resultCashback: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 192, 106, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
+    backgroundColor: 'rgba(0, 192, 106, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
     alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.2)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 192, 106, 0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 192, 106, 0.15)',
+      },
+    }),
   },
   resultCashbackText: {
     fontSize: 11,
     color: COLORS.primaryDark,
-    fontWeight: '700',
+    fontWeight: '800',
     marginLeft: 4,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   categoryTag: {
     backgroundColor: 'rgba(255, 200, 87, 0.15)',
@@ -1278,10 +1563,12 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
   },
   emptyTitle: {
     fontSize: 22,
@@ -1359,15 +1646,111 @@ const styles = StyleSheet.create({
   },
   searchHintTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '700',
+    color: COLORS.primaryDark,
     marginTop: 16,
     marginBottom: 8,
   },
   searchHintText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+    fontWeight: '500',
+  },
+  promoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 14,
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 12px rgba(0, 192, 106, 0.15)',
+      },
+    }),
+  },
+  promoIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 192, 106, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.25)',
+  },
+  promoText: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.primaryDark,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  productGroup: {
+    marginTop: 16,
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 8px rgba(0, 192, 106, 0.08)',
+      },
+    }),
+  },
+  sectionHeaderContent: {
+    flex: 1,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+    marginBottom: 4,
+    letterSpacing: 0.2,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  brandAccent: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.gold,
+    marginLeft: 12,
   },
 });

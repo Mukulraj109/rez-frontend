@@ -209,7 +209,28 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
       
 
         <View style={styles.infoContainer}>
+          {/* Product Title */}
           <Text style={styles.title}>{productTitle}</Text>
+
+          {/* Brand Name */}
+          {(dynamicData?.brand || dynamicData?.store?.name || merchantName) && (
+            <Text style={styles.brandName}>
+              {dynamicData?.brand || dynamicData?.store?.name || merchantName}
+            </Text>
+          )}
+
+          {/* Category Tag */}
+          {(dynamicData?.category || category) && category !== "Loading..." && (
+            <View style={styles.categoryTagContainer}>
+              <View style={styles.categoryTag}>
+                <Text style={styles.categoryTagText}>
+                  {dynamicData?.category || category}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Description */}
           <Text style={styles.description}>
             {productDescription}
           </Text>
@@ -228,13 +249,13 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
             )}
           </View>
           
-          {/* Dynamic availability and location */}
+          {/* Location Row */}
           <View style={styles.locationRow}>
-            <Ionicons name="location" size={14} color="#00C06A" />
+            <Ionicons name="location" size={16} color="#00C06A" />
             {distanceText ? (
               <Text style={styles.distanceText}>{distanceText}</Text>
             ) : null}
-            <Text style={styles.locationText}>
+            <Text style={styles.locationText} numberOfLines={1}>
               {(() => {
                 // Get location text from store or product
                 const storeLocation = dynamicData?.store?.location;
@@ -256,46 +277,26 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
                 return "Location not available";
               })()}
             </Text>
+          </View>
+
+          {/* Availability & Delivery Row */}
+          <View style={styles.availabilityRow}>
             {dynamicData?.store ? (
               <View style={styles.openBadge}>
                 <Text style={styles.openText}>
-                  {dynamicData.availabilityStatus === 'in_stock' || dynamicData.availabilityStatus === 'low_stock' ? '• in stock' : '• available'}
+                  {dynamicData.availabilityStatus === 'in_stock' || dynamicData.availabilityStatus === 'low_stock' ? 'In Stock' : 'Available'}
                 </Text>
               </View>
             ) : null}
             {(dynamicData?.computedDelivery || dynamicData?.store?.operationalInfo?.deliveryTime || dynamicData?.deliveryInfo?.estimatedDays) ? (
-              <View style={styles.deliveryTimeRow}>
+              <View style={styles.deliveryBadge}>
                 <Ionicons name="time-outline" size={14} color="#6B7280" />
-                <Text style={[styles.locationText, { marginLeft: 4 }]}>
+                <Text style={styles.deliveryText}>
                   {dynamicData?.computedDelivery || dynamicData?.store?.operationalInfo?.deliveryTime || dynamicData?.deliveryInfo?.estimatedDays}
                 </Text>
               </View>
             ) : null}
           </View>
-
-          {/* Store Visit Card - For Products */}
-          {dynamicData?.productType === 'product' && dynamicData?.store && (
-            <TouchableOpacity
-              style={styles.storeVisitCard}
-              onPress={() => {
-                const storeId = dynamicData?.store?.id || dynamicData?.store?._id || dynamicData?.storeId;
-                if (storeId) {
-
-                  router.push(`/MainStorePage?storeId=${storeId}`);
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.storeVisitContent}>
-                <Ionicons name="storefront" size={18} color="#00C06A" />
-                <View style={styles.storeVisitText}>
-                  <Text style={styles.storeVisitLabel}>Visit Store</Text>
-                  <Text style={styles.storeVisitName}>{dynamicData.store.name || dynamicData.merchant || 'Store'}</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#00C06A" />
-            </TouchableOpacity>
-          )}
 
           {/* rating/review section */}
           <View style={styles.ratingRow}>
@@ -307,65 +308,6 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
               {dynamicData?.ratings?.count || dynamicData?.originalRating?.count || 0} reviews
             </Text>
           </View>
-
-          {/* Enhanced review CTA card */}
-          <TouchableOpacity
-            style={styles.reviewCTACard}
-            onPress={() => {
-              // Extract cashback values with safe fallback
-              const getCashbackPercentage = () => {
-                return dynamicData?.cashback?.percentage ||
-                       dynamicData?.computedCashback?.percentage ||
-                       dynamicData?.analytics?.cashback?.percentage ||
-                       0;
-              };
-
-              const getCashbackAmount = () => {
-                return dynamicData?.cashback?.maxAmount ||
-                       dynamicData?.cashback?.amount ||
-                       dynamicData?.computedCashback?.amount ||
-                       dynamicData?.analytics?.cashback?.amount ||
-                       0;
-              };
-
-              const cashbackPercentage = getCashbackPercentage();
-              const cashbackAmount = getCashbackAmount();
-
-              // Pass product data to ReviewPage
-              router.push({
-                pathname: '/ReviewPage',
-                params: {
-                  productId: productId,
-                  productTitle: productTitle,
-                  productImage: dynamicData?.image || dynamicData?.images?.[0] || '',
-                  productPrice: productPrice,
-                  cashbackPercentage: cashbackPercentage,
-                  cashbackAmount: cashbackAmount,
-                }
-              } as any);
-            }}
-            activeOpacity={0.8}
-          >
-            <View style={styles.reviewCardContent}>
-              <View style={styles.reviewTextSection}>
-                <View style={styles.reviewIconWrapper}>
-                  <Ionicons name="create-outline" size={18} color="#00C06A" />
-                </View>
-                <View style={styles.reviewTextContent}>
-                  <Text style={styles.reviewMainText}>Write a review</Text>
-                  <Text style={styles.reviewSubText}>
-                    Earn {dynamicData?.cashback?.percentage || dynamicData?.computedCashback?.percentage || dynamicData?.analytics?.cashback?.percentage || 0}% cashback instantly
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.cashbackBadge}>
-                <Ionicons name="wallet-outline" size={16} color="#10B981" />
-                <Text style={styles.cashbackText}>
-                  ₹{dynamicData?.cashback?.maxAmount || dynamicData?.cashback?.amount || dynamicData?.computedCashback?.amount || dynamicData?.analytics?.cashback?.amount || 0}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
 
           {((dynamicData?.analytics?.todayPurchases || dynamicData?.todayPurchases) > 0) && (
             <View style={styles.peopleBought}>
@@ -488,7 +430,30 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   infoContainer: { padding: 16, paddingTop: 18 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 6 },
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 4 },
+  brandName: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#6B7280",
+    marginBottom: 8,
+  },
+  categoryTagContainer: {
+    flexDirection: "row",
+    marginBottom: 10,
+  },
+  categoryTag: {
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+  },
+  categoryTagText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6366F1",
+  },
   description: { fontSize: 14, color: "#555", marginBottom: 12 },
   priceRow: {
     flexDirection: "row",
@@ -506,18 +471,56 @@ const styles = StyleSheet.create({
     borderRadius: 6, marginLeft: 8
   },
   discountText: { fontSize: 12, fontWeight: "700", color: "#fff" },
-  locationRow: { flexDirection: "row", alignItems: "center", padding: 10, flexWrap: "wrap" },
-  locationText: { fontSize: 13, marginLeft: 6, color: "#555", flexShrink: 1 },
-  distanceText: { fontSize: 14, marginLeft: 6, color: "#00C06A", fontWeight: "700" },
-  deliveryTimeRow: { flexDirection: "row", alignItems: "center", marginLeft: 8 },
-  openBadge: {
-    marginLeft: 8,
-    backgroundColor: "#16A34A",
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
   },
-  openText: { color: "#fff", fontSize: 12 },
+  locationText: {
+    fontSize: 14,
+    marginLeft: 6,
+    color: "#374151",
+    flex: 1,
+  },
+  distanceText: {
+    fontSize: 14,
+    marginLeft: 6,
+    color: "#00C06A",
+    fontWeight: "700",
+  },
+  availabilityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 14,
+  },
+  openBadge: {
+    backgroundColor: "#DCFCE7",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "#16A34A",
+  },
+  openText: {
+    color: "#16A34A",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  deliveryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  deliveryText: {
+    fontSize: 13,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
   ratingRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   ratingBadge: {
     flexDirection: "row",
@@ -530,116 +533,6 @@ const styles = StyleSheet.create({
   ratingText: { marginLeft: 6, fontWeight: "700" },
   reviewCount: { marginLeft: 12, fontWeight: "600", color: "#6B7280", fontSize: 14 },
 
-  // Store Visit Card styles
-  storeVisitCard: {
-    backgroundColor: "rgba(0, 192, 106, 0.05)",
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "rgba(0, 192, 106, 0.15)",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    shadowColor: "#00C06A",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  storeVisitContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  storeVisitText: {
-    flexDirection: "column",
-  },
-  storeVisitLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#00C06A",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  storeVisitName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#111827",
-  },
-
-  // Enhanced review CTA card styles
-  reviewCTACard: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(0, 192, 106, 0.12)",
-    marginVertical: 16,
-    shadowColor: "#00C06A",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  reviewCardContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-  },
-  reviewTextSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  reviewIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0, 192, 106, 0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  reviewTextContent: {
-    flex: 1,
-  },
-  reviewMainText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 2,
-  },
-  reviewSubText: {
-    fontSize: 13,
-    color: "#00C06A",
-    fontWeight: "500",
-  },
-  cashbackBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ECFDF5",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#D1FAE5",
-  },
-  cashbackText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#10B981",
-    marginLeft: 4,
-  },
   peopleBought: {
     flexDirection: "row",
     alignItems: "center",

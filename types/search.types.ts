@@ -227,6 +227,56 @@ export type SearchSortOption = {
 
 export type SearchViewMode = 'categories' | 'results' | 'suggestions';
 
+// Seller comparison types for redesigned search page
+export interface SellerOption {
+  storeId: string;
+  storeName: string;
+  storeLogo?: string;
+  location: string;
+  distance?: number;
+  rating: number;
+  reviewCount: number;
+  price: {
+    current: number;
+    original?: number;
+    currency: string;
+  };
+  savings: number;
+  cashback: {
+    percentage: number;
+    amount: number;
+    coins: number;
+  };
+  delivery: {
+    time: string;
+    type: 'express' | 'standard' | 'pickup';
+    available: boolean;
+  };
+  availability: 'in_stock' | 'low_stock' | 'out_of_stock';
+  isVerified: boolean;
+  badges?: string[]; // e.g., ["Hot Deal", "Lock Available"]
+  productId?: string; // Reference to the product being sold
+}
+
+export interface GroupedProductResult {
+  productId: string;
+  productName: string;
+  productImage: string;
+  category: string;
+  sellers: SellerOption[];
+  sellerCount: number;
+}
+
+export interface SearchResultsSummary {
+  sellerCount: number;
+  minPrice: number;
+  maxCashback: number;
+  priceRange: {
+    min: number;
+    max: number;
+  };
+}
+
 // Constants and enums
 export enum SearchActionType {
   SET_QUERY = 'SET_QUERY',

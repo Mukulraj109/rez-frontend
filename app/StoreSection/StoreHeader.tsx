@@ -9,6 +9,8 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import { useAuth } from '@/contexts/AuthContext';
 import wishlistApi from '@/services/wishlistApi';
 import walletApi from '@/services/walletApi';
+import EnhancedCoinBadge from '@/components/product/EnhancedCoinBadge';
+import AvailabilityBadge from '@/components/product/AvailabilityBadge';
 import {
   Colors,
   Spacing,
@@ -16,6 +18,7 @@ import {
   IconSize,
   Timing,
 } from '@/constants/DesignSystem';
+
 
 interface StoreHeaderProps {
   dynamicData?: {
@@ -25,16 +28,34 @@ interface StoreHeaderProps {
     name?: string;
     description?: string;
     image?: string;
+    images?: (string | { url?: string })[];
     merchant?: string;
     category?: string;
     rating?: number;
     section?: string;
+    inventory?: {
+      stock?: number;
+      isAvailable?: boolean;
+    };
+    store?: {
+      logo?: string;
+      [key: string]: any;
+    };
     [key: string]: any;
   } | null;
   cardType?: string;
+  /** Whether the product is available in-store */
+  isInStore?: boolean;
+  /** Show/hide the product image section */
+  showImage?: boolean;
 }
 
-export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps) {
+export default function StoreHeader({
+  dynamicData,
+  cardType,
+  isInStore = true,
+  showImage = true,
+}: StoreHeaderProps) {
   const router = useRouter();
   const { refreshWishlist } = useWishlist();
   const { state: authState } = useAuth();
@@ -194,7 +215,22 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
     }
   };
 
-  const storeImageUrl = isValidImageUrl(dynamicData?.image) ? dynamicData.image : null;
+  // Get image URL from various possible sources
+  const getImageUrl = () => {
+    // Check direct image field
+    if (isValidImageUrl(dynamicData?.image)) return dynamicData.image;
+    // Check images array
+    if (dynamicData?.images && dynamicData.images.length > 0) {
+      const firstImage = dynamicData.images[0];
+      if (typeof firstImage === 'string' && isValidImageUrl(firstImage)) return firstImage;
+      if (typeof firstImage === 'object' && isValidImageUrl(firstImage?.url)) return firstImage.url;
+    }
+    // Check store logo
+    if (isValidImageUrl(dynamicData?.store?.logo)) return dynamicData.store.logo;
+    return null;
+  };
+
+  const storeImageUrl = getImageUrl();
 
   return (
     <View style={styles.container}>
@@ -214,21 +250,18 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Center - Coin Badge */}
-        <TouchableOpacity
-          style={styles.coinBadge}
-          onPress={handleCoinPress}
-          activeOpacity={0.8}
-          accessibilityLabel={`${coinCount} coins`}
-          accessibilityRole="button"
-        >
-          <View style={styles.coinIcon}>
-            <Ionicons name="star" size={14} color="#FFFFFF" />
+        {/* Center - Enhanced Coin Badge */}
+        {!isLoadingCoins ? (
+          <EnhancedCoinBadge
+            coinCount={coinCount}
+            onPress={handleCoinPress}
+            size="medium"
+          />
+        ) : (
+          <View style={styles.coinBadgeLoading}>
+            <ActivityIndicator size="small" color="#F59E0B" />
           </View>
-          <ThemedText style={styles.coinText}>
-            {isLoadingCoins ? '...' : coinCount.toLocaleString()}
-          </ThemedText>
-        </TouchableOpacity>
+        )}
 
         {/* Right - Action buttons */}
         <View style={styles.rightActions}>
@@ -289,35 +322,47 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
       </View>
 
       {/* Product Image - Below the header */}
-      <View style={styles.imageContainer}>
-        {storeImageUrl ? (
-          <Image
-            source={{ uri: storeImageUrl }}
-            style={styles.productImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.placeholderContainer}>
-            <LinearGradient
-              colors={['rgba(0, 192, 106, 0.1)', 'rgba(0, 192, 106, 0.05)']}
-              style={StyleSheet.absoluteFill}
+      {showImage && (
+        <View style={styles.imageContainer}>
+          {storeImageUrl ? (
+            <Image
+              source={{ uri: storeImageUrl }}
+              style={styles.productImage}
+              resizeMode="cover"
             />
-            <Ionicons name="image-outline" size={56} color="#00C06A" />
-            <ThemedText style={styles.placeholderText}>No Image</ThemedText>
+          ) : (
+            <View style={styles.placeholderContainer}>
+              <LinearGradient
+                colors={['rgba(0, 192, 106, 0.1)', 'rgba(0, 192, 106, 0.05)']}
+                style={StyleSheet.absoluteFill}
+              />
+              <Ionicons name="image-outline" size={56} color="#00C06A" />
+              <ThemedText style={styles.placeholderText}>No Image</ThemedText>
+            </View>
+          )}
+
+          {/* Availability Badge - Top left */}
+          {isInStore && (
+            <View style={styles.availabilityBadgeContainer}>
+              <AvailabilityBadge
+                status="in-store"
+                label="In-Store Available"
+              />
+            </View>
+          )}
+
+          {/* Bottom gradient overlay */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.4)']}
+            style={styles.bottomGradient}
+          />
+
+          {/* Store Badge - Bottom left */}
+          <View style={styles.storeBadge}>
+            <Ionicons name="storefront" size={18} color="#00C06A" />
           </View>
-        )}
-
-        {/* Bottom gradient overlay */}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.4)']}
-          style={styles.bottomGradient}
-        />
-
-        {/* Store Badge - Bottom left */}
-        <View style={styles.storeBadge}>
-          <Ionicons name="storefront" size={18} color="#00C06A" />
         </View>
-      </View>
+      )}
     </View>
   );
 }
@@ -352,36 +397,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
   },
 
-  // Coin badge
-  coinBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#00C06A',
-    borderRadius: 20,
-    paddingRight: 14,
-    paddingLeft: 4,
-    paddingVertical: 4,
-    gap: 6,
-    shadowColor: '#00C06A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  coinIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 215, 0, 0.9)',
+  // Coin badge loading state
+  coinBadgeLoading: {
+    height: 36,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-
-  coinText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 
   // Right actions
@@ -409,6 +432,14 @@ const styles = StyleSheet.create({
   productImage: {
     width: '100%',
     height: '100%',
+  },
+
+  // Availability badge position
+  availabilityBadgeContainer: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    zIndex: 10,
   },
 
   placeholderContainer: {

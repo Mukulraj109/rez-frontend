@@ -3,7 +3,7 @@ import { useSearch } from './useSearch';
 import { searchCacheService } from '@/services/searchCacheService';
 import { searchAnalyticsService } from '@/services/searchAnalyticsService';
 import { searchHistoryService } from '@/services/searchHistoryService';
-import { SearchPageState, SearchSection, SearchCategory, SearchResult, SearchSuggestion } from '@/types/search.types';
+import { SearchPageState, SearchSection, SearchCategory, SearchResult, SearchSuggestion, GroupedProductResult, SearchResultsSummary } from '@/types/search.types';
 import { apiClient } from '@/utils/apiClient';
 import searchService from '@/services/searchApi';
 
@@ -32,6 +32,10 @@ export const useSearchPage = () => {
       hasMore: false,
     },
   });
+
+  // New state for grouped products
+  const [groupedProducts, setGroupedProducts] = useState<GroupedProductResult[]>([]);
+  const [searchSummary, setSearchSummary] = useState<SearchResultsSummary | null>(null);
 
   // Helper function to map backend categories to UI format
   const mapToSearchCategory = useCallback((cat: any): SearchCategory => {
@@ -191,6 +195,63 @@ export const useSearchPage = () => {
     } catch (error) {
       console.error('Failed to load suggestions:', error);
       // Silently fail for suggestions
+    }
+  }, []);
+
+  // Perform grouped product search (new method for seller comparison)
+  const performGroupedSearch = useCallback(async (query: string, userLocation?: { latitude: number; longitude: number }) => {
+    if (!query.trim()) return;
+
+    setState(prev => ({
+      ...prev,
+      isSearching: true,
+      loading: true,
+      showSuggestions: false,
+    }));
+
+    try {
+      const response = await searchService.searchProductsGrouped({
+        q: query,
+        limit: 20,
+        lat: userLocation?.latitude,
+        lon: userLocation?.longitude,
+      });
+
+      if (response.success && response.data) {
+        const { groupedProducts: products, summary } = response.data;
+
+        setGroupedProducts(products);
+        setSearchSummary(summary);
+
+        // Track analytics
+        await searchAnalyticsService.trackSearch(query, summary.sellerCount);
+
+        // Save to search history
+        await searchHistoryService.addSearch(query, summary.sellerCount);
+
+        setState(prev => ({
+          ...prev,
+          isSearching: false,
+          loading: false,
+          pagination: {
+            ...prev.pagination,
+            total: response.data.total,
+            hasMore: response.data.hasMore,
+          },
+        }));
+      } else {
+        throw new Error('Failed to fetch grouped products');
+      }
+    } catch (error) {
+      console.error('Grouped search failed:', error);
+      setState(prev => ({
+        ...prev,
+        isSearching: false,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Search failed. Please try again.',
+      }));
+      setGroupedProducts([]);
+      setSearchSummary(null);
     }
   }, []);
 
@@ -366,6 +427,8 @@ export const useSearchPage = () => {
 
   return {
     state,
+    groupedProducts,
+    searchSummary,
     actions: {
       handleSearchChange,
       handleSearchSubmit,
@@ -376,6 +439,7 @@ export const useSearchPage = () => {
       handleClearSearch,
       handleClearError,
       performSearch,
+      performGroupedSearch,
       loadCategories,
       loadSuggestions,
       applyFilters,

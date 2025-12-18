@@ -46,7 +46,7 @@ export default function SimilarProducts({
           <Text style={styles.title}>Similar Products</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#00C06A" />
         </View>
       </View>
     );
@@ -63,7 +63,7 @@ export default function SimilarProducts({
         {onViewAll && similarProducts.length > 6 && (
           <TouchableOpacity onPress={onViewAll} style={styles.viewAllButton}>
             <Text style={styles.viewAllText}>View All</Text>
-            <Ionicons name="chevron-forward" size={16} color="#8B5CF6" />
+            <Ionicons name="chevron-forward" size={16} color="#00C06A" />
           </TouchableOpacity>
         )}
       </View>
@@ -91,11 +91,62 @@ interface ProductCardProps {
 }
 
 function ProductCard({ recommendation, onPress }: ProductCardProps) {
-  const { product, reasons, similarity } = recommendation;
+  // Handle both nested (recommendation.product) and flat (recommendation) structures
+  const product = recommendation.product || recommendation;
+  const { reasons, similarity } = recommendation;
 
-  const price = product.price?.current || 0;
-  const originalPrice = product.price?.original;
-  const discount = product.price?.discount;
+  // Flexible price extraction
+  const getPrice = () => {
+    if (product.price?.current) return product.price.current;
+    if (product.price?.selling) return product.price.selling;
+    if (typeof product.price === 'number') return product.price;
+    if (product.pricing?.selling) return product.pricing.selling;
+    return 0;
+  };
+
+  const getOriginalPrice = () => {
+    if (product.price?.original) return product.price.original;
+    if (product.price?.compare) return product.price.compare;
+    if (product.pricing?.compare) return product.pricing.compare;
+    if (product.originalPrice) return product.originalPrice;
+    return null;
+  };
+
+  const price = getPrice();
+  const originalPrice = getOriginalPrice();
+  const discount = product.price?.discount || product.pricing?.discount || product.discount;
+
+  // Flexible image extraction
+  const getImage = () => {
+    if (product.image) return product.image;
+    if (product.images && product.images.length > 0) {
+      const firstImg = product.images[0];
+      return typeof firstImg === 'string' ? firstImg : firstImg?.url;
+    }
+    return null;
+  };
+
+  const imageUrl = getImage();
+
+  // Flexible name extraction
+  const productName = product.name || product.title || 'Product';
+
+  // Flexible brand extraction
+  const brand = product.brand || product.store?.name;
+
+  // Flexible rating extraction
+  const getRating = () => {
+    if (product.rating?.value) return product.rating;
+    if (product.rating && typeof product.rating === 'number') {
+      return { value: product.rating, count: product.reviewCount || 0 };
+    }
+    if (product.ratings?.average) {
+      return { value: product.ratings.average, count: product.ratings.count || 0 };
+    }
+    return null;
+  };
+
+  const rating = getRating();
 
   return (
     <TouchableOpacity
@@ -104,11 +155,17 @@ function ProductCard({ recommendation, onPress }: ProductCardProps) {
       activeOpacity={0.8}
     >
       <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: product.image || 'https://via.placeholder.com/150' }}
-          style={styles.image}
-          resizeMode="cover"
-        />
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Ionicons name="image-outline" size={40} color="#D1D5DB" />
+          </View>
+        )}
         {discount && discount > 0 && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{discount}% OFF</Text>
@@ -124,18 +181,18 @@ function ProductCard({ recommendation, onPress }: ProductCardProps) {
 
       <View style={styles.info}>
         <Text style={styles.productName} numberOfLines={2}>
-          {product.name}
+          {productName}
         </Text>
 
-        {product.brand && (
+        {brand && (
           <Text style={styles.brand} numberOfLines={1}>
-            {product.brand}
+            {brand}
           </Text>
         )}
 
         {reasons && reasons.length > 0 && (
           <View style={styles.reasonContainer}>
-            <Ionicons name="information-circle-outline" size={12} color="#8B5CF6" />
+            <Ionicons name="information-circle-outline" size={12} color="#00C06A" />
             <Text style={styles.reason} numberOfLines={1}>
               {reasons[0]}
             </Text>
@@ -149,20 +206,20 @@ function ProductCard({ recommendation, onPress }: ProductCardProps) {
           )}
         </View>
 
-        {product.rating && (
+        {rating && (
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={12} color="#FBBF24" />
             <Text style={styles.rating}>
-              {typeof product.rating.value === 'string' 
-                ? parseFloat(product.rating.value).toFixed(1) 
-                : product.rating.value.toFixed(1)}
+              {typeof rating.value === 'string'
+                ? parseFloat(rating.value).toFixed(1)
+                : (rating.value || 0).toFixed(1)}
             </Text>
-            <Text style={styles.ratingCount}>({product.rating.count})</Text>
+            <Text style={styles.ratingCount}>({rating.count || 0})</Text>
           </View>
         )}
       </View>
     </TouchableOpacity>
-);
+  );
 }
 
 const styles = StyleSheet.create({
@@ -190,7 +247,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8B5CF6'
+    color: '#00C06A'
   },
   loadingContainer: {
     height: 200,
@@ -218,6 +275,13 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%'
+  },
+  imagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   discountBadge: {
     position: 'absolute',
@@ -273,7 +337,7 @@ const styles = StyleSheet.create({
   },
   reason: {
     fontSize: 11,
-    color: '#8B5CF6',
+    color: '#00C06A',
     fontStyle: 'italic',
     flex: 1
   },
@@ -286,7 +350,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#8B5CF6'
+    color: '#00C06A'
   },
   originalPrice: {
     fontSize: 12,

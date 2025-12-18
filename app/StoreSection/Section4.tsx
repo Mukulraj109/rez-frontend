@@ -253,15 +253,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.navy,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 16,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
       },
       android: {
-        elevation: 6,
+        elevation: 12,
       },
     }),
+    // Additional 3D depth
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
   },
 
   card: {
@@ -298,17 +301,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14,
+    // Enhanced 3D effect
     ...Platform.select({
       ios: {
         shadowColor: COLORS.gold,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.35,
-        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
       },
       android: {
-        elevation: 4,
+        elevation: 8,
       },
     }),
+    // Inner glow effect
+    borderWidth: 1,
+    borderColor: 'rgba(255, 200, 87, 0.3)',
   },
 
   // Text Container
@@ -350,17 +357,20 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "8deg" }],
     overflow: "hidden",
     backgroundColor: COLORS.surface,
+    // Enhanced 3D effect for tilted card
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.navy,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 2, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 4,
+        elevation: 8,
       },
     }),
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
   },
 
   couponImage: {
@@ -395,24 +405,25 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: -8,
     top: 4,
-    width: 26,
-    height: 26,
-    borderRadius: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 10,
     backgroundColor: GLASS.frostedBg,
     alignItems: "center",
     justifyContent: "center",
     transform: [{ rotate: "-8deg" }],
-    borderWidth: 1,
-    borderColor: GLASS.lightBorder,
+    borderWidth: 1.5,
+    borderColor: COLORS.gold,
+    // Enhanced 3D effect
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.navy,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 3,
+        elevation: 6,
       },
     }),
   },
@@ -420,7 +431,10 @@ const styles = StyleSheet.create({
   couponBadgeText: {
     color: COLORS.gold,
     fontWeight: "800",
-    fontSize: 13,
+    fontSize: 14,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 
   // Divider

@@ -377,12 +377,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Modern Button with Shadows
+  // Modern Button with Enhanced 3D Shadows
   buttonContainer: {
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    ...Shadows.medium,
+    // Enhanced 3D shadow effects
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
     height: 56,
+    // Additional depth
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   buttonDisabled: {
     opacity: 0.5,

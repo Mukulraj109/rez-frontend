@@ -35,7 +35,7 @@ export default function BundleDeals({
           <Text style={styles.title}>Special Bundle Deals</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#00C06A" />
         </View>
       </View>
     );
@@ -82,12 +82,37 @@ interface BundleDealCardProps {
   onProductPress?: (productId: string) => void;
 }
 
+// Helper function to extract image URL from product
+const getProductImage = (product: any): string | null => {
+  if (product.image) return product.image;
+  if (product.images && product.images.length > 0) {
+    const firstImg = product.images[0];
+    return typeof firstImg === 'string' ? firstImg : firstImg?.url;
+  }
+  return null;
+};
+
+// Helper function to extract price from product
+const getProductPrice = (product: any): number => {
+  if (product.price?.original) return product.price.original;
+  if (product.price?.current) return product.price.current;
+  if (product.pricing?.compare) return product.pricing.compare;
+  if (product.pricing?.selling) return product.pricing.selling;
+  if (typeof product.price === 'number') return product.price;
+  return 0;
+};
+
+// Helper function to get product ID
+const getProductId = (product: any): string => {
+  return product.id || product._id || '';
+};
+
 function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardProps) {
   const originalPrice = bundle.products.reduce(
-    (sum, p) => sum + (p.price?.original || p.price?.current || 0),
+    (sum, p) => sum + getProductPrice(p),
     0
   );
-  
+
   const savingsPercentage = originalPrice > 0
     ? Math.round((bundle.savings / originalPrice) * 100)
     : 0;
@@ -95,7 +120,7 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
   return (
     <View style={styles.card}>
       <LinearGradient
-        colors={['#F3F0FF', '#FFFFFF']}
+        colors={['#ECFDF5', '#FFFFFF']}
         style={styles.cardGradient}
       >
         <View style={styles.savingsBadge}>
@@ -103,26 +128,37 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
         </View>
 
         <View style={styles.productsPreview}>
-          {bundle.products.slice(0, 2).map((product, index) => (
-            <React.Fragment key={product.id || index}>
-              <TouchableOpacity
-                style={styles.productThumb}
-                onPress={() => onProductPress?.(product.id)}
-                activeOpacity={0.8}
-              >
-                <Image
-                  source={{ uri: product.image || 'https://via.placeholder.com/80' }}
-                  style={styles.thumbImage}
-                  resizeMode="cover"
-                />
-              </TouchableOpacity>
-              {index === 0 && bundle.products.length > 1 && (
-                <View style={styles.plusBadge}>
-                  <Text style={styles.plusText}>+</Text>
-                </View>
-              )}
-            </React.Fragment>
-          ))}
+          {bundle.products.slice(0, 2).map((product, index) => {
+            const imageUrl = getProductImage(product);
+            const productId = getProductId(product);
+
+            return (
+              <React.Fragment key={productId || index}>
+                <TouchableOpacity
+                  style={styles.productThumb}
+                  onPress={() => productId && onProductPress?.(productId)}
+                  activeOpacity={0.8}
+                >
+                  {imageUrl ? (
+                    <Image
+                      source={{ uri: imageUrl }}
+                      style={styles.thumbImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.thumbPlaceholder}>
+                      <Ionicons name="image-outline" size={24} color="#D1D5DB" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+                {index === 0 && bundle.products.length > 1 && (
+                  <View style={styles.plusBadge}>
+                    <Text style={styles.plusText}>+</Text>
+                  </View>
+                )}
+              </React.Fragment>
+            );
+          })}
           {bundle.products.length > 2 && (
             <View style={styles.moreBadge}>
               <Text style={styles.moreText}>+{bundle.products.length - 2}</Text>
@@ -132,7 +168,7 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
 
         <View style={styles.bundleInfo}>
           <Text style={styles.bundleTitle} numberOfLines={2}>
-            {bundle.products.map(p => p.name).join(' + ')}
+            {bundle.products.map(p => p.name || p.title || 'Product').join(' + ')}
           </Text>
 
           <View style={styles.priceContainer}>
@@ -140,20 +176,20 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
               <Text style={styles.label}>Bundle Price:</Text>
               <Text style={styles.bundlePrice}>₹{bundle.combinedPrice}</Text>
             </View>
-            {originalPrice > bundle.combinedPrice && (
-              <View style={styles.priceRow}>
-                <Text style={styles.label}>Regular Price:</Text>
-                <Text style={styles.regularPrice}>₹{originalPrice}</Text>
-              </View>
-            )}
-            {bundle.savings > 0 && (
-              <View style={styles.savingsHighlight}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.savingsAmount}>
-                  You save ₹{bundle.savings}!
-                </Text>
-              </View>
-            )}
+            {/* Always show Regular Price row for consistent height */}
+            <View style={styles.priceRow}>
+              <Text style={styles.label}>Regular Price:</Text>
+              <Text style={styles.regularPrice}>
+                {originalPrice > bundle.combinedPrice ? `₹${originalPrice}` : `₹${bundle.combinedPrice}`}
+              </Text>
+            </View>
+            {/* Always show savings row for consistent height */}
+            <View style={styles.savingsHighlight}>
+              <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+              <Text style={styles.savingsAmount}>
+                {bundle.savings > 0 ? `You save ₹${bundle.savings}!` : 'Best Price!'}
+              </Text>
+            </View>
           </View>
 
           {onAddToCart && (
@@ -163,7 +199,7 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['#8B5CF6', '#6D28D9']}
+                colors={['#00C06A', '#00A65A']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.addButtonGradient}
@@ -230,7 +266,7 @@ const styles = StyleSheet.create({
     width: 300,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: {
       width: 0,
       height: 4
@@ -242,7 +278,7 @@ const styles = StyleSheet.create({
   cardGradient: {
     padding: 16,
     borderWidth: 2,
-    borderColor: '#E9D5FF',
+    borderColor: '#D1FAE5',
     borderRadius: 16
   },
   savingsBadge: {
@@ -275,17 +311,24 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#fff',
     borderWidth: 2,
-    borderColor: '#E9D5FF'
+    borderColor: '#D1FAE5'
   },
   thumbImage: {
     width: '100%',
     height: '100%'
   },
+  thumbPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
   plusBadge: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     justifyContent: 'center',
     alignItems: 'center'
   },
@@ -298,7 +341,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#6D28D9',
+    backgroundColor: '#00A65A',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: -12
@@ -336,7 +379,7 @@ const styles = StyleSheet.create({
   bundlePrice: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#8B5CF6'
+    color: '#00C06A'
   },
   regularPrice: {
     fontSize: 14,

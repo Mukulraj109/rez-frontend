@@ -264,6 +264,28 @@ class SearchService {
 
     return apiClient.get('/stores/featured', { limit });
   }
+
+  // Search products grouped by name with seller comparison
+  async searchProductsGrouped(
+    params: {
+      q: string;
+      limit?: number;
+      lat?: number;
+      lon?: number;
+    }
+  ): Promise<ApiResponse<{
+    groupedProducts: any[];
+    summary: {
+      sellerCount: number;
+      minPrice: number;
+      maxCashback: number;
+      priceRange: { min: number; max: number };
+    };
+    total: number;
+    hasMore: boolean;
+  }>> {
+    return apiClient.get('/search/products-grouped', params);
+  }
 }
 
 // Create singleton instance

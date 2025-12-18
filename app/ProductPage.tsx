@@ -20,6 +20,19 @@ import RelatedProductsSection from '@/components/product/RelatedProductsSection'
 import ProductGallerySection from '@/components/product/ProductGallerySection';
 import LockPriceModal from '@/components/product/LockPriceModal';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
+
+// NEW COMPONENTS FOR REDESIGNED PRODUCT PAGE
+import PriceSectionCard from '@/components/product/PriceSectionCard';
+import EarnCoinsCard from '@/components/product/EarnCoinsCard';
+import CashbackCard from '@/components/product/CashbackCard';
+import BonusSharingCard from '@/components/product/BonusSharingCard';
+import LockProductSection from '@/components/product/LockProductSection';
+import CompletePurchaseSection from '@/components/product/CompletePurchaseSection';
+import PayWithRezSection from '@/components/product/PayWithRezSection';
+import DeliveryPickupCards from '@/components/product/DeliveryPickupCards';
+import WhyGoodDealSection from '@/components/product/WhyGoodDealSection';
+import ProductTabbedSection from '@/components/product/ProductTabbedSection';
+import BottomBanner from '@/components/product/BottomBanner';
 import { showAlert } from '@/components/common/CrossPlatformAlert';
 import homepageDataService from '@/services/homepageDataService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -165,8 +178,7 @@ export default function StorePage() {
   const [error, setError] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
   const [lockedItemId, setLockedItemId] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [showQuantityPicker, setShowQuantityPicker] = useState(false);
+  const [quantity] = useState(1); // Default quantity for lock
   const [showLockPriceModal, setShowLockPriceModal] = useState(false);
   const fetchedProductIdRef = useRef<string | null>(null);
 
@@ -175,6 +187,15 @@ export default function StorePage() {
   const isWeb = Platform.OS === 'web';
   const isTablet = screenWidth >= 768;
   const isDesktop = screenWidth >= 1024;
+
+  // Computed values for new sections
+  const productPrice = cardData?.price || cardData?.pricing?.selling || 0;
+  const originalPrice = cardData?.originalPrice || cardData?.pricing?.compare || productPrice;
+  const discountPercentage = cardData?.discount || cardData?.pricing?.discount ||
+    (originalPrice > productPrice ? Math.round((1 - productPrice / originalPrice) * 100) : 0);
+  const earnableCoins = Math.floor(productPrice * 0.1);
+  const cashbackAmount = cardData?.computedCashback?.amount || cardData?.cashback?.maxAmount || Math.floor(productPrice * 0.05);
+  const savingsAmount = originalPrice > productPrice ? originalPrice - productPrice : 0;
 
   // Function to fetch backend data for a product
   const fetchBackendData = async (productId: string) => {
@@ -555,11 +576,14 @@ export default function StorePage() {
           styles.contentWrapper,
           MAX_CONTENT_WIDTH && { maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center', width: '100%' }
         ]}>
-          {/* Pass dynamic data to components */}
+          {/* 1. Header with Enhanced Coin Badge */}
           <StoreHeader
             dynamicData={isDynamic ? cardData : null}
             cardType={params.cardType as string}
+            isInStore={cardData?.availabilityStatus === 'in_stock' || cardData?.isAvailable}
           />
+
+          {/* 2. Product Info with Brand & Category */}
           <ProductInfo
             dynamicData={isDynamic ? { ...cardData, analytics: productAnalytics } : null}
             cardType={params.cardType as string}
@@ -586,140 +610,183 @@ export default function StorePage() {
             </View>
           )}
 
-          {/* Quantity Selector - Amazon/Flipkart style dropdown */}
-          <View style={styles.quantitySelectorContainer}>
-            <ThemedText style={styles.quantityLabel}>Quantity:</ThemedText>
-            <TouchableOpacity
-              style={styles.quantityDropdown}
-              onPress={() => setShowQuantityPicker(true)}
-            >
-              <ThemedText style={styles.quantityValue}>{quantity}</ThemedText>
-              <Ionicons name="chevron-down" size={16} color="#00C06A" />
-            </TouchableOpacity>
-          </View>
+          {/* ========== NEW REDESIGNED SECTIONS ========== */}
 
-          {/* Quantity Picker Modal */}
-          <Modal
-            visible={showQuantityPicker}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={() => setShowQuantityPicker(false)}
-          >
-            <TouchableOpacity
-              style={styles.quantityModalOverlay}
-              activeOpacity={1}
-              onPress={() => setShowQuantityPicker(false)}
-            >
-              <View style={styles.quantityModalContent}>
-                <View style={styles.quantityModalHeader}>
-                  <ThemedText style={styles.quantityModalTitle}>Select Quantity</ThemedText>
-                  <TouchableOpacity onPress={() => setShowQuantityPicker(false)}>
-                    <Ionicons name="close" size={24} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
-                <ScrollView style={styles.quantityOptionsScroll} showsVerticalScrollIndicator={false}>
-                  {Array.from({ length: Math.min(cardData?.stock || cardData?.inventory?.stock || 10, 10) }, (_, i) => (
-                    <TouchableOpacity
-                      key={i + 1}
-                      style={[
-                        styles.quantityOption,
-                        quantity === i + 1 && styles.quantityOptionSelected
-                      ]}
-                      onPress={() => {
-                        setQuantity(i + 1);
-                        setShowQuantityPicker(false);
-                      }}
-                    >
-                      <ThemedText style={[
-                        styles.quantityOptionText,
-                        quantity === i + 1 && styles.quantityOptionTextSelected
-                      ]}>
-                        {i + 1}
-                      </ThemedText>
-                      {quantity === i + 1 && (
-                        <Ionicons name="checkmark" size={20} color="#00C06A" />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </TouchableOpacity>
-          </Modal>
+          {/* 3. Earn Coins Card */}
+          {!isLoadingBackend && cardData && earnableCoins > 0 && (
+            <EarnCoinsCard earnableCoins={earnableCoins} />
+          )}
 
-          {/* Buy & Lock Buttons - Above Instagram */}
-          <StoreActionButtons
-            storeType={storeType}
-            onBuyPress={handleBuyPress}
-            onLockPress={handleLockPress}
-            onBookingPress={handleBookingPress}
-            customLockText="Lock Price"
-            customBookingText="Book Service"
-            dynamicData={isDynamic ? cardData : null}
-            isLocked={isLocked}
-            buttonGroup="buy-lock"
-          />
+          {/* 5. Cashback Card */}
+          {!isLoadingBackend && cardData && cashbackAmount > 0 && (
+            <CashbackCard cashbackAmount={cashbackAmount} />
+          )}
 
-          {/* Instagram Card */}
-          <NewSection
-            dynamicData={isDynamic ? cardData : null}
-            cardType={params.cardType as string}
-          />
-
-          {/* Call, Product, Location Buttons - Below Instagram */}
-          <StoreActionButtons
-            storeType={storeType}
-            storeActionConfig={cardData?.store?.actionButtons}
-            storeData={{
-              storeId: cardData?.store?._id || cardData?.store?.id || cardData?.storeId,
-              storeName: cardData?.store?.name,
-              phone: cardData?.store?.phone || cardData?.store?.contact?.phone,
-              location: cardData?.store?.location,
-              name: cardData?.store?.name,
-            }}
-            dynamicData={isDynamic ? cardData : null}
-            buttonGroup="store-actions"
-          />
-          <Section3
-            productPrice={cardData?.price || cardData?.pricing?.selling || 1000}
-            storeId={cardData?.storeId || cardData?.store?.id || cardData?.store?._id}
-          />
-          <Section4
-            productPrice={cardData?.price || cardData?.pricing?.selling || 1000}
-            storeId={cardData?.storeId || cardData?.store?.id || cardData?.store?._id}
-            onPress={() => {
-              const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
-              const storeName = cardData?.store?.name || 'Store';
-              const orderValue = cardData?.price || cardData?.pricing?.selling || 1000;
-              if (storeId) {
-                router.push(`/CardOffersPage?storeId=${storeId}&storeName=${encodeURIComponent(storeName)}&orderValue=${orderValue}`);
-              }
-            }}
-          />
-          <Section5
-            dynamicData={isDynamic ? cardData : null}
-            cardType={params.cardType as string}
-          />
-          <Section6
-            dynamicData={isDynamic ? cardData : null}
-            cardType={params.cardType as string}
-          />
-
-
-          <CombinedSection78
-            dynamicData={isDynamic ? cardData : null}
-            cardType={params.cardType as string}
-          />
-
-          {/* Product Gallery Section */}
-          {isDynamic && cardData && (cardData.id || cardData._id) && (
-            <ProductGallerySection
-              productId={cardData.id || cardData._id!}
-              variantId={cardData.selectedVariant?.id}
+          {/* 6. Bonus Sharing Card */}
+          {!isLoadingBackend && cardData && (
+            <BonusSharingCard
+              bonusCoins={50}
+              productId={cardData.id || cardData._id}
+              productName={cardData.title || cardData.name}
             />
           )}
 
+          {/* 7. Lock Product Section (Inline - Replaces Modal) */}
+          {!isLoadingBackend && cardData && (cardData.id || cardData._id) && !isLocked && (
+            <LockProductSection
+              productId={cardData.id || cardData._id || ''}
+              productName={cardData.title || cardData.name || ''}
+              productPrice={productPrice}
+              quantity={quantity}
+              variant={cardData.selectedVariant as any}
+              onLockSuccess={(details) => {
+                handleLockSuccess(details);
+              }}
+            />
+          )}
 
-          {/* Related Products Section */}
+          {/* Locked Product Badge (when already locked) */}
+          {isLocked && (
+            <View style={styles.lockedBadgeContainer}>
+              <View style={styles.lockedBadge}>
+                <Ionicons name="lock-closed" size={20} color="#10B981" />
+                <ThemedText style={styles.lockedBadgeText}>Price Locked</ThemedText>
+              </View>
+              <ThemedText style={styles.lockedSubtext}>
+                This product is reserved for you. Complete your purchase before the lock expires.
+              </ThemedText>
+              <TouchableOpacity
+                style={styles.viewCartButton}
+                onPress={() => router.push('/CartPage')}
+                activeOpacity={0.8}
+              >
+                <ThemedText style={styles.viewCartButtonText}>View in Cart</ThemedText>
+                <Ionicons name="arrow-forward" size={16} color="#00C06A" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* 8. Complete Purchase Section */}
+          {!isLoadingBackend && cardData && (
+            <CompletePurchaseSection
+              storeInfo={{
+                name: cardData.store?.name || 'Store',
+                location: cardData.store?.location?.address ||
+                  `${cardData.store?.location?.city || ''}, ${cardData.store?.location?.state || ''}`.trim() ||
+                  'Location available at store',
+                hours: '9 AM - 9 PM',
+              }}
+              deliveryFee={49}
+              onVisitStore={() => {
+                const storeId = cardData?.store?._id || cardData?.store?.id || cardData?.storeId;
+                if (storeId) {
+                  router.push(`/MainStorePage?storeId=${storeId}` as any);
+                }
+              }}
+              onBuyOnline={handleBuyPress}
+              isLocked={isLocked}
+            />
+          )}
+
+          {/* 9. Pay with ReZ Section */}
+          {!isLoadingBackend && cardData && productPrice > 0 && (
+            <PayWithRezSection
+              productPrice={productPrice}
+              earnableCoins={earnableCoins}
+            />
+          )}
+
+          {/* 10. Delivery & Pickup Cards */}
+          {!isLoadingBackend && cardData && (
+            <DeliveryPickupCards />
+          )}
+
+          {/* 11. Why This is a Good Deal */}
+          {!isLoadingBackend && cardData && savingsAmount > 0 && (
+            <WhyGoodDealSection
+              savingsAmount={savingsAmount}
+              insights={[
+                `This product is usually bought on weekends — locking now saves ₹${savingsAmount}`,
+                'High demand item — price may change later',
+              ]}
+            />
+          )}
+
+          {/* 12. Product Tabbed Section (Description/Specs/Reviews/Lock Info) */}
+          {!isLoadingBackend && cardData && (
+            <ProductTabbedSection
+              description={cardData.description || 'No description available for this product.'}
+              lockDetails={{
+                isLocked: isLocked,
+              }}
+              onReviewsPress={() => {
+                const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
+                if (storeId) {
+                  router.push(`/reviews/${storeId}`);
+                }
+              }}
+            />
+          )}
+
+          {/* 13. Write a Review Card */}
+          {!isLoadingBackend && cardData && (
+            <TouchableOpacity
+              style={styles.writeReviewCard}
+              onPress={() => setShowReviewForm(true)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.writeReviewContent}>
+                <View style={styles.writeReviewIcon}>
+                  <Ionicons name="create-outline" size={20} color="#00C06A" />
+                </View>
+                <View style={styles.writeReviewText}>
+                  <ThemedText style={styles.writeReviewTitle}>Write a review</ThemedText>
+                  <ThemedText style={styles.writeReviewSubtitle}>
+                    Earn {cashbackAmount > 0 ? `₹${cashbackAmount}` : '5%'} cashback instantly
+                  </ThemedText>
+                </View>
+              </View>
+              <View style={styles.writeReviewBadge}>
+                <Ionicons name="gift-outline" size={16} color="#10B981" />
+                <ThemedText style={styles.writeReviewBadgeText}>
+                  ₹{cashbackAmount || Math.floor(productPrice * 0.05)}
+                </ThemedText>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* 14. Customer Reviews */}
+          <View style={styles.reviewsSection}>
+            <View style={styles.reviewsSectionHeader}>
+              <ThemedText style={styles.reviewsSectionTitle}>
+                Customer Reviews
+              </ThemedText>
+              <TouchableOpacity
+                style={styles.seeAllButton}
+                onPress={() => {
+                  const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
+                  if (storeId) {
+                    router.push(`/reviews/${storeId}`);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={styles.seeAllText}>See All</ThemedText>
+                <Ionicons name="chevron-forward" size={16} color="#00C06A" />
+              </TouchableOpacity>
+            </View>
+
+            {(cardData?.storeId || cardData?.store?.id || cardData?.store?._id) && (
+              <ReviewList
+                storeId={cardData.storeId || cardData.store!.id || cardData.store!._id!}
+                onWriteReviewPress={() => setShowReviewForm(true)}
+                showWriteButton={false}
+                currentUserId={authState.user?.id}
+              />
+            )}
+          </View>
+
+          {/* 14. Related Products (You May Also Like) */}
           {isDynamic && cardData && (cardData.id || cardData._id) && (
             <View style={styles.relatedProductsSection}>
               <ErrorBoundary
@@ -748,37 +815,76 @@ export default function StorePage() {
             </View>
           )}
 
+          {/* ========== EXISTING SECTIONS (Moved to Bottom) ========== */}
 
-          {/* Reviews Section */}
-          <View style={styles.reviewsSection}>
-            <View style={styles.reviewsSectionHeader}>
-              <ThemedText style={styles.reviewsSectionTitle}>
-                Customer Reviews
-              </ThemedText>
-              <TouchableOpacity
-                style={styles.seeAllButton}
-                onPress={() => {
-                  const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
-                  if (storeId) {
-                    router.push(`/reviews/${storeId}`);
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <ThemedText style={styles.seeAllText}>See All</ThemedText>
-                <Ionicons name="chevron-forward" size={16} color="#00C06A" />
-              </TouchableOpacity>
-            </View>
+          {/* 15. Instagram Card */}
+          <NewSection
+            dynamicData={isDynamic ? cardData : null}
+            cardType={params.cardType as string}
+          />
 
-            {(cardData?.storeId || cardData?.store?.id || cardData?.store?._id) && (
-              <ReviewList
-                storeId={cardData.storeId || cardData.store!.id || cardData.store!._id!}
-                onWriteReviewPress={() => setShowReviewForm(true)}
-                showWriteButton={true}
-                currentUserId={authState.user?.id}
-              />
-            )}
-          </View>
+          {/* 16. Mega Sale Offers */}
+          <Section3
+            productPrice={productPrice || 1000}
+            storeId={cardData?.storeId || cardData?.store?.id || cardData?.store?._id}
+          />
+
+          {/* 17. Card Offers */}
+          <Section4
+            productPrice={productPrice || 1000}
+            storeId={cardData?.storeId || cardData?.store?.id || cardData?.store?._id}
+            onPress={() => {
+              const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
+              const storeName = cardData?.store?.name || 'Store';
+              if (storeId) {
+                router.push(`/CardOffersPage?storeId=${storeId}&storeName=${encodeURIComponent(storeName)}&orderValue=${productPrice}`);
+              }
+            }}
+          />
+
+          {/* 18. Store Action Buttons */}
+          <StoreActionButtons
+            storeType={storeType}
+            storeActionConfig={cardData?.store?.actionButtons}
+            storeData={{
+              storeId: cardData?.store?._id || cardData?.store?.id || cardData?.storeId,
+              storeName: cardData?.store?.name,
+              phone: cardData?.store?.phone || cardData?.store?.contact?.phone,
+              location: cardData?.store?.location,
+              name: cardData?.store?.name,
+            }}
+            dynamicData={isDynamic ? cardData : null}
+            buttonGroup="store-actions"
+          />
+
+          {/* 19. Section 5 */}
+          <Section5
+            dynamicData={isDynamic ? cardData : null}
+            cardType={params.cardType as string}
+          />
+
+          {/* 20. Section 6 */}
+          <Section6
+            dynamicData={isDynamic ? cardData : null}
+            cardType={params.cardType as string}
+          />
+
+          {/* 21. Combined Section 7 & 8 */}
+          <CombinedSection78
+            dynamicData={isDynamic ? cardData : null}
+            cardType={params.cardType as string}
+          />
+
+          {/* Product Gallery Section */}
+          {isDynamic && cardData && (cardData.id || cardData._id) && (
+            <ProductGallerySection
+              productId={cardData.id || cardData._id!}
+              variantId={cardData.selectedVariant?.id}
+            />
+          )}
+
+          {/* 22. Bottom Banner */}
+          <BottomBanner />
         </View>
       </ScrollView>
 
@@ -859,98 +965,11 @@ const styles = StyleSheet.create({
   contentWrapper: {
     flex: 1,
   },
-  quantitySelectorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    gap: 12,
-  },
-  quantityLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  quantityDropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#00C06A',
-    backgroundColor: 'rgba(0, 192, 106, 0.1)',
-    gap: 8,
-  },
-  quantityValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#00C06A',
-    minWidth: 20,
-    textAlign: 'center',
-  },
-  quantityModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quantityModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    width: '80%',
-    maxWidth: 300,
-    maxHeight: 400,
-    overflow: 'hidden',
-  },
-  quantityModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  quantityModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  quantityOptionsScroll: {
-    maxHeight: 300,
-  },
-  quantityOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  quantityOptionSelected: {
-    backgroundColor: 'rgba(0, 192, 106, 0.1)',
-  },
-  quantityOptionText: {
-    fontSize: 16,
-    color: '#374151',
-  },
-  quantityOptionTextSelected: {
-    color: '#00C06A',
-    fontWeight: '600',
-  },
   relatedProductsSection: {
-    marginTop: 24,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    borderRadius: 18,
-    marginHorizontal: 16,
+    marginTop: 32,
+    marginBottom: 24,
+    marginHorizontal: 0,
+    backgroundColor: '#FFFFFF',
   },
   reviewsSection: {
     marginTop: 24,
@@ -977,6 +996,66 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#00C06A',
     fontWeight: '600',
+  },
+  // Write Review Card styles (ReZ brand colors: green #00C06A, golden #F59E0B)
+  writeReviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.15)',
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  writeReviewContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  writeReviewIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  writeReviewText: {
+    flex: 1,
+  },
+  writeReviewTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  writeReviewSubtitle: {
+    fontSize: 13,
+    color: '#00C06A',
+    fontWeight: '500',
+  },
+  writeReviewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
+  },
+  writeReviewBadgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#00C06A',
   },
   modalContainer: {
     flex: 1,
@@ -1065,5 +1144,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#DC2626',
     textAlign: 'center',
+  },
+  // Locked Product Badge Styles
+  lockedBadgeContainer: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    padding: 20,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#10B981',
+    alignItems: 'center',
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 8,
+    marginBottom: 12,
+  },
+  lockedBadgeText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  lockedSubtext: {
+    fontSize: 14,
+    color: '#065F46',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  viewCartButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#00C06A',
+    gap: 8,
+  },
+  viewCartButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#00C06A',
   },
 });
