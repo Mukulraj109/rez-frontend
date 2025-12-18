@@ -33,7 +33,7 @@ interface LockedItemProps {
     lockFee?: number;
     lockFeePercentage?: number;
     lockDuration?: number;
-    paymentMethod?: 'wallet' | 'paybill' | 'upi';
+    paymentMethod?: 'wallet' | 'upi';
     lockPaymentStatus?: 'pending' | 'paid' | 'refunded' | 'forfeited' | 'applied';
     isPaidLock?: boolean;
   };

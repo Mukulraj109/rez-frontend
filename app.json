@@ -8,6 +8,9 @@
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "notification": {
+      "vapidPublicKey": "BKJ7f1ZYHKG3ttcLtHvgpfdQBRqf2uPGhPpGcqx7zDK6Pf6sbaPd7Koev-x-FiazRezdzFquFW3pZuEX1T8zqCk"
+    },
     "ios": {
       "supportsTablet": true
     },

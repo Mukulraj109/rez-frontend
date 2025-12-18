@@ -347,8 +347,6 @@ export default function RootLayout() {
                     <Stack.Screen name="going-out" options={{ headerShown: false }} />
                     <Stack.Screen name="home-delivery" options={{ headerShown: false }} />
                     <Stack.Screen name="home-delivery/section/[sectionId]" options={{ headerShown: false }} />
-                    <Stack.Screen name="paybill-transactions" options={{ headerShown: false }} />
-                    <Stack.Screen name="paybill-add-money" options={{ headerShown: false }} />
                     <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
                     <Stack.Screen name="transactions/index" options={{ headerShown: false }} />
                     <Stack.Screen name="transactions/[id]" options={{ headerShown: false }} />
@@ -356,7 +354,6 @@ export default function RootLayout() {
                     <Stack.Screen name="account/delivery" options={{ headerShown: false }} />
                     <Stack.Screen name="account/payment-methods" options={{ headerShown: false }} />
                     <Stack.Screen name="account/payment" options={{ headerShown: false }} />
-                    <Stack.Screen name="account/wasilpay" options={{ headerShown: false }} />
                     <Stack.Screen name="payment" options={{ headerShown: false }} />
                     <Stack.Screen name="account/settings" options={{ headerShown: false }} />
                     <Stack.Screen name="account/language" options={{ headerShown: false }} />

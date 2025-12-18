@@ -63,17 +63,17 @@ class PaymentOrchestratorService {
 
     const methods: PaymentMethod[] = [];
 
-    // PayBill (Internal wallet) - Always available
+    // REZ Wallet - Always available
     methods.push({
-      id: 'paybill',
-      name: 'PayBill Wallet',
-      type: 'paybill',
+      id: 'wallet',
+      name: 'ReZ Wallet',
+      type: 'wallet',
       gateway: 'internal',
       icon: 'wallet',
       isAvailable: true,
       processingFee: 0,
       processingTime: 'Instant',
-      description: 'Pay using your PayBill wallet balance',
+      description: 'Pay using your ReZ wallet balance',
       isDefault: true,
     });
 
@@ -273,7 +273,7 @@ class PaymentOrchestratorService {
   }
 
   /**
-   * Process internal payment (PayBill, REZ Coins)
+   * Process internal payment (ReZ Wallet, REZ Coins)
    */
   private async processInternalPayment(
     paymentRequest: PaymentRequest
@@ -526,7 +526,7 @@ class PaymentOrchestratorService {
       }
     }
 
-    // Return first available method (usually PayBill)
+    // Return first available method (usually ReZ Wallet)
     return methods.find((m) => m.isAvailable && m.isDefault) || methods[0];
   }
 }

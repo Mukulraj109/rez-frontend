@@ -206,8 +206,8 @@ const WalletSnapshotCard: React.FC = () => {
   // Extract wallet data
   const walletData = walletState.data;
 
-  // Get REZ coin balance (wasil type)
-  const rezCoin = walletData?.coins?.find(c => c.type === 'wasil');
+  // Get REZ coin balance (rez type)
+  const rezCoin = walletData?.coins?.find(c => c.type === 'rez');
   const coinBalance = rezCoin?.amount || walletData?.totalBalance || 0;
   const coinValue = coinBalance; // 1 REZ coin = ₹1
 

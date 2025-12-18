@@ -138,8 +138,8 @@ export default function GamesPage() {
           const walletResponse = await walletApi.getBalance();
 
           if (walletResponse.success && walletResponse.data) {
-            const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
-            const actualWalletCoins = wasilCoin?.amount || 0;
+            const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
+            const actualWalletCoins = rezCoin?.amount || 0;
             setUserCoins(actualWalletCoins);
             console.log(`✅ [GAMES] Wallet balance loaded: ${actualWalletCoins}`);
           } else {

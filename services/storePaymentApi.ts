@@ -169,7 +169,6 @@ const storePaymentApi = {
     coinRedemption: {
       rezCoins: number;
       promoCoins: number;
-      payBill: number;
       totalAmount: number;
     };
     coinsUsed: number;
@@ -221,7 +220,6 @@ const storePaymentApi = {
   async getCoinBalances(): Promise<{
     rezCoins: number;
     promoCoins: number;
-    payBillBalance: number;
   }> {
     try {
       const response = await apiClient.get('/wallet/balance');
@@ -231,31 +229,26 @@ const storePaymentApi = {
         return {
           rezCoins: 0,
           promoCoins: 0,
-          payBillBalance: 0,
         };
       }
 
-      // Backend returns: { balance: { total, available, pending, paybill }, coins: [...] }
-      // The 'available' balance is the ReZ Coins (wasil coins)
-      // The 'coins' array contains individual coin type balances
-      const balance = response.data?.balance || {};
+      // Backend returns: { balance: { total, available, pending, cashback }, coins: [...] }
+      // The coins array contains 'rez' and 'promo' coin types
       const coins = response.data?.coins || [];
 
-      // Get promo coins from the coins array if available
-      const promoCoin = coins.find((c: any) => c.type === 'promotion');
-      const promoCoins = promoCoin?.amount || 0;
+      // Get ReZ coins and Promo coins from the coins array
+      const rezCoin = coins.find((c: any) => c.type === 'rez');
+      const promoCoin = coins.find((c: any) => c.type === 'promo');
 
       return {
-        rezCoins: balance.available || 0,  // ReZ coins are in available balance
-        promoCoins: promoCoins,
-        payBillBalance: balance.paybill || 0,
+        rezCoins: rezCoin?.amount || 0,
+        promoCoins: promoCoin?.amount || 0,
       };
     } catch (error) {
       // Return default values on error
       return {
         rezCoins: 0,
         promoCoins: 0,
-        payBillBalance: 0,
       };
     }
   },

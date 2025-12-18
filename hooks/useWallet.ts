@@ -93,53 +93,61 @@ export const useWallet = ({
       // Map backend coins to frontend format or use default coins
       const backendCoins = backendData.coins || [];
 
-      // Find or create REZ Coin
-      const rezCoin = backendCoins.find(c => c.type === 'wasil');
-      const promoCoin = backendCoins.find(c => c.type === 'promotion');
+      // Find ReZ and Promo coins (new schema)
+      const rezCoin = backendCoins.find(c => c.type === 'rez');
+      const promoCoin = backendCoins.find(c => c.type === 'promo');
 
-      const coins = [
+      const coins: CoinBalance[] = [
         {
-          id: 'wasil-0',
-          type: 'wasil' as const,
-          name: 'REZ Coin',
-          amount: rezCoin?.amount || 3500,
+          id: 'rez-0',
+          type: 'rez',
+          name: 'ReZ Coins',
+          amount: rezCoin?.amount || 0,
           currency: 'RC',
-          formattedAmount: `RC ${rezCoin?.amount || 3500}`,
-          description: `Total earned: ${backendData.statistics?.totalEarned || 5074} | Total spent: ${backendData.statistics?.totalSpent || 3199}`,
+          formattedAmount: `RC ${rezCoin?.amount || 0}`,
+          description: 'Universal rewards usable anywhere on ReZ',
           iconPath: require('@/assets/images/wasil-coin.png'),
-          backgroundColor: '#FFE9A9',
+          backgroundColor: '#E8F5EE',
+          color: '#00C06A',
           isActive: rezCoin?.isActive !== false,
           earnedDate: rezCoin?.earnedDate ? new Date(rezCoin.earnedDate) : new Date(backendData.lastUpdated),
           lastUsed: rezCoin?.lastUsed ? new Date(rezCoin.lastUsed) : new Date(backendData.lastUpdated),
           expiryDate: rezCoin?.expiryDate ? new Date(rezCoin.expiryDate) : undefined,
         },
         {
-          id: 'promotion-0',
-          type: 'promotion' as const,
-          name: 'Promo Coin',
+          id: 'promo-0',
+          type: 'promo',
+          name: 'Promo Coins',
           amount: promoCoin?.amount || 0,
           currency: 'RC',
           formattedAmount: `RC ${promoCoin?.amount || 0}`,
-          description: 'There is no cap or limit on the uses of this coin',
+          description: 'Special coins from campaigns & events (max 20% per bill)',
           iconPath: require('@/assets/images/promo-coin.png'),
-          backgroundColor: '#E8F4FD',
+          backgroundColor: '#FEF9E7',
+          color: '#FFC857',
           isActive: promoCoin?.isActive !== false,
           earnedDate: promoCoin?.earnedDate ? new Date(promoCoin.earnedDate) : new Date(backendData.lastUpdated),
           lastUsed: promoCoin?.lastUsed ? new Date(promoCoin.lastUsed) : new Date(backendData.lastUpdated),
           expiryDate: promoCoin?.expiryDate ? new Date(promoCoin.expiryDate) : undefined,
+          promoDetails: promoCoin?.promoDetails,
         }
       ];
 
-      // Calculate total balance from coins (REZ Coin + Promo Coin)
-      const calculatedTotalBalance = coins.reduce((sum, coin) => sum + coin.amount, 0);
+      // Calculate total balance from coins (ReZ + Promo + Cashback)
+      const cashbackBalance = backendData.balance?.cashback || 0;
+      const calculatedTotalBalance = coins.reduce((sum, coin) => sum + coin.amount, 0) + cashbackBalance;
 
       const walletData: WalletData = {
         userId: userId || 'unknown',
         totalBalance: calculatedTotalBalance,
-        availableBalance: backendData.balance.available, // Actual wallet balance (excludes paybill)
+        availableBalance: backendData.balance.available,
+        cashbackBalance: cashbackBalance,
+        pendingRewards: backendData.balance?.pending || 0,
         currency: backendData.currency,
         formattedTotalBalance: `${backendData.currency} ${calculatedTotalBalance}`,
         coins: coins,
+        brandedCoins: backendData.brandedCoins || [],
+        savingsInsights: backendData.savingsInsights || { totalSaved: 0, thisMonth: 0, avgPerVisit: 0 },
         recentTransactions: [],
         lastUpdated: new Date(backendData.lastUpdated),
         isActive: backendData.status.isActive,
@@ -226,53 +234,61 @@ export const useWallet = ({
       // Map backend coins to frontend format or use default coins
       const backendCoins = backendData.coins || [];
 
-      // Find or create REZ Coin
-      const rezCoin = backendCoins.find(c => c.type === 'wasil');
-      const promoCoin = backendCoins.find(c => c.type === 'promotion');
+      // Find ReZ and Promo coins (new schema)
+      const rezCoin = backendCoins.find(c => c.type === 'rez');
+      const promoCoin = backendCoins.find(c => c.type === 'promo');
 
-      const coins = [
+      const coins: CoinBalance[] = [
         {
-          id: 'wasil-0',
-          type: 'wasil' as const,
-          name: 'REZ Coin',
-          amount: rezCoin?.amount || 3500,
+          id: 'rez-0',
+          type: 'rez',
+          name: 'ReZ Coins',
+          amount: rezCoin?.amount || 0,
           currency: 'RC',
-          formattedAmount: `RC ${rezCoin?.amount || 3500}`,
-          description: `Total earned: ${backendData.statistics?.totalEarned || 5074} | Total spent: ${backendData.statistics?.totalSpent || 3199}`,
+          formattedAmount: `RC ${rezCoin?.amount || 0}`,
+          description: 'Universal rewards usable anywhere on ReZ',
           iconPath: require('@/assets/images/wasil-coin.png'),
-          backgroundColor: '#FFE9A9',
+          backgroundColor: '#E8F5EE',
+          color: '#00C06A',
           isActive: rezCoin?.isActive !== false,
           earnedDate: rezCoin?.earnedDate ? new Date(rezCoin.earnedDate) : new Date(backendData.lastUpdated),
           lastUsed: rezCoin?.lastUsed ? new Date(rezCoin.lastUsed) : new Date(backendData.lastUpdated),
           expiryDate: rezCoin?.expiryDate ? new Date(rezCoin.expiryDate) : undefined,
         },
         {
-          id: 'promotion-0',
-          type: 'promotion' as const,
-          name: 'Promo Coin',
+          id: 'promo-0',
+          type: 'promo',
+          name: 'Promo Coins',
           amount: promoCoin?.amount || 0,
           currency: 'RC',
           formattedAmount: `RC ${promoCoin?.amount || 0}`,
-          description: 'There is no cap or limit on the uses of this coin',
+          description: 'Special coins from campaigns & events (max 20% per bill)',
           iconPath: require('@/assets/images/promo-coin.png'),
-          backgroundColor: '#E8F4FD',
+          backgroundColor: '#FEF9E7',
+          color: '#FFC857',
           isActive: promoCoin?.isActive !== false,
           earnedDate: promoCoin?.earnedDate ? new Date(promoCoin.earnedDate) : new Date(backendData.lastUpdated),
           lastUsed: promoCoin?.lastUsed ? new Date(promoCoin.lastUsed) : new Date(backendData.lastUpdated),
           expiryDate: promoCoin?.expiryDate ? new Date(promoCoin.expiryDate) : undefined,
+          promoDetails: promoCoin?.promoDetails,
         }
       ];
 
-      // Calculate total balance from coins (REZ Coin + Promo Coin)
-      const calculatedTotalBalance = coins.reduce((sum, coin) => sum + coin.amount, 0);
+      // Calculate total balance from coins (ReZ + Promo + Cashback)
+      const cashbackBalance = backendData.balance?.cashback || 0;
+      const calculatedTotalBalance = coins.reduce((sum, coin) => sum + coin.amount, 0) + cashbackBalance;
 
       const walletData: WalletData = {
         userId: userId || 'unknown',
         totalBalance: calculatedTotalBalance,
-        availableBalance: backendData.balance.available, // Actual wallet balance (excludes paybill)
+        availableBalance: backendData.balance.available,
+        cashbackBalance: cashbackBalance,
+        pendingRewards: backendData.balance?.pending || 0,
         currency: backendData.currency,
         formattedTotalBalance: `${backendData.currency} ${calculatedTotalBalance}`,
         coins: coins,
+        brandedCoins: backendData.brandedCoins || [],
+        savingsInsights: backendData.savingsInsights || { totalSaved: 0, thisMonth: 0, avgPerVisit: 0 },
         recentTransactions: [],
         lastUpdated: new Date(backendData.lastUpdated),
         isActive: backendData.status.isActive,

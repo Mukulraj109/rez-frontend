@@ -376,20 +376,6 @@ export const LazyHomeDeliveryPage = lazyLoad(
 );
 
 // ============================================================================
-// PayBill (Medium Impact)
-// ============================================================================
-
-export const LazyPayBillTransactions = lazyLoad(
-  () => import('@/app/paybill-transactions'),
-  { componentName: 'PayBillTransactions', fallback: <RouteLoader /> }
-);
-
-export const LazyPayBillAddMoney = lazyLoad(
-  () => import('@/app/paybill-add-money'),
-  { componentName: 'PayBillAddMoney', fallback: <RouteLoader /> }
-);
-
-// ============================================================================
 // Search (Medium Impact)
 // ============================================================================
 

@@ -109,10 +109,10 @@ export const availablePromoCodes: PromoCode[] = [
 
 // Sample Coin System
 export const coinSystem: CoinSystem = {
-  wasilCoin: {
+  rezCoin: {
     available: 32,
     used: 0,
-    conversionRate: 1, // 1 Rupee = 1 Wasil Coin
+    conversionRate: 1, // 1 Rupee = 1 ReZ Coin
     maxUsagePercentage: 10,
   },
   promoCoin: {
@@ -135,7 +135,7 @@ export const calculateBillSummary = (
   items: CheckoutItem[],
   store: CheckoutStore,
   appliedPromoCode?: PromoCode,
-  coinUsage?: { wasil: number; promo: number; storePromo?: number }
+  coinUsage?: { rez: number; promo: number; storePromo?: number }
 ): BillSummary => {
   const itemTotal = items.reduce((total, item) => total + (item.price * item.quantity), 0);
   const getAndItemTotal = Math.round(itemTotal * 0.05); // 5% get & item charge
@@ -156,7 +156,7 @@ export const calculateBillSummary = (
     }
   }
   
-  const coinDiscount = (coinUsage?.wasil || 0) + (coinUsage?.promo || 0) + (coinUsage?.storePromo || 0);
+  const coinDiscount = (coinUsage?.rez || 0) + (coinUsage?.promo || 0) + (coinUsage?.storePromo || 0);
   
   // Calculate subtotal before discounts
   const subtotalBeforeDiscounts = itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes;

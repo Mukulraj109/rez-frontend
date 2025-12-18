@@ -29,7 +29,6 @@ interface StorePaymentDetail {
   coinRedemption: {
     rezCoins: number;
     promoCoins: number;
-    payBill: number;
     totalAmount: number;
   };
   coinsUsed: number;
@@ -286,9 +285,6 @@ Balance After: ${transaction.balanceAfter} ${transaction.currency}
                 )}
                 {storePayment.coinRedemption.promoCoins > 0 && (
                   <InfoRow label="Promo Coins" value={`₹${storePayment.coinRedemption.promoCoins}`} />
-                )}
-                {storePayment.coinRedemption.payBill > 0 && (
-                  <InfoRow label="PayBill Balance" value={`₹${storePayment.coinRedemption.payBill}`} />
                 )}
                 <InfoRow label="Total Coins Used" value={`₹${storePayment.coinRedemption.totalAmount}`} />
               </View>

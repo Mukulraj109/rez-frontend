@@ -38,7 +38,7 @@ export interface Brand {
     discount: string;
   };
   extraOffers?: string[];
-  wasilRewards?: {
+  rezRewards?: {
     percentage: number;
     description: string;
   };

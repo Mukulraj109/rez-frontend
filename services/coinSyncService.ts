@@ -58,7 +58,7 @@ class CoinSyncService {
       const response = await walletApi.getBalance();
 
       if (response.success && response.data) {
-        // Wallet balance structure: { balance: { total, available, pending, paybill } }
+        // Wallet balance structure: { balance: { total, available, pending, cashback } }
         // The 'available' balance is the usable ReZ coins
         const balance = response.data.balance?.available || 0;
 

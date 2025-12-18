@@ -87,9 +87,9 @@ export default function EarnScreen() {
       const response = await walletApi.getBalance();
       
       if (response.success && response.data) {
-        // Get wasil coin balance (same as homepage)
-        const wasilCoin = response.data.coins.find((c: any) => c.type === 'wasil');
-        const actualWalletCoins = wasilCoin?.amount || 0;
+        // Get rez coin balance (same as homepage)
+        const rezCoin = response.data.coins.find((c: any) => c.type === 'rez');
+        const actualWalletCoins = rezCoin?.amount || 0;
         setUserPoints(actualWalletCoins);
       }
     } catch (error) {

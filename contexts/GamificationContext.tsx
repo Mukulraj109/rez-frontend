@@ -307,7 +307,7 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
       const walletResponse = await walletApi.getBalance();
 
       if (walletResponse.success && walletResponse.data) {
-        // Wallet balance structure: { balance: { total, available, pending, paybill } }
+        // Wallet balance structure: { balance: { total, available, pending, cashback } }
         // The 'available' balance is the usable ReZ coins
         const walletCoins = walletResponse.data.balance?.available || 0;
 

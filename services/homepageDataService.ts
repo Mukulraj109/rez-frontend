@@ -725,6 +725,7 @@ class HomepageDataService {
 
   /**
    * Transform batch response to individual HomepageSection objects
+   * Handles both legacy (data.sections) and current (data.{sectionName}) formats
    */
   private transformBatchResponseToSections(response: HomepageBatchResponse): {
     justForYou: HomepageSection;
@@ -734,7 +735,17 @@ class HomepageDataService {
     offers: HomepageSection;
     flashSales: HomepageSection;
   } {
-    const { sections, metadata } = response.data;
+    // Handle both formats: data.sections or data directly
+    const data = response.data;
+    const sections = data.sections || {
+      justForYou: data.featuredProducts || [],
+      newArrivals: data.newArrivals || [],
+      trendingStores: data.trendingStores || data.featuredStores || [],
+      events: data.upcomingEvents || [],
+      offers: data.megaOffers || data.studentOffers || [],
+      flashSales: data.flashSales || [],
+    };
+    const metadata = data.metadata;
     const timestamp = new Date().toISOString();
 
     // Get section templates

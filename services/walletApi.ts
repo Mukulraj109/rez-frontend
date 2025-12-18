@@ -5,15 +5,43 @@ import apiClient, { ApiResponse } from './apiClient';
 // ============================================================================
 
 /**
- * Coin Balance from Backend
+ * Coin Balance from Backend (new schema)
  */
 export interface BackendCoinBalance {
-  type: 'wasil' | 'promotion' | 'cashback' | 'reward';
+  type: 'rez' | 'promo';
   amount: number;
   isActive: boolean;
+  color?: string;
   earnedDate?: string;
   lastUsed?: string;
   expiryDate?: string;
+  promoDetails?: {
+    maxRedemptionPercentage: number;
+    expiryDate: string;
+  };
+}
+
+/**
+ * Branded Coin from Backend
+ */
+export interface BackendBrandedCoin {
+  merchantId: string;
+  merchantName: string;
+  merchantLogo?: string;
+  merchantColor?: string;
+  amount: number;
+  earnedDate?: string;
+  lastUsed?: string;
+}
+
+/**
+ * Savings Insights from Backend
+ */
+export interface BackendSavingsInsights {
+  totalSaved: number;
+  thisMonth: number;
+  avgPerVisit: number;
+  lastCalculated?: string;
 }
 
 /**
@@ -24,8 +52,11 @@ export interface WalletBalanceResponse {
     total: number;
     available: number;
     pending: number;
+    cashback: number;
   };
   coins: BackendCoinBalance[];
+  brandedCoins: BackendBrandedCoin[];
+  savingsInsights: BackendSavingsInsights;
   currency: string;
   statistics: {
     totalEarned: number;
@@ -382,15 +413,15 @@ class WalletService {
   /**
    * Add test funds to wallet (DEVELOPMENT ONLY)
    * @param amount Amount to add (default: 1000)
-   * @param type 'wallet' or 'paybill' (default: 'wallet')
+   * @param type 'rez' | 'promo' | 'cashback' (default: 'rez')
    */
-  async devTopup(amount: number = 1000, type: 'wallet' | 'paybill' = 'wallet'): Promise<ApiResponse<{
+  async devTopup(amount: number = 1000, type: 'rez' | 'promo' | 'cashback' = 'rez'): Promise<ApiResponse<{
     wallet: {
       balance: {
         total: number;
         available: number;
         pending: number;
-        paybill: number;
+        cashback: number;
       };
       currency: string;
     };

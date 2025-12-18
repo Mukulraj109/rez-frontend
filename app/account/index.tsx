@@ -60,8 +60,8 @@ export default function AccountPage() {
       case 'payment':
         router.push('/account/payment');
         break;
-      case 'wasilpay':
-        router.push('/account/wasilpay'); // Note: keeping route name for compatibility
+      case 'wallet':
+        router.push('/wallet');
         break;
       case 'voucher':
         // Navigate to My Vouchers page

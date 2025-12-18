@@ -232,8 +232,8 @@ const CategoryHeader: React.FC<CategoryHeaderProps> = ({
           const walletApi = (await import('@/services/walletApi')).default;
           const walletResponse = await walletApi.getBalance();
           if (walletResponse.success && walletResponse.data) {
-            const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
-            setUserPoints(wasilCoin?.amount || totalLoyaltyPoints);
+            const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
+            setUserPoints(rezCoin?.amount || totalLoyaltyPoints);
           } else {
             setUserPoints(totalLoyaltyPoints);
           }

@@ -39,10 +39,10 @@ export interface PromoCode {
 }
 
 export interface CoinSystem {
-  wasilCoin: {
+  rezCoin: {
     available: number;
     used: number;
-    conversionRate: number; // 1 Rupee = X Wasil Coins
+    conversionRate: number; // 1 Rupee = X ReZ Coins
     maxUsagePercentage: number;
   };
   promoCoin: {
@@ -213,11 +213,10 @@ export interface PayLaterSectionProps {
 // Hook Return Types
 export interface UseCheckoutReturn {
   state: CheckoutPageState;
-  paybillBalance: number;
   actions: {
     applyPromoCode: (code: PromoCode) => Promise<void>;
     removePromoCode: () => void;
-    toggleWasilCoin: (enabled: boolean) => void;
+    toggleRezCoin: (enabled: boolean) => void;
     togglePromoCoin: (enabled: boolean) => void;
     selectPaymentMethod: (method: PaymentMethod) => void;
     updateBillSummary: () => void;
@@ -226,13 +225,12 @@ export interface UseCheckoutReturn {
   };
   handlers: {
     handlePromoCodeApply: (code: string) => void;
-    handleCoinToggle: (coinType: 'wasil' | 'promo' | 'storePromo', enabled: boolean) => void;
-    handleCustomCoinAmount: (coinType: 'wasil' | 'promo' | 'storePromo', amount: number) => void;
+    handleCoinToggle: (coinType: 'rez' | 'promo' | 'storePromo', enabled: boolean) => void;
+    handleCustomCoinAmount: (coinType: 'rez' | 'promo' | 'storePromo', amount: number) => void;
     handlePaymentMethodSelect: (method: PaymentMethod) => void;
     handleProceedToPayment: () => void;
     handleBackNavigation: () => void;
     handleWalletPayment: () => Promise<void>;
-    handlePayBillPayment: () => Promise<void>;
     handleCODPayment: () => Promise<void>;
     handleRazorpayPayment: (userInfo?: { name?: string; email?: string; phone?: string }) => Promise<void>;
     removePromoCode: () => void;
@@ -317,6 +315,6 @@ export const PAYMENT_TYPES = {
 } as const;
 
 export const COIN_TYPES = {
-  WASIL: 'wasil',
+  REZ: 'rez',
   PROMO: 'promo',
 } as const;

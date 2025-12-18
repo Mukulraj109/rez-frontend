@@ -121,8 +121,8 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       const response = await walletApi.getBalance();
       if (response.success && response.data) {
         // Get REZ coin balance
-        const wasilCoin = response.data.coins.find((c: any) => c.type === 'wasil');
-        setWalletBalance(wasilCoin?.amount || 0);
+        const rezCoin = response.data.coins.find((c: any) => c.type === 'rez');
+        setWalletBalance(rezCoin?.amount || 0);
       }
     } catch (error) {
       logger.error('❌ [Purchase Modal] Failed to load wallet balance:', error);

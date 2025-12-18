@@ -30,7 +30,7 @@ const { width } = Dimensions.get('window');
 export default function CheckoutPage() {
   const router = useRouter();
   // Destructure checkout hook return values
-  const { state, handlers, paybillBalance } = useCheckout();
+  const { state, handlers } = useCheckout();
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [customCoinAmount, setCustomCoinAmount] = useState('');
@@ -48,7 +48,7 @@ export default function CheckoutPage() {
 
   // Order confirmation modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cod' | 'paybill' | 'wallet' | 'razorpay' | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cod' | 'wallet' | 'razorpay' | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
 
@@ -70,7 +70,7 @@ export default function CheckoutPage() {
   });
 
   // Calculate total wallet balance from coin system
-  const totalWalletBalance = state.coinSystem.wasilCoin.available + state.coinSystem.promoCoin.available;
+  const totalWalletBalance = state.coinSystem.rezCoin.available + state.coinSystem.promoCoin.available;
 
   // Validate cart on page load
   useEffect(() => {
@@ -215,14 +215,10 @@ export default function CheckoutPage() {
   };
 
   // Payment confirmation handlers
-  const handlePaymentSelect = (method: 'cod' | 'paybill' | 'wallet' | 'razorpay') => {
+  const handlePaymentSelect = (method: 'cod' | 'wallet' | 'razorpay') => {
     // Validate before showing modal
     if (method === 'cod' && hasServiceItems) {
       Alert.alert('COD Not Available', 'Cash on Delivery is not available for service bookings.');
-      return;
-    }
-    if (method === 'paybill' && paybillBalance < (state.billSummary?.totalPayable || 0)) {
-      Alert.alert('Insufficient Balance', `Your PayBill balance (₹${paybillBalance}) is less than the order total.`);
       return;
     }
     if (method === 'wallet' && totalWalletBalance < (state.billSummary?.totalPayable || 0)) {
@@ -244,7 +240,6 @@ export default function CheckoutPage() {
     // Set processing message based on payment method
     const messages: Record<string, string> = {
       cod: 'Placing your order...',
-      paybill: 'Processing PayBill payment...',
       wallet: 'Deducting from wallet...',
       razorpay: 'Redirecting to payment...',
     };
@@ -254,9 +249,6 @@ export default function CheckoutPage() {
       switch (selectedPaymentMethod) {
         case 'cod':
           await handlers.handleCODPayment();
-          break;
-        case 'paybill':
-          await handlers.handlePayBillPayment();
           break;
         case 'wallet':
           await handlers.handleWalletPayment();
@@ -276,8 +268,7 @@ export default function CheckoutPage() {
   const getPaymentMethodLabel = (method: string | null) => {
     const labels: Record<string, string> = {
       cod: 'Cash on Delivery',
-      paybill: 'PayBill Balance',
-      wallet: 'Wallet (REZ Coins)',
+      wallet: 'Wallet (ReZ Coins)',
       razorpay: 'Online Payment',
     };
     return labels[method || ''] || '';
@@ -555,14 +546,14 @@ export default function CheckoutPage() {
                     </View>
                     <View style={styles.coinAvailableRow}>
                       <ThemedText style={styles.coinAvailableTextWhite}>
-                        {state.coinSystem.wasilCoin.available} available
+                        {state.coinSystem.rezCoin.available} available
                       </ThemedText>
                     </View>
                   </View>
-                  {state.coinSystem.wasilCoin.used > 0 && (
+                  {state.coinSystem.rezCoin.used > 0 && (
                     <View style={styles.coinUsedBadgeWhite}>
                       <ThemedText style={styles.coinUsedTextPurple}>
-                        {state.coinSystem.wasilCoin.used}
+                        {state.coinSystem.rezCoin.used}
                       </ThemedText>
                     </View>
                   )}
@@ -573,24 +564,24 @@ export default function CheckoutPage() {
                     type="range"
                     min="0"
                     max={Math.max(1, Math.min(
-                      state.coinSystem.wasilCoin.available,
+                      state.coinSystem.rezCoin.available,
                       Math.floor(state.billSummary?.totalPayable || 0)
                     ))}
-                    value={state.coinSystem.wasilCoin.used}
+                    value={state.coinSystem.rezCoin.used}
                     onChange={(e) => {
                       const amount = parseInt(e.target.value);
                       if (amount === 0) {
-                        handlers.handleCoinToggle('wasil', false);
+                        handlers.handleCoinToggle('rez', false);
                       } else {
-                        handlers.handleCustomCoinAmount('wasil', amount);
+                        handlers.handleCustomCoinAmount('rez', amount);
                       }
                     }}
                     onInput={(e: any) => {
                       const amount = parseInt(e.target.value);
                       if (amount === 0) {
-                        handlers.handleCoinToggle('wasil', false);
+                        handlers.handleCoinToggle('rez', false);
                       } else {
-                        handlers.handleCustomCoinAmount('wasil', amount);
+                        handlers.handleCustomCoinAmount('rez', amount);
                       }
                     }}
                     style={{
@@ -604,7 +595,7 @@ export default function CheckoutPage() {
                       cursor: 'pointer',
                       touchAction: 'none',
                       pointerEvents: 'auto',
-                      background: `linear-gradient(to right, #FFFFFF 0%, #FFFFFF ${(state.coinSystem.wasilCoin.used / Math.max(1, Math.min(state.coinSystem.wasilCoin.available, Math.floor(state.billSummary?.totalPayable || 0)))) * 100}%, rgba(255,255,255,0.3) ${(state.coinSystem.wasilCoin.used / Math.max(1, Math.min(state.coinSystem.wasilCoin.available, Math.floor(state.billSummary?.totalPayable || 0)))) * 100}%, rgba(255,255,255,0.3) 100%)`,
+                      background: `linear-gradient(to right, #FFFFFF 0%, #FFFFFF ${(state.coinSystem.rezCoin.used / Math.max(1, Math.min(state.coinSystem.rezCoin.available, Math.floor(state.billSummary?.totalPayable || 0)))) * 100}%, rgba(255,255,255,0.3) ${(state.coinSystem.rezCoin.used / Math.max(1, Math.min(state.coinSystem.rezCoin.available, Math.floor(state.billSummary?.totalPayable || 0)))) * 100}%, rgba(255,255,255,0.3) 100%)`,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                     }}
                   />
@@ -614,18 +605,18 @@ export default function CheckoutPage() {
                   <ThemedText style={styles.sliderLabelTextWhite}>₹0</ThemedText>
                   <ThemedText style={styles.sliderLabelTextWhite}>
                     ₹{Math.min(
-                      state.coinSystem.wasilCoin.available,
+                      state.coinSystem.rezCoin.available,
                       Math.floor(state.billSummary?.totalPayable || 0)
                     )}
                   </ThemedText>
                 </View>
 
-                {state.coinSystem.wasilCoin.used > 0 && (
+                {state.coinSystem.rezCoin.used > 0 && (
                   <View style={styles.coinSavingContainerEnhanced}>
                     <View style={styles.savingBadge}>
                       <Ionicons name="gift" size={16} color="#10B981" />
                       <ThemedText style={styles.coinSavingTextEnhanced}>
-                        You'll save ₹{state.coinSystem.wasilCoin.used} on this order!
+                        You'll save ₹{state.coinSystem.rezCoin.used} on this order!
                       </ThemedText>
                     </View>
                   </View>
@@ -960,22 +951,6 @@ export default function CheckoutPage() {
 
             {/* Quick Pay Options */}
             <View style={styles.quickPayOptions}>
-              {/* PayBill */}
-              <TouchableOpacity
-                style={[
-                  styles.quickPayCard,
-                  (paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout) && styles.quickPayDisabled
-                ]}
-                onPress={() => handlePaymentSelect('paybill')}
-                disabled={state.loading || paybillBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
-              >
-                <View style={[styles.quickPayIcon, { backgroundColor: '#10B981' }]}>
-                  <Ionicons name="wallet" size={20} color="white" />
-                </View>
-                <ThemedText style={styles.quickPayLabel}>PayBill</ThemedText>
-                <ThemedText style={styles.quickPayBalance}>₹{paybillBalance}</ThemedText>
-              </TouchableOpacity>
-
               {/* Wallet */}
               <TouchableOpacity
                 style={[
@@ -1287,7 +1262,6 @@ export default function CheckoutPage() {
                   <Ionicons
                     name={
                       selectedPaymentMethod === 'cod' ? 'cash' :
-                      selectedPaymentMethod === 'paybill' ? 'wallet' :
                       selectedPaymentMethod === 'wallet' ? 'diamond' : 'card'
                     }
                     size={18}

@@ -64,7 +64,6 @@ export interface StorePaymentSettings {
   // Coin Settings
   acceptRezCoins: boolean;
   acceptPromoCoins: boolean;
-  acceptPayBill: boolean;
   maxCoinRedemptionPercent: number;
 
   // Hybrid Payment
@@ -107,7 +106,7 @@ export interface PaymentMethod {
 
 // ==================== COIN TYPES ====================
 
-export type CoinType = 'rezCoins' | 'promoCoins' | 'payBill';
+export type CoinType = 'rezCoins' | 'promoCoins';
 
 export interface CoinBalance {
   type: CoinType;
@@ -120,7 +119,6 @@ export interface CoinBalance {
 export interface CoinRedemption {
   rezCoins: number;
   promoCoins: number;
-  payBill: number;
   totalAmount: number;
 }
 

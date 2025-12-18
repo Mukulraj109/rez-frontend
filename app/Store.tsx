@@ -340,9 +340,9 @@ export default function App() {
 
         // ✅ FIX: Add comprehensive null/undefined checks for wallet data
         if (walletResponse?.success && walletResponse?.data && Array.isArray(walletResponse.data.coins)) {
-          const wasilCoin = walletResponse.data.coins.find((c: any) => c?.type === 'wasil');
-          const actualWalletCoins = typeof wasilCoin?.amount === 'number' && !isNaN(wasilCoin.amount)
-            ? wasilCoin.amount
+          const rezCoin = walletResponse.data.coins.find((c: any) => c?.type === 'rez');
+          const actualWalletCoins = typeof rezCoin?.amount === 'number' && !isNaN(rezCoin.amount)
+            ? rezCoin.amount
             : 0;
           console.log('✅ [STORE] Loaded wallet balance:', actualWalletCoins);
           setUserPoints(actualWalletCoins);

@@ -248,6 +248,9 @@ function validateSectionResponse(response: any): boolean {
 
 /**
  * Validates batch response structure
+ * Accepts both formats: 
+ * - Legacy: data.sections.{sectionName}
+ * - Current: data.{sectionName} (e.g., data.featuredProducts, data.newArrivals)
  */
 function validateBatchResponse(response: any): boolean {
   if (!response || typeof response !== 'object') {
@@ -260,8 +263,14 @@ function validateBatchResponse(response: any): boolean {
     return false;
   }
 
-  if (!response.data.sections || typeof response.data.sections !== 'object') {
-    console.warn('[HOMEPAGE API] Batch response missing sections object');
+  // Accept either format: data.sections or data directly containing arrays
+  const hasLegacyFormat = response.data.sections && typeof response.data.sections === 'object';
+  const hasCurrentFormat = Array.isArray(response.data.featuredProducts) || 
+                           Array.isArray(response.data.newArrivals) ||
+                           Array.isArray(response.data.trendingStores);
+  
+  if (!hasLegacyFormat && !hasCurrentFormat) {
+    console.warn('[HOMEPAGE API] Batch response missing valid data structure');
     return false;
   }
 
@@ -406,8 +415,18 @@ export class HomepageApiService {
         };
       }
 
-      // Validate section items
-      const sections = response.data.sections;
+      // Handle both formats: data.sections or data directly containing arrays
+      // Backend returns: { featuredProducts, newArrivals, trendingStores, ... }
+      // Frontend expects: { sections: { justForYou, newArrivals, trendingStores, ... } }
+      const rawData = response.data;
+      const sections = rawData.sections || {
+        justForYou: rawData.featuredProducts || [],
+        newArrivals: rawData.newArrivals || [],
+        trendingStores: rawData.trendingStores || rawData.featuredStores || [],
+        events: rawData.upcomingEvents || [],
+        offers: rawData.megaOffers || rawData.studentOffers || [],
+        flashSales: rawData.flashSales || [],
+      };
       const validatedSections: any = {};
 
       // Validate products sections
@@ -452,7 +471,10 @@ export class HomepageApiService {
         validatedSections.events = sections.events;
       }
 
-      // Update response with validated sections
+      // Update response with validated sections (ensure sections wrapper exists)
+      if (!response.data.sections) {
+        response.data.sections = {};
+      }
       response.data.sections = validatedSections;
 
       console.log('✅ [HOMEPAGE API] Batch endpoint response validated:', {

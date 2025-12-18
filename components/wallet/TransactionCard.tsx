@@ -55,7 +55,7 @@ export default function TransactionCard({
           <Image 
             source={{ uri: transaction.merchantLogo }} 
             style={styles.merchantLogo}
-            defaultSource={require('@/assets/images/wasil-coin.png')}
+            defaultSource={require('@/assets/images/rez-coin.png')}
           />
         ) : (
           <View style={[styles.iconFallback, { backgroundColor: statusColor + '20' }]}>

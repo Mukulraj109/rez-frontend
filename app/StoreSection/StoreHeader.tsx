@@ -61,8 +61,8 @@ export default function StoreHeader({ dynamicData, cardType }: StoreHeaderProps)
     try {
       const walletResponse = await walletApi.getBalance();
       if (walletResponse.success && walletResponse.data) {
-        const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
-        const actualWalletCoins = wasilCoin?.amount || 0;
+        const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
+        const actualWalletCoins = rezCoin?.amount || 0;
         setCoinCount(actualWalletCoins);
       }
     } catch (error) {

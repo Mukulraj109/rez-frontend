@@ -30,7 +30,6 @@ import { useProfile } from '@/hooks/useProfile';
 import { useReferral } from '@/hooks/useReferral';
 import { useWalletAnalytics } from '@/hooks/useWalletAnalytics';
 import walletApi from '@/services/walletApi';
-import { paybillApi } from '@/services/paybillApi';
 import WalletErrorBoundary from '@/components/WalletErrorBoundary';
 import EarningsBreakdown from '@/components/wallet/EarningsBreakdown';
 
@@ -80,41 +79,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
     trackWalletViewed();
   }, [trackWalletViewed]);
 
-  // Fetch PayBill balance on mount
-  useEffect(() => {
-    const fetchPayBillBalance = async () => {
-
-      setPaybillLoading(true);
-      try {
-        const response = await paybillApi.getBalance();
-        if (response.success && response.data) {
-          setPaybillBalance(response.data.paybillBalance || 0);
-          // Calculate savings (20% of balance was bonus)
-          const savings = Math.round((response.data.paybillBalance || 0) * 0.2);
-          setTotalSavings(savings);
-
-        }
-      } catch (error) {
-        console.error('🎟️ [Wallet] Failed to fetch PayBill balance:', error);
-      } finally {
-        setPaybillLoading(false);
-      }
-    };
-
-    fetchPayBillBalance();
-  }, []);
-
   const handleRefresh = useCallback(async () => {
     try {
       await refreshWallet(true);
-
-      // Also refresh PayBill balance
-      const response = await paybillApi.getBalance();
-      if (response.success && response.data) {
-        setPaybillBalance(response.data.paybillBalance || 0);
-        const savings = Math.round((response.data.paybillBalance || 0) * 0.2);
-        setTotalSavings(savings);
-      }
     } catch (error) {
       Alert.alert('Refresh Failed', error instanceof Error ? error.message : 'Unable to refresh wallet data');
     }
@@ -148,11 +115,6 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   const [topupLoading, setTopupLoading] = useState(false);
   const [selectedTopupAmount, setSelectedTopupAmount] = useState<number | null>(null);
   const [showTopupConfirm, setShowTopupConfirm] = useState(false);
-
-  // PayBill state management
-  const [paybillBalance, setPaybillBalance] = useState<number>(0);
-  const [paybillLoading, setPaybillLoading] = useState(false);
-  const [totalSavings, setTotalSavings] = useState<number>(0);
 
   const handleAmountSelect = useCallback((amount: number | "other") => {
     if (amount !== "other") {
@@ -289,8 +251,8 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
 
   const walletData = walletState.data;
 
-  // Calculate total wallet balance including PayBill
-  const totalWalletBalance = (walletData.totalBalance || 0) + paybillBalance;
+  // Calculate total wallet balance
+  const totalWalletBalance = walletData.totalBalance || 0;
   const formattedTotalBalance = walletData.currency === 'RC'
     ? `RC ${totalWalletBalance}`
     : `${walletData.currency} ${totalWalletBalance}`;
@@ -367,68 +329,6 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="rgba(255, 255, 255, 0.8)" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-
-        {/* PayBill Balance Card */}
-        <View style={styles.paybillCardContainer}>
-          <TouchableOpacity
-            style={styles.paybillCard}
-            activeOpacity={0.9}
-            accessibilityLabel={`PayBill balance: Rupees ${paybillBalance}${totalSavings > 0 ? `. Saved Rupees ${totalSavings} with bonus` : ''}`}
-            accessibilityRole="button"
-            accessibilityHint="Double tap to view PayBill transactions"
-          >
-            <LinearGradient
-              colors={['#10B981', '#059669'] as const}
-              style={styles.paybillCardGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.paybillCardHeader}>
-                <View style={styles.paybillIconContainer}>
-                  <Ionicons name="wallet" size={28} color="white" />
-                </View>
-                <View style={styles.paybillHeaderText}>
-                  <Text style={styles.paybillTitle}>PayBill Balance</Text>
-                  <Text style={styles.paybillSubtitle}>Prepaid wallet with 20% bonus</Text>
-                </View>
-              </View>
-
-              <View style={styles.paybillBalanceContainer}>
-                {paybillLoading ? (
-                  <Text style={styles.paybillBalanceText}>Loading...</Text>
-                ) : (
-                  <>
-                    <Text style={styles.paybillBalanceText}>₹{paybillBalance}</Text>
-                    {totalSavings > 0 && (
-                      <View style={styles.savingsBadge}>
-                        <Ionicons name="gift" size={14} color="#10B981" />
-                        <Text style={styles.savingsBadgeText}>
-                          Saved ₹{totalSavings} with bonus
-                        </Text>
-                      </View>
-                    )}
-                  </>
-                )}
-              </View>
-
-              <View style={styles.paybillActions}>
-                <TouchableOpacity
-                  style={styles.paybillActionButton}
-                  onPress={() => {
-
-                    router.push('/paybill-transactions');
-                  }}
-                  accessibilityLabel="View PayBill transactions"
-                  accessibilityRole="button"
-                  accessibilityHint="Double tap to see your PayBill transaction history"
-                >
-                  <Text style={styles.paybillActionText}>View Transactions</Text>
-                  <Ionicons name="chevron-forward" size={16} color="rgba(255, 255, 255, 0.9)" />
-                </TouchableOpacity>
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -741,100 +641,6 @@ const createStyles = (screenData: { width: number; height: number }) => {
     container: {
       flex: 1,
       backgroundColor: "#f8f8f8",
-    },
-
-    // PayBill Card Styles
-    paybillCardContainer: {
-      marginHorizontal: 16,
-      marginTop: 8,
-      marginBottom: 16,
-    },
-    paybillCard: {
-      borderRadius: 20,
-      overflow: 'hidden',
-      shadowColor: '#10B981',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.25,
-      shadowRadius: 12,
-      elevation: 8,
-    },
-    paybillCardGradient: {
-      padding: 20,
-    },
-    paybillCardHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 20,
-    },
-    paybillIconContainer: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: 'rgba(255, 255, 255, 0.25)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 16,
-    },
-    paybillHeaderText: {
-      flex: 1,
-    },
-    paybillTitle: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: 'white',
-      marginBottom: 4,
-      letterSpacing: 0.3,
-    },
-    paybillSubtitle: {
-      fontSize: 13,
-      color: 'rgba(255, 255, 255, 0.85)',
-      fontWeight: '500',
-    },
-    paybillBalanceContainer: {
-      alignItems: 'center',
-      paddingVertical: 16,
-      borderTopWidth: 1,
-      borderBottomWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.2)',
-      marginBottom: 16,
-    },
-    paybillBalanceText: {
-      fontSize: 42,
-      fontWeight: '800',
-      color: 'white',
-      marginBottom: 8,
-    },
-    savingsBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 20,
-      gap: 6,
-    },
-    savingsBadgeText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: '#10B981',
-    },
-    paybillActions: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-    },
-    paybillActionButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 12,
-      gap: 8,
-    },
-    paybillActionText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: 'white',
     },
 
     // Modal styles

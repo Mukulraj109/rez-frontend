@@ -236,11 +236,6 @@ export const LazyContactStoreModal = lazyLoad(
   { componentName: 'ContactStoreModal', fallback: <ModalLoader /> }
 );
 
-export const LazyPayBillSuccessModal = lazyLoad(
-  () => import('@/components/store/PayBillSuccessModal'),
-  { componentName: 'PayBillSuccessModal', fallback: <ModalLoader /> }
-);
-
 // ============================================================================
 // Referral Modals
 // ============================================================================

@@ -1,7 +1,7 @@
 // Payment Types and Interfaces for REZ App
 // Comprehensive payment system types
 
-export type PaymentMethodType = 'upi' | 'card' | 'wallet' | 'netbanking' | 'cod' | 'paybill' | 'rezcoins';
+export type PaymentMethodType = 'upi' | 'card' | 'wallet' | 'netbanking' | 'cod' | 'rezcoins';
 export type PaymentGateway = 'razorpay' | 'stripe' | 'internal' | 'none';
 export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'refunded';
 export type CardType = 'visa' | 'mastercard' | 'amex' | 'rupay' | 'unknown';
@@ -186,9 +186,6 @@ export interface PaymentConfig {
     publishableKey: string;
   };
   cod: CODConfig;
-  payBill: {
-    enabled: boolean;
-  };
   rezCoins: {
     enabled: boolean;
     maxUsagePercentage: number; // Max percentage of order that can be paid with coins

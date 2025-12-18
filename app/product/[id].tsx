@@ -137,8 +137,8 @@ export default function ProductDetailPage() {
   });
 
   // Extract coin balance
-  const wasilCoin = walletState.data?.coins?.find(c => c.type === 'wasil');
-  const coinBalance = wasilCoin?.amount || 0;
+  const rezCoin = walletState.data?.coins?.find(c => c.type === 'rez');
+  const coinBalance = rezCoin?.amount || 0;
 
   // Availability hook for stock checking
   const {

@@ -31,9 +31,9 @@ const HowRezWorksHeader: React.FC<HowRezWorksHeaderProps> = ({ onBackPress }) =>
       try {
         const walletResponse = await walletApi.getBalance();
         if (walletResponse.success && walletResponse.data) {
-          // Get wasil coin balance (same as homepage)
-          const wasilCoin = walletResponse.data.coins?.find((c: any) => c.type === 'wasil');
-          setCoinBalance(wasilCoin?.amount || 0);
+          // Get rez coin balance (same as homepage)
+          const rezCoin = walletResponse.data.coins?.find((c: any) => c.type === 'rez');
+          setCoinBalance(rezCoin?.amount || 0);
 
           // Get cash balance if available
           const cashAmount = walletResponse.data.cash?.available || walletResponse.data.cashBalance || 0;

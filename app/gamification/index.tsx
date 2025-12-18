@@ -52,8 +52,8 @@ export default function GamificationDashboard() {
 
       // ✅ Extract coin balance from wallet
       if (walletRes.success && walletRes.data) {
-        const wasilCoin = walletRes.data.coins.find((c: any) => c.type === 'wasil');
-        const walletCoins = wasilCoin?.amount || 0;
+        const rezCoin = walletRes.data.coins.find((c: any) => c.type === 'rez');
+        const walletCoins = rezCoin?.amount || 0;
         setCoinBalance(walletCoins);
         console.log(`✅ [GAMIFICATION] Wallet balance loaded: ${walletCoins}`);
       } else {

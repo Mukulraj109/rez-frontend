@@ -1,4 +1,4 @@
-// LockPriceModal.tsx - 3-hour lock at 5% with PayBill top-up flow
+// LockPriceModal.tsx - 3-hour lock at 5% with wallet payment
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -16,15 +16,11 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWallet } from '@/hooks/useWallet';
 import cartService, { LockFeeOption, LockWithPaymentRequest } from '@/services/cartApi';
-import { paybillApi } from '@/services/paybillApi';
 import { triggerImpact, triggerNotification } from '@/utils/haptics';
-import AddMoneyModal from './AddMoneyModal';
 import {
-  Colors,
   Spacing,
   Shadows,
   BorderRadius,
-  Typography,
 } from '@/constants/DesignSystem';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -45,8 +41,6 @@ interface LockPriceModalProps {
   }) => void;
 }
 
-type PaymentMethod = 'wallet' | 'paybill';
-
 // Fixed 3-hour lock duration
 const LOCK_DURATION = 3;
 const LOCK_PERCENTAGE = 5;
@@ -62,7 +56,6 @@ export default function LockPriceModal({
   onLockSuccess,
 }: LockPriceModalProps) {
   const backgroundColor = useThemeColor({}, 'background');
-  const textColor = useThemeColor({}, 'text');
   const { state: authState } = useAuth();
   const { walletState, refreshWallet } = useWallet({
     userId: authState?.user?.id || '',
@@ -71,14 +64,9 @@ export default function LockPriceModal({
   const walletData = walletState?.data;
 
   const [lockOptions, setLockOptions] = useState<LockFeeOption[]>([]);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('wallet');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paybillBalanceState, setPaybillBalanceState] = useState<number>(0);
-  const [isPaybillLoading, setIsPaybillLoading] = useState(false);
-  const [showTopupModal, setShowTopupModal] = useState(false);
-  const [pendingAutoLock, setPendingAutoLock] = useState(false);
 
   const totalPrice = productPrice * quantity;
 
@@ -86,44 +74,15 @@ export default function LockPriceModal({
   const lockOption = lockOptions.find(opt => opt.duration === LOCK_DURATION);
   const lockFee = lockOption?.fee || Math.ceil((totalPrice * LOCK_PERCENTAGE) / 100);
 
-  // Get wallet balance (available balance, excludes paybill) from wallet API
+  // Get wallet balance
   const walletBalance = walletData?.availableBalance || 0;
-  // PayBill balance is fetched separately from paybillApi
-  const paybillBalance = paybillBalanceState;
+  const hasEnoughBalance = walletBalance >= lockFee;
 
-  // Check if selected payment method has enough balance
-  const currentBalance = selectedPaymentMethod === 'wallet' ? walletBalance : paybillBalance;
-  const hasEnoughBalance = currentBalance >= lockFee;
-
-  // Fetch PayBill balance
-  const fetchPaybillBalance = async () => {
-    setIsPaybillLoading(true);
-    console.log('🔒 [LockModal] Fetching PayBill balance...');
-    try {
-      const response = await paybillApi.getBalance();
-      console.log('🔒 [LockModal] PayBill balance response:', JSON.stringify(response, null, 2));
-      if (response.success && response.data) {
-        const balance = response.data.paybillBalance || 0;
-        console.log('🔒 [LockModal] Setting PayBill balance:', balance);
-        setPaybillBalanceState(balance);
-      } else {
-        console.error('🔒 [LockModal] Failed to get PayBill balance:', response.error);
-        setPaybillBalanceState(0);
-      }
-    } catch (error) {
-      console.error('🔒 [LockModal] Error fetching PayBill balance:', error);
-      setPaybillBalanceState(0);
-    } finally {
-      setIsPaybillLoading(false);
-    }
-  };
-
-  // Fetch lock fee options and balances when modal opens
+  // Fetch lock fee options when modal opens
   useEffect(() => {
     if (visible && productId) {
       fetchLockOptions();
       refreshWallet(true);
-      fetchPaybillBalance();
     }
   }, [visible, productId, quantity]);
 
@@ -152,13 +111,17 @@ export default function LockPriceModal({
 
   // Execute the lock operation
   const executeLock = useCallback(async () => {
+    if (!hasEnoughBalance) {
+      setError(`Insufficient wallet balance. You need ₹${lockFee} but have ₹${walletBalance}`);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     triggerImpact('Medium');
 
     console.log('🔒 [LockModal] ========== EXECUTING LOCK ==========');
     console.log('🔒 [LockModal] LOCK_DURATION constant:', LOCK_DURATION);
-    console.log('🔒 [LockModal] Selected payment method:', selectedPaymentMethod);
 
     try {
       const request: LockWithPaymentRequest = {
@@ -166,7 +129,7 @@ export default function LockPriceModal({
         quantity,
         variant,
         duration: LOCK_DURATION,
-        paymentMethod: selectedPaymentMethod,
+        paymentMethod: 'wallet',
       };
 
       console.log('🔒 [LockModal] Lock request being sent:', JSON.stringify(request, null, 2));
@@ -196,284 +159,165 @@ export default function LockPriceModal({
       triggerNotification('Error');
     } finally {
       setIsLoading(false);
-      setPendingAutoLock(false);
     }
-  }, [productId, quantity, variant, selectedPaymentMethod, onLockSuccess, onClose]);
-
-  // Handle lock button press
-  const handleLockPress = useCallback(async () => {
-    // Check if selected payment method has enough balance
-    if (selectedPaymentMethod === 'wallet') {
-      if (walletBalance >= lockFee) {
-        // Wallet has enough - proceed with lock
-        await executeLock();
-      } else {
-        // Wallet insufficient - open PayBill top-up modal
-        // After top-up, lock will proceed with PayBill
-        console.log('🔒 [LockModal] Wallet insufficient, opening top-up modal');
-        setShowTopupModal(true);
-      }
-    } else {
-      // PayBill selected
-      if (paybillBalance >= lockFee) {
-        // PayBill has enough - proceed with lock
-        await executeLock();
-      } else {
-        // PayBill insufficient - open top-up modal
-        console.log('🔒 [LockModal] PayBill insufficient, opening top-up modal');
-        setShowTopupModal(true);
-      }
-    }
-  }, [walletBalance, paybillBalance, lockFee, selectedPaymentMethod, executeLock]);
-
-  // Handle successful top-up - auto-lock
-  const handleTopupSuccess = useCallback(async (newBalance: number) => {
-    console.log('🔒 [LockModal] Top-up callback received! Balance from modal:', newBalance);
-    setShowTopupModal(false);
-
-    // Always fetch the actual balance from the server to ensure accuracy
-    console.log('🔒 [LockModal] Fetching actual PayBill balance from server...');
-    try {
-      const response = await paybillApi.getBalance();
-      if (response.success && response.data) {
-        const actualBalance = response.data.paybillBalance || 0;
-        console.log('🔒 [LockModal] Actual PayBill balance from server:', actualBalance);
-        setPaybillBalanceState(actualBalance);
-
-        // Only proceed with auto-lock if actual balance is sufficient
-        if (actualBalance >= lockFee) {
-          console.log('🔒 [LockModal] Balance sufficient, setting up auto-lock with PayBill...');
-          setSelectedPaymentMethod('paybill');
-          setPendingAutoLock(true);
-        } else {
-          console.error('🔒 [LockModal] Balance still insufficient after top-up. Expected:', lockFee, 'Got:', actualBalance);
-          setError(`Top-up succeeded but balance (₹${actualBalance}) is still less than lock fee (₹${lockFee}). Please try again.`);
-        }
-      } else {
-        console.error('🔒 [LockModal] Failed to verify balance:', response.error);
-        // Fall back to the balance passed from modal
-        setPaybillBalanceState(newBalance);
-        if (newBalance >= lockFee) {
-          setSelectedPaymentMethod('paybill');
-          setPendingAutoLock(true);
-        }
-      }
-    } catch (error) {
-      console.error('🔒 [LockModal] Error fetching balance after top-up:', error);
-      // Fall back to the balance passed from modal
-      setPaybillBalanceState(newBalance);
-      if (newBalance >= lockFee) {
-        setSelectedPaymentMethod('paybill');
-        setPendingAutoLock(true);
-      }
-    }
-  }, [lockFee]);
-
-  // Auto-execute lock after top-up
-  useEffect(() => {
-    if (pendingAutoLock && paybillBalanceState >= lockFee) {
-      console.log('🔒 [LockModal] Auto-executing lock after top-up...');
-      console.log('🔒 [LockModal] PayBill balance:', paybillBalanceState, 'Lock fee:', lockFee);
-      executeLock();
-    }
-  }, [pendingAutoLock, paybillBalanceState, lockFee, executeLock]);
-
-  const renderPaymentMethod = (method: PaymentMethod, label: string, balance: number, icon: string) => {
-    const isSelected = selectedPaymentMethod === method;
-    const hasBalance = balance >= lockFee;
-
-    return (
-      <TouchableOpacity
-        style={[
-          styles.paymentOption,
-          isSelected && styles.paymentOptionSelected,
-        ]}
-        onPress={() => {
-          triggerImpact('Light');
-          setSelectedPaymentMethod(method);
-          setError(null);
-        }}
-        activeOpacity={0.7}
-      >
-        <Ionicons
-          name={icon as any}
-          size={24}
-          color={isSelected ? '#7C3AED' : '#6B7280'}
-        />
-        <View style={styles.paymentInfo}>
-          <ThemedText style={[
-            styles.paymentLabel,
-            isSelected && styles.paymentLabelSelected,
-          ]}>
-            {label}
-          </ThemedText>
-          <ThemedText style={[
-            styles.paymentBalance,
-            !hasBalance && styles.paymentBalanceInsufficient,
-            hasBalance && styles.paymentBalanceSufficient,
-          ]}>
-            ₹{balance.toFixed(0)} {!hasBalance && '(Add Money)'}
-          </ThemedText>
-        </View>
-        {isSelected && (
-          <Ionicons name="checkmark-circle" size={24} color="#7C3AED" />
-        )}
-      </TouchableOpacity>
-    );
-  };
+  }, [productId, quantity, variant, hasEnoughBalance, lockFee, walletBalance, onLockSuccess, onClose]);
 
   return (
-    <>
-      <Modal
-        visible={visible}
-        transparent
-        animationType="slide"
-        onRequestClose={onClose}
-      >
-        <View style={styles.overlay}>
-          <View style={[styles.modalContainer, { backgroundColor }]}>
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.headerIcon}>
-                <Ionicons name="lock-closed" size={24} color="#7C3AED" />
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <View style={[styles.modalContainer, { backgroundColor }]}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerIcon}>
+              <Ionicons name="lock-closed" size={24} color="#7C3AED" />
+            </View>
+            <ThemedText style={styles.headerTitle}>Lock This Price</ThemedText>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            {/* Product Info */}
+            <View style={styles.productInfo}>
+              <ThemedText style={styles.productName} numberOfLines={2}>
+                {productName}
+              </ThemedText>
+              <View style={styles.productPriceRow}>
+                <ThemedText style={styles.productPriceLabel}>Current Price:</ThemedText>
+                <ThemedText style={styles.productPrice}>₹{totalPrice.toLocaleString()}</ThemedText>
               </View>
-              <ThemedText style={styles.headerTitle}>Lock This Price</ThemedText>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
+              {quantity > 1 && (
+                <ThemedText style={styles.quantityNote}>
+                  Qty: {quantity} × ₹{productPrice.toLocaleString()}
+                </ThemedText>
+              )}
             </View>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-              {/* Product Info */}
-              <View style={styles.productInfo}>
-                <ThemedText style={styles.productName} numberOfLines={2}>
-                  {productName}
-                </ThemedText>
-                <View style={styles.productPriceRow}>
-                  <ThemedText style={styles.productPriceLabel}>Current Price:</ThemedText>
-                  <ThemedText style={styles.productPrice}>₹{totalPrice.toLocaleString()}</ThemedText>
-                </View>
-                {quantity > 1 && (
-                  <ThemedText style={styles.quantityNote}>
-                    Qty: {quantity} × ₹{productPrice.toLocaleString()}
-                  </ThemedText>
-                )}
+            {/* Loading State */}
+            {isLoadingOptions ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#7C3AED" />
+                <ThemedText style={styles.loadingText}>Loading...</ThemedText>
               </View>
-
-              {/* Loading State */}
-              {isLoadingOptions ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#7C3AED" />
-                  <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-                </View>
-              ) : (
-                <>
-                  {/* Lock Duration Info - Fixed 3 hours */}
-                  <View style={styles.lockDurationCard}>
-                    <View style={styles.lockDurationHeader}>
-                      <Ionicons name="time-outline" size={20} color="#7C3AED" />
-                      <ThemedText style={styles.lockDurationTitle}>Lock Duration</ThemedText>
+            ) : (
+              <>
+                {/* Lock Duration Info - Fixed 3 hours */}
+                <View style={styles.lockDurationCard}>
+                  <View style={styles.lockDurationHeader}>
+                    <Ionicons name="time-outline" size={20} color="#7C3AED" />
+                    <ThemedText style={styles.lockDurationTitle}>Lock Duration</ThemedText>
+                  </View>
+                  <View style={styles.lockDurationContent}>
+                    <View style={styles.lockDurationBadge}>
+                      <ThemedText style={styles.lockDurationValue}>3 Hours</ThemedText>
                     </View>
-                    <View style={styles.lockDurationContent}>
-                      <View style={styles.lockDurationBadge}>
-                        <ThemedText style={styles.lockDurationValue}>3 Hours</ThemedText>
-                      </View>
-                      <ThemedText style={styles.lockDurationFeeText}>
-                        {LOCK_PERCENTAGE}% lock fee = <ThemedText style={styles.lockDurationFeeAmount}>₹{lockFee}</ThemedText>
-                      </ThemedText>
-                    </View>
-                    <ThemedText style={styles.lockDurationNote}>
-                      Price will be locked for 3 hours at the current rate
+                    <ThemedText style={styles.lockDurationFeeText}>
+                      {LOCK_PERCENTAGE}% lock fee = <ThemedText style={styles.lockDurationFeeAmount}>₹{lockFee}</ThemedText>
                     </ThemedText>
                   </View>
+                  <ThemedText style={styles.lockDurationNote}>
+                    Price will be locked for 3 hours at the current rate
+                  </ThemedText>
+                </View>
 
-                  {/* Payment Method */}
-                  <View style={styles.section}>
-                    <ThemedText style={styles.sectionTitle}>Payment Method</ThemedText>
-                    <View style={styles.paymentList}>
-                      {renderPaymentMethod('wallet', 'Wallet', walletBalance, 'wallet-outline')}
-                      {renderPaymentMethod('paybill', 'PayBill', paybillBalance, 'card-outline')}
-                    </View>
-                  </View>
-
-                  {/* Fee Summary */}
-                  <View style={styles.summarySection}>
-                    <View style={styles.summaryRow}>
-                      <ThemedText style={styles.summaryLabel}>Lock Fee ({LOCK_PERCENTAGE}%)</ThemedText>
-                      <ThemedText style={styles.summaryValue}>₹{lockFee}</ThemedText>
-                    </View>
-                    <View style={styles.summaryNote}>
-                      <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
-                      <ThemedText style={styles.summaryNoteText}>
-                        This amount will be deducted from your final payment at checkout
+                {/* Wallet Balance */}
+                <View style={styles.section}>
+                  <ThemedText style={styles.sectionTitle}>Payment from Wallet</ThemedText>
+                  <View style={styles.walletCard}>
+                    <Ionicons name="wallet-outline" size={24} color="#7C3AED" />
+                    <View style={styles.walletInfo}>
+                      <ThemedText style={styles.walletLabel}>Available Balance</ThemedText>
+                      <ThemedText style={[
+                        styles.walletBalance,
+                        hasEnoughBalance ? styles.balanceSufficient : styles.balanceInsufficient,
+                      ]}>
+                        ₹{walletBalance.toFixed(0)}
                       </ThemedText>
                     </View>
-                  </View>
-
-                  {/* Error Message */}
-                  {error && (
-                    <View style={styles.errorContainer}>
-                      <Ionicons name="alert-circle" size={20} color="#EF4444" />
-                      <ThemedText style={styles.errorText}>{error}</ThemedText>
-                    </View>
-                  )}
-                </>
-              )}
-            </ScrollView>
-
-            {/* Footer */}
-            {!isLoadingOptions && (
-              <View style={styles.footer}>
-                <TouchableOpacity
-                  style={[
-                    styles.lockButton,
-                    isLoading && styles.lockButtonDisabled,
-                  ]}
-                  onPress={handleLockPress}
-                  disabled={isLoading}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient
-                    colors={!isLoading ? ['#7C3AED', '#6D28D9'] : ['#9CA3AF', '#6B7280']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.lockButtonGradient}
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : hasEnoughBalance ? (
-                      <>
-                        <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.lockButtonText}>
-                          Lock for ₹{lockFee}
-                        </ThemedText>
-                      </>
+                    {hasEnoughBalance ? (
+                      <Ionicons name="checkmark-circle" size={24} color="#10B981" />
                     ) : (
-                      <>
-                        <Ionicons name="add-circle" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.lockButtonText}>
-                          Add Money & Lock
-                        </ThemedText>
-                      </>
+                      <Ionicons name="alert-circle" size={24} color="#F59E0B" />
                     )}
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
+                  </View>
+                </View>
 
-      {/* Add Money Modal */}
-      <AddMoneyModal
-        visible={showTopupModal}
-        onClose={() => setShowTopupModal(false)}
-        onSuccess={handleTopupSuccess}
-        requiredAmount={lockFee}
-        currentBalance={paybillBalance}
-        discountPercentage={20}
-      />
-    </>
+                {/* Fee Summary */}
+                <View style={styles.summarySection}>
+                  <View style={styles.summaryRow}>
+                    <ThemedText style={styles.summaryLabel}>Lock Fee ({LOCK_PERCENTAGE}%)</ThemedText>
+                    <ThemedText style={styles.summaryValue}>₹{lockFee}</ThemedText>
+                  </View>
+                  <View style={styles.summaryNote}>
+                    <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
+                    <ThemedText style={styles.summaryNoteText}>
+                      This amount will be deducted from your final payment at checkout
+                    </ThemedText>
+                  </View>
+                </View>
+
+                {/* Error Message */}
+                {error && (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                    <ThemedText style={styles.errorText}>{error}</ThemedText>
+                  </View>
+                )}
+
+                {/* Insufficient Balance Warning */}
+                {!hasEnoughBalance && (
+                  <View style={styles.warningContainer}>
+                    <Ionicons name="wallet-outline" size={20} color="#F59E0B" />
+                    <ThemedText style={styles.warningText}>
+                      Add ₹{(lockFee - walletBalance).toFixed(0)} to your wallet to lock this price
+                    </ThemedText>
+                  </View>
+                )}
+              </>
+            )}
+          </ScrollView>
+
+          {/* Footer */}
+          {!isLoadingOptions && (
+            <View style={styles.footer}>
+              <TouchableOpacity
+                style={[
+                  styles.lockButton,
+                  (isLoading || !hasEnoughBalance) && styles.lockButtonDisabled,
+                ]}
+                onPress={executeLock}
+                disabled={isLoading || !hasEnoughBalance}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={hasEnoughBalance && !isLoading ? ['#7C3AED', '#6D28D9'] : ['#9CA3AF', '#6B7280']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.lockButtonGradient}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
+                      <ThemedText style={styles.lockButtonText}>
+                        {hasEnoughBalance ? `Lock for ₹${lockFee}` : 'Insufficient Balance'}
+                      </ThemedText>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -606,44 +450,32 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: Spacing.sm,
   },
-  paymentList: {
-    gap: Spacing.sm,
-  },
-  paymentOption: {
+  walletCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.base,
     borderRadius: BorderRadius.lg,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  paymentOptionSelected: {
     borderColor: '#7C3AED',
     backgroundColor: '#FAF5FF',
   },
-  paymentInfo: {
+  walletInfo: {
     flex: 1,
     marginLeft: Spacing.sm,
   },
-  paymentLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  paymentLabelSelected: {
-    color: '#7C3AED',
-  },
-  paymentBalance: {
-    fontSize: 13,
+  walletLabel: {
+    fontSize: 14,
     color: '#6B7280',
-    marginTop: 2,
   },
-  paymentBalanceInsufficient: {
-    color: '#F59E0B',
+  walletBalance: {
+    fontSize: 18,
+    fontWeight: '700',
   },
-  paymentBalanceSufficient: {
+  balanceSufficient: {
     color: '#10B981',
+  },
+  balanceInsufficient: {
+    color: '#F59E0B',
   },
   summarySection: {
     backgroundColor: '#F9FAFB',
@@ -690,6 +522,20 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: '#EF4444',
+  },
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.xs,
+    marginBottom: Spacing.lg,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#D97706',
   },
   loadingContainer: {
     alignItems: 'center',

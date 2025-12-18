@@ -3,7 +3,7 @@
  *
  * Final payment screen with:
  * - Bill summary & discount breakdown
- * - Coin redemption (ReZ Coins, Promo Coins, PayBill)
+ * - Coin redemption (ReZ Coins, Promo Coins)
  * - Hybrid payment support (coins + UPI/card)
  * - Payment method selection
  */
@@ -50,7 +50,6 @@ const stripePromise = loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY 
 const DEFAULT_COIN_REDEMPTION: CoinRedemption = {
   rezCoins: 0,
   promoCoins: 0,
-  payBill: 0,
   totalAmount: 0,
 };
 
@@ -154,12 +153,6 @@ export default function PaymentScreen() {
           balance: walletBalances.promoCoins,
           icon: 'gift',
         },
-        {
-          type: 'payBill',
-          name: 'PayBill Balance',
-          balance: walletBalances.payBillBalance,
-          icon: 'wallet',
-        },
       ]);
 
       // Load store payment settings
@@ -205,7 +198,7 @@ export default function PaymentScreen() {
   };
 
   const getMaxUsableCoins = useCallback(
-    (coinType: 'rezCoins' | 'promoCoins' | 'payBill'): number => {
+    (coinType: 'rezCoins' | 'promoCoins'): number => {
       const balance = coinBalances.find((c) => c.type === coinType)?.balance || 0;
       const afterDiscount = billAmount - discountAmount;
       const maxAllowed = (afterDiscount * maxCoinRedemptionPercent) / 100;
@@ -221,10 +214,9 @@ export default function PaymentScreen() {
     [coinBalances, billAmount, discountAmount, maxCoinRedemptionPercent, coinRedemption]
   );
 
-  const handleCoinChange = (coinType: 'rezCoins' | 'promoCoins' | 'payBill', value: number) => {
+  const handleCoinChange = (coinType: 'rezCoins' | 'promoCoins', value: number) => {
     const newRedemption = { ...coinRedemption, [coinType]: Math.floor(value) };
-    newRedemption.totalAmount =
-      newRedemption.rezCoins + newRedemption.promoCoins + newRedemption.payBill;
+    newRedemption.totalAmount = newRedemption.rezCoins + newRedemption.promoCoins;
     setCoinRedemption(newRedemption);
   };
 
@@ -252,7 +244,6 @@ export default function PaymentScreen() {
     // Validate coin balances before submission
     const rezCoinBalance = coinBalances.find(c => c.type === 'rezCoins')?.balance || 0;
     const promoCoinBalance = coinBalances.find(c => c.type === 'promoCoins')?.balance || 0;
-    const payBillBalance = coinBalances.find(c => c.type === 'payBill')?.balance || 0;
 
     if (coinRedemption.rezCoins > rezCoinBalance) {
       setError(`Insufficient ReZ Coins. You have ₹${rezCoinBalance} but trying to use ₹${coinRedemption.rezCoins}`);
@@ -260,10 +251,6 @@ export default function PaymentScreen() {
     }
     if (coinRedemption.promoCoins > promoCoinBalance) {
       setError(`Insufficient Promo Coins. You have ₹${promoCoinBalance} but trying to use ₹${coinRedemption.promoCoins}`);
-      return;
-    }
-    if (coinRedemption.payBill > payBillBalance) {
-      setError(`Insufficient PayBill balance. You have ₹${payBillBalance} but trying to use ₹${coinRedemption.payBill}`);
       return;
     }
 

@@ -179,8 +179,8 @@ export default function ChallengesPage() {
 
       // Get coin balance from wallet
       if (walletRes.success && walletRes.data) {
-        const wasilCoin = walletRes.data.coins.find((c: any) => c.type === 'wasil');
-        setCoinBalance(wasilCoin?.amount || 0);
+        const rezCoin = walletRes.data.coins.find((c: any) => c.type === 'rez');
+        setCoinBalance(rezCoin?.amount || 0);
       }
     } catch (error) {
       logger.error('Error loading challenges data:', error);

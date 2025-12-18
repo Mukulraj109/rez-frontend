@@ -127,7 +127,6 @@ export default function OrderConfirmationPage() {
       upi: 'UPI',
       cod: 'Cash on Delivery',
       netbanking: 'Net Banking',
-      paybill: 'PayBill',
     };
     return methods[method] || method;
   };

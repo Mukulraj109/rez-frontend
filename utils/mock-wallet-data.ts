@@ -11,10 +11,10 @@ import {
 
 // Mock Assets - Update paths as needed for your project structure
 const WALLET_ASSETS = {
-  wasilCoin: require('../assets/images/wasil-coin.png'),
+  rezCoin: require('../assets/images/wasil-coin.png'),
   promoCoin: require('../assets/images/promo-coin.png'),
   coinStack: require('../assets/images/coin-stack.png'),
-  cashbackCoin: require('../assets/images/wasil-coin.png'), // Using wasil as fallback
+  cashbackCoin: require('../assets/images/wasil-coin.png'), // Using rez as fallback
   rewardCoin: require('../assets/images/promo-coin.png'), // Using promo as fallback
 };
 
@@ -48,7 +48,7 @@ const createMockCoinBalance = (
   currency: DEFAULT_CURRENCY,
   formattedAmount: formatCurrency(amount),
   description: description || `There is no cap or limit on the uses of this coin`,
-  iconPath: type === 'wasil' ? WALLET_ASSETS.wasilCoin : WALLET_ASSETS.promoCoin,
+  iconPath: type === 'rez' ? WALLET_ASSETS.rezCoin : WALLET_ASSETS.promoCoin,
   backgroundColor: COIN_TYPES[type].color,
   isActive: true,
   earnedDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date in last 30 days
@@ -57,14 +57,14 @@ const createMockCoinBalance = (
 
 export const mockCoinBalances: CoinBalance[] = [
   createMockCoinBalance(
-    'wasil-001',
-    'wasil',
+    'rez-001',
+    'rez',
     1955,
     'There is no cap or limit on the uses of this coin'
   ),
   createMockCoinBalance(
     'promo-001',
-    'promotion',
+    'promo',
     120,
     'There is no cap or limit on the uses of this coin'
   ),
@@ -97,7 +97,7 @@ export const mockTransactions: WalletTransaction[] = [
   createMockTransaction(
     'txn-001',
     'earned',
-    'wasil',
+    'rez',
     50,
     'Cashback from purchase at Reliance Trends',
     1
@@ -105,7 +105,7 @@ export const mockTransactions: WalletTransaction[] = [
   createMockTransaction(
     'txn-002',
     'spent',
-    'promotion',
+    'promo',
     25,
     'Used for discount on fashion items',
     2
@@ -113,7 +113,7 @@ export const mockTransactions: WalletTransaction[] = [
   createMockTransaction(
     'txn-003',
     'earned',
-    'promotion',
+    'promo',
     75,
     'Welcome bonus promotion',
     3
@@ -121,7 +121,7 @@ export const mockTransactions: WalletTransaction[] = [
   createMockTransaction(
     'txn-004',
     'earned',
-    'wasil',
+    'rez',
     30,
     'Review reward for product feedback',
     5
@@ -129,7 +129,7 @@ export const mockTransactions: WalletTransaction[] = [
   createMockTransaction(
     'txn-005',
     'spent',
-    'wasil',
+    'rez',
     100,
     'Purchase discount applied',
     7

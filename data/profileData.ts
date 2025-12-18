@@ -296,10 +296,10 @@ export const profileMenuListItems: ProfileMenuListItem[] = [
     showArrow: true,
   },
   {
-    id: 'wasilcoin',
-    title: 'RezCoin',
-    icon: 'logo-bitcoin',
-    route: '/wasilcoin',
+    id: 'rezcoin',
+    title: 'ReZ Coins',
+    icon: 'diamond',
+    route: '/wallet',
     showArrow: true,
   },
   {

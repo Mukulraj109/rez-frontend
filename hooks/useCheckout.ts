@@ -14,7 +14,6 @@ import cartService from '@/services/cartApi';
 import ordersService from '@/services/ordersApi';
 import walletApi from '@/services/walletApi';
 import couponService from '@/services/couponApi';
-import paybillApi from '@/services/paybillApi';
 import { storePromoCoinApi } from '@/services/storePromoCoinApi';
 import { createRazorpayPayment } from '@/services/razorpayApi';
 import { mapBackendCartToFrontend, mapFrontendCheckoutToBackendOrder } from '@/utils/dataMappers';
@@ -24,7 +23,6 @@ import { useCart } from '@/contexts/CartContext';
 export const useCheckout = (): UseCheckoutReturn => {
   const { actions: cartActions } = useCart();
   const [state, setState] = useState<CheckoutPageState>(CheckoutData.initialState);
-  const [paybillBalance, setPaybillBalance] = useState<number>(0);
 
   // Initialize checkout data
   useEffect(() => {
@@ -113,7 +111,7 @@ export const useCheckout = (): UseCheckoutReturn => {
 
           // NEW: Fetch real wallet data
           let realCoinSystem: CoinSystem = {
-            wasilCoin: { 
+            rezCoin: { 
               available: 0, 
               used: 0, 
               conversionRate: 1, 
@@ -138,13 +136,13 @@ export const useCheckout = (): UseCheckoutReturn => {
             const walletResponse = await walletApi.getBalance();
 
             if (walletResponse.success && walletResponse.data) {
-              const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
+              const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
               const promoCoin = walletResponse.data.coins.find((c: any) => c.type === 'promotion');
 
               realCoinSystem = {
                 ...realCoinSystem,
-                wasilCoin: {
-                  available: wasilCoin?.amount || 0,
+                rezCoin: {
+                  available: rezCoin?.amount || 0,
                   used: 0,
                   conversionRate: 1,
                   maxUsagePercentage: 100 // REZ coins can be used up to 100% of order value
@@ -184,20 +182,6 @@ export const useCheckout = (): UseCheckoutReturn => {
             }
           } catch (storeCoinsError) {
             console.error('💎 [Checkout] Failed to load store promo coins:', storeCoinsError);
-          }
-
-          // Fetch PayBill balance
-          try {
-
-            const paybillResponse = await paybillApi.getBalance();
-
-            if (paybillResponse.success && paybillResponse.data) {
-              setPaybillBalance(paybillResponse.data.paybillBalance || 0);
-
-            }
-          } catch (paybillError) {
-            console.error('🎟️ [Checkout] Failed to load PayBill balance:', paybillError);
-            setPaybillBalance(0);
           }
 
           // Fetch real coupons from API - GET ALL AVAILABLE COUPONS, not just user's claimed ones
@@ -249,7 +233,7 @@ export const useCheckout = (): UseCheckoutReturn => {
 
       // Fallback to mock data + real wallet
       let realCoinSystem: CoinSystem = {
-        wasilCoin: { 
+        rezCoin: { 
           available: 0, 
           used: 0, 
           conversionRate: 1, 
@@ -274,13 +258,13 @@ export const useCheckout = (): UseCheckoutReturn => {
         const walletResponse = await walletApi.getBalance();
 
         if (walletResponse.success && walletResponse.data) {
-          const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
+          const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
           const promoCoin = walletResponse.data.coins.find((c: any) => c.type === 'promotion');
 
           realCoinSystem = {
             ...realCoinSystem,
-            wasilCoin: {
-              available: wasilCoin?.amount || 0,
+            rezCoin: {
+              available: rezCoin?.amount || 0,
               used: 0,
               conversionRate: 1,
               maxUsagePercentage: 100
@@ -294,7 +278,7 @@ export const useCheckout = (): UseCheckoutReturn => {
           };
 
           console.log('💳 [Checkout] Loaded wallet coins:', {
-            wasil: realCoinSystem.wasilCoin.available,
+            rez: realCoinSystem.rezCoin.available,
             promo: realCoinSystem.promoCoin.available
           });
         }
@@ -309,20 +293,6 @@ export const useCheckout = (): UseCheckoutReturn => {
         // Note: In fallback mode, store ID might not be available yet
       } catch (storeCoinsError) {
         console.error('💎 [Checkout] Failed to load store promo coins (fallback):', storeCoinsError);
-      }
-
-      // Fetch PayBill balance (fallback)
-      try {
-        console.log('🎟️ [Checkout] Loading PayBill balance (fallback)...');
-        const paybillResponse = await paybillApi.getBalance();
-
-        if (paybillResponse.success && paybillResponse.data) {
-          setPaybillBalance(paybillResponse.data.paybillBalance || 0);
-          console.log('🎟️ [Checkout] PayBill balance:', paybillResponse.data.paybillBalance);
-        }
-      } catch (paybillError) {
-        console.error('🎟️ [Checkout] Failed to load PayBill balance (fallback):', paybillError);
-        setPaybillBalance(0);
       }
 
       // Fetch real coupons from API (fallback) - GET ALL AVAILABLE COUPONS
@@ -375,7 +345,7 @@ export const useCheckout = (): UseCheckoutReturn => {
 
   const updateBillSummary = useCallback(() => {
     const coinUsage = {
-      wasil: state.coinSystem.wasilCoin.used,
+      rez: state.coinSystem.rezCoin.used,
       promo: state.coinSystem.promoCoin.used,
     };
     
@@ -422,7 +392,7 @@ export const useCheckout = (): UseCheckoutReturn => {
       if (response.success && response.data) {
         // Calculate new bill summary with coupon discount
         const coinUsage = {
-          wasil: state.coinSystem.wasilCoin.used,
+          rez: state.coinSystem.rezCoin.used,
           promo: state.coinSystem.promoCoin.used,
         };
 
@@ -440,7 +410,7 @@ export const useCheckout = (): UseCheckoutReturn => {
         // Recalculate totalPayable with promo discount
         const subtotal = newBillSummary.itemTotal + newBillSummary.getAndItemTotal;
         const totalBeforeDiscount = subtotal + newBillSummary.platformFee + newBillSummary.deliveryFee + newBillSummary.taxes;
-        const totalAfterDiscount = totalBeforeDiscount - response.data.discount - coinUsage.wasil - coinUsage.promo;
+        const totalAfterDiscount = totalBeforeDiscount - response.data.discount - coinUsage.rez - coinUsage.promo;
         newBillSummary.totalPayable = Math.max(0, Math.round(totalAfterDiscount));
 
         console.log('🎟️ [Checkout] New bill summary after coupon:', newBillSummary);
@@ -487,7 +457,7 @@ export const useCheckout = (): UseCheckoutReturn => {
   const removePromoCode = useCallback(() => {
     setState(prev => {
       const coinUsage = {
-        wasil: prev.coinSystem.wasilCoin.used,
+        rez: prev.coinSystem.rezCoin.used,
         promo: prev.coinSystem.promoCoin.used,
       };
       
@@ -507,10 +477,10 @@ export const useCheckout = (): UseCheckoutReturn => {
     });
   }, []);
 
-  const toggleWasilCoin = useCallback((enabled: boolean) => {
+  const toggleRezCoin = useCallback((enabled: boolean) => {
     setState(prev => {
       // Check if user has any coins
-      if (enabled && prev.coinSystem.wasilCoin.available === 0) {
+      if (enabled && prev.coinSystem.rezCoin.available === 0) {
 
         // Don't toggle if no coins
         return prev;
@@ -536,18 +506,18 @@ export const useCheckout = (): UseCheckoutReturn => {
       const subtotalBeforeCoins = Math.max(0, itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes - promoDiscount);
 
       // REZ coins have 1:1 conversion (1 coin = 1 rupee) and can be used up to available amount
-      const coinsToUse = enabled ? Math.min(Number(prev.coinSystem.wasilCoin.available) || 0, subtotalBeforeCoins) : 0;
+      const coinsToUse = enabled ? Math.min(Number(prev.coinSystem.rezCoin.available) || 0, subtotalBeforeCoins) : 0;
 
       const newCoinSystem = {
         ...prev.coinSystem,
-        wasilCoin: {
-          ...prev.coinSystem.wasilCoin,
+        rezCoin: {
+          ...prev.coinSystem.rezCoin,
           used: coinsToUse,
         },
       };
       
       const coinUsage = {
-        wasil: coinsToUse,
+        rez: coinsToUse,
         promo: prev.coinSystem.promoCoin.used,
       };
       
@@ -586,7 +556,7 @@ export const useCheckout = (): UseCheckoutReturn => {
           : Math.min(Math.round((itemTotal * prev.appliedPromoCode.discountValue) / 100), prev.appliedPromoCode.maxDiscount || Infinity)
       ) : 0;
 
-      const subtotalAfterREZCoins = itemTotal + getAndItemTotal + prev.store.deliveryFee + platformFee + taxes - promoDiscount - prev.coinSystem.wasilCoin.used;
+      const subtotalAfterREZCoins = itemTotal + getAndItemTotal + prev.store.deliveryFee + platformFee + taxes - promoDiscount - prev.coinSystem.rezCoin.used;
 
       // Promo coins have 1:1 conversion and can be used up to 20% of remaining amount or available coins
       const maxPromoUsage = Math.floor(subtotalAfterREZCoins * prev.coinSystem.promoCoin.maxUsagePercentage / 100);
@@ -601,7 +571,7 @@ export const useCheckout = (): UseCheckoutReturn => {
       };
       
       const coinUsage = {
-        wasil: prev.coinSystem.wasilCoin.used,
+        rez: prev.coinSystem.rezCoin.used,
         promo: coinsToUse,
       };
       
@@ -640,7 +610,7 @@ export const useCheckout = (): UseCheckoutReturn => {
       ) : 0;
 
       // Calculate remaining after other coins (REZ and regular promo)
-      const subtotalAfterOtherCoins = itemTotal + getAndItemTotal + prev.store.deliveryFee + platformFee + taxes - promoDiscount - prev.coinSystem.wasilCoin.used - prev.coinSystem.promoCoin.used;
+      const subtotalAfterOtherCoins = itemTotal + getAndItemTotal + prev.store.deliveryFee + platformFee + taxes - promoDiscount - prev.coinSystem.rezCoin.used - prev.coinSystem.promoCoin.used;
 
       // Store promo coins can be used up to 30% of remaining amount or available coins
       const maxStorePromoUsage = Math.floor(subtotalAfterOtherCoins * prev.coinSystem.storePromoCoin.maxUsagePercentage / 100);
@@ -655,7 +625,7 @@ export const useCheckout = (): UseCheckoutReturn => {
       };
       
       const coinUsage = {
-        wasil: prev.coinSystem.wasilCoin.used,
+        rez: prev.coinSystem.rezCoin.used,
         promo: prev.coinSystem.promoCoin.used,
         storePromo: coinsToUse,
       };
@@ -675,13 +645,13 @@ export const useCheckout = (): UseCheckoutReturn => {
     });
   }, []);
 
-  const handleCustomCoinAmount = useCallback((coinType: 'wasil' | 'promo' | 'storePromo', amount: number) => {
+  const handleCustomCoinAmount = useCallback((coinType: 'rez' | 'promo' | 'storePromo', amount: number) => {
     setState(prev => {
 
       const coinSystem = prev.coinSystem;
-      const isWasil = coinType === 'wasil';
+      const isRez = coinType === 'rez';
       const isStorePromo = coinType === 'storePromo';
-      const coin = isWasil ? coinSystem.wasilCoin : (isStorePromo ? coinSystem.storePromoCoin : coinSystem.promoCoin);
+      const coin = isRez ? coinSystem.rezCoin : (isStorePromo ? coinSystem.storePromoCoin : coinSystem.promoCoin);
       
       // Validate amount
       if (amount <= 0 || amount > coin.available) {
@@ -708,9 +678,9 @@ export const useCheckout = (): UseCheckoutReturn => {
       
       let maxAllowed = Math.max(0, itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes - promoDiscount);
       
-      if (!isWasil) {
-        // For promo/store promo coins, subtract wasil coins already used
-        maxAllowed -= coinSystem.wasilCoin.used;
+      if (!isRez) {
+        // For promo/store promo coins, subtract rez coins already used
+        maxAllowed -= coinSystem.rezCoin.used;
         
         if (isStorePromo) {
           // Store promo coins: also subtract regular promo coins and apply 30% limit
@@ -726,15 +696,15 @@ export const useCheckout = (): UseCheckoutReturn => {
 
       const newCoinSystem = {
         ...coinSystem,
-        [isWasil ? 'wasilCoin' : (isStorePromo ? 'storePromoCoin' : 'promoCoin')]: {
+        [isRez ? 'rezCoin' : (isStorePromo ? 'storePromoCoin' : 'promoCoin')]: {
           ...coin,
           used: finalAmount,
         },
       };
       
       const coinUsage = {
-        wasil: isWasil ? finalAmount : coinSystem.wasilCoin.used,
-        promo: (isWasil || isStorePromo) ? coinSystem.promoCoin.used : finalAmount,
+        rez: isRez ? finalAmount : coinSystem.rezCoin.used,
+        promo: (isRez || isStorePromo) ? coinSystem.promoCoin.used : finalAmount,
         storePromo: isStorePromo ? finalAmount : (coinSystem.storePromoCoin?.used || 0),
       };
       
@@ -792,10 +762,10 @@ export const useCheckout = (): UseCheckoutReturn => {
 
       // Add coinsUsed to order data
       const coinsUsed = {
-        wasilCoins: state.coinSystem.wasilCoin.used || 0,
+        rezCoins: state.coinSystem.rezCoin.used || 0,
         promoCoins: state.coinSystem.promoCoin.used || 0,
         storePromoCoins: state.coinSystem.storePromoCoin.used || 0,
-        totalCoinsValue: (state.coinSystem.wasilCoin.used || 0) +
+        totalCoinsValue: (state.coinSystem.rezCoin.used || 0) +
           (state.coinSystem.promoCoin.used || 0) +
           (state.coinSystem.storePromoCoin.used || 0)
       };
@@ -844,19 +814,19 @@ export const useCheckout = (): UseCheckoutReturn => {
     const totalPayable = state.billSummary.totalPayable;
 
     // Calculate total available balance
-    const totalAvailableBalance = state.coinSystem.wasilCoin.available + state.coinSystem.promoCoin.available;
+    const totalAvailableBalance = state.coinSystem.rezCoin.available + state.coinSystem.promoCoin.available;
 
     // Calculate coins that will be used (use toggled amounts, or calculate if not toggled)
-    const wasilCoinsUsed = state.coinSystem.wasilCoin.used > 0
-      ? state.coinSystem.wasilCoin.used
-      : Math.min(state.coinSystem.wasilCoin.available, totalPayable);
+    const rezCoinsUsed = state.coinSystem.rezCoin.used > 0
+      ? state.coinSystem.rezCoin.used
+      : Math.min(state.coinSystem.rezCoin.available, totalPayable);
 
-    const remainingAfterWasil = Math.max(0, totalPayable - wasilCoinsUsed);
+    const remainingAfterWasil = Math.max(0, totalPayable - rezCoinsUsed);
     const promoCoinsUsed = state.coinSystem.promoCoin.used > 0
       ? state.coinSystem.promoCoin.used
       : Math.min(state.coinSystem.promoCoin.available, remainingAfterWasil);
 
-    const totalCoinsToUse = wasilCoinsUsed + promoCoinsUsed;
+    const totalCoinsToUse = rezCoinsUsed + promoCoinsUsed;
 
     // Validate sufficient balance (check total available, not just used)
     if (totalPayable > 0 && totalAvailableBalance < totalPayable) {
@@ -912,10 +882,10 @@ export const useCheckout = (): UseCheckoutReturn => {
 
       // Add coinsUsed to order data
       const coinsUsedData = {
-        wasilCoins: state.coinSystem.wasilCoin.used || 0,
+        rezCoins: state.coinSystem.rezCoin.used || 0,
         promoCoins: state.coinSystem.promoCoin.used || 0,
         storePromoCoins: state.coinSystem.storePromoCoin.used || 0,
-        totalCoinsValue: (state.coinSystem.wasilCoin.used || 0) +
+        totalCoinsValue: (state.coinSystem.rezCoin.used || 0) +
           (state.coinSystem.promoCoin.used || 0) +
           (state.coinSystem.storePromoCoin.used || 0)
       };
@@ -964,112 +934,6 @@ export const useCheckout = (): UseCheckoutReturn => {
   }, [state.coinSystem, state.billSummary, state.items, state.store, state.appliedPromoCode, cartActions]);
 
   /**
-   * Handle PayBill payment
-   * Process payment using PayBill balance and create order
-   */
-  const handlePayBillPayment = useCallback(async () => {
-
-    const totalPayable = state.billSummary.totalPayable;
-
-    // Validate sufficient PayBill balance
-    if (totalPayable > 0 && paybillBalance < totalPayable) {
-      const shortfall = totalPayable - paybillBalance;
-      console.error('🎟️ [Checkout] Insufficient PayBill balance:', { shortfall, totalPayable, paybillBalance });
-      setState(prev => ({
-        ...prev,
-        error: `Insufficient PayBill balance. You need ₹${shortfall} more. Add money to PayBill to continue.`
-      }));
-      return;
-    }
-
-    setState(prev => ({ ...prev, loading: true, currentStep: 'processing' }));
-
-    try {
-      // Step 1: Use PayBill balance for payment
-
-      const paymentResponse = await paybillApi.useBalance({
-        amount: totalPayable,
-        orderId: undefined, // Will be set after order creation
-        description: `Purchase of ${state.items.length} item(s) from ${state.store.name}`
-      });
-
-      if (!paymentResponse.success || !paymentResponse.data) {
-        console.error('🎟️ [Checkout] PayBill payment failed:', paymentResponse.error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: paymentResponse.error || 'PayBill payment failed',
-          currentStep: 'checkout'
-        }));
-        return;
-      }
-
-      // Update local PayBill balance
-      setPaybillBalance(paymentResponse.data.paybillBalance || 0);
-
-      // Step 2: Create order with PayBill payment method
-
-      const orderData = mapFrontendCheckoutToBackendOrder({
-        deliveryAddress: { name: 'Customer', phone: '0000000000', addressLine1: state.store.name, city: 'City', state: 'State', pincode: '000000' },
-        paymentMethod: 'paybill',
-        specialInstructions: '',
-        couponCode: state.appliedPromoCode?.code,
-      });
-
-      // Add coinsUsed to order data
-      const coinsUsedPaybill = {
-        wasilCoins: state.coinSystem.wasilCoin.used || 0,
-        promoCoins: state.coinSystem.promoCoin.used || 0,
-        storePromoCoins: state.coinSystem.storePromoCoin.used || 0,
-        totalCoinsValue: (state.coinSystem.wasilCoin.used || 0) +
-          (state.coinSystem.promoCoin.used || 0) +
-          (state.coinSystem.storePromoCoin.used || 0)
-      };
-      (orderData as any).coinsUsed = coinsUsedPaybill;
-
-      const orderResponse = await ordersService.createOrder(orderData);
-
-      if (!orderResponse.success || !orderResponse.data) {
-        console.error('🎟️ [Checkout] Order creation failed after payment:', orderResponse.error);
-        // Payment succeeded but order failed - this is a critical issue
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Payment processed but order creation failed. Please contact support.',
-          currentStep: 'checkout'
-        }));
-        return;
-      }
-
-      // Step 3: Clear cart (both API and context state)
-      try {
-        await cartService.clearCart();
-        await cartActions.clearCart();
-      } catch (clearError) {
-        console.error('🎟️ [Checkout] Failed to clear cart:', clearError);
-        // Non-critical error, continue
-      }
-
-      // Step 4: Navigate to success page
-      setState(prev => ({ ...prev, currentStep: 'success', loading: false }));
-
-      const orderId = orderResponse.data.id || orderResponse.data._id;
-      const transactionId = paymentResponse.data.transaction?.transactionId || `PAYBILL_${Date.now()}`;
-
-      router.replace(`/payment-success?orderId=${orderId}&transactionId=${transactionId}&paymentMethod=paybill`);
-
-    } catch (error) {
-      console.error('🎟️ [Checkout] PayBill payment error:', error);
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'PayBill payment failed',
-        currentStep: 'checkout'
-      }));
-    }
-  }, [paybillBalance, state.billSummary, state.items, state.store, state.appliedPromoCode, cartActions]);
-
-  /**
    * Handle Cash on Delivery (COD) payment
    * Simplest payment method - create order directly with COD payment method
    */
@@ -1089,10 +953,10 @@ export const useCheckout = (): UseCheckoutReturn => {
 
       // Add coins used information if any
       const coinsUsed = {
-        wasilCoins: state.coinSystem.wasilCoin.used || 0,
+        rezCoins: state.coinSystem.rezCoin.used || 0,
         promoCoins: state.coinSystem.promoCoin.used || 0,
         storePromoCoins: state.coinSystem.storePromoCoin.used || 0,
-        totalCoinsValue: (state.coinSystem.wasilCoin.used || 0) + 
+        totalCoinsValue: (state.coinSystem.rezCoin.used || 0) + 
                          (state.coinSystem.promoCoin.used || 0) + 
                          (state.coinSystem.storePromoCoin.used || 0),
       };
@@ -1159,10 +1023,10 @@ export const useCheckout = (): UseCheckoutReturn => {
     try {
       // Calculate coins used
       const coinsUsed = {
-        wasilCoins: state.coinSystem.wasilCoin.used || 0,
+        rezCoins: state.coinSystem.rezCoin.used || 0,
         promoCoins: state.coinSystem.promoCoin.used || 0,
         storePromoCoins: state.coinSystem.storePromoCoin.used || 0,
-        totalCoinsValue: (state.coinSystem.wasilCoin.used || 0) + 
+        totalCoinsValue: (state.coinSystem.rezCoin.used || 0) + 
                          (state.coinSystem.promoCoin.used || 0) + 
                          (state.coinSystem.storePromoCoin.used || 0),
       };
@@ -1395,7 +1259,7 @@ export const useCheckout = (): UseCheckoutReturn => {
 
           // Calculate new bill summary with coupon discount
           const coinUsage = {
-            wasil: state.coinSystem.wasilCoin.used,
+            rez: state.coinSystem.rezCoin.used,
             promo: state.coinSystem.promoCoin.used,
           };
 
@@ -1413,7 +1277,7 @@ export const useCheckout = (): UseCheckoutReturn => {
           // Recalculate totalPayable with promo discount
           const subtotal = newBillSummary.itemTotal + newBillSummary.getAndItemTotal;
           const totalBeforeDiscount = subtotal + newBillSummary.platformFee + newBillSummary.deliveryFee + newBillSummary.taxes;
-          const totalAfterDiscount = totalBeforeDiscount - response.data.discount - coinUsage.wasil - coinUsage.promo;
+          const totalAfterDiscount = totalBeforeDiscount - response.data.discount - coinUsage.rez - coinUsage.promo;
           newBillSummary.totalPayable = Math.max(0, Math.round(totalAfterDiscount));
 
           setState(prev => ({
@@ -1447,15 +1311,15 @@ export const useCheckout = (): UseCheckoutReturn => {
     }
   }, [state.availablePromoCodes, state.items, state.store, state.coinSystem, applyPromoCode]);
 
-  const handleCoinToggle = useCallback((coinType: 'wasil' | 'promo' | 'storePromo', enabled: boolean) => {
-    if (coinType === 'wasil') {
-      toggleWasilCoin(enabled);
+  const handleCoinToggle = useCallback((coinType: 'rez' | 'promo' | 'storePromo', enabled: boolean) => {
+    if (coinType === 'rez') {
+      toggleRezCoin(enabled);
     } else if (coinType === 'promo') {
       togglePromoCoin(enabled);
     } else if (coinType === 'storePromo') {
       toggleStorePromoCoin(enabled);
     }
-  }, [toggleWasilCoin, togglePromoCoin, toggleStorePromoCoin]);
+  }, [toggleRezCoin, togglePromoCoin, toggleStorePromoCoin]);
 
   const handlePaymentMethodSelect = useCallback((method: PaymentMethod) => {
     selectPaymentMethod(method);
@@ -1486,11 +1350,10 @@ export const useCheckout = (): UseCheckoutReturn => {
 
   return {
     state,
-    paybillBalance,
     actions: {
       applyPromoCode,
       removePromoCode,
-      toggleWasilCoin,
+      toggleRezCoin,
       togglePromoCoin,
       selectPaymentMethod,
       updateBillSummary,
@@ -1505,7 +1368,6 @@ export const useCheckout = (): UseCheckoutReturn => {
       handleProceedToPayment,
       handleBackNavigation,
       handleWalletPayment,
-      handlePayBillPayment,
       handleCODPayment,
       handleRazorpayPayment,
       removePromoCode,

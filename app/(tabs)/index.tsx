@@ -218,13 +218,20 @@ export default function HomeScreen() {
     const loadCategories = async () => {
       try {
         setCategoriesLoading(true);
-        const [goingOutRes, homeDeliveryRes] = await Promise.all([
-          categoriesApi.getCategories({ type: 'going_out', isActive: true }),
-          categoriesApi.getCategories({ type: 'home_delivery', isActive: true }),
+        const [goingOutRes, homeDeliveryRes] = await Promise.allSettled([
+          categoriesApi.getCategories({ type: 'going_out' }),
+          categoriesApi.getCategories({ type: 'home_delivery' }),
         ]);
 
-        const goingOut = goingOutRes?.data || goingOutRes || [];
-        const homeDelivery = homeDeliveryRes?.data || homeDeliveryRes || [];
+        // Safely extract data from settled promises
+        const goingOut = goingOutRes.status === 'fulfilled' 
+          ? (Array.isArray(goingOutRes.value?.data) ? goingOutRes.value.data : 
+             Array.isArray(goingOutRes.value) ? goingOutRes.value : [])
+          : [];
+        const homeDelivery = homeDeliveryRes.status === 'fulfilled'
+          ? (Array.isArray(homeDeliveryRes.value?.data) ? homeDeliveryRes.value.data :
+             Array.isArray(homeDeliveryRes.value) ? homeDeliveryRes.value : [])
+          : [];
 
         const combined = [...goingOut, ...homeDelivery]
           .map((cat: any) => ({ ...cat, id: cat._id || cat.id || cat.slug }))
@@ -419,8 +426,8 @@ export default function HomeScreen() {
           const walletResponse = await walletApi.getBalance();
 
           if (walletResponse.success && walletResponse.data) {
-            const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
-            const actualWalletCoins = wasilCoin?.amount || 0;
+            const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
+            const actualWalletCoins = rezCoin?.amount || 0;
 
             // Calculate total savings from wallet statistics
             const walletStats = walletResponse.data.statistics;

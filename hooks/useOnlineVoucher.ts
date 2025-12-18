@@ -60,8 +60,8 @@ export const useOnlineVoucher = (): UseVoucherReturn => {
       const walletResponse = await walletApi.getBalance();
       
       if (walletResponse.success && walletResponse.data) {
-        const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
-        const userCoins = wasilCoin?.amount || 0;
+        const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
+        const userCoins = rezCoin?.amount || 0;
         
         setState(prev => ({ ...prev, userCoins }));
       }

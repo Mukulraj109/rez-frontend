@@ -43,7 +43,7 @@ export const stripeApi = {
         throw new Error('Invalid payment type. Must be card or upi');
       }
 
-      const response = await apiClient.post('/wallet/paybill/create-payment-intent', {
+      const response = await apiClient.post('/wallet/create-payment-intent', {
         amount: Math.round(amount * 100) / 100, // Ensure 2 decimal places
         bonusAmount: Math.round(bonusAmount * 100) / 100,
         paymentType,
@@ -82,7 +82,7 @@ export const stripeApi = {
         throw new Error('Payment intent ID is required');
       }
 
-      const response = await apiClient.post('/wallet/paybill/confirm-payment', {
+      const response = await apiClient.post('/wallet/confirm-payment', {
         paymentIntentId,
         timestamp: new Date().toISOString()
       });

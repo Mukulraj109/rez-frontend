@@ -59,8 +59,8 @@ export default function ProfilePage() {
         const walletResponse = await walletApi.getBalance();
         
         if (walletResponse.success && walletResponse.data) {
-          const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
-          const walletBalance = wasilCoin?.amount || 0;
+          const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
+          const walletBalance = rezCoin?.amount || 0;
 
           setUserPoints(walletBalance);
         } else {
@@ -88,8 +88,8 @@ export default function ProfilePage() {
           const walletResponse = await walletApi.getBalance();
           
           if (walletResponse.success && walletResponse.data) {
-            const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
-            const walletBalance = wasilCoin?.amount || 0;
+            const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
+            const walletBalance = rezCoin?.amount || 0;
             setUserPoints(walletBalance);
           }
         } catch (error) {
@@ -149,7 +149,7 @@ export default function ProfilePage() {
         // Navigate to home delivery products page
         router.push('/home-delivery');
         break;
-      case 'wasilcoin':
+      case 'rezcoin':
         // Connect to wallet/wasilcoin management
         router.push('/WalletScreen');
         break;
@@ -202,8 +202,8 @@ export default function ProfilePage() {
       const walletResponse = await walletApi.getBalance();
       
       if (walletResponse.success && walletResponse.data) {
-        const wasilCoin = walletResponse.data.coins.find((c: any) => c.type === 'wasil');
-        const walletBalance = wasilCoin?.amount || 0;
+        const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
+        const walletBalance = rezCoin?.amount || 0;
 
         setUserPoints(walletBalance);
       }
@@ -442,7 +442,7 @@ export default function ProfilePage() {
         const pendingCount = statistics.orders?.total - (statistics.orders?.completed || 0) - (statistics.orders?.cancelled || 0);
         return pendingCount > 0 ? pendingCount.toString() : undefined;
 
-      case 'wasilcoin':
+      case 'rezcoin':
         // RezCoin balance
         const balance = Math.round(statistics.wallet?.balance || 0);
         return balance > 0 ? balance.toString() : undefined;

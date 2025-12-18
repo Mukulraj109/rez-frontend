@@ -113,7 +113,7 @@ export interface LockedItem {
   lockFee?: number;
   lockFeePercentage?: number;
   lockDuration?: number;
-  paymentMethod?: 'wallet' | 'paybill' | 'upi';
+  paymentMethod?: 'wallet' | 'upi';
   paymentTransactionId?: string;
   lockPaymentStatus?: 'pending' | 'paid' | 'refunded' | 'forfeited' | 'applied';
   isPaidLock?: boolean;
@@ -125,7 +125,7 @@ export interface LockWithPaymentRequest {
   quantity?: number;
   variant?: { type: string; value: string };
   duration: 3; // 3 hours lock only
-  paymentMethod: 'wallet' | 'paybill' | 'upi';
+  paymentMethod: 'wallet' | 'upi';
 }
 
 // Lock fee option
@@ -155,7 +155,7 @@ export interface LockWithPaymentResponse {
     duration: number;
     expiresAt: string;
     transactionId: string;
-    paymentMethod: 'wallet' | 'paybill';
+    paymentMethod: 'wallet' | 'upi';
     message: string;
   };
 }
@@ -1119,7 +1119,7 @@ class CartService {
         };
       }
 
-      if (!['wallet', 'paybill', 'upi'].includes(data.paymentMethod)) {
+      if (!['wallet', 'upi'].includes(data.paymentMethod)) {
         return {
           success: false,
           error: 'Invalid payment method',

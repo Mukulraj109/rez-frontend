@@ -1,9 +1,29 @@
 import { ImageSourcePropType } from 'react-native';
 
+// Core Coin Types - Updated for new wallet design
+export type CoinType = 'rez' | 'branded' | 'promo';
+
+// Branded Coin Details (merchant-specific)
+export interface BrandedCoinDetails {
+  merchantId: string;
+  merchantName: string;
+  merchantLogo?: string;
+  merchantColor?: string;
+}
+
+// Promo Coin Details (limited-time)
+export interface PromoCoinDetails {
+  campaignId?: string;
+  campaignName?: string;
+  maxRedemptionPercentage: number; // Max 20% per bill
+  expiryDate: Date;
+  expiryCountdown?: string;
+}
+
 // Core Wallet Types
 export interface CoinBalance {
   id: string;
-  type: 'wasil' | 'promotion' | 'cashback' | 'reward';
+  type: CoinType;
   name: string;
   amount: number;
   currency: string;
@@ -11,17 +31,51 @@ export interface CoinBalance {
   description: string;
   iconPath: ImageSourcePropType;
   backgroundColor: string;
+  color: string; // Primary color (#00C06A for ReZ, merchant color for Branded, #FFC857 for Promo)
   isActive: boolean;
   expiryDate?: Date;
+  expiryCountdown?: string; // For promo coins
   restrictions?: string[];
   earnedDate?: Date;
   lastUsed?: Date;
+  // Branded coin specific
+  brandedDetails?: BrandedCoinDetails;
+  // Promo coin specific
+  promoDetails?: PromoCoinDetails;
+}
+
+// Branded Coin (for merchant-specific coins array)
+export interface BrandedCoin {
+  merchantId: string;
+  merchantName: string;
+  merchantLogo?: string;
+  merchantColor?: string;
+  amount: number;
+  formattedAmount: string;
+}
+
+// Savings Insights
+export interface SavingsInsights {
+  totalSaved: number;
+  thisMonth: number;
+  avgPerVisit: number;
+}
+
+// Smart Alert
+export interface SmartAlert {
+  id: string;
+  type: 'expiring' | 'low_balance' | 'offer' | 'promo';
+  message: string;
+  amount?: number;
+  expiryDate?: Date;
+  actionLabel?: string;
+  actionRoute?: string;
 }
 
 export interface WalletTransaction {
   id: string;
-  type: 'earned' | 'spent' | 'expired' | 'bonus';
-  coinType: 'wasil' | 'promotion' | 'cashback' | 'reward';
+  type: 'earned' | 'spent' | 'expired' | 'bonus' | 'transfer' | 'gift';
+  coinType: CoinType;
   amount: number;
   currency: string;
   formattedAmount: string;
@@ -29,17 +83,23 @@ export interface WalletTransaction {
   timestamp: Date;
   status: 'completed' | 'pending' | 'failed';
   merchantName?: string;
+  merchantLogo?: string;
   orderId?: string;
   balanceAfter: number;
 }
 
 export interface WalletData {
   userId: string;
-  totalBalance: number;
-  availableBalance: number; // Actual wallet balance (excludes paybill)
+  totalBalance: number; // Total value of all coins
+  availableBalance: number; // Available for spending
+  cashbackBalance: number; // Cashback balance
+  pendingRewards: number; // Pending rewards
   currency: string;
   formattedTotalBalance: string;
-  coins: CoinBalance[];
+  coins: CoinBalance[]; // ReZ and Promo coins
+  brandedCoins: BrandedCoin[]; // Merchant-specific coins
+  savingsInsights: SavingsInsights; // Savings tracking
+  smartAlerts?: SmartAlert[]; // Smart wallet alerts
   recentTransactions: WalletTransaction[];
   lastUpdated: Date;
   isActive: boolean;
@@ -92,32 +152,35 @@ export interface RefreshWalletRequest {
 }
 
 // Utility Types
-export type CoinType = 'wasil' | 'promotion' | 'cashback' | 'reward';
-export type TransactionType = 'earned' | 'spent' | 'expired' | 'bonus';
+export type TransactionType = 'earned' | 'spent' | 'expired' | 'bonus' | 'transfer' | 'gift';
 export type TransactionStatus = 'completed' | 'pending' | 'failed';
 export type WalletErrorCode = 'NETWORK_ERROR' | 'SERVER_ERROR' | 'PARSING_ERROR' | 'UNAUTHORIZED' | 'TIMEOUT';
 
-// Constants
-export const COIN_TYPES: Record<CoinType, { name: string; color: string; icon: string }> = {
-  wasil: {
-    name: 'Wasil Coin',
-    color: '#FFE9A9',
-    icon: 'wasil-coin.png'
+// Coin Usage Order - Promo > Branded > ReZ (automatic)
+export const COIN_USAGE_ORDER: CoinType[] = ['promo', 'branded', 'rez'];
+
+// Constants - Updated for new wallet design
+export const COIN_TYPES: Record<CoinType, { name: string; color: string; backgroundColor: string; icon: string; description: string }> = {
+  rez: {
+    name: 'ReZ Coins',
+    color: '#00C06A', // ReZ Green
+    backgroundColor: '#E8F5EE',
+    icon: 'rez-coin.png',
+    description: 'Universal rewards usable anywhere on ReZ'
   },
-  promotion: {
-    name: 'Promotion Coins',
-    color: '#E8F4FD',
-    icon: 'promo-coin.png'
+  branded: {
+    name: 'Branded Coins',
+    color: '#6366F1', // Default, actual color from merchant
+    backgroundColor: '#EEF2FF',
+    icon: 'branded-coin.png',
+    description: 'Earned from specific stores. Use at the same store.'
   },
-  cashback: {
-    name: 'Cashback Coins',
-    color: '#F0FDF4',
-    icon: 'cashback-coin.png'
-  },
-  reward: {
-    name: 'Reward Coins',
-    color: '#FDF2F8',
-    icon: 'reward-coin.png'
+  promo: {
+    name: 'Promo Coins',
+    color: '#FFC857', // ReZ Gold
+    backgroundColor: '#FEF9E7',
+    icon: 'promo-coin.png',
+    description: 'Special coins from campaigns & events'
   }
 };
 

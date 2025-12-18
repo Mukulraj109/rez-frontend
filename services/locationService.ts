@@ -228,20 +228,34 @@ class LocationService {
     try {
       const response = await this.apiClient.get('/location/current');
 
-      const locationData = response.data.data.location;
+      // Safely access nested properties
+      const locationData = response?.data?.data?.location || response?.data?.location || response?.data;
+      
+      if (!locationData || !locationData.coordinates) {
+        console.warn('⚠️ LocationService: No location data in response');
+        return null;
+      }
+      
+      // Handle both array and object coordinate formats
+      const lat = Array.isArray(locationData.coordinates) 
+        ? locationData.coordinates[1] 
+        : locationData.coordinates.latitude;
+      const lng = Array.isArray(locationData.coordinates) 
+        ? locationData.coordinates[0] 
+        : locationData.coordinates.longitude;
       
       return {
         coordinates: {
-          latitude: locationData.coordinates[1],
-          longitude: locationData.coordinates[0],
+          latitude: lat,
+          longitude: lng,
         },
         address: {
-          address: locationData.address,
-          city: locationData.city,
-          state: locationData.state,
+          address: locationData.address || '',
+          city: locationData.city || '',
+          state: locationData.state || '',
           country: 'India',
-          pincode: locationData.pincode,
-          formattedAddress: locationData.address,
+          pincode: locationData.pincode || '',
+          formattedAddress: locationData.address || '',
         },
         timezone: locationData.timezone,
         lastUpdated: new Date(),

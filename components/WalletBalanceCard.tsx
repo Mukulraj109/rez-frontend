@@ -60,12 +60,15 @@ const WalletBalanceCardComponent: React.FC<WalletBalanceCardProps> = ({
 
   const renderIcon = () => {
     if (imageError) {
+      // Icon based on coin type
+      const iconName = coin.type === 'rez' ? 'diamond' : coin.type === 'promo' ? 'gift' : 'star';
+      const iconColor = coin.color || '#00C06A';
       return (
         <View style={[styles.iconWrap, { backgroundColor: coin.backgroundColor }]}>
           <Ionicons
-            name={coin.type === 'wasil' ? 'diamond' : 'gift'}
+            name={iconName}
             size={26}
-            color="#5a349aff"
+            color={iconColor}
           />
         </View>
       );
@@ -104,7 +107,7 @@ const WalletBalanceCardComponent: React.FC<WalletBalanceCardProps> = ({
             )}
           </View>
 
-          <Text style={styles.amount}>{coin.formattedAmount}</Text>
+          <Text style={[styles.amount, { color: coin.color || '#00C06A' }]}>{coin.formattedAmount}</Text>
 
           {coin.description && (
             <Text style={styles.desc} numberOfLines={2}>

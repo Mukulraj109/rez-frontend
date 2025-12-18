@@ -161,11 +161,11 @@ export const walletTabs: WalletTab[] = [
     isActive: false, 
     count: mockTransactions.filter(t => t.category === 'VOUCHER').length 
   },
-  { 
-    id: 'WASIL_PAY', 
-    title: 'RezPay', 
-    isActive: false, 
-    count: mockTransactions.filter(t => t.category === 'REZ_PAY').length 
+  {
+    id: 'REZ_PAY',
+    title: 'RezPay',
+    isActive: false,
+    count: mockTransactions.filter(t => t.category === 'REZ_PAY').length
   },
 ];
 
@@ -198,9 +198,9 @@ export const recentTransactions = mockTransactions.slice(0, 3);
 export const savedPaymentMethods = [
   {
     id: 'pm_001',
-    type: 'WASIL_COIN',
-    title: 'WasilCoin Wallet',
-    subtitle: `${mockWalletBalance.availableCoins} WC available`,
+    type: 'REZ_COIN',
+    title: 'ReZ Coin Wallet',
+    subtitle: `${mockWalletBalance.availableCoins} RC available`,
     icon: 'wallet',
     isDefault: true,
     isEnabled: true,

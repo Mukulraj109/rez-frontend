@@ -126,13 +126,36 @@ class CacheService {
   }
 
   /**
+   * Convert Uint8Array to base64 string (web-compatible)
+   */
+  private uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  /**
+   * Convert base64 string to Uint8Array (web-compatible)
+   */
+  private base64ToUint8Array(base64: string): Uint8Array {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  /**
    * Compress data using pako
    */
   private compress(data: any): string {
     try {
       const jsonString = JSON.stringify(data);
       const compressed = pako.deflate(jsonString, { level: 6 });
-      return Buffer.from(compressed).toString('base64');
+      return this.uint8ArrayToBase64(compressed);
     } catch (error) {
       console.error('❌ [CACHE] Compression failed:', error);
       return JSON.stringify(data);
@@ -141,15 +164,28 @@ class CacheService {
 
   /**
    * Decompress data using pako
+   * Handles both new base64 format and legacy uncompressed JSON
    */
   private decompress(compressedData: string): any {
     try {
-      const buffer = Buffer.from(compressedData, 'base64');
-      const decompressed = pako.inflate(buffer, { to: 'string' });
+      // First, try to parse as plain JSON (legacy uncompressed format)
+      if (compressedData.startsWith('{') || compressedData.startsWith('[')) {
+        return JSON.parse(compressedData);
+      }
+      
+      // Try new base64 + pako format
+      const bytes = this.base64ToUint8Array(compressedData);
+      const decompressed = pako.inflate(bytes, { to: 'string' });
       return JSON.parse(decompressed);
     } catch (error) {
-      console.error('❌ [CACHE] Decompression failed:', error);
-      return JSON.parse(compressedData);
+      // If decompression fails, try parsing as plain JSON
+      try {
+        return JSON.parse(compressedData);
+      } catch {
+        console.error('❌ [CACHE] Decompression failed, data corrupted:', error);
+        // Return null to indicate cache miss, triggering fresh fetch
+        return null;
+      }
     }
   }
 

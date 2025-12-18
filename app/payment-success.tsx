@@ -115,8 +115,6 @@ export default function PaymentSuccessPage() {
     switch (method) {
       case 'cod':
         return 'cash';
-      case 'paybill':
-        return 'wallet';
       case 'wallet':
         return 'diamond';
       case 'razorpay':
@@ -132,10 +130,8 @@ export default function PaymentSuccessPage() {
     switch (method) {
       case 'cod':
         return 'Cash on Delivery';
-      case 'paybill':
-        return 'PayBill';
       case 'wallet':
-        return 'REZ Wallet';
+        return 'ReZ Wallet';
       case 'razorpay':
         return 'Online Payment';
       case 'card':
