@@ -148,6 +148,15 @@ function ProductCard({ recommendation, onPress }: ProductCardProps) {
 
   const rating = getRating();
 
+  // Calculate cashback and ReZ coins from backend data
+  const getCashbackPercentage = () => {
+    return product.cashback?.percentage || product.cashbackPercentage || 5;
+  };
+
+  const cashbackPercent = getCashbackPercentage();
+  const cashbackAmount = Math.floor(price * cashbackPercent / 100);
+  const rezCoins = Math.floor(price * 0.1); // 10% of price as ReZ coins
+
   return (
     <TouchableOpacity
       style={styles.card}
@@ -217,6 +226,18 @@ function ProductCard({ recommendation, onPress }: ProductCardProps) {
             <Text style={styles.ratingCount}>({rating.count || 0})</Text>
           </View>
         )}
+
+        {/* Rewards Row - Cashback & ReZ Coins */}
+        <View style={styles.rewardsRow}>
+          <View style={styles.rewardItem}>
+            <Ionicons name="wallet-outline" size={12} color="#00C06A" />
+            <Text style={styles.rewardText}>{rezCoins} coins</Text>
+          </View>
+          <View style={styles.rewardItem}>
+            <Ionicons name="card-outline" size={12} color="#F59E0B" />
+            <Text style={styles.cashbackText}>₹{cashbackAmount}</Text>
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -370,5 +391,29 @@ const styles = StyleSheet.create({
   ratingCount: {
     fontSize: 11,
     color: '#9CA3AF'
+  },
+  rewardsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6'
+  },
+  rewardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3
+  },
+  rewardText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#00C06A'
+  },
+  cashbackText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#F59E0B'
   }
 });

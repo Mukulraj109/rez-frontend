@@ -1,7 +1,7 @@
 // FrequentlyBoughtTogether Component
 // Displays products frequently bought together with the current product
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,15 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BundleItem } from '@/services/recommendationApi';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface FrequentlyBoughtTogetherProps {
   bundles: BundleItem[];
@@ -21,6 +26,45 @@ interface FrequentlyBoughtTogetherProps {
   onProductPress?: (productId: string) => void;
 }
 
+// Helper function to extract price from product (handles multiple formats)
+const getProductPrice = (product: any): number => {
+  return product.pricing?.selling ||
+    product.pricing?.original ||
+    product.price?.current ||
+    product.price?.selling ||
+    product.price?.original ||
+    (typeof product.price === 'number' ? product.price : 0);
+};
+
+// Helper function to extract original price
+const getOriginalPrice = (product: any): number => {
+  return product.pricing?.original ||
+    product.pricing?.compare ||
+    product.price?.original ||
+    product.price?.compare ||
+    getProductPrice(product);
+};
+
+// Helper function to extract image URL
+const getProductImage = (product: any): string => {
+  if (product.image) return product.image;
+  if (product.images && product.images.length > 0) {
+    const firstImg = product.images[0];
+    return typeof firstImg === 'string' ? firstImg : firstImg?.url || '';
+  }
+  return 'https://via.placeholder.com/100';
+};
+
+// Helper function to get product ID
+const getProductId = (product: any): string => {
+  return product.id || product._id || '';
+};
+
+// Helper function to get cashback percentage
+const getCashbackPercentage = (product: any): number => {
+  return product.cashback?.percentage || product.cashbackPercentage || 5;
+};
+
 export default function FrequentlyBoughtTogether({
   bundles,
   loading = false,
@@ -28,6 +72,8 @@ export default function FrequentlyBoughtTogether({
   onProductPress
 }: FrequentlyBoughtTogetherProps) {
   const [selectedBundle, setSelectedBundle] = useState(0);
+  const bundleScrollRef = useRef<ScrollView>(null);
+  const bundleWidth = SCREEN_WIDTH - 32; // Account for horizontal margins
 
   if (loading) {
     return (
@@ -36,7 +82,7 @@ export default function FrequentlyBoughtTogether({
           <Text style={styles.title}>Frequently Bought Together</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#00C06A" />
         </View>
       </View>
     );
@@ -46,96 +92,205 @@ export default function FrequentlyBoughtTogether({
     return null;
   }
 
-  const currentBundle = bundles[selectedBundle];
-  const originalPrice = currentBundle.products.reduce(
-    (sum, p) => sum + (p.price?.original || p.price?.current || 0),
-    0
-  );
-  const savingsPercentage = originalPrice > 0
-    ? Math.round((currentBundle.savings / originalPrice) * 100)
-    : 0;
+  // Handle scroll to update selected bundle
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const newIndex = Math.round(offsetX / (bundleWidth - 4)); // Account for margins
+    if (newIndex >= 0 && newIndex < bundles.length && newIndex !== selectedBundle) {
+      setSelectedBundle(newIndex);
+    }
+  };
+
+  // Handle pagination dot press
+  const handleDotPress = (index: number) => {
+    setSelectedBundle(index);
+    bundleScrollRef.current?.scrollTo({ x: index * (bundleWidth - 4), animated: true });
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Frequently Bought Together</Text>
-          {currentBundle.frequency > 0 && (
-            <Text style={styles.subtitle}>
-              {currentBundle.frequency} people bought these together
-            </Text>
-          )}
-        </View>
+        <Text style={styles.title}>Frequently Bought Together</Text>
+        {bundles.length > 1 && (
+          <Text style={styles.subtitle}>
+            Swipe to see {bundles.length} bundles
+          </Text>
+        )}
       </View>
 
-      <View style={styles.bundleContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.productsRow}
-        >
-          {currentBundle.products.map((product, index) => (
-            <React.Fragment key={product.id || index}>
-              <BundleProductCard
-                product={product}
-                onPress={() => onProductPress?.(product.id)}
-              />
-              {index < currentBundle.products.length - 1 && (
-                <View style={styles.plusIcon}>
-                  <Ionicons name="add" size={20} color="#8B5CF6" />
-                </View>
-              )}
-            </React.Fragment>
-          ))}
-        </ScrollView>
+      {/* Swipeable Bundle Container */}
+      <ScrollView
+        ref={bundleScrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        onMomentumScrollEnd={handleScroll}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        snapToInterval={bundleWidth - 4}
+        snapToAlignment="start"
+        contentContainerStyle={{ paddingLeft: 16, paddingRight: 8 }}
+      >
+        {bundles.map((bundle, bundleIndex) => (
+          <BundleCard
+            key={bundleIndex}
+            bundle={bundle}
+            bundleWidth={bundleWidth}
+            onAddToCart={onAddToCart}
+            onProductPress={onProductPress}
+          />
+        ))}
+      </ScrollView>
 
-        <View style={styles.priceSection}>
-          <View style={styles.priceRow}>
-            <Text style={styles.totalLabel}>Total Price:</Text>
-            <View style={styles.priceGroup}>
-              {originalPrice > currentBundle.combinedPrice && (
-                <Text style={styles.originalPrice}>₹{originalPrice}</Text>
-              )}
-              <Text style={styles.price}>₹{currentBundle.combinedPrice}</Text>
-            </View>
-          </View>
-
-          {currentBundle.savings > 0 && (
-            <View style={styles.savingsRow}>
-              <View style={styles.savingsBadge}>
-                <Ionicons name="pricetag" size={14} color="#10B981" />
-                <Text style={styles.savingsText}>
-                  Save ₹{currentBundle.savings} ({savingsPercentage}%)
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {onAddToCart && (
+      {/* Pagination Dots */}
+      {bundles.length > 1 && (
+        <View style={styles.paginationContainer}>
+          {bundles.map((_, index) => (
             <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => onAddToCart(currentBundle.products)}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="cart" size={20} color="#fff" />
-              <Text style={styles.addButtonText}>Add All to Cart</Text>
-            </TouchableOpacity>
-          )}
+              key={index}
+              style={[
+                styles.paginationDot,
+                index === selectedBundle && styles.paginationDotActive
+              ]}
+              onPress={() => handleDotPress(index)}
+            />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// Separate BundleCard component for each bundle
+interface BundleCardProps {
+  bundle: BundleItem;
+  bundleWidth: number;
+  onAddToCart?: (products: any[]) => void;
+  onProductPress?: (productId: string) => void;
+}
+
+function BundleCard({ bundle, bundleWidth, onAddToCart, onProductPress }: BundleCardProps) {
+  // Calculate prices using helper functions
+  const calculatedOriginalPrice = bundle.products.reduce(
+    (sum, p) => sum + getOriginalPrice(p),
+    0
+  );
+
+  const calculatedSellingPrice = bundle.products.reduce(
+    (sum, p) => sum + getProductPrice(p),
+    0
+  );
+
+  // Use backend values if available, otherwise calculate
+  const originalPrice = calculatedOriginalPrice || calculatedSellingPrice;
+  const combinedPrice = bundle.combinedPrice || calculatedSellingPrice;
+  const savings = bundle.savings || (originalPrice - combinedPrice);
+
+  const savingsPercentage = originalPrice > 0
+    ? Math.round((savings / originalPrice) * 100)
+    : 0;
+
+  // Calculate total ReZ coins (10% of combined price)
+  const totalRezCoins = Math.floor(combinedPrice * 0.1);
+
+  // Calculate total cashback
+  const totalCashback = bundle.products.reduce((sum, p) => {
+    const price = getProductPrice(p);
+    const cashbackPercent = getCashbackPercentage(p);
+    return sum + Math.floor(price * cashbackPercent / 100);
+  }, 0);
+
+  return (
+    <View style={[styles.bundleContainer, { width: bundleWidth - 8 }]}>
+      {/* Frequency Badge */}
+      {bundle.frequency > 0 && (
+        <View style={styles.frequencyBadge}>
+          <Ionicons name="people" size={12} color="#6B7280" />
+          <Text style={styles.frequencyText}>
+            {bundle.frequency} bought together
+          </Text>
+        </View>
+      )}
+
+      {/* Products Row */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.productsRow}
+      >
+        {bundle.products.map((product, index) => (
+          <React.Fragment key={getProductId(product) || index}>
+            <BundleProductCard
+              product={product}
+              onPress={() => onProductPress?.(getProductId(product))}
+            />
+            {index < bundle.products.length - 1 && (
+              <View style={styles.plusIcon}>
+                <Ionicons name="add" size={20} color="#00C06A" />
+              </View>
+            )}
+          </React.Fragment>
+        ))}
+      </ScrollView>
+
+      <View style={styles.priceSection}>
+        {/* Price Row */}
+        <View style={styles.priceRow}>
+          <Text style={styles.totalLabel}>Bundle Price:</Text>
+          <View style={styles.priceGroup}>
+            {originalPrice > combinedPrice && (
+              <Text style={styles.originalPrice}>₹{Math.round(originalPrice)}</Text>
+            )}
+            <Text style={styles.price}>₹{Math.round(combinedPrice)}</Text>
+          </View>
         </View>
 
-        {bundles.length > 1 && (
-          <View style={styles.paginationContainer}>
-            {bundles.map((_, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.paginationDot,
-                  index === selectedBundle && styles.paginationDotActive
-                ]}
-                onPress={() => setSelectedBundle(index)}
-              />
-            ))}
+        {/* Savings Row */}
+        {savings > 0 && (
+          <View style={styles.savingsRow}>
+            <View style={styles.savingsBadge}>
+              <Ionicons name="pricetag" size={14} color="#10B981" />
+              <Text style={styles.savingsText}>
+                Save ₹{Math.round(savings)} ({savingsPercentage}%)
+              </Text>
+            </View>
           </View>
+        )}
+
+        {/* Rewards Row - ReZ Coins & Cashback */}
+        <View style={styles.rewardsContainer}>
+          <View style={styles.rewardItem}>
+            <View style={styles.rewardIconBg}>
+              <Ionicons name="wallet-outline" size={16} color="#00C06A" />
+            </View>
+            <View>
+              <Text style={styles.rewardValue}>{totalRezCoins} coins</Text>
+              <Text style={styles.rewardLabel}>ReZ Coins</Text>
+            </View>
+          </View>
+          <View style={styles.rewardDivider} />
+          <View style={styles.rewardItem}>
+            <View style={[styles.rewardIconBg, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="card-outline" size={16} color="#F59E0B" />
+            </View>
+            <View>
+              <Text style={[styles.rewardValue, { color: '#F59E0B' }]}>₹{totalCashback}</Text>
+              <Text style={styles.rewardLabel}>Cashback</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Add to Cart Button */}
+        {onAddToCart && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => onAddToCart(bundle.products)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="cart" size={20} color="#fff" />
+            <Text style={styles.addButtonText}>Add All to Cart</Text>
+          </TouchableOpacity>
         )}
       </View>
     </View>
@@ -148,6 +303,12 @@ interface BundleProductCardProps {
 }
 
 function BundleProductCard({ product, onPress }: BundleProductCardProps) {
+  const price = getProductPrice(product);
+  const originalPrice = getOriginalPrice(product);
+  const imageUrl = getProductImage(product);
+  const discount = product.pricing?.discount ||
+    (originalPrice > price ? Math.round((1 - price / originalPrice) * 100) : 0);
+
   return (
     <TouchableOpacity
       style={styles.productCard}
@@ -156,37 +317,46 @@ function BundleProductCard({ product, onPress }: BundleProductCardProps) {
     >
       <View style={styles.productImageContainer}>
         <Image
-          source={{ uri: product.image || 'https://via.placeholder.com/100' }}
+          source={{ uri: imageUrl }}
           style={styles.productImage}
           resizeMode="cover"
         />
+        {discount > 0 && (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountText}>{discount}% OFF</Text>
+          </View>
+        )}
       </View>
       <View style={styles.productInfo}>
         <Text style={styles.productName} numberOfLines={2}>
-          {product.name}
+          {product.name || product.title || 'Product'}
         </Text>
-        <Text style={styles.productPrice}>
-          ₹{product.price?.current || product.price?.original || 0}
-        </Text>
-        {product.rating && (
+        <View style={styles.productPriceRow}>
+          <Text style={styles.productPrice}>₹{Math.round(price)}</Text>
+          {originalPrice > price && (
+            <Text style={styles.productOriginalPrice}>₹{Math.round(originalPrice)}</Text>
+          )}
+        </View>
+        {product.ratings && (
           <View style={styles.productRating}>
             <Ionicons name="star" size={10} color="#FBBF24" />
             <Text style={styles.ratingText}>
-              {typeof product.rating.value === 'string' 
-                ? parseFloat(product.rating.value).toFixed(1) 
-                : product.rating.value.toFixed(1)}
+              {(product.ratings.average || 0).toFixed(1)}
             </Text>
           </View>
         )}
       </View>
     </TouchableOpacity>
-);
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     paddingVertical: 16,
-    backgroundColor: '#fff'
+    marginVertical: 8,
+    marginHorizontal: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12
   },
   header: {
     paddingHorizontal: 16,
@@ -212,62 +382,111 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
     padding: 16,
-    marginHorizontal: 16,
+    marginRight: 12,
+    marginVertical: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB'
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2
+  },
+  frequencyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 12
+  },
+  frequencyText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500'
   },
   productsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingBottom: 16,
+    paddingLeft: 4,
     gap: 12
   },
   productCard: {
-    width: 120,
+    width: 130,
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E5E7EB'
   },
   productImageContainer: {
     width: '100%',
-    height: 120,
-    backgroundColor: '#fff'
+    height: 100,
+    backgroundColor: '#F3F4F6',
+    position: 'relative'
   },
   productImage: {
     width: '100%',
     height: '100%'
   },
+  discountBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  discountText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fff'
+  },
   productInfo: {
-    padding: 8,
+    padding: 10,
     gap: 4
   },
   productName: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1F2937'
+    color: '#1F2937',
+    minHeight: 32
+  },
+  productPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
   },
   productPrice: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#8B5CF6'
+    color: '#00C06A'
+  },
+  productOriginalPrice: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through'
   },
   productRating: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2
+    gap: 3
   },
   ratingText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: '#1F2937'
   },
   plusIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F0FF',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ECFDF5',
     justifyContent: 'center',
     alignItems: 'center'
   },
@@ -295,7 +514,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#8B5CF6'
+    color: '#00C06A'
   },
   originalPrice: {
     fontSize: 16,
@@ -322,16 +541,56 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#10B981'
   },
+  rewardsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB'
+  },
+  rewardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    justifyContent: 'center'
+  },
+  rewardIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  rewardValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#00C06A'
+  },
+  rewardLabel: {
+    fontSize: 11,
+    color: '#6B7280'
+  },
+  rewardDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 8
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#00C06A',
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 12,
-    shadowColor: '#8B5CF6',
+    shadowColor: '#00C06A',
     shadowOffset: {
       width: 0,
       height: 4
@@ -360,6 +619,6 @@ const styles = StyleSheet.create({
   },
   paginationDotActive: {
     width: 24,
-    backgroundColor: '#8B5CF6'
+    backgroundColor: '#00C06A'
   }
 });

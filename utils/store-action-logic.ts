@@ -221,25 +221,25 @@ const DEFAULT_BUTTON_CONFIGS: Record<ActionButtonId, {
   call: {
     title: 'Call',
     iconName: 'call-outline',
-    backgroundColor: ['#00C06A', '#00796B'] as const, // ReZ Green gradient
+    backgroundColor: ['#10B981', '#059669'] as const, // Green gradient
     textColor: '#FFFFFF',
   },
   product: {
     title: 'Products',
     iconName: 'cube-outline',
-    backgroundColor: ['#00C06A', '#00796B'] as const, // ReZ Green gradient
+    backgroundColor: ['#00C06A', '#059669'] as const, // ReZ Green gradient
     textColor: '#FFFFFF',
   },
   location: {
     title: 'Location',
     iconName: 'location-outline',
-    backgroundColor: ['#00C06A', '#00796B'] as const, // ReZ Green gradient
+    backgroundColor: ['#00C06A', '#047857'] as const, // ReZ Green gradient
     textColor: '#FFFFFF',
   },
   pay: {
     title: 'Pay Here',
     iconName: 'wallet-outline',
-    backgroundColor: ['#6366F1', '#4F46E5'] as const, // Primary brand gradient
+    backgroundColor: ['#F59E0B', '#D97706'] as const, // ReZ Golden gradient
     textColor: '#FFFFFF',
   },
   custom: {

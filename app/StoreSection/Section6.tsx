@@ -76,7 +76,7 @@ export default memo(function Section6({ dynamicData, cardType }: Section6Props) 
     try {
       const response = await storeVouchersApi.getStoreVouchers(storeId, {
         page: 1,
-        limit: 100, // Get all vouchers to count
+        limit: 50, // Max allowed by backend
       });
 
       if (response.success && response.data?.vouchers) {

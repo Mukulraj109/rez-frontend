@@ -244,44 +244,42 @@ export default memo(function Section4({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
 
   cardWrapper: {
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.25,
-        shadowRadius: 20,
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 12,
+        elevation: 6,
       },
     }),
-    // Additional 3D depth
     borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.15)',
+    borderColor: '#E5E7EB',
   },
 
   card: {
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: GLASS.lightBorder,
+    borderRadius: 16,
     overflow: 'hidden',
   },
 
   cardAndroid: {
-    backgroundColor: GLASS.lightBg,
+    backgroundColor: '#FFFFFF',
   },
 
   cardContent: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: 14,
   },
 
   glassHighlight: {
@@ -289,33 +287,28 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 1,
-    backgroundColor: GLASS.lightHighlight,
+    height: 0,
   },
 
   // Icon Container
   iconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 14,
-    // Enhanced 3D effect
+    marginRight: 12,
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.gold,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 10,
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 8,
+        elevation: 4,
       },
     }),
-    // Inner glow effect
-    borderWidth: 1,
-    borderColor: 'rgba(255, 200, 87, 0.3)',
   },
 
   // Text Container
@@ -327,50 +320,49 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: "700",
-    color: COLORS.textPrimary,
-    marginBottom: 4,
+    color: '#1F2937',
+    marginBottom: 3,
     lineHeight: 20,
   },
 
   subtitle: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: '#6B7280',
     lineHeight: 18,
     fontWeight: '500',
   },
 
   // Right Coupon Visual
   rightContainer: {
-    width: 76,
-    height: 76,
+    width: 70,
+    height: 70,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 8,
+    marginLeft: 4,
   },
 
   couponWrapper: {
-    width: 64,
-    height: 48,
-    borderRadius: 12,
+    width: 60,
+    height: 44,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    transform: [{ rotate: "8deg" }],
+    transform: [{ rotate: "6deg" }],
     overflow: "hidden",
-    backgroundColor: COLORS.surface,
-    // Enhanced 3D effect for tilted card
+    backgroundColor: '#F9FAFB',
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 2, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 2, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 8,
+        elevation: 5,
       },
     }),
     borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.2)',
+    borderColor: 'rgba(0, 192, 106, 0.15)',
   },
 
   couponImage: {
@@ -384,7 +376,7 @@ const styles = StyleSheet.create({
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#00C06A',
   },
 
   fallback: {
@@ -395,53 +387,49 @@ const styles = StyleSheet.create({
   },
 
   fallbackPercent: {
-    color: COLORS.white,
-    fontSize: 22,
+    color: '#FFFFFF',
+    fontSize: 20,
     fontWeight: "800",
   },
 
   // Badge
   couponBadge: {
     position: "absolute",
-    right: -8,
-    top: 4,
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    backgroundColor: GLASS.frostedBg,
+    right: -6,
+    top: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
     alignItems: "center",
     justifyContent: "center",
-    transform: [{ rotate: "-8deg" }],
-    borderWidth: 1.5,
-    borderColor: COLORS.gold,
-    // Enhanced 3D effect
+    transform: [{ rotate: "-6deg" }],
+    borderWidth: 2,
+    borderColor: '#F59E0B',
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.gold,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 6,
+        elevation: 4,
       },
     }),
   },
 
   couponBadgeText: {
-    color: COLORS.gold,
+    color: '#F59E0B',
     fontWeight: "800",
-    fontSize: 14,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 13,
   },
 
   // Divider
   divider: {
-    marginTop: 16,
+    marginTop: 12,
     borderBottomWidth: 1,
     borderStyle: "dashed",
-    borderColor: 'rgba(0, 0, 0, 0.08)',
+    borderColor: '#E5E7EB',
   },
 });

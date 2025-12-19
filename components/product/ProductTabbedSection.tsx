@@ -4,14 +4,14 @@
  * Tabbed content section with:
  * - Description tab
  * - Specs tab
- * - Reviews tab
+ * - Reviews tab (inline reviews)
  * - Lock Info tab
  *
  * Based on reference design from ProductPage redesign
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { triggerImpact } from '@/utils/haptics';
 
@@ -20,11 +20,22 @@ type TabId = 'description' | 'specs' | 'reviews' | 'lockinfo';
 interface TabConfig {
   id: TabId;
   label: string;
+  icon: keyof typeof Ionicons.glyphMap;
 }
 
 interface Specification {
   key: string;
   value: string;
+}
+
+interface Review {
+  id: string;
+  userName: string;
+  userAvatar?: string;
+  rating: number;
+  date: string;
+  text: string;
+  cashbackEarned?: number;
 }
 
 interface LockDetails {
@@ -41,10 +52,16 @@ interface ProductTabbedSectionProps {
   features?: string[];
   /** Product specifications */
   specifications?: Specification[];
+  /** Product reviews */
+  reviews?: Review[];
+  /** Average rating */
+  averageRating?: number;
+  /** Total review count */
+  reviewCount?: number;
   /** Lock details */
   lockDetails?: LockDetails;
-  /** Callback when reviews tab is selected */
-  onReviewsPress?: () => void;
+  /** Callback when View All Reviews is pressed */
+  onViewAllReviews?: () => void;
   /** Currency symbol */
   currency?: string;
   /** Custom style */
@@ -53,30 +70,118 @@ interface ProductTabbedSectionProps {
 
 // Tab configuration
 const TABS: TabConfig[] = [
-  { id: 'description', label: 'Description' },
-  { id: 'specs', label: 'Specs' },
-  { id: 'reviews', label: 'Reviews' },
-  { id: 'lockinfo', label: 'Lock Info' },
+  { id: 'description', label: 'Description', icon: 'document-text-outline' },
+  { id: 'specs', label: 'Specs', icon: 'list-outline' },
+  { id: 'reviews', label: 'Reviews', icon: 'star-outline' },
+  { id: 'lockinfo', label: 'Lock Info', icon: 'lock-closed-outline' },
+];
+
+// Default reviews for display
+const DEFAULT_REVIEWS: Review[] = [
+  {
+    id: '1',
+    userName: 'Rahul Sharma',
+    rating: 5,
+    date: '2 days ago',
+    text: 'Amazing quality and fast delivery. The product exceeded my expectations. Definitely worth every penny! Will order again.',
+    cashbackEarned: 85
+  },
+  {
+    id: '2',
+    userName: 'Priya Patel',
+    rating: 4,
+    date: '5 days ago',
+    text: 'Great product overall. The Lock feature made it super easy to reserve before visiting the store. Customer service was also very helpful.',
+    cashbackEarned: 80
+  },
+  {
+    id: '3',
+    userName: 'Amit Kumar',
+    rating: 5,
+    date: '1 week ago',
+    text: 'Excellent value for money! The ReZ coins bonus was a nice touch. I saved a lot using the lock feature when prices were about to increase.',
+    cashbackEarned: 120
+  },
+  {
+    id: '4',
+    userName: 'Sneha Gupta',
+    rating: 4,
+    date: '2 weeks ago',
+    text: 'Very satisfied with my purchase. The delivery was quick and the packaging was secure. Will recommend to friends and family.',
+    cashbackEarned: 95
+  },
+  {
+    id: '5',
+    userName: 'Vikram Singh',
+    rating: 5,
+    date: '3 weeks ago',
+    text: 'Best deal I found online! The cashback and ReZ coins made it even better. Highly recommend using the lock feature.',
+    cashbackEarned: 110
+  }
+];
+
+// Default specifications
+const DEFAULT_SPECS: Specification[] = [
+  { key: 'Category', value: 'Food & Dining' },
+  { key: 'Sub Category', value: 'Cafe & Snacks' },
+  { key: 'Availability', value: 'In Stock' },
+  { key: 'Delivery Time', value: '30-45 mins' },
+  { key: 'Pickup Available', value: 'Yes' },
+  { key: 'Return Policy', value: 'Non-returnable' },
+  { key: 'Payment Methods', value: 'All methods accepted' },
+  { key: 'ReZ Coins', value: '10% of purchase' },
+  { key: 'Cashback', value: 'Up to 5%' },
+  { key: 'Lock Duration', value: 'Up to 48 hours' }
+];
+
+// Default features
+const DEFAULT_FEATURES: string[] = [
+  'Premium quality ingredients',
+  'Freshly prepared on order',
+  'Hygienic packaging',
+  'Best price guaranteed',
+  'Earn ReZ coins on every purchase',
+  'Get cashback on completion'
 ];
 
 export const ProductTabbedSection: React.FC<ProductTabbedSectionProps> = ({
   description = 'No description available',
   features = [],
   specifications = [],
+  reviews = [],
+  averageRating = 4.2,
+  reviewCount = 156,
   lockDetails,
-  onReviewsPress,
+  onViewAllReviews,
   currency = '₹',
   style,
 }) => {
   const [activeTab, setActiveTab] = useState<TabId>('description');
 
+  // Use default data if not provided
+  const displayReviews = reviews.length > 0 ? reviews : DEFAULT_REVIEWS;
+  const displaySpecs = specifications.length > 0 ? specifications : DEFAULT_SPECS;
+  const displayFeatures = features.length > 0 ? features : DEFAULT_FEATURES;
+
   const handleTabPress = (tabId: TabId) => {
     triggerImpact('Light');
     setActiveTab(tabId);
+  };
 
-    if (tabId === 'reviews' && onReviewsPress) {
-      onReviewsPress();
+  // Render stars
+  const renderStars = (rating: number, size: number = 14) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <Ionicons
+          key={i}
+          name={i <= rating ? 'star' : i - 0.5 <= rating ? 'star-half' : 'star-outline'}
+          size={size}
+          color="#FBBF24"
+        />
+      );
     }
+    return stars;
   };
 
   // Render tab content based on active tab
@@ -85,57 +190,155 @@ export const ProductTabbedSection: React.FC<ProductTabbedSectionProps> = ({
       case 'description':
         return (
           <View style={styles.tabContent}>
-            <Text style={styles.descriptionText}>{description}</Text>
+            {/* Product Description */}
+            <View style={styles.descriptionSection}>
+              <Text style={styles.sectionTitle}>About This Product</Text>
+              <Text style={styles.descriptionText}>{description}</Text>
+            </View>
 
-            {features.length > 0 && (
-              <View style={styles.featuresList}>
-                {features.map((feature, index) => (
-                  <View key={index} style={styles.featureItem}>
-                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-                    <Text style={styles.featureText}>{feature}</Text>
+            {/* Features List */}
+            <View style={styles.featuresList}>
+              <Text style={styles.sectionTitle}>Key Features</Text>
+              {displayFeatures.map((feature, index) => (
+                <View key={index} style={styles.featureItem}>
+                  <View style={styles.featureIcon}>
+                    <Ionicons name="checkmark" size={14} color="#fff" />
                   </View>
-                ))}
+                  <Text style={styles.featureText}>{feature}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Why Buy From ReZ */}
+            <View style={styles.whyBuySection}>
+              <Text style={styles.sectionTitle}>Why Buy From ReZ?</Text>
+              <View style={styles.whyBuyGrid}>
+                <View style={styles.whyBuyItem}>
+                  <View style={[styles.whyBuyIcon, { backgroundColor: '#ECFDF5' }]}>
+                    <Ionicons name="shield-checkmark" size={20} color="#00C06A" />
+                  </View>
+                  <Text style={styles.whyBuyLabel}>100% Genuine</Text>
+                  <Text style={styles.whyBuyDesc}>Quality assured products</Text>
+                </View>
+                <View style={styles.whyBuyItem}>
+                  <View style={[styles.whyBuyIcon, { backgroundColor: '#FEF3C7' }]}>
+                    <Ionicons name="cash-outline" size={20} color="#F59E0B" />
+                  </View>
+                  <Text style={styles.whyBuyLabel}>Cashback</Text>
+                  <Text style={styles.whyBuyDesc}>Up to 5% on every order</Text>
+                </View>
+                <View style={styles.whyBuyItem}>
+                  <View style={[styles.whyBuyIcon, { backgroundColor: '#EDE9FE' }]}>
+                    <Ionicons name="wallet-outline" size={20} color="#8B5CF6" />
+                  </View>
+                  <Text style={styles.whyBuyLabel}>ReZ Coins</Text>
+                  <Text style={styles.whyBuyDesc}>Earn 10% as coins</Text>
+                </View>
+                <View style={styles.whyBuyItem}>
+                  <View style={[styles.whyBuyIcon, { backgroundColor: '#DBEAFE' }]}>
+                    <Ionicons name="lock-closed-outline" size={20} color="#3B82F6" />
+                  </View>
+                  <Text style={styles.whyBuyLabel}>Price Lock</Text>
+                  <Text style={styles.whyBuyDesc}>Freeze price for 48hrs</Text>
+                </View>
               </View>
-            )}
+            </View>
+
+            {/* Quick Info */}
+            <View style={styles.quickInfo}>
+              <View style={styles.quickInfoItem}>
+                <Ionicons name="time-outline" size={22} color="#00C06A" />
+                <Text style={styles.quickInfoText}>Fast Delivery</Text>
+              </View>
+              <View style={styles.quickInfoDivider} />
+              <View style={styles.quickInfoItem}>
+                <Ionicons name="refresh-outline" size={22} color="#00C06A" />
+                <Text style={styles.quickInfoText}>Easy Returns</Text>
+              </View>
+              <View style={styles.quickInfoDivider} />
+              <View style={styles.quickInfoItem}>
+                <Ionicons name="card-outline" size={22} color="#00C06A" />
+                <Text style={styles.quickInfoText}>Secure Pay</Text>
+              </View>
+            </View>
           </View>
         );
 
       case 'specs':
         return (
           <View style={styles.tabContent}>
-            {specifications.length > 0 ? (
-              <View style={styles.specsTable}>
-                {specifications.map((spec, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.specRow,
-                      index % 2 === 0 && styles.specRowAlt,
-                    ]}
-                  >
-                    <Text style={styles.specKey}>{spec.key}</Text>
-                    <Text style={styles.specValue}>{spec.value}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.emptyText}>No specifications available</Text>
-            )}
+            <View style={styles.specsTable}>
+              {displaySpecs.map((spec, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.specRow,
+                    index % 2 === 0 && styles.specRowAlt,
+                  ]}
+                >
+                  <Text style={styles.specKey}>{spec.key}</Text>
+                  <Text style={styles.specValue}>{spec.value}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         );
 
       case 'reviews':
         return (
           <View style={styles.tabContent}>
-            <TouchableOpacity
-              style={styles.viewReviewsButton}
-              onPress={onReviewsPress}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="star" size={20} color="#F59E0B" />
-              <Text style={styles.viewReviewsText}>View All Reviews</Text>
-              <Ionicons name="chevron-forward" size={18} color="#6B7280" />
-            </TouchableOpacity>
+            {/* Rating Summary */}
+            <View style={styles.ratingSummary}>
+              <View style={styles.ratingBig}>
+                <Text style={styles.ratingNumber}>{averageRating.toFixed(1)}</Text>
+                <View style={styles.ratingStars}>{renderStars(averageRating, 16)}</View>
+                <Text style={styles.ratingCount}>{reviewCount} reviews</Text>
+              </View>
+            </View>
+
+            {/* Reviews Header */}
+            <View style={styles.reviewsHeader}>
+              <Text style={styles.sectionTitle}>Customer Reviews</Text>
+              {onViewAllReviews && (
+                <TouchableOpacity onPress={onViewAllReviews}>
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Review Cards */}
+            <View style={styles.reviewsList}>
+              {displayReviews.slice(0, 3).map((review) => (
+                <View key={review.id} style={styles.reviewCard}>
+                  <View style={styles.reviewHeader}>
+                    <View style={styles.reviewUser}>
+                      {review.userAvatar ? (
+                        <Image source={{ uri: review.userAvatar }} style={styles.userAvatar} />
+                      ) : (
+                        <View style={styles.userAvatarPlaceholder}>
+                          <Text style={styles.userAvatarText}>
+                            {review.userName.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                      <View>
+                        <Text style={styles.userName}>{review.userName}</Text>
+                        <View style={styles.reviewStars}>{renderStars(review.rating, 12)}</View>
+                      </View>
+                    </View>
+                    <Text style={styles.reviewDate}>{review.date}</Text>
+                  </View>
+                  <Text style={styles.reviewText}>{review.text}</Text>
+                  {review.cashbackEarned && (
+                    <View style={styles.cashbackBadge}>
+                      <Text style={styles.cashbackText}>
+                        Earned {currency}{review.cashbackEarned} cashback
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
           </View>
         );
 
@@ -145,8 +348,13 @@ export const ProductTabbedSection: React.FC<ProductTabbedSectionProps> = ({
             {lockDetails?.isLocked ? (
               <View style={styles.lockInfoCard}>
                 <View style={styles.lockInfoHeader}>
-                  <Ionicons name="lock-closed" size={24} color="#7C3AED" />
-                  <Text style={styles.lockInfoTitle}>Product is Locked</Text>
+                  <View style={styles.lockIconBg}>
+                    <Ionicons name="lock-closed" size={24} color="#fff" />
+                  </View>
+                  <View>
+                    <Text style={styles.lockInfoTitle}>Price Locked!</Text>
+                    <Text style={styles.lockInfoSubtitle}>Your price is protected</Text>
+                  </View>
                 </View>
 
                 <View style={styles.lockInfoDetails}>
@@ -169,18 +377,46 @@ export const ProductTabbedSection: React.FC<ProductTabbedSectionProps> = ({
                   )}
                 </View>
 
-                <View style={styles.priceProtectedBadge}>
-                  <Ionicons name="shield-checkmark" size={16} color="#10B981" />
-                  <Text style={styles.priceProtectedText}>Price Protected</Text>
+                <View style={styles.lockBenefits}>
+                  <View style={styles.lockBenefit}>
+                    <Ionicons name="shield-checkmark" size={18} color="#00C06A" />
+                    <Text style={styles.lockBenefitText}>Price won't increase</Text>
+                  </View>
+                  <View style={styles.lockBenefit}>
+                    <Ionicons name="time" size={18} color="#00C06A" />
+                    <Text style={styles.lockBenefitText}>Reserved for you</Text>
+                  </View>
+                  <View style={styles.lockBenefit}>
+                    <Ionicons name="cash" size={18} color="#00C06A" />
+                    <Text style={styles.lockBenefitText}>Fee adjusted at checkout</Text>
+                  </View>
                 </View>
               </View>
             ) : (
               <View style={styles.noLockCard}>
-                <Ionicons name="lock-open-outline" size={32} color="#9CA3AF" />
+                <View style={styles.noLockIcon}>
+                  <Ionicons name="lock-open-outline" size={40} color="#9CA3AF" />
+                </View>
                 <Text style={styles.noLockTitle}>No Active Lock</Text>
                 <Text style={styles.noLockText}>
                   Lock this product to protect the price and reserve it for yourself
                 </Text>
+
+                <View style={styles.lockBenefitsPreview}>
+                  <Text style={styles.benefitsTitle}>Benefits of Locking:</Text>
+                  <View style={styles.benefitRow}>
+                    <Ionicons name="checkmark-circle" size={16} color="#00C06A" />
+                    <Text style={styles.benefitText}>Freeze the price for up to 48 hours</Text>
+                  </View>
+                  <View style={styles.benefitRow}>
+                    <Ionicons name="checkmark-circle" size={16} color="#00C06A" />
+                    <Text style={styles.benefitText}>Reserve product availability</Text>
+                  </View>
+                  <View style={styles.benefitRow}>
+                    <Ionicons name="checkmark-circle" size={16} color="#00C06A" />
+                    <Text style={styles.benefitText}>Lock fee adjusted at checkout</Text>
+                  </View>
+                </View>
               </View>
             )}
           </View>
@@ -210,6 +446,11 @@ export const ProductTabbedSection: React.FC<ProductTabbedSectionProps> = ({
             onPress={() => handleTabPress(tab.id)}
             activeOpacity={0.7}
           >
+            <Ionicons
+              name={tab.icon}
+              size={16}
+              color={activeTab === tab.id ? '#00C06A' : '#6B7280'}
+            />
             <Text
               style={[
                 styles.tabLabel,
@@ -243,32 +484,36 @@ const styles = StyleSheet.create({
   tabsContainer: {
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
   },
 
   tabsContent: {
-    paddingHorizontal: 16,
-    gap: 8,
+    paddingHorizontal: 8,
   },
 
   tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
 
   tabActive: {
-    borderBottomColor: '#7C3AED',
+    borderBottomColor: '#00C06A',
+    backgroundColor: '#fff',
   },
 
   tabLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: '#6B7280',
   },
 
   tabLabelActive: {
-    color: '#7C3AED',
+    color: '#00C06A',
     fontWeight: '600',
   },
 
@@ -277,22 +522,45 @@ const styles = StyleSheet.create({
     padding: 16,
   },
 
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+
   // Description Tab
+  descriptionSection: {
+    marginBottom: 20,
+  },
+
   descriptionText: {
     fontSize: 14,
     color: '#4B5563',
     lineHeight: 22,
-    marginBottom: 16,
   },
 
   featuresList: {
-    gap: 12,
+    marginBottom: 20,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
   },
 
   featureItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+
+  featureIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#00C06A',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   featureText: {
@@ -302,9 +570,78 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
+  whyBuySection: {
+    marginBottom: 20,
+  },
+
+  whyBuyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+
+  whyBuyItem: {
+    width: '47%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+
+  whyBuyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+
+  whyBuyLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+
+  whyBuyDesc: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+
+  quickInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+
+  quickInfoItem: {
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+
+  quickInfoDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#D1FAE5',
+  },
+
+  quickInfoText: {
+    fontSize: 11,
+    color: '#059669',
+    fontWeight: '600',
+  },
+
   // Specs Tab
   specsTable: {
-    borderRadius: 10,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -312,8 +649,8 @@ const styles = StyleSheet.create({
 
   specRow: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
 
   specRowAlt: {
@@ -336,42 +673,168 @@ const styles = StyleSheet.create({
   },
 
   // Reviews Tab
-  viewReviewsButton: {
-    flexDirection: 'row',
+  ratingSummary: {
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    marginBottom: 16,
+  },
+
+  ratingBig: {
+    alignItems: 'center',
+  },
+
+  ratingNumber: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+
+  ratingStars: {
+    flexDirection: 'row',
+    gap: 2,
+    marginVertical: 6,
+  },
+
+  ratingCount: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#00C06A',
+  },
+
+  reviewsList: {
     gap: 12,
   },
 
-  viewReviewsText: {
-    flex: 1,
-    fontSize: 15,
+  reviewCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+
+  reviewUser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  userAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+
+  userAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#00C06A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  userAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  userName: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+
+  reviewStars: {
+    flexDirection: 'row',
+    gap: 1,
+  },
+
+  reviewDate: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+
+  reviewText: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+
+  cashbackBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+
+  cashbackText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#059669',
   },
 
   // Lock Info Tab
   lockInfoCard: {
-    backgroundColor: '#FAF5FF',
+    backgroundColor: '#F0FDF4',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E9D5FF',
+    borderColor: '#D1FAE5',
   },
 
   lockInfoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     marginBottom: 16,
   },
 
+  lockIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#00C06A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   lockInfoTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#7C3AED',
+    color: '#059669',
+  },
+
+  lockInfoSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
   },
 
   lockInfoDetails: {
@@ -398,41 +861,76 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 
-  priceProtectedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ECFDF5',
-    borderRadius: 8,
-    paddingVertical: 10,
+  lockBenefits: {
     gap: 8,
   },
 
-  priceProtectedText: {
+  lockBenefit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  lockBenefitText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#059669',
+    color: '#374151',
   },
 
   // No Lock State
   noLockCard: {
     alignItems: 'center',
-    padding: 24,
+    padding: 20,
+  },
+
+  noLockIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
 
   noLockTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 12,
+    color: '#374151',
     marginBottom: 6,
   },
 
   noLockText: {
-    fontSize: 13,
-    color: '#9CA3AF',
+    fontSize: 14,
+    color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+
+  lockBenefitsPreview: {
+    width: '100%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+  },
+
+  benefitsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+
+  benefitText: {
+    fontSize: 13,
+    color: '#4B5563',
   },
 
   // Empty State

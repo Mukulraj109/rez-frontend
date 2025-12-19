@@ -107,6 +107,24 @@ const getProductId = (product: any): string => {
   return product.id || product._id || '';
 };
 
+// Helper function to get cashback percentage from product
+const getCashbackPercentage = (product: any): number => {
+  return product.cashback?.percentage || product.cashbackPercentage || 5;
+};
+
+// Helper function to calculate ReZ coins for a product (10% of price)
+const getProductRezCoins = (product: any): number => {
+  const price = getProductPrice(product);
+  return Math.floor(price * 0.1);
+};
+
+// Helper function to calculate cashback amount for a product
+const getProductCashback = (product: any): number => {
+  const price = getProductPrice(product);
+  const percentage = getCashbackPercentage(product);
+  return Math.floor(price * percentage / 100);
+};
+
 function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardProps) {
   const originalPrice = bundle.products.reduce(
     (sum, p) => sum + getProductPrice(p),
@@ -116,6 +134,17 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
   const savingsPercentage = originalPrice > 0
     ? Math.round((bundle.savings / originalPrice) * 100)
     : 0;
+
+  // Calculate total ReZ coins and cashback for the entire bundle
+  const totalRezCoins = bundle.products.reduce(
+    (sum, p) => sum + getProductRezCoins(p),
+    0
+  );
+
+  const totalCashback = bundle.products.reduce(
+    (sum, p) => sum + getProductCashback(p),
+    0
+  );
 
   return (
     <View style={styles.card}>
@@ -189,6 +218,19 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
               <Text style={styles.savingsAmount}>
                 {bundle.savings > 0 ? `You save ₹${bundle.savings}!` : 'Best Price!'}
               </Text>
+            </View>
+
+            {/* Bundle Rewards - Total ReZ Coins & Cashback */}
+            <View style={styles.bundleRewardsRow}>
+              <View style={styles.bundleRewardItem}>
+                <Ionicons name="wallet-outline" size={14} color="#00C06A" />
+                <Text style={styles.bundleRewardText}>{totalRezCoins} coins</Text>
+              </View>
+              <View style={styles.rewardsDivider} />
+              <View style={styles.bundleRewardItem}>
+                <Ionicons name="card-outline" size={14} color="#F59E0B" />
+                <Text style={styles.bundleCashbackText}>₹{totalCashback} cashback</Text>
+              </View>
             </View>
           </View>
 
@@ -418,5 +460,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff'
+  },
+  bundleRewardsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 8
+  },
+  bundleRewardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
+  rewardsDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: '#D1FAE5'
+  },
+  bundleRewardText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#00C06A'
+  },
+  bundleCashbackText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F59E0B'
   }
 });

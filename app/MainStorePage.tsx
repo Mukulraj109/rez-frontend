@@ -39,6 +39,21 @@ import {
   VoucherCardsSection,
   RatingBreakdownSection,
   AIReviewSummary,
+  // NEW COMPONENTS - Redesigned MainStorePage UI
+  StoreInfoCard,
+  CashbackHeroCard,
+  StoreActionButtons as NewStoreActionButtons,
+  StoreOffersSection,
+  StoreLoyaltySection,
+  PaymentMethodsSection,
+  MenuSection,
+  PeopleEarningSection,
+  AIInsightCard,
+  LocationSection,
+  NearbyStoresSection,
+  TermsTransparencySection,
+  RewardsFooterBanner,
+  StoreBottomActionBar,
 } from "./MainStoreSection";
 import Section2 from "./StoreSection/Section2";
 import Section3 from "./StoreSection/Section3";
@@ -414,7 +429,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
     };
   }, []);
 
-  const [activeTab, setActiveTab] = useState<TabKey>("about"); // Default to Overview tab
+  const [activeTab, setActiveTab] = useState<TabKey>("menu"); // Default to Menu tab
   const [isFavorited, setIsFavorited] = useState(false);
 
   // Sticky tab navigation state
@@ -986,22 +1001,18 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
 
   return (
     <ThemedView style={styles.page}>
-      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <LinearGradient colors={["#00C06A", "#00996B"]} style={styles.headerGradient}>
-        <MainStoreHeader
-          storeName={isDynamic && storeData ? storeData.name || storeData.title : productData.storeName}
-          subtitle={isDynamic && storeData ? (() => {
-            const storeDataToUse = fullStoreDataRef.current;
-            // Use reviewStats if available (more up-to-date), otherwise fall back to store data
-            const rating = reviewStats?.averageRating || storeData.rating || storeDataToUse?.ratings?.average || 0;
-            const ratingCount = reviewStats?.totalReviews || storeData.ratingCount || storeDataToUse?.ratings?.count || 0;
-            const deliveryTime = storeData.deliveryTime || storeDataToUse?.operationalInfo?.deliveryTime || '30-45 mins';
-            return `⭐ ${rating.toFixed(1)} (${ratingCount}) • ${deliveryTime}`;
-          })() : undefined}
-          onBack={handleBackPress}
-        />
-      </LinearGradient>
+      {/* NEW: Redesigned Header - Clean white with coin display */}
+      <MainStoreHeader
+        storeName={isDynamic && storeData ? storeData.name || storeData.title : productData.storeName}
+        storeCategory={storeData?.category || productData.category || 'Store'}
+        onBack={handleBackPress}
+        onFavoritePress={handleFavoritePress}
+        isFavorited={isFavorited}
+        userCoins={450} // TODO: Get from user context/API
+        storeId={storeIdParam || storeData?.id || productData.storeId}
+      />
 
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
@@ -1077,82 +1088,77 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
               </View>
             </View>
 
-            {/* Store Info Row - Logo on left with store name and rating */}
-            {(productData.logo || productData.title) && (() => {
+            {/* Store Info Section - Clean Design */}
+            {(productData.title || storeData?.name) && (() => {
               const rating = reviewStats?.averageRating || storeData?.rating || 0;
               const reviewCount = reviewStats?.totalReviews || storeData?.ratingCount || 0;
+              const distance = productData.distance; // Only show if real data exists
+              const isVerified = true; // All stores on ReZ platform are verified partners
+              const hasCashback = true; // All stores on ReZ platform have instant cashback
+              const hasExtraCoins = true; // All stores on ReZ platform offer extra coins
+              const categoryTags = storeData?.tags || [];
+
+              // Get icon for category tag
+              const getCategoryIcon = (tag: string): keyof typeof Ionicons.glyphMap => {
+                const lowerTag = tag.toLowerCase();
+                if (lowerTag.includes('coffee') || lowerTag.includes('cafe')) return 'cafe-outline';
+                if (lowerTag.includes('art')) return 'color-palette-outline';
+                if (lowerTag.includes('food') || lowerTag.includes('restaurant') || lowerTag.includes('dining')) return 'restaurant-outline';
+                if (lowerTag.includes('local')) return 'location-outline';
+                if (lowerTag.includes('chain')) return 'link-outline';
+                if (lowerTag.includes('premium')) return 'diamond-outline';
+                if (lowerTag.includes('fast')) return 'flash-outline';
+                if (lowerTag.includes('healthy')) return 'leaf-outline';
+                return 'pricetag-outline';
+              };
 
               return (
-                <View style={styles.storeInfoRow}>
-                  {/* Logo on Left */}
-                  {productData.logo && (
-                    <View style={styles.storeLogoWrapper}>
-                      <Image
-                        source={{ uri: productData.logo }}
-                        style={styles.storeLogo}
-                        resizeMode="cover"
-                      />
-                    </View>
-                  )}
+                <View style={styles.storeInfoSection}>
+                  {/* Store Name */}
+                  <ThemedText style={styles.storeNameLarge} numberOfLines={1}>
+                    {productData.title || storeData?.name || 'Store'}
+                  </ThemedText>
 
-                  {/* Store Name and Info */}
-                  <View style={styles.storeInfoContent}>
-                    <View style={styles.storeNameRow}>
-                      <ThemedText style={styles.storeNameText} numberOfLines={1}>
-                        {productData.title || storeData?.name || 'Store'}
+                  {/* Rating + Feature Tags Row */}
+                  <View style={styles.ratingTagsRow}>
+                    {/* Rating Badge - Green Pill */}
+                    <View style={styles.ratingBadgePill}>
+                      <Ionicons name="star" size={14} color="#FFB800" />
+                      <ThemedText style={styles.ratingBadgeText}>
+                        {rating > 0 ? rating.toFixed(1) : 'New'}
                       </ThemedText>
-                      {(storeData as any)?.isVerified && (
-                        <View style={styles.verifiedBadge}>
-                          <Ionicons name="checkmark-circle" size={16} color="#00C06A" />
-                        </View>
-                      )}
                     </View>
 
-                    {/* Rating and Review Count - Only show if rating > 0 */}
-                    {rating > 0 ? (
-                      <View style={styles.storeRatingRow}>
-                        <Ionicons name="star" size={14} color="#FFB800" />
-                        <ThemedText style={styles.storeRatingText}>
-                          {rating.toFixed(1)}
-                        </ThemedText>
-                        {reviewCount > 0 && (
-                          <ThemedText style={styles.storeReviewCount}>
-                            ({reviewCount} reviews)
-                          </ThemedText>
-                        )}
+                    {/* Category Tags */}
+                    {categoryTags.slice(0, 3).map((tag, index) => (
+                      <View key={index} style={styles.categoryTag}>
+                        <Ionicons name={getCategoryIcon(tag)} size={12} color="#6B7280" />
+                        <ThemedText style={styles.categoryTagText}>{tag}</ThemedText>
                       </View>
-                    ) : (
-                      <View style={styles.storeMetaRow}>
-                        <View style={styles.storeMetaTag}>
-                          <Ionicons name="storefront-outline" size={12} color="#6B7280" />
-                          <ThemedText style={styles.storeMetaText}>
-                            {storeData?.category || productData.category || 'Store'}
-                          </ThemedText>
-                        </View>
-                        {productData.isOpen !== undefined && (
-                          <View style={[styles.storeMetaTag, productData.isOpen ? styles.openTag : styles.closedTag]}>
-                            <View style={[styles.statusDot, productData.isOpen ? styles.openDot : styles.closedDot]} />
-                            <ThemedText style={[styles.storeMetaText, productData.isOpen ? styles.openText : styles.closedText]}>
-                              {productData.isOpen ? 'Open' : 'Closed'}
-                            </ThemedText>
-                          </View>
-                        )}
+                    ))}
+                  </View>
+
+                  {/* Feature Tags Row */}
+                  <View style={styles.featureTagsRow}>
+                    {isVerified && (
+                      <View style={styles.tagVerified}>
+                        <Ionicons name="checkmark-circle" size={14} color="#00C06A" />
+                        <ThemedText style={styles.tagTextVerified}>Verified Partner</ThemedText>
+                      </View>
+                    )}
+                    {hasCashback && (
+                      <View style={styles.tagCashback}>
+                        <Ionicons name="flash" size={14} color="#FF9500" />
+                        <ThemedText style={styles.tagTextCashback}>Instant Cashback</ThemedText>
+                      </View>
+                    )}
+                    {hasExtraCoins && (
+                      <View style={styles.tagCoins}>
+                        <Ionicons name="gift" size={14} color="#8B5CF6" />
+                        <ThemedText style={styles.tagTextCoins}>Extra Coins</ThemedText>
                       </View>
                     )}
                   </View>
-
-                  {/* Quick Follow Button */}
-                  <TouchableOpacity
-                    style={[styles.quickFollowBtn, isFavorited && styles.quickFollowBtnActive]}
-                    onPress={handleFavoritePress}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons
-                      name={isFavorited ? "heart" : "heart-outline"}
-                      size={20}
-                      color={isFavorited ? "#EF4444" : "#00C06A"}
-                    />
-                  </TouchableOpacity>
                 </View>
               );
             })()}
@@ -1200,8 +1206,8 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
 
             {/* ===== TAB-BASED CONTENT SECTIONS ===== */}
 
-            {/* OVERVIEW TAB (about) */}
-            {activeTab === "about" && (
+            {/* MENU TAB (menu) - Products and store items */}
+            {activeTab === "menu" && (
               <>
                 {/* Product Details - Only on Overview tab */}
                 <View style={styles.sectionCard}>
@@ -1268,8 +1274,8 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
               </>
             )}
 
-            {/* OFFERS TAB (deals) */}
-            {activeTab === "deals" && (
+            {/* OFFERS SECTION - Now visible on Menu tab */}
+            {activeTab === "menu" && (
               <>
                 {/* Voucher Cards Section */}
                 {isDynamic && storeData && (
@@ -1484,7 +1490,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
               </>
             )}
 
-            {/* OVERVIEW TAB - Additional Sections */}
+            {/* ABOUT TAB - Store info, recommendations */}
             {activeTab === "about" && (
               <>
                 {/* Cross-Store Products Recommendations */}
@@ -1526,8 +1532,8 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
               </>
             )}
 
-            {/* OFFERS TAB - Additional Sections */}
-            {activeTab === "deals" && (
+            {/* MENU TAB - Additional Sections (offers, etc.) */}
+            {activeTab === "menu" && (
               <>
                 {/* Mega Sale Offers */}
                 <View style={styles.sectionCard}>
@@ -1918,6 +1924,10 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         />
       )}
 
+      {/* NEW: Store Bottom Action Bar - Sticky at bottom */}
+      <StoreBottomActionBar
+        storeId={storeIdParam || storeData?.id || productData.storeId}
+      />
 
     </ThemedView>
   );
@@ -1944,7 +1954,7 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
       borderColor: 'rgba(255, 255, 255, 0.15)',
     },
     scrollContent: {
-      paddingBottom: 180,
+      paddingBottom: 120, // Reduced padding for new bottom action bar
       paddingTop: 0, // Remove top padding for edge-to-edge header
     },
     webScrollContent: {
@@ -2144,6 +2154,114 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
     },
     closedText: {
       color: "#DC2626",
+    },
+    // NEW Store Info Section - Clean design
+    storeInfoSection: {
+      marginHorizontal: HORIZONTAL_PADDING,
+      marginTop: 16,
+      marginBottom: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      backgroundColor: "#FFFFFF",
+      borderRadius: 16,
+      // Subtle shadow
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: "rgba(0, 0, 0, 0.04)",
+    },
+    storeNameLarge: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: "#0B2240",
+      letterSpacing: -0.3,
+      marginBottom: 12,
+    },
+    ratingTagsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    ratingBadgePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: "rgba(0, 192, 106, 0.12)",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
+    ratingBadgeText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "#0B2240",
+    },
+    categoryTag: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: "rgba(0, 0, 0, 0.04)",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
+    categoryTagText: {
+      fontSize: 12,
+      fontWeight: "500",
+      color: "#4B5563",
+    },
+    featureTagsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 8,
+      marginTop: 10,
+    },
+    tagVerified: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: "rgba(0, 192, 106, 0.1)",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
+    tagTextVerified: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: "#00875A",
+    },
+    tagCashback: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: "rgba(255, 149, 0, 0.1)",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
+    tagTextCashback: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: "#CC7700",
+    },
+    tagCoins: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: "rgba(139, 92, 246, 0.1)",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
+    tagTextCoins: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: "#7C3AED",
     },
     errorInner: {
       backgroundColor: "#FEF2F2",

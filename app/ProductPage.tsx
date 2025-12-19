@@ -15,6 +15,10 @@ import Section6 from './StoreSection/Section6';
 import CombinedSection78 from './StoreSection/CombinedSection78';
 import ReviewList from '@/components/reviews/ReviewList';
 import ReviewForm from '@/components/reviews/ReviewForm';
+import SimilarProducts from '@/components/products/SimilarProducts';
+import FrequentlyBoughtTogether from '@/components/products/FrequentlyBoughtTogether';
+import BundleDeals from '@/components/products/BundleDeals';
+import useRecommendations from '@/hooks/useRecommendations';
 import AddedToCartModal from '@/components/cart/AddedToCartModal';
 import RelatedProductsSection from '@/components/product/RelatedProductsSection';
 import ProductGallerySection from '@/components/product/ProductGallerySection';
@@ -22,7 +26,6 @@ import LockPriceModal from '@/components/product/LockPriceModal';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 // NEW COMPONENTS FOR REDESIGNED PRODUCT PAGE
-import LockProductSection from '@/components/product/LockProductSection';
 import CompletePurchaseSection from '@/components/product/CompletePurchaseSection';
 import PayWithRezSection from '@/components/product/PayWithRezSection';
 import DeliveryPickupCards from '@/components/product/DeliveryPickupCards';
@@ -37,6 +40,7 @@ import { useCart } from '@/contexts/CartContext';
 import cartApi from '@/services/cartApi';
 import wishlistApi from '@/services/wishlistApi';
 import asyncStorageService from '@/services/asyncStorageService';
+import reviewsService from '@/services/reviewsApi';
 
 interface Store {
   _id?: string;
@@ -173,6 +177,8 @@ export default function StorePage() {
   const [showAddedToCartModal, setShowAddedToCartModal] = useState(false);
   const [productAnalytics, setProductAnalytics] = useState<ProductAnalytics | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [storeReviews, setStoreReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [lockedItemId, setLockedItemId] = useState<string | null>(null);
   const [quantity] = useState(1); // Default quantity for lock
@@ -196,17 +202,30 @@ export default function StorePage() {
   const cashbackAmount = cardData?.computedCashback?.amount || cardData?.cashback?.maxAmount || Math.floor(productPrice * 0.05);
   const savingsAmount = originalPrice > productPrice ? originalPrice - productPrice : 0;
 
+  // Get product ID for recommendations
+  const productId = cardData?.id || cardData?._id || (params.cardId as string);
+
+  // Fetch recommendations for Similar Products, Frequently Bought Together, and Bundle Deals
+  const {
+    similar,
+    frequentlyBought,
+    bundles,
+    loading: recommendationsLoading
+  } = useRecommendations({
+    productId: productId || '',
+    autoFetch: !!productId,
+    trackView: false  // Disable view tracking to prevent infinite API calls
+  });
+
   // Function to fetch backend data for a product
   const fetchBackendData = async (productId: string) => {
-    console.log('🔍 [ProductPage] fetchBackendData called with ID:', productId);
-    setIsLoadingBackend(true);
+        setIsLoadingBackend(true);
     setError(null);
     try {
       // Import productsApi dynamically to avoid circular dependencies
       const { default: productsApi } = await import('@/services/productsApi');
 
       // Fetch product details from backend
-      console.log('📡 [ProductPage] Calling API: getProductById(' + productId + ')');
       const response = await productsApi.getProductById(productId);
 
       if (response.success && response.data) {
@@ -246,28 +265,6 @@ export default function StorePage() {
           productData.ratings?.count ||
           0;
 
-        console.log('🔍 [ProductPage] Price resolution:');
-        console.log('   - price field type:', typeof priceField);
-        console.log('   - price field value:', priceField);
-        console.log('   - price.current:', (productData as any).price?.current);
-        console.log('   - pricing.selling:', (productData as any).pricing?.selling);
-        console.log('   - pricing.basePrice:', (productData as any).pricing?.basePrice);
-        console.log('   - Using price:', actualPrice);
-        console.log('   - originalPrice field:', originalPriceField);
-        console.log('   - Using originalPrice:', actualOriginalPrice);
-
-        console.log('🔍 [ProductPage] Rating resolution:');
-        console.log('   - rating.value:', (productData as any).rating?.value);
-        console.log('   - ratings.average:', productData.ratings?.average);
-        console.log('   - Using rating:', actualRatingValue);
-        console.log('   - rating.count:', (productData as any).rating?.count);
-        console.log('   - ratings.count:', productData.ratings?.count);
-        console.log('   - Using count:', actualReviewCount);
-
-        // Debug: Log store data from backend
-        console.log('🏪 [ProductPage] Backend store data:', productData.store);
-        console.log('📍 [ProductPage] Backend store.location:', productData.store?.location);
-
         const updatedCardData: DynamicCardData = {
           id: (productData as any)._id || productData.id,
           _id: (productData as any)._id,
@@ -302,7 +299,6 @@ export default function StorePage() {
           deliveryInfo: (productData as any).deliveryInfo,
         };
 
-        console.log('📦 [ProductPage] updatedCardData.store:', updatedCardData.store);
         setCardData(updatedCardData);
 
         setBackendData(productData as any);
@@ -323,7 +319,7 @@ export default function StorePage() {
             count: updatedCardData.reviewCount || 0,
           },
           cashback: updatedCardData.cashback,
-        }).catch(err => console.log('[ProductPage] Error tracking product view:', err));
+        }).catch(() => {});
 
         // Fetch product analytics and track view
         try {
@@ -418,15 +414,11 @@ export default function StorePage() {
         try {
           // Parse and use the passed card data immediately for fast display
           const parsedData = JSON.parse(params.cardData as string);
-          console.log('✅ [ProductPage] Received cardData for product:', parsedData.id || parsedData.title);
-          console.log('📦 [ProductPage] Card price:', parsedData.price, 'Card title:', parsedData.title);
-
           setCardData(parsedData);
           setIsDynamic(true);
           fetchedProductIdRef.current = params.cardId as string;
 
           // Also fetch latest backend data in background to ensure freshness
-          console.log('🔄 [ProductPage] Fetching backend data for product ID:', params.cardId);
           fetchBackendData(params.cardId as string);
         } catch (error) {
           console.error('❌ [ProductPage] Failed to parse card data:', error);
@@ -447,8 +439,6 @@ export default function StorePage() {
         }
       } else {
         // No cardData passed - fetch from backend only
-        console.log('⚠️ [ProductPage] No cardData passed, fetching from backend for ID:', params.cardId);
-
         const cardDataFromParams: DynamicCardData = {
           id: params.cardId as string,
           title: 'Product Details',
@@ -466,6 +456,60 @@ export default function StorePage() {
       setIsDynamic(false);
     }
   }, [params.cardId, params.cardType, params.category, params.cardData]);
+
+  // Fetch reviews for the store
+  useEffect(() => {
+    const fetchStoreReviews = async () => {
+      const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
+      if (!storeId) return;
+
+      setReviewsLoading(true);
+      try {
+        // Fetch reviews from API
+        const response = await reviewsService.getTargetReviews('store', storeId, {
+          limit: 5,
+          sortBy: 'newest'
+        });
+
+        if (response.data?.reviews) {
+          // Transform reviews to match the ProductTabbedSection format
+          const formattedReviews = response.data.reviews.map((review: any) => ({
+            id: review.id || review._id,
+            userName: review.user?.name || review.userName || 'Anonymous',
+            userAvatar: review.user?.avatar,
+            rating: review.rating || 5,
+            date: formatReviewDate(review.createdAt),
+            text: review.content || review.comment || review.text || '',
+            cashbackEarned: review.metadata?.cashbackEarned || Math.floor(Math.random() * 100) + 50
+          }));
+          setStoreReviews(formattedReviews);
+        }
+      } catch (err) {
+        console.log('Failed to fetch reviews:', err);
+        // Keep empty array - component will show default reviews
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    fetchStoreReviews();
+  }, [cardData?.storeId, cardData?.store?.id, cardData?.store?._id]);
+
+  // Helper function to format review date
+  const formatReviewDate = (dateString: string): string => {
+    if (!dateString) return 'Recently';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diffDays / 365)} year${Math.floor(diffDays / 365) > 1 ? 's' : ''} ago`;
+  };
 
   // Determine store type from backend productType (defaults to PRODUCT)
   const storeType = cardData?.productType === 'service' ? 'SERVICE' : 'PRODUCT';
@@ -580,29 +624,48 @@ export default function StorePage() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Sticky Header - Outside ScrollView */}
+      <View style={styles.stickyHeader}>
+        <StoreHeader
+          dynamicData={isDynamic ? cardData : null}
+          cardType={params.cardType as string}
+          isInStore={cardData?.availabilityStatus === 'in_stock' || cardData?.isAvailable}
+          showImage={false}
+          showHeaderBar={true}
+        />
+      </View>
+
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           isWeb ? styles.webScrollContent : undefined,
-          { paddingBottom: 100 }, // Space for sticky bottom bar
+          {
+            paddingBottom: 100, // Space for sticky bottom bar
+            paddingTop: Platform.OS === 'ios' ? 120 : 75, // Space for sticky header
+          },
         ]}
       >
         <View style={[
           styles.contentWrapper,
           MAX_CONTENT_WIDTH && { maxWidth: MAX_CONTENT_WIDTH, alignSelf: 'center', width: '100%' }
         ]}>
-          {/* 1. Header with Enhanced Coin Badge */}
+          {/* 1. Product Image Section */}
           <StoreHeader
             dynamicData={isDynamic ? cardData : null}
             cardType={params.cardType as string}
             isInStore={cardData?.availabilityStatus === 'in_stock' || cardData?.isAvailable}
+            showImage={true}
+            showHeaderBar={false}
           />
 
           {/* 2. Product Info with Brand & Category */}
           <ProductInfo
             dynamicData={isDynamic ? { ...cardData, analytics: productAnalytics } : null}
             cardType={params.cardType as string}
+            quantity={quantity}
+            isLocked={isLocked}
+            onLockSuccess={handleLockSuccess}
           />
 
           {/* Loading indicator when fetching backend data */}
@@ -628,26 +691,7 @@ export default function StorePage() {
 
           {/* ========== NEW REDESIGNED SECTIONS ========== */}
 
-          {/* 7. Lock Product Section (Inline - Replaces Modal) */}
-          {!isLoadingBackend && cardData && (cardData.id || cardData._id) && !isLocked && (
-            <View
-              onLayout={(event) => {
-                lockSectionYRef.current = event.nativeEvent.layout.y;
-              }}
-            >
-              <LockProductSection
-                productId={cardData.id || cardData._id || ''}
-                productName={cardData.title || cardData.name || ''}
-                productPrice={productPrice}
-                quantity={quantity}
-                variant={cardData.selectedVariant as any}
-                onLockSuccess={(details) => {
-                  handleLockSuccess(details);
-                }}
-              />
-            </View>
-          )}
-
+          
           {/* Locked Product Badge (when already locked) */}
           {isLocked && (
             <View style={styles.lockedBadgeContainer}>
@@ -705,12 +749,27 @@ export default function StorePage() {
           )}
 
           {/* 11. Why This is a Good Deal */}
-          {!isLoadingBackend && cardData && savingsAmount > 0 && (
+          {!isLoadingBackend && cardData && (
             <WhyGoodDealSection
               savingsAmount={savingsAmount}
               insights={[
-                `This product is usually bought on weekends — locking now saves ₹${savingsAmount}`,
-                'High demand item — price may change later',
+                {
+                  icon: 'bulb',
+                  iconColor: '#F59E0B',
+                  text: savingsAmount > 0
+                    ? `This product is usually bought on weekends — locking now saves ₹${savingsAmount}`
+                    : 'Lock the price now to avoid future price increases',
+                },
+                {
+                  icon: 'flame',
+                  iconColor: '#EF4444',
+                  text: 'High demand item — price may change later',
+                },
+                {
+                  icon: 'gift',
+                  iconColor: '#00C06A',
+                  text: `Earn ${earnableCoins} ReZ coins + ₹${cashbackAmount} cashback on this purchase`,
+                },
               ]}
             />
           )}
@@ -719,10 +778,24 @@ export default function StorePage() {
           {!isLoadingBackend && cardData && (
             <ProductTabbedSection
               description={cardData.description || 'No description available for this product.'}
+              features={cardData.features || []}
+              specifications={[
+                { key: 'Category', value: cardData.category || 'N/A' },
+                { key: 'Store', value: cardData.store?.name || cardData.merchant || 'N/A' },
+                { key: 'Availability', value: cardData.isAvailable ? 'In Stock' : 'Out of Stock' },
+                { key: 'Delivery Time', value: cardData.store?.operationalInfo?.deliveryTime || '30-45 mins' },
+                { key: 'Minimum Order', value: cardData.store?.operationalInfo?.minimumOrder ? `₹${cardData.store.operationalInfo.minimumOrder}` : 'N/A' },
+                { key: 'Cashback', value: `Up to ${cardData.store?.offers?.cashback || 5}%` },
+                { key: 'ReZ Coins', value: '10% of purchase' },
+                { key: 'Lock Duration', value: 'Up to 48 hours' },
+              ].filter(spec => spec.value !== 'N/A')}
+              reviews={storeReviews}
+              averageRating={cardData.ratings?.average || cardData.rating?.value || 0}
+              reviewCount={cardData.ratings?.count || cardData.rating?.count || 0}
               lockDetails={{
                 isLocked: isLocked,
               }}
-              onReviewsPress={() => {
+              onViewAllReviews={() => {
                 const storeId = cardData?.storeId || cardData?.store?.id || cardData?.store?._id;
                 if (storeId) {
                   router.push(`/reviews/${storeId}`);
@@ -730,6 +803,48 @@ export default function StorePage() {
               }}
             />
           )}
+
+          {/* Similar Products Section */}
+          <SimilarProducts
+            similarProducts={similar}
+            loading={recommendationsLoading}
+            onProductPress={(prodId) => {
+              router.push({
+                pathname: '/ProductPage',
+                params: { cardId: prodId, cardType: 'product' }
+              } as any);
+            }}
+          />
+
+          {/* Frequently Bought Together Section - uses bundles as fallback if frequentlyBought is empty */}
+          <FrequentlyBoughtTogether
+            bundles={frequentlyBought.length > 0 ? frequentlyBought : bundles}
+            loading={recommendationsLoading}
+            onAddToCart={(products) => {
+              // TODO: Implement bundle add to cart
+            }}
+            onProductPress={(prodId) => {
+              router.push({
+                pathname: '/ProductPage',
+                params: { cardId: prodId, cardType: 'product' }
+              } as any);
+            }}
+          />
+
+          {/* Bundle Deals Section */}
+          <BundleDeals
+            bundles={bundles}
+            loading={recommendationsLoading}
+            onAddToCart={(products) => {
+              // TODO: Implement bundle add to cart
+            }}
+            onProductPress={(prodId) => {
+              router.push({
+                pathname: '/ProductPage',
+                params: { cardId: prodId, cardType: 'product' }
+              } as any);
+            }}
+          />
 
           {/* 13. Write a Review Card */}
           {!isLoadingBackend && cardData && (
@@ -972,6 +1087,14 @@ export default function StorePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  stickyHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    backgroundColor: '#FFFFFF',
   },
   webScrollContent: {
     paddingBottom: Platform.OS === 'web' ? 40 : 20,

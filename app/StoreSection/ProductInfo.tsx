@@ -16,11 +16,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import useRecommendations from "@/hooks/useRecommendations";
-import SimilarProducts from "@/components/products/SimilarProducts";
-import FrequentlyBoughtTogether from "@/components/products/FrequentlyBoughtTogether";
-import BundleDeals from "@/components/products/BundleDeals";
 import PriceAndRewardsSection from "@/components/product/PriceAndRewardsSection";
+import LockProductSection from "@/components/product/LockProductSection";
 import { useLocation } from "@/contexts/LocationContext";
 
 // Haversine formula for distance calculation between two coordinates
@@ -73,9 +70,19 @@ interface ProductInfoProps {
     [key: string]: any;
   } | null;
   cardType?: string;
+  // Lock functionality props
+  quantity?: number;
+  isLocked?: boolean;
+  onLockSuccess?: (details: any) => void;
 }
 
-export default function ProductScreen({ dynamicData, cardType }: ProductInfoProps) {
+export default function ProductScreen({
+  dynamicData,
+  cardType,
+  quantity = 1,
+  isLocked = false,
+  onLockSuccess,
+}: ProductInfoProps) {
   const router = useRouter();
   const { state: locationState } = useLocation();
   const [active, setActive] = useState("visit"); // 'visit' | 'book'
@@ -119,18 +126,6 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
 
   // Get product ID from dynamicData - this should be the real product ID from navigation
   const productId = dynamicData?.id || dynamicData?._id;
-
-  // Enable recommendations with trackView disabled to prevent infinite loops
-  const {
-    similar,
-    frequentlyBought,
-    bundles,
-    loading: recommendationsLoading
-  } = useRecommendations({
-    productId: productId || '',
-    autoFetch: !!productId,
-    trackView: false  // Disable view tracking to prevent infinite API calls
-  });
 
   const onContainerLayout = (e:any) => {
     const w = e.nativeEvent.layout.width;
@@ -368,81 +363,45 @@ export default function ProductScreen({ dynamicData, cardType }: ProductInfoProp
 
         {/* Price & Rewards Section */}
         {productPrice > 0 && (() => {
-          // Calculate original price - check multiple sources
-          let originalPrice = typeof dynamicData?.originalPrice === 'number'
-            ? dynamicData.originalPrice
-            : (dynamicData?.originalPrice?.original ||
-               dynamicData?.pricing?.original ||
-               dynamicData?.pricing?.compare ||
-               dynamicData?.pricing?.mrp);
+          // Get original price from unified price object or raw pricing
+          const originalPrice =
+            dynamicData?.price?.original ||
+            (typeof dynamicData?.originalPrice === 'number' ? dynamicData.originalPrice : null) ||
+            dynamicData?.pricing?.original ||
+            dynamicData?.pricing?.compare ||
+            dynamicData?.pricing?.mrp;
 
-          // If no original price but we have discount %, calculate it
-          if (!originalPrice && dynamicData?.discount && dynamicData.discount > 0) {
-            originalPrice = Math.round(productPrice / (1 - dynamicData.discount / 100));
-          }
-
-          // Get discount percentage
-          const discountPercent = dynamicData?.discount || dynamicData?.pricing?.discount || 0;
-
-          // Calculate cashback amount
+          // Get cashback from backend computed value
           const cashbackAmount = dynamicData?.computedCashback?.amount
-            || dynamicData?.cashback?.maxAmount
-            || (dynamicData?.cashback?.percentage ? Math.floor(productPrice * dynamicData.cashback.percentage / 100) : Math.floor(productPrice * 0.05));
+            || (dynamicData?.cashback?.percentage
+                ? Math.floor(productPrice * dynamicData.cashback.percentage / 100)
+                : Math.floor(productPrice * 0.05));
+
+          // Get earnable coins (10% of price or from backend if available)
+          const earnableCoins = Math.floor(productPrice * 0.1);
 
           return (
             <PriceAndRewardsSection
               price={productPrice}
               originalPrice={originalPrice}
-              earnableCoins={Math.floor(productPrice * 0.1)}
+              earnableCoins={earnableCoins}
               cashbackAmount={cashbackAmount}
               bonusCoins={50}
             />
           );
         })()}
 
-        {/* Recommendation Sections */}
-
-        {/* Similar Products Section */}
-        <SimilarProducts
-          similarProducts={similar}
-          loading={recommendationsLoading}
-          onProductPress={(productId) => {
-            router.push({
-              pathname: '/ProductPage',
-              params: { cardId: productId, cardType: 'product' }
-            } as any);
-          }}
-        />
-
-        {/* Frequently Bought Together Section */}
-        <FrequentlyBoughtTogether
-          bundles={frequentlyBought}
-          loading={recommendationsLoading}
-          onAddToCart={(products) => {
-            // TODO: Implement bundle add to cart
-          }}
-          onProductPress={(productId) => {
-            router.push({
-              pathname: '/ProductPage',
-              params: { cardId: productId, cardType: 'product' }
-            } as any);
-          }}
-        />
-
-        {/* Bundle Deals Section */}
-        <BundleDeals
-          bundles={bundles}
-          loading={recommendationsLoading}
-          onAddToCart={(products) => {
-            // TODO: Implement bundle add to cart
-          }}
-          onProductPress={(productId) => {
-            router.push({
-              pathname: '/ProductPage',
-              params: { cardId: productId, cardType: 'product' }
-            } as any);
-          }}
-        />
+        {/* Lock Product Section */}
+        {dynamicData && (dynamicData.id || dynamicData._id) && !isLocked && (
+          <LockProductSection
+            productId={dynamicData.id || dynamicData._id || ''}
+            productName={dynamicData.title || dynamicData.name || ''}
+            productPrice={productPrice}
+            quantity={quantity}
+            variant={dynamicData.selectedVariant}
+            onLockSuccess={onLockSuccess}
+          />
+        )}
       </ScrollView>
     </View>
 );

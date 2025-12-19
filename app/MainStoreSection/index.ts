@@ -1,44 +1,90 @@
 // MainStoreSection Components Index
-// This file will export all MainStore section components
+// This file exports all MainStore section components
 
-// Phase 2: Header Section
+// Header Section
 export { default as MainStoreHeader } from './MainStoreHeader';
 
-// Phase 3: Product Display Section  
+// Product Display Section
 export { default as ProductDisplay } from './ProductDisplay';
 
-// Phase 4: Navigation Tabs
+// Navigation Tabs
 export { default as TabNavigation } from './TabNavigation';
 export type { TabKey } from './TabNavigation';
 
-// Phase 5: Product Information
+// Product Information
 export { default as ProductDetails } from './ProductDetails';
 
-// Phase 6: Cashback Offer
+// Cashback Offer (Legacy)
 export { default as CashbackOffer } from './CashbackOffer';
 
-// Phase 7: UGC Section
+// UGC Section
 export { default as UGCSection } from './UGCSection';
 
-// Phase 8: Bottom Action Button
+// Bottom Action Button
 export { default as VisitStoreButton } from './VisitStoreButton';
 
-// Phase 9: Store Products Grid
+// Store Products Grid
 export { default as StoreProducts } from './StoreProducts';
 
-// Phase 10: Store Hero Metrics (Magicpin-inspired)
+// Store Hero Metrics (Magicpin-inspired)
 export { default as StoreHeroMetrics } from './StoreHeroMetrics';
 
-// Phase 11: Voucher Cards Section (Magicpin-inspired)
+// Voucher Cards Section (Magicpin-inspired)
 export { default as VoucherCardsSection } from './VoucherCardsSection';
 export type { VoucherCard } from './VoucherCardsSection';
 
-// Phase 12: Rating Breakdown Section (Magicpin-inspired)
+// Rating Breakdown Section (Magicpin-inspired)
 export { default as RatingBreakdownSection } from './RatingBreakdownSection';
 export type { RatingCategory } from './RatingBreakdownSection';
 
-// Phase 13: AI Review Summary (Magicpin-inspired)
+// AI Review Summary (Magicpin-inspired)
 export { default as AIReviewSummary } from './AIReviewSummary';
+
+// ============================================================================
+// NEW COMPONENTS - Redesigned MainStorePage UI
+// ============================================================================
+
+// Store Info Card - Image, name, rating, tags, status
+export { default as StoreInfoCard } from './StoreInfoCard';
+
+// Cashback Hero Card - Green gradient cashback display
+export { default as CashbackHeroCard } from './CashbackHeroCard';
+
+// Store Action Buttons - Scan & Pay, Upload Bill, View Offers
+export { default as StoreActionButtons } from './StoreActionButtons';
+
+// Store Offers Section - Offers with Apply buttons
+export { default as StoreOffersSection } from './StoreOffersSection';
+
+// Store Loyalty Section - Visits progress, next reward
+export { default as StoreLoyaltySection } from './StoreLoyaltySection';
+
+// Payment Methods Section - Payment options grid
+export { default as PaymentMethodsSection } from './PaymentMethodsSection';
+
+// Menu Section - List format menu with coin earnings
+export { default as MenuSection } from './MenuSection';
+
+// People Earning Section - Recent user earnings
+export { default as PeopleEarningSection } from './PeopleEarningSection';
+
+// AI Insight Card - AI savings tips
+export { default as AIInsightCard } from './AIInsightCard';
+
+// Location Section - Map with directions
+export { default as LocationSection } from './LocationSection';
+
+// Nearby Stores Section - Nearby ReZ stores list
+export { default as NearbyStoresSection } from './NearbyStoresSection';
+
+// Terms & Transparency Section - Collapsible accordion
+export { default as TermsTransparencySection } from './TermsTransparencySection';
+
+// Rewards Footer Banner - Dark footer with trophy
+export { default as RewardsFooterBanner } from './RewardsFooterBanner';
+
+// Store Bottom Action Bar - Sticky bottom action bar
+export { default as StoreBottomActionBar } from './StoreBottomActionBar';
 
 // Default export for the main component
 export { default } from './MainStoreHeader';

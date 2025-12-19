@@ -142,7 +142,7 @@ export default memo(function Section3({ productPrice = 1000, storeId }: Section3
       >
         {/* Gradient Background */}
         <LinearGradient
-          colors={meetsMinimum ? ['#00C06A', '#00996B'] : ['#6B7280', '#4B5563']}
+          colors={meetsMinimum ? ['#00C06A', '#059669'] : ['#10B981', '#047857']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.cardGradient}
@@ -412,8 +412,8 @@ export default memo(function Section3({ productPrice = 1000, storeId }: Section3
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.background.primary,
+    paddingVertical: Spacing.lg,
+    backgroundColor: '#FFFFFF',
   },
 
   // Header Styles
@@ -422,53 +422,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   headerIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary[600],
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#F59E0B',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.sm,
-    // 3D effect for icon
-    shadowColor: Colors.primary[600],
-    shadowOffset: { width: 0, height: 3 },
+    marginRight: 10,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowRadius: 8,
+    elevation: 6,
   },
   headerTitle: {
-    ...Typography.h4,
+    fontSize: 18,
     fontWeight: '700',
-    color: Colors.gray[900],
+    color: '#1F2937',
+    letterSpacing: -0.3,
   },
   countBadge: {
-    backgroundColor: Colors.primary[100],
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: Spacing.sm,
-    // 3D effect for badge
-    shadowColor: Colors.primary[600],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: Colors.primary[200],
+    paddingVertical: 5,
+    borderRadius: 10,
+    marginLeft: 10,
   },
   countText: {
-    ...Typography.caption,
+    fontSize: 12,
     fontWeight: '700',
-    color: Colors.primary[600],
+    color: '#FFFFFF',
   },
 
   // Scroll Content
@@ -481,61 +471,48 @@ const styles = StyleSheet.create({
   discountCard: {
     width: CARD_WIDTH,
     marginRight: CARD_MARGIN,
-    borderRadius: BorderRadius.xl,
+    borderRadius: 16,
     overflow: 'hidden',
-    // Enhanced 3D shadow effects
     shadowColor: '#00C06A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
-    // Additional depth
-    borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.15)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
   discountCardLocked: {
-    opacity: 0.85,
-    shadowOpacity: 0.1,
-    elevation: 4,
+    opacity: 0.9,
+    shadowColor: '#6B7280',
   },
   cardGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    minHeight: 90,
-    // Inner shadow effect for depth
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 16,
+    minHeight: 100,
   },
 
   // Discount Badge
   discountBadge: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     alignItems: 'center',
-    marginRight: Spacing.md,
-    // 3D effect for badge
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
+    marginRight: 14,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   discountBadgeText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFF',
-    lineHeight: 24,
+    lineHeight: 26,
   },
   discountBadgeSubtext: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
-    letterSpacing: 1,
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.9)',
+    letterSpacing: 1.5,
+    marginTop: 2,
   },
 
   // Lock Badge

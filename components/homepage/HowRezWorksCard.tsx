@@ -24,8 +24,8 @@ interface Step {
 const steps: Step[] = [
   { id: 1, icon: 'wallet-outline', label: 'Spend', color: '#00C06A' },
   { id: 2, icon: 'scan-outline', label: 'Scan', color: '#00A86B' },
-  { id: 3, icon: 'layers-outline', label: 'Earn', color: '#FFB020' },
-  { id: 4, icon: 'swap-horizontal-outline', label: 'Redeem', color: '#FFC857' },
+  { id: 3, icon: 'layers-outline', label: 'Earn', color: '#00C06A' },
+  { id: 4, icon: 'swap-horizontal-outline', label: 'Redeem', color: '#00A86B' },
 ];
 
 const HowRezWorksCard: React.FC = () => {
@@ -51,7 +51,7 @@ const HowRezWorksCard: React.FC = () => {
         >
           {/* Subtle gradient overlay for depth */}
           <LinearGradient
-            colors={['rgba(0, 192, 106, 0.03)', 'rgba(255, 176, 32, 0.03)']}
+            colors={['rgba(0, 192, 106, 0.03)', 'rgba(0, 168, 107, 0.03)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFillObject}
@@ -84,11 +84,7 @@ const HowRezWorksCard: React.FC = () => {
                   {/* Icon Circle with gradient border */}
                   <View style={styles.iconOuterRing}>
                     <LinearGradient
-                      colors={
-                        index < 2
-                          ? ['#00C06A', '#00A86B']
-                          : ['#FFB020', '#FFC857']
-                      }
+                      colors={['#00C06A', '#00A86B']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.iconGradientBorder}
@@ -111,13 +107,7 @@ const HowRezWorksCard: React.FC = () => {
                 {index < steps.length - 1 && (
                   <View style={styles.arrowContainer}>
                     <LinearGradient
-                      colors={
-                        index < 1
-                          ? ['#00C06A', '#00A86B']
-                          : index === 1
-                          ? ['#00A86B', '#FFB020']
-                          : ['#FFB020', '#FFC857']
-                      }
+                      colors={['#00C06A', '#00A86B']}
                       start={{ x: 0, y: 0.5 }}
                       end={{ x: 1, y: 0.5 }}
                       style={styles.arrowGradient}
@@ -370,7 +360,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 176, 32, 0.06)',
+    backgroundColor: 'rgba(0, 192, 106, 0.06)',
   },
 });
 

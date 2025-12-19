@@ -370,35 +370,31 @@ export default function StoreActionButtons({
 const styles = StyleSheet.create({
   // Modern Container
   container: {
-    paddingVertical: Spacing.lg,
-    paddingTop: Spacing['2xl'] - 8,
-    paddingBottom: Spacing.lg,
+    paddingVertical: 12,
+    paddingTop: 16,
+    paddingBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Modern Button with Enhanced 3D Shadows
+  // Modern Button with Enhanced Shadows
   buttonContainer: {
-    borderRadius: BorderRadius.lg,
+    borderRadius: 14,
     overflow: 'hidden',
-    // Enhanced 3D shadow effects
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
-    height: 56,
-    // Additional depth
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#00C06A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+    height: 50,
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   buttonGradient: {
     paddingVertical: 0,
-    paddingHorizontal: Spacing.base,
-    height: 56,
+    paddingHorizontal: 16,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
     flex: 1,
@@ -407,17 +403,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
   },
   buttonIcon: {
-    marginRight: 2,
+    marginRight: 0,
   },
 
   // Modern Typography
   buttonText: {
-    ...Typography.bodyLarge,
+    fontSize: 15,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
     textAlign: 'center',
     lineHeight: 20,
     flexShrink: 0,

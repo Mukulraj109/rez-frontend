@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, TouchableOpacity, StyleSheet, Image, Animated, ActivityIndicator, Share, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Image, Animated, ActivityIndicator, Share, Platform, ScrollView, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -48,6 +48,8 @@ interface StoreHeaderProps {
   isInStore?: boolean;
   /** Show/hide the product image section */
   showImage?: boolean;
+  /** Show/hide the header bar (back, coins, actions) */
+  showHeaderBar?: boolean;
 }
 
 export default function StoreHeader({
@@ -55,6 +57,7 @@ export default function StoreHeader({
   cardType,
   isInStore = true,
   showImage = true,
+  showHeaderBar = true,
 }: StoreHeaderProps) {
   const router = useRouter();
   const { refreshWishlist } = useWishlist();
@@ -204,6 +207,12 @@ export default function StoreHeader({
     }).start();
   };
 
+  // Image slider state
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const imageScrollRef = useRef<ScrollView>(null);
+  const { width: screenWidth } = Dimensions.get('window');
+  const imageWidth = screenWidth - 32; // Account for margins
+
   // Validate image URL
   const isValidImageUrl = (url: string | undefined): boolean => {
     if (!url || url.trim() === '') return false;
@@ -215,26 +224,56 @@ export default function StoreHeader({
     }
   };
 
-  // Get image URL from various possible sources
-  const getImageUrl = () => {
+  // Get ALL image URLs from various possible sources
+  const getAllImageUrls = (): string[] => {
+    const urls: string[] = [];
+
     // Check direct image field
-    if (isValidImageUrl(dynamicData?.image)) return dynamicData.image;
+    if (isValidImageUrl(dynamicData?.image)) {
+      urls.push(dynamicData.image!);
+    }
+
     // Check images array
     if (dynamicData?.images && dynamicData.images.length > 0) {
-      const firstImage = dynamicData.images[0];
-      if (typeof firstImage === 'string' && isValidImageUrl(firstImage)) return firstImage;
-      if (typeof firstImage === 'object' && isValidImageUrl(firstImage?.url)) return firstImage.url;
+      dynamicData.images.forEach((img: any) => {
+        const imgUrl = typeof img === 'string' ? img : img?.url;
+        if (isValidImageUrl(imgUrl) && !urls.includes(imgUrl)) {
+          urls.push(imgUrl);
+        }
+      });
     }
-    // Check store logo
-    if (isValidImageUrl(dynamicData?.store?.logo)) return dynamicData.store.logo;
-    return null;
+
+    // Check store logo as fallback if no images
+    if (urls.length === 0 && isValidImageUrl(dynamicData?.store?.logo)) {
+      urls.push(dynamicData.store.logo!);
+    }
+
+    return urls;
   };
 
-  const storeImageUrl = getImageUrl();
+  const allImages = getAllImageUrls();
+  const hasMultipleImages = allImages.length > 1;
+
+  // Handle image scroll
+  const handleImageScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const contentOffsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffsetX / imageWidth);
+    if (index !== currentImageIndex && index >= 0 && index < allImages.length) {
+      setCurrentImageIndex(index);
+    }
+  };
+
+  // Handle pagination dot press
+  const handleDotPress = (index: number) => {
+    triggerImpact('Light');
+    setCurrentImageIndex(index);
+    imageScrollRef.current?.scrollTo({ x: index * imageWidth, animated: true });
+  };
 
   return (
     <View style={styles.container}>
       {/* Header Bar - Above the image */}
+      {showHeaderBar && (
       <View style={styles.headerBar}>
         {/* Left - Back button */}
         <Animated.View style={{ transform: [{ scale: backScaleAnim }] }}>
@@ -246,7 +285,7 @@ export default function StoreHeader({
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <Ionicons name="arrow-back" size={22} color="#1F2937" />
+            <Ionicons name="chevron-back" size={20} color="#374151" />
           </TouchableOpacity>
         </Animated.View>
 
@@ -275,7 +314,7 @@ export default function StoreHeader({
               accessibilityLabel="Share"
               accessibilityRole="button"
             >
-              <Ionicons name="share-outline" size={20} color="#1F2937" />
+              <Ionicons name="share-outline" size={18} color="#374151" />
             </TouchableOpacity>
           </Animated.View>
 
@@ -289,7 +328,7 @@ export default function StoreHeader({
               accessibilityLabel="Cart"
               accessibilityRole="button"
             >
-              <Ionicons name="bag-outline" size={20} color="#1F2937" />
+              <Ionicons name="bag-outline" size={18} color="#374151" />
             </TouchableOpacity>
           </Animated.View>
 
@@ -312,24 +351,68 @@ export default function StoreHeader({
               ) : (
                 <Ionicons
                   name={isSaved ? "heart" : "heart-outline"}
-                  size={20}
-                  color={isSaved ? "#EF4444" : "#1F2937"}
+                  size={18}
+                  color={isSaved ? "#EF4444" : "#374151"}
                 />
               )}
             </TouchableOpacity>
           </Animated.View>
         </View>
       </View>
+      )}
 
-      {/* Product Image - Below the header */}
+      {/* Product Image Slider - Below the header */}
       {showImage && (
         <View style={styles.imageContainer}>
-          {storeImageUrl ? (
-            <Image
-              source={{ uri: storeImageUrl }}
-              style={styles.productImage}
-              resizeMode="cover"
-            />
+          {allImages.length > 0 ? (
+            <>
+              <ScrollView
+                ref={imageScrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleImageScroll}
+                scrollEventThrottle={16}
+                decelerationRate="fast"
+                snapToInterval={imageWidth}
+                snapToAlignment="center"
+                contentContainerStyle={{ width: imageWidth * allImages.length }}
+              >
+                {allImages.map((imageUrl, index) => (
+                  <Image
+                    key={index}
+                    source={{ uri: imageUrl }}
+                    style={[styles.productImage, { width: imageWidth }]}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+
+              {/* Pagination Dots */}
+              {hasMultipleImages && (
+                <View style={styles.paginationContainer}>
+                  {allImages.map((_, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => handleDotPress(index)}
+                      style={[
+                        styles.paginationDot,
+                        index === currentImageIndex && styles.paginationDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+
+              {/* Image Counter */}
+              {hasMultipleImages && (
+                <View style={styles.imageCounter}>
+                  <ThemedText style={styles.imageCounterText}>
+                    {currentImageIndex + 1}/{allImages.length}
+                  </ThemedText>
+                </View>
+              )}
+            </>
           ) : (
             <View style={styles.placeholderContainer}>
               <LinearGradient
@@ -355,6 +438,7 @@ export default function StoreHeader({
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.4)']}
             style={styles.bottomGradient}
+            pointerEvents="none"
           />
 
           {/* Store Badge - Bottom left */}
@@ -378,31 +462,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 54 : 44,
+    paddingTop: Platform.OS === 'ios' ? 48 : 12,
     paddingBottom: 12,
     backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
 
   // Icon button style
   iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#F3F4F6',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
 
   heartBtnActive: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
   },
 
   // Coin badge loading state
   coinBadgeLoading: {
-    height: 36,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 18,
+    height: 34,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -411,7 +500,7 @@ const styles = StyleSheet.create({
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
 
   // Image container
@@ -480,5 +569,47 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+
+  // Pagination dots for image slider
+  paginationContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+
+  paginationDotActive: {
+    width: 24,
+    backgroundColor: '#00C06A',
+    borderRadius: 4,
+  },
+
+  // Image counter badge
+  imageCounter: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  imageCounterText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

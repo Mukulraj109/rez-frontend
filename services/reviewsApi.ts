@@ -91,7 +91,7 @@ export interface ReviewsQuery {
   hasVideos?: boolean;
   search?: string;
   tags?: string[];
-  sort?: 'newest' | 'oldest' | 'rating_high' | 'rating_low' | 'helpful' | 'featured';
+  sortBy?: 'newest' | 'oldest' | 'highest' | 'lowest' | 'helpful';
   order?: 'asc' | 'desc';
   status?: Review['moderation']['status'];
   dateFrom?: string;
