@@ -69,7 +69,9 @@ export default function PeopleEarningSection({
   }, [storeId]);
 
   const fetchRecentEarnings = async () => {
-    if (!storeId) return;
+    if (!storeId) {
+      return;
+    }
 
     try {
       setLoading(true);
@@ -78,10 +80,8 @@ export default function PeopleEarningSection({
       if (response.success && response.data && response.data.length > 0) {
         setUsers(response.data);
       }
-      // If no data, keep using sample data
-    } catch (error) {
-      console.log('Using sample data for people earning section');
-      // Keep using sample data on error
+    } catch (error: any) {
+      // Use sample data on error
     } finally {
       setLoading(false);
     }

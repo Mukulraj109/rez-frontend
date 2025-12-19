@@ -1866,6 +1866,49 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
               <PeopleEarningSection storeId={productData.storeId} />
             </View>
 
+            {/* Location & Directions Section */}
+            <View style={styles.sectionCard}>
+              <LocationSection
+                address={
+                  typeof productData.location === 'object'
+                    ? `${(productData.location as LocationData).address || ''}, ${(productData.location as LocationData).city || ''}`
+                    : productData.location || 'Store Location'
+                }
+                distance="Nearby"
+                latitude={
+                  typeof productData.location === 'object'
+                    ? (productData.location as LocationData).coordinates?.lat
+                    : undefined
+                }
+                longitude={
+                  typeof productData.location === 'object'
+                    ? (productData.location as LocationData).coordinates?.lng
+                    : undefined
+                }
+              />
+            </View>
+
+            {/* Nearby ReZ Stores Section */}
+            <NearbyStoresSection
+              currentStoreId={productData.storeId}
+              userLat={
+                typeof productData.location === 'object'
+                  ? (productData.location as LocationData).coordinates?.lat
+                  : undefined
+              }
+              userLng={
+                typeof productData.location === 'object'
+                  ? (productData.location as LocationData).coordinates?.lng
+                  : undefined
+              }
+            />
+
+            {/* Terms & Transparency Section */}
+            <TermsTransparencySection />
+
+            {/* Rewards Footer Banner */}
+            <RewardsFooterBanner />
+
           </>
         )}
         </View>
@@ -2199,12 +2242,12 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
       borderColor: 'rgba(255, 255, 255, 0.15)',
     },
     scrollContent: {
-      paddingBottom: 120, // Reduced padding for new bottom action bar
+      paddingBottom: 0,
       paddingTop: 0, // Remove top padding for edge-to-edge header
     },
     webScrollContent: {
       // Web-specific scroll styles
-      paddingBottom: Platform.OS === 'web' ? 200 : 180,
+      paddingBottom: 0,
     },
     contentWrapper: {
       // Wrapper for max-width constraint on web/desktop

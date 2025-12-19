@@ -106,15 +106,8 @@ const RecentlyViewedCard = memo(({
           )}
         </View>
 
-        {/* Address (for stores) or Price (for products) */}
-        {item.type === 'store' && item.address && item.address.length > 1 ? (
-          <View style={styles.addressRow}>
-            <Ionicons name="location-outline" size={12} color="#6B7280" />
-            <Text style={styles.addressText} numberOfLines={2}>
-              {item.address}
-            </Text>
-          </View>
-        ) : item.type === 'product' && item.price && item.price.current > 0 ? (
+        {/* Price Row - only for products */}
+        {item.type === 'product' && item.price && item.price.current > 0 ? (
           <View style={styles.priceRow}>
             <Text style={styles.currentPrice}>
               ₹{item.price.current.toLocaleString('en-IN')}
@@ -125,7 +118,9 @@ const RecentlyViewedCard = memo(({
               </Text>
             )}
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.priceRowPlaceholder} />
+        )}
 
         {/* Cashback Badge */}
         {hasCashback && (
@@ -365,6 +360,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    minHeight: 18,
+  },
+  priceRowPlaceholder: {
+    minHeight: 18,
   },
   currentPrice: {
     fontSize: 14,

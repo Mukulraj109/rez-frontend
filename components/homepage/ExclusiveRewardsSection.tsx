@@ -119,14 +119,14 @@ const RewardCard: React.FC<RewardCardProps> = ({
         <View style={styles.glassOverlay}>
           <View style={styles.cardContent}>
             <View style={styles.iconContainer}>
-              <Ionicons name={icon} size={20} color={COLORS.white} />
+              <Ionicons name={icon} size={16} color={COLORS.white} />
             </View>
             <View style={styles.textContainer}>
               <Text style={styles.cardTitle}>{title}</Text>
               <Text style={styles.cardSubtitle}>{subtitle}</Text>
             </View>
             <View style={styles.arrowContainer}>
-              <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
+              <Ionicons name="chevron-forward" size={14} color={COLORS.white} />
             </View>
           </View>
         </View>
@@ -252,11 +252,16 @@ const styles = StyleSheet.create({
   },
   cardsContainer: {
     paddingHorizontal: 16,
-    gap: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 10,
   },
   cardContainer: {
+    width: '48%',
     borderRadius: 14,
     overflow: 'hidden',
+    marginBottom: 2,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -276,8 +281,8 @@ const styles = StyleSheet.create({
   glassOverlay: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     backdropFilter: 'blur(10px)',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.25)',
     borderRadius: 14,
@@ -287,13 +292,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
@@ -301,7 +306,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.white,
     letterSpacing: -0.2,
@@ -310,14 +315,14 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   cardSubtitle: {
-    fontSize: 11,
+    fontSize: 9,
     color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 1,
   },
   arrowContainer: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',

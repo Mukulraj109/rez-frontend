@@ -94,36 +94,37 @@ export default function QuickActionsSection({
   ];
 
   const renderValue = (actionId: string) => {
-    const theme = ACTION_THEMES[actionId as keyof typeof ACTION_THEMES];
+    const greyBg = '#F3F4F6';
+    const greyText = '#6B7280';
 
     switch (actionId) {
       case 'voucher':
         return (
-          <View style={[styles.valuePill, { backgroundColor: theme.iconBg }]}>
-            <Text style={[styles.valueNumber, { color: theme.iconColor }]}>{voucherCount}</Text>
-            <Text style={[styles.valueLabel, { color: theme.iconColor }]}>New</Text>
+          <View style={[styles.valuePill, { backgroundColor: greyBg }]}>
+            <Text style={[styles.valueNumber, { color: greyText }]}>{voucherCount}</Text>
+            <Text style={[styles.valueLabel, { color: greyText }]}>New</Text>
           </View>
         );
       case 'wallet':
         return (
-          <View style={[styles.valuePill, styles.walletPill, { backgroundColor: theme.iconBg }]}>
-            <Text style={[styles.valueText, { color: theme.iconColor }]}>Load</Text>
-            <View style={[styles.plusButton, { backgroundColor: theme.iconColor }]}>
+          <View style={[styles.valuePill, styles.walletPill, { backgroundColor: greyBg }]}>
+            <Text style={[styles.valueText, { color: greyText }]}>Load</Text>
+            <View style={[styles.plusButton, { backgroundColor: greyText }]}>
               <Ionicons name="add" size={10} color="#FFFFFF" />
             </View>
           </View>
         );
       case 'offers':
         return (
-          <View style={[styles.valuePill, { backgroundColor: theme.iconBg }]}>
-            <Text style={[styles.valueNumber, { color: theme.iconColor }]}>{newOffersCount}</Text>
-            <Text style={[styles.valueLabel, { color: theme.iconColor }]}>New</Text>
+          <View style={[styles.valuePill, { backgroundColor: greyBg }]}>
+            <Text style={[styles.valueNumber, { color: greyText }]}>{newOffersCount}</Text>
+            <Text style={[styles.valueLabel, { color: greyText }]}>New</Text>
           </View>
         );
       case 'store':
         return (
-          <View style={[styles.valuePill, { backgroundColor: theme.iconBg }]}>
-            <Text style={[styles.valueText, { color: theme.iconColor }]}>Explore</Text>
+          <View style={[styles.valuePill, { backgroundColor: greyBg }]}>
+            <Text style={[styles.valueText, { color: greyText }]}>Explore</Text>
           </View>
         );
       default:

@@ -1361,12 +1361,13 @@ const viewStyles = StyleSheet.create({
   },
   // Text pill with background - positioned to the left of badge
   savedTextPill: {
-    backgroundColor: 'rgba(34, 197, 94, 0.18)',
+    backgroundColor: 'rgba(255, 200, 87, 0.35)',
     paddingLeft: 6,
     paddingRight: 4,
     paddingVertical: 2,
     borderRadius: 0,
     marginRight: -4,
+    marginTop: -6,
   },
   // Badge overlay - overlaps text from right
   badgeOverlay: {
@@ -1374,7 +1375,7 @@ const viewStyles = StyleSheet.create({
   },
   // Savings text
   savedText: {
-    color: '#15803D',
+    color: '#B45309',
     fontSize: 8,
     fontWeight: '600',
   },

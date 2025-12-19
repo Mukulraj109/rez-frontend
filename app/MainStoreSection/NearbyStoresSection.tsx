@@ -1,9 +1,10 @@
 // NearbyStoresSection.tsx - Nearby ReZ stores section
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -14,6 +15,7 @@ import {
   Spacing,
   BorderRadius,
 } from "@/constants/DesignSystem";
+import { storesApi } from "@/services/storesApi";
 
 export interface NearbyStore {
   id: string;
@@ -23,6 +25,9 @@ export interface NearbyStore {
 
 export interface NearbyStoresSectionProps {
   stores?: NearbyStore[];
+  currentStoreId?: string;
+  userLat?: number;
+  userLng?: number;
 }
 
 const SAMPLE_STORES: NearbyStore[] = [
@@ -31,10 +36,58 @@ const SAMPLE_STORES: NearbyStore[] = [
   { id: "3", name: "Pizza Hut", distance: "750m" },
 ];
 
+// Format distance to human readable string
+const formatDistance = (distanceKm: number): string => {
+  if (distanceKm < 1) {
+    return `${Math.round(distanceKm * 1000)}m`;
+  }
+  return `${distanceKm.toFixed(1)}km`;
+};
+
 export default function NearbyStoresSection({
-  stores = SAMPLE_STORES,
+  stores: propStores,
+  currentStoreId,
+  userLat,
+  userLng,
 }: NearbyStoresSectionProps) {
   const router = useRouter();
+  const [stores, setStores] = useState<NearbyStore[]>(propStores || SAMPLE_STORES);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (userLat && userLng) {
+      fetchNearbyStores();
+    }
+  }, [userLat, userLng, currentStoreId]);
+
+  const fetchNearbyStores = async () => {
+    if (!userLat || !userLng) return;
+
+    try {
+      setLoading(true);
+      const response = await storesApi.getNearbyStores(userLat, userLng, 10, 5);
+
+      if (response.success && response.data && response.data.length > 0) {
+        // Filter out current store and format data
+        const nearbyStores: NearbyStore[] = response.data
+          .filter((store: any) => store._id !== currentStoreId && store.id !== currentStoreId)
+          .slice(0, 3) // Limit to 3 stores
+          .map((store: any) => ({
+            id: store._id || store.id,
+            name: store.name,
+            distance: store.distance ? formatDistance(store.distance) : '~1km',
+          }));
+
+        if (nearbyStores.length > 0) {
+          setStores(nearbyStores);
+        }
+      }
+    } catch (error) {
+      // Use sample data on error
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleStorePress = (store: NearbyStore) => {
     triggerImpact('Light');
