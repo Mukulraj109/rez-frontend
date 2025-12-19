@@ -51,12 +51,14 @@ export default function FrequentlyBoughtTogether({
     }
   }, [currentProduct.id, storeId]);
 
-  // Auto-select current product by default
+  // Auto-select current product by default (only on product pages, not store pages)
   useEffect(() => {
-    if (currentProduct) {
+    if (currentProduct && !storeId) {
       setSelectedProducts(new Set([currentProduct.id]));
+    } else {
+      setSelectedProducts(new Set());
     }
-  }, [currentProduct.id]);
+  }, [currentProduct.id, storeId]);
 
   const loadBundleProducts = async () => {
     try {
@@ -108,7 +110,7 @@ export default function FrequentlyBoughtTogether({
             id: product.id || product._id,
             type: 'product',
             name: product.name,
-            brand: product.brand || 'Unknown Brand',
+            brand: product.brand || '',
             image: product.image || product.images?.[0]?.url || product.images?.[0] || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400',
             description: product.description,
             title: product.name,
@@ -119,14 +121,14 @@ export default function FrequentlyBoughtTogether({
               discount: product.pricing?.discount || product.price?.discount || 0,
             },
             category: product.category?.name || product.category || 'General',
-            rating: product.ratings ? {
+            rating: (product.ratings && product.ratings.average > 0) ? {
               value: product.ratings.average,
               count: product.ratings.count,
             } : undefined,
             availabilityStatus: (product.isActive !== false && product.inventory?.isAvailable !== false) ? 'in_stock' : 'out_of_stock',
             tags: product.tags || [],
-            bundleDiscount: 10, // Fixed bundle discount instead of random
-            purchaseCorrelation: 0.8, // Fixed correlation instead of random
+            bundleDiscount: 10,
+            purchaseCorrelation: 0.8,
           }));
 
         setBundleProducts(products);
@@ -231,16 +233,19 @@ export default function FrequentlyBoughtTogether({
     let total = 0;
     let originalTotal = 0;
 
-    // Add current product
-    if (selectedProducts.has(currentProduct.id)) {
+    // Add current product (only on product pages)
+    if (!storeId && selectedProducts.has(currentProduct.id)) {
       total += currentProduct.price.current;
       originalTotal += currentProduct.price.original || currentProduct.price.current;
     }
 
-    // Add bundle products
+    // Add bundle/store products
     bundleProducts.forEach((product) => {
       if (selectedProducts.has(product.id)) {
-        const discountedPrice = product.price.current * (1 - (product.bundleDiscount || 0) / 100);
+        // No bundle discount on store pages
+        const discountedPrice = storeId
+          ? product.price.current
+          : product.price.current * (1 - (product.bundleDiscount || 0) / 100);
         total += discountedPrice;
         originalTotal += product.price.original || product.price.current;
       }
@@ -263,8 +268,8 @@ export default function FrequentlyBoughtTogether({
     try {
       const productsToAdd: ProductItem[] = [];
 
-      // Add current product if selected
-      if (selectedProducts.has(currentProduct.id)) {
+      // Add current product if selected (only on product pages)
+      if (!storeId && selectedProducts.has(currentProduct.id)) {
         productsToAdd.push(currentProduct);
       }
 
@@ -350,7 +355,8 @@ export default function FrequentlyBoughtTogether({
         (p) => selectedProducts.has(p.id) && p.id !== pendingProduct.id
       );
 
-      if (selectedProducts.has(currentProduct.id) && currentProduct.id !== pendingProduct.id) {
+      // Add current product only on product pages
+      if (!storeId && selectedProducts.has(currentProduct.id) && currentProduct.id !== pendingProduct.id) {
         productsToAdd.unshift(currentProduct);
       }
 
@@ -418,7 +424,7 @@ export default function FrequentlyBoughtTogether({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name={storeId ? "cube" : "gift"} size={24} color="#00C06A" />
+          <Ionicons name={storeId ? "cube" : "gift"} size={20} color="#00C06A" />
           <Text style={styles.title}>{sectionTitle}</Text>
         </View>
         {savings > 0 && (
@@ -438,31 +444,33 @@ export default function FrequentlyBoughtTogether({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.productsContainer}
       >
-        {/* Current Product */}
-        <BundleProductCard
-          product={currentProduct}
-          isSelected={selectedProducts.has(currentProduct.id)}
-          onToggle={toggleProductSelection}
-          isCurrentProduct={true}
-        />
+        {/* Current Product - Only show on product pages, not store pages */}
+        {!storeId && (
+          <>
+            <BundleProductCard
+              product={currentProduct}
+              isSelected={selectedProducts.has(currentProduct.id)}
+              onToggle={toggleProductSelection}
+              isCurrentProduct={true}
+            />
+            <View style={styles.plusIconContainer}>
+              <Ionicons name="add" size={18} color="#9CA3AF" />
+            </View>
+          </>
+        )}
 
-        {/* Plus Icon */}
-        <View style={styles.plusIconContainer}>
-          <Ionicons name="add" size={24} color="#9CA3AF" />
-        </View>
-
-        {/* Bundle Products */}
+        {/* Bundle/Store Products */}
         {bundleProducts.map((product, index) => (
           <React.Fragment key={product.id}>
             <BundleProductCard
               product={product}
               isSelected={selectedProducts.has(product.id)}
               onToggle={toggleProductSelection}
-              bundleDiscount={product.bundleDiscount}
+              bundleDiscount={storeId ? undefined : product.bundleDiscount}
             />
             {index < bundleProducts.length - 1 && (
               <View style={styles.plusIconContainer}>
-                <Ionicons name="add" size={24} color="#9CA3AF" />
+                <Ionicons name="add" size={18} color="#9CA3AF" />
               </View>
             )}
           </React.Fragment>
@@ -485,7 +493,7 @@ export default function FrequentlyBoughtTogether({
 
         {savings > 0 && (
           <View style={styles.savingsRow}>
-            <Ionicons name="pricetag" size={16} color="#10B981" />
+            <Ionicons name="pricetag" size={14} color="#10B981" />
             <Text style={styles.savingsAmount}>
               You save ₹{savings.toFixed(0)} ({savingsPercent}% off)
             </Text>
@@ -513,7 +521,7 @@ export default function FrequentlyBoughtTogether({
             </>
           ) : (
             <>
-              <Ionicons name="cart" size={20} color="#FFFFFF" />
+              <Ionicons name="cart" size={16} color="#FFFFFF" />
               <Text style={styles.addButtonText}>Add All to Cart</Text>
             </>
           )}
@@ -564,7 +572,7 @@ function BundleProductCard({
       {/* Selection Checkbox */}
       <View style={styles.checkboxContainer}>
         <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+          {isSelected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
         </View>
       </View>
 
@@ -585,24 +593,9 @@ function BundleProductCard({
 
       {/* Product Info */}
       <View style={styles.productInfo}>
-        <Text style={styles.productBrand} numberOfLines={1}>
-          {product.brand}
-        </Text>
         <Text style={styles.productName} numberOfLines={2}>
           {product.name}
         </Text>
-
-        {/* Rating */}
-        {product.rating && (
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={12} color="#F59E0B" />
-            <Text style={styles.ratingText}>
-              {typeof product.rating.value === 'number'
-                ? product.rating.value.toFixed(1)
-                : product.rating.value} ({product.rating.count})
-            </Text>
-          </View>
-        )}
 
         {/* Price */}
         <View style={styles.priceInfo}>
@@ -610,6 +603,26 @@ function BundleProductCard({
           {bundleDiscount && bundleDiscount > 0 && (
             <Text style={styles.productOriginalPrice}>₹{product.price.current.toFixed(0)}</Text>
           )}
+        </View>
+
+        {/* Rating */}
+        {product.rating && (
+          <View style={styles.ratingContainer}>
+            <Ionicons name="star" size={10} color="#F59E0B" />
+            <Text style={styles.ratingText}>
+              {typeof product.rating.value === 'number'
+                ? product.rating.value.toFixed(1)
+                : product.rating.value}
+            </Text>
+          </View>
+        )}
+
+        {/* Coin Earnings */}
+        <View style={styles.coinEarningsRow}>
+          <Text style={styles.coinEmoji}>🪙</Text>
+          <Text style={styles.coinEarningsText}>
+            Earn {Math.round(finalPrice * 0.05)} coins
+          </Text>
         </View>
 
         {/* Stock Status */}
@@ -628,16 +641,16 @@ function BundleProductCard({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderTopWidth: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    borderTopWidth: 0,
     borderTopColor: '#F9FAFB',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -645,14 +658,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#111827',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   savingsBadge: {
     backgroundColor: '#FEF3C7',
@@ -666,31 +679,31 @@ const styles = StyleSheet.create({
     color: '#D97706',
   },
   loadingContainer: {
-    paddingVertical: 40,
+    paddingVertical: 30,
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
     fontWeight: '500',
   },
   productsContainer: {
-    paddingVertical: 8,
-    gap: 12,
+    paddingVertical: 4,
+    gap: 8,
   },
   plusIconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   productCard: {
-    width: 180,
+    width: 150,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 2,
+    borderRadius: 10,
+    borderWidth: 1.5,
     borderColor: '#E5E7EB',
-    padding: 12,
+    padding: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -706,14 +719,14 @@ const styles = StyleSheet.create({
   },
   checkboxContainer: {
     position: 'absolute',
-    top: 8,
-    left: 8,
+    top: 6,
+    left: 6,
     zIndex: 10,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: '#D1D5DB',
     backgroundColor: '#FFFFFF',
@@ -726,10 +739,10 @@ const styles = StyleSheet.create({
   },
   productImageContainer: {
     width: '100%',
-    height: 140,
+    height: 100,
     borderRadius: 8,
     backgroundColor: '#F9FAFB',
-    marginBottom: 12,
+    marginBottom: 8,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -739,76 +752,98 @@ const styles = StyleSheet.create({
   },
   currentBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 6,
+    right: 6,
     backgroundColor: '#00C06A',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
   },
   currentBadgeText: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '700',
     color: '#FFFFFF',
     textTransform: 'uppercase',
   },
   bundleDiscountBadge: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
+    bottom: 6,
+    right: 6,
     backgroundColor: '#EF4444',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
   },
   bundleDiscountText: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   productInfo: {
     gap: 4,
   },
-  productBrand: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-  },
   productName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#111827',
-    lineHeight: 18,
-    minHeight: 36,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  ratingText: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '500',
+    lineHeight: 15,
+    height: 30,
   },
   priceInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 4,
+    marginTop: 2,
   },
   productPrice: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#00C06A',
   },
   productOriginalPrice: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     color: '#9CA3AF',
     textDecorationLine: 'line-through',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    backgroundColor: 'rgba(255, 200, 87, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 200, 87, 0.3)',
+  },
+  ratingText: {
+    fontSize: 10,
+    color: '#E5A500',
+    fontWeight: '700',
+  },
+  coinEarningsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+  },
+  coinEmoji: {
+    fontSize: 10,
+    marginRight: 4,
+  },
+  coinEarningsText: {
+    fontSize: 10,
+    color: '#00C06A',
+    fontWeight: '700',
   },
   stockBadge: {
     backgroundColor: '#FEE2E2',
@@ -825,10 +860,10 @@ const styles = StyleSheet.create({
   },
   priceContainer: {
     backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    marginBottom: 12,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+    marginBottom: 8,
   },
   priceRow: {
     flexDirection: 'row',
@@ -836,7 +871,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   selectedCountText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#4B5563',
   },
@@ -844,38 +879,38 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   originalPrice: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#9CA3AF',
     textDecorationLine: 'line-through',
     fontWeight: '500',
   },
   totalPrice: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
     color: '#111827',
   },
   savingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    paddingTop: 12,
+    gap: 5,
+    marginTop: 6,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
   savingsAmount: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: '#10B981',
   },
   addButton: {
-    borderRadius: 14,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#00C06A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   addButtonDisabled: {
     shadowOpacity: 0,
@@ -886,11 +921,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: 12,
+    gap: 6,
   },
   addButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.3,

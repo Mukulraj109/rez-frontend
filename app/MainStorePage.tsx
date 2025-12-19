@@ -42,6 +42,10 @@ import {
   // NEW COMPONENTS - Redesigned MainStorePage UI
   StoreInfoCard,
   CashbackHeroCard,
+  StoreQuickInfoCard,
+  StoreOffersPreview,
+  UserLoyaltyCard,
+  PaymentMethodsCard,
   StoreActionButtons as NewStoreActionButtons,
   StoreOffersSection,
   StoreLoyaltySection,
@@ -84,6 +88,7 @@ import wishlistApi from '@/services/wishlistApi';
 import { storesApi } from '@/services/storesApi';
 import { showAlert } from '@/components/common/CrossPlatformAlert';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGamification } from '@/contexts/GamificationContext';
 import asyncStorageService from '@/services/asyncStorageService';
 
 // ============================================================================
@@ -192,7 +197,9 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
   const router = useRouter();
   const params = useLocalSearchParams();
   const { state: authState } = useAuth();
+  const { state: gamificationState } = useGamification();
   const isAuthenticated = authState?.isAuthenticated && !!authState?.user;
+  const userCoins = gamificationState?.coinBalance?.total || 0;
   const [screenData, setScreenData] = useState(Dimensions.get("window"));
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -435,14 +442,34 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
   // Sticky tab navigation state
   const scrollY = useRef(new Animated.Value(0)).current;
   const [showStickyTabs, setShowStickyTabs] = useState(false);
+  const stickyHeaderAnim = useRef(new Animated.Value(0)).current;
   const tabsContainerRef = useRef<View>(null);
   const tabsPositionY = useRef(0);
   const tabsPositionMeasured = useRef(false);
+
+  // Animate sticky header appearing/disappearing
+  useEffect(() => {
+    Animated.timing(stickyHeaderAnim, {
+      toValue: showStickyTabs ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [showStickyTabs, stickyHeaderAnim]);
 
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true); // Master page loading state
   const [refreshing, setRefreshing] = useState(false); // Pull-to-refresh state
+
+  // User visits/loyalty state
+  const [userVisitsData, setUserVisitsData] = useState<{
+    visitsCompleted: number;
+    totalVisitsRequired: number;
+    nextReward: string;
+    visitsRemaining: number;
+    progress: number;
+    hasCompletedMilestone: boolean;
+  } | null>(null);
 
   // Measure tabs position after page loads
   useEffect(() => {
@@ -815,6 +842,35 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
     [initialProduct, productId, isDynamic, storeData]
   );
 
+  // Fetch user visits data (after productData is defined)
+  useEffect(() => {
+    const fetchUserVisits = async () => {
+      const storeId = storeIdParam || storeData?.id || productData.storeId;
+      if (!storeId) return;
+
+      try {
+        const response = await storesApi.getUserStoreVisits(storeId);
+        if (response.success && response.data) {
+          setUserVisitsData({
+            visitsCompleted: response.data.visitsCompleted,
+            totalVisitsRequired: response.data.totalVisitsRequired,
+            nextReward: response.data.nextReward,
+            visitsRemaining: response.data.visitsRemaining,
+            progress: response.data.progress,
+            hasCompletedMilestone: response.data.hasCompletedMilestone,
+          });
+        }
+      } catch (error) {
+        console.log('Could not fetch user visits:', error);
+        // Keep default null state - user may not be logged in
+      }
+    };
+
+    if (isDynamic && !pageLoading) {
+      fetchUserVisits();
+    }
+  }, [storeIdParam, storeData?.id, productData.storeId, isDynamic, pageLoading]);
+
   const handleSharePress = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -1010,7 +1066,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         onBack={handleBackPress}
         onFavoritePress={handleFavoritePress}
         isFavorited={isFavorited}
-        userCoins={450} // TODO: Get from user context/API
+        userCoins={userCoins}
         storeId={storeIdParam || storeData?.id || productData.storeId}
       />
 
@@ -1163,20 +1219,194 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
               );
             })()}
 
-            {/* Store Hero Metrics - REMOVED: Was using random demo data
-                TODO: Re-enable when real analytics API is available
-            {isDynamic && storeData?.analytics && (
-              <View style={{ paddingHorizontal: HORIZONTAL_PADDING }}>
-                <StoreHeroMetrics
-                  visits={storeData.analytics.visits}
-                  followersCount={storeData.analytics.followers}
-                  saveRate={storeData.analytics.recommendRate}
-                  isVerified={storeData.isVerified}
-                  savingsPercent={storeData.cashback || storeData.discount}
-                />
-              </View>
+            {/* Cashback Hero Card - Real data */}
+            {isDynamic && storeData && (
+              <CashbackHeroCard
+                cashbackPercentage={
+                  typeof storeData.cashback === 'number'
+                    ? storeData.cashback
+                    : (storeData as any).offers?.cashback || 10
+                }
+                coinsToEarn={(storeData as any).rewardRules?.reviewBonusCoins || 50}
+              />
             )}
-            */}
+
+            {/* Store Action Buttons */}
+            <NewStoreActionButtons
+              storeId={storeIdParam || storeData?.id || productData.storeId}
+              onScanPay={() => {
+                router.push({
+                  pathname: '/pay-in-store',
+                  params: { storeId: storeIdParam || storeData?.id || productData.storeId }
+                } as any);
+              }}
+              onUploadBill={() => {
+                router.push({
+                  pathname: '/bill-upload',
+                  params: {
+                    storeId: storeIdParam || storeData?.id || productData.storeId,
+                    storeName: storeData?.name || storeData?.title || productData.storeName,
+                  }
+                } as any);
+              }}
+              onViewOffers={() => {
+                router.push({
+                  pathname: '/CardOffersPage',
+                  params: {
+                    storeId: storeIdParam || storeData?.id || productData.storeId,
+                    storeName: storeData?.name || storeData?.title || productData.storeName,
+                    orderValue: '1000',
+                  }
+                } as any);
+              }}
+            />
+
+            {/* Store Quick Info - Real data */}
+            {isDynamic && storeData && (
+              <StoreQuickInfoCard
+                storeName={storeData.name || storeData.title || productData.title}
+                description={(storeData as any).description}
+                isVerified={(storeData as any).isVerified}
+                operationalInfo={(storeData as any).operationalInfo}
+                location={
+                  storeData.location && typeof storeData.location === 'object'
+                    ? {
+                        address: (storeData.location as any).address,
+                        city: (storeData.location as any).city,
+                        state: (storeData.location as any).state,
+                        coordinates: (storeData.location as any).coordinates
+                          ? {
+                              lat: (storeData.location as any).coordinates.lat || (storeData.location as any).coordinates[1],
+                              lng: (storeData.location as any).coordinates.lng || (storeData.location as any).coordinates[0],
+                            }
+                          : undefined,
+                      }
+                    : undefined
+                }
+              />
+            )}
+
+            {/* Store Offers Preview - Real data */}
+            {isDynamic && storeData && (() => {
+              // Get offers from store data
+              const storeOffers = (storeData as any).offers;
+              const cashbackPercent = typeof storeData.cashback === 'number' ? storeData.cashback : (storeData as any).offers?.cashback || 0;
+
+              // Build offers array from store data
+              const offers = [];
+
+              // Add cashback offer if available
+              if (cashbackPercent > 0) {
+                offers.push({
+                  id: 'cashback-offer',
+                  type: 'cashback' as const,
+                  value: cashbackPercent,
+                  title: `Get ${cashbackPercent}% Cashback on all orders`,
+                  description: storeOffers?.maxCashback ? `Max cashback ₹${storeOffers.maxCashback}` : undefined,
+                  minOrderAmount: storeOffers?.minOrderAmount,
+                  validTill: undefined,
+                  coinsToEarn: Math.round((storeOffers?.maxCashback || 100) * 0.05), // 5% of max cashback as coins
+                });
+              }
+
+              // Add first order offer
+              if ((storeData as any).offers?.firstOrderDiscount) {
+                const discount = (storeData as any).offers.firstOrderDiscount;
+                offers.push({
+                  id: 'first-order',
+                  type: 'flat' as const,
+                  value: discount,
+                  title: `Flat ₹${discount} off on first order`,
+                  code: 'FIRST' + discount,
+                  validTill: undefined,
+                  coinsToEarn: Math.round(discount * 0.05), // 5% of discount as coins
+                });
+              }
+
+              // Add BOGO offer if store has it
+              if ((storeData as any).deliveryCategories?.budgetFriendly) {
+                offers.push({
+                  id: 'bogo-offer',
+                  type: 'percentage' as const,
+                  value: 20,
+                  title: 'Buy 1 Get 1 Free on select items',
+                  minOrderAmount: 300,
+                  validTill: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Valid for 7 days
+                  coinsToEarn: 25, // 5% of ₹500 average order
+                });
+              }
+
+              // Add UPI cashback offer
+              if ((storeData as any).paymentSettings?.acceptUPI !== false) {
+                offers.push({
+                  id: 'upi-cashback',
+                  type: 'cashback' as const,
+                  value: 15,
+                  title: 'Extra 15% Cashback with UPI',
+                  description: 'Max cashback ₹150',
+                  validTill: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Valid for 30 days
+                  coinsToEarn: Math.round(150 * 0.05), // 5% of max cashback
+                });
+              }
+
+              if (offers.length === 0) return null;
+
+              return (
+                <StoreOffersPreview
+                  offers={offers}
+                  onViewAll={() => {
+                    router.push({
+                      pathname: '/CardOffersPage',
+                      params: {
+                        storeId: storeIdParam || storeData?.id || productData.storeId,
+                        storeName: storeData?.name || storeData?.title || productData.storeName,
+                      }
+                    } as any);
+                  }}
+                  onApplyOffer={(offer) => {
+                    // Navigate to payment or show offer details
+                    router.push({
+                      pathname: '/pay-in-store',
+                      params: {
+                        storeId: storeIdParam || storeData?.id || productData.storeId,
+                        offerId: offer.id,
+                      }
+                    } as any);
+                  }}
+                />
+              );
+            })()}
+
+            {/* User Loyalty Card - Shows user's loyalty progress with this store */}
+            {isDynamic && storeData && (
+              <UserLoyaltyCard
+                visitsCompleted={userVisitsData?.visitsCompleted ?? 0}
+                totalVisitsRequired={userVisitsData?.totalVisitsRequired ?? (storeData as any).rewardRules?.visitMilestoneRewards?.[0]?.visits ?? 5}
+                nextReward={userVisitsData?.nextReward ?? (storeData as any).rewardRules?.visitMilestoneRewards?.[0]?.reward ?? 'Free Coffee'}
+                rewardIcon="cafe"
+                onViewDetails={() => {
+                  router.push({
+                    pathname: '/loyalty',
+                    params: {
+                      storeId: storeIdParam || storeData?.id || productData.storeId,
+                      storeName: storeData?.name || storeData?.title || productData.storeName,
+                    }
+                  } as any);
+                }}
+              />
+            )}
+
+            {/* Payment Methods Card - Shows accepted payment methods */}
+            {isDynamic && storeData && (
+              <PaymentMethodsCard
+                acceptPromoCoins={(storeData as any).paymentSettings?.acceptPromoCoins !== false}
+                acceptBrandedCoins={true}
+                acceptRezCoins={(storeData as any).paymentSettings?.acceptRezCoins !== false}
+                acceptUPI={(storeData as any).paymentSettings?.acceptUPI !== false}
+                acceptCards={(storeData as any).paymentSettings?.acceptCards !== false}
+                acceptPayLater={(storeData as any).paymentSettings?.acceptPayLater === true}
+              />
+            )}
 
             <View
               ref={tabsContainerRef}
@@ -1277,19 +1507,17 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
             {/* OFFERS SECTION - Now visible on Menu tab */}
             {activeTab === "menu" && (
               <>
-                {/* Voucher Cards Section */}
+                {/* Voucher Cards Section - No wrapper View to avoid empty space when no vouchers */}
                 {isDynamic && storeData && (
-                  <View style={styles.sectionCard}>
-                    <VoucherCardsSection
-                      storeId={productData.storeId}
-                      onBuyVoucher={(voucherId) => {
-                        platformAlert('Buy Voucher', `Purchasing voucher ${voucherId}...`);
-                      }}
-                      onSeeAllPress={() => {
-                        platformAlert('All Vouchers', 'View all available vouchers');
-                      }}
-                    />
-                  </View>
+                  <VoucherCardsSection
+                    storeId={productData.storeId}
+                    onBuyVoucher={(voucherId) => {
+                      platformAlert('Buy Voucher', `Purchasing voucher ${voucherId}...`);
+                    }}
+                    onSeeAllPress={() => {
+                      platformAlert('All Vouchers', 'View all available vouchers');
+                    }}
+                  />
                 )}
               </>
             )}
@@ -1633,7 +1861,10 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
               } : null} />
             </View>
 
-            {/* Section6 REMOVED - Was redundant with VoucherCardsSection */}
+            {/* People Are Earning Here Section */}
+            <View style={styles.sectionCard}>
+              <PeopleEarningSection storeId={productData.storeId} />
+            </View>
 
           </>
         )}
@@ -1641,26 +1872,40 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
       </Animated.ScrollView>
 
       {/* Sticky Tab Navigation - Appears when original tabs scroll out of view */}
-      {showStickyTabs && (
-        <View style={styles.stickyTabsContainer}>
-          <View style={styles.stickyTabsInner}>
-            <TabNavigation
-              activeTab={activeTab}
-              onTabChange={handleTabChange}
-              maxSavingsPercent={
-                typeof storeData?.cashback === 'number'
-                  ? storeData.cashback
-                  : typeof storeData?.discount === 'number'
-                    ? storeData.discount
-                    : undefined
-              }
-              reviewCount={reviewStats?.totalReviews || storeData?.ratingCount}
-              photoCount={storeData?.photoCount}
-              compact // Use compact mode for sticky header
-            />
-          </View>
+      <Animated.View
+        style={[
+          styles.stickyTabsContainer,
+          {
+            opacity: stickyHeaderAnim,
+            transform: [
+              {
+                translateY: stickyHeaderAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-20, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+        pointerEvents={showStickyTabs ? 'auto' : 'none'}
+      >
+        <View style={styles.stickyTabsInner}>
+          <TabNavigation
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            maxSavingsPercent={
+              typeof storeData?.cashback === 'number'
+                ? storeData.cashback
+                : typeof storeData?.discount === 'number'
+                  ? storeData.discount
+                  : undefined
+            }
+            reviewCount={reviewStats?.totalReviews || storeData?.ratingCount}
+            photoCount={storeData?.photoCount}
+            compact // Use compact mode for sticky header
+          />
         </View>
-      )}
+      </Animated.View>
 
       {error && (
         <View style={styles.errorToast}>
@@ -2286,35 +2531,32 @@ const createStyles = (HORIZONTAL_PADDING: number, screenData: { width: number; h
     // Sticky Tab Navigation
     stickyTabsContainer: {
       position: 'absolute',
-      top: Platform.OS === 'ios' ? 120 : Platform.OS === 'web' ? 160 : 100,
+      top: Platform.OS === 'ios' ? 88 : Platform.OS === 'web' ? 80 : 72,
       left: 0,
       right: 0,
       zIndex: 1000,
       backgroundColor: '#FFFFFF',
-      borderBottomLeftRadius: 20,
-      borderBottomRightRadius: 20,
-      paddingTop: 2,
-      paddingBottom: 6,
-      overflow: 'hidden',
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(0, 0, 0, 0.06)',
       // Shadow for elevated appearance
       ...Platform.select({
         ios: {
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.12,
-          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
         },
         android: {
-          elevation: 12,
+          elevation: 8,
         },
         web: {
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
         },
       }),
     },
     stickyTabsInner: {
-      paddingHorizontal: 0,
-      marginHorizontal: 0,
+      paddingHorizontal: 16,
+      paddingVertical: 0,
     },
     // Inline Reviews Section Styles
     reviewsHeader: {

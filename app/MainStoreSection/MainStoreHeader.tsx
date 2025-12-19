@@ -47,7 +47,7 @@ export default function MainStoreHeader({
   const { width, height } = Dimensions.get("window");
   const isSmall = width < 360;
   const topPadding =
-    Platform.OS === "ios" ? (height >= 812 ? 44 : 20) : StatusBar.currentHeight ?? 24;
+    Platform.OS === "ios" ? (height >= 812 ? 50 : 24) : Platform.OS === "web" ? 8 : StatusBar.currentHeight ?? 24;
 
   // Animation refs
   const backButtonScaleAnim = useRef(new Animated.Value(1)).current;
@@ -102,13 +102,13 @@ export default function MainStoreHeader({
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.inner}>
         {/* Back Button */}
-        <Animated.View
-          style={[
-            styles.iconContainer,
-            { transform: [{ scale: backButtonScaleAnim }] },
-          ]}
-        >
-          {showBack && (
+        {showBack && (
+          <Animated.View
+            style={[
+              styles.backButtonWrapper,
+              { transform: [{ scale: backButtonScaleAnim }] },
+            ]}
+          >
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={handleBack}
@@ -116,12 +116,12 @@ export default function MainStoreHeader({
               onPressOut={() => animateScale(backButtonScaleAnim, 1)}
               accessibilityRole="button"
               accessibilityLabel="Go back"
-              style={styles.iconButton}
+              style={styles.backButton}
             >
-              <Ionicons name="arrow-back" size={24} color={Colors.text.primary} />
+              <Ionicons name="chevron-back" size={22} color="#0B2240" />
             </TouchableOpacity>
-          )}
-        </Animated.View>
+          </Animated.View>
+        )}
 
         {/* Title & Subtitle */}
         <View style={styles.titleContainer}>
@@ -146,12 +146,12 @@ export default function MainStoreHeader({
               onPressOut={() => animateScale(favoriteScaleAnim, 1)}
               accessibilityRole="button"
               accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
-              style={styles.iconButton}
+              style={[styles.actionButton, isFavorited && styles.actionButtonActive]}
             >
               <Ionicons
                 name={isFavorited ? "heart" : "heart-outline"}
-                size={24}
-                color={isFavorited ? "#FF4757" : Colors.text.secondary}
+                size={20}
+                color={isFavorited ? "#FFFFFF" : "#6B7280"}
               />
             </TouchableOpacity>
           </Animated.View>
@@ -165,19 +165,23 @@ export default function MainStoreHeader({
               onPressOut={() => animateScale(shareScaleAnim, 1)}
               accessibilityRole="button"
               accessibilityLabel="Share store"
-              style={styles.iconButton}
+              style={styles.actionButton}
             >
-              <Ionicons name="share-outline" size={24} color={Colors.text.secondary} />
+              <Ionicons name="share-outline" size={20} color="#6B7280" />
             </TouchableOpacity>
           </Animated.View>
 
           {/* Coin Display */}
-          <ReZCoin
-            balance={userCoins}
-            size="small"
+          <TouchableOpacity
+            activeOpacity={0.8}
             onPress={handleCoinPress}
-            style={styles.coinDisplay}
-          />
+            style={styles.coinButton}
+          >
+            <View style={styles.coinIcon}>
+              <ThemedText style={styles.coinEmoji}>🪙</ThemedText>
+            </View>
+            <ThemedText style={styles.coinText}>{userCoins}</ThemedText>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -188,56 +192,57 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0, 0, 0, 0.06)",
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
       },
       android: {
         elevation: 2,
+      },
+      web: {
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
       },
     }),
   },
   inner: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.sm,
-    minHeight: 56,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 60,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
+  backButtonWrapper: {
+    marginRight: 8,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
     justifyContent: "center",
     alignItems: "center",
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: BorderRadius.full,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
   },
   titleContainer: {
     flex: 1,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: 4,
   },
   title: {
     fontSize: 18,
     fontWeight: "700",
-    color: Colors.text.primary,
+    color: "#0B2240",
+    letterSpacing: -0.3,
   },
   titleSmall: {
     fontSize: 16,
   },
   subtitle: {
     fontSize: 13,
-    color: Colors.text.tertiary,
+    color: "#6B7280",
     marginTop: 2,
+    fontWeight: "500",
   },
   subtitleSmall: {
     fontSize: 11,
@@ -245,10 +250,40 @@ const styles = StyleSheet.create({
   rightActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 8,
   },
-  coinDisplay: {
-    backgroundColor: Colors.primary.DEFAULT || '#00C06A',
-    marginLeft: 4,
+  actionButton: {
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+  },
+  actionButtonActive: {
+    backgroundColor: "#FF4757",
+  },
+  coinButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#00C06A",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  coinIcon: {
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  coinEmoji: {
+    fontSize: 14,
+  },
+  coinText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
 });

@@ -47,6 +47,19 @@ export { default as AIReviewSummary } from './AIReviewSummary';
 // Store Info Card - Image, name, rating, tags, status
 export { default as StoreInfoCard } from './StoreInfoCard';
 
+// Store Quick Info Card - Description, hours, location
+export { default as StoreQuickInfoCard } from './StoreQuickInfoCard';
+
+// Store Offers Preview - Offers at this store
+export { default as StoreOffersPreview } from './StoreOffersPreview';
+export type { StoreOffer } from './StoreOffersPreview';
+
+// User Loyalty Card - Loyalty progress with store
+export { default as UserLoyaltyCard } from './UserLoyaltyCard';
+
+// Payment Methods Card - Accepted payment methods
+export { default as PaymentMethodsCard } from './PaymentMethodsCard';
+
 // Cashback Hero Card - Green gradient cashback display
 export { default as CashbackHeroCard } from './CashbackHeroCard';
 

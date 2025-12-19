@@ -127,7 +127,7 @@ export default function TabNavigation({
                 onLayout={(e) => handleTabLayout(tab.key, e)}
               >
                 <TouchableOpacity
-                  style={styles.tab}
+                  style={[styles.tab, compact && styles.tabCompact]}
                   onPress={() => handlePress(tab.key)}
                   onPressIn={() => handlePressIn(index)}
                   onPressOut={() => handlePressOut(index)}
@@ -208,22 +208,16 @@ const styles = StyleSheet.create({
 
   // Compact mode styles
   wrapperCompact: {
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    borderBottomWidth: 0,
   },
   containerCompact: {
-    paddingVertical: 2,
+    paddingVertical: 0,
+  },
+  tabCompact: {
+    paddingVertical: 10,
+    paddingHorizontal: 2,
   },
   labelCompact: {
-    fontSize: 13,
+    fontSize: 14,
   },
 });

@@ -1,17 +1,18 @@
 // PeopleEarningSection.tsx - People are earning here section
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Image,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import {
   Colors,
   Spacing,
   BorderRadius,
 } from "@/constants/DesignSystem";
+import { storesApi } from "@/services/storesApi";
 
 export interface EarningUser {
   id: string;
@@ -23,6 +24,7 @@ export interface EarningUser {
 }
 
 export interface PeopleEarningSectionProps {
+  storeId?: string;
   users?: EarningUser[];
 }
 
@@ -54,11 +56,51 @@ const SAMPLE_USERS: EarningUser[] = [
 const AVATAR_COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7"];
 
 export default function PeopleEarningSection({
-  users = SAMPLE_USERS,
+  storeId,
+  users: propUsers,
 }: PeopleEarningSectionProps) {
+  const [users, setUsers] = useState<EarningUser[]>(propUsers || SAMPLE_USERS);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (storeId) {
+      fetchRecentEarnings();
+    }
+  }, [storeId]);
+
+  const fetchRecentEarnings = async () => {
+    if (!storeId) return;
+
+    try {
+      setLoading(true);
+      const response = await storesApi.getRecentEarnings(storeId);
+
+      if (response.success && response.data && response.data.length > 0) {
+        setUsers(response.data);
+      }
+      // If no data, keep using sample data
+    } catch (error) {
+      console.log('Using sample data for people earning section');
+      // Keep using sample data on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getAvatarColor = (index: number) => {
     return AVATAR_COLORS[index % AVATAR_COLORS.length];
   };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ThemedText style={styles.sectionTitle}>People are earning here</ThemedText>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={Colors.primary} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -175,5 +217,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#FF9500",
+  },
+  loadingContainer: {
+    paddingVertical: Spacing.lg,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

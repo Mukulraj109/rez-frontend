@@ -231,6 +231,14 @@ export default function StoreProducts({ storeId, storeName }: StoreProductsProps
                 </Text>
               </View>
             )}
+
+            {/* ReZ Coin Earnings */}
+            <View style={styles.coinEarningsRow}>
+              <Text style={styles.coinEmoji}>🪙</Text>
+              <Text style={styles.coinEarningsText}>
+                Earn {Math.round(price * 0.05)} coins
+              </Text>
+            </View>
           </View>
         </>
       );
@@ -577,5 +585,30 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontWeight: '500',
     textAlign: 'center',
+  },
+
+  // Coin Earnings Row
+  coinEarningsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: GLASS.tintedGreenBg,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: GLASS.tintedGreenBorder,
+  },
+
+  coinEmoji: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+
+  coinEarningsText: {
+    fontSize: 11,
+    color: COLORS.primary,
+    fontWeight: '700',
   },
 });

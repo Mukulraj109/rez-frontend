@@ -23,14 +23,14 @@ export interface StoreBottomActionBarProps {
   storeId?: string;
   onScanPayEarn?: () => void;
   onWallet?: () => void;
-  onCard?: () => void;
+  onOffers?: () => void;
 }
 
 export default function StoreBottomActionBar({
   storeId,
   onScanPayEarn,
   onWallet,
-  onCard,
+  onOffers,
 }: StoreBottomActionBarProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -38,7 +38,7 @@ export default function StoreBottomActionBar({
   // Animation refs
   const scanPayScale = useRef(new Animated.Value(1)).current;
   const walletScale = useRef(new Animated.Value(1)).current;
-  const cardScale = useRef(new Animated.Value(1)).current;
+  const offersScale = useRef(new Animated.Value(1)).current;
 
   const animateScale = (animValue: Animated.Value, toValue: number) => {
     Animated.spring(animValue, {
@@ -67,12 +67,16 @@ export default function StoreBottomActionBar({
     }
   };
 
-  const handleCard = () => {
+  const handleOffers = () => {
     triggerImpact('Light');
-    if (onCard) {
-      onCard();
+    if (onOffers) {
+      onOffers();
+    } else {
+      router.push({
+        pathname: '/CardOffersPage',
+        params: { storeId: storeId || '' }
+      } as any);
     }
-    // TODO: Navigate to cards/payment methods
   };
 
   return (
@@ -109,18 +113,18 @@ export default function StoreBottomActionBar({
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Card Button */}
-        <Animated.View style={{ transform: [{ scale: cardScale }] }}>
+        {/* Offers Button */}
+        <Animated.View style={{ transform: [{ scale: offersScale }] }}>
           <TouchableOpacity
             style={styles.iconButton}
             activeOpacity={0.7}
-            onPress={handleCard}
-            onPressIn={() => animateScale(cardScale, 0.9)}
-            onPressOut={() => animateScale(cardScale, 1)}
+            onPress={handleOffers}
+            onPressIn={() => animateScale(offersScale, 0.9)}
+            onPressOut={() => animateScale(offersScale, 1)}
             accessibilityRole="button"
-            accessibilityLabel="Card"
+            accessibilityLabel="Offers"
           >
-            <Ionicons name="card-outline" size={24} color={Colors.text.primary} />
+            <Ionicons name="pricetag" size={22} color={Colors.text.primary} />
           </TouchableOpacity>
         </Animated.View>
       </View>

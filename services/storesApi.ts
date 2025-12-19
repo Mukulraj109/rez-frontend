@@ -787,6 +787,99 @@ class StoresService {
   /**
    * Determine category based on delivery categories
    */
+  /**
+   * Get user's visit count and loyalty info for a specific store
+   */
+  async getUserStoreVisits(storeId: string): Promise<ApiResponse<{
+    storeId: string;
+    storeName: string;
+    visitsCompleted: number;
+    totalVisitsRequired: number;
+    nextReward: string;
+    visitsRemaining: number;
+    progress: number;
+    hasCompletedMilestone: boolean;
+    loyaltyConfig: any[];
+  }>> {
+    try {
+      console.log(`📊 [STORES API] Fetching user visits for store: ${storeId}`);
+
+      const response = await apiClient.get<{
+        storeId: string;
+        storeName: string;
+        visitsCompleted: number;
+        totalVisitsRequired: number;
+        nextReward: string;
+        visitsRemaining: number;
+        progress: number;
+        hasCompletedMilestone: boolean;
+        loyaltyConfig: any[];
+      }>(`/stores/${storeId}/user-visits`);
+
+      if (response.success && response.data) {
+        console.log(`✅ [STORES API] User visits fetched:`, response.data);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [STORES API] Error fetching user visits:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch user visits',
+        data: {
+          storeId,
+          storeName: '',
+          visitsCompleted: 0,
+          totalVisitsRequired: 5,
+          nextReward: 'Free Coffee',
+          visitsRemaining: 5,
+          progress: 0,
+          hasCompletedMilestone: false,
+          loyaltyConfig: []
+        }
+      };
+    }
+  }
+
+  /**
+   * Get recent earnings by users at a specific store
+   * Shows "People are earning here" section data
+   */
+  async getRecentEarnings(storeId: string): Promise<ApiResponse<Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+    amountEarned: number;
+    coinsEarned: number;
+    timeAgo: string;
+  }>>> {
+    try {
+      console.log(`💰 [STORES API] Fetching recent earnings for store: ${storeId}`);
+
+      const response = await apiClient.get<Array<{
+        id: string;
+        name: string;
+        avatar?: string;
+        amountEarned: number;
+        coinsEarned: number;
+        timeAgo: string;
+      }>>(`/stores/${storeId}/recent-earnings`);
+
+      if (response.success && response.data) {
+        console.log(`✅ [STORES API] Recent earnings fetched:`, response.data.length, 'users');
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [STORES API] Error fetching recent earnings:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch recent earnings',
+        data: []
+      };
+    }
+  }
+
   private determineCategory(deliveryCategories: any): string {
     if (deliveryCategories?.premium) return 'Premium';
     if (deliveryCategories?.organic) return 'Organic';
