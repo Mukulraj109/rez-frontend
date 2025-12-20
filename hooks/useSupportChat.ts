@@ -66,6 +66,7 @@ export function useSupportChat(initialTicketId?: string): UseSupportChatReturn {
   const subscriptionIds = useRef<string[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const eventListenersRef = useRef<{ event: string; callback: any }[]>([]);
 
   // ==================== Network Status ====================
 
@@ -118,9 +119,11 @@ export function useSupportChat(initialTicketId?: string): UseSupportChatReturn {
   };
 
   const setupRealTimeListeners = () => {
-    // Connection status listeners
-    realTimeService.on('connected', () => {
+    // Remove any existing listeners first to prevent accumulation
+    removeEventListeners();
 
+    // Connection status listeners
+    const onConnected = () => {
       setConnected(true);
       setReconnecting(false);
 
@@ -128,27 +131,45 @@ export function useSupportChat(initialTicketId?: string): UseSupportChatReturn {
       if (currentTicket) {
         realTimeService.joinTicketRoom(currentTicket.id, 'current_user');
       }
-    });
+    };
 
-    realTimeService.on('disconnected', () => {
-
+    const onDisconnected = () => {
       setConnected(false);
-    });
+    };
 
-    realTimeService.on('reconnecting', () => {
-
+    const onReconnecting = () => {
       setReconnecting(true);
-    });
+    };
 
-    realTimeService.on('error', (error) => {
+    const onError = (error: any) => {
       console.error('Support chat error:', error);
       setMessagesError(error.error || 'Connection error');
-    });
+    };
+
+    // Register listeners and store references for cleanup
+    realTimeService.on('connected', onConnected);
+    realTimeService.on('disconnected', onDisconnected);
+    realTimeService.on('reconnecting', onReconnecting);
+    realTimeService.on('error', onError);
+
+    eventListenersRef.current = [
+      { event: 'connected', callback: onConnected },
+      { event: 'disconnected', callback: onDisconnected },
+      { event: 'reconnecting', callback: onReconnecting },
+      { event: 'error', callback: onError },
+    ];
 
     // Subscribe to message events if we have a ticket
     if (currentTicket) {
       subscribeToTicketEvents(currentTicket.id);
     }
+  };
+
+  const removeEventListeners = () => {
+    eventListenersRef.current.forEach(({ event, callback }) => {
+      realTimeService.off(event as any, callback);
+    });
+    eventListenersRef.current = [];
   };
 
   const subscribeToTicketEvents = (ticketId: string) => {
@@ -954,13 +975,16 @@ export function useSupportChat(initialTicketId?: string): UseSupportChatReturn {
     }
 
     unsubscribeAll();
+    removeEventListeners();
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
     }
 
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
     }
   };
 

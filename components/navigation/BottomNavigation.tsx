@@ -148,7 +148,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
       // Check for Coins tab
       if (
         normalizedPath === '/CoinPage' ||
-        normalizedPath === '/coin-detail' ||
         normalizedPath.startsWith('/coin')
       ) {
         logger.debug('[BOTTOM NAV] ✅ Coins tab active');

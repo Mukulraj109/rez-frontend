@@ -42,6 +42,19 @@ export function useGroupBuying() {
     }
   }, [authState.isAuthenticated]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Unsubscribe from all groups on unmount
+      subscribedGroupIds.current.forEach((groupId) => {
+        if (socket) {
+          socket.emit(GroupBuyingSocketEvents.LEAVE_GROUP_ROOM, { groupId });
+        }
+      });
+      subscribedGroupIds.current.clear();
+    };
+  }, [socket]);
+
   // Setup socket listeners
   useEffect(() => {
     if (!socket || !socketState.connected) return;
@@ -83,9 +96,11 @@ export function useGroupBuying() {
               };
 
             case 'message':
+              // Limit messages to last 100 to prevent memory growth
+              const updatedMessages = [...group.messages, payload.data.message];
               return {
                 ...group,
-                messages: [...group.messages, payload.data.message],
+                messages: updatedMessages.slice(-100),
               };
 
             case 'expired':

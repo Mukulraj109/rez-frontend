@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { AccountTabsProps, AccountTabType } from '@/types/account.types';
@@ -78,11 +79,20 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     backgroundColor: ACCOUNT_COLORS.primary,
-    shadowColor: ACCOUNT_COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: ACCOUNT_COLORS.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 2px 4px rgba(255, 107, 107, 0.3)',
+      },
+    }),
   },
   firstTab: {
     marginLeft: 0,

@@ -215,8 +215,10 @@ class StoreSearchService {
   private apiBaseUrl: string;
 
   constructor() {
-    this.apiBaseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5001/api';
+    // Use the same env variable as apiClient for consistency
+    this.apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5001/api';
     this.baseUrl = `${this.apiBaseUrl}/stores`;
+    console.log('[StoreSearchService] Initialized with baseUrl:', this.baseUrl);
   }
 
   /**
@@ -472,8 +474,13 @@ class StoreSearchService {
   }): Promise<StoreSearchResponse> {
     const { location, radius = 10, limit = 20 } = params;
 
+    // Parse location string to get separate lat/lng values
+    // The backend expects lat and lng as separate query params
+    const [lng, lat] = location.split(',').map(coord => coord.trim());
+
     const queryParams = new URLSearchParams({
-      location,
+      lng,
+      lat,
       radius: radius.toString(),
       limit: limit.toString(),
     });
@@ -487,7 +494,7 @@ class StoreSearchService {
         },
       }
     );
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -511,22 +518,35 @@ class StoreSearchService {
       ...(location && { location, radius: radius.toString() }),
     });
 
-    const response = await fetch(
-      `${this.baseUrl}/featured?${queryParams}`,
-      {
+    const url = `${this.baseUrl}/featured?${queryParams}`;
+    console.log('[StoreSearchService] Fetching featured stores from:', url);
+
+    try {
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-      }
-    );
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+      });
 
-    const data = await response.json();
-    return data;
+      console.log('[StoreSearchService] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[StoreSearchService] Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('[StoreSearchService] Featured stores data:', {
+        success: data.success,
+        storesCount: data.data?.stores?.length || 0,
+      });
+      return data;
+    } catch (error: any) {
+      console.error('[StoreSearchService] Network error:', error.message);
+      throw error;
+    }
   }
 
   /**

@@ -14,6 +14,9 @@
 // Metro bundler will resolve .native.tsx for mobile and .web.tsx for web
 export { default as QRScanner } from './QRScanner';
 
+// Scanner Placeholder - visual card that opens QRScanner modal on tap
+export { default as ScannerPlaceholder } from './ScannerPlaceholder';
+
 // Re-export types from the types file for convenience
 export type {
   QRCodeData,

@@ -16,10 +16,15 @@ import { Platform } from 'react-native';
 
 // Optional Sentry import - gracefully handle if not installed
 let Sentry: any = null;
+let sentryWarningShown = false;
 try {
   Sentry = require('@sentry/react-native');
 } catch (e) {
-  console.warn('⚠️ Sentry not installed. Run: npm install @sentry/react-native');
+  // Sentry is optional - only log once in development, not as warning
+  if (__DEV__ && !sentryWarningShown) {
+    sentryWarningShown = true;
+    // Silently skip - Sentry is optional
+  }
 }
 
 /**

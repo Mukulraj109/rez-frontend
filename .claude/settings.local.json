@@ -61,7 +61,8 @@
       "Bash(if exist src dir src)",
       "Bash(nul)",
       "Bash(xargs cat:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git add:*)"
     ],
     "defaultMode": "acceptEdits"
   }

@@ -60,7 +60,7 @@ class AsyncStorageService {
    */
   async get<T>(key: string): Promise<T | null> {
     if (!isClient) {
-      console.warn('💾 [STORAGE] Skipping get during SSR:', key);
+      // Silently skip during SSR - this is expected behavior
       return null;
     }
     try {

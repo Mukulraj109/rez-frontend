@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
@@ -419,11 +420,20 @@ const createStyles = (screenWidth: number) => {
       borderRadius: isSmallScreen ? 16 : 20,
       marginBottom: 16,
       marginHorizontal: 0, // Full width - no horizontal margin
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 4,
+        },
+        web: {
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        },
+      }),
       borderWidth: 1,
       borderColor: '#E5E7EB',
       overflow: 'hidden',
@@ -431,8 +441,18 @@ const createStyles = (screenWidth: number) => {
     cardSelected: {
       borderColor: '#10B981',
       borderWidth: 2,
-      shadowColor: '#10B981',
-      shadowOpacity: 0.15,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#10B981',
+          shadowOpacity: 0.15,
+        },
+        android: {
+          elevation: 6,
+        },
+        web: {
+          boxShadow: '0 2px 8px rgba(16,185,129,0.15)',
+        },
+      }),
     },
     cardContent: {
       padding: 0, // Remove padding from cardContent, add to specific sections
@@ -467,11 +487,20 @@ const createStyles = (screenWidth: number) => {
       paddingVertical: 4,
       borderRadius: 12,
       zIndex: 5,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
-      elevation: 2,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.1,
+          shadowRadius: 2,
+        },
+        android: {
+          elevation: 2,
+        },
+        web: {
+          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+        },
+      }),
     },
     priorityText: {
       fontSize: isSmallScreen ? 9 : 10,
@@ -487,11 +516,20 @@ const createStyles = (screenWidth: number) => {
       paddingHorizontal: isSmallScreen ? 10 : 14,
       paddingVertical: isSmallScreen ? 5 : 7,
       zIndex: 3,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.15,
-      shadowRadius: 3,
-      elevation: 3,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.15,
+          shadowRadius: 3,
+        },
+        android: {
+          elevation: 3,
+        },
+        web: {
+          boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+        },
+      }),
     },
     defaultBadge: {
       backgroundColor: '#E5E7EB',
@@ -514,11 +552,20 @@ const createStyles = (screenWidth: number) => {
       paddingVertical: 4,
       borderRadius: 12,
       zIndex: 4,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
-      elevation: 2,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.1,
+          shadowRadius: 2,
+        },
+        android: {
+          elevation: 2,
+        },
+        web: {
+          boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+        },
+      }),
     },
     expiryText: {
       fontSize: isSmallScreen ? 9 : 10,
@@ -693,17 +740,33 @@ const createStyles = (screenWidth: number) => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: '#00C06A',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
-      elevation: 3,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#00C06A',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.15,
+          shadowRadius: 6,
+        },
+        android: {
+          elevation: 3,
+        },
+        web: {
+          boxShadow: '0 -2px 6px rgba(0,192,106,0.15)',
+        },
+      }),
       marginTop: 0,
       minHeight: 56, // Larger touch target
     },
     actionButtonSelected: {
       backgroundColor: '#10B981',
-      shadowColor: '#10B981',
+      ...Platform.select({
+        ios: {
+          shadowColor: '#10B981',
+        },
+        web: {
+          boxShadow: '0 -2px 6px rgba(16,185,129,0.15)',
+        },
+      }),
     },
     actionButtonIcon: {
       marginRight: 6,

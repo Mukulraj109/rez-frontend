@@ -312,11 +312,11 @@ export default function ProductScreen({
             <View onLayout={onContainerLayout} style={styles.segmentContainer}>
               {/* sliding indicator */}
               <Animated.View
-                pointerEvents="none"
                 style={[
                   styles.slider,
                   {
                     transform: [{ translateX }],
+                    pointerEvents: 'none',
                   },
                 ]}
               >

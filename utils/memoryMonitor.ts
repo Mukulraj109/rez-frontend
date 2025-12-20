@@ -4,7 +4,7 @@
  * Provides utilities for monitoring and managing memory usage in React Native apps
  */
 
-import { Platform } from 'react-native';
+import { Platform, AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface MemoryStats {
@@ -22,9 +22,28 @@ class MemoryMonitor {
   private lastMemoryWarning: number = 0;
   private readonly WARNING_THRESHOLD_MB = 100; // Warn if memory exceeds 100MB
   private readonly WARNING_COOLDOWN_MS = 30000; // 30 seconds between warnings
+  private appStateSubscription: any = null;
 
   private constructor() {
     this.setupMemoryWarningListener();
+    this.setupAppStateListener();
+  }
+
+  /**
+   * Setup app state listener to pause monitoring when app is in background
+   */
+  private setupAppStateListener() {
+    this.appStateSubscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        // Stop monitoring when app goes to background to save resources
+        this.stopMonitoring();
+      } else if (nextAppState === 'active') {
+        // Restart monitoring when app comes back to foreground
+        if (Platform.OS !== 'web') {
+          this.startMonitoring();
+        }
+      }
+    });
   }
 
   static getInstance(): MemoryMonitor {
@@ -66,6 +85,18 @@ class MemoryMonitor {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
     }
+  }
+
+  /**
+   * Cleanup all resources - call when app is being destroyed
+   */
+  destroy() {
+    this.stopMonitoring();
+    if (this.appStateSubscription) {
+      this.appStateSubscription.remove();
+      this.appStateSubscription = null;
+    }
+    this.memoryWarningCallbacks.clear();
   }
 
   /**

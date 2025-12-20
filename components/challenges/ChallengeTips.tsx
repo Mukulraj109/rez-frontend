@@ -128,6 +128,9 @@ const styles = StyleSheet.create({
       android: {
         elevation: 1,
       },
+      web: {
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+      },
     }),
   },
   header: {

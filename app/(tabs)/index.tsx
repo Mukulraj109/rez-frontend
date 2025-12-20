@@ -690,10 +690,12 @@ export default function HomeScreen() {
     <View style={viewStyles.mainContainer}>
       <Animated.ScrollView
         style={viewStyles.container}
+        contentContainerStyle={viewStyles.scrollContentContainer}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         nestedScrollEnabled={true}
         keyboardShouldPersistTaps="handled"
+        scrollEnabled={true}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
@@ -1243,6 +1245,15 @@ const viewStyles = StyleSheet.create({
     ...Platform.select({
       web: {
         touchAction: 'pan-y', // Only handle vertical scrolling, let children handle horizontal
+        WebkitOverflowScrolling: 'touch',
+      },
+    }),
+  },
+  scrollContentContainer: {
+    flexGrow: 1,
+    ...Platform.select({
+      web: {
+        minHeight: '100%',
       },
     }),
   },
@@ -1419,9 +1430,18 @@ const viewStyles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.1)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.1)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+    }),
   },
   locationDisplay: {
     backgroundColor: 'transparent',
@@ -1437,14 +1457,20 @@ const viewStyles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 8,
     borderRadius: 16,
-    shadowColor: '#00796B',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00796B',
+        shadowOffset: {
+          width: 0,
+          height: 4,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
     borderWidth: 1,
     borderColor: 'rgba(0, 192, 106, 0.1)',
   },

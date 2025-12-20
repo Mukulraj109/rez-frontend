@@ -514,7 +514,11 @@ class RealTimeService {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, []);
     }
-    this.eventListeners.get(event)!.push(callback);
+    const listeners = this.eventListeners.get(event)!;
+    // Prevent duplicate listeners
+    if (!listeners.includes(callback)) {
+      listeners.push(callback);
+    }
   }
 
   // Remove event listener
@@ -643,6 +647,12 @@ class RealTimeService {
       return;
     }
 
+    // Clear any existing reconnect timer to prevent accumulation
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     this.updateStatus({ reconnecting: true });
     this.emit('reconnecting', { attempts: this.status.reconnectAttempts });
 
@@ -654,6 +664,12 @@ class RealTimeService {
 
   private startHeartbeat(): void {
     if (!this.config.enableHeartbeat) return;
+
+    // Clear existing heartbeat timer to prevent accumulation
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
 
     this.heartbeatTimer = setInterval(() => {
       if (this.status.connected) {
@@ -736,9 +752,11 @@ class RealTimeService {
     this.disconnect();
     this.subscriptions.clear();
     this.eventListeners.clear();
-    
+    this.messageQueue = [];
+
     if (this.appStateSubscription) {
       this.appStateSubscription.remove();
+      this.appStateSubscription = null;
     }
   }
 }

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Platform } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ProjectStatus } from '@/types/earnPage.types';
 import { EARN_COLORS } from '@/constants/EarnPageColors';
@@ -123,13 +123,22 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingLeft: 16,
     paddingRight: 20,
-    shadowColor: '#FFC857',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 200, 87, 0.2)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FFC857',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0 6px 16px rgba(255, 200, 87, 0.2)',
+      },
+    }),
   },
   header: {
     marginBottom: 16,

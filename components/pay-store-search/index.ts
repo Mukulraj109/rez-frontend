@@ -18,3 +18,5 @@ export {
 export { EmptySearchState } from './EmptySearchState';
 export { RezPayBadge } from './RezPayBadge';
 export { RewardsBadge } from './RewardsBadge';
+export { StoreTabs, type StoreTab } from './StoreTabs';
+export { default as FilterChips } from './FilterChips';

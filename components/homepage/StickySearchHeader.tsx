@@ -52,11 +52,10 @@ const HeaderContentComponent = memo<{
       >
         <Ionicons name="search" size={18} color="#666" style={styles.searchIcon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { pointerEvents: 'none' }]}
           placeholder="Search for stores, products..."
           placeholderTextColor="#999"
           editable={false}
-          pointerEvents="none"
         />
       </TouchableOpacity>
 
@@ -149,15 +148,14 @@ const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
           {
             opacity: headerOpacity,
             transform: [{ translateY: headerTranslateY }],
+            pointerEvents: 'box-none',
           },
         ]}
-        pointerEvents="box-none"
       >
         <BlurView
           intensity={90}
           tint="light"
-          style={styles.blurContainer}
-          pointerEvents="auto"
+          style={[styles.blurContainer, { pointerEvents: 'auto' }]}
         >
           <HeaderContentComponent
             paddingTop={paddingTop}
@@ -180,11 +178,11 @@ const StickySearchHeader: React.FC<StickySearchHeaderProps> = ({
         {
           opacity: headerOpacity,
           transform: [{ translateY: headerTranslateY }],
+          pointerEvents: 'box-none',
         },
       ]}
-      pointerEvents="box-none"
     >
-      <View style={styles.contentWrapper} pointerEvents="auto">
+      <View style={[styles.contentWrapper, { pointerEvents: 'auto' }]}>
         <HeaderContentComponent
           paddingTop={paddingTop}
           onSearchPress={handleSearchPress}

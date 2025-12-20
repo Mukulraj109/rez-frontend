@@ -451,16 +451,20 @@ const styles = StyleSheet.create({
     backgroundColor: Platform.OS === 'web' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.9)',
     borderTopLeftRadius: 28,
     borderBottomLeftRadius: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: -8, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 48,
-    elevation: 30,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.5)',
     borderRightWidth: 0,
     ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: -8, height: 0 },
+        shadowOpacity: 0.25,
+        shadowRadius: 48,
+      },
+      android: {
+        elevation: 30,
+      },
       web: {
         // @ts-ignore - web only
         backdropFilter: 'blur(60px) saturate(200%)',
@@ -545,11 +549,20 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     padding: 3,
-    shadowColor: COLORS.gold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0px 4px 12px rgba(255, 215, 0, 0.4)',
+      },
+    }),
   },
   avatarInner: {
     flex: 1,
@@ -734,13 +747,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.4)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
+      },
+    }),
   },
   partnerIconContainer: {
     width: 48,
@@ -810,14 +832,18 @@ const styles = StyleSheet.create({
       : 'rgba(255, 255, 255, 0.98)',
     paddingVertical: 14,
     borderRadius: 16,
-    shadowColor: COLORS.error,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 6,
     borderWidth: 1.5,
     borderColor: 'rgba(239, 68, 68, 0.3)',
     ...Platform.select({
+      ios: {
+        shadowColor: COLORS.error,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 6,
+      },
       web: {
         // @ts-ignore - web only
         backdropFilter: 'blur(40px) saturate(180%)',
@@ -897,20 +923,24 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Platform.OS === 'web' 
-      ? 'rgba(255, 255, 255, 0.7)' 
+    backgroundColor: Platform.OS === 'web'
+      ? 'rgba(255, 255, 255, 0.7)'
       : 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
     padding: 14,
     marginBottom: 8,
-    shadowColor: COLORS.navy,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
     borderWidth: 1,
     borderColor: 'rgba(0, 192, 106, 0.1)',
     ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 4,
+      },
       web: {
         // @ts-ignore - web only
         backdropFilter: 'blur(40px) saturate(180%)',
@@ -926,9 +956,11 @@ const styles = StyleSheet.create({
       : 'rgba(255, 200, 87, 0.12)',
     borderColor: 'rgba(255, 200, 87, 0.35)',
     borderWidth: 1.5,
-    shadowColor: COLORS.gold,
-    shadowOpacity: 0.2,
     ...Platform.select({
+      ios: {
+        shadowColor: COLORS.gold,
+        shadowOpacity: 0.2,
+      },
       web: {
         // @ts-ignore - web only
         backdropFilter: 'blur(40px) saturate(180%)',

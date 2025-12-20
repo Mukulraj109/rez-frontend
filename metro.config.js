@@ -46,4 +46,19 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
+// Suppress known harmless warnings from node_modules
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  if (typeof args[0] === 'string') {
+    // Suppress require cycle warnings from third-party packages
+    if (args[0].includes('Require cycle:')) return;
+    // Suppress shadow/textShadow deprecation warnings (handled via Platform.select in code)
+    if (args[0].includes('"shadow*" style props are deprecated')) return;
+    if (args[0].includes('"textShadow*" style props are deprecated')) return;
+    // Suppress pointerEvents prop deprecation (we use prop syntax to avoid app freeze on web)
+    if (args[0].includes('props.pointerEvents is deprecated')) return;
+  }
+  originalWarn(...args);
+};
+
 module.exports = config;

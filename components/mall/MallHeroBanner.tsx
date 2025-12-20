@@ -266,9 +266,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     marginBottom: -10,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 6,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 6,
+      },
+      web: {
+        textShadow: '0 2px 6px rgba(0, 0, 0, 0.5)',
+      },
+    }),
   },
   bannerSubtitle: {
     fontSize: 14,
@@ -276,9 +288,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 5,
     lineHeight: 35,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.4)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.4)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+      },
+      web: {
+        textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
+      },
+    }),
   },
   ctaButton: {
     flexDirection: 'row',

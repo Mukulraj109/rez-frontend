@@ -83,7 +83,7 @@ export default function CoinBalance({
     if (onPress) {
       onPress();
     } else {
-      router.push('/coin-detail');
+      router.push('/CoinPage');
     }
   };
 

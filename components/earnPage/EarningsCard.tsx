@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
@@ -267,15 +267,24 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#FFC857',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 200, 87, 0.2)',
     position: 'relative',
     overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FFC857',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0px 6px 16px rgba(255, 200, 87, 0.2)',
+      },
+    }),
   },
   decorativeCircle1: {
     position: 'absolute',
@@ -332,9 +341,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#00796B',
     letterSpacing: -0.5,
-    textShadowColor: 'rgba(255, 200, 87, 0.4)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(255, 200, 87, 0.4)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+      },
+      android: {
+        textShadowColor: 'rgba(255, 200, 87, 0.4)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+      },
+      web: {
+        textShadow: '0px 1px 3px rgba(255, 200, 87, 0.4)',
+      },
+    }),
   },
   earned: {
     fontSize: 16,
@@ -344,11 +365,20 @@ const styles = StyleSheet.create({
   seeWalletButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#00C06A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 5,
+      },
+      web: {
+        boxShadow: '0px 4px 8px rgba(0, 192, 106, 0.3)',
+      },
+    }),
   },
   walletButtonGradient: {
     flexDirection: 'row',
@@ -379,11 +409,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 200, 87, 0.25)',
-    shadowColor: '#FFC857',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FFC857',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0 2px 6px rgba(255, 200, 87, 0.15)',
+      },
+    }),
   },
   chartToggleGradient: {
     flexDirection: 'row',
@@ -424,11 +463,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
+      },
+    }),
   },
   breakdownAmount: {
     fontSize: 18,
