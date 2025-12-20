@@ -3,10 +3,10 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, useRef } from 'react';
-import { AppState, AppStateStatus, LogBox } from 'react-native';
+import { AppState, AppStateStatus, LogBox, Platform } from 'react-native';
 
-// Suppress known harmless warnings from third-party libraries
-LogBox.ignoreLogs([
+// Warnings to suppress
+const SUPPRESSED_WARNINGS = [
   'Require cycle: node_modules/react-native-gesture-handler',
   'Require cycle: node_modules/react-native-reanimated',
   'Require cycle:',
@@ -21,7 +21,24 @@ LogBox.ignoreLogs([
   'props.pointerEvents is deprecated',
   '"shadow*" style props are deprecated',
   '"textShadow*" style props are deprecated',
-]);
+  'shadow* style props are deprecated',
+  'textShadow* style props are deprecated',
+];
+
+// Suppress known harmless warnings from third-party libraries (native)
+LogBox.ignoreLogs(SUPPRESSED_WARNINGS);
+
+// Suppress warnings on web by patching console.warn
+if (Platform.OS === 'web') {
+  const originalWarn = console.warn;
+  console.warn = (...args: any[]) => {
+    const message = args[0]?.toString() || '';
+    const shouldSuppress = SUPPRESSED_WARNINGS.some(warning => message.includes(warning));
+    if (!shouldSuppress) {
+      originalWarn.apply(console, args);
+    }
+  };
+}
 
 
 import NetInfo from '@react-native-community/netinfo';

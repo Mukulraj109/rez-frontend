@@ -83,11 +83,32 @@ export default function CartLockedItemCard({
 
   // Update countdown every second
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeRemaining(getTimeRemaining(item.expiresAt));
-    }, 1000);
+    let timer: NodeJS.Timeout | null = null;
 
-    return () => clearInterval(timer);
+    const updateTime = () => {
+      const time = getTimeRemaining(item.expiresAt);
+      setTimeRemaining(time);
+
+      // Stop interval when expired to prevent unnecessary updates
+      if (time.isExpired && timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+
+    // Initial update
+    updateTime();
+
+    // Only start interval if not already expired
+    if (!getTimeRemaining(item.expiresAt).isExpired) {
+      timer = setInterval(updateTime, 1000);
+    }
+
+    return () => {
+      if (timer) {
+        clearInterval(timer);
+      }
+    };
   }, [item.expiresAt]);
 
   const handleCompletePurchase = useCallback(() => {

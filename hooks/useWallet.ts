@@ -42,6 +42,7 @@ export const useWallet = ({
   const refreshIntervalRef = useRef<NodeJS.Timeout>(null);
   const abortControllerRef = useRef<AbortController>(null);
   const pendingRequestRef = useRef<Promise<void> | null>(null);
+  const walletStateRef = useRef(walletState); // Ref to track state without triggering effects
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -366,11 +367,22 @@ export const useWallet = ({
     }
   }, [autoFetch, fetchWallet]);
 
+  // Keep ref in sync with state
+  useEffect(() => {
+    walletStateRef.current = walletState;
+  }, [walletState]);
+
   // Setup refresh interval
   useEffect(() => {
     if (refreshInterval && refreshInterval > 0) {
+      // Clear any existing interval first
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+
       refreshIntervalRef.current = setInterval(() => {
-        if (!walletState.isLoading && !walletState.isRefreshing) {
+        // Use ref to check state without adding to deps
+        if (!walletStateRef.current.isLoading && !walletStateRef.current.isRefreshing) {
           refreshWallet(false);
         }
       }, refreshInterval) as any;
@@ -378,10 +390,11 @@ export const useWallet = ({
       return () => {
         if (refreshIntervalRef.current) {
           clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
         }
       };
     }
-  }, [refreshInterval, walletState.isLoading, walletState.isRefreshing, refreshWallet]);
+  }, [refreshInterval, refreshWallet]); // Removed walletState deps to prevent interval recreation
 
   // Cleanup on unmount
   useEffect(() => {

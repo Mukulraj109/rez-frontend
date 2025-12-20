@@ -192,6 +192,8 @@ class RealOffersApi {
   async getOffers(params?: {
     category?: string;
     store?: string;
+    type?: string;
+    tags?: string;
     featured?: boolean;
     trending?: boolean;
     isNew?: boolean;
@@ -201,7 +203,7 @@ class RealOffersApi {
     order?: string;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<PaginatedResponse<Offer>>> {
+  }): Promise<ApiResponse<PaginatedResponse<Offer> | Offer[]>> {
     try {
       const response = await apiClient.get<PaginatedResponse<Offer>>('/offers', params);
       return response;

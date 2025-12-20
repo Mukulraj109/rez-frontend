@@ -100,6 +100,7 @@ export const useAccessibility = (
   const reduceMotionListenerRef = useRef<any>(null);
   const reduceTransparencyListenerRef = useRef<any>(null);
   const mountedRef = useRef(true);
+  const announceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Check screen reader status
@@ -188,6 +189,12 @@ export const useAccessibility = (
       if (reduceTransparencyListenerRef.current) {
         reduceTransparencyListenerRef.current.remove();
       }
+
+      // Clear announce timeout
+      if (announceTimeoutRef.current) {
+        clearTimeout(announceTimeoutRef.current);
+        announceTimeoutRef.current = null;
+      }
     };
   }, [checkAccessibilityStatus]);
 
@@ -209,9 +216,18 @@ export const useAccessibility = (
    * Announce message with optional delay
    */
   const announce = useCallback((message: string, delay: number = 0) => {
+    // Clear any existing announce timeout
+    if (announceTimeoutRef.current) {
+      clearTimeout(announceTimeoutRef.current);
+      announceTimeoutRef.current = null;
+    }
+
     if (delay > 0) {
-      setTimeout(() => {
-        announceForAccessibility(message);
+      announceTimeoutRef.current = setTimeout(() => {
+        if (mountedRef.current) {
+          announceForAccessibility(message);
+        }
+        announceTimeoutRef.current = null;
       }, delay);
     } else {
       announceForAccessibility(message);

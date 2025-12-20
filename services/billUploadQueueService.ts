@@ -814,6 +814,12 @@ class BillUploadQueueService extends EventEmitter {
    * Setup network listener for auto-sync
    */
   private setupNetworkListener(): void {
+    // Clear existing listener before adding new one
+    if (this.networkUnsubscribe) {
+      this.networkUnsubscribe();
+      this.networkUnsubscribe = undefined;
+    }
+
     this.networkUnsubscribe = NetInfo.addEventListener(state => {
       if (state.isConnected && !this.isSyncing) {
         console.log('[BillUploadQueue] Network connected, checking for pending uploads...');
@@ -826,6 +832,12 @@ class BillUploadQueueService extends EventEmitter {
    * Setup periodic sync check (every 5 minutes)
    */
   private setupPeriodicSync(): void {
+    // Clear existing interval before creating new one
+    if (this.syncInterval) {
+      clearInterval(this.syncInterval);
+      this.syncInterval = undefined;
+    }
+
     this.syncInterval = setInterval(() => {
       if (!this.isSyncing && this.queue.some(b => b.status === 'pending')) {
         console.log('[BillUploadQueue] Periodic sync check...');

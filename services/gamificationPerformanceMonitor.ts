@@ -24,6 +24,9 @@ interface CacheMetrics {
   totalRequests: number;
 }
 
+// Maximum number of metrics to keep per operation type
+const MAX_METRICS_PER_TYPE = 100;
+
 /**
  * Gamification Performance Monitor Service
  */
@@ -75,6 +78,12 @@ class GamificationPerformanceMonitor {
 
     const metrics = this.metrics.get(name) || [];
     metrics.push(metric);
+
+    // Limit array size to prevent memory leaks
+    if (metrics.length > MAX_METRICS_PER_TYPE) {
+      metrics.splice(0, metrics.length - MAX_METRICS_PER_TYPE);
+    }
+
     this.metrics.set(name, metrics);
 
     this.activeTimers.delete(name);
@@ -101,6 +110,12 @@ class GamificationPerformanceMonitor {
 
     const metrics = this.metrics.get(name) || [];
     metrics.push(metric);
+
+    // Limit array size to prevent memory leaks
+    if (metrics.length > MAX_METRICS_PER_TYPE) {
+      metrics.splice(0, metrics.length - MAX_METRICS_PER_TYPE);
+    }
+
     this.metrics.set(name, metrics);
   }
 

@@ -463,6 +463,19 @@ export function useMallSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
+  const isMountedRef = useRef(true);
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = undefined;
+      }
+    };
+  }, []);
 
   const search = useCallback((query: string) => {
     // Clear previous debounce
@@ -481,11 +494,17 @@ export function useMallSearch() {
         setIsLoading(true);
         setError(null);
         const brands = await mallApi.searchBrands(query);
-        setResults(brands);
+        if (isMountedRef.current) {
+          setResults(brands);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Search failed');
+        if (isMountedRef.current) {
+          setError(err instanceof Error ? err.message : 'Search failed');
+        }
       } finally {
-        setIsLoading(false);
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
       }
     }, 300);
   }, []);

@@ -367,6 +367,9 @@ class BackendMonitoringService {
    * Start periodic health checks
    */
   private startHealthChecks(): void {
+    // Clear existing interval before starting new one
+    this.stopHealthChecks();
+
     // Run health check every minute
     this.healthCheckInterval = setInterval(() => {
       this.performHealthCheck();
@@ -652,6 +655,15 @@ class BackendMonitoringService {
     }
 
     console.log('========================================\n');
+  }
+
+  /**
+   * Destroy service and cleanup resources
+   */
+  destroy(): void {
+    this.stopHealthChecks();
+    this.isEnabled = false;
+    console.log('[BackendMonitoring] Service destroyed');
   }
 }
 

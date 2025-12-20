@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface CountdownResult {
   days: number;
@@ -21,6 +21,12 @@ export function useCountdown(
   expiryDate: string | Date | undefined,
   onExpire?: () => void
 ): CountdownResult {
+  // Store onExpire in ref to avoid re-creating interval when callback changes
+  const onExpireRef = useRef(onExpire);
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
   const calculateTimeRemaining = useCallback((): CountdownResult => {
     if (!expiryDate) {
       return {
@@ -100,8 +106,8 @@ export function useCountdown(
     setCountdown(initialCountdown);
 
     // If already expired, call onExpire immediately
-    if (initialCountdown.isExpired && onExpire) {
-      onExpire();
+    if (initialCountdown.isExpired && onExpireRef.current) {
+      onExpireRef.current();
       return; // Don't set up interval
     }
 
@@ -111,8 +117,8 @@ export function useCountdown(
       setCountdown(newCountdown);
 
       // Call onExpire when countdown reaches zero
-      if (newCountdown.isExpired && onExpire) {
-        onExpire();
+      if (newCountdown.isExpired && onExpireRef.current) {
+        onExpireRef.current();
         clearInterval(interval);
       }
     }, 1000);
@@ -121,7 +127,7 @@ export function useCountdown(
     return () => {
       clearInterval(interval);
     };
-  }, [expiryDate, onExpire, calculateTimeRemaining]);
+  }, [expiryDate, calculateTimeRemaining]); // Removed onExpire - using ref instead
 
   return countdown;
 }

@@ -38,6 +38,21 @@ export function usePlayPageData(): UsePlayPageData {
   const router = useRouter();
   const { user } = useAuth();
   const abortControllerRef = useRef<AbortController | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Track mounted state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Clear retry timeout on unmount
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Cleanup function for abort controller
   const cleanupAbortController = useCallback(() => {
@@ -120,10 +135,17 @@ export function usePlayPageData(): UsePlayPageData {
       console.error('❌ [PlayPage] Failed to fetch videos:', error);
 
       // Retry logic - attempt once more after 2 seconds
-      if (page === 1) {
+      if (page === 1 && isMountedRef.current) {
         console.log('🔄 [PlayPage] Retrying video fetch...');
-        setTimeout(() => {
-          fetchVideos(category, page);
+        // Clear any existing retry timeout
+        if (retryTimeoutRef.current) {
+          clearTimeout(retryTimeoutRef.current);
+        }
+        retryTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            fetchVideos(category, page);
+          }
+          retryTimeoutRef.current = null;
         }, 2000);
       }
     }

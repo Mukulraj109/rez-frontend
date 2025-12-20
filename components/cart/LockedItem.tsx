@@ -92,8 +92,10 @@ export default function LockedItem({
 
   // Pulse animation for urgent timer
   useEffect(() => {
+    let animation: Animated.CompositeAnimation | null = null;
+
     if (timeLeft.isCritical && !timeLeft.isExpired) {
-      Animated.loop(
+      animation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.05,
@@ -106,9 +108,16 @@ export default function LockedItem({
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      animation.start();
     }
-    return () => pulseAnim.setValue(1);
+
+    return () => {
+      if (animation) {
+        animation.stop();
+      }
+      pulseAnim.setValue(1);
+    };
   }, [timeLeft.isCritical, timeLeft.isExpired]);
 
   const { hours: hoursRemaining, minutes: minutesRemaining, seconds: secondsRemaining, isExpired } = timeLeft;

@@ -38,6 +38,7 @@ const CashStoreHeroBanner: React.FC<CashStoreHeroBannerProps> = ({
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
+  const activeIndexRef = useRef(0); // Ref to track current index without re-running effects
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const shineAnim = useRef(new Animated.Value(0)).current;
@@ -45,7 +46,7 @@ const CashStoreHeroBanner: React.FC<CashStoreHeroBannerProps> = ({
 
   // Entry animation
   useEffect(() => {
-    Animated.parallel([
+    const entryAnimation = Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 500,
@@ -57,10 +58,11 @@ const CashStoreHeroBanner: React.FC<CashStoreHeroBannerProps> = ({
         tension: 40,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]);
+    entryAnimation.start();
 
     // Start shine animation
-    Animated.loop(
+    const shineLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(shineAnim, {
           toValue: 1,
@@ -73,10 +75,11 @@ const CashStoreHeroBanner: React.FC<CashStoreHeroBannerProps> = ({
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    shineLoop.start();
 
     // Badge pulse animation
-    Animated.loop(
+    const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(badgePulseAnim, {
           toValue: 1.1,
@@ -89,20 +92,37 @@ const CashStoreHeroBanner: React.FC<CashStoreHeroBannerProps> = ({
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    pulseLoop.start();
+
+    // Cleanup animations on unmount
+    return () => {
+      entryAnimation.stop();
+      shineLoop.stop();
+      pulseLoop.stop();
+    };
   }, []);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    activeIndexRef.current = activeIndex;
+  }, [activeIndex]);
 
   // Auto-scroll functionality
   useEffect(() => {
     if (banners.length <= 1) return;
 
     const startAutoScroll = () => {
+      if (autoScrollRef.current) {
+        clearInterval(autoScrollRef.current);
+      }
       autoScrollRef.current = setInterval(() => {
-        const nextIndex = (activeIndex + 1) % banners.length;
+        const nextIndex = (activeIndexRef.current + 1) % banners.length;
         flatListRef.current?.scrollToIndex({
           index: nextIndex,
           animated: true,
         });
+        activeIndexRef.current = nextIndex;
         setActiveIndex(nextIndex);
       }, AUTO_SCROLL_INTERVAL);
     };
@@ -114,7 +134,7 @@ const CashStoreHeroBanner: React.FC<CashStoreHeroBannerProps> = ({
         clearInterval(autoScrollRef.current);
       }
     };
-  }, [activeIndex, banners.length]);
+  }, [banners.length]); // Only re-run when banners length changes
 
   const handleScroll = useCallback((event: any) => {
     const contentOffset = event.nativeEvent.contentOffset.x;
@@ -134,14 +154,15 @@ const CashStoreHeroBanner: React.FC<CashStoreHeroBannerProps> = ({
       clearInterval(autoScrollRef.current);
     }
     autoScrollRef.current = setInterval(() => {
-      const nextIndex = (activeIndex + 1) % banners.length;
+      const nextIndex = (activeIndexRef.current + 1) % banners.length;
       flatListRef.current?.scrollToIndex({
         index: nextIndex,
         animated: true,
       });
+      activeIndexRef.current = nextIndex;
       setActiveIndex(nextIndex);
     }, AUTO_SCROLL_INTERVAL);
-  }, [activeIndex, banners.length]);
+  }, [banners.length]);
 
   const renderBanner = useCallback(
     ({ item, index }: { item: HeroBannerType; index: number }) => (

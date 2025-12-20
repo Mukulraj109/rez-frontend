@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useGreeting as useGreetingContext } from '@/contexts/GreetingContext';
 import { useLocation } from '@/contexts/LocationContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -214,18 +214,46 @@ export function useGreetingTime() {
 export function useGreetingAnimation() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationKey, setAnimationKey] = useState(0);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Track mounted state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Clear timeout on unmount
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const triggerAnimation = useCallback(() => {
     setIsAnimating(true);
     setAnimationKey(prev => prev + 1);
-    
+
+    // Clear existing timeout before setting new one
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
     // Reset animation after duration
-    setTimeout(() => {
-      setIsAnimating(false);
+    timeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setIsAnimating(false);
+      }
+      timeoutRef.current = null;
     }, 1000);
   }, []);
 
   const resetAnimation = useCallback(() => {
+    // Clear any pending timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     setIsAnimating(false);
     setAnimationKey(0);
   }, []);
