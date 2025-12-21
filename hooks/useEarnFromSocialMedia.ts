@@ -1,6 +1,6 @@
 // hooks/useEarnFromSocialMedia.ts - State management hook for Earn From Social Media feature
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { router } from 'expo-router';
 import {
   EarnSocialState,
@@ -12,6 +12,21 @@ import EarnSocialData from '@/data/earnSocialData';
 export const useEarnFromSocialMedia = (orderId?: string): UseEarnSocialReturn => {
   const [state, setState] = useState<EarnSocialState>(EarnSocialData.initialState);
   const [contextOrderId] = useState(orderId);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Track mounted state and cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Clear progress interval on unmount
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   // Initialize data on mount
   useEffect(() => {
@@ -73,8 +88,15 @@ export const useEarnFromSocialMedia = (orderId?: string): UseEarnSocialReturn =>
     }));
 
     try {
+      // Clear any existing progress interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+
       // Simulate upload progress
-      const progressInterval = setInterval(() => {
+      progressIntervalRef.current = setInterval(() => {
+        if (!isMountedRef.current) return;
         setState(prev => {
           const newProgress = Math.min(prev.uploadProgress + 10, 90);
           return { ...prev, uploadProgress: newProgress };
@@ -85,7 +107,11 @@ export const useEarnFromSocialMedia = (orderId?: string): UseEarnSocialReturn =>
       const validation = await EarnSocialData.api.validateInstagramUrl(state.instagramUrl);
 
       if (!validation.isValid) {
-        clearInterval(progressInterval);
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+        if (!isMountedRef.current) return;
         setState(prev => ({
           ...prev,
           loading: false,
@@ -99,8 +125,12 @@ export const useEarnFromSocialMedia = (orderId?: string): UseEarnSocialReturn =>
       // Submit the post with order/product ID if available
 
       const result = await EarnSocialData.api.submitPost(state.instagramUrl, contextOrderId);
-      
-      clearInterval(progressInterval);
+
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      if (!isMountedRef.current) return;
       setState(prev => ({ ...prev, uploadProgress: 100 }));
 
       if (result.success) {
@@ -114,6 +144,7 @@ export const useEarnFromSocialMedia = (orderId?: string): UseEarnSocialReturn =>
           platform: 'instagram' as const
         };
 
+        if (!isMountedRef.current) return;
         setState(prev => ({
           ...prev,
           loading: false,
@@ -124,6 +155,7 @@ export const useEarnFromSocialMedia = (orderId?: string): UseEarnSocialReturn =>
           uploadProgress: 0
         }));
       } else {
+        if (!isMountedRef.current) return;
         setState(prev => ({
           ...prev,
           loading: false,
@@ -133,6 +165,12 @@ export const useEarnFromSocialMedia = (orderId?: string): UseEarnSocialReturn =>
         }));
       }
     } catch (error) {
+      // Clear interval on error
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      if (!isMountedRef.current) return;
       setState(prev => ({
         ...prev,
         loading: false,

@@ -45,9 +45,9 @@ export default function SellerComparisonCard({
   const getAvailabilityColor = () => {
     switch (seller.availability) {
       case 'in_stock':
-        return '#00C06A'; // ReZ Green
+        return '#10B981'; // Green
       case 'low_stock':
-        return '#FFC857'; // ReZ Gold
+        return '#F59E0B'; // Orange
       case 'out_of_stock':
         return '#EF4444'; // Red
       default:
@@ -95,7 +95,7 @@ export default function SellerComparisonCard({
           />
         ) : (
           <View style={styles.storeLogoPlaceholder}>
-            <Ionicons name="storefront" size={24} color="#00C06A" />
+            <Ionicons name="storefront" size={24} color="#8B5CF6" />
           </View>
         )}
       </View>
@@ -126,16 +126,11 @@ export default function SellerComparisonCard({
         </View>
 
         {/* Rating */}
-        <View style={styles.ratingSection}>
-          <View style={styles.ratingRow}>
-            <Ionicons name="star" size={13} color="#F59E0B" />
-            <Text style={styles.ratingText}>
-              {seller.rating.toFixed(1)}
-            </Text>
-            <Text style={styles.reviewCountText}>
-              ({formatReviewCount(seller.reviewCount)})
-            </Text>
-          </View>
+        <View style={styles.ratingRow}>
+          <Ionicons name="star" size={14} color="#F59E0B" />
+          <Text style={styles.ratingText}>
+            {seller.rating.toFixed(1)} ({formatReviewCount(seller.reviewCount)})
+          </Text>
           <View style={[styles.availabilityBadge, { backgroundColor: `${getAvailabilityColor()}20` }]}>
             <View style={[styles.availabilityDot, { backgroundColor: getAvailabilityColor() }]} />
             <Text style={[styles.availabilityText, { color: getAvailabilityColor() }]}>
@@ -159,7 +154,7 @@ export default function SellerComparisonCard({
           </View>
           {seller.savings > 0 && (
             <View style={styles.savingsContainer}>
-              <Ionicons name="information-circle-outline" size={14} color="#00C06A" />
+              <Ionicons name="information-circle-outline" size={14} color="#10B981" />
               <Text style={styles.savingsText}>You Save {formatPrice(seller.savings)}</Text>
             </View>
           )}
@@ -167,20 +162,15 @@ export default function SellerComparisonCard({
 
         {/* Cashback and RezCoins */}
         <View style={styles.rewardsRow}>
-          <View style={styles.rewardsContainer}>
-            <Ionicons name="cash-outline" size={12} color="#00C06A" />
-            <Text style={styles.rewardsText}>
-              {formatPrice(seller.cashback.amount)} + {seller.cashback.coins} rezcoins
-            </Text>
-          </View>
+          <Text style={styles.rewardsText}>
+            {formatPrice(seller.cashback.amount)} + {seller.cashback.coins} rezcoins
+          </Text>
         </View>
 
         {/* Delivery Information */}
         <View style={styles.deliveryRow}>
-          <View style={styles.deliveryContainer}>
-            <Ionicons name={getDeliveryIcon()} size={12} color="#6B7280" />
-            <Text style={styles.deliveryText}>{seller.delivery.time}</Text>
-          </View>
+          <Ionicons name={getDeliveryIcon()} size={14} color="#6B7280" />
+          <Text style={styles.deliveryText}>{seller.delivery.time}</Text>
         </View>
 
         {/* Badges */}
@@ -190,7 +180,7 @@ export default function SellerComparisonCard({
               <View key={index} style={styles.badge}>
                 {badge === 'Hot Deal' && <Ionicons name="flame" size={10} color="#EF4444" />}
                 {badge === 'Limited Stock' && <Ionicons name="time-outline" size={10} color="#F59E0B" />}
-                {badge === 'Lock Available' && <Ionicons name="lock-closed" size={10} color="#00C06A" />}
+                {badge === 'Lock Available' && <Ionicons name="lock-closed" size={10} color="#8B5CF6" />}
                 <Text style={styles.badgeText}>{badge}</Text>
               </View>
             ))}
@@ -236,9 +226,9 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
     marginHorizontal: 16,
     borderWidth: 1,
     borderColor: '#F3F4F6',
@@ -246,127 +236,115 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 2,
+        elevation: 3,
       },
       web: {
-        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.08)',
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
       },
     }),
   },
   storeLogoContainer: {
-    marginRight: 10,
+    marginRight: 12,
   },
   storeLogo: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
+    width: 60,
+    height: 60,
+    borderRadius: 12,
     backgroundColor: '#F3F4F6',
   },
   storeLogoPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
+    width: 60,
+    height: 60,
+    borderRadius: 12,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   content: {
     flex: 1,
-    marginRight: 10,
+    marginRight: 12,
   },
   storeNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   storeName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
-    marginRight: 5,
+    marginRight: 6,
   },
   verifiedBadge: {
-    marginLeft: 3,
+    marginLeft: 4,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: 6,
   },
   locationText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
-    marginLeft: 3,
+    marginLeft: 4,
     flex: 1,
-  },
-  ratingSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-    flexWrap: 'wrap',
-    gap: 6,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    marginBottom: 8,
+    gap: 8,
   },
   ratingText: {
     fontSize: 12,
-    color: '#1F2937',
-    fontWeight: '700',
-    marginLeft: 2,
-  },
-  reviewCountText: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: '#374151',
+    fontWeight: '600',
+    marginLeft: 4,
   },
   availabilityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 5,
-    paddingVertical: 3,
-    borderRadius: 6,
-    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 4,
   },
   availabilityDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   availabilityText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '600',
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 5,
+    marginBottom: 6,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 6,
+    gap: 8,
   },
   priceLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
     fontWeight: '500',
   },
   currentPrice: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
     color: '#1F2937',
   },
   originalPrice: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#9CA3AF',
     textDecorationLine: 'line-through',
     fontWeight: '500',
@@ -374,94 +352,85 @@ const styles = StyleSheet.create({
   savingsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   savingsText: {
-    fontSize: 11,
-    color: '#00C06A',
+    fontSize: 12,
+    color: '#10B981',
     fontWeight: '600',
   },
   rewardsRow: {
-    marginBottom: 5,
+    marginBottom: 6,
   },
   rewardsText: {
     fontSize: 12,
-    color: '#00C06A',
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   deliveryRow: {
-    marginBottom: 6,
-  },
-  deliveryContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
     gap: 4,
   },
   deliveryText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
-    fontWeight: '500',
   },
   badgesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 5,
+    gap: 6,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FEF3C7',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
   },
   badgeText: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#92400E',
     fontWeight: '600',
   },
   actionsContainer: {
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    minWidth: 100,
   },
   viewDealButton: {
-    backgroundColor: '#00C06A',
-    paddingHorizontal: 18,
-    paddingVertical: 9,
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 12,
-    marginBottom: 6,
+    marginBottom: 8,
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#8B5CF6',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
-        shadowRadius: 5,
+        shadowRadius: 4,
       },
       android: {
         elevation: 3,
-      },
-      web: {
-        boxShadow: '0px 2px 10px rgba(0, 192, 106, 0.3)',
       },
     }),
   },
   viewDealText: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+    fontSize: 14,
+    fontWeight: '700',
   },
   iconButtons: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   iconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',

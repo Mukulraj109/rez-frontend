@@ -129,6 +129,7 @@ class TelemetryService {
   private isSending: boolean = false;
   private isOnline: boolean = true;
   private isInitialized: boolean = false;
+  private netInfoUnsubscribe: (() => void) | null = null;
   private stats: DeliveryStats = {
     totalEvents: 0,
     sentEvents: 0,
@@ -174,7 +175,13 @@ class TelemetryService {
    * Setup network listener
    */
   private setupNetworkListener(): void {
-    NetInfo.addEventListener(state => {
+    // Clean up existing listener before adding new one
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
+    }
+
+    this.netInfoUnsubscribe = NetInfo.addEventListener(state => {
       const wasOffline = !this.isOnline;
       this.isOnline = state.isConnected ?? false;
 
@@ -679,6 +686,13 @@ class TelemetryService {
    */
   public async shutdown(): Promise<void> {
     this.stopAutoFlush();
+
+    // Clean up NetInfo listener
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
+    }
+
     await this.flush();
     await this.saveQueue();
     await this.saveStats();

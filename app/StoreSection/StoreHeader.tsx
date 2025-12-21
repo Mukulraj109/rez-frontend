@@ -437,8 +437,7 @@ export default function StoreHeader({
           {/* Bottom gradient overlay */}
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.4)']}
-            style={styles.bottomGradient}
-            pointerEvents="none"
+            style={[styles.bottomGradient, { pointerEvents: 'none' }]}
           />
 
           {/* Store Badge - Bottom left */}

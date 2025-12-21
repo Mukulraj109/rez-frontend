@@ -443,6 +443,16 @@ export function useStoreMessaging(options: UseStoreMessagingOptions = {}): UseSt
     }
   }, [conversationId]);
 
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   return {
     conversation,
     messages,

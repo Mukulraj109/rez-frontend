@@ -441,9 +441,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.white,
     letterSpacing: 0.3,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.1)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.1)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      web: {
+        textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+      },
+    }),
   },
   viewAllButton: {
     flexDirection: 'row',
@@ -515,9 +527,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.white,
     letterSpacing: -0.5,
-    textShadowColor: 'rgba(0, 0, 0, 0.15)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.15)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.15)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+      },
+      web: {
+        textShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
+      },
+    }),
   },
   coinWorthText: {
     fontSize: 13,

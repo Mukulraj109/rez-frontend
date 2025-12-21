@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -45,22 +45,37 @@ export default function NotificationBell({
   const [loading, setLoading] = useState(false);
   const [marking, setMarking] = useState(false);
 
+  // Ref to track if component is mounted
+  const isMountedRef = useRef(true);
+
   // Load notifications when authenticated
   useEffect(() => {
+    isMountedRef.current = true;
+
     if (isAuthenticated) {
       loadNotifications();
       // Poll for new notifications every 30 seconds
       const interval = setInterval(loadNotifications, 30000);
-      return () => clearInterval(interval);
+      return () => {
+        isMountedRef.current = false;
+        clearInterval(interval);
+      };
     }
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [isAuthenticated]);
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       setLoading(true);
       const response = await notificationService.getNotifications({
         limit: 10,
       });
+
+      // Only update state if component is still mounted
+      if (!isMountedRef.current) return;
 
       if (response.success && response.data) {
         setNotifications(response.data.notifications);
@@ -69,9 +84,11 @@ export default function NotificationBell({
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   const handleNotificationPress = async (notification: Notification) => {
     // Mark as read if unread

@@ -148,8 +148,7 @@ const ZeroEMICard: React.FC<ZeroEMICardProps> = memo(({ onPress }) => {
           {/* Bottom gradient overlay */}
           <LinearGradient
             colors={['transparent', 'rgba(0, 0, 0, 0.3)']}
-            style={styles.bottomOverlay}
-            pointerEvents="none"
+            style={[styles.bottomOverlay, { pointerEvents: 'none' }]}
           />
         </LinearGradient>
       </TouchableOpacity>
@@ -269,10 +268,22 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontStyle: 'italic',
     color: COLORS.gold,
-    textShadowColor: 'rgba(180, 83, 9, 0.5)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 8,
     letterSpacing: -4,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(180, 83, 9, 0.5)',
+        textShadowOffset: { width: 0, height: 4 },
+        textShadowRadius: 8,
+      },
+      android: {
+        textShadowColor: 'rgba(180, 83, 9, 0.5)',
+        textShadowOffset: { width: 0, height: 4 },
+        textShadowRadius: 8,
+      },
+      web: {
+        textShadow: '0 4px 8px rgba(180, 83, 9, 0.5)',
+      },
+    }),
   },
   percentText: {
     fontSize: 36,
@@ -280,9 +291,21 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: COLORS.gold,
     marginTop: 12,
-    textShadowColor: 'rgba(180, 83, 9, 0.5)',
-    textShadowOffset: { width: 0, height: 3 },
-    textShadowRadius: 6,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(180, 83, 9, 0.5)',
+        textShadowOffset: { width: 0, height: 3 },
+        textShadowRadius: 6,
+      },
+      android: {
+        textShadowColor: 'rgba(180, 83, 9, 0.5)',
+        textShadowOffset: { width: 0, height: 3 },
+        textShadowRadius: 6,
+      },
+      web: {
+        textShadow: '0 3px 6px rgba(180, 83, 9, 0.5)',
+      },
+    }),
   },
   numberGlow: {
     position: 'absolute',
@@ -324,9 +347,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.white,
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      web: {
+        textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+      },
+    }),
   },
   ctaButton: {
     alignSelf: 'center',

@@ -37,11 +37,12 @@ export function useOfflineCart() {
   // Subscribe to queue changes
   useEffect(() => {
     const interval = setInterval(() => {
-      updatePendingCount();
+      const count = offlineQueueService.getPendingCount();
+      setPendingOperations(count);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [updatePendingCount]);
+  }, []); // Empty deps - offlineQueueService is a stable singleton
 
   /**
    * Load last sync time from storage

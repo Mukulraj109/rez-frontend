@@ -165,6 +165,11 @@ export function useVideoManager(videoId: string) {
     if (videoRef.current) {
       videoManager.registerVideo(videoId, videoRef.current);
     }
+
+    // Cleanup when videoId changes - unregister the old video
+    return () => {
+      videoManager.unregisterVideo(videoId);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]); // Only depend on videoId, not videoRef.current
 

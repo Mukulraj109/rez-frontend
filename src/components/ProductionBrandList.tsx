@@ -154,7 +154,7 @@ const ProductionBrandList = ({ stores, isLoading, error, onRefresh }: Production
           activeOpacity={1}
         >
           {/* Shimmer overlay */}
-          <Animated.View style={[styles.shimmerOverlay, shimmerStyle]} pointerEvents="none">
+          <Animated.View style={[styles.shimmerOverlay, shimmerStyle, { pointerEvents: 'none' }]}>
             <LinearGradient
               colors={['transparent', 'rgba(255, 255, 255, 0.4)', 'transparent']}
               start={{ x: 0, y: 0 }}

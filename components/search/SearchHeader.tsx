@@ -252,7 +252,8 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     ...Platform.select({
       web: {
-        outline: 'none',
+        outlineWidth: 0,
+        outlineStyle: 'none',
       },
     }),
   },

@@ -1,11 +1,12 @@
 /**
  * PaymentStoreCard Component
  *
- * Premium store card for payment flow with animations, 3D shadows, and press feedback.
+ * Premium store card with detailed information display.
+ * Shows: tags, ratings, distance, delivery time, open status, offers, features
  */
 
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedStyle,
@@ -13,19 +14,12 @@ import Animated, {
   withSpring,
   withTiming,
   FadeInDown,
-  interpolate,
-  Extrapolation,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import {
   PaymentStoreCardProps,
-  PaymentStoreInfo,
-  PAYMENT_SEARCH_COLORS,
-  PAYMENT_SEARCH_SHADOWS,
   SEARCH_ANIMATIONS,
 } from '@/types/paymentStoreSearch.types';
-import { RezPayBadge } from './RezPayBadge';
-import { RewardsBadge } from './RewardsBadge';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -34,77 +28,144 @@ const SPRING_CONFIG = {
   stiffness: SEARCH_ANIMATIONS.pressScale.stiffness,
 };
 
+// ReZ Brand Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00A05A',
+  primaryLight: 'rgba(0, 192, 106, 0.08)',
+  primaryGlow: 'rgba(0, 192, 106, 0.12)',
+
+  // Status colors
+  open: '#22C55E',
+  closed: '#EF4444',
+
+  // Tag colors
+  tagTop: '#F97316',
+  tagBrand: '#3B82F6',
+  tagHot: '#EF4444',
+  tagLocal: '#00C06A',
+  tagOnline: '#6B7280',
+  tagVerified: '#8B5CF6',
+  tagFast: '#06B6D4',
+  tagPremium: '#F59E0B',
+  tagOrganic: '#22C55E',
+
+  // Partner levels
+  partnerBronze: '#CD7F32',
+  partnerSilver: '#C0C0C0',
+  partnerGold: '#FFD700',
+  partnerPlatinum: '#E5E4E2',
+
+  // Category logo colors
+  grocery: '#F97316',
+  fashion: '#8B5CF6',
+  restaurant: '#EF4444',
+  organic: '#22C55E',
+  electronics: '#3B82F6',
+  entertainment: '#EC4899',
+  travel: '#06B6D4',
+  beauty: '#F472B6',
+  default: '#0B2240',
+
+  // Text
+  textPrimary: '#1F2937',
+  textSecondary: '#6B7280',
+  textMuted: '#9CA3AF',
+
+  // Backgrounds
+  surface: '#FFFFFF',
+  glassWhite: 'rgba(255, 255, 255, 0.92)',
+  glassBorder: 'rgba(0, 0, 0, 0.06)',
+
+  // Rating
+  ratingBg: '#FEF3C7',
+  ratingStar: '#F59E0B',
+};
+
 export const PaymentStoreCard: React.FC<PaymentStoreCardProps> = ({
   store,
   onPress,
+  onView,
   index = 0,
   variant = 'full',
   showCTA = true,
 }) => {
   const scale = useSharedValue(1);
-  const pressed = useSharedValue(0);
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.97, SPRING_CONFIG);
-    pressed.value = withTiming(1, { duration: 100 });
-  }, [scale, pressed]);
+    scale.value = withSpring(0.98, SPRING_CONFIG);
+  }, [scale]);
 
   const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, SPRING_CONFIG);
-    pressed.value = withTiming(0, { duration: 150 });
-  }, [scale, pressed]);
+  }, [scale]);
 
-  const animatedContainerStyle = useAnimatedStyle(() => {
-    const shadowOpacity = interpolate(
-      pressed.value,
-      [0, 1],
-      [PAYMENT_SEARCH_SHADOWS.card.shadowOpacity, PAYMENT_SEARCH_SHADOWS.cardPressed.shadowOpacity],
-      Extrapolation.CLAMP
-    );
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
-    return {
-      transform: [{ scale: scale.value }],
-      shadowOpacity,
-    };
-  });
-
+  // Helper functions
   const formatDistance = (distance?: number): string => {
     if (!distance) return '';
-    if (distance < 1) {
-      return `${Math.round(distance * 1000)}m`;
+    if (distance < 1) return `${Math.round(distance * 1000)}m`;
+    return `${distance.toFixed(1)}km`;
+  };
+
+  const formatOrders = (count?: number): string => {
+    if (!count) return '';
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}k+ orders`;
+    return `${count}+ orders`;
+  };
+
+  const getCategoryColor = (categoryName: string): string => {
+    const category = (categoryName || '').toLowerCase();
+    if (category.includes('grocery') || category.includes('supermarket')) return COLORS.grocery;
+    if (category.includes('fashion') || category.includes('clothing')) return COLORS.fashion;
+    if (category.includes('restaurant') || category.includes('food') || category.includes('cafe')) return COLORS.restaurant;
+    if (category.includes('organic') || category.includes('health')) return COLORS.organic;
+    if (category.includes('electronics') || category.includes('tech')) return COLORS.electronics;
+    if (category.includes('entertainment') || category.includes('cinema')) return COLORS.entertainment;
+    if (category.includes('travel')) return COLORS.travel;
+    if (category.includes('beauty') || category.includes('salon')) return COLORS.beauty;
+    return COLORS.default;
+  };
+
+  const getPartnerColor = (level?: string): string => {
+    switch (level) {
+      case 'platinum': return COLORS.partnerPlatinum;
+      case 'gold': return COLORS.partnerGold;
+      case 'silver': return COLORS.partnerSilver;
+      case 'bronze': return COLORS.partnerBronze;
+      default: return COLORS.primary;
     }
-    return `${distance.toFixed(1)} km`;
   };
 
-  const renderRating = () => {
-    if (!store.ratings?.average) return null;
-    return (
-      <View style={styles.ratingContainer}>
-        <Ionicons name="star" size={12} color="#FFC857" />
-        <Text style={styles.ratingText}>{store.ratings.average.toFixed(1)}</Text>
-        {store.ratings.count > 0 && (
-          <Text style={styles.ratingCount}>({store.ratings.count})</Text>
-        )}
-      </View>
-    );
+  const getAccentColor = (): string => {
+    if (store.isFeatured) return COLORS.tagTop;
+    if (store.isBrand) return COLORS.tagBrand;
+    if (store.isHot) return COLORS.tagHot;
+    if (store.isLocal) return COLORS.tagLocal;
+    if (store.deliveryCategories?.premium) return COLORS.tagPremium;
+    if (store.deliveryCategories?.organic) return COLORS.tagOrganic;
+    return COLORS.primary;
   };
 
+  // Compact variant
   if (variant === 'compact') {
+    const logoColor = getCategoryColor(store.category?.name || '');
     return (
       <AnimatedPressable
         onPress={() => onPress(store)}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        entering={FadeInDown.delay(index * 80).springify().damping(15)}
-        style={[styles.compactContainer, animatedContainerStyle, PAYMENT_SEARCH_SHADOWS.card]}
+        entering={FadeInDown.delay(index * 60).springify().damping(15)}
+        style={[styles.compactContainer, animatedStyle]}
       >
-        <View style={styles.compactLogoContainer}>
+        <View style={[styles.compactLogo, { backgroundColor: store.logo ? '#F3F4F6' : logoColor }]}>
           {store.logo ? (
-            <Image source={{ uri: store.logo }} style={styles.compactLogo} resizeMode="cover" />
+            <Image source={{ uri: store.logo }} style={styles.compactLogoImage} resizeMode="cover" />
           ) : (
-            <View style={styles.compactLogoPlaceholder}>
-              <Ionicons name="storefront" size={24} color="#9CA3AF" />
-            </View>
+            <Ionicons name="storefront" size={22} color="#FFF" />
           )}
         </View>
         <Text style={styles.compactName} numberOfLines={2}>{store.name}</Text>
@@ -115,208 +176,537 @@ export const PaymentStoreCard: React.FC<PaymentStoreCardProps> = ({
     );
   }
 
+  // Full variant - Build data
+  const logoColor = getCategoryColor(store.category?.name || '');
+  const accentColor = getAccentColor();
+  // Get cashback/discount percentage (prioritize offers.cashback which has actual data)
+  const discount = store.offers?.cashback || store.offers?.discount || store.maxCashback;
+  const isOpen = store.isOpen ?? store.operationalInfo?.isOpenNow ?? true;
+
+  // Build tags array
+  const tags: { label: string; color: string; icon: string }[] = [];
+  if (store.isFeatured) tags.push({ label: 'Top', color: COLORS.tagTop, icon: 'trophy' });
+  if (store.isBrand) tags.push({ label: 'Brand', color: COLORS.tagBrand, icon: 'ribbon' });
+  if (store.isHot) tags.push({ label: 'Hot', color: COLORS.tagHot, icon: 'flame' });
+  if (store.isLocal) tags.push({ label: 'Local', color: COLORS.tagLocal, icon: 'leaf' });
+  if (store.isOnline) tags.push({ label: 'Online', color: COLORS.tagOnline, icon: 'globe' });
+  if (store.isVerified) tags.push({ label: 'Verified', color: COLORS.tagVerified, icon: 'checkmark-circle' });
+
+  // Build feature badges
+  const features: { label: string; color: string; icon: string }[] = [];
+  if (store.deliveryCategories?.fastDelivery) features.push({ label: 'Fast', color: COLORS.tagFast, icon: 'flash' });
+  if (store.deliveryCategories?.premium) features.push({ label: 'Premium', color: COLORS.tagPremium, icon: 'diamond' });
+  if (store.deliveryCategories?.organic) features.push({ label: 'Organic', color: COLORS.tagOrganic, icon: 'leaf' });
+  if (store.deliveryCategories?.lowestPrice) features.push({ label: 'Best Price', color: COLORS.primary, icon: 'pricetag' });
+
   return (
     <AnimatedPressable
       onPress={() => onPress(store)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       entering={FadeInDown.delay(index * 80).springify().damping(15)}
-      style={[styles.container, animatedContainerStyle, PAYMENT_SEARCH_SHADOWS.card]}
+      style={[styles.card, animatedStyle]}
     >
-      {/* Header Row */}
-      <View style={styles.headerRow}>
-        <View style={styles.logoContainer}>
-          {store.logo ? (
-            <Image source={{ uri: store.logo }} style={styles.logo} resizeMode="cover" />
-          ) : (
-            <View style={styles.logoPlaceholder}>
-              <Ionicons name="storefront" size={28} color="#9CA3AF" />
+      {/* Left Accent */}
+      <View style={[styles.accent, { backgroundColor: accentColor }]} />
+
+      <View style={styles.cardContent}>
+        {/* Row 1: Logo + Info + Discount */}
+        <View style={styles.topRow}>
+          {/* Logo */}
+          <View style={[styles.logo, { backgroundColor: store.logo ? '#F8FAFC' : logoColor }]}>
+            {store.logo ? (
+              <Image source={{ uri: store.logo }} style={styles.logoImage} resizeMode="cover" />
+            ) : (
+              <Ionicons name="storefront" size={26} color="#FFF" />
+            )}
+            {/* Partner Badge on Logo */}
+            {store.offers?.partnerLevel && (
+              <View style={[styles.partnerBadge, { backgroundColor: getPartnerColor(store.offers.partnerLevel) }]}>
+                <Ionicons name="star" size={8} color="#FFF" />
+              </View>
+            )}
+          </View>
+
+          {/* Store Info */}
+          <View style={styles.info}>
+            {/* Name Row with Tags */}
+            <View style={styles.nameRow}>
+              <Text style={styles.storeName} numberOfLines={1}>{store.name}</Text>
+              {tags.length > 0 && (
+                <View style={styles.tagsInline}>
+                  {tags.slice(0, 2).map((tag, i) => (
+                    <View key={i} style={[styles.tagSmall, { backgroundColor: tag.color }]}>
+                      <Ionicons name={tag.icon as any} size={9} color="#FFF" />
+                      <Text style={styles.tagSmallText}>{tag.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Category */}
+            <Text style={styles.category}>{store.category?.name || 'General'}</Text>
+
+            {/* Meta Row: Rating + Distance + Orders */}
+            <View style={styles.metaRow}>
+              {store.ratings?.average > 0 && (
+                <View style={styles.ratingBadge}>
+                  <Ionicons name="star" size={10} color={COLORS.ratingStar} />
+                  <Text style={styles.ratingText}>{store.ratings.average.toFixed(1)}</Text>
+                  <Text style={styles.ratingCount}>({store.ratings.count})</Text>
+                </View>
+              )}
+              {store.distance !== undefined && (
+                <View style={styles.distanceBadge}>
+                  <Ionicons name="location" size={10} color={COLORS.primary} />
+                  <Text style={styles.distanceText}>{formatDistance(store.distance)}</Text>
+                </View>
+              )}
+              {store.analytics?.totalOrders && store.analytics.totalOrders > 50 && (
+                <Text style={styles.ordersText}>{formatOrders(store.analytics.totalOrders)}</Text>
+              )}
+            </View>
+          </View>
+
+          {/* Discount Badge */}
+          {discount && discount > 0 && (
+            <View style={styles.discountBadge}>
+              <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.discountGradient}>
+                <Ionicons name="pricetag" size={10} color="#FFF" />
+                <Text style={styles.discountText}>{discount}%</Text>
+              </LinearGradient>
             </View>
           )}
         </View>
 
-        <View style={styles.headerInfo}>
-          <Text style={styles.storeName} numberOfLines={1}>{store.name}</Text>
-          <View style={styles.metaRow}>
-            {store.distance !== undefined && (
-              <>
-                <Ionicons name="location-outline" size={12} color={PAYMENT_SEARCH_COLORS.textSecondary} />
-                <Text style={styles.metaText}>{formatDistance(store.distance)}</Text>
-                <Text style={styles.metaDot}>•</Text>
-              </>
-            )}
-            <Text style={styles.categoryText}>{store.category.name}</Text>
+        {/* Row 2: Features + Open Status */}
+        <View style={styles.featuresRow}>
+          {/* Feature badges */}
+          {features.length > 0 && (
+            <View style={styles.featureBadges}>
+              {features.slice(0, 3).map((f, i) => (
+                <View key={i} style={[styles.featureBadge, { backgroundColor: `${f.color}15` }]}>
+                  <Ionicons name={f.icon as any} size={10} color={f.color} />
+                  <Text style={[styles.featureText, { color: f.color }]}>{f.label}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Delivery Time */}
+          {store.operationalInfo?.deliveryTime && (
+            <View style={styles.deliveryBadge}>
+              <Ionicons name="time-outline" size={11} color={COLORS.textSecondary} />
+              <Text style={styles.deliveryText}>{store.operationalInfo.deliveryTime}</Text>
+            </View>
+          )}
+
+          {/* Open/Closed Status */}
+          <View style={[styles.statusBadge, { backgroundColor: isOpen ? `${COLORS.open}15` : `${COLORS.closed}15` }]}>
+            <View style={[styles.statusDot, { backgroundColor: isOpen ? COLORS.open : COLORS.closed }]} />
+            <Text style={[styles.statusText, { color: isOpen ? COLORS.open : COLORS.closed }]}>
+              {isOpen ? 'Open' : 'Closed'}
+            </Text>
           </View>
         </View>
 
-        {renderRating()}
-      </View>
+        {/* Row 3: Coins Info */}
+        {(store.hasRezPay || store.brandedCoinsMessage) && (
+          <View style={styles.coinsRow}>
+            <Ionicons name={store.hasRezPay ? "wallet" : "gift"} size={14} color={COLORS.primary} />
+            <Text style={styles.coinsText}>
+              {store.hasRezPay ? 'ReZ Coins accepted here' : store.brandedCoinsMessage}
+            </Text>
+            {store.operationalInfo?.freeDeliveryAbove && (
+              <Text style={styles.freeDeliveryText}>
+                Free delivery above ₹{store.operationalInfo.freeDeliveryAbove}
+              </Text>
+            )}
+          </View>
+        )}
 
-      {/* Badges Row */}
-      <View style={styles.badgesRow}>
-        {store.hasRezPay && <RezPayBadge size="small" />}
-        {store.maxCashback && store.maxCashback > 0 && (
-          <RewardsBadge cashbackPercent={store.maxCashback} size="small" />
+        {/* Row 4: CTA Buttons */}
+        {showCTA && (
+          <View style={styles.ctaRow}>
+            <Pressable style={styles.payButton} onPress={() => onPress(store)}>
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.payGradient}
+              >
+                <Text style={styles.payText}>Pay Now</Text>
+                <Ionicons name="arrow-forward" size={16} color="#FFF" />
+              </LinearGradient>
+            </Pressable>
+
+            {onView && (
+              <Pressable style={styles.viewButton} onPress={() => onView(store)}>
+                <Text style={styles.viewArrow}>→</Text>
+                <Text style={styles.viewText}>View</Text>
+              </Pressable>
+            )}
+          </View>
         )}
       </View>
-
-      {/* CTA Button */}
-      {showCTA && (
-        <LinearGradient
-          colors={[PAYMENT_SEARCH_COLORS.primary, PAYMENT_SEARCH_COLORS.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.ctaButton}
-        >
-          <Text style={styles.ctaText}>Pay at Store</Text>
-          <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={styles.ctaIcon} />
-        </LinearGradient>
-      )}
     </AnimatedPressable>
   );
 };
 
 const styles = StyleSheet.create({
-  // Full variant styles
-  container: {
-    backgroundColor: PAYMENT_SEARCH_COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
+  // Main Card
+  card: {
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 14,
+    borderRadius: 16,
+    flexDirection: 'row',
+    backgroundColor: COLORS.glassWhite,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+    overflow: 'hidden',
   },
-  headerRow: {
+
+  accent: {
+    width: 4,
+  },
+
+  cardContent: {
+    flex: 1,
+    padding: 12,
+  },
+
+  // Top Row
+  topRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
-  logoContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#F3F4F6',
-  },
+
   logo: {
-    width: '100%',
-    height: '100%',
-  },
-  logoPlaceholder: {
-    width: '100%',
-    height: '100%',
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
+    overflow: 'hidden',
   },
-  headerInfo: {
+
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  partnerBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+
+  info: {
     flex: 1,
-    marginLeft: 12,
-    justifyContent: 'center',
+    marginLeft: 10,
+    marginRight: 50,
   },
+
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+
   storeName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: PAYMENT_SEARCH_COLORS.textPrimary,
-    marginBottom: 4,
+    color: COLORS.textPrimary,
+    flexShrink: 1,
   },
+
+  tagsInline: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+
+  tagSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 2,
+  },
+
+  tagSmallText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+
+  category: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
+
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  metaText: {
-    fontSize: 12,
-    color: PAYMENT_SEARCH_COLORS.textSecondary,
-    marginLeft: 2,
-  },
-  metaDot: {
-    fontSize: 12,
-    color: PAYMENT_SEARCH_COLORS.textTertiary,
-    marginHorizontal: 6,
-  },
-  categoryText: {
-    fontSize: 12,
-    color: PAYMENT_SEARCH_COLORS.textSecondary,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFBEB',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  ratingText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: PAYMENT_SEARCH_COLORS.textPrimary,
-    marginLeft: 4,
-  },
-  ratingCount: {
-    fontSize: 10,
-    color: PAYMENT_SEARCH_COLORS.textTertiary,
-    marginLeft: 2,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
+    marginTop: 5,
     gap: 8,
   },
-  ctaButton: {
+
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.ratingBg,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 2,
+  },
+
+  ratingText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+
+  ratingCount: {
+    fontSize: 9,
+    color: COLORS.textMuted,
+  },
+
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 2,
+  },
+
+  distanceText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+
+  ordersText: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+  },
+
+  // Discount Badge
+  discountBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+  },
+
+  discountGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 3,
+  },
+
+  discountText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+
+  // Features Row
+  featuresRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+
+  featureBadges: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+
+  featureBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 3,
+  },
+
+  featureText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+
+  deliveryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+
+  deliveryText: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+  },
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+    marginLeft: 'auto',
+  },
+
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+
+  statusText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+
+  // Coins Row
+  coinsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: COLORS.primaryGlow,
+    borderRadius: 8,
+    gap: 6,
+  },
+
+  coinsText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.primary,
+    flex: 1,
+  },
+
+  freeDeliveryText: {
+    fontSize: 10,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+
+  // CTA Row
+  ctaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 8,
+  },
+
+  payButton: {
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+
+  payGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  ctaText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  ctaIcon: {
-    marginLeft: 6,
+    paddingVertical: 11,
+    gap: 6,
   },
 
-  // Compact variant styles
-  compactContainer: {
-    backgroundColor: PAYMENT_SEARCH_COLORS.surface,
-    borderRadius: 12,
-    padding: 12,
-    width: 120,
+  payText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+
+  viewButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 10,
+    gap: 4,
   },
-  compactLogoContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    overflow: 'hidden',
-    backgroundColor: '#F3F4F6',
-    marginBottom: 8,
-    position: 'relative',
+
+  viewArrow: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
-  compactLogo: {
-    width: '100%',
-    height: '100%',
-  },
-  compactLogoPlaceholder: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
-  },
-  compactName: {
-    fontSize: 12,
+
+  viewText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: PAYMENT_SEARCH_COLORS.textPrimary,
-    textAlign: 'center',
-    marginBottom: 4,
+    color: COLORS.primary,
   },
+
+  // Compact Variant
+  compactContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    padding: 10,
+    width: 100,
+    alignItems: 'center',
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+
+  compactLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+
+  compactLogoImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  compactName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+
   compactDistance: {
     fontSize: 10,
-    color: PAYMENT_SEARCH_COLORS.textSecondary,
+    color: COLORS.textSecondary,
   },
 });
 

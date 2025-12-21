@@ -3,7 +3,44 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, useRef } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, LogBox, Platform } from 'react-native';
+
+// Warnings to suppress
+const SUPPRESSED_WARNINGS = [
+  'Require cycle: node_modules/react-native-gesture-handler',
+  'Require cycle: node_modules/react-native-reanimated',
+  'Require cycle:',
+  'ViewPropTypes will be removed',
+  'ColorPropType will be removed',
+  'AsyncStorage has been extracted',
+  'Non-serializable values were found in the navigation state',
+  'VirtualizedLists should never be nested',
+  'Each child in a list should have a unique "key" prop',
+  'componentWillReceiveProps has been renamed',
+  'componentWillMount has been renamed',
+  'props.pointerEvents is deprecated',
+  '"shadow*" style props are deprecated',
+  '"textShadow*" style props are deprecated',
+  'shadow* style props are deprecated',
+  'textShadow* style props are deprecated',
+];
+
+// Suppress known harmless warnings from third-party libraries (native)
+LogBox.ignoreLogs(SUPPRESSED_WARNINGS);
+
+// Suppress warnings on web by patching console.warn
+if (Platform.OS === 'web') {
+  const originalWarn = console.warn;
+  console.warn = (...args: any[]) => {
+    const message = args[0]?.toString() || '';
+    const shouldSuppress = SUPPRESSED_WARNINGS.some(warning => message.includes(warning));
+    if (!shouldSuppress) {
+      originalWarn.apply(console, args);
+    }
+  };
+}
+
+
 import NetInfo from '@react-native-community/netinfo';
 import 'react-native-reanimated';
 
@@ -320,7 +357,6 @@ export default function RootLayout() {
                     <Stack.Screen name="StoreListPage" options={{ headerShown: false }} />
                     <Stack.Screen name="how-rez-works" options={{ headerShown: false }} />
                     <Stack.Screen name="EventsListPage" options={{ headerShown: false }} />
-                    <Stack.Screen name="StoreSearch" options={{ headerShown: false }} />
                     <Stack.Screen name="ReviewPage" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/index" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/[id]" options={{ headerShown: false }} />
@@ -372,7 +408,6 @@ export default function RootLayout() {
                     <Stack.Screen name="account/courier-preferences" options={{ headerShown: false }} />
                     <Stack.Screen name="account/products" options={{ headerShown: false }} />
                     <Stack.Screen name="account/product-detail" options={{ headerShown: false }} />
-                    <Stack.Screen name="coin-detail" options={{ headerShown: false }} />
                     <Stack.Screen name="tracking" options={{ headerShown: false }} />
                     <Stack.Screen name="order-history" options={{ headerShown: false }} />
                     <Stack.Screen name="ring-sizer" options={{ headerShown: false }} />

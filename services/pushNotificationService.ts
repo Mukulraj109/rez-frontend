@@ -185,6 +185,9 @@ class PushNotificationService {
    * Setup notification listeners
    */
   private setupListeners(): void {
+    // Remove existing listeners before adding new ones to prevent accumulation
+    this.cleanup();
+
     // Listener for when a notification is received while app is foregrounded
     this.notificationListener = Notifications.addNotificationReceivedListener((notification) => {
 

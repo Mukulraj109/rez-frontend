@@ -176,7 +176,8 @@ const styles = StyleSheet.create({
     color: '#374151',
     backgroundColor: 'transparent',
     borderWidth: 0,
-    outline: 'none', // Remove browser focus outline
+    outlineWidth: 0, // Remove browser focus outline
+    outlineStyle: 'none',
     // Web-specific styles to override browser defaults
     ...(typeof window !== 'undefined' ? {
       boxShadow: 'none !important',

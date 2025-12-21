@@ -385,12 +385,12 @@ export const LazySearchPage = lazyLoad(
 );
 
 // ============================================================================
-// Coin Detail (Low Impact)
+// Coin Page (Low Impact)
 // ============================================================================
 
-export const LazyCoinDetailPage = lazyLoad(
-  () => import('@/app/coin-detail'),
-  { componentName: 'CoinDetailPage', fallback: <RouteLoader /> }
+export const LazyCoinPage = lazyLoad(
+  () => import('@/app/CoinPage'),
+  { componentName: 'CoinPage', fallback: <RouteLoader /> }
 );
 
 // ============================================================================

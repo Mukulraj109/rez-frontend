@@ -131,14 +131,22 @@ export function useNetworkStatus() {
         return;
       }
 
+      let unsubscribe: (() => void) | null = null;
+
       const timeoutId = setTimeout(() => {
+        // Clean up listener when timeout fires
+        if (unsubscribe) {
+          unsubscribe();
+        }
         resolve(false);
       }, timeout);
 
-      const unsubscribe = NetInfo.addEventListener(state => {
+      unsubscribe = NetInfo.addEventListener(state => {
         if (state.isConnected) {
           clearTimeout(timeoutId);
-          unsubscribe();
+          if (unsubscribe) {
+            unsubscribe();
+          }
           resolve(true);
         }
       });

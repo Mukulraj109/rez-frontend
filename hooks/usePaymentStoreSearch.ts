@@ -23,61 +23,236 @@ import storePaymentApi from '@/services/storePaymentApi';
 import apiClient from '@/services/apiClient';
 
 /**
+ * Check if store is currently open based on hours
+ */
+const isStoreOpenNow = (hours: any): { isOpen: boolean; openTime?: string; closeTime?: string } => {
+  if (!hours) return { isOpen: true }; // Assume open if no hours data
+
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const now = new Date();
+  const currentDay = days[now.getDay()];
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentTime = currentHour * 60 + currentMinute;
+
+  const todayHours = hours[currentDay];
+  if (!todayHours || todayHours.closed) return { isOpen: false };
+
+  const [openHour, openMin] = (todayHours.open || '09:00').split(':').map(Number);
+  const [closeHour, closeMin] = (todayHours.close || '21:00').split(':').map(Number);
+  const openTime = openHour * 60 + openMin;
+  const closeTime = closeHour * 60 + closeMin;
+
+  return {
+    isOpen: currentTime >= openTime && currentTime <= closeTime,
+    openTime: todayHours.open,
+    closeTime: todayHours.close,
+  };
+};
+
+/**
+ * Known brand names for brand detection
+ */
+const KNOWN_BRANDS = [
+  'baskin', 'robbins', 'mcdonald', 'kfc', 'burger king', 'starbucks', 'subway',
+  'dominos', 'pizza hut', 'central', 'lifestyle', 'westside', 'pantaloons',
+  'reliance', 'shoppers stop', 'max', 'bata', 'puma', 'nike', 'adidas',
+  'decathlon', 'croma', 'vijay sales', 'big bazaar', 'dmart', 'more',
+  'spencer', 'nature basket', 'foodhall', 'zara', 'h&m', 'uniqlo'
+];
+
+/**
+ * Service category slugs/names for service detection
+ */
+const SERVICE_CATEGORIES = [
+  'service', 'salon', 'spa', 'beauty', 'repair', 'maintenance',
+  'healthcare', 'medical', 'dental', 'fitness', 'gym', 'yoga',
+  'cleaning', 'laundry', 'car wash', 'automotive'
+];
+
+/**
+ * Check if store is a brand based on name and other indicators
+ */
+const detectIsBrand = (store: any): boolean => {
+  // Explicit flag from backend
+  if (store.isBrand === true) return true;
+
+  // Featured stores are often brands
+  if (store.isFeatured === true) return true;
+
+  // Check store name against known brands
+  const nameLower = (store.name || '').toLowerCase();
+  if (KNOWN_BRANDS.some(brand => nameLower.includes(brand))) return true;
+
+  // Check tags for brand indicator
+  const tags = store.tags || [];
+  if (tags.some((tag: string) => tag.toLowerCase().includes('brand'))) return true;
+
+  // Check if verified (verified stores are often brands)
+  if (store.isVerified === true) return true;
+
+  return false;
+};
+
+/**
+ * Check if store is a service provider
+ */
+const detectIsService = (store: any): boolean => {
+  // Explicit flag from backend
+  if (store.isService === true) return true;
+
+  // Check category
+  const categoryName = (store.category?.name || '').toLowerCase();
+  const categorySlug = (store.category?.slug || '').toLowerCase();
+  if (SERVICE_CATEGORIES.some(svc => categoryName.includes(svc) || categorySlug.includes(svc))) return true;
+
+  // Check tags
+  const tags = store.tags || [];
+  if (tags.some((tag: string) => SERVICE_CATEGORIES.some(svc => tag.toLowerCase().includes(svc)))) return true;
+
+  return false;
+};
+
+/**
+ * Check if store is a local store
+ */
+const detectIsLocal = (store: any, isBrand: boolean, isService: boolean): boolean => {
+  // Explicit flag from backend
+  if (store.isLocal === true) return true;
+
+  // If not a brand and not a service, likely local
+  if (!isBrand && !isService) return true;
+
+  // Check tags for local indicator
+  const tags = store.tags || [];
+  if (tags.some((tag: string) => tag.toLowerCase().includes('local'))) return true;
+
+  return false;
+};
+
+/**
  * Transform backend store data to PaymentStoreInfo format
  */
-const transformToPaymentStore = (store: any, distance?: number): PaymentStoreInfo => ({
-  _id: store._id,
-  name: store.name,
-  slug: store.slug,
-  logo: store.logo,
-  category: {
-    _id: store.category?._id || '',
-    name: store.category?.name || 'General',
-    slug: store.category?.slug || 'general',
-    icon: store.category?.icon,
-  },
-  location: {
-    address: store.location?.address || '',
-    city: store.location?.city || '',
-    state: store.location?.state,
-    pincode: store.location?.pincode,
-    coordinates: store.location?.coordinates,
-  },
-  distance: distance || store.distance,
-  paymentSettings: {
-    acceptUPI: store.paymentSettings?.acceptUPI ?? true,
-    acceptCards: store.paymentSettings?.acceptCards ?? true,
-    acceptPayLater: store.paymentSettings?.acceptPayLater ?? false,
-    acceptRezCoins: store.paymentSettings?.acceptRezCoins ?? true,
-    acceptPromoCoins: store.paymentSettings?.acceptPromoCoins ?? true,
-    acceptPayBill: store.paymentSettings?.acceptPayBill ?? false,
-    maxCoinRedemptionPercent: store.paymentSettings?.maxCoinRedemptionPercent ?? 50,
-    allowHybridPayment: store.paymentSettings?.allowHybridPayment ?? true,
-    allowOffers: store.paymentSettings?.allowOffers ?? true,
-    allowCashback: store.paymentSettings?.allowCashback ?? true,
-    upiId: store.paymentSettings?.upiId,
-    upiName: store.paymentSettings?.upiName,
-  },
-  rewardRules: {
-    baseCashbackPercent: store.rewardRules?.baseCashbackPercent ?? 2,
-    reviewBonusCoins: store.rewardRules?.reviewBonusCoins ?? 10,
-    socialShareBonusCoins: store.rewardRules?.socialShareBonusCoins ?? 5,
-    minimumAmountForReward: store.rewardRules?.minimumAmountForReward ?? 25,
-    extraRewardThreshold: store.rewardRules?.extraRewardThreshold,
-    extraRewardCoins: store.rewardRules?.extraRewardCoins,
-    visitMilestoneRewards: store.rewardRules?.visitMilestoneRewards,
-  },
-  ratings: {
-    average: store.ratings?.average || 0,
-    count: store.ratings?.count || 0,
-  },
-  isActive: store.isActive ?? true,
-  hasRezPay: store.operationalInfo?.acceptsWalletPayment ?? store.hasRezPay ?? true,
-  maxCashback: store.rewardRules?.baseCashbackPercent ?? store.maxCashback ?? 5,
-  lastPaidAt: store.lastPaidAt,
-  totalPayments: store.totalPayments,
-  popularityScore: store.popularityScore,
-});
+const transformToPaymentStore = (store: any, distance?: number): PaymentStoreInfo => {
+  // Calculate if store is open
+  const openStatus = isStoreOpenNow(store.operationalInfo?.hours);
+
+  // Detect store type flags
+  const isBrand = detectIsBrand(store);
+  const isService = detectIsService(store);
+  const isLocal = detectIsLocal(store, isBrand, isService);
+
+  return {
+    _id: store._id,
+    name: store.name,
+    slug: store.slug,
+    logo: store.logo,
+    description: store.description,
+    category: {
+      _id: store.category?._id || '',
+      name: store.category?.name || 'General',
+      slug: store.category?.slug || 'general',
+      icon: store.category?.icon,
+    },
+    location: {
+      address: store.location?.address || '',
+      city: store.location?.city || '',
+      state: store.location?.state,
+      pincode: store.location?.pincode,
+      coordinates: store.location?.coordinates,
+    },
+    distance: distance || store.distance,
+    paymentSettings: {
+      acceptUPI: store.paymentSettings?.acceptUPI ?? true,
+      acceptCards: store.paymentSettings?.acceptCards ?? true,
+      acceptPayLater: store.paymentSettings?.acceptPayLater ?? false,
+      acceptRezCoins: store.paymentSettings?.acceptRezCoins ?? true,
+      acceptPromoCoins: store.paymentSettings?.acceptPromoCoins ?? true,
+      acceptPayBill: store.paymentSettings?.acceptPayBill ?? false,
+      maxCoinRedemptionPercent: store.paymentSettings?.maxCoinRedemptionPercent ?? 50,
+      allowHybridPayment: store.paymentSettings?.allowHybridPayment ?? true,
+      allowOffers: store.paymentSettings?.allowOffers ?? true,
+      allowCashback: store.paymentSettings?.allowCashback ?? true,
+      upiId: store.paymentSettings?.upiId,
+      upiName: store.paymentSettings?.upiName,
+    },
+    rewardRules: {
+      baseCashbackPercent: store.rewardRules?.baseCashbackPercent ?? 2,
+      reviewBonusCoins: store.rewardRules?.reviewBonusCoins ?? 10,
+      socialShareBonusCoins: store.rewardRules?.socialShareBonusCoins ?? 5,
+      minimumAmountForReward: store.rewardRules?.minimumAmountForReward ?? 25,
+      extraRewardThreshold: store.rewardRules?.extraRewardThreshold,
+      extraRewardCoins: store.rewardRules?.extraRewardCoins,
+      visitMilestoneRewards: store.rewardRules?.visitMilestoneRewards,
+    },
+    ratings: {
+      average: store.ratings?.average || 0,
+      count: store.ratings?.count || 0,
+    },
+    isActive: store.isActive ?? true,
+    hasRezPay: store.operationalInfo?.acceptsWalletPayment ?? store.hasRezPay ?? true,
+    maxCashback: store.rewardRules?.baseCashbackPercent ?? store.offers?.cashback ?? store.maxCashback ?? 0,
+    lastPaidAt: store.lastPaidAt,
+    totalPayments: store.totalPayments,
+    popularityScore: store.popularityScore,
+
+    // Store flags - using detected values
+    isFeatured: store.isFeatured ?? false,
+    isBrand,
+    isHot: store.isHot ?? false,
+    isLocal,
+    isOnline: store.isOnline ?? false,
+    isVerified: store.isVerified ?? false,
+    isOpen: openStatus.isOpen,
+    isService,
+
+    // Offers & Partner Info
+    offers: {
+      discount: store.offers?.cashback || store.rewardRules?.baseCashbackPercent || 0,
+      cashback: store.offers?.cashback || store.rewardRules?.baseCashbackPercent || 0,
+      maxCashback: store.offers?.maxCashback,
+      minOrderAmount: store.offers?.minOrderAmount,
+      isPartner: store.offers?.isPartner ?? false,
+      partnerLevel: store.offers?.partnerLevel,
+    },
+
+    // Operational Info
+    operationalInfo: {
+      deliveryTime: store.operationalInfo?.deliveryTime,
+      minimumOrder: store.operationalInfo?.minimumOrder,
+      deliveryFee: store.operationalInfo?.deliveryFee,
+      freeDeliveryAbove: store.operationalInfo?.freeDeliveryAbove,
+      paymentMethods: store.operationalInfo?.paymentMethods,
+      isOpenNow: openStatus.isOpen,
+      openingTime: openStatus.openTime,
+      closingTime: openStatus.closeTime,
+    },
+
+    // Delivery Categories (Store Features)
+    deliveryCategories: {
+      fastDelivery: store.deliveryCategories?.fastDelivery ?? false,
+      budgetFriendly: store.deliveryCategories?.budgetFriendly ?? false,
+      premium: store.deliveryCategories?.premium ?? false,
+      organic: store.deliveryCategories?.organic ?? false,
+      lowestPrice: store.deliveryCategories?.lowestPrice ?? false,
+    },
+
+    // Analytics
+    analytics: {
+      totalOrders: store.analytics?.totalOrders,
+      followersCount: store.analytics?.followersCount,
+    },
+
+    // Contact
+    contact: {
+      phone: store.contact?.phone,
+      whatsapp: store.contact?.whatsapp,
+    },
+
+    // Tags
+    tags: store.tags || [],
+  };
+};
 
 /**
  * Debounce helper
@@ -96,6 +271,16 @@ function useDebounce<T>(value: T, delay: number): T {
   }, [value, delay]);
 
   return debouncedValue;
+}
+
+// Store tab types
+export type StoreTab = 'all' | 'brands' | 'local' | 'services';
+
+// Filter types
+export interface StoreFilters {
+  nearMe: boolean;
+  offersAvailable: boolean;
+  cashback: boolean;
 }
 
 /**
@@ -125,6 +310,16 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
   // Category filter - default to 'all' to show all stores initially
   const [selectedCategory, setSelectedCategory] = useState<string | null>('all');
 
+  // NEW: Filter chips state
+  const [filters, setFilters] = useState<StoreFilters>({
+    nearMe: true, // Default active
+    offersAvailable: false,
+    cashback: false,
+  });
+
+  // NEW: Tab state
+  const [activeTab, setActiveTab] = useState<StoreTab>('all');
+
   // Pagination
   const [hasMore, setHasMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -138,6 +333,7 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
   // Refs
   const searchAbortController = useRef<AbortController | null>(null);
   const isInitialFetchDone = useRef(false);
+  const isNearbyFetchDone = useRef(false);
 
   // Debounced search query
   const debouncedSearchQuery = useDebounce(searchQuery, PAYMENT_SEARCH_CONSTANTS.DEBOUNCE_DELAY);
@@ -159,11 +355,17 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
     try {
       const location = await refreshLocation();
       if (location) {
-        setUserLocation({
-          latitude: location.coordinates[1],
-          longitude: location.coordinates[0],
-          timestamp: Date.now(),
-        });
+        // location.coordinates is an object { latitude, longitude }, not an array
+        const lat = location.coordinates?.latitude;
+        const lng = location.coordinates?.longitude;
+
+        if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+          setUserLocation({
+            latitude: lat,
+            longitude: lng,
+            timestamp: Date.now(),
+          });
+        }
       }
     } catch (error) {
       console.error('Error getting location:', error);
@@ -177,7 +379,15 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
    * Fetch nearby stores
    */
   const fetchNearbyStores = useCallback(async () => {
-    if (!userLocation) return;
+    // Validate that userLocation exists AND has valid coordinates
+    if (!userLocation ||
+        typeof userLocation.latitude !== 'number' ||
+        typeof userLocation.longitude !== 'number' ||
+        isNaN(userLocation.latitude) ||
+        isNaN(userLocation.longitude)) {
+      console.log('[PaymentStoreSearch] Skipping nearby stores fetch - invalid location:', userLocation);
+      return;
+    }
 
     setIsLoadingNearby(true);
 
@@ -252,7 +462,9 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
    * Fetch popular stores
    */
   const fetchPopularStores = useCallback(async () => {
+    console.log('[PaymentStoreSearch] Fetching popular stores...');
     setIsLoadingPopular(true);
+    setIsInitialLoading(true);
 
     try {
       // Use featured stores as popular stores
@@ -260,14 +472,41 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
         limit: PAYMENT_SEARCH_CONSTANTS.POPULAR_LIMIT,
       });
 
-      if (response.success && response.data.stores) {
+      console.log('[PaymentStoreSearch] Featured stores response:', {
+        success: response.success,
+        hasData: !!response.data,
+        storesCount: response.data?.stores?.length || 0,
+      });
+
+      if (response.success && response.data?.stores) {
         const transformedStores = response.data.stores.map((store: any) =>
           transformToPaymentStore(store)
         );
+        console.log('[PaymentStoreSearch] Transformed stores count:', transformedStores.length);
         setPopularStores(transformedStores);
+      } else {
+        console.log('[PaymentStoreSearch] No stores in response, trying fallback...');
+        // Fallback: try to get all stores sorted by rating
+        const fallbackResponse = await storeSearchService.searchStoresByCategory({
+          category: 'all',
+          sortBy: 'rating',
+          limit: PAYMENT_SEARCH_CONSTANTS.POPULAR_LIMIT,
+        });
+
+        console.log('[PaymentStoreSearch] Fallback response:', {
+          success: fallbackResponse.success,
+          storesCount: fallbackResponse.data?.stores?.length || 0,
+        });
+
+        if (fallbackResponse.success && fallbackResponse.data?.stores) {
+          const transformedStores = fallbackResponse.data.stores.map((store: any) =>
+            transformToPaymentStore(store)
+          );
+          setPopularStores(transformedStores);
+        }
       }
-    } catch (error) {
-      console.error('Error fetching popular stores:', error);
+    } catch (error: any) {
+      console.error('[PaymentStoreSearch] Error fetching popular stores:', error.message);
       // Fallback: try to get all stores sorted by rating
       try {
         const fallbackResponse = await storeSearchService.searchStoresByCategory({
@@ -276,17 +515,18 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
           limit: PAYMENT_SEARCH_CONSTANTS.POPULAR_LIMIT,
         });
 
-        if (fallbackResponse.success && fallbackResponse.data.stores) {
+        if (fallbackResponse.success && fallbackResponse.data?.stores) {
           const transformedStores = fallbackResponse.data.stores.map((store: any) =>
             transformToPaymentStore(store)
           );
           setPopularStores(transformedStores);
         }
-      } catch (fallbackError) {
-        console.error('Fallback fetch also failed:', fallbackError);
+      } catch (fallbackError: any) {
+        console.error('[PaymentStoreSearch] Fallback fetch also failed:', fallbackError.message);
       }
     } finally {
       setIsLoadingPopular(false);
+      setIsInitialLoading(false);
     }
   }, []);
 
@@ -423,6 +663,91 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
   }, []);
 
   /**
+   * NEW: Handle filter change
+   */
+  const handleFilterChange = useCallback((
+    filter: 'nearMe' | 'offersAvailable' | 'cashback',
+    value: boolean
+  ) => {
+    setFilters(prev => ({ ...prev, [filter]: value }));
+  }, []);
+
+  /**
+   * NEW: Handle tab change
+   */
+  const handleTabChange = useCallback((tab: StoreTab) => {
+    setActiveTab(tab);
+  }, []);
+
+  /**
+   * NEW: Filter stores based on filters and active tab
+   */
+  const getFilteredStores = useCallback((stores: PaymentStoreInfo[]): PaymentStoreInfo[] => {
+    let filtered = [...stores];
+
+    // Apply filter chips
+    // "Near Me" filter - show stores with distance (sorted by closest)
+    if (filters.nearMe && userLocation) {
+      // Filter to stores that have distance data or coordinates
+      filtered = filtered.filter(store =>
+        store.distance !== undefined || store.location?.coordinates
+      );
+      // Sort by distance (closest first)
+      filtered.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+    }
+
+    // "Offers Available" filter - stores with any offers/discounts
+    if (filters.offersAvailable) {
+      filtered = filtered.filter(store =>
+        (store.offers?.discount && store.offers.discount > 0) ||
+        (store.offers?.cashback && store.offers.cashback > 0) ||
+        (store.maxCashback && store.maxCashback > 0)
+      );
+    }
+
+    // "Cashback" filter - stores with cashback specifically
+    if (filters.cashback) {
+      filtered = filtered.filter(store =>
+        (store.offers?.cashback && store.offers.cashback > 0) ||
+        (store.maxCashback && store.maxCashback > 0)
+      );
+    }
+
+    // Apply tab filter
+    switch (activeTab) {
+      case 'brands':
+        filtered = filtered.filter(store => store.isBrand === true);
+        break;
+      case 'local':
+        filtered = filtered.filter(store => store.isLocal === true);
+        break;
+      case 'services':
+        filtered = filtered.filter(store => store.isService === true);
+        break;
+      case 'all':
+      default:
+        // No additional filtering
+        break;
+    }
+
+    // Debug: Log store type breakdown
+    const brandCount = stores.filter(s => s.isBrand).length;
+    const localCount = stores.filter(s => s.isLocal).length;
+    const serviceCount = stores.filter(s => s.isService).length;
+    const cashbackCount = stores.filter(s => (s.maxCashback && s.maxCashback > 0) || (s.offers?.cashback && s.offers.cashback > 0)).length;
+
+    console.log('[PaymentStoreSearch] Filtered stores:', {
+      tab: activeTab,
+      filters: filters,
+      inputCount: stores.length,
+      outputCount: filtered.length,
+      storeTypes: { brands: brandCount, local: localCount, services: serviceCount, withCashback: cashbackCount },
+    });
+
+    return filtered;
+  }, [filters, activeTab, userLocation]);
+
+  /**
    * Retry after error
    */
   const retry = useCallback(() => {
@@ -437,28 +762,43 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
   // Initialize location from context
   useEffect(() => {
     if (currentLocation && !userLocation) {
-      setUserLocation({
-        latitude: currentLocation.coordinates[1],
-        longitude: currentLocation.coordinates[0],
-        timestamp: Date.now(),
-      });
+      // currentLocation.coordinates is an object { latitude, longitude }, not an array
+      const lat = currentLocation.coordinates?.latitude;
+      const lng = currentLocation.coordinates?.longitude;
+
+      // Only set userLocation if we have valid coordinates
+      if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+        setUserLocation({
+          latitude: lat,
+          longitude: lng,
+          timestamp: Date.now(),
+        });
+      }
     }
   }, [currentLocation, userLocation]);
 
-  // Initial data fetch
+  // Initial data fetch - fetch popular stores immediately (no auth required)
   useEffect(() => {
-    if (!isInitialFetchDone.current && authState.isAuthenticated) {
+    if (!isInitialFetchDone.current) {
       isInitialFetchDone.current = true;
-      refresh();
+      console.log('[PaymentStoreSearch] Starting initial fetch...');
+      // Always fetch popular stores (public endpoint)
+      fetchPopularStores();
+      // Fetch recent stores only if authenticated
+      if (authState.isAuthenticated) {
+        fetchRecentStores();
+      }
     }
-  }, [authState.isAuthenticated, refresh]);
+  }, [authState.isAuthenticated, fetchPopularStores, fetchRecentStores]);
 
-  // Fetch nearby stores when location becomes available
+  // Fetch nearby stores when location becomes available (only once)
   useEffect(() => {
-    if (userLocation && nearbyStores.length === 0 && !isLoadingNearby) {
+    if (userLocation && !isNearbyFetchDone.current && !isLoadingNearby) {
+      isNearbyFetchDone.current = true;
       fetchNearbyStores();
     }
-  }, [userLocation, nearbyStores.length, isLoadingNearby, fetchNearbyStores]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation]);
 
   // Execute search when debounced query or category changes
   useEffect(() => {
@@ -501,6 +841,19 @@ export const usePaymentStoreSearch = (): UsePaymentStoreSearchReturn => {
     selectedCategory,
     setSelectedCategory,
     categories: PAYMENT_CATEGORIES,
+
+    // NEW: Filter chips
+    filters,
+    setFilters,
+    handleFilterChange,
+
+    // NEW: Tabs
+    activeTab,
+    setActiveTab,
+    handleTabChange,
+
+    // NEW: Filtered results helper
+    getFilteredStores,
 
     // Pagination
     hasMore,

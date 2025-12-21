@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, View, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
@@ -103,13 +103,22 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: '#00C06A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0px 4px 12px rgba(0, 192, 106, 0.2)',
+      },
+    }),
   },
   gradient: {
     flex: 1,
@@ -135,9 +144,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     lineHeight: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      web: {
+        textShadow: '0px 1px 2px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   projectCount: {
     position: 'absolute',

@@ -320,17 +320,35 @@ const styles = StyleSheet.create({
     marginRight: 16,
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        boxShadow: '0px 8px 16px rgba(0, 0, 0, 0.25)',
+      },
+    }),
   },
   highlightCard: {
     width: SCREEN_WIDTH * 0.75,
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 16,
+    ...Platform.select({
+      ios: {
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 16,
+      },
+      web: {
+        boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   cardGradient: {
     padding: 24,
@@ -363,11 +381,20 @@ const styles = StyleSheet.create({
     zIndex: 10,
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+      },
+    }),
   },
   badgeGradient: {
     paddingHorizontal: 14,
@@ -396,11 +423,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
+      },
+    }),
   },
   iconGradient: {
     width: '100%',
@@ -420,9 +456,21 @@ const styles = StyleSheet.create({
     color: 'white',
     marginBottom: 8,
     letterSpacing: -0.3,
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      web: {
+        textShadow: '0px 1px 2px rgba(0, 0, 0, 0.2)',
+      },
+    }),
   },
   cardDescription: {
     fontSize: 14,
@@ -441,11 +489,20 @@ const styles = StyleSheet.create({
   coinsContainer: {
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.2)',
+      },
+    }),
   },
   coinsGradient: {
     flexDirection: 'row',
@@ -477,10 +534,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.4)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.15)',
+      },
+    }),
   },
 });

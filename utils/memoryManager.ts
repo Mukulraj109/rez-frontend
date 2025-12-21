@@ -43,6 +43,7 @@ class MemoryManager {
   private memoryWarningThreshold = 100 * 1024 * 1024; // 100MB
   private totalCleanups = 0;
   private appState: AppStateStatus = 'active';
+  private periodicCleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.initAppStateListener();
@@ -75,8 +76,12 @@ class MemoryManager {
    * Start periodic cleanup
    */
   private startPeriodicCleanup(): void {
+    // Clear any existing interval first
+    if (this.periodicCleanupInterval) {
+      clearInterval(this.periodicCleanupInterval);
+    }
     // Run cleanup every 30 seconds
-    setInterval(() => {
+    this.periodicCleanupInterval = setInterval(() => {
       this.periodicCleanup();
     }, 30000);
   }
@@ -313,6 +318,12 @@ class MemoryManager {
    */
   public cleanup(): void {
     console.log('[MemoryManager] Force cleanup all components');
+
+    // Clear periodic cleanup interval
+    if (this.periodicCleanupInterval) {
+      clearInterval(this.periodicCleanupInterval);
+      this.periodicCleanupInterval = null;
+    }
 
     // Execute all cleanup callbacks
     for (const [id, callback] of this.cleanupCallbacks.entries()) {

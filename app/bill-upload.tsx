@@ -1581,6 +1581,9 @@ const styles = StyleSheet.create({
       android: {
         elevation: 4,
       },
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      },
     }),
   },
   headerTitle: {
@@ -1809,7 +1812,7 @@ const styles = StyleSheet.create({
         elevation: 6,
       },
       web: {
-        boxShadow: '0 4px 16px rgba(0, 192, 106, 0.3)',
+        boxShadow: '0 4px 8px rgba(0, 192, 106, 0.3)',
       },
     }),
   },
@@ -1821,6 +1824,9 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 0,
+      },
+      web: {
+        boxShadow: 'none',
       },
     }),
   },
@@ -1862,9 +1868,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 20,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+      },
+      web: {
+        textShadow: '0 2px 4px rgba(0, 0, 0, 0.75)',
+      },
+    }),
   },
   cameraFrame: {
     width: 300,
@@ -1878,9 +1896,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 12,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      web: {
+        textShadow: '0 1px 2px rgba(0, 0, 0, 0.75)',
+      },
+    }),
   },
   cameraControls: {
     flexDirection: 'row',

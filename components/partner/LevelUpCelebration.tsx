@@ -223,7 +223,7 @@ export default function LevelUpCelebration({
       <View style={styles.overlay}>
         {/* Confetti */}
         {showConfetti && (
-          <View style={styles.confettiContainer} pointerEvents="none">
+          <View style={[styles.confettiContainer, { pointerEvents: 'none' }]}>
             {[...Array(50)].map((_, i) => (
               <ConfettiParticle
                 key={i}

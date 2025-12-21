@@ -1,194 +1,50 @@
-# StoreActionButtons Documentation
+# Welcome to your Expo app 👋
 
-## Overview
-Complete documentation for the StoreActionButtons component - a feature-rich, responsive action button system for product and service stores.
+This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
-## 📚 Documentation Index
+## Get started
 
-### Core Documentation
-- **[Component API](./StoreActionButtons-API.md)** - Complete API reference, props, and usage examples
-- **[Styling & Theming](./STYLING_THEMING.md)** - Design system, colors, responsive layouts, and customization
-- **[Conditional Logic](./CONDITIONAL_LOGIC.md)** - Product vs Service conditional rendering and backend integration guide
+1. Install dependencies
 
-### Implementation Files
-- **Component**: `app/StoreSection/StoreActionButtons.tsx`
-- **Types**: `types/store-actions.ts`, `types/api-integration.ts`
-- **Logic**: `utils/store-action-logic.ts`, `utils/button-state-manager.ts`
-- **Mock Data**: `utils/simple-mock-handlers.ts`, `utils/mock-store-data.ts`
+   ```bash
+   npm install
+   ```
 
-## 🚀 Quick Start
+2. Start the app
 
-### Basic Usage
-```typescript
-import StoreActionButtons from '@/app/StoreSection/StoreActionButtons';
+   ```bash
+   npx expo start
+   ```
 
-// Product store (Buy + Lock buttons)
-<StoreActionButtons
-  storeType="PRODUCT"
-  onBuyPress={handleBuy}
-  onLockPress={handleLock}
-/>
+In the output, you'll find options to open the app in a
 
-// Service store (Buy + Lock + Booking buttons)
-<StoreActionButtons
-  storeType="SERVICE"  
-  onBuyPress={handleBuy}
-  onLockPress={handleLock}
-  onBookingPress={handleBooking}
-/>
+- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+
+You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+## Get a fresh project
+
+When you're ready, run:
+
+```bash
+npm run reset-project
 ```
 
-### Integration in StorePage
-```typescript
-// Current integration (app/StorePage.tsx:32)
-<StoreActionButtons
-  storeType="PRODUCT"
-  onBuyPress={handleBuyPress}
-  onLockPress={handleLockPress}
-/>
-```
+This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
-## 📱 Features
+## Learn more
 
-### ✅ Completed Features
-- **Conditional Rendering** - Shows 2-3 buttons based on store type
-- **Responsive Layout** - Adapts from row to column on small screens
-- **State Management** - Loading, disabled, and error states
-- **Visual Design** - Gradient buttons with icons and animations
-- **Accessibility** - Full screen reader and keyboard support
-- **Performance** - Optimized with React hooks and memoization
-- **Theme Integration** - Works with app's light/dark mode system
+To learn more about developing your project with Expo, look at the following resources:
 
-### 🔮 Future Enhancements (Backend Integration)
-- Dynamic store type from API
-- Real-time availability updates
-- User permission-based button states
-- Analytics and tracking integration
+- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
+- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## 📐 Architecture
+## Join the community
 
-### Component Structure
-```
-StoreActionButtons/
-├── StoreActionButtons.tsx     # Main component
-├── types/
-│   ├── store-actions.ts       # Component interfaces
-│   └── api-integration.ts     # Future API types
-├── utils/
-│   ├── store-action-logic.ts  # Conditional rendering logic
-│   ├── button-state-manager.ts # State management
-│   └── simple-mock-handlers.ts # Mock API calls
-└── docs/
-    ├── StoreActionButtons-API.md
-    ├── STYLING_THEMING.md
-    ├── CONDITIONAL_LOGIC.md
-    └── README.md (this file)
-```
+Join our community of developers creating universal apps.
 
-### Data Flow
-```
-StorePage → StoreActionButtons → Button Logic → State Manager → UI Render
-     ↓              ↓                 ↓             ↓            ↓
-  Props        Button Configs    Visibility    Loading State   Visual Feedback
-```
-
-## 🎯 Design Decisions
-
-### Why Conditional Rendering?
-- **Product stores** need Buy/Lock functionality (physical inventory)
-- **Service stores** need Buy/Lock/Booking functionality (appointments/reservations)
-- Future flexibility for business rule changes
-
-### Why Three-Tier State Management?
-- **Component Level**: UI state (loading, errors)
-- **Logic Level**: Business rules (visibility, permissions)  
-- **Props Level**: External data (store type, handlers)
-
-### Why Responsive Column Layout?
-- Mobile-first approach for narrow screens
-- Maintains button accessibility (44px minimum touch target)
-- Prevents UI cramping on small devices
-
-## 🔧 Development
-
-### Adding New Button Types
-1. Update `ActionButtonConfig` in `types/store-actions.ts`
-2. Add new button logic in `utils/store-action-logic.ts:createButtonConfigs()`
-3. Update layout calculations in `getButtonLayout()`
-4. Add styling in component's StyleSheet
-
-### Adding New Store Types
-1. Extend `StoreType` in `types/store-actions.ts`
-2. Update visibility logic in `utils/store-action-logic.ts:getVisibleButtons()`
-3. Add test cases for new type combinations
-
-### Customizing Themes
-1. Override props: `containerStyle`, `buttonStyle`, `textStyle`
-2. Modify color gradients in `createButtonConfigs()`
-3. Extend responsive breakpoints in `getButtonLayout()`
-
-## 🧪 Testing
-
-### Scenarios Tested
-- ✅ Product store shows 2 buttons (Buy, Lock)
-- ✅ Service store shows 3 buttons (Buy, Lock, Booking)  
-- ✅ Override logic works (`showBookingButton` prop)
-- ✅ Responsive layouts adapt to screen sizes
-- ✅ Button interactions trigger proper handlers
-- ✅ Loading states prevent multiple simultaneous actions
-- ✅ Error handling provides user feedback
-
-### Test Coverage Areas
-- Unit: Button visibility logic, state management
-- Integration: Full component rendering, prop combinations
-- Visual: Responsive layouts, theme variations
-- Accessibility: Screen reader, keyboard navigation
-
-## 📈 Performance Metrics
-
-### Optimizations Applied
-- **Memoization**: `useMemo` for configs, `useCallback` for handlers
-- **Efficient Re-renders**: Minimal dependency arrays
-- **State Batching**: Functional setState updates
-- **Layout Calculations**: Cached responsive breakpoints
-
-### Bundle Impact
-- Component size: ~8KB (minified)
-- Dependency tree: React Native core + Expo components only
-- No external libraries required
-
-## 🚚 Deployment Checklist
-
-### Pre-Backend Integration
-- [x] Component fully functional with mock data
-- [x] All documentation complete
-- [x] Integration points clearly marked with TODOs
-- [x] Type definitions ready for API integration
-- [x] Responsive design tested across device sizes
-
-### Backend Integration Ready
-- [ ] Replace mock handlers with API calls
-- [ ] Update `storeType` prop to dynamic value
-- [ ] Add error boundary for API failures
-- [ ] Implement real-time updates
-- [ ] Add analytics tracking
-
-## 🤝 Contributing
-
-### Code Style
-- Follow existing TypeScript patterns
-- Use React Native StyleSheet for performance
-- Maintain accessibility standards (WCAG 2.1 AA)
-- Document new features and breaking changes
-
-### Pull Request Requirements
-- Update relevant documentation
-- Add test cases for new functionality
-- Ensure backward compatibility
-- Performance impact assessment
-
----
-
-**Component Version**: 1.0.0  
-**Last Updated**: Phase 9 Implementation Complete  
-**Status**: ✅ Production Ready (Backend Integration Pending)
+- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
+- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

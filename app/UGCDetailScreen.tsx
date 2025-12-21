@@ -745,8 +745,7 @@ export default function UGCDetailScreen() {
         />
         {/* Transparent overlay to capture taps on web */}
         <View
-          style={StyleSheet.absoluteFill}
-          pointerEvents="box-only"
+          style={[StyleSheet.absoluteFill, { pointerEvents: 'box-only' }]}
         />
       </TouchableOpacity>
 
@@ -765,15 +764,13 @@ export default function UGCDetailScreen() {
       {/* Top Gradient */}
       <LinearGradient
         colors={['rgba(0,0,0,0.6)', 'transparent']}
-        style={styles.topGradient}
-        pointerEvents="none"
+        style={[styles.topGradient, { pointerEvents: 'none' }]}
       />
 
       {/* Bottom Gradient */}
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.8)']}
-        style={styles.bottomGradient}
-        pointerEvents="none"
+        style={[styles.bottomGradient, { pointerEvents: 'none' }]}
       />
 
       {/* Top Bar */}

@@ -100,6 +100,7 @@ class PerformanceMetricsService {
   private cacheMetrics: CacheMetric[] = [];
   private memoryMetrics: MemoryMetric[] = [];
   private isEnabled = __DEV__;
+  private memoryMonitoringInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.init();
@@ -122,6 +123,15 @@ class PerformanceMetricsService {
    */
   setEnabled(enabled: boolean): void {
     this.isEnabled = enabled;
+
+    if (!enabled) {
+      // Stop memory monitoring when disabled
+      this.stopMemoryMonitoring();
+    } else if (!this.memoryMonitoringInterval) {
+      // Start memory monitoring if not already running
+      this.startMemoryMonitoring();
+    }
+
     console.log(`[PerformanceMetrics] ${enabled ? 'Enabled' : 'Disabled'}`);
   }
 
@@ -380,10 +390,32 @@ class PerformanceMetricsService {
    * Start memory monitoring
    */
   private startMemoryMonitoring(): void {
+    // Clear existing interval before starting new one
+    this.stopMemoryMonitoring();
+
     // Monitor memory every 30 seconds
-    setInterval(() => {
+    this.memoryMonitoringInterval = setInterval(() => {
       this.trackMemoryUsage();
     }, 30000);
+  }
+
+  /**
+   * Stop memory monitoring
+   */
+  private stopMemoryMonitoring(): void {
+    if (this.memoryMonitoringInterval) {
+      clearInterval(this.memoryMonitoringInterval);
+      this.memoryMonitoringInterval = null;
+    }
+  }
+
+  /**
+   * Destroy service and cleanup resources
+   */
+  destroy(): void {
+    this.stopMemoryMonitoring();
+    this.isEnabled = false;
+    console.log('[PerformanceMetrics] Service destroyed');
   }
 
   /**

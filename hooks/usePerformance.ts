@@ -260,13 +260,21 @@ export function withPerformance<P extends object>(
       enableLogging: __DEV__,
     });
 
+    // Store logMetrics in ref to avoid interval recreation
+    const logMetricsRef = useRef(logMetrics);
+    useEffect(() => {
+      logMetricsRef.current = logMetrics;
+    }, [logMetrics]);
+
     useEffect(() => {
       // Log metrics every 10 seconds in dev mode
       if (__DEV__) {
-        const interval = setInterval(logMetrics, 10000);
+        const interval = setInterval(() => {
+          logMetricsRef.current();
+        }, 10000);
         return () => clearInterval(interval);
       }
-    }, [logMetrics]);
+    }, []); // Empty deps - interval is stable
 
     return <Component {...props} />;
   };

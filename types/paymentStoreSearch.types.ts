@@ -14,6 +14,7 @@ export interface PaymentStoreInfo {
   name: string;
   slug: string;
   logo?: string;
+  description?: string;
   category: {
     _id: string;
     name: string;
@@ -40,6 +41,66 @@ export interface PaymentStoreInfo {
   lastPaidAt?: string; // For recent stores
   totalPayments?: number; // Payment count from this user
   popularityScore?: number; // For popular stores ranking
+
+  // Store tags/flags
+  isFeatured?: boolean;
+  isBrand?: boolean;
+  isHot?: boolean;
+  isLocal?: boolean;
+  isOnline?: boolean;
+  isVerified?: boolean;
+  isOpen?: boolean; // Computed from hours
+  isService?: boolean; // Service-based stores (salons, repairs, etc.)
+
+  // Offers & Partner Info
+  offers?: {
+    discount?: number; // Discount percentage
+    cashback?: number; // Cashback percentage
+    maxCashback?: number; // Max cashback amount
+    minOrderAmount?: number;
+    description?: string;
+    isPartner?: boolean;
+    partnerLevel?: 'bronze' | 'silver' | 'gold' | 'platinum';
+  };
+
+  // Operational Info
+  operationalInfo?: {
+    deliveryTime?: string; // "30-45 mins"
+    minimumOrder?: number;
+    deliveryFee?: number;
+    freeDeliveryAbove?: number;
+    paymentMethods?: string[];
+    isOpenNow?: boolean;
+    openingTime?: string;
+    closingTime?: string;
+  };
+
+  // Delivery Categories (Store Features)
+  deliveryCategories?: {
+    fastDelivery?: boolean;
+    budgetFriendly?: boolean;
+    premium?: boolean;
+    organic?: boolean;
+    lowestPrice?: boolean;
+  };
+
+  // Analytics (for displaying popularity)
+  analytics?: {
+    totalOrders?: number;
+    followersCount?: number;
+  };
+
+  // Contact Info
+  contact?: {
+    phone?: string;
+    whatsapp?: string;
+  };
+
+  // Tags
+  tags?: string[];
+
+  // Branded coins message
+  brandedCoinsMessage?: string;
 }
 
 // ==================== SEARCH CATEGORY ====================
@@ -220,6 +281,7 @@ export interface PopularStoresResponse {
 export interface PaymentStoreCardProps {
   store: PaymentStoreInfo;
   onPress: (store: PaymentStoreInfo) => void;
+  onView?: (store: PaymentStoreInfo) => void;
   index?: number; // For staggered animation
   variant?: 'compact' | 'full';
   showCTA?: boolean;

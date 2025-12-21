@@ -135,6 +135,9 @@ const styles = StyleSheet.create({
       android: {
         elevation: 6,
       },
+      web: {
+        boxShadow: '0 4px 8px rgba(255, 176, 32, 0.3)',
+      },
     }),
   },
   touchable: {
@@ -174,9 +177,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.white,
     letterSpacing: -0.2,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.1)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.1)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      web: {
+        textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+      },
+    }),
   },
   cardSubtitle: {
     fontSize: 12,

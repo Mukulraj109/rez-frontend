@@ -44,6 +44,12 @@ export function useFeedRealtime(
   const [pendingPosts, setPendingPosts] = useState<Activity[]>([]);
   const lastPostTimestamp = useRef<string | null>(null);
 
+  // Store options in ref to avoid recreating callbacks on every render
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
+
   // Update activities when initial data changes
   useEffect(() => {
     setUpdatedActivities(activities);
@@ -82,7 +88,7 @@ export function useFeedRealtime(
       updatedAt: payload.timestamp,
     };
 
-    if (options.autoLoadNewPosts) {
+    if (optionsRef.current.autoLoadNewPosts) {
       // Add directly to feed
       setUpdatedActivities(prev => [newActivity, ...prev]);
       setFeedState(prev => ({
@@ -100,10 +106,10 @@ export function useFeedRealtime(
     }
 
     // Trigger callback
-    if (options.onNewPost) {
-      options.onNewPost(newActivity);
+    if (optionsRef.current.onNewPost) {
+      optionsRef.current.onNewPost(newActivity);
     }
-  }, [currentUserId, options]);
+  }, [currentUserId]);
 
   // Handle like update
   const handleLike = useCallback((payload: SocialLikePayload) => {
@@ -125,10 +131,10 @@ export function useFeedRealtime(
     }));
 
     // Trigger callback
-    if (options.onLikeUpdate) {
-      options.onLikeUpdate(payload.activityId, payload.likesCount);
+    if (optionsRef.current.onLikeUpdate) {
+      optionsRef.current.onLikeUpdate(payload.activityId, payload.likesCount);
     }
-  }, [currentUserId, options]);
+  }, [currentUserId]);
 
   // Handle comment update
   const handleComment = useCallback((payload: SocialCommentPayload) => {
@@ -150,10 +156,10 @@ export function useFeedRealtime(
     }));
 
     // Trigger callback
-    if (options.onCommentUpdate) {
-      options.onCommentUpdate(payload.activityId, payload.commentsCount);
+    if (optionsRef.current.onCommentUpdate) {
+      optionsRef.current.onCommentUpdate(payload.activityId, payload.commentsCount);
     }
-  }, [currentUserId, options]);
+  }, [currentUserId]);
 
   // Handle follow update
   const handleFollow = useCallback((payload: SocialFollowPayload) => {
@@ -166,8 +172,8 @@ export function useFeedRealtime(
       }));
 
       // Trigger callback
-      if (options.onFollowUpdate) {
-        options.onFollowUpdate(payload.followingId, true);
+      if (optionsRef.current.onFollowUpdate) {
+        optionsRef.current.onFollowUpdate(payload.followingId, true);
       }
     }
 
@@ -175,7 +181,7 @@ export function useFeedRealtime(
     if (payload.followingId === currentUserId) {
 
     }
-  }, [currentUserId, options]);
+  }, [currentUserId]);
 
   // Subscribe to WebSocket events
   useEffect(() => {

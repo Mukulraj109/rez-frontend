@@ -7,7 +7,7 @@
  * @module useOfflineQueue
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { useOfflineQueueContext } from '../contexts/OfflineQueueContext';
 import type {
   QueuedBill,
@@ -437,12 +437,18 @@ export const useQueueMonitor = (
 ): void => {
   const { status } = useOfflineQueue();
 
+  // Store callback in ref to avoid triggering effect on callback change
+  const callbackRef = useRef(callback);
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+
   // Call callback when status changes
-  useMemo(() => {
+  useEffect(() => {
     if (status) {
-      callback(status);
+      callbackRef.current(status);
     }
-  }, [status, callback]);
+  }, [status]);
 };
 
 /**

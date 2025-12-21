@@ -1928,9 +1928,9 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
                 }),
               },
             ],
+            pointerEvents: showStickyTabs ? 'auto' : 'none',
           },
         ]}
-        pointerEvents={showStickyTabs ? 'auto' : 'none'}
       >
         <View style={styles.stickyTabsInner}>
           <TabNavigation

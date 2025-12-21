@@ -49,6 +49,7 @@ export function useLeaderboardRealtime(
   });
 
   const celebrationTimeoutRef = useRef<NodeJS.Timeout>();
+  const updateTimeoutsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
   // Update entries when initial data changes
   useEffect(() => {
@@ -121,9 +122,11 @@ export function useLeaderboardRealtime(
     });
 
     // Clear updating flag after animation
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       setLeaderboardState(prev => ({ ...prev, isUpdating: false }));
+      updateTimeoutsRef.current.delete(timeout);
     }, 1000);
+    updateTimeoutsRef.current.add(timeout);
 
     // Trigger callback
     if (options.onLeaderboardUpdate) {
@@ -162,9 +165,11 @@ export function useLeaderboardRealtime(
     });
 
     // Clear updating flag
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       setLeaderboardState(prev => ({ ...prev, isUpdating: false }));
+      updateTimeoutsRef.current.delete(timeout);
     }, 1000);
+    updateTimeoutsRef.current.add(timeout);
 
     // Trigger callback
     if (options.onPointsEarned) {
@@ -215,9 +220,11 @@ export function useLeaderboardRealtime(
     });
 
     // Clear updating flag
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       setLeaderboardState(prev => ({ ...prev, isUpdating: false }));
+      updateTimeoutsRef.current.delete(timeout);
     }, 1500);
+    updateTimeoutsRef.current.add(timeout);
 
     // Trigger rank up callback for celebration
     if (payload.direction === 'up' && payload.userId === currentUserId && options.onRankUp) {
@@ -244,6 +251,9 @@ export function useLeaderboardRealtime(
         clearTimeout(celebrationTimeoutRef.current);
       }
 
+      // Clear all tracked update timeouts
+      updateTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+      updateTimeoutsRef.current.clear();
     };
   }, [socket, handleLeaderboardUpdate, handleUserScored, handleRankChange]);
 

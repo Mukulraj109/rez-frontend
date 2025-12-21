@@ -539,9 +539,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: 'white',
     letterSpacing: 0.5,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+      },
+      android: {
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+      },
+      web: {
+        textShadow: '0 1px 4px rgba(0,0,0,0.3)',
+      },
+    }),
   },
   rightIcons: {
     flexDirection: 'row',
@@ -584,9 +596,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: 'white',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      web: {
+        textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+      },
+    }),
   },
   heroBanner: {
     marginTop: 8,
@@ -649,9 +673,21 @@ const styles = StyleSheet.create({
     color: 'white',
     lineHeight: 34,
     marginBottom: 4,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+      },
+      android: {
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+      },
+      web: {
+        textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+      },
+    }),
   },
   bannerSubtitle: {
     fontSize: 28,
@@ -659,9 +695,21 @@ const styles = StyleSheet.create({
     color: 'white',
     lineHeight: 34,
     marginBottom: 16,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+      },
+      android: {
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+      },
+      web: {
+        textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+      },
+    }),
   },
   ctaButton: {
     alignSelf: 'flex-start',

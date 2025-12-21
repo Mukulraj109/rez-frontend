@@ -248,8 +248,7 @@ export default memo(function ProductDisplay({
             {/* Gradient Overlay for Depth */}
             <LinearGradient
               colors={['transparent', 'rgba(0, 0, 0, 0.4)']}
-              style={styles.imageGradientOverlay}
-              pointerEvents="none"
+              style={[styles.imageGradientOverlay, { pointerEvents: 'none' }]}
             />
             {hasError && (
               <View style={styles.errorOverlay}>

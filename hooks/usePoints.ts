@@ -254,17 +254,24 @@ export function usePoints(options: UsePointsOptions = {}): UsePointsReturn {
 
   // Polling for real-time updates
   useEffect(() => {
+    // Clear existing interval before creating new one
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+
     if (pollingInterval && pollingInterval > 0) {
       pollingIntervalRef.current = setInterval(() => {
         fetchBalance(false);
       }, pollingInterval);
-
-      return () => {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-        }
-      };
     }
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
   }, [pollingInterval, fetchBalance]);
 
   return {

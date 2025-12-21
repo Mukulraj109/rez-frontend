@@ -101,7 +101,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
     } else {
       // Navigate to coin detail page
       router.push({
-        pathname: '/coin-detail',
+        pathname: '/CoinPage',
         params: { coinId: coin.id }
       });
     }

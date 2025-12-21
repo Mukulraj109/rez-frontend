@@ -381,9 +381,9 @@ ${deal.description || 'Don\'t miss out on this incredible offer!'}
                     outputRange: [100, 0],
                   }),
                 }],
+                pointerEvents: 'none',
               }
             ]}
-            pointerEvents="none"
           >
             <View style={styles.feedbackContent}>
               <Ionicons name="checkmark-circle" size={20} color="#10B981" />

@@ -50,6 +50,8 @@ class CacheWarmingService {
   private authState: AuthState | null = null;
   private networkType: string | null = null;
   private userInteracting = false;
+  private netInfoUnsubscribe: (() => void) | null = null;
+  private isDestroyed = false;
 
   /**
    * Initialize cache warming service
@@ -67,7 +69,16 @@ class CacheWarmingService {
    * Monitor network conditions to optimize warming strategy
    */
   private monitorNetworkConditions(): void {
-    NetInfo.addEventListener(state => {
+    // Cleanup existing listener before adding new one
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
+    }
+
+    this.netInfoUnsubscribe = NetInfo.addEventListener(state => {
+      // Skip if service is destroyed
+      if (this.isDestroyed) return;
+
       this.networkType = state.type;
       const effectiveType = (state as any).details?.effectiveConnectionType;
 
@@ -334,7 +345,7 @@ class CacheWarmingService {
    * Wait for warming to resume
    */
   private async waitForResume(): Promise<void> {
-    while (this.state.isPaused || this.userInteracting) {
+    while ((this.state.isPaused || this.userInteracting) && !this.isDestroyed) {
       await this.delay(500);
     }
   }
@@ -390,6 +401,30 @@ class CacheWarmingService {
     }
 
     console.log('✅ [CACHE WARMING] Stale cache refresh complete');
+  }
+
+  /**
+   * Cleanup service and remove listeners
+   */
+  destroy(): void {
+    console.log('🧹 [CACHE WARMING] Destroying cache warming service...');
+
+    this.isDestroyed = true;
+    this.state.isWarming = false;
+    this.state.isPaused = false;
+
+    // Cleanup NetInfo listener
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
+    }
+
+    // Clear failed items to free memory
+    this.state.failedItems.clear();
+    this.state.completedItems.clear();
+    this.warmingQueue = [];
+
+    console.log('✅ [CACHE WARMING] Cache warming service destroyed');
   }
 }
 

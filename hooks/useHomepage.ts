@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useEffect } from 'react';
+import { useReducer, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 import {
@@ -89,9 +89,19 @@ function homepageReducer(state: HomepageState, action: HomepageAction): Homepage
 // Main Homepage Hook
 export function useHomepage(): UseHomepageDataResult {
   const [state, dispatch] = useReducer(homepageReducer, initialHomepageState);
+  const isMountedRef = useRef(true);
+
+  // Track mounted state for cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Load all homepage sections
   const refreshAllSections = useCallback(async () => {
+    if (!isMountedRef.current) return;
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
@@ -100,6 +110,9 @@ export function useHomepage(): UseHomepageDataResult {
         const batchSections = await homepageDataService.fetchAllSectionsWithBatch();
 
         // Convert to array format for state
+        // Check if still mounted before updating state
+        if (!isMountedRef.current) return;
+
         const sectionsArray = [
           batchSections.events,
           batchSections.justForYou,
@@ -121,6 +134,9 @@ export function useHomepage(): UseHomepageDataResult {
 
       // Get base homepage data (for sections that don't need API integration)
       const data = await fetchHomepageData();
+
+      // Check if still mounted before continuing
+      if (!isMountedRef.current) return;
 
       // Update specific sections with backend data
       const updatedSections = await Promise.all(
@@ -148,9 +164,13 @@ export function useHomepage(): UseHomepageDataResult {
         })
       );
 
+      // Check if still mounted before updating state
+      if (!isMountedRef.current) return;
+
       dispatch({ type: 'SET_SECTIONS', payload: updatedSections });
       dispatch({ type: 'SET_LAST_REFRESH', payload: new Date().toISOString() });
     } catch (error) {
+      if (!isMountedRef.current) return;
       const errorMessage = error instanceof Error ? error.message : 'Failed to load homepage data';
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
     }
@@ -158,11 +178,12 @@ export function useHomepage(): UseHomepageDataResult {
 
   // Refresh a specific section
   const refreshSection = useCallback(async (sectionId: string) => {
+    if (!isMountedRef.current) return;
     try {
       dispatch({ type: 'REFRESH_SECTION', payload: sectionId });
-      
+
       let sectionData: HomepageSection;
-      
+
       // Use new backend service for specific sections
       if (sectionId === 'just_for_you') {
         sectionData = await homepageDataService.getJustForYouSection();
@@ -174,29 +195,33 @@ export function useHomepage(): UseHomepageDataResult {
         // Use fallback for other sections
         sectionData = await fetchSectionData(sectionId);
       }
-      
-      dispatch({ 
-        type: 'UPDATE_SECTION', 
-        payload: { 
-          sectionId, 
-          section: { 
+
+      // Check if still mounted before updating state
+      if (!isMountedRef.current) return;
+
+      dispatch({
+        type: 'UPDATE_SECTION',
+        payload: {
+          sectionId,
+          section: {
             ...sectionData,
             loading: false,
             lastUpdated: new Date().toISOString()
-          } 
-        } 
+          }
+        }
       });
     } catch (error) {
+      if (!isMountedRef.current) return;
       const errorMessage = error instanceof Error ? error.message : 'Failed to refresh section';
-      dispatch({ 
-        type: 'UPDATE_SECTION', 
-        payload: { 
-          sectionId, 
-          section: { 
+      dispatch({
+        type: 'UPDATE_SECTION',
+        payload: {
+          sectionId,
+          section: {
             loading: false,
             error: errorMessage
-          } 
-        } 
+          }
+        }
       });
     }
   }, []);
