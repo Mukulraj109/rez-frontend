@@ -2,8 +2,9 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus, LogBox, Platform } from 'react-native';
+import * as Router from 'expo-router';
 
 // Warnings to suppress
 const SUPPRESSED_WARNINGS = [
@@ -171,6 +172,26 @@ export default function RootLayout() {
       console.log('   Environment:', APP_CONFIG.environment);
       console.log('   Dev URL:', API_CONFIG.devUrl);
       console.log('   Prod URL:', API_CONFIG.prodUrl);
+
+      // Set up system page callbacks for maintenance and version checks
+      apiClient.setCurrentAppVersion(APP_CONFIG.version);
+      apiClient.setMaintenanceCallback(() => {
+        console.log('🔧 [APP] Navigating to maintenance page...');
+        try {
+          Router.router.replace('/system/maintenance' as any);
+        } catch (e) {
+          console.warn('[APP] Could not navigate to maintenance page:', e);
+        }
+      });
+      apiClient.setAppUpdateCallback((minVersion) => {
+        console.log(`📱 [APP] App update required. Minimum version: ${minVersion}`);
+        try {
+          Router.router.replace('/system/app-update' as any);
+        } catch (e) {
+          console.warn('[APP] Could not navigate to app update page:', e);
+        }
+      });
+      console.log('✅ [APP] System page callbacks configured');
 
       // 2. Initialize Error Reporter
       errorReporter.setAppVersion(APP_CONFIG.version);

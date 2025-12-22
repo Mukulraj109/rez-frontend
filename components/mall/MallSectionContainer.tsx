@@ -21,7 +21,9 @@ import {
   ActivityIndicator,
   Text,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
@@ -149,6 +151,15 @@ const MallSectionContainer: React.FC<MallSectionContainerProps> = ({
     router.push('/mall/brands?filter=luxury' as any);
   }, [router]);
 
+  // Quick actions handlers for new pages
+  const handleAllianceStores = useCallback(() => {
+    router.push('/mall/alliance-store' as any);
+  }, [router]);
+
+  const handleLowestPrice = useCallback(() => {
+    router.push('/mall/lowest-price' as any);
+  }, [router]);
+
   // Debug logging
   console.log('[MallSectionContainer] State:', {
     isLoading,
@@ -221,6 +232,46 @@ const MallSectionContainer: React.FC<MallSectionContainerProps> = ({
         }
       >
         {/* Hero Banner moved to header area - MallHeroCarousel in index.tsx */}
+
+      {/* Mall Quick Actions */}
+      <View style={styles.quickActionsSection}>
+        <Text style={styles.quickActionsTitle}>Quick Access</Text>
+        <View style={styles.quickActionsRow}>
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={handleAllianceStores}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#6366F1', '#4F46E5']}
+              style={styles.quickActionGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="link" size={24} color="#FFF" />
+              <Text style={styles.quickActionText}>Alliance</Text>
+              <Text style={styles.quickActionSubtext}>Partner stores</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickActionCard}
+            onPress={handleLowestPrice}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#10B981', '#059669']}
+              style={styles.quickActionGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="pricetag" size={24} color="#FFF" />
+              <Text style={styles.quickActionText}>Lowest Price</Text>
+              <Text style={styles.quickActionSubtext}>Price guarantee</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* 2. Featured Brands */}
       <MallFeaturedBrands
@@ -360,6 +411,47 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  quickActionsSection: {
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  quickActionsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  quickActionCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  quickActionGradient: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 100,
+  },
+  quickActionText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFF',
+    marginTop: 8,
+  },
+  quickActionSubtext: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
 });
 
