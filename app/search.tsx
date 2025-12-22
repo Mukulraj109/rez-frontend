@@ -453,6 +453,43 @@ export default function SearchPage() {
 
   const renderCategories = () => (
     <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* Quick Search Actions */}
+      <View style={styles.quickSearchActions}>
+        <TouchableOpacity
+          style={styles.quickSearchCard}
+          onPress={() => router.push('/search/ai-search')}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#8B5CF6', '#7C3AED']}
+            style={styles.quickSearchGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name="sparkles" size={24} color="#FFF" />
+            <Text style={styles.quickSearchText}>AI Search</Text>
+            <Text style={styles.quickSearchSubtext}>Natural language</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.quickSearchCard}
+          onPress={() => router.push('/search/hotspots')}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#F59E0B', '#D97706']}
+            style={styles.quickSearchGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name="location" size={24} color="#FFF" />
+            <Text style={styles.quickSearchText}>Hotspots</Text>
+            <Text style={styles.quickSearchSubtext}>Nearby deals</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
       {searchState.sections.map((section, index) => (
         <View key={section.id} style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -1101,6 +1138,40 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 140,
+  },
+  quickSearchActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  quickSearchCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  quickSearchGradient: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 100,
+  },
+  quickSearchText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
+    marginTop: 8,
+  },
+  quickSearchSubtext: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
   section: {
     marginBottom: 28,

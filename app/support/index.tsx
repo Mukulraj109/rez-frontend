@@ -272,6 +272,34 @@ export default function SupportHubPage() {
           </View>
         </View>
 
+        {/* Get Help */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Get Help</ThemedText>
+          <View style={styles.helpOptionsGrid}>
+            <TouchableOpacity style={styles.helpOptionCard} onPress={() => router.push('/support/call')}>
+              <View style={[styles.helpOptionIcon, { backgroundColor: '#10B98120' }]}>
+                <Ionicons name="call" size={24} color="#10B981" />
+              </View>
+              <ThemedText style={styles.helpOptionLabel}>Call Support</ThemedText>
+              <ThemedText style={styles.helpOptionDesc}>Talk to us directly</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.helpOptionCard} onPress={() => router.push('/support/feedback')}>
+              <View style={[styles.helpOptionIcon, { backgroundColor: '#3B82F620' }]}>
+                <Ionicons name="chatbox" size={24} color="#3B82F6" />
+              </View>
+              <ThemedText style={styles.helpOptionLabel}>Feedback</ThemedText>
+              <ThemedText style={styles.helpOptionDesc}>Share your thoughts</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.helpOptionCard} onPress={() => router.push('/support/report-fraud')}>
+              <View style={[styles.helpOptionIcon, { backgroundColor: '#EF444420' }]}>
+                <Ionicons name="warning" size={24} color="#EF4444" />
+              </View>
+              <ThemedText style={styles.helpOptionLabel}>Report Fraud</ThemedText>
+              <ThemedText style={styles.helpOptionDesc}>Suspicious activity</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Active Tickets Summary */}
         {summary.total > 0 && (
           <View style={styles.section}>
@@ -458,6 +486,42 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  helpOptionsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  helpOptionCard: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  helpOptionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  helpOptionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: '#1F2937',
+  },
+  helpOptionDesc: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 2,
   },
   summaryCards: {
     flexDirection: 'row',

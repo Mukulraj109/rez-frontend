@@ -242,6 +242,22 @@ export default function PlayScreen() {
       />
 
       <View style={styles.content}>
+        {/* Quick Actions */}
+        <View style={styles.quickActionsRow}>
+          <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/social/reels')}>
+            <LinearGradient colors={['#EC4899', '#DB2777']} style={styles.quickActionGradient}>
+              <Ionicons name="videocam" size={20} color="#FFF" />
+              <ThemedText style={styles.quickActionText}>Reels</ThemedText>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/social/upload')}>
+            <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.quickActionGradient}>
+              <Ionicons name="add-circle" size={20} color="#FFF" />
+              <ThemedText style={styles.quickActionText}>Create</ThemedText>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
         {/* Inline error banner for refresh failures */}
         {state.error && state.allVideos.length > 0 && (
           <TouchableOpacity
@@ -395,6 +411,34 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingBottom: 40,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  quickActionButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  quickActionGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  quickActionText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   errorBanner: {
     flexDirection: 'row',

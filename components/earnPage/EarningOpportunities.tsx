@@ -42,6 +42,25 @@ const opportunities: EarningOpportunity[] = [
     badge: 'HOT',
   },
   {
+    id: 'share-earn',
+    title: 'Share & Earn',
+    description: 'Share products, earn per click',
+    icon: 'share-social',
+    coins: '50+',
+    gradient: ['#8B5CF6', '#7C3AED', '#6D28D9'], // Purple gradient
+    route: '/earn/share',
+    badge: 'NEW',
+  },
+  {
+    id: 'review-earn',
+    title: 'Review & Earn',
+    description: 'Write reviews, get rewarded',
+    icon: 'star',
+    coins: '25-100',
+    gradient: ['#EC4899', '#DB2777', '#BE185D'], // Pink gradient
+    route: '/earn/review',
+  },
+  {
     id: 'refer-friends',
     title: 'Refer Friends',
     description: 'Get 100 coins per referral',

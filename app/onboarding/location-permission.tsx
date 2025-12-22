@@ -43,7 +43,7 @@ export default function LocationPermissionScreen() {
           'Location Permission Required',
           'Please enable location access to find the best deals near you.',
           [
-            { text: 'Skip', onPress: () => router.push('/onboarding/loading') },
+            { text: 'Skip', onPress: () => router.push('/onboarding/notification-permission') },
             { text: 'Try Again', onPress: () => setPermissionRequested(false) }
           ]
         );
@@ -63,8 +63,9 @@ export default function LocationPermissionScreen() {
         navigationDebugger.logNavigation('location-permission', '(tabs)', 'location-granted-onboarded-user');
         router.replace('/(tabs)');
       } else {
-        navigationDebugger.logNavigation('location-permission', 'loading', 'location-granted');
-        router.push('/onboarding/loading');
+        // Navigate to notification permission before loading
+        navigationDebugger.logNavigation('location-permission', 'notification-permission', 'location-granted');
+        router.push('/onboarding/notification-permission');
       }
 
     } catch (error) {
@@ -73,7 +74,7 @@ export default function LocationPermissionScreen() {
         'Location Error',
         'Unable to get your location. Please try again.',
         [
-          { text: 'Skip', onPress: () => router.push('/onboarding/loading') },
+          { text: 'Skip', onPress: () => router.push('/onboarding/notification-permission') },
           { text: 'Retry', onPress: () => setPermissionRequested(false) }
         ]
       );

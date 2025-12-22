@@ -653,6 +653,95 @@ export default function SettingsPage() {
           )}
         </View>
 
+        {/* Legal & About */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="document-text-outline" size={24} color="#8B5CF6" />
+              <ThemedText style={styles.sectionTitle}>Legal & About</ThemedText>
+            </View>
+          </View>
+          <View style={styles.sectionContent}>
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => router.push('/legal/about')}
+              activeOpacity={0.7}
+              accessibilityLabel="About ReZ"
+              accessibilityRole="button"
+            >
+              <View style={styles.settingInfo}>
+                <ThemedText style={styles.settingLabel}>About ReZ</ThemedText>
+                <ThemedText style={styles.settingValue}>Learn about us</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => router.push('/legal/terms')}
+              activeOpacity={0.7}
+              accessibilityLabel="Terms and Conditions"
+              accessibilityRole="button"
+            >
+              <View style={styles.settingInfo}>
+                <ThemedText style={styles.settingLabel}>Terms & Conditions</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => router.push('/legal/privacy')}
+              activeOpacity={0.7}
+              accessibilityLabel="Privacy Policy"
+              accessibilityRole="button"
+            >
+              <View style={styles.settingInfo}>
+                <ThemedText style={styles.settingLabel}>Privacy Policy</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => router.push('/legal/refund-policy')}
+              activeOpacity={0.7}
+              accessibilityLabel="Refund Policy"
+              accessibilityRole="button"
+            >
+              <View style={styles.settingInfo}>
+                <ThemedText style={styles.settingLabel}>Refund Policy</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Developer Tools */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="flask-outline" size={24} color="#F59E0B" />
+              <ThemedText style={styles.sectionTitle}>Developer Tools</ThemedText>
+            </View>
+          </View>
+          <View style={styles.sectionContent}>
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => router.push('/dev/test-pages')}
+              activeOpacity={0.7}
+              accessibilityLabel="Test All Pages"
+              accessibilityRole="button"
+            >
+              <View style={styles.settingInfo}>
+                <ThemedText style={styles.settingLabel}>Test All Pages</ThemedText>
+                <ThemedText style={styles.settingValue}>Navigate to all 38 new pages</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Reset Button */}
         <TouchableOpacity
           style={styles.resetAllButton}

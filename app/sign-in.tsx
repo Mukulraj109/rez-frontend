@@ -462,6 +462,18 @@ export default function SignInScreen() {
                   <Text style={styles.signUpText}>Sign Up</Text>
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.recoveryLink}
+                onPress={() => router.push('/account-recovery')}
+                accessibilityLabel="Can't access your account? Recover it"
+                accessibilityRole="button"
+              >
+                <Text style={styles.recoveryLinkText}>
+                  Can't access your account?{' '}
+                  <Text style={styles.recoveryText}>Recover</Text>
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
@@ -740,5 +752,19 @@ const styles = StyleSheet.create({
   signUpText: {
     color: COLORS.gold,
     fontWeight: '700',
+  },
+  recoveryLink: {
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  recoveryLinkText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  recoveryText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

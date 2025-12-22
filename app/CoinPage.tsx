@@ -57,6 +57,63 @@ export default function CoinPage() {
             </TouchableOpacity>
           </View>
         ))}
+
+        {/* Quick Actions */}
+        <View style={styles.quickActionsContainer}>
+          <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+          <View style={styles.quickActionsGrid}>
+            <TouchableOpacity
+              style={styles.quickActionItem}
+              onPress={() => router.push('/wallet/transfer')}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#E0F2FE' }]}>
+                <Ionicons name="swap-horizontal" size={24} color="#0284C7" />
+              </View>
+              <Text style={styles.quickActionLabel}>Transfer</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickActionItem}
+              onPress={() => router.push('/wallet/gift')}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FCE7F3' }]}>
+                <Ionicons name="gift" size={24} color="#DB2777" />
+              </View>
+              <Text style={styles.quickActionLabel}>Gift Coins</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickActionItem}
+              onPress={() => router.push('/wallet/expiry-tracker')}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="time" size={24} color="#D97706" />
+              </View>
+              <Text style={styles.quickActionLabel}>Expiry</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickActionItem}
+              onPress={() => router.push('/wallet/gift-cards')}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
+                <Ionicons name="card" size={24} color="#059669" />
+              </View>
+              <Text style={styles.quickActionLabel}>Gift Cards</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickActionItem}
+              onPress={() => router.push('/wallet/scheduled-drops')}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#EDE9FE' }]}>
+                <Ionicons name="calendar" size={24} color="#7C3AED" />
+              </View>
+              <Text style={styles.quickActionLabel}>Drops</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={{ height: 36 }} />
       </ScrollView>
     </View>
@@ -131,5 +188,48 @@ const styles = StyleSheet.create({
     width: width - 36,
     height: 210, // increased height so "Get started" isn't cut off
     borderRadius: 20,
+  },
+  quickActionsContainer: {
+    marginHorizontal: 18,
+    marginTop: 12,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  quickActionsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: 16,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  quickActionItem: {
+    width: '18%',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  quickActionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6b7280',
+    textAlign: 'center',
   },
 });

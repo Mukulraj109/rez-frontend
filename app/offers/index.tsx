@@ -31,12 +31,12 @@ type FilterType = 'all' | 'free-delivery' | '50-discount' | '40-discount' | '25-
 export default function OffersScreen() {
   const router = useRouter();
   const { state: authState } = useAuth();
-  const { 
+  const {
     state,
     actions,
     handlers
   } = useOffersPage();
-  
+
   const [isFavorited, setIsFavorited] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('offers');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
@@ -151,30 +151,26 @@ export default function OffersScreen() {
   const OfferCard = ({ offer }: { offer: Offer }) => {
     const [logoError, setLogoError] = React.useState(false);
     const isExclusive = offer.metadata?.isSpecial || (offer as any).isFollowerExclusive;
-    
+
     // Get delivery info from offer metadata or store operationalInfo
-    // Note: Store operationalInfo might not be in offer.store, so we use metadata/tags as fallback
-    // For delivery fee, check store operationalInfo first, then use minOrderValue as fallback for non-free deliveries
     const deliveryFee = (offer as any).store?.operationalInfo?.deliveryFee !== undefined
       ? (offer as any).store.operationalInfo.deliveryFee
       : (offer.metadata?.tags?.includes('free-delivery') ? 0 : (offer.restrictions?.minOrderValue && offer.restrictions.minOrderValue < 1 ? offer.restrictions.minOrderValue : 0.600));
-    
+
     // Format delivery time - extract single value from range if needed
-    // Check metadata tags first (e.g., '45-min', '30-min'), then store operationalInfo, then default
     const deliveryTimeTag = offer.metadata?.tags?.find(tag => tag.includes('min') && tag.match(/\d+-min/));
-    const rawDeliveryTime = deliveryTimeTag 
+    const rawDeliveryTime = deliveryTimeTag
       ? deliveryTimeTag.replace('-min', ' min')
       : (offer as any).store?.operationalInfo?.deliveryTime || '30-45 min';
-    
-    // Format to single value (e.g., "45 min" from "30-45 min" or "45 min")
-    const deliveryTime = rawDeliveryTime.includes('-') 
+
+    const deliveryTime = rawDeliveryTime.includes('-')
       ? rawDeliveryTime.split('-')[0].trim() + ' min'
-      : rawDeliveryTime.includes('min') 
+      : rawDeliveryTime.includes('min')
         ? rawDeliveryTime.trim()
         : `${rawDeliveryTime} min`;
-    
+
     // Free delivery detection - check multiple sources
-    const isFreeDelivery = 
+    const isFreeDelivery =
       deliveryFee === 0 ||
       offer.restrictions?.minOrderValue === 0 ||
       (offer as any).store?.operationalInfo?.freeDeliveryAbove !== undefined ||
@@ -182,7 +178,7 @@ export default function OffersScreen() {
       offer.title.toLowerCase().includes('free delivery') ||
       offer.subtitle?.toLowerCase().includes('free delivery') ||
       offer.description?.toLowerCase().includes('free delivery');
-    
+
     const rating = offer.store?.rating || 4.5;
 
     return (
@@ -199,8 +195,8 @@ export default function OffersScreen() {
             </View>
           )}
           {offer.store?.logo && !logoError ? (
-            <Image 
-              source={{ uri: offer.store.logo }} 
+            <Image
+              source={{ uri: offer.store.logo }}
               style={styles.storeLogo}
               resizeMode="contain"
               onError={() => setLogoError(true)}
@@ -220,7 +216,7 @@ export default function OffersScreen() {
           <ThemedText style={styles.storeName} numberOfLines={1}>
             {offer.store?.name || offer.title}
           </ThemedText>
-          
+
           <ThemedText style={styles.offerDescription} numberOfLines={3}>
             {offer.subtitle || offer.description || offer.title}
           </ThemedText>
@@ -239,12 +235,12 @@ export default function OffersScreen() {
                 </ThemedText>
               </View>
             )}
-            
+
             <View style={styles.deliveryTimeContainer}>
               <Ionicons name="time-outline" size={11} color={Colors.gray[400]} />
               <ThemedText style={styles.deliveryTime}>{deliveryTime}</ThemedText>
             </View>
-            
+
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={11} color={Colors.warning[500] || '#F59E0B'} />
               <ThemedText style={styles.rating}>{rating.toFixed(2)}</ThemedText>
@@ -268,6 +264,75 @@ export default function OffersScreen() {
     </View>
   );
 
+  // Quick Offer Categories Component
+  const QuickOfferCategories = () => (
+    <View style={styles.quickOfferCategories}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickOfferScroll}>
+        <TouchableOpacity style={[styles.quickOfferChip, { backgroundColor: '#8B5CF6' }]} onPress={() => router.push('/offers/ai-recommended')}>
+          <Ionicons name="sparkles" size={16} color="#FFF" />
+          <ThemedText style={styles.quickOfferText}>AI Picks</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.quickOfferChip, { backgroundColor: '#EC4899' }]} onPress={() => router.push('/offers/friends-redeemed')}>
+          <Ionicons name="people" size={16} color="#FFF" />
+          <ThemedText style={styles.quickOfferText}>Friends</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.quickOfferChip, { backgroundColor: '#F59E0B' }]} onPress={() => router.push('/offers/double-cashback')}>
+          <Ionicons name="flash" size={16} color="#FFF" />
+          <ThemedText style={styles.quickOfferText}>2x Cashback</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.quickOfferChip, { backgroundColor: '#10B981' }]} onPress={() => router.push('/offers/sponsored')}>
+          <Ionicons name="megaphone" size={16} color="#FFF" />
+          <ThemedText style={styles.quickOfferText}>Sponsored</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.quickOfferChip, { backgroundColor: '#EF4444' }]} onPress={() => router.push('/offers/birthday')}>
+          <Ionicons name="gift" size={16} color="#FFF" />
+          <ThemedText style={styles.quickOfferText}>Birthday</ThemedText>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+
+  // Exclusive Zones Component
+  const ExclusiveZones = () => (
+    <View style={styles.exclusiveZones}>
+      <ThemedText style={styles.zonesTitle}>Exclusive Zones</ThemedText>
+      <View style={styles.zonesGrid}>
+        <TouchableOpacity style={styles.zoneCard} onPress={() => router.push('/offers/zones/student')}>
+          <View style={[styles.zoneIcon, { backgroundColor: '#6366F1' }]}>
+            <Ionicons name="school" size={20} color="#FFF" />
+          </View>
+          <ThemedText style={styles.zoneText}>Student</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zoneCard} onPress={() => router.push('/offers/zones/employee')}>
+          <View style={[styles.zoneIcon, { backgroundColor: '#0EA5E9' }]}>
+            <Ionicons name="briefcase" size={20} color="#FFF" />
+          </View>
+          <ThemedText style={styles.zoneText}>Employee</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zoneCard} onPress={() => router.push('/offers/zones/women')}>
+          <View style={[styles.zoneIcon, { backgroundColor: '#EC4899' }]}>
+            <Ionicons name="female" size={20} color="#FFF" />
+          </View>
+          <ThemedText style={styles.zoneText}>Women</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zoneCard} onPress={() => router.push('/offers/zones/heroes')}>
+          <View style={[styles.zoneIcon, { backgroundColor: '#14B8A6' }]}>
+            <Ionicons name="shield" size={20} color="#FFF" />
+          </View>
+          <ThemedText style={styles.zoneText}>Heroes</ThemedText>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // List Header Component
+  const ListHeaderComponent = () => (
+    <View>
+      <QuickOfferCategories />
+      <ExclusiveZones />
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
@@ -286,9 +351,9 @@ export default function OffersScreen() {
           >
             <Ionicons name="chevron-back" size={24} color="white" />
           </TouchableOpacity>
-          
+
           <View style={styles.headerCenter}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.pointsContainer}
               onPress={() => router.push('/CoinPage')}
             >
@@ -296,7 +361,7 @@ export default function OffersScreen() {
               <ThemedText style={styles.pointsText}>{userPoints}</ThemedText>
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.headerRight}>
             <TouchableOpacity
               onPress={handleShare}
@@ -341,10 +406,10 @@ export default function OffersScreen() {
           style={[styles.tab, activeTab === 'offers' && styles.tabActive]}
           onPress={() => setActiveTab('offers')}
         >
-          <Ionicons 
-            name="pricetag-outline" 
-            size={22} 
-            color={activeTab === 'offers' ? Colors.primary[600] : Colors.gray[400]} 
+          <Ionicons
+            name="pricetag-outline"
+            size={22}
+            color={activeTab === 'offers' ? Colors.primary[600] : Colors.gray[400]}
           />
           <ThemedText style={[styles.tabText, activeTab === 'offers' && styles.tabTextActive]}>
             Offers
@@ -355,10 +420,10 @@ export default function OffersScreen() {
           style={[styles.tab, activeTab === 'cashback' && styles.tabActive]}
           onPress={() => setActiveTab('cashback')}
         >
-          <Ionicons 
-            name="cash-outline" 
-            size={22} 
-            color={activeTab === 'cashback' ? Colors.primary[600] : Colors.gray[400]} 
+          <Ionicons
+            name="cash-outline"
+            size={22}
+            color={activeTab === 'cashback' ? Colors.primary[600] : Colors.gray[400]}
           />
           <ThemedText style={[styles.tabText, activeTab === 'cashback' && styles.tabTextActive]}>
             Cashback
@@ -391,8 +456,8 @@ export default function OffersScreen() {
 
         {/* Filter Pills - Always visible */}
         {filterPills.length > 0 && (
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.filtersContainer}
             contentContainerStyle={styles.filtersContent}
@@ -435,6 +500,7 @@ export default function OffersScreen() {
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.offersList}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={ListHeaderComponent}
         />
       )}
     </SafeAreaView>
@@ -1014,10 +1080,96 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  // Quick Offer Categories Styles
+  quickOfferCategories: {
+    paddingVertical: 12,
+    backgroundColor: Colors.background.secondary,
+  },
+  quickOfferScroll: {
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  quickOfferChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
+    marginRight: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
+      },
+    }),
+  },
+  quickOfferText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  // Exclusive Zones Styles
+  exclusiveZones: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: Colors.background.secondary,
+  },
+  zonesTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.text.primary,
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  zonesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  zoneCard: {
+    width: (width - 56) / 4,
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: Colors.background.primary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border.medium,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
+      },
+    }),
+  },
+  zoneIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  zoneText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    textAlign: 'center',
+  },
 });
-
-
-
-
-
-
