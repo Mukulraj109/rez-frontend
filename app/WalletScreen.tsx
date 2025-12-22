@@ -32,6 +32,7 @@ import { useWalletAnalytics } from '@/hooks/useWalletAnalytics';
 import walletApi from '@/services/walletApi';
 import WalletErrorBoundary from '@/components/WalletErrorBoundary';
 import EarningsBreakdown from '@/components/wallet/EarningsBreakdown';
+import WalletQuickActions from '@/components/wallet/WalletQuickActions';
 
 const WalletScreen: React.FC<WalletScreenProps> = ({
   userId = 'user-12345',
@@ -281,6 +282,9 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
         <Text style={styles.currency}>{formattedTotalBalance}</Text>
         <Text style={styles.subtitle}>Total Wallet Balance</Text>
       </View>
+
+      {/* Wallet Quick Actions */}
+      <WalletQuickActions style={styles.quickActionsContainer} />
 
       <ScrollView
         style={styles.scroll}
@@ -570,6 +574,10 @@ const createStyles = (screenData: { width: number; height: number }) => {
       fontWeight: '800',
     },
     subtitle: { color: '#6B7280', fontWeight: '600', marginTop: 6 },
+    quickActionsContainer: {
+      marginHorizontal: horizontalPadding,
+      marginBottom: 8,
+    },
     scroll: { flex: 1, paddingHorizontal: horizontalPadding },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { fontSize: 16, color: '#6B7280' },

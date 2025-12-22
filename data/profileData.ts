@@ -197,6 +197,67 @@ export const profileMenuSections: ProfileMenuSection[] = [
       },
     ],
   },
+  {
+    id: 'support_section',
+    items: [
+      {
+        id: 'help_support',
+        title: 'Help & Support',
+        icon: 'help-circle-outline',
+        route: '/support',
+        description: 'Get help and contact support',
+        isEnabled: true,
+        showArrow: true,
+      },
+      {
+        id: 'feedback',
+        title: 'Give Feedback',
+        icon: 'chatbox-outline',
+        route: '/support/feedback',
+        description: 'Share your thoughts with us',
+        isEnabled: true,
+        showArrow: true,
+        dividerAfter: true,
+      },
+    ],
+  },
+  {
+    id: 'legal_section',
+    items: [
+      {
+        id: 'about',
+        title: 'About ReZ',
+        icon: 'information-circle-outline',
+        route: '/legal/about',
+        isEnabled: true,
+        showArrow: true,
+      },
+      {
+        id: 'terms',
+        title: 'Terms & Conditions',
+        icon: 'document-text-outline',
+        route: '/legal/terms',
+        isEnabled: true,
+        showArrow: true,
+      },
+      {
+        id: 'privacy',
+        title: 'Privacy Policy',
+        icon: 'shield-checkmark-outline',
+        route: '/legal/privacy',
+        isEnabled: true,
+        showArrow: true,
+      },
+      {
+        id: 'refund_policy',
+        title: 'Refund Policy',
+        icon: 'refresh-circle-outline',
+        route: '/legal/refund-policy',
+        isEnabled: true,
+        showArrow: true,
+      },
+    ],
+  },
 ];
 
 // Profile Page Icon Grid (as shown in screenshot 4)
