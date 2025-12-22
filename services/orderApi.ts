@@ -211,4 +211,17 @@ class OrderApiService {
   }
 }
 
-export default new OrderApiService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const ORDER_API_SERVICE_KEY = '__rezOrderApiService__';
+
+function getOrderApiService(): OrderApiService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[ORDER_API_SERVICE_KEY]) {
+      (globalThis as any)[ORDER_API_SERVICE_KEY] = new OrderApiService();
+    }
+    return (globalThis as any)[ORDER_API_SERVICE_KEY];
+  }
+  return new OrderApiService();
+}
+
+export default getOrderApiService();

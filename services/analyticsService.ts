@@ -237,5 +237,20 @@ class AnalyticsService {
   }
 }
 
-const analyticsService = new AnalyticsService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const ANALYTICS_SERVICE_KEY = '__rezAnalyticsService__';
+
+function getAnalyticsService(): AnalyticsService {
+  // Use globalThis to persist across module re-evaluations in SSR
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[ANALYTICS_SERVICE_KEY]) {
+      (globalThis as any)[ANALYTICS_SERVICE_KEY] = new AnalyticsService();
+    }
+    return (globalThis as any)[ANALYTICS_SERVICE_KEY];
+  }
+  // Fallback for environments without globalThis
+  return new AnalyticsService();
+}
+
+const analyticsService = getAnalyticsService();
 export default analyticsService;

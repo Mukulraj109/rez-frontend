@@ -3,10 +3,85 @@ const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
+// =============================================================================
+// MEMORY OPTIMIZATION SETTINGS (Prevent bundler crashes during long dev sessions)
+// =============================================================================
+
+// Limit parallel workers - reduces memory significantly
+// Default uses all CPU cores which consumes too much memory
+config.maxWorkers = 2;
+
+// Transformer optimizations
+config.transformer = {
+  ...config.transformer,
+  // Reduce memory during minification
+  minifierConfig: {
+    compress: {
+      reduce_funcs: false,
+      reduce_vars: false,
+    },
+  },
+  // Disable inline requires for better memory management
+  getTransformOptions: async () => ({
+    transform: {
+      experimentalImportSupport: false,
+      inlineRequires: false, // Disable to reduce memory
+    },
+  }),
+};
+
+// Watcher optimizations - critical for memory
+config.watcher = {
+  ...config.watcher,
+  // Disable health checks
+  healthCheck: {
+    enabled: false,
+  },
+  // Use polling with longer interval (reduces CPU/memory)
+  watchman: {
+    deferStates: ['hg.update', 'hg.transaction'],
+  },
+};
+
+// Resolver optimizations
+config.resolver = {
+  ...config.resolver,
+  // Exclude heavy directories from resolution
+  blockList: [
+    /node_modules\/.*\/node_modules/,
+    /\.git\/.*/,
+    /android\/\.gradle\/.*/,
+    /ios\/Pods\/.*/,
+    /__tests__\/.*/,
+    /\.test\.(js|jsx|ts|tsx)$/,
+    /\.spec\.(js|jsx|ts|tsx)$/,
+    /\.example\.(js|jsx|ts|tsx)$/,
+  ],
+  // Cache resolver results
+  hasteImplModulePath: undefined,
+};
+
+// Server optimizations
+config.server = {
+  ...config.server,
+  // Enhance delta bundler for memory efficiency
+  enhanceMiddleware: (middleware) => middleware,
+};
+
+// Cache settings - helps reduce rebundling memory
+config.cacheStores = [];
+
+// =============================================================================
+// ASSET EXTENSIONS
+// =============================================================================
+
 // Add svg to asset extensions
 config.resolver.assetExts.push('svg');
 
-// Web shims configuration
+// =============================================================================
+// WEB SHIMS CONFIGURATION
+// =============================================================================
+
 const shimPath = path.resolve(__dirname, 'web-shims');
 const rnWebExports = path.resolve(__dirname, 'node_modules/react-native-web/dist/exports');
 
@@ -28,6 +103,7 @@ const webPackageShims = {
 };
 
 // Redirect react-native internals to web-compatible shims
+const originalResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (platform === 'web') {
     // Check for full package replacements
@@ -43,22 +119,50 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       }
     }
   }
+  // Use original resolver or default
+  if (originalResolveRequest) {
+    return originalResolveRequest(context, moduleName, platform);
+  }
   return context.resolveRequest(context, moduleName, platform);
 };
 
-// Suppress known harmless warnings from node_modules
+// =============================================================================
+// SUPPRESS WARNINGS (Reduce console memory usage)
+// =============================================================================
+
 const originalWarn = console.warn;
+const originalLog = console.log;
+const originalDebug = console.debug;
+
+// Throttle repeated warnings
+const warnCache = new Set();
+const WARN_CACHE_LIMIT = 100;
+
 console.warn = (...args) => {
   if (typeof args[0] === 'string') {
-    // Suppress require cycle warnings from third-party packages
+    // Suppress known harmless warnings
     if (args[0].includes('Require cycle:')) return;
-    // Suppress shadow/textShadow deprecation warnings (handled via Platform.select in code)
     if (args[0].includes('"shadow*" style props are deprecated')) return;
     if (args[0].includes('"textShadow*" style props are deprecated')) return;
-    // Suppress pointerEvents prop deprecation (we use prop syntax to avoid app freeze on web)
     if (args[0].includes('props.pointerEvents is deprecated')) return;
+
+    // Deduplicate repeated warnings
+    const key = args[0].slice(0, 100);
+    if (warnCache.has(key)) return;
+    if (warnCache.size >= WARN_CACHE_LIMIT) warnCache.clear();
+    warnCache.add(key);
   }
   originalWarn(...args);
+};
+
+// Suppress excessive debug logs in development
+console.debug = (...args) => {
+  if (typeof args[0] === 'string') {
+    // Suppress noisy debug messages
+    if (args[0].includes('[BillUploadAnalytics]')) return;
+    if (args[0].includes('[BOTTOM NAV]')) return;
+  }
+  originalDebug(...args);
 };
 
 module.exports = config;

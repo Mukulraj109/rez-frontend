@@ -232,4 +232,17 @@ class NotificationService {
   }
 }
 
-export default new NotificationService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const NOTIFICATION_SERVICE_KEY = '__rezNotificationService__';
+
+function getNotificationService(): NotificationService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[NOTIFICATION_SERVICE_KEY]) {
+      (globalThis as any)[NOTIFICATION_SERVICE_KEY] = new NotificationService();
+    }
+    return (globalThis as any)[NOTIFICATION_SERVICE_KEY];
+  }
+  return new NotificationService();
+}
+
+export default getNotificationService();

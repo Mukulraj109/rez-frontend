@@ -55,7 +55,6 @@ export default function OrdersListScreen() {
         setError(null);
       }
     } catch (err) {
-      console.error('📦 [Orders] Failed to load orders:', err);
       setError(err instanceof Error ? err.message : 'Failed to load orders');
     } finally {
       setLoading(false);
@@ -250,6 +249,11 @@ export default function OrdersListScreen() {
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={8}
+        windowSize={7}
       />
     </View>
   );

@@ -340,4 +340,17 @@ class OfflineQueueService {
   }
 }
 
-export default new OfflineQueueService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const OFFLINE_QUEUE_SERVICE_KEY = '__rezOfflineQueueService__';
+
+function getOfflineQueueService(): OfflineQueueService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[OFFLINE_QUEUE_SERVICE_KEY]) {
+      (globalThis as any)[OFFLINE_QUEUE_SERVICE_KEY] = new OfflineQueueService();
+    }
+    return (globalThis as any)[OFFLINE_QUEUE_SERVICE_KEY];
+  }
+  return new OfflineQueueService();
+}
+
+export default getOfflineQueueService();

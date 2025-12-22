@@ -428,6 +428,21 @@ class RazorpayService {
   }
 }
 
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const RAZORPAY_SERVICE_KEY = '__rezRazorpayService__';
+
+function getRazorpayService(): RazorpayService {
+  // Use globalThis to persist across module re-evaluations in SSR
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[RAZORPAY_SERVICE_KEY]) {
+      (globalThis as any)[RAZORPAY_SERVICE_KEY] = new RazorpayService();
+    }
+    return (globalThis as any)[RAZORPAY_SERVICE_KEY];
+  }
+  // Fallback for environments without globalThis
+  return new RazorpayService();
+}
+
 // Export singleton instance
-const razorpayService = new RazorpayService();
+const razorpayService = getRazorpayService();
 export default razorpayService;

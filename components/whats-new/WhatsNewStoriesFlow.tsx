@@ -259,7 +259,13 @@ const WhatsNewStoriesFlow: React.FC<WhatsNewStoriesFlowProps> = ({ onClose }) =>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.storyInfo}>
-          <Image source={{ uri: currentStory.icon }} style={styles.storyIcon} />
+          {currentStory.icon?.startsWith('http') ? (
+            <Image source={{ uri: currentStory.icon }} style={styles.storyIcon} />
+          ) : (
+            <View style={styles.storyIconEmoji}>
+              <ThemedText style={styles.storyIconEmojiText}>{currentStory.icon}</ThemedText>
+            </View>
+          )}
           <View style={styles.storyTextContainer}>
             <ThemedText style={styles.storyTitle}>{currentStory.title}</ThemedText>
             {currentStory.subtitle && (
@@ -378,6 +384,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  storyIconEmoji: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyIconEmojiText: {
+    fontSize: 20,
   },
   storyTextContainer: {
     marginLeft: 12,

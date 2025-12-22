@@ -428,4 +428,17 @@ class CacheWarmingService {
   }
 }
 
-export default new CacheWarmingService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const CACHE_WARMING_SERVICE_KEY = '__rezCacheWarmingService__';
+
+function getCacheWarmingService(): CacheWarmingService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[CACHE_WARMING_SERVICE_KEY]) {
+      (globalThis as any)[CACHE_WARMING_SERVICE_KEY] = new CacheWarmingService();
+    }
+    return (globalThis as any)[CACHE_WARMING_SERVICE_KEY];
+  }
+  return new CacheWarmingService();
+}
+
+export default getCacheWarmingService();

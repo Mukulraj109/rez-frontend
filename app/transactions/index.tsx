@@ -276,6 +276,11 @@ export default function TransactionsPage() {
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.1}
           ListEmptyComponent={renderEmptyState}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={7}
           ListFooterComponent={
             isLoading && transactions.length > 0 ? (
               <View style={styles.loadingMore}>

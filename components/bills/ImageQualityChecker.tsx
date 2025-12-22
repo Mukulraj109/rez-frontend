@@ -45,8 +45,10 @@ export const ImageQualityChecker: React.FC<ImageQualityCheckerProps> = ({
 
   // Pulse animation for quality indicator
   useEffect(() => {
+    let pulseLoop: Animated.CompositeAnimation | null = null;
+
     if (analyzing) {
-      Animated.loop(
+      pulseLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.2,
@@ -59,10 +61,19 @@ export const ImageQualityChecker: React.FC<ImageQualityCheckerProps> = ({
             useNativeDriver: true
           })
         ])
-      ).start();
+      );
+      pulseLoop.start();
     } else {
       pulseAnim.setValue(1);
     }
+
+    // Cleanup: stop animation on unmount or when analyzing changes
+    return () => {
+      if (pulseLoop) {
+        pulseLoop.stop();
+      }
+      pulseAnim.setValue(1);
+    };
   }, [analyzing]);
 
   const analyzeImage = async () => {

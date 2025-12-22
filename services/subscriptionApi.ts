@@ -481,4 +481,17 @@ export interface Invoice {
   notes?: string;
 }
 
-export default new SubscriptionAPI();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const SUBSCRIPTION_API_KEY = '__rezSubscriptionApi__';
+
+function getSubscriptionApi(): SubscriptionAPI {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[SUBSCRIPTION_API_KEY]) {
+      (globalThis as any)[SUBSCRIPTION_API_KEY] = new SubscriptionAPI();
+    }
+    return (globalThis as any)[SUBSCRIPTION_API_KEY];
+  }
+  return new SubscriptionAPI();
+}
+
+export default getSubscriptionApi();

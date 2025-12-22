@@ -323,6 +323,8 @@ export function useOrderTracking(
  * Custom hook for listening to new orders (for merchants/admins)
  * @param userId - User ID to listen for new orders
  */
+const MAX_NEW_ORDERS = 50; // Limit to prevent memory leak
+
 export function useNewOrders(userId: string | null) {
   const { socket } = useSocket();
   const [newOrders, setNewOrders] = useState<any[]>([]);
@@ -331,8 +333,11 @@ export function useNewOrders(userId: string | null) {
     if (!socket || !userId) return;
 
     const handleNewOrder = (orderData: any) => {
-
-      setNewOrders(prev => [orderData, ...prev]);
+      // Limit array size to prevent memory leak
+      setNewOrders(prev => {
+        const updated = [orderData, ...prev];
+        return updated.length > MAX_NEW_ORDERS ? updated.slice(0, MAX_NEW_ORDERS) : updated;
+      });
     };
 
     socket.on(OrderSocketEvents.ORDER_CREATED, handleNewOrder);

@@ -310,4 +310,17 @@ class GamificationTriggerService {
   }
 }
 
-export default new GamificationTriggerService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const GAMIFICATION_TRIGGER_SERVICE_KEY = '__rezGamificationTriggerService__';
+
+function getGamificationTriggerService(): GamificationTriggerService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[GAMIFICATION_TRIGGER_SERVICE_KEY]) {
+      (globalThis as any)[GAMIFICATION_TRIGGER_SERVICE_KEY] = new GamificationTriggerService();
+    }
+    return (globalThis as any)[GAMIFICATION_TRIGGER_SERVICE_KEY];
+  }
+  return new GamificationTriggerService();
+}
+
+export default getGamificationTriggerService();

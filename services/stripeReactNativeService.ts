@@ -34,6 +34,19 @@ class StripeReactNativeService {
   }
 }
 
-export default new StripeReactNativeService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const STRIPE_REACT_NATIVE_SERVICE_KEY = '__rezStripeReactNativeService__';
+
+function getStripeReactNativeService(): StripeReactNativeService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[STRIPE_REACT_NATIVE_SERVICE_KEY]) {
+      (globalThis as any)[STRIPE_REACT_NATIVE_SERVICE_KEY] = new StripeReactNativeService();
+    }
+    return (globalThis as any)[STRIPE_REACT_NATIVE_SERVICE_KEY];
+  }
+  return new StripeReactNativeService();
+}
+
+export default getStripeReactNativeService();
 
 

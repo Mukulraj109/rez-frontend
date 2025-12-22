@@ -20,6 +20,20 @@ export interface CacheEntry<T = any> {
   lastAccessed: number;
 }
 
+// Lightweight index entry - stores metadata only, not actual data
+// This prevents memory bloat from storing all cached data in memory
+export interface CacheIndexEntry {
+  key: string;
+  timestamp: number;
+  ttl: number;
+  size: number;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  compressed: boolean;
+  version: string;
+  accessCount: number;
+  lastAccessed: number;
+}
+
 export interface CacheOptions {
   ttl?: number; // Time to live in milliseconds (default: 1 hour)
   priority?: 'low' | 'medium' | 'high' | 'critical';
@@ -39,7 +53,8 @@ export interface CacheStats {
 const CACHE_PREFIX = 'cache_';
 const CACHE_INDEX_KEY = 'cache_index';
 const DEFAULT_TTL = 60 * 60 * 1000; // 1 hour
-const MAX_CACHE_SIZE = FILE_SIZE_LIMITS.MAX_DOCUMENT_SIZE; // 10MB - cache size limit
+const MAX_CACHE_SIZE = 5 * 1024 * 1024; // 5MB - reduced from 10MB to prevent memory issues
+const MAX_CACHE_ENTRIES = 100; // Maximum number of cache entries to prevent index bloat
 const COMPRESSION_THRESHOLD = 10 * 1024; // 10KB
 const CURRENT_CACHE_VERSION = '1.0.0';
 
@@ -47,7 +62,9 @@ const CURRENT_CACHE_VERSION = '1.0.0';
 const isBrowser = typeof window !== 'undefined';
 
 class CacheService {
-  private cacheIndex: Map<string, CacheEntry> = new Map();
+  // Store only metadata in memory, NOT the actual cached data
+  // This prevents memory bloat - actual data is loaded from AsyncStorage on demand
+  private cacheIndex: Map<string, CacheIndexEntry> = new Map();
   private hits = 0;
   private misses = 0;
   private initialized = false;
@@ -240,16 +257,26 @@ class CacheService {
   }
 
   /**
-   * Evict entries if cache size exceeds limit
+   * Evict entries if cache size or entry count exceeds limit
    */
   private async evictIfNeeded(): Promise<void> {
     const totalSize = this.getTotalCacheSize();
+    const entryCount = this.cacheIndex.size;
 
-    if (totalSize <= MAX_CACHE_SIZE) {
+    // Check if we need to evict based on size or entry count
+    const needsSizeEviction = totalSize > MAX_CACHE_SIZE;
+    const needsCountEviction = entryCount > MAX_CACHE_ENTRIES;
+
+    if (!needsSizeEviction && !needsCountEviction) {
       return;
     }
 
-    console.log(`💾 [CACHE] Cache size (${this.formatSize(totalSize)}) exceeds limit, evicting entries...`);
+    if (needsSizeEviction) {
+      console.log(`💾 [CACHE] Cache size (${this.formatSize(totalSize)}) exceeds limit, evicting entries...`);
+    }
+    if (needsCountEviction) {
+      console.log(`💾 [CACHE] Cache entries (${entryCount}) exceeds limit (${MAX_CACHE_ENTRIES}), evicting entries...`);
+    }
 
     // Sort entries by priority and last accessed time
     const entries = Array.from(this.cacheIndex.entries()).sort((a, b) => {
@@ -268,13 +295,15 @@ class CacheService {
       return entryA.lastAccessed - entryB.lastAccessed;
     });
 
-    // Evict entries until we're under 80% of max size
+    // Evict entries until we're under 80% of max size AND under max entry count
     const targetSize = MAX_CACHE_SIZE * 0.8;
+    const targetCount = Math.floor(MAX_CACHE_ENTRIES * 0.8);
     let currentSize = totalSize;
+    let currentCount = entryCount;
     let evicted = 0;
 
     for (const [key, entry] of entries) {
-      if (currentSize <= targetSize) {
+      if (currentSize <= targetSize && currentCount <= targetCount) {
         break;
       }
 
@@ -285,10 +314,11 @@ class CacheService {
 
       await this.remove(key);
       currentSize -= entry.size;
+      currentCount--;
       evicted++;
     }
 
-    console.log(`💾 [CACHE] Evicted ${evicted} entries, new size: ${this.formatSize(currentSize)}`);
+    console.log(`💾 [CACHE] Evicted ${evicted} entries, new size: ${this.formatSize(currentSize)}, entries: ${currentCount}`);
   }
 
   /**
@@ -328,25 +358,41 @@ class CacheService {
         actualSize = estimatedSize;
       }
 
+      const now = Date.now();
+
+      // Full entry with data - saved to AsyncStorage only
       const cacheEntry: CacheEntry<T> = {
         key,
         data: dataToStore,
-        timestamp: Date.now(),
+        timestamp: now,
         ttl,
         size: actualSize,
         priority,
         compressed: shouldCompress,
         version,
         accessCount: 0,
-        lastAccessed: Date.now()
+        lastAccessed: now
       };
 
-      // Save to storage
+      // Lightweight index entry - stored in memory (no data to prevent memory bloat)
+      const indexEntry: CacheIndexEntry = {
+        key,
+        timestamp: now,
+        ttl,
+        size: actualSize,
+        priority,
+        compressed: shouldCompress,
+        version,
+        accessCount: 0,
+        lastAccessed: now
+      };
+
+      // Save full entry to storage
       const cacheKey = this.getCacheKey(key);
       await asyncStorageService.save(cacheKey, cacheEntry);
 
-      // Update index
-      this.cacheIndex.set(key, cacheEntry);
+      // Update index with metadata only (no data)
+      this.cacheIndex.set(key, indexEntry);
       await this.saveCacheIndex();
 
       // Check if we need to evict
@@ -401,11 +447,12 @@ class CacheService {
         return null;
       }
 
-      // Update access stats
-      cacheEntry.accessCount++;
-      cacheEntry.lastAccessed = Date.now();
-      this.cacheIndex.set(key, cacheEntry);
-      await this.saveCacheIndex();
+      // Update access stats in index (metadata only, no data)
+      const now = Date.now();
+      indexEntry.accessCount++;
+      indexEntry.lastAccessed = now;
+      this.cacheIndex.set(key, indexEntry);
+      // Don't save index on every get - too expensive, just update in memory
 
       // Decompress if needed
       let data: T;
@@ -1103,4 +1150,17 @@ export interface CacheInvalidationEvent {
   screen?: string;
 }
 
-export default new CacheService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const CACHE_SERVICE_KEY = '__rezCacheService__';
+
+function getCacheService(): CacheService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[CACHE_SERVICE_KEY]) {
+      (globalThis as any)[CACHE_SERVICE_KEY] = new CacheService();
+    }
+    return (globalThis as any)[CACHE_SERVICE_KEY];
+  }
+  return new CacheService();
+}
+
+export default getCacheService();

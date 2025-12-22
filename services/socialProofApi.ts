@@ -131,4 +131,17 @@ class SocialProofApi {
   }
 }
 
-export default new SocialProofApi();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const SOCIAL_PROOF_API_KEY = '__rezSocialProofApi__';
+
+function getSocialProofApi(): SocialProofApi {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[SOCIAL_PROOF_API_KEY]) {
+      (globalThis as any)[SOCIAL_PROOF_API_KEY] = new SocialProofApi();
+    }
+    return (globalThis as any)[SOCIAL_PROOF_API_KEY];
+  }
+  return new SocialProofApi();
+}
+
+export default getSocialProofApi();

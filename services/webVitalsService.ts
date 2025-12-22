@@ -465,5 +465,18 @@ class WebVitalsService {
 // Singleton Instance
 // ============================================================================
 
-export const webVitalsService = new WebVitalsService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const WEB_VITALS_SERVICE_KEY = '__rezWebVitalsService__';
+
+function getWebVitalsService(): WebVitalsService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[WEB_VITALS_SERVICE_KEY]) {
+      (globalThis as any)[WEB_VITALS_SERVICE_KEY] = new WebVitalsService();
+    }
+    return (globalThis as any)[WEB_VITALS_SERVICE_KEY];
+  }
+  return new WebVitalsService();
+}
+
+export const webVitalsService = getWebVitalsService();
 export default webVitalsService;

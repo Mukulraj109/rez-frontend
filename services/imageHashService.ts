@@ -448,13 +448,25 @@ class ImageHashService {
 // Singleton Export
 // ============================================================================
 
-export const imageHashService = new ImageHashService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const IMAGE_HASH_SERVICE_KEY = '__rezImageHashService__';
 
-// Auto-initialize on import (only in browser environment)
-if (isBrowser) {
-  imageHashService.initialize().catch(error => {
-    console.error('[ImageHash] Auto-initialization failed:', error);
-  });
+function getImageHashService(): ImageHashService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[IMAGE_HASH_SERVICE_KEY]) {
+      const instance = new ImageHashService();
+      (globalThis as any)[IMAGE_HASH_SERVICE_KEY] = instance;
+      // Auto-initialize on first access (only in browser environment)
+      if (isBrowser) {
+        instance.initialize().catch(error => {
+          console.error('[ImageHash] Auto-initialization failed:', error);
+        });
+      }
+    }
+    return (globalThis as any)[IMAGE_HASH_SERVICE_KEY];
+  }
+  return new ImageHashService();
 }
 
+export const imageHashService = getImageHashService();
 export default imageHashService;

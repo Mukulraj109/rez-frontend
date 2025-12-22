@@ -364,5 +364,18 @@ class ImageCacheManager {
   }
 }
 
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const IMAGE_CACHE_MANAGER_KEY = '__rezImageCacheManager__';
+
+function getImageCacheManager(): ImageCacheManager {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[IMAGE_CACHE_MANAGER_KEY]) {
+      (globalThis as any)[IMAGE_CACHE_MANAGER_KEY] = new ImageCacheManager();
+    }
+    return (globalThis as any)[IMAGE_CACHE_MANAGER_KEY];
+  }
+  return new ImageCacheManager();
+}
+
 // Export singleton instance
-export default new ImageCacheManager();
+export default getImageCacheManager();

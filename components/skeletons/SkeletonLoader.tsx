@@ -32,13 +32,19 @@ export default function SkeletonLoader({
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    Animated.loop(
+    const shimmerLoop = Animated.loop(
       Animated.timing(shimmerAnim, {
         toValue: 1,
         duration: 1500,
         useNativeDriver: true,
       })
-    ).start();
+    );
+    shimmerLoop.start();
+
+    // Cleanup: stop animation on unmount to prevent memory leak
+    return () => {
+      shimmerLoop.stop();
+    };
   }, []);
 
   const translateX = shimmerAnim.interpolate({

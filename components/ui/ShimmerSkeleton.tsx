@@ -58,13 +58,19 @@ export const ShimmerSkeleton: React.FC<ShimmerSkeletonProps> = ({
     if (!animated) return;
 
     // Continuous shimmer animation
-    Animated.loop(
+    const shimmerLoop = Animated.loop(
       Animated.timing(shimmerAnim, {
         toValue: 1,
         duration: Timing.skeleton,
         useNativeDriver: true,
       })
-    ).start();
+    );
+    shimmerLoop.start();
+
+    // Cleanup: stop animation on unmount to prevent memory leak
+    return () => {
+      shimmerLoop.stop();
+    };
   }, [animated, shimmerAnim]);
 
   // Calculate translateX for shimmer effect

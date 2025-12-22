@@ -69,6 +69,7 @@ class PrefetchService {
   };
 
   private currentNetwork: NetworkType = NetworkType.UNKNOWN;
+  private networkUnsubscribe: (() => void) | null = null;
   private prefetchQueue: PrefetchTask[] = [];
   private activeTasks = new Set<string>();
   private prefetchedSections = new Map<string, number>(); // sectionId -> timestamp
@@ -86,7 +87,13 @@ class PrefetchService {
    * Initialize network state listener
    */
   private initNetworkListener(): void {
-    NetInfo.addEventListener((state: NetInfoState) => {
+    // Clean up existing listener before adding new one
+    if (this.networkUnsubscribe) {
+      this.networkUnsubscribe();
+      this.networkUnsubscribe = null;
+    }
+
+    this.networkUnsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
       this.currentNetwork = this.mapNetworkType(state);
       console.log(`[Prefetch] Network changed to: ${this.currentNetwork}`);
 
@@ -97,6 +104,20 @@ class PrefetchService {
         console.log('[Prefetch] Pausing prefetch due to network conditions');
       }
     });
+  }
+
+  /**
+   * Destroy service and cleanup resources
+   */
+  public destroy(): void {
+    if (this.networkUnsubscribe) {
+      this.networkUnsubscribe();
+      this.networkUnsubscribe = null;
+    }
+    this.prefetchQueue = [];
+    this.activeTasks.clear();
+    this.prefetchedSections.clear();
+    console.log('[Prefetch] Service destroyed');
   }
 
   /**

@@ -5,16 +5,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  Image,
   LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import CategoryTabBar from './CategoryTabBar';
 import CategoryCashbackGrid from './CategoryCashbackGrid';
 
-export type TabId = 'rez' | 'rez-mall' | 'cash-store';
+// Updated to 4 tabs
+export type TabId = 'near-u' | 'mall' | 'cash' | 'prive';
 
 // Comprehensive theme configuration for each tab
 const TAB_THEMES: Record<TabId, {
@@ -25,7 +24,7 @@ const TAB_THEMES: Record<TabId, {
   categoryIconColor: string;
   containerBg: string;
 }> = {
-  'rez': {
+  'near-u': {
     heroGradient: ['#A7F3D0', '#86EFAC', '#4ADE80'],
     tabActiveColor: '#059669',
     tabActiveTextColor: '#FFFFFF',
@@ -33,7 +32,7 @@ const TAB_THEMES: Record<TabId, {
     categoryIconColor: '#00C06A',
     containerBg: '#ECFDF5',
   },
-  'rez-mall': {
+  'mall': {
     heroGradient: ['#A7F3D0', '#6EE7B7', '#34D399'],
     tabActiveColor: '#0D9488',
     tabActiveTextColor: '#FFFFFF',
@@ -41,13 +40,21 @@ const TAB_THEMES: Record<TabId, {
     categoryIconColor: '#0D9488',
     containerBg: '#ECFDF5',
   },
-  'cash-store': {
-    heroGradient: ['#BBF7D0', '#86EFAC', '#4ADE80'],
-    tabActiveColor: '#166534',
+  'cash': {
+    heroGradient: ['#FEF3C7', '#FDE68A', '#FCD34D'],
+    tabActiveColor: '#F59E0B',
     tabActiveTextColor: '#FFFFFF',
-    tabInactiveTextColor: '#166534',
-    categoryIconColor: '#166534',
-    containerBg: '#F0FDF4',
+    tabInactiveTextColor: '#F59E0B',
+    categoryIconColor: '#F59E0B',
+    containerBg: '#FFFBEB',
+  },
+  'prive': {
+    heroGradient: ['#1F2937', '#374151', '#4B5563'],
+    tabActiveColor: '#C9A962',
+    tabActiveTextColor: '#C9A962',
+    tabInactiveTextColor: '#C9A962',
+    categoryIconColor: '#C9A962',
+    containerBg: '#111827',
   },
 };
 
@@ -65,10 +72,12 @@ interface HomeTabSectionProps {
   onCoinPress?: () => void;
   selectedCategory?: string;
   onCategoryChange?: (categoryId: string) => void;
+  isPriveEligible?: boolean;
+  onPriveLockedPress?: () => void;
 }
 
 // Tab order for layout calculations
-const TAB_ORDER: TabId[] = ['rez', 'rez-mall', 'cash-store'];
+const TAB_ORDER: TabId[] = ['near-u', 'mall', 'cash', 'prive'];
 
 const HomeTabSection: React.FC<HomeTabSectionProps> = ({
   activeTab,
@@ -78,13 +87,17 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
   onCoinPress,
   selectedCategory = 'all',
   onCategoryChange,
+  isPriveEligible = false,
+  onPriveLockedPress,
 }) => {
   const theme = TAB_THEMES[activeTab];
+  const isPriveMode = activeTab === 'prive';
   const [containerWidth, setContainerWidth] = useState(0);
   const [tabLayouts, setTabLayouts] = useState<Record<TabId, TabLayout>>({
-    'rez': { x: 0, width: 0 },
-    'rez-mall': { x: 0, width: 0 },
-    'cash-store': { x: 0, width: 0 },
+    'near-u': { x: 0, width: 0 },
+    'mall': { x: 0, width: 0 },
+    'cash': { x: 0, width: 0 },
+    'prive': { x: 0, width: 0 },
   });
 
   // Handle container layout measurement
@@ -95,12 +108,17 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
   // Handle individual tab layout measurement
   const handleTabLayout = useCallback((tabId: TabId, event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;
-    // x is relative to tabsRow content area. Add padding offset
     setTabLayouts(prev => ({
       ...prev,
-      [tabId]: { x: x + 9, width }, // Adjusted offset for better alignment
+      [tabId]: { x: x + 9, width },
     }));
   }, []);
+
+  // Handle Privé tab press - always switch to Privé tab
+  // Eligibility is now handled inside PriveSectionContainer
+  const handlePrivePress = useCallback(() => {
+    onTabChange('prive');
+  }, [onTabChange]);
 
   // Generate SVG path for curved background
   const generateCurvedPath = useCallback(() => {
@@ -108,7 +126,7 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
     if (!containerWidth || !activeLayout.width) return '';
 
     const curveRadius = 14;
-    const tabRowBottom = 70; // Moved down to match larger tabs
+    const tabRowBottom = 70;
     const tabTop = 6;
     const leftX = activeLayout.x + 2;
     const rightX = activeLayout.x + activeLayout.width - 2;
@@ -132,8 +150,11 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
     return path;
   }, [activeTab, tabLayouts, containerWidth]);
 
+  // Get container background based on mode
+  const containerBg = isPriveMode ? '#111827' : '#ECFDF5';
+
   return (
-    <View style={[styles.container, { backgroundColor: '#ECFDF5' }]} onLayout={handleContainerLayout}>
+    <View style={[styles.container, { backgroundColor: containerBg }]} onLayout={handleContainerLayout}>
       {/* SVG Curved Background */}
       {containerWidth > 0 && (
         <View style={styles.svgContainer}>
@@ -148,89 +169,109 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
 
       {/* Tabs Row */}
       <View style={styles.tabsRow}>
-        {/* Tab 1: Rez */}
+        {/* Tab 1: Near U */}
         <TouchableOpacity
           style={styles.tabItem}
-          onPress={() => onTabChange('rez')}
+          onPress={() => onTabChange('near-u')}
           activeOpacity={0.85}
-          onLayout={(e) => handleTabLayout('rez', e)}
+          onLayout={(e) => handleTabLayout('near-u', e)}
         >
           <View style={[
             styles.tab,
             styles.tabPill,
-            activeTab === 'rez'
-              ? styles.tabActiveTransparent // Invisible - text floats on curved background
-              : styles.tabInactive
-          ]}>
-            <Text style={[
-              styles.rezText,
-              { color: activeTab === 'rez'
-                ? '#059669' // Dark green for visibility on light green background
-                : TAB_THEMES[activeTab].tabInactiveTextColor
-              }
-            ]}>Rez</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Tab 2: Rez Mall */}
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => onTabChange('rez-mall')}
-          activeOpacity={0.85}
-          onLayout={(e) => handleTabLayout('rez-mall', e)}
-        >
-          <View style={[
-            styles.tab,
-            styles.tabPill,
-            activeTab === 'rez-mall'
+            activeTab === 'near-u'
               ? styles.tabActiveTransparent
               : styles.tabInactive
           ]}>
             <Text style={[
-              styles.tabTextSmall,
-              { color: activeTab === 'rez-mall'
-                ? '#0D9488' // Teal for visibility on light green background
+              styles.tabText,
+              { color: activeTab === 'near-u'
+                ? '#059669'
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }
-            ]}>Rez</Text>
-            <Text style={[
-              styles.tabTextLarge,
-              { color: activeTab === 'rez-mall'
-                ? '#0D9488' // Teal for visibility on light green background
-                : TAB_THEMES[activeTab].tabInactiveTextColor
-              }
-            ]}>Mall.</Text>
+            ]}>Near U</Text>
           </View>
         </TouchableOpacity>
 
-        {/* Tab 3: Cash Store */}
+        {/* Tab 2: Mall */}
         <TouchableOpacity
           style={styles.tabItem}
-          onPress={() => onTabChange('cash-store')}
+          onPress={() => onTabChange('mall')}
           activeOpacity={0.85}
-          onLayout={(e) => handleTabLayout('cash-store', e)}
+          onLayout={(e) => handleTabLayout('mall', e)}
         >
           <View style={[
             styles.tab,
             styles.tabPill,
-            activeTab === 'cash-store'
+            activeTab === 'mall'
               ? styles.tabActiveTransparent
               : styles.tabInactive
           ]}>
             <Text style={[
-              styles.tabTextSmall,
-              { color: activeTab === 'cash-store'
-                ? '#166534' // Dark green for visibility on light green background
+              styles.tabText,
+              { color: activeTab === 'mall'
+                ? '#0D9488'
+                : TAB_THEMES[activeTab].tabInactiveTextColor
+              }
+            ]}>Mall</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Tab 3: Cash */}
+        <TouchableOpacity
+          style={styles.tabItem}
+          onPress={() => onTabChange('cash')}
+          activeOpacity={0.85}
+          onLayout={(e) => handleTabLayout('cash', e)}
+        >
+          <View style={[
+            styles.tab,
+            styles.tabPill,
+            activeTab === 'cash'
+              ? styles.tabActiveTransparent
+              : styles.tabInactive
+          ]}>
+            <Text style={[
+              styles.tabText,
+              { color: activeTab === 'cash'
+                ? '#F59E0B'
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }
             ]}>Cash</Text>
-            <Text style={[
-              styles.tabTextLarge,
-              { color: activeTab === 'cash-store'
-                ? '#166534' // Dark green for visibility on light green background
-                : TAB_THEMES[activeTab].tabInactiveTextColor
-              }
-            ]}>Store</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Tab 4: Privé */}
+        <TouchableOpacity
+          style={styles.tabItem}
+          onPress={handlePrivePress}
+          activeOpacity={0.85}
+          onLayout={(e) => handleTabLayout('prive', e)}
+        >
+          <View style={[
+            styles.tab,
+            styles.tabPill,
+            activeTab === 'prive'
+              ? styles.tabActiveTransparent
+              : [styles.tabInactive, !isPriveEligible && styles.tabLocked]
+          ]}>
+            <View style={styles.priveTabContent}>
+              {!isPriveEligible && activeTab !== 'prive' && (
+                <Ionicons
+                  name="lock-closed"
+                  size={12}
+                  color={TAB_THEMES[activeTab].tabInactiveTextColor}
+                  style={styles.lockIcon}
+                />
+              )}
+              <Text style={[
+                styles.tabText,
+                { color: activeTab === 'prive'
+                  ? '#C9A962'
+                  : TAB_THEMES[activeTab].tabInactiveTextColor
+                }
+              ]}>Privé</Text>
+            </View>
           </View>
         </TouchableOpacity>
       </View>
@@ -246,12 +287,25 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
         <View style={styles.searchRow}>
           {/* Compact Search Bar */}
           <TouchableOpacity
-            style={styles.searchContainerCompact}
+            style={[
+              styles.searchContainerCompact,
+              isPriveMode && styles.searchContainerPrive
+            ]}
             onPress={onSearchPress}
             activeOpacity={0.85}
           >
-            <Ionicons name="search" size={18} color="#9CA3AF" style={styles.searchIcon} />
-            <Text style={styles.searchPlaceholderCompact}>Search products...</Text>
+            <Ionicons
+              name="search"
+              size={18}
+              color={isPriveMode ? '#A0A0A0' : '#9CA3AF'}
+              style={styles.searchIcon}
+            />
+            <Text style={[
+              styles.searchPlaceholderCompact,
+              isPriveMode && styles.searchPlaceholderPrive
+            ]}>
+              {isPriveMode ? 'Search exclusive offers...' : 'Search products...'}
+            </Text>
           </TouchableOpacity>
 
           {/* Promotional Banner */}
@@ -260,28 +314,55 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
             activeOpacity={0.9}
           >
             <LinearGradient
-              colors={['#FFF5F5', '#FFFFFF']}
+              colors={isPriveMode ? ['#2A2A2A', '#1F1F1F'] : ['#FFF5F5', '#FFFFFF']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.promoBannerGradient}
             >
               <View style={styles.promoBannerContent}>
-                <Text style={styles.promoBannerTitle}>FRESH</Text>
-                <Text style={styles.promoBannerSubtitle}>DEALS</Text>
+                <Text style={[
+                  styles.promoBannerTitle,
+                  isPriveMode && styles.promoBannerTitlePrive
+                ]}>
+                  {isPriveMode ? 'EXCLUSIVE' : 'FRESH'}
+                </Text>
+                <Text style={[
+                  styles.promoBannerSubtitle,
+                  isPriveMode && styles.promoBannerSubtitlePrive
+                ]}>
+                  {isPriveMode ? 'ACCESS' : 'DEALS'}
+                </Text>
               </View>
-              <View style={styles.promoBannerIconWrapper}>
-                <Ionicons name="pricetag" size={18} color="#DC2626" />
+              <View style={[
+                styles.promoBannerIconWrapper,
+                isPriveMode && styles.promoBannerIconWrapperPrive
+              ]}>
+                <Ionicons
+                  name={isPriveMode ? 'diamond' : 'pricetag'}
+                  size={18}
+                  color={isPriveMode ? '#C9A962' : '#DC2626'}
+                />
               </View>
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
-        {/* Category Cashback Grid - Only show when rez tab is selected */}
-        {activeTab === 'rez' && (
+        {/* Category Cashback Grid - Only show when near-u tab is selected */}
+        {activeTab === 'near-u' && (
           <CategoryCashbackGrid
             onCategoryPress={onCategoryChange}
             style={styles.categoryCashbackGrid}
           />
+        )}
+
+        {/* Privé mode exclusive content teaser */}
+        {isPriveMode && (
+          <View style={styles.priveTeaser}>
+            <Text style={styles.priveTeaserIcon}>✦</Text>
+            <Text style={styles.priveTeaserText}>
+              Exclusive offers for Privé members
+            </Text>
+          </View>
         )}
       </LinearGradient>
     </View>
@@ -319,7 +400,7 @@ const styles = StyleSheet.create({
   tabsRow: {
     flexDirection: 'row',
     paddingHorizontal: 12,
-    gap: 10,
+    gap: 6,
     marginBottom: 4,
     zIndex: 2,
   },
@@ -337,19 +418,11 @@ const styles = StyleSheet.create({
   tabPill: {
     borderRadius: 18,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     minHeight: 54,
   },
-  tabActive: {
-  backgroundColor: 'rgba(245, 245, 245, 0.8)',
-  },
   tabActiveTransparent: {
-    backgroundColor: 'transparent', // No background - text floats on the curved SVG background
-  },
-  rezText: {
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 0.5,
+    backgroundColor: 'transparent',
   },
   tabInactive: {
     backgroundColor: '#FFFFFF',
@@ -370,20 +443,21 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  tabTextSmall: {
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 13,
+  tabLocked: {
+    opacity: 0.7,
   },
-  tabTextLarge: {
-    fontSize: 16,
-    fontWeight: '900',
-    lineHeight: 18,
-  },
-  tabTextMedium: {
-    fontSize: 13,
+  tabText: {
+    fontSize: 14,
     fontWeight: '800',
-    flexShrink: 0,
+    letterSpacing: 0.3,
+  },
+  priveTabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockIcon: {
+    marginRight: 4,
   },
   // Search
   searchRow: {
@@ -392,7 +466,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 10,
   },
-  // Compact Search Bar (smaller width)
   searchContainerCompact: {
     flex: 2,
     backgroundColor: '#FFFFFF',
@@ -416,6 +489,11 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  searchContainerPrive: {
+    backgroundColor: '#1F1F1F',
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+  },
   searchIcon: {
     marginRight: 8,
   },
@@ -423,6 +501,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9CA3AF',
     flex: 1,
+  },
+  searchPlaceholderPrive: {
+    color: '#6B7280',
   },
   // Promotional Banner
   promoBannerContainer: {
@@ -458,12 +539,18 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     letterSpacing: 0.5,
   },
+  promoBannerTitlePrive: {
+    color: '#C9A962',
+  },
   promoBannerSubtitle: {
     fontSize: 12,
     fontWeight: '900',
     color: '#991B1B',
     letterSpacing: 0.3,
     marginTop: -2,
+  },
+  promoBannerSubtitlePrive: {
+    color: '#A88B4A',
   },
   promoBannerIconWrapper: {
     width: 28,
@@ -473,10 +560,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  promoBannerIconWrapperPrive: {
+    backgroundColor: 'rgba(201, 169, 98, 0.15)',
+  },
   // Category Cashback Grid Container
   categoryCashbackGrid: {
     marginTop: 8,
     backgroundColor: 'transparent',
+  },
+  // Privé teaser
+  priveTeaser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  priveTeaserIcon: {
+    fontSize: 16,
+    color: '#C9A962',
+  },
+  priveTeaserText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#C9A962',
+    letterSpacing: 0.3,
   },
 });
 

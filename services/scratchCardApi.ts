@@ -125,4 +125,17 @@ class ScratchCardApiService {
   }
 }
 
-export default new ScratchCardApiService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const SCRATCH_CARD_API_SERVICE_KEY = '__rezScratchCardApiService__';
+
+function getScratchCardApiService(): ScratchCardApiService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[SCRATCH_CARD_API_SERVICE_KEY]) {
+      (globalThis as any)[SCRATCH_CARD_API_SERVICE_KEY] = new ScratchCardApiService();
+    }
+    return (globalThis as any)[SCRATCH_CARD_API_SERVICE_KEY];
+  }
+  return new ScratchCardApiService();
+}
+
+export default getScratchCardApiService();
