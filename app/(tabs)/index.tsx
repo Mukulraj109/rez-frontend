@@ -496,14 +496,14 @@ export default function HomeScreen() {
         }
       } else {
         // Fallback to wallet data if statistics API fails
-        const loyaltyPoints = authState.user?.wallet?.totalEarned || authState.user?.wallet?.balance || 0;
+        const loyaltyPoints = authState.user?.wallet?.balance || 0;
         setUserPoints(loyaltyPoints);
         setTotalSaved(0);
       }
     } catch (error) {
       console.error('❌ [HOME] Error loading user statistics:', error);
       // Fallback to wallet data
-      const loyaltyPoints = authState.user?.wallet?.totalEarned || authState.user?.wallet?.balance || 0;
+      const loyaltyPoints = authState.user?.wallet?.balance || 0;
       setUserPoints(loyaltyPoints);
       setTotalSaved(0);
     } finally {

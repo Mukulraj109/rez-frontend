@@ -82,7 +82,7 @@ console.log(`\x1b[32m[Dev Server] GC available: ${typeof global.gc === 'function
 // Run initial GC
 runGC();
 
-// Spawn expo process with increased memory limit
+// Spawn expo process with increased memory limit (16GB)
 const expo = spawn('npx', ['expo', ...expoArgs], {
   stdio: 'inherit',
   shell: true,
@@ -90,7 +90,7 @@ const expo = spawn('npx', ['expo', ...expoArgs], {
   env: {
     ...process.env,
     FORCE_COLOR: '1',
-    NODE_OPTIONS: '--max-old-space-size=8192',
+    NODE_OPTIONS: '--max-old-space-size=16384',
   },
 });
 
