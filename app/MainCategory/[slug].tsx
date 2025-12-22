@@ -2,6 +2,8 @@
  * MainCategoryPage - Dynamic Category Page
  * Replaces hardcoded FashionPage with a dynamic page that supports all categories
  * Route: /MainCategory/[slug] (e.g., /MainCategory/fashion, /MainCategory/food-dining)
+ *
+ * Updated with enhanced sections from Rez_v-2-main reference design
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -9,25 +11,43 @@ import { ScrollView, View, Text, StyleSheet, RefreshControl, TouchableOpacity } 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-// Components
+// Core Components
 import CategoryHeader from '@/components/CategoryHeader';
 import useCategoryData, { CategoryProduct } from '@/hooks/useCategoryData';
 import { getCategoryConfig } from '@/config/categoryConfig';
 import productsApi from '@/services/productsApi';
 import storesApi from '@/services/storesApi';
 
-// Production-ready components (reused from FashionPage)
-import ProductionStoreList from '@/src/components/ProductionStoreList';
-import ProductionBrandList from '@/src/components/ProductionBrandList';
+// Production-ready components
 import ProductionCategorySlider from '@/src/components/ProductionCategorySlider';
 import ProductionProductCarousel from '@/src/components/ProductionProductCarousel';
-import ProductionQuickButtons from '@/src/components/ProductionQuickButtons';
 import StepsCard from '@/src/components/StepsCard';
 import { FashionCategory } from '@/hooks/useFashionData';
-import RecentlyViewedSection from '@/components/category/RecentlyViewedSection';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
-import FavoriteStoresSection from '@/components/category/FavoriteStoresSection';
 import { useFavoriteStores } from '@/hooks/useFavoriteStores';
+
+// New Enhanced Category Sections
+import QuickActionBar from '@/components/category/QuickActionBar';
+import SmartAIBanner from '@/components/category/SmartAIBanner';
+import TrendingHashtags from '@/components/category/TrendingHashtags';
+import CategoryGridSection from '@/components/category/CategoryGridSection';
+import ShopByVibeSection from '@/components/category/ShopByVibeSection';
+import ShopByOccasionSection from '@/components/category/ShopByOccasionSection';
+import ExclusiveOffersSection from '@/components/category/ExclusiveOffersSection';
+import TryAndBuyBanner from '@/components/category/TryAndBuyBanner';
+import TopBrandsSection from '@/components/category/TopBrandsSection';
+import TrendingProductsSection from '@/components/category/TrendingProductsSection';
+import SmartCompareBanner from '@/components/category/SmartCompareBanner';
+import FavoriteStoresSection from '@/components/category/FavoriteStoresSection';
+import NearbyStoresSection from '@/components/category/NearbyStoresSection';
+import BankOffersSection from '@/components/category/BankOffersSection';
+import BestDealsSection from '@/components/category/BestDealsSection';
+import WalletReminderBanner from '@/components/category/WalletReminderBanner';
+import RecentlyViewedSection from '@/components/category/RecentlyViewedSection';
+import SocialProofSection from '@/components/category/SocialProofSection';
+import UGCSocialProofSection from '@/components/category/UGCSocialProofSection';
+import StreakLoyaltySection from '@/components/category/StreakLoyaltySection';
+import FooterTrustSection from '@/components/category/FooterTrustSection';
 
 export default function MainCategoryPage() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -73,7 +93,6 @@ export default function MainCategoryPage() {
   useEffect(() => {
     const fetchSubcategoryProducts = async () => {
       if (!selectedSubcategory?.slug) {
-        // If no subcategory selected, use featured products
         setSubcategoryProducts(featuredProducts);
         return;
       }
@@ -101,7 +120,6 @@ export default function MainCategoryPage() {
   useEffect(() => {
     const fetchSubcategoryStores = async () => {
       if (!selectedSubcategory?.slug) {
-        // If no subcategory selected, use featured stores
         setSubcategoryStores(featuredStores);
         return;
       }
@@ -125,7 +143,7 @@ export default function MainCategoryPage() {
     fetchSubcategoryStores();
   }, [selectedSubcategory?.slug, featuredStores]);
 
-  // Prepare subcategories for the slider (use config subcategories with colors)
+  // Prepare subcategories for the slider and grid
   const sliderCategories = categoryConfig?.subcategories.map((sub, index) => {
     const colors = [
       '#8B5CF6', '#F59E0B', '#3B82F6', '#EC4899',
@@ -133,9 +151,11 @@ export default function MainCategoryPage() {
     ];
     return {
       _id: sub.slug,
+      id: sub.slug,
       name: sub.name,
       slug: sub.slug,
       icon: sub.icon,
+      color: colors[index % colors.length],
       metadata: { color: colors[index % colors.length] },
     };
   }) || [];
@@ -178,7 +198,7 @@ export default function MainCategoryPage() {
         />
       }
     >
-      {/* Dynamic Category Header */}
+      {/* 1. Dynamic Category Header */}
       <CategoryHeader
         categoryName={categoryConfig.name}
         primaryColor={categoryConfig.primaryColor}
@@ -186,7 +206,16 @@ export default function MainCategoryPage() {
         gradientColors={categoryConfig.gradientColors}
       />
 
-      {/* Category Slider - Subcategories with selection callback */}
+      {/* 2. Quick Action Bar (NEW - replaces ProductionQuickButtons) */}
+      <QuickActionBar categorySlug={slug || ''} />
+
+      {/* 3. Smart AI Banner (NEW) */}
+      <SmartAIBanner
+        categorySlug={slug || ''}
+        categoryName={categoryConfig.name}
+      />
+
+      {/* 4. Category Slider - Subcategories */}
       <ProductionCategorySlider
         categories={sliderCategories}
         isLoading={false}
@@ -194,20 +223,44 @@ export default function MainCategoryPage() {
         onSelect={handleSubcategorySelect}
       />
 
-      {/* Product Carousel - Shows products filtered by selected subcategory */}
+      {/* 5. Trending Hashtags (NEW) */}
+      <TrendingHashtags categorySlug={slug || ''} />
+
+      {/* 6. Category Grid (NEW - 4-column subcategories) */}
+      <CategoryGridSection
+        subcategories={sliderCategories}
+        categorySlug={slug || ''}
+      />
+
+      {/* 7. Product Carousel - Featured/filtered products */}
       <ProductionProductCarousel
         products={subcategoryProducts.length > 0 ? subcategoryProducts : featuredProducts}
         isLoading={isLoadingProducts || isLoadingSubcategoryProducts}
         error={productsError}
       />
 
-      {/* Quick Buttons */}
-      <ProductionQuickButtons />
+      {/* 8. Shop by Vibe (NEW) */}
+      <ShopByVibeSection categorySlug={slug || ''} />
 
-      {/* Steps Card - How to use vouchers */}
-      <StepsCard />
+      {/* 9. Shop by Occasion (NEW) */}
+      <ShopByOccasionSection categorySlug={slug || ''} />
 
-      {/* Shop at your Favorite Section - Bookmarked + Most visited stores */}
+      {/* 10. Exclusive Offers (NEW) */}
+      <ExclusiveOffersSection categorySlug={slug || ''} />
+
+      {/* 11. Try & Buy Banner (NEW) */}
+      <TryAndBuyBanner categorySlug={slug || ''} />
+
+      {/* 12. Top Brands (NEW - replaces ProductionBrandList) */}
+      <TopBrandsSection categorySlug={slug || ''} />
+
+      {/* 13. Trending Products (NEW) */}
+      <TrendingProductsSection categorySlug={slug || ''} />
+
+      {/* 14. Smart Compare Banner (NEW) */}
+      <SmartCompareBanner categorySlug={slug || ''} />
+
+      {/* 15. Favorite Stores Section */}
       {favoriteStores.length > 0 && (
         <FavoriteStoresSection
           stores={favoriteStores}
@@ -217,15 +270,22 @@ export default function MainCategoryPage() {
         />
       )}
 
-      {/* Store List - Stores filtered by selected subcategory */}
-      <ProductionStoreList
-        stores={subcategoryStores.length > 0 ? subcategoryStores : featuredStores}
-        isLoading={isLoadingStores || isLoadingSubcategoryStores}
-        error={storesError}
-        onRefresh={refetchAll}
-      />
+      {/* 16. Nearby Stores (NEW - replaces ProductionStoreList) */}
+      <NearbyStoresSection categorySlug={slug || ''} />
 
-      {/* Recently Viewed Section - Shows recently viewed stores and products */}
+      {/* 17. Bank Offers (NEW) */}
+      <BankOffersSection categorySlug={slug || ''} />
+
+      {/* 18. Best Deals (NEW) */}
+      <BestDealsSection categorySlug={slug || ''} />
+
+      {/* 19. Steps Card - How to use vouchers */}
+      <StepsCard />
+
+      {/* 20. Wallet Reminder Banner (NEW) */}
+      <WalletReminderBanner />
+
+      {/* 21. Recently Viewed Section */}
       {recentlyViewedItems.length > 0 && (
         <RecentlyViewedSection
           items={recentlyViewedItems}
@@ -234,13 +294,20 @@ export default function MainCategoryPage() {
         />
       )}
 
-      {/* Brand List - All category stores/brands */}
-      <ProductionBrandList
-        stores={categoryStores}
-        isLoading={isLoadingStores}
-        error={storesError}
-        onRefresh={refetchAll}
+      {/* 22. Social Proof (NEW) */}
+      <SocialProofSection categoryName={categoryConfig.name} />
+
+      {/* 23. UGC Social Proof (NEW - Uses existing backend) */}
+      <UGCSocialProofSection
+        categorySlug={slug || ''}
+        categoryName={categoryConfig.name}
       />
+
+      {/* 24. Streaks & Loyalty (NEW) */}
+      <StreakLoyaltySection />
+
+      {/* 25. Footer Trust Section (NEW) */}
+      <FooterTrustSection />
     </ScrollView>
   );
 }

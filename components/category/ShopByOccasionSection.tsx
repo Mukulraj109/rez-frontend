@@ -1,0 +1,257 @@
+/**
+ * ShopByOccasionSection Component
+ * Horizontal scrollable occasion cards for event-based shopping
+ * Adapted from Rez_v-2-main FashionOccasionCard
+ */
+
+import React, { memo, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { getOccasionsForCategory, Occasion } from '@/data/categoryDummyData';
+
+interface ShopByOccasionSectionProps {
+  categorySlug: string;
+  occasions?: Occasion[];
+  onOccasionPress?: (occasion: Occasion) => void;
+}
+
+const CARD_WIDTH = 140;
+
+const getTagColor = (tag: string | null) => {
+  switch (tag) {
+    case 'Hot':
+      return { bg: '#FEE2E2', text: '#EF4444' };
+    case 'Trending':
+      return { bg: '#DBEAFE', text: '#2563EB' };
+    case 'Coming Soon':
+      return { bg: '#FEF3C7', text: '#D97706' };
+    case 'Premium':
+      return { bg: '#F3E8FF', text: '#7C3AED' };
+    case 'Special':
+      return { bg: '#D1FAE5', text: '#059669' };
+    case 'Student':
+      return { bg: '#CFFAFE', text: '#0891B2' };
+    case 'Popular':
+      return { bg: '#FCE7F3', text: '#DB2777' };
+    case 'Festive':
+      return { bg: '#FFEDD5', text: '#EA580C' };
+    default:
+      return { bg: '#F3F4F6', text: '#6B7280' };
+  }
+};
+
+const OccasionCard = memo(({
+  occasion,
+  onPress,
+}: {
+  occasion: Occasion;
+  onPress: () => void;
+}) => {
+  const tagColors = getTagColor(occasion.tag);
+
+  return (
+    <TouchableOpacity
+      style={[styles.occasionCard, { backgroundColor: `${occasion.color}10` }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityLabel={`Shop for ${occasion.name}`}
+      accessibilityRole="button"
+    >
+      {/* Tag Badge */}
+      {occasion.tag && (
+        <View style={[styles.tagBadge, { backgroundColor: tagColors.bg }]}>
+          <Text style={[styles.tagText, { color: tagColors.text }]}>{occasion.tag}</Text>
+        </View>
+      )}
+
+      {/* Icon */}
+      <View style={[styles.iconContainer, { backgroundColor: `${occasion.color}20` }]}>
+        <Text style={styles.icon}>{occasion.icon}</Text>
+      </View>
+
+      {/* Name */}
+      <Text style={styles.occasionName}>{occasion.name}</Text>
+
+      {/* Discount */}
+      <View style={[styles.discountBadge, { backgroundColor: occasion.color }]}>
+        <Text style={styles.discountText}>Up to {occasion.discount}% off</Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+OccasionCard.displayName = 'OccasionCard';
+
+const ShopByOccasionSection: React.FC<ShopByOccasionSectionProps> = ({
+  categorySlug,
+  occasions,
+  onOccasionPress,
+}) => {
+  const router = useRouter();
+  const displayOccasions = occasions || getOccasionsForCategory(categorySlug);
+
+  const handlePress = useCallback((occasion: Occasion) => {
+    if (onOccasionPress) {
+      onOccasionPress(occasion);
+    } else {
+      router.push({
+        pathname: '/products',
+        params: { occasion: occasion.id, category: categorySlug },
+      } as any);
+    }
+  }, [router, categorySlug, onOccasionPress]);
+
+  if (!displayOccasions || displayOccasions.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.titleRow}>
+          <Text style={styles.occasionEmoji}>🎉</Text>
+          <Text style={styles.sectionTitle}>Shop by Occasion</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.seeAllButton}
+          onPress={() => router.push(`/occasions?category=${categorySlug}` as any)}
+          accessibilityLabel="See all occasions"
+        >
+          <Text style={styles.seeAllText}>View All</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        decelerationRate="fast"
+      >
+        {displayOccasions.map((occasion) => (
+          <OccasionCard
+            key={occasion.id}
+            occasion={occasion}
+            onPress={() => handlePress(occasion)}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    marginVertical: 16,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    borderRadius: 20,
+    paddingVertical: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0B2240',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 2px 8px rgba(11, 34, 64, 0.04), 0 8px 24px rgba(11, 34, 64, 0.06)',
+      },
+    }),
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  occasionEmoji: {
+    fontSize: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: -0.4,
+  },
+  seeAllButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  occasionCard: {
+    width: CARD_WIDTH,
+    padding: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  tagBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  tagText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    marginTop: 8,
+  },
+  icon: {
+    fontSize: 28,
+  },
+  occasionName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  discountBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  discountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+});
+
+export default memo(ShopByOccasionSection);
