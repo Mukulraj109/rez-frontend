@@ -65,7 +65,6 @@ class LocationService {
       
       return result;
     } catch (error) {
-      console.error('Location permission error:', error);
       return {
         status: 'denied',
         canAskAgain: false,
@@ -85,7 +84,6 @@ class LocationService {
         canAskAgain: status !== 'denied',
       };
     } catch (error) {
-      console.error('Get permission status error:', error);
       return {
         status: 'undetermined',
         canAskAgain: true,
@@ -114,7 +112,6 @@ class LocationService {
         longitude: location.coords.longitude,
       };
     } catch (error) {
-      console.error('Get current location error:', error);
       throw new Error('Failed to get current location');
     }
   }
@@ -143,7 +140,6 @@ class LocationService {
       const locationData = response.data?.data?.location || response.data?.location || response.data?.data || response.data;
 
       if (!locationData) {
-        console.error('[LocationService] No location data in response');
         throw new Error('No location data in response');
       }
 
@@ -215,7 +211,6 @@ class LocationService {
 
       return userLocation;
     } catch (error) {
-      console.error('[LocationService] Update location error:', error);
       throw new Error('Failed to update location');
     }
   }
@@ -232,7 +227,6 @@ class LocationService {
       const locationData = response?.data?.data?.location || response?.data?.location || response?.data;
       
       if (!locationData || !locationData.coordinates) {
-        console.warn('⚠️ LocationService: No location data in response');
         return null;
       }
       
@@ -262,7 +256,6 @@ class LocationService {
         source: 'gps',
       };
     } catch (error) {
-      console.error('❌ LocationService: Get current user location error:', error);
       return null;
     }
   }
@@ -287,7 +280,6 @@ class LocationService {
         source: entry.source,
       }));
     } catch (error) {
-      console.error('Get location history error:', error);
       return [];
     }
   }
@@ -312,7 +304,6 @@ class LocationService {
         formattedAddress: data.formattedAddress,
       };
     } catch (error) {
-      console.error('Reverse geocoding error:', error);
       throw new Error('Failed to get address from coordinates');
     }
   }
@@ -348,7 +339,6 @@ class LocationService {
         pincode: result.pincode || '',
       }));
     } catch (error) {
-      console.error('[LocationService] Address search error:', error);
       return [];
     }
   }
@@ -361,7 +351,6 @@ class LocationService {
       const response = await this.apiClient.post('/location/validate', { address });
       return response.data.data.isValid;
     } catch (error) {
-      console.error('Address validation error:', error);
       return false;
     }
   }
@@ -380,7 +369,6 @@ class LocationService {
       
       return response.data.data.timezone;
     } catch (error) {
-      console.error('Get timezone error:', error);
       return 'Asia/Kolkata'; // Default timezone
     }
   }
@@ -405,7 +393,6 @@ class LocationService {
       
       return response.data.data.stores;
     } catch (error) {
-      console.error('Get nearby stores error:', error);
       return [];
     }
   }
@@ -433,7 +420,6 @@ class LocationService {
         } : null,
       };
     } catch (error) {
-      console.error('Get location stats error:', error);
       throw new Error('Failed to get location statistics');
     }
   }
@@ -445,7 +431,7 @@ class LocationService {
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_LOCATION, JSON.stringify(location));
     } catch (error) {
-      console.error('Save location error:', error);
+      // Silently handle storage errors
     }
   }
 
@@ -462,7 +448,6 @@ class LocationService {
       }
       return null;
     } catch (error) {
-      console.error('Get cached location error:', error);
       return null;
     }
   }
@@ -478,7 +463,7 @@ class LocationService {
         STORAGE_KEYS.LOCATION_PERMISSION,
       ]);
     } catch (error) {
-      console.error('Clear location data error:', error);
+      // Silently handle storage errors
     }
   }
 
@@ -536,9 +521,8 @@ class LocationService {
   async cacheLocation(location: UserLocation): Promise<void> {
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_LOCATION, JSON.stringify(location));
-
     } catch (error) {
-      console.error('❌ LocationService: Failed to cache location:', error);
+      // Silently handle storage errors
     }
   }
 }

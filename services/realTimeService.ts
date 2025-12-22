@@ -761,8 +761,20 @@ class RealTimeService {
   }
 }
 
-// Create and export singleton instance
-export const realTimeService = new RealTimeService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const REALTIME_SERVICE_KEY = '__rezRealTimeService__';
+
+function getRealTimeService(): RealTimeService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[REALTIME_SERVICE_KEY]) {
+      (globalThis as any)[REALTIME_SERVICE_KEY] = new RealTimeService();
+    }
+    return (globalThis as any)[REALTIME_SERVICE_KEY];
+  }
+  return new RealTimeService();
+}
+
+export const realTimeService = getRealTimeService();
 
 // Utility functions
 export const RealTimeUtils = {

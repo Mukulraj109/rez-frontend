@@ -1,12 +1,21 @@
 /**
  * usePriveSection Hook
  * Data & state management for Privé section
+ * Integrates with backend Privé APIs for real-time data
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePriveEligibility } from './usePriveEligibility';
 import { PILLAR_CONFIG } from '@/components/prive/priveTheme';
+import priveApi, {
+  PriveOffer as ApiPriveOffer,
+  HighlightItem as ApiHighlightItem,
+  Highlights as ApiHighlights,
+  HabitLoop as ApiHabitLoop,
+  CheckInResponse,
+  PriveDashboard,
+} from '@/services/priveApi';
 
 // Types
 interface PriveOffer {
@@ -203,6 +212,9 @@ export const usePriveSection = (): UsePriveSectionReturn => {
     refresh: refreshEligibility,
   } = usePriveEligibility();
 
+  // Track if initial fetch has been done
+  const hasFetchedRef = useRef(false);
+
   // Start with loading false - we have mock data ready immediately
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -212,14 +224,116 @@ export const usePriveSection = (): UsePriveSectionReturn => {
   const [userData, setUserData] = useState<PriveUserData>(
     generateMockUserData(authState.user?.name || 'Privé Member')
   );
-  const [featuredOffers] = useState<PriveOffer[]>(DEFAULT_OFFERS);
-  const [highlights] = useState(DEFAULT_HIGHLIGHTS);
+  const [featuredOffers, setFeaturedOffers] = useState<PriveOffer[]>(DEFAULT_OFFERS);
+  const [highlights, setHighlights] = useState(DEFAULT_HIGHLIGHTS);
   const [dailyProgress, setDailyProgress] = useState<DailyProgress>({
     isCheckedIn: false,
     streak: 7,
     weeklyEarnings: 2840,
     loops: DEFAULT_HABIT_LOOPS,
   });
+
+  // Transform API offer to local format
+  const transformOffer = (offer: ApiPriveOffer): PriveOffer => ({
+    id: offer.id,
+    brand: offer.brand,
+    title: offer.title,
+    subtitle: offer.subtitle,
+    reward: offer.reward,
+    expiresIn: offer.expiresIn,
+    isExclusive: offer.isExclusive,
+  });
+
+  // Transform API highlight to local format
+  const transformHighlight = (highlight: ApiHighlightItem): HighlightItem => ({
+    id: highlight.id,
+    type: highlight.type,
+    icon: highlight.icon,
+    title: highlight.title,
+    subtitle: highlight.subtitle,
+    badge: highlight.badge,
+    badgeColor: highlight.badgeColor,
+  });
+
+  // Fetch dashboard data from backend
+  const fetchDashboardData = useCallback(async () => {
+    if (!authState.isAuthenticated) return;
+
+    try {
+      const response = await priveApi.getDashboard();
+
+      if (response.success && response.data) {
+        const dashboard = response.data;
+
+        // Update user data
+        if (dashboard.user) {
+          setUserData(prev => ({
+            ...prev,
+            name: dashboard.user.name || prev.name,
+            memberId: dashboard.user.memberId || prev.memberId,
+            memberSince: dashboard.user.memberSince || prev.memberSince,
+            validThru: dashboard.user.validThru || prev.validThru,
+            tierProgress: dashboard.user.tierProgress || prev.tierProgress,
+            pointsToNext: dashboard.user.pointsToNext || prev.pointsToNext,
+            nextTier: dashboard.user.nextTier || prev.nextTier,
+          }));
+        }
+
+        // Update coins
+        if (dashboard.coins) {
+          setUserData(prev => ({
+            ...prev,
+            totalCoins: dashboard.coins.total,
+            rezCoins: dashboard.coins.rez,
+            priveCoins: dashboard.coins.prive,
+            brandedCoins: dashboard.coins.branded,
+          }));
+        }
+
+        // Update stats
+        if (dashboard.stats) {
+          setUserData(prev => ({
+            ...prev,
+            activeCampaigns: dashboard.stats.activeCampaigns,
+            completedCampaigns: dashboard.stats.completedCampaigns,
+          }));
+        }
+
+        // Update featured offers
+        if (dashboard.featuredOffers && dashboard.featuredOffers.length > 0) {
+          setFeaturedOffers(dashboard.featuredOffers.map(transformOffer));
+        }
+
+        // Update highlights
+        if (dashboard.highlights) {
+          setHighlights({
+            curatedOffer: transformHighlight(dashboard.highlights.curatedOffer),
+            nearbyStore: transformHighlight(dashboard.highlights.nearbyStore),
+            opportunity: transformHighlight(dashboard.highlights.opportunity),
+          });
+        }
+
+        // Update daily progress
+        if (dashboard.dailyProgress) {
+          setDailyProgress({
+            isCheckedIn: dashboard.dailyProgress.isCheckedIn,
+            streak: dashboard.dailyProgress.streak,
+            weeklyEarnings: dashboard.dailyProgress.weeklyEarnings,
+            loops: dashboard.dailyProgress.loops.map(loop => ({
+              id: loop.id,
+              name: loop.name,
+              icon: loop.icon,
+              completed: loop.completed,
+              progress: loop.progress,
+            })),
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[usePriveSection] Failed to fetch dashboard:', err);
+      // Keep mock data on error
+    }
+  }, [authState.isAuthenticated]);
 
   // Update user name when auth changes
   useEffect(() => {
@@ -237,6 +351,9 @@ export const usePriveSection = (): UsePriveSectionReturn => {
       setUserData(prev => ({
         ...prev,
         totalScore: eligibility.score,
+        tier: eligibility.tier === 'elite' ? 'Elite' :
+              eligibility.tier === 'signature' ? 'Signature' :
+              eligibility.tier === 'entry' ? 'Entry' : 'Building',
         pillars: eligibility.pillars.map(p => ({
           id: p.id,
           score: p.score,
@@ -246,36 +363,75 @@ export const usePriveSection = (): UsePriveSectionReturn => {
     }
   }, [eligibility]);
 
+  // Initial fetch - runs once when authenticated
+  useEffect(() => {
+    if (authState.isAuthenticated && !hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      // Fetch in background without blocking UI
+      fetchDashboardData();
+    }
+  }, [authState.isAuthenticated, fetchDashboardData]);
+
   // Refresh function
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
+    setError(null);
     try {
-      await refreshEligibility();
+      await Promise.all([
+        refreshEligibility(),
+        fetchDashboardData(),
+      ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh');
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshEligibility]);
+  }, [refreshEligibility, fetchDashboardData]);
 
-  // Check-in function
+  // Check-in function - now uses real API
   const checkIn = useCallback(async () => {
     try {
-      // In production: await fetch('/api/prive/check-in', { method: 'POST' });
+      const response = await priveApi.checkIn();
+
+      if (response.success && response.data) {
+        const { streak, coinsEarned, bonusEarned, totalEarned, message } = response.data;
+
+        // Update daily progress
+        setDailyProgress(prev => ({
+          ...prev,
+          isCheckedIn: true,
+          streak: streak,
+        }));
+
+        // Update coins earned
+        setUserData(prev => ({
+          ...prev,
+          rezCoins: prev.rezCoins + totalEarned,
+          totalCoins: prev.totalCoins + totalEarned,
+          monthlyEarnings: prev.monthlyEarnings + totalEarned,
+        }));
+
+        console.log(`[Privé] Check-in successful: ${message}`);
+      }
+    } catch (err) {
+      console.error('[Privé] Check-in failed:', err);
+      // Fallback to local update if API fails
       setDailyProgress(prev => ({
         ...prev,
         isCheckedIn: true,
         streak: prev.streak + 1,
       }));
-    } catch (err) {
-      console.error('Check-in failed:', err);
     }
   }, []);
 
-  // Track offer click
-  const trackOfferClick = useCallback((offerId: string) => {
-    // In production: analytics.track('prive_offer_click', { offerId });
-    console.log('[Privé] Offer clicked:', offerId);
+  // Track offer click - now uses real API
+  const trackOfferClick = useCallback(async (offerId: string) => {
+    try {
+      await priveApi.trackOfferClick(offerId);
+      console.log('[Privé] Offer click tracked:', offerId);
+    } catch (err) {
+      console.warn('[Privé] Failed to track offer click:', err);
+    }
   }, []);
 
   return {

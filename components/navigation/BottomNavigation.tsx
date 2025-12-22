@@ -146,14 +146,11 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
   const getActiveTab = () => {
     // Handle empty pathname - treat as home
     if (!pathname || pathname === '' || pathname === '/') {
-      logger.debug('[BOTTOM NAV] ✅ Home tab active (empty/root pathname)');
       return 'Home';
     }
 
     // Normalize pathname for comparison (remove trailing slash)
     const normalizedPath = pathname.replace(/\/$/, '');
-
-    logger.debug('[BOTTOM NAV] Checking pathname:', normalizedPath || '(empty)');
 
     // Cash Store tabs: Home, Wallet, Coins, Profile
     if (isCashStoreActive) {
@@ -163,7 +160,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         normalizedPath === '/wallet' ||
         normalizedPath.startsWith('/wallet/')
       ) {
-        logger.debug('[BOTTOM NAV] ✅ Wallet tab active');
         return 'Wallet';
       }
 
@@ -172,7 +168,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         normalizedPath === '/CoinPage' ||
         normalizedPath.startsWith('/coin')
       ) {
-        logger.debug('[BOTTOM NAV] ✅ Coins tab active');
         return 'Coins';
       }
 
@@ -181,7 +176,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         normalizedPath === '/account' ||
         normalizedPath.startsWith('/account/')
       ) {
-        logger.debug('[BOTTOM NAV] ✅ Profile tab active');
         return 'Profile';
       }
     }
@@ -196,7 +190,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         normalizedPath === '/search' ||
         normalizedPath.startsWith('/search/')
       ) {
-        logger.debug('[BOTTOM NAV] ✅ Explore tab active');
         return 'Explore';
       }
 
@@ -209,7 +202,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         normalizedPath === '/cash-store/brands' ||
         normalizedPath.startsWith('/cash-store/')
       ) {
-        logger.debug('[BOTTOM NAV] ✅ Offers tab active');
         return 'Offers';
       }
 
@@ -218,7 +210,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         normalizedPath === '/account' ||
         normalizedPath.startsWith('/account/')
       ) {
-        logger.debug('[BOTTOM NAV] ✅ Profile tab active');
         return 'Profile';
       }
     } else {
@@ -231,7 +222,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         normalizedPath.startsWith('/categories/') ||
         normalizedPath.startsWith('/(tabs)/categories/')
       ) {
-        logger.debug('[BOTTOM NAV] ✅ Categories tab active');
         return 'Categories';
       }
 
@@ -242,7 +232,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         normalizedPath.startsWith('/play/') ||
         normalizedPath.startsWith('/(tabs)/play/')
       ) {
-        logger.debug('[BOTTOM NAV] ✅ Play tab active');
         return 'Play';
       }
 
@@ -253,7 +242,6 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         normalizedPath.startsWith('/earn/') ||
         normalizedPath.startsWith('/(tabs)/earn/')
       ) {
-        logger.debug('[BOTTOM NAV] ✅ Earn tab active');
         return 'Earn';
       }
     }
@@ -271,12 +259,10 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
        !normalizedPath.includes('/earn') &&
        !normalizedPath.includes('/categories'))
     ) {
-      logger.debug('[BOTTOM NAV] ✅ Home tab active');
       return 'Home';
     }
 
     // Default: no tab is active on other pages
-    logger.debug('[BOTTOM NAV] ❌ No tab active');
     return null;
   };
 

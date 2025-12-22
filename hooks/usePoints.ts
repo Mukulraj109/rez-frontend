@@ -49,6 +49,8 @@ export function usePoints(options: UsePointsOptions = {}): UsePointsReturn {
   const [hasMoreTransactions, setHasMoreTransactions] = useState(true);
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Track mounted state to prevent state updates after unmount
+  const isMountedRef = useRef(true);
 
   // Fetch balance
   const fetchBalance = useCallback(async (showLoading = true) => {
@@ -60,17 +62,20 @@ export function usePoints(options: UsePointsOptions = {}): UsePointsReturn {
 
       const response = await pointsApi.getBalance();
 
+      if (!isMountedRef.current) return;
+
       if (response.success && response.data) {
         setBalance(response.data);
       } else {
         throw new Error(response.message || 'Failed to fetch balance');
       }
     } catch (err: any) {
+      if (!isMountedRef.current) return;
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch balance';
       setError(errorMessage);
       console.error('[usePoints] Error fetching balance:', err);
     } finally {
-      if (showLoading) {
+      if (isMountedRef.current && showLoading) {
         setIsLoading(false);
       }
     }
@@ -83,12 +88,15 @@ export function usePoints(options: UsePointsOptions = {}): UsePointsReturn {
 
       const response = await pointsApi.getStats();
 
+      if (!isMountedRef.current) return;
+
       if (response.success && response.data) {
         setStats(response.data);
       } else {
         throw new Error(response.message || 'Failed to fetch stats');
       }
     } catch (err: any) {
+      if (!isMountedRef.current) return;
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch stats';
       console.error('[usePoints] Error fetching stats:', err);
     }
@@ -104,6 +112,8 @@ export function usePoints(options: UsePointsOptions = {}): UsePointsReturn {
         setError(null);
 
         const response = await pointsApi.getTransactions(page, 20);
+
+        if (!isMountedRef.current) return;
 
         if (response.success && response.data) {
           const { transactions: newTransactions, pagination } = response.data;
@@ -121,12 +131,13 @@ export function usePoints(options: UsePointsOptions = {}): UsePointsReturn {
           throw new Error(response.message || 'Failed to fetch transactions');
         }
       } catch (err: any) {
+        if (!isMountedRef.current) return;
         const errorMessage =
           err.response?.data?.message || err.message || 'Failed to fetch transactions';
         setError(errorMessage);
         console.error('[usePoints] Error fetching transactions:', err);
       } finally {
-        if (!append) {
+        if (isMountedRef.current && !append) {
           setIsLoading(false);
         }
       }
@@ -242,6 +253,14 @@ export function usePoints(options: UsePointsOptions = {}): UsePointsReturn {
       await fetchTransactions(currentPage + 1, true);
     }
   }, [hasMoreTransactions, isLoading, currentPage, fetchTransactions]);
+
+  // Track mounted state for cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Initial data fetch
   useEffect(() => {

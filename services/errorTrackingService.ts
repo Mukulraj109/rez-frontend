@@ -737,14 +737,17 @@ class ErrorTrackingService {
 // Singleton Instance
 // ============================================================================
 
-// Singleton pattern to prevent re-initialization on SSR/web navigation
-let errorTrackingServiceInstance: ErrorTrackingService | null = null;
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const ERROR_TRACKING_SERVICE_KEY = '__rezErrorTrackingService__';
 
 function getErrorTrackingService(): ErrorTrackingService {
-  if (!errorTrackingServiceInstance) {
-    errorTrackingServiceInstance = new ErrorTrackingService();
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[ERROR_TRACKING_SERVICE_KEY]) {
+      (globalThis as any)[ERROR_TRACKING_SERVICE_KEY] = new ErrorTrackingService();
+    }
+    return (globalThis as any)[ERROR_TRACKING_SERVICE_KEY];
   }
-  return errorTrackingServiceInstance;
+  return new ErrorTrackingService();
 }
 
 export const errorTrackingService = getErrorTrackingService();

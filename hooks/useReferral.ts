@@ -1,7 +1,7 @@
 // Referral Hook
 // Manages referral data and functionality
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import referralApi, { ReferralData, ReferralStatistics } from '@/services/referralApi';
 
 interface UseReferralOptions {
@@ -23,15 +23,18 @@ interface UseReferralReturn {
   clearError: () => void;
 }
 
-export const useReferral = ({ 
+export const useReferral = ({
   autoFetch = true,
-  refreshInterval 
+  refreshInterval
 }: UseReferralOptions = {}): UseReferralReturn => {
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
   const [statistics, setStatistics] = useState<ReferralStatistics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Track mounted state to prevent state updates after unmount
+  const isMountedRef = useRef(true);
 
   // Fetch referral data
   const fetchReferralData = useCallback(async (): Promise<void> => {
@@ -43,6 +46,9 @@ export const useReferral = ({
         referralApi.getReferralData(),
         referralApi.getReferralStatistics()
       ]);
+
+      // Check if component is still mounted before updating state
+      if (!isMountedRef.current) return;
 
       if (referralResponse.success && referralResponse.data) {
         setReferralData(referralResponse.data);
@@ -56,10 +62,13 @@ export const useReferral = ({
         console.warn('Failed to fetch referral statistics:', statisticsResponse.error);
       }
     } catch (err) {
+      if (!isMountedRef.current) return;
       console.error('❌ [useReferral] Fetch error:', err);
       setError(err instanceof Error ? err.message : 'Failed to load referral data');
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -74,6 +83,8 @@ export const useReferral = ({
         referralApi.getReferralStatistics()
       ]);
 
+      if (!isMountedRef.current) return;
+
       if (referralResponse.success && referralResponse.data) {
         setReferralData(referralResponse.data);
       }
@@ -82,10 +93,13 @@ export const useReferral = ({
         setStatistics(statisticsResponse.data);
       }
     } catch (err) {
+      if (!isMountedRef.current) return;
       console.error('❌ [useReferral] Refresh error:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh referral data');
     } finally {
-      setIsRefreshing(false);
+      if (isMountedRef.current) {
+        setIsRefreshing(false);
+      }
     }
   }, []);
 
@@ -154,6 +168,14 @@ export const useReferral = ({
   // Clear error
   const clearError = useCallback(() => {
     setError(null);
+  }, []);
+
+  // Track mounted state for cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   // Auto-fetch on mount

@@ -29,6 +29,7 @@ import {
   DEFAULT_PRIVE_ELIGIBILITY,
   ELIGIBILITY_THRESHOLDS,
 } from '@/types/mode.types';
+import priveApi from '@/services/priveApi';
 
 // Pillar weights and colors
 const PILLAR_CONFIG = {
@@ -202,52 +203,44 @@ export const usePriveEligibility = (): UsePriveEligibilityReturn => {
     };
   };
 
-  // Fetch eligibility from backend API
+  // Fetch eligibility from backend API using priveApi service
   const fetchEligibilityFromBackend = async (): Promise<PriveEligibility | null> => {
     try {
-      const response = await fetch('/api/prive/eligibility', {
-        headers: {
-          'Authorization': `Bearer ${authState.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await priveApi.getEligibility();
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch eligibility');
-      }
-
-      const data = await response.json();
-      if (data.success && data.data) {
-        const backendData = data.data;
+      if (response.success && response.data) {
+        const backendData = response.data;
 
         // Transform backend pillars to frontend format
         const pillars: PillarScore[] = backendData.pillars.map((p: any) => {
           const config = PILLAR_CONFIG[p.id as keyof typeof PILLAR_CONFIG] || PILLAR_CONFIG.engagement;
           return {
             id: p.id,
-            name: p.label || config.name,
+            name: p.label || p.name || config.name,
             score: p.score,
             weight: p.weight,
             weightedScore: p.weightedScore,
-            trend: 'stable' as TrendDirection,
-            icon: config.icon,
-            color: config.color,
-            description: config.description,
-            improvementTips: IMPROVEMENT_TIPS[p.id] || [],
+            trend: (p.trend || 'stable') as TrendDirection,
+            icon: p.icon || config.icon,
+            color: p.color || config.color,
+            description: p.description || config.description,
+            improvementTips: p.improvementTips || IMPROVEMENT_TIPS[p.id] || [],
           };
         });
 
         return {
           isEligible: backendData.isEligible,
           score: backendData.score,
-          tier: backendData.tier,
+          tier: backendData.tier as PriveTier,
           pillars,
           trustScore: backendData.trustScore,
-          reason: !backendData.isEligible
+          reason: backendData.reason || (!backendData.isEligible
             ? backendData.trustScore < ELIGIBILITY_THRESHOLDS.TRUST_MINIMUM
               ? 'Trust score below minimum threshold'
               : 'Score below entry threshold'
-            : undefined,
+            : undefined),
+          accessState: backendData.accessState,
+          gracePeriodEnds: backendData.gracePeriodEnds,
           hasSeenGlowThisSession: eligibility.hasSeenGlowThisSession,
         };
       }

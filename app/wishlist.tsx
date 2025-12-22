@@ -876,6 +876,11 @@ export default function WishlistPage() {
             }
             contentContainerStyle={styles.listContainer}
             showsVerticalScrollIndicator={false}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={5}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={5}
+            windowSize={5}
           />
         )}
       </View>

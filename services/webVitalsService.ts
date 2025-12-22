@@ -465,14 +465,17 @@ class WebVitalsService {
 // Singleton Instance
 // ============================================================================
 
-// Singleton pattern to prevent re-initialization on SSR/web navigation
-let webVitalsServiceInstance: WebVitalsService | null = null;
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const WEB_VITALS_SERVICE_KEY = '__rezWebVitalsService__';
 
 function getWebVitalsService(): WebVitalsService {
-  if (!webVitalsServiceInstance) {
-    webVitalsServiceInstance = new WebVitalsService();
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[WEB_VITALS_SERVICE_KEY]) {
+      (globalThis as any)[WEB_VITALS_SERVICE_KEY] = new WebVitalsService();
+    }
+    return (globalThis as any)[WEB_VITALS_SERVICE_KEY];
   }
-  return webVitalsServiceInstance;
+  return new WebVitalsService();
 }
 
 export const webVitalsService = getWebVitalsService();
