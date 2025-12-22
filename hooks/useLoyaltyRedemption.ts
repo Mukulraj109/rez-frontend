@@ -50,6 +50,23 @@ export function useLoyaltyRedemption(options: UseLoyaltyRedemptionOptions = {}) 
 
   const loadingRef = useRef(false);
 
+  // Socket callback refs for proper cleanup
+  const socketCallbacksRef = useRef<{
+    onPointsUpdated: ((data: { points: number; transaction: PointTransaction }) => void) | null;
+    onTierUpdated: ((data: { tier: string; benefits: any[] }) => void) | null;
+    onRewardAvailable: ((reward: RewardItem) => void) | null;
+    onChallengeCompleted: ((challenge: PointChallenge) => void) | null;
+  }>({
+    onPointsUpdated: null,
+    onTierUpdated: null,
+    onRewardAvailable: null,
+    onChallengeCompleted: null,
+  });
+
+  // Limits to prevent unbounded array growth
+  const MAX_POINT_HISTORY = 100;
+  const MAX_REWARDS = 50;
+
   // ==================== Data Loading ====================
 
   /**
@@ -475,9 +492,8 @@ export function useLoyaltyRedemption(options: UseLoyaltyRedemptionOptions = {}) 
   useEffect(() => {
     if (!enableRealTimeUpdates || !socket) return;
 
-    // Listen for point updates
-    socket.on('loyalty:pointsUpdated', (data: { points: number; transaction: PointTransaction }) => {
-
+    // Define callbacks and store in ref for proper cleanup
+    socketCallbacksRef.current.onPointsUpdated = (data: { points: number; transaction: PointTransaction }) => {
       setState(prev => ({
         ...prev,
         balance: prev.balance ? {
@@ -486,13 +502,14 @@ export function useLoyaltyRedemption(options: UseLoyaltyRedemptionOptions = {}) 
         } : null,
       }));
 
-      // Add to history
-      setPointHistory(prev => [data.transaction, ...prev]);
-    });
+      // Add to history with size limit
+      setPointHistory(prev => {
+        const updated = [data.transaction, ...prev];
+        return updated.length > MAX_POINT_HISTORY ? updated.slice(0, MAX_POINT_HISTORY) : updated;
+      });
+    };
 
-    // Listen for tier updates
-    socket.on('loyalty:tierUpdated', (data: { tier: string; benefits: any[] }) => {
-
+    socketCallbacksRef.current.onTierUpdated = (data: { tier: string; benefits: any[] }) => {
       setState(prev => ({
         ...prev,
         balance: prev.balance ? {
@@ -500,30 +517,44 @@ export function useLoyaltyRedemption(options: UseLoyaltyRedemptionOptions = {}) 
           tier: data.tier as any,
         } : null,
       }));
-    });
+    };
 
-    // Listen for reward updates
-    socket.on('loyalty:rewardAvailable', (reward: RewardItem) => {
+    socketCallbacksRef.current.onRewardAvailable = (reward: RewardItem) => {
+      setState(prev => {
+        const updatedRewards = [reward, ...prev.rewards];
+        return {
+          ...prev,
+          rewards: updatedRewards.length > MAX_REWARDS ? updatedRewards.slice(0, MAX_REWARDS) : updatedRewards,
+        };
+      });
+    };
 
-      setState(prev => ({
-        ...prev,
-        rewards: [reward, ...prev.rewards],
-      }));
-    });
-
-    // Listen for challenge completion
-    socket.on('loyalty:challengeCompleted', (challenge: PointChallenge) => {
-
+    socketCallbacksRef.current.onChallengeCompleted = (challenge: PointChallenge) => {
       setChallenges(prev =>
         prev.map(c => (c._id === challenge._id ? challenge : c))
       );
-    });
+    };
+
+    // Subscribe with stored callbacks
+    socket.on('loyalty:pointsUpdated', socketCallbacksRef.current.onPointsUpdated);
+    socket.on('loyalty:tierUpdated', socketCallbacksRef.current.onTierUpdated);
+    socket.on('loyalty:rewardAvailable', socketCallbacksRef.current.onRewardAvailable);
+    socket.on('loyalty:challengeCompleted', socketCallbacksRef.current.onChallengeCompleted);
 
     return () => {
-      socket.off('loyalty:pointsUpdated');
-      socket.off('loyalty:tierUpdated');
-      socket.off('loyalty:rewardAvailable');
-      socket.off('loyalty:challengeCompleted');
+      // Cleanup with exact callback references
+      if (socketCallbacksRef.current.onPointsUpdated) {
+        socket.off('loyalty:pointsUpdated', socketCallbacksRef.current.onPointsUpdated);
+      }
+      if (socketCallbacksRef.current.onTierUpdated) {
+        socket.off('loyalty:tierUpdated', socketCallbacksRef.current.onTierUpdated);
+      }
+      if (socketCallbacksRef.current.onRewardAvailable) {
+        socket.off('loyalty:rewardAvailable', socketCallbacksRef.current.onRewardAvailable);
+      }
+      if (socketCallbacksRef.current.onChallengeCompleted) {
+        socket.off('loyalty:challengeCompleted', socketCallbacksRef.current.onChallengeCompleted);
+      }
     };
   }, [socket, enableRealTimeUpdates]);
 

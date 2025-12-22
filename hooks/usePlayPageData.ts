@@ -15,6 +15,9 @@ import realVideosApi from '@/services/realVideosApi';
 import { transformVideosToUGC, getFeaturedVideo } from '@/utils/videoTransformers';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Maximum videos to keep in memory to prevent memory leaks
+const MAX_VIDEOS_IN_MEMORY = 60;
+
 const initialState: PlayPageState = {
   featuredVideo: undefined,
   merchantVideos: [],
@@ -90,10 +93,16 @@ export function usePlayPageData(): UsePlayPageData {
         const featured = getFeaturedVideo(response.data.videos, user?.id);
 
         setState(prev => {
-          // On first page, replace all videos; on subsequent pages, append
-          const allVideos = page === 1
+          // On first page, replace all videos; on subsequent pages, append with limit
+          let allVideos = page === 1
             ? videos
             : [...prev.allVideos, ...videos];
+
+          // Limit total videos in memory to prevent memory leaks
+          if (allVideos.length > MAX_VIDEOS_IN_MEMORY) {
+            console.log(`⚠️ [PlayPage] Limiting videos from ${allVideos.length} to ${MAX_VIDEOS_IN_MEMORY}`);
+            allVideos = allVideos.slice(-MAX_VIDEOS_IN_MEMORY);
+          }
 
           // Filter videos by contentType for the 3 main sections
           const merchantVideos = allVideos.filter(v => v.contentType === 'merchant');
@@ -110,7 +119,7 @@ export function usePlayPageData(): UsePlayPageData {
             merchantVideos,
             articleVideos,
             ugcVideos,
-            trendingVideos: category === 'trending_me' ? videos : prev.trendingVideos,
+            trendingVideos: category === 'trending_me' ? videos.slice(0, 20) : prev.trendingVideos,
             hasMoreVideos: response.data.pagination.hasNext,
             currentPage: page,
             loading: false

@@ -31,6 +31,11 @@ import {
 /**
  * Navigation Service Implementation
  */
+// Limits to prevent memory leaks
+const MAX_GUARDS = 20;
+const MAX_LISTENERS_PER_EVENT = 50;
+const MAX_QUEUE_SIZE = 20;
+
 class NavigationService implements INavigationService {
   private router: Router | null = null;
   private guards: NavigationGuard[] = [];
@@ -308,6 +313,11 @@ class NavigationService implements INavigationService {
    * Add navigation guard
    */
   addGuard(guard: NavigationGuard): void {
+    // Limit guards to prevent memory leak
+    if (this.guards.length >= MAX_GUARDS) {
+      console.warn('[NavigationService] Max guards reached, removing oldest');
+      this.guards.shift();
+    }
     this.guards.push(guard);
   }
 
@@ -322,6 +332,13 @@ class NavigationService implements INavigationService {
   }
 
   /**
+   * Remove all navigation guards
+   */
+  removeAllGuards(): void {
+    this.guards = [];
+  }
+
+  /**
    * Add event listener
    */
   addEventListener(
@@ -331,7 +348,29 @@ class NavigationService implements INavigationService {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
-    this.listeners.get(event)!.add(handler);
+    const handlers = this.listeners.get(event)!;
+
+    // Limit listeners per event to prevent memory leak
+    if (handlers.size >= MAX_LISTENERS_PER_EVENT) {
+      console.warn(`[NavigationService] Max listeners reached for ${event}, clearing old listeners`);
+      const handlersArray = Array.from(handlers);
+      handlers.clear();
+      // Keep the most recent half
+      handlersArray.slice(-MAX_LISTENERS_PER_EVENT / 2).forEach(h => handlers.add(h));
+    }
+
+    handlers.add(handler);
+  }
+
+  /**
+   * Remove all listeners for an event
+   */
+  removeAllListeners(event?: NavigationEvent): void {
+    if (event) {
+      this.listeners.delete(event);
+    } else {
+      this.listeners.clear();
+    }
   }
 
   /**
@@ -355,6 +394,13 @@ class NavigationService implements INavigationService {
     options: NavigationOptions = {},
     priority: number = 0
   ): string {
+    // Limit queue size to prevent memory leak
+    if (this.navigationQueue.length >= MAX_QUEUE_SIZE) {
+      console.warn('[NavigationService] Max queue size reached, removing oldest low-priority item');
+      // Remove the lowest priority item at the end
+      this.navigationQueue.pop();
+    }
+
     const id = `nav_${Date.now()}_${Math.random()}`;
     const item: NavigationQueueItem = {
       id,

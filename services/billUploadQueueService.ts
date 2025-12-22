@@ -936,12 +936,30 @@ class BillUploadQueueService extends EventEmitter {
 }
 
 // ============================================================================
-// Singleton Export
+// Singleton Export using globalThis to persist across SSR module re-evaluations
 // ============================================================================
 
-export const billUploadQueueService = new BillUploadQueueService();
+const BILL_UPLOAD_QUEUE_SERVICE_KEY = '__rezBillUploadQueueService__';
 
-// Auto-initialize on import
-billUploadQueueService.initialize().catch(error => {
-  console.error('[BillUploadQueue] Auto-initialization failed:', error);
-});
+function getBillUploadQueueService(): BillUploadQueueService {
+  // Use globalThis to persist across module re-evaluations in SSR
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[BILL_UPLOAD_QUEUE_SERVICE_KEY]) {
+      const instance = new BillUploadQueueService();
+      // Auto-initialize only on first creation
+      instance.initialize().catch(error => {
+        console.error('[BillUploadQueue] Auto-initialization failed:', error);
+      });
+      (globalThis as any)[BILL_UPLOAD_QUEUE_SERVICE_KEY] = instance;
+    }
+    return (globalThis as any)[BILL_UPLOAD_QUEUE_SERVICE_KEY];
+  }
+  // Fallback for environments without globalThis
+  const instance = new BillUploadQueueService();
+  instance.initialize().catch(error => {
+    console.error('[BillUploadQueue] Auto-initialization failed:', error);
+  });
+  return instance;
+}
+
+export const billUploadQueueService = getBillUploadQueueService();

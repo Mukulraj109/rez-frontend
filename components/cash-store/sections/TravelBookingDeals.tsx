@@ -57,7 +57,7 @@ const TravelCard: React.FC<{
     ]).start();
 
     // Floating icon animation
-    Animated.loop(
+    const floatLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(iconFloatAnim, {
           toValue: -4,
@@ -70,7 +70,13 @@ const TravelCard: React.FC<{
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    floatLoop.start();
+
+    // Cleanup: stop animation on unmount
+    return () => {
+      floatLoop.stop();
+    };
   }, [index]);
 
   const handlePressIn = () => {

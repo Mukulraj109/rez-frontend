@@ -465,5 +465,15 @@ class WebVitalsService {
 // Singleton Instance
 // ============================================================================
 
-export const webVitalsService = new WebVitalsService();
+// Singleton pattern to prevent re-initialization on SSR/web navigation
+let webVitalsServiceInstance: WebVitalsService | null = null;
+
+function getWebVitalsService(): WebVitalsService {
+  if (!webVitalsServiceInstance) {
+    webVitalsServiceInstance = new WebVitalsService();
+  }
+  return webVitalsServiceInstance;
+}
+
+export const webVitalsService = getWebVitalsService();
 export default webVitalsService;

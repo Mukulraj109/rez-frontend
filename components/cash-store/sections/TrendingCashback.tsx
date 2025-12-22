@@ -66,7 +66,7 @@ const TrendingDealCard: React.FC<{
     ]).start();
 
     // Pulse animation for live indicator
-    Animated.loop(
+    const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.2,
@@ -79,10 +79,11 @@ const TrendingDealCard: React.FC<{
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    pulseLoop.start();
 
     // Coin bounce animation
-    Animated.loop(
+    const coinLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(coinBounceAnim, {
           toValue: -3,
@@ -95,14 +96,20 @@ const TrendingDealCard: React.FC<{
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    coinLoop.start();
 
     // Update timer
     const interval = setInterval(() => {
       setTimeRemaining(getTimeRemainingMs(deal.validUntil));
     }, 1000); // Update every second
 
-    return () => clearInterval(interval);
+    // Cleanup: stop all animations and interval
+    return () => {
+      clearInterval(interval);
+      pulseLoop.stop();
+      coinLoop.stop();
+    };
   }, [deal.validUntil, index]);
 
   const handlePressIn = () => {

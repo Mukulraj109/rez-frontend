@@ -108,10 +108,20 @@ export default function RootLayout() {
   });
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const [cacheWarmed, setCacheWarmed] = useState(false);
+  const netInfoUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Initialize app services on mount
   useEffect(() => {
     initializeApp();
+
+    // Cleanup on unmount
+    return () => {
+      if (netInfoUnsubscribeRef.current) {
+        console.log('🧹 [APP] Cleaning up network listener');
+        netInfoUnsubscribeRef.current();
+        netInfoUnsubscribeRef.current = null;
+      }
+    };
   }, []);
 
   // Monitor app state for cache warming
@@ -194,7 +204,13 @@ export default function RootLayout() {
       console.log('✅ [APP] Cache warming service initialized');
 
       // 5. Setup Network Monitoring
-      const unsubscribe = NetInfo.addEventListener(state => {
+      // Clean up existing listener if any
+      if (netInfoUnsubscribeRef.current) {
+        netInfoUnsubscribeRef.current();
+        netInfoUnsubscribeRef.current = null;
+      }
+
+      netInfoUnsubscribeRef.current = NetInfo.addEventListener(state => {
         const isConnected = state.isConnected ?? false;
         console.log(`📡 [APP] Network status changed: ${isConnected ? 'ONLINE' : 'OFFLINE'}`);
 
@@ -218,12 +234,6 @@ export default function RootLayout() {
 
       console.log('✅ [APP] Network monitoring initialized');
       console.log('🎉 [APP] Application initialization complete!');
-
-      // Return cleanup function
-      return () => {
-        console.log('🧹 [APP] Cleaning up network listener');
-        unsubscribe();
-      };
     } catch (error) {
       console.error('❌ [APP] Failed to initialize app:', error);
       errorReporter.captureError(

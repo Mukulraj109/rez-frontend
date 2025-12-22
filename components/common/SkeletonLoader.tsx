@@ -20,7 +20,7 @@ export default function SkeletonLoader({
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
+    const shimmerLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(shimmerAnim, {
           toValue: 1,
@@ -33,7 +33,13 @@ export default function SkeletonLoader({
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    shimmerLoop.start();
+
+    // Cleanup: stop animation on unmount to prevent memory leak
+    return () => {
+      shimmerLoop.stop();
+    };
   }, []);
 
   const translateX = shimmerAnim.interpolate({

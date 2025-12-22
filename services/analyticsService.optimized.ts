@@ -88,6 +88,9 @@ class OptimizedAnalyticsService {
     avgBatchSize: 0,
   };
 
+  // NetInfo unsubscribe function
+  private netInfoUnsubscribe: (() => void) | null = null;
+
   constructor(config?: AnalyticsConfig) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.sessionId = this.generateSessionId();
@@ -116,7 +119,13 @@ class OptimizedAnalyticsService {
    * Setup network status listener
    */
   private setupNetworkListener(): void {
-    NetInfo.addEventListener(state => {
+    // Cleanup existing listener before adding new one
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
+    }
+
+    this.netInfoUnsubscribe = NetInfo.addEventListener(state => {
       const wasOffline = !this.isOnline;
       this.isOnline = state.isConnected || false;
 
@@ -584,6 +593,12 @@ class OptimizedAnalyticsService {
     // Stop auto-flush
     this.stopAutoFlush();
 
+    // Cleanup network listener
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
+    }
+
     // Flush remaining events
     await this.flush();
 
@@ -595,5 +610,18 @@ class OptimizedAnalyticsService {
 // Singleton Instance
 // ============================================================================
 
-export const optimizedAnalyticsService = new OptimizedAnalyticsService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const OPTIMIZED_ANALYTICS_SERVICE_KEY = '__rezOptimizedAnalyticsService__';
+
+function getOptimizedAnalyticsService(): OptimizedAnalyticsService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[OPTIMIZED_ANALYTICS_SERVICE_KEY]) {
+      (globalThis as any)[OPTIMIZED_ANALYTICS_SERVICE_KEY] = new OptimizedAnalyticsService();
+    }
+    return (globalThis as any)[OPTIMIZED_ANALYTICS_SERVICE_KEY];
+  }
+  return new OptimizedAnalyticsService();
+}
+
+export const optimizedAnalyticsService = getOptimizedAnalyticsService();
 export default optimizedAnalyticsService;

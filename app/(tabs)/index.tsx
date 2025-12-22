@@ -64,6 +64,7 @@ import SocialProofSection from '@/components/homepage/SocialProofSection';
 import { DiscoverAndShopSection } from '@/components/discover';
 import MallSectionContainer from '@/components/mall/MallSectionContainer';
 import CashStoreSectionContainer from '@/components/cash-store/CashStoreSectionContainer';
+import { PriveSectionContainer, PriveHeroBanner } from '@/components/prive';
 import CashbackSummaryHeaderCard from '@/components/cash-store/sections/CashbackSummaryHeaderCard';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import { useCashStoreSection } from '@/hooks/useCashStoreSection';
@@ -156,7 +157,15 @@ export default function HomeScreen() {
   const { state: cartState, refreshCart } = useCart();
   const { state: authState, actions: authActions } = useAuth();
   const { state: subscriptionState, actions: subscriptionActions } = useSubscription();
-  const { setActiveHomeTab } = useHomeTab(); // Get context setter for bottom nav
+  // Get mode context for 4-mode system
+  const {
+    activeTab,
+    setActiveTab,
+    priveEligibility,
+    isPriveEligible,
+    activeHomeTab,
+    setActiveHomeTab,
+  } = useHomeTab();
   const [refreshing, setRefreshing] = React.useState(false);
   const [showDetailedLocation, setShowDetailedLocation] = React.useState(false);
   const [userPoints, setUserPoints] = React.useState(0);
@@ -167,18 +176,16 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = React.useState('for-you'); // Category tab state
   const [homeCategories, setHomeCategories] = React.useState<any[]>([]); // Homepage category icons
   const [categoriesLoading, setCategoriesLoading] = React.useState(true);
-  const [activeTab, setActiveTabLocal] = React.useState<TabId>('rez'); // Home tab bar state
+  // activeTab now comes directly from useHomeTab() context
   const [voucherCount, setVoucherCount] = React.useState(0); // Active voucher count
   const [newOffersCount, setNewOffersCount] = React.useState(0); // New offers count
   const [isLocationModalVisible, setIsLocationModalVisible] = React.useState(false); // Location picker modal
   const [totalSaved, setTotalSaved] = React.useState(0); // Total savings (cashback + refunds)
 
-  // Sync active tab with context for bottom navigation
-  const setActiveTab = React.useCallback((tab: TabId) => {
-    setActiveTabLocal(tab);
-    // Update context so BottomNavigation knows which tabs to show
-    setActiveHomeTab(tab as 'rez' | 'rez-mall' | 'cash-store');
-  }, [setActiveHomeTab]);
+  // Handler for tab changes
+  const handleTabChange = React.useCallback((tab: TabId) => {
+    setActiveTab(tab);
+  }, [setActiveTab]);
 
   // Get current location hook for editable location
   const { currentLocation, updateLocation: updateUserLocation } = useCurrentLocation();
@@ -193,7 +200,7 @@ export default function HomeScreen() {
   const {
     cashbackSummary: cashStoreSummary,
     isLoading: isCashStoreLoading
-  } = useCashStoreSection({ autoFetch: activeTab === 'cash-store' });
+  } = useCashStoreSection({ autoFetch: activeTab === 'cash' });
 
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
@@ -704,9 +711,11 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#00C06A" colors={['#00C06A']} />
         }
       >
-      {/* Header - Light Green gradient (stays same) */}
+      {/* Header - Dynamic gradient based on active tab */}
       <LinearGradient
-        colors={['#86EFAC', '#A7F3D0', '#D1FAE5', '#ECFDF5']}
+        colors={activeTab === 'prive'
+          ? ['#1F2937', '#1F2937', '#111827', '#111827']
+          : ['#86EFAC', '#A7F3D0', '#D1FAE5', '#ECFDF5']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={viewStyles.header}
@@ -737,7 +746,10 @@ export default function HomeScreen() {
             accessibilityHint={showDetailedLocation ? "Tap to collapse location details" : "Tap to expand location details"}
             accessibilityState={{ expanded: showDetailedLocation }}
           >
-            <View style={viewStyles.locationIconWrapper}>
+            <View style={[
+              viewStyles.locationIconWrapper,
+              activeTab === 'prive' && { backgroundColor: '#C9A962' }
+            ]}>
               <Ionicons name="location" size={14} color="#FFFFFF" />
             </View>
             <LocationDisplay
@@ -746,13 +758,13 @@ export default function HomeScreen() {
               showLastUpdated={false}
               showRefreshButton={false}
               style={viewStyles.locationDisplay}
-              textStyle={textStyles.locationText}
+              textStyle={activeTab === 'prive' ? { color: '#FFFFFF', fontSize: 14, fontWeight: '600' } : textStyles.locationText}
             />
             <View style={viewStyles.locationChevron}>
               <Ionicons
                 name={showDetailedLocation ? "chevron-up" : "chevron-down"}
                 size={14}
-                color="#666"
+                color={activeTab === 'prive' ? '#C9A962' : '#666'}
               />
             </View>
           </Pressable>
@@ -769,14 +781,17 @@ export default function HomeScreen() {
                 }
               }}
               activeOpacity={0.7}
-              style={viewStyles.headerCoinContainer}
+              style={[
+                viewStyles.headerCoinContainer,
+                activeTab === 'prive' && { backgroundColor: 'rgba(201, 169, 98, 0.2)', borderColor: 'rgba(201, 169, 98, 0.4)' }
+              ]}
             >
               <Image
                 source={require('@/assets/images/rez-coin.png')}
                 style={viewStyles.headerCoinImage}
                 resizeMode="contain"
               />
-              <Text style={viewStyles.headerCoinText}>{userPoints}</Text>
+              <Text style={[viewStyles.headerCoinText, activeTab === 'prive' && { color: '#C9A962' }]}>{userPoints}</Text>
             </TouchableOpacity>
 
             {/* What's New Badge */}
@@ -800,7 +815,7 @@ export default function HomeScreen() {
               accessibilityHint="Double tap to view your shopping cart"
               style={viewStyles.headerIconButton}
             >
-              <Ionicons name="cart-outline" size={24} color="#1a1a1a" />
+              <Ionicons name="cart-outline" size={24} color={activeTab === 'prive' ? '#FFFFFF' : '#1a1a1a'} />
               {cartState.totalItems > 0 && (
                 <LinearGradient
                   colors={['#FF6B6B', '#FF5252']}
@@ -827,8 +842,14 @@ export default function HomeScreen() {
               style={viewStyles.profileSavingsContainer}
             >
               {/* Text pill - on left */}
-              <View style={viewStyles.savedTextPill}>
-                <Text style={viewStyles.savedText}>
+              <View style={[
+                viewStyles.savedTextPill,
+                activeTab === 'prive' && { backgroundColor: 'rgba(201, 169, 98, 0.25)' }
+              ]}>
+                <Text style={[
+                  viewStyles.savedText,
+                  activeTab === 'prive' && { color: '#C9A962' }
+                ]}>
                   ₹{totalSaved} saved
                 </Text>
               </View>
@@ -903,19 +924,19 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
-        {/* Hero Banner - Dynamic content based on user - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <HeroBanner totalSaved={totalSaved} />}
+        {/* Hero Banner - Dynamic content based on user - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <HeroBanner totalSaved={totalSaved} />}
 
-        {/* Mall Hero Banner - Auto-scrolling carousel for "rez-mall" tab */}
-        {activeTab === 'rez-mall' && (
+        {/* Mall Hero Banner - Auto-scrolling carousel for "mall" tab */}
+        {activeTab === 'mall' && (
           <MallHeroBanner
             banners={mallHeroBanners}
             isLoading={isMallLoading && !mallHeroBanners.length}
           />
         )}
 
-        {/* Cash Store Header - Cashback Summary Card for "cash-store" tab */}
-        {activeTab === 'cash-store' && (
+        {/* Cash Store Header - Cashback Summary Card for "cash" tab */}
+        {activeTab === 'cash' && (
           <CashbackSummaryHeaderCard
             total={cashStoreSummary.total}
             pending={cashStoreSummary.pending}
@@ -925,12 +946,19 @@ export default function HomeScreen() {
           />
         )}
 
+        {/* Privé Hero Banner - Premium carousel for "prive" tab */}
+        {activeTab === 'prive' && (
+          <PriveHeroBanner />
+        )}
+
         </LinearGradient>
 
-      {/* Home Tab Section - Outside gradient */}
+      {/* Home Tab Section with 4 Tabs - Outside gradient */}
       <HomeTabSection
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
+        isPriveEligible={isPriveEligible}
+        onPriveLockedPress={() => router.push('/prive/eligibility')}
         onSearchPress={handleSearchPress}
         coinBalance={userPoints}
         onCoinPress={() => {
@@ -947,11 +975,12 @@ export default function HomeScreen() {
       {/* Content */}
       <View style={[
         viewStyles.content,
-        activeTab === 'rez-mall' && viewStyles.mallContent,
-        activeTab === 'cash-store' && viewStyles.cashStoreContent
+        activeTab === 'mall' && viewStyles.mallContent,
+        activeTab === 'cash' && viewStyles.cashStoreContent,
+        activeTab === 'prive' && viewStyles.priveContent
       ]}>
-        {/* Quick Actions Section - Voucher, Wallet, Offers, Store - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && (
+        {/* Quick Actions Section - Voucher, Wallet, Offers, Store - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && (
           <QuickActionsSection
             voucherCount={voucherCount}
             walletBalance={userPoints}
@@ -959,14 +988,14 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* How ReZ Works Card - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <HowRezWorksCard />}
+        {/* How ReZ Works Card - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <HowRezWorksCard />}
 
-        {/* Exclusive ReZ Rewards Section - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <ExclusiveRewardsSection />}
+        {/* Exclusive ReZ Rewards Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <ExclusiveRewardsSection />}
 
-        {/* Recently Viewed Section - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && recentlyViewedItems.length > 0 && (
+        {/* Recently Viewed Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && recentlyViewedItems.length > 0 && (
           <RecentlyViewedSection
             items={recentlyViewedItems}
             isLoading={isLoadingRecentlyViewed}
@@ -974,14 +1003,14 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* Going Out Section - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && (
+        {/* Going Out Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && (
           <GoingOutSection />
         )}
 
-        {/* Just for you Section - Only show when "rez" tab is active */}
+        {/* Just for you Section - Only show when "near-u" tab is active */}
         {React.useMemo(() => {
-          if (activeTab !== 'rez') return null;
+          if (activeTab !== 'near-u') return null;
           const justForYouSection = state.sections.find(section => section.id === 'just_for_you');
           if (!justForYouSection || !justForYouSection.items || justForYouSection.items.length === 0) return null;
           return (
@@ -998,19 +1027,19 @@ export default function HomeScreen() {
           );
         }, [activeTab, state.sections, handleItemPress, actions, renderRecommendationCard])}
 
-        {/* Home Delivery Section - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && (
+        {/* Home Delivery Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && (
           <HomeDeliverySection />
         )}
 
-        {/* Service Section - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && (
+        {/* Service Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && (
           <ServiceSection />
         )}
 
-        {/* Other Sections from state (excluding just_for_you) - Progressive loading with memoization - Only show when "rez" tab is active */}
+        {/* Other Sections from state (excluding just_for_you) - Progressive loading with memoization - Only show when "near-u" tab is active */}
         {React.useMemo(() => {
-          if (activeTab !== 'rez') return null;
+          if (activeTab !== 'near-u') return null;
           return state.sections
             .filter(section => section.id !== 'just_for_you' && section.items && section.items.length > 0)
             .map(section => (
@@ -1047,23 +1076,23 @@ export default function HomeScreen() {
             ));
         }, [activeTab, state.sections, handleItemPress, actions, renderEventCard, renderRecommendationCard, renderStoreCard, renderBrandedStoreCard, renderProductCard])}
 
-        {/* Store Discovery Section - Today's Top Stores & Popular Near You - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <StoreDiscoverySection limit={10} />}
+        {/* Store Discovery Section - Today's Top Stores & Popular Near You - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <StoreDiscoverySection limit={10} />}
 
-        {/* Promotional Banner - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <PromoBanner />}
+        {/* Promotional Banner - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <PromoBanner />}
 
-        {/* Best Discount Categories Section - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <BestDiscountSection title="Best Discount" limit={10} />}
+        {/* Best Discount Categories Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <BestDiscountSection title="Best Discount" limit={10} />}
 
-        {/* Best Seller Categories Section - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <BestSellerSection title="Best Seller" limit={10} />}
+        {/* Best Seller Categories Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <BestSellerSection title="Best Seller" limit={10} />}
 
-        {/* Popular Products Section - Shows products with highest order count - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <PopularProductsSection title="Popular" limit={10} />}
+        {/* Popular Products Section - Shows products with highest order count - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <PopularProductsSection title="Popular" limit={10} />}
 
-        {/* Discover & Shop Section - UGC Reels, Posts, Articles, Images with product tagging - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && (
+        {/* Discover & Shop Section - UGC Reels, Posts, Articles, Images with product tagging - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && (
           <View style={{ marginHorizontal: -20, marginTop: 16 }}>
             <DiscoverAndShopSection
               showHeader={true}
@@ -1074,48 +1103,53 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* In Your Area Section - Shows products from nearby stores - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <NearbyProductsSection title="In Your Area" limit={10} radius={10} />}
+        {/* In Your Area Section - Shows products from nearby stores - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <NearbyProductsSection title="In Your Area" limit={10} radius={10} />}
 
-        {/* Globe Banner - Best Deals on Internet - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <GlobeBanner />}
+        {/* Globe Banner - Best Deals on Internet - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <GlobeBanner />}
 
-        {/* Hot Deals Section - Shows products with hot-deal tag or high cashback - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <HotDealsSection title="Hot deals" limit={10} />}
+        {/* Hot Deals Section - Shows products with hot-deal tag or high cashback - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <HotDealsSection title="Hot deals" limit={10} />}
 
-        {/* Featured Category Sections - Dynamic sections by category - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <FeaturedCategoriesContainer productsPerCategory={10} />}
+        {/* Featured Category Sections - Dynamic sections by category - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <FeaturedCategoriesContainer productsPerCategory={10} />}
 
-        {/* Feature Highlights - Lazy Loaded (moved to bottom) - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && (
+        {/* Feature Highlights - Lazy Loaded (moved to bottom) - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && (
           <Suspense fallback={<BelowFoldFallback />}>
             <FeatureHighlights />
           </Suspense>
         )}
 
-        {/* Wallet Snapshot Card - Shows coin balance, cashback earned, and quick actions - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <WalletSnapshotCard />}
+        {/* Wallet Snapshot Card - Shows coin balance, cashback earned, and quick actions - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <WalletSnapshotCard />}
 
-        {/* Zero EMI Card - Promotional card for 0% EMI payment option - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <ZeroEMICard />}
+        {/* Zero EMI Card - Promotional card for 0% EMI payment option - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <ZeroEMICard />}
 
-        {/* Store Experiences Section - 60-min delivery, ₹1 store, luxury, organic - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <StoreExperiencesSection />}
+        {/* Store Experiences Section - 60-min delivery, ₹1 store, luxury, organic - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <StoreExperiencesSection />}
 
-        {/* Play & Earn More Section - Daily spin, challenges, streak rewards, surprise drops - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <PlayAndEarnSection />}
+        {/* Play & Earn More Section - Daily spin, challenges, streak rewards, surprise drops - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <PlayAndEarnSection />}
 
-        {/* Social Proof Section - People near you are earning - Only show when "rez" tab is active */}
-        {activeTab === 'rez' && <SocialProofSection />}
+        {/* Social Proof Section - People near you are earning - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <SocialProofSection />}
 
-        {/* ReZ Mall Tab Content */}
-        {activeTab === 'rez-mall' && (
+        {/* Mall Tab Content */}
+        {activeTab === 'mall' && (
           <MallSectionContainer />
         )}
 
         {/* Cash Store Tab Content */}
-        {activeTab === 'cash-store' && (
+        {activeTab === 'cash' && (
           <CashStoreSectionContainer />
+        )}
+
+        {/* Privé Tab Content */}
+        {activeTab === 'prive' && (
+          <PriveSectionContainer />
         )}
       </View>
 
@@ -1142,13 +1176,16 @@ export default function HomeScreen() {
 
       {/* Sticky Search Header with Glass Effect - Rendered after ScrollView to avoid blocking touches */}
       {/* showThreshold should be high enough so sticky header only appears after category section scrolls out of view */}
-      <StickySearchHeader
-        scrollY={scrollY}
-        showThreshold={580}
-        onSearchPress={handleSearchPress}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-      />
+      {/* Hide for Privé tab as it has its own dark theme */}
+      {activeTab !== 'prive' && (
+        <StickySearchHeader
+          scrollY={scrollY}
+          showThreshold={580}
+          onSearchPress={handleSearchPress}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+        />
+      )}
     </View>
   );
 }
@@ -1684,6 +1721,11 @@ const viewStyles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   cashStoreContent: {
+    padding: 0,
+    paddingBottom: 0,
+    backgroundColor: 'transparent',
+  },
+  priveContent: {
     padding: 0,
     paddingBottom: 0,
     backgroundColor: 'transparent',

@@ -693,4 +693,17 @@ class AsyncStorageService {
   }
 }
 
-export default new AsyncStorageService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const ASYNC_STORAGE_SERVICE_KEY = '__rezAsyncStorageService__';
+
+function getAsyncStorageService(): AsyncStorageService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[ASYNC_STORAGE_SERVICE_KEY]) {
+      (globalThis as any)[ASYNC_STORAGE_SERVICE_KEY] = new AsyncStorageService();
+    }
+    return (globalThis as any)[ASYNC_STORAGE_SERVICE_KEY];
+  }
+  return new AsyncStorageService();
+}
+
+export default getAsyncStorageService();

@@ -520,5 +520,18 @@ class ImageCacheService {
   }
 }
 
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const IMAGE_CACHE_SERVICE_KEY = '__rezImageCacheService__';
+
+function getImageCacheService(): ImageCacheService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[IMAGE_CACHE_SERVICE_KEY]) {
+      (globalThis as any)[IMAGE_CACHE_SERVICE_KEY] = new ImageCacheService();
+    }
+    return (globalThis as any)[IMAGE_CACHE_SERVICE_KEY];
+  }
+  return new ImageCacheService();
+}
+
 // Export singleton instance
-export default new ImageCacheService();
+export default getImageCacheService();

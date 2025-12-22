@@ -186,4 +186,17 @@ class RingSizeApiService {
   }
 }
 
-export default new RingSizeApiService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const RING_SIZE_API_SERVICE_KEY = '__rezRingSizeApiService__';
+
+function getRingSizeApiService(): RingSizeApiService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[RING_SIZE_API_SERVICE_KEY]) {
+      (globalThis as any)[RING_SIZE_API_SERVICE_KEY] = new RingSizeApiService();
+    }
+    return (globalThis as any)[RING_SIZE_API_SERVICE_KEY];
+  }
+  return new RingSizeApiService();
+}
+
+export default getRingSizeApiService();

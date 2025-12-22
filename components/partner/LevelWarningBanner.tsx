@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -40,6 +40,7 @@ export default function LevelWarningBanner({
   const [isVisible, setIsVisible] = useState(true);
   const slideAnim = useState(new Animated.Value(0))[0];
   const pulseAnim = useState(new Animated.Value(1))[0];
+  const pulseAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // Determine severity
   const isCritical = daysRemaining <= 3;
@@ -55,7 +56,7 @@ export default function LevelWarningBanner({
 
     // Pulse animation for critical warnings
     if (isCritical) {
-      Animated.loop(
+      pulseAnimationRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.02,
@@ -68,8 +69,18 @@ export default function LevelWarningBanner({
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      pulseAnimationRef.current.start();
     }
+
+    // Cleanup: stop animation on unmount or when isCritical changes
+    return () => {
+      if (pulseAnimationRef.current) {
+        pulseAnimationRef.current.stop();
+        pulseAnimationRef.current = null;
+      }
+      pulseAnim.setValue(1);
+    };
   }, [isCritical]);
 
   const handleDismiss = () => {

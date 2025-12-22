@@ -89,6 +89,8 @@ class ErrorTrackingService {
   private networkStatus: string = 'unknown';
   private isEnabled = true;
   private errorListeners: ((error: TrackedError) => void)[] = [];
+  private netInfoUnsubscribe: (() => void) | null = null;
+  private unhandledRejectionHandler: ((event: PromiseRejectionEvent) => void) | null = null;
 
   constructor() {
     this.sessionId = this.generateSessionId();
@@ -108,7 +110,13 @@ class ErrorTrackingService {
    * Setup network status listener
    */
   private setupNetworkListener(): void {
-    NetInfo.addEventListener(state => {
+    // Cleanup existing listener before adding new one
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
+    }
+
+    this.netInfoUnsubscribe = NetInfo.addEventListener(state => {
       this.networkStatus = state.isConnected
         ? state.type || 'unknown'
         : 'offline';
@@ -136,7 +144,13 @@ class ErrorTrackingService {
 
     // Web unhandled rejection handler
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.addEventListener('unhandledrejection', (event) => {
+      // Cleanup existing handler before adding new one
+      if (this.unhandledRejectionHandler) {
+        window.removeEventListener('unhandledrejection', this.unhandledRejectionHandler);
+        this.unhandledRejectionHandler = null;
+      }
+
+      this.unhandledRejectionHandler = (event: PromiseRejectionEvent) => {
         this.trackError(
           new Error(event.reason?.message || 'Unhandled Promise Rejection'),
           'global',
@@ -145,7 +159,9 @@ class ErrorTrackingService {
             reason: event.reason,
           }
         );
-      });
+      };
+
+      window.addEventListener('unhandledrejection', this.unhandledRejectionHandler);
     }
   }
 
@@ -655,6 +671,28 @@ class ErrorTrackingService {
   }
 
   /**
+   * Cleanup and destroy service
+   */
+  destroy(): void {
+    // Cleanup NetInfo listener
+    if (this.netInfoUnsubscribe) {
+      this.netInfoUnsubscribe();
+      this.netInfoUnsubscribe = null;
+    }
+
+    // Cleanup window event listener
+    if (this.unhandledRejectionHandler && Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.removeEventListener('unhandledrejection', this.unhandledRejectionHandler);
+      this.unhandledRejectionHandler = null;
+    }
+
+    // Clear error listeners
+    this.errorListeners = [];
+
+    console.log('[ErrorTracking] Service destroyed');
+  }
+
+  /**
    * Print error report
    */
   printReport(): void {
@@ -699,5 +737,15 @@ class ErrorTrackingService {
 // Singleton Instance
 // ============================================================================
 
-export const errorTrackingService = new ErrorTrackingService();
+// Singleton pattern to prevent re-initialization on SSR/web navigation
+let errorTrackingServiceInstance: ErrorTrackingService | null = null;
+
+function getErrorTrackingService(): ErrorTrackingService {
+  if (!errorTrackingServiceInstance) {
+    errorTrackingServiceInstance = new ErrorTrackingService();
+  }
+  return errorTrackingServiceInstance;
+}
+
+export const errorTrackingService = getErrorTrackingService();
 export default errorTrackingService;

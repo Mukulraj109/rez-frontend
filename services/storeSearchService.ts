@@ -1309,5 +1309,20 @@ class StoreSearchService {
   }
 }
 
-export const storeSearchService = new StoreSearchService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const STORE_SEARCH_SERVICE_KEY = '__rezStoreSearchService__';
+
+function getStoreSearchService(): StoreSearchService {
+  // Use globalThis to persist across module re-evaluations in SSR
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[STORE_SEARCH_SERVICE_KEY]) {
+      (globalThis as any)[STORE_SEARCH_SERVICE_KEY] = new StoreSearchService();
+    }
+    return (globalThis as any)[STORE_SEARCH_SERVICE_KEY];
+  }
+  // Fallback for environments without globalThis
+  return new StoreSearchService();
+}
+
+export const storeSearchService = getStoreSearchService();
 export default storeSearchService;

@@ -25,7 +25,7 @@ interface BottomNavigationProps {
 }
 
 // Curved background SVG - creates transparent navbar with semi-circle dip in center
-const CurvedBackground = () => {
+const CurvedBackground = ({ isPrive = false }: { isPrive?: boolean }) => {
   const width = SCREEN_WIDTH;
   const height = 70;
   const scale = width / 375; // Scale based on 375px design
@@ -44,14 +44,17 @@ const CurvedBackground = () => {
     Z
   `.trim();
 
+  // Privé dark theme: #1F2937 background with gold accent
+  const fillColor = isPrive ? 'rgba(31, 41, 55, 0.98)' : 'rgba(255, 255, 255, 0.92)';
+
   return (
-    <View style={curvedBgStyles.container} pointerEvents="none">
+    <View style={[curvedBgStyles.container, isPrive && curvedBgStyles.priveContainer]} pointerEvents="none">
       <Svg
         width={width}
         height={height}
         style={{ pointerEvents: 'none' } as any}
       >
-        <Path d={path} fill="rgba(255, 255, 255, 0.92)" />
+        <Path d={path} fill={fillColor} />
       </Svg>
     </View>
   );
@@ -82,6 +85,22 @@ const curvedBgStyles = StyleSheet.create({
       },
     }),
   },
+  priveContainer: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#C9A962',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        boxShadow: '0 -2px 8px rgba(201, 169, 98, 0.15)',
+      },
+    }),
+  },
 });
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
@@ -91,14 +110,17 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
   // Get active home tab from context (with fallback for when context is not available)
   let isRezMallActive = false;
   let isCashStoreActive = false;
+  let isPriveActive = false;
   try {
     const homeTabContext = useHomeTab();
     isRezMallActive = homeTabContext.isRezMallActive;
     isCashStoreActive = homeTabContext.isCashStoreActive;
+    isPriveActive = homeTabContext.isPriveActive;
   } catch {
     // Context not available, use default tabs
     isRezMallActive = false;
     isCashStoreActive = false;
+    isPriveActive = false;
   }
 
   // Hide bottom navigation on auth/onboarding pages and payment sub-flows
@@ -265,29 +287,35 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
   };
 
   // Render a regular tab item
-  const renderTab = (tab: { name: string; route: string; icon: string; isActive: boolean }, index?: number) => (
-    <TouchableOpacity
-      key={tab.name}
-      style={isCashStoreActive ? styles.cashStoreTab : styles.tab}
-      onPress={() => handleTabPress(tab.route)}
-      activeOpacity={0.7}
-      accessibilityLabel={`${tab.name} tab`}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: tab.isActive }}
-    >
-      <Ionicons
-        name={tab.icon as any}
-        size={24}
-        color={tab.isActive ? '#00C06A' : '#0F0F0F'}
-      />
-      <Text style={[
-        styles.tabLabelText,
-        { color: tab.isActive ? '#00C06A' : '#0F0F0F' }
-      ]}>
-        {tab.name}
-      </Text>
-    </TouchableOpacity>
-  );
+  const renderTab = (tab: { name: string; route: string; icon: string; isActive: boolean }, index?: number) => {
+    // Privé theme colors
+    const activeColor = isPriveActive ? '#C9A962' : '#00C06A';
+    const inactiveColor = isPriveActive ? '#A0A0A0' : '#0F0F0F';
+
+    return (
+      <TouchableOpacity
+        key={tab.name}
+        style={isCashStoreActive ? styles.cashStoreTab : styles.tab}
+        onPress={() => handleTabPress(tab.route)}
+        activeOpacity={0.7}
+        accessibilityLabel={`${tab.name} tab`}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: tab.isActive }}
+      >
+        <Ionicons
+          name={tab.icon as any}
+          size={24}
+          color={tab.isActive ? activeColor : inactiveColor}
+        />
+        <Text style={[
+          styles.tabLabelText,
+          { color: tab.isActive ? activeColor : inactiveColor }
+        ]}>
+          {tab.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   // =====================================================
   // CASH STORE LAYOUT - 4 tabs, no center floating button
@@ -423,8 +451,8 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
 
   return (
     <View style={[styles.container, style]} pointerEvents="box-none">
-      {/* Layer 1: Curved white background */}
-      <CurvedBackground />
+      {/* Layer 1: Curved background (dark for Privé) */}
+      <CurvedBackground isPrive={isPriveActive} />
 
       {/* Layer 2: Floating center button (above the curve) */}
       <View style={styles.floatingButtonContainer} pointerEvents="box-none">
@@ -435,7 +463,10 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
           accessibilityLabel={`${centerTab.name} tab`}
           accessibilityRole="tab"
         >
-          <View style={styles.floatingButtonCircle}>
+          <View style={[
+            styles.floatingButtonCircle,
+            isPriveActive && styles.floatingButtonCirclePrive
+          ]}>
             <Image
               source={payInStoreIcon}
               style={styles.payInStoreGif}
@@ -443,7 +474,10 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
             />
           </View>
         </TouchableOpacity>
-        <Text style={styles.floatingButtonLabel}>{centerTab.name}</Text>
+        <Text style={[
+          styles.floatingButtonLabel,
+          isPriveActive && styles.floatingButtonLabelPrive
+        ]}>{centerTab.name}</Text>
       </View>
 
       {/* Layer 3: Tab bar with left and right tabs */}
@@ -545,6 +579,17 @@ const styles = StyleSheet.create({
     color: '#666666',
     marginTop: 8,
     textAlign: 'center',
+  },
+
+  // Privé theme - gold border for floating button
+  floatingButtonCirclePrive: {
+    borderColor: '#C9A962',
+    backgroundColor: '#1F2937',
+  },
+
+  // Privé theme - gold label
+  floatingButtonLabelPrive: {
+    color: '#C9A962',
   },
 
   // Tab bar container

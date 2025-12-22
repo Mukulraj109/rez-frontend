@@ -64,6 +64,7 @@ class ImagePreloadService {
   private completedSet: Set<string> = new Set();
   private failedSet: Set<string> = new Set();
   private activePreloads: Map<string, Promise<void>> = new Map();
+  private networkUnsubscribe: (() => void) | null = null;
 
   // Configuration
   private maxConcurrentPreloads = 3;
@@ -88,7 +89,13 @@ class ImagePreloadService {
    * Initialize network quality listener
    */
   private initializeNetworkListener() {
-    NetInfo.addEventListener(state => {
+    // Clean up existing listener before adding new one
+    if (this.networkUnsubscribe) {
+      this.networkUnsubscribe();
+      this.networkUnsubscribe = null;
+    }
+
+    this.networkUnsubscribe = NetInfo.addEventListener(state => {
       const { type, isConnected } = state;
 
       if (!isConnected) {
@@ -115,6 +122,22 @@ class ImagePreloadService {
       this.adjustPreloadStrategy();
       this.resumePreloading();
     });
+  }
+
+  /**
+   * Destroy service and cleanup resources
+   */
+  destroy(): void {
+    if (this.networkUnsubscribe) {
+      this.networkUnsubscribe();
+      this.networkUnsubscribe = null;
+    }
+    this.preloadQueue.clear();
+    this.loadingSet.clear();
+    this.completedSet.clear();
+    this.failedSet.clear();
+    this.activePreloads.clear();
+    console.log('[ImagePreload] Service destroyed');
   }
 
   /**
@@ -477,5 +500,18 @@ class ImagePreloadService {
   }
 }
 
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const IMAGE_PRELOAD_SERVICE_KEY = '__rezImagePreloadService__';
+
+function getImagePreloadService(): ImagePreloadService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[IMAGE_PRELOAD_SERVICE_KEY]) {
+      (globalThis as any)[IMAGE_PRELOAD_SERVICE_KEY] = new ImagePreloadService();
+    }
+    return (globalThis as any)[IMAGE_PRELOAD_SERVICE_KEY];
+  }
+  return new ImagePreloadService();
+}
+
 // Export singleton instance
-export default new ImagePreloadService();
+export default getImagePreloadService();

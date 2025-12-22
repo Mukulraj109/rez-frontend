@@ -244,4 +244,17 @@ export class ShareContentGenerator {
   }
 }
 
-export default new ShareContentGenerator();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const SHARE_CONTENT_GENERATOR_KEY = '__rezShareContentGenerator__';
+
+function getShareContentGenerator(): ShareContentGenerator {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[SHARE_CONTENT_GENERATOR_KEY]) {
+      (globalThis as any)[SHARE_CONTENT_GENERATOR_KEY] = new ShareContentGenerator();
+    }
+    return (globalThis as any)[SHARE_CONTENT_GENERATOR_KEY];
+  }
+  return new ShareContentGenerator();
+}
+
+export default getShareContentGenerator();

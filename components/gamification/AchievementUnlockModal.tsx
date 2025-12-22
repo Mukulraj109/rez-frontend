@@ -40,6 +40,7 @@ export default function AchievementUnlockModal({
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const shineAnim = useRef(new Animated.Value(0)).current;
   const coinsAnim = useRef(new Animated.Value(0)).current;
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (visible && achievement) {
@@ -48,8 +49,24 @@ export default function AchievementUnlockModal({
       shineAnim.setValue(0);
       coinsAnim.setValue(0);
 
+      // Create shine loop animation
+      const shineLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(shineAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shineAnim, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
       // Start animations
-      Animated.sequence([
+      animationRef.current = Animated.sequence([
         Animated.spring(scaleAnim, {
           toValue: 1,
           tension: 50,
@@ -57,20 +74,7 @@ export default function AchievementUnlockModal({
           useNativeDriver: true,
         }),
         Animated.parallel([
-          Animated.loop(
-            Animated.sequence([
-              Animated.timing(shineAnim, {
-                toValue: 1,
-                duration: 1000,
-                useNativeDriver: true,
-              }),
-              Animated.timing(shineAnim, {
-                toValue: 0,
-                duration: 1000,
-                useNativeDriver: true,
-              }),
-            ])
-          ),
+          shineLoop,
           Animated.spring(coinsAnim, {
             toValue: 1,
             tension: 40,
@@ -78,8 +82,20 @@ export default function AchievementUnlockModal({
             useNativeDriver: true,
           }),
         ]),
-      ]).start();
+      ]);
+      animationRef.current.start();
     }
+
+    // Cleanup: stop all animations on unmount or when visibility changes
+    return () => {
+      if (animationRef.current) {
+        animationRef.current.stop();
+        animationRef.current = null;
+      }
+      scaleAnim.setValue(0);
+      shineAnim.setValue(0);
+      coinsAnim.setValue(0);
+    };
   }, [visible, achievement]);
 
   // Handle share

@@ -130,4 +130,17 @@ class CategoriesService {
   }
 }
 
-export default new CategoriesService();
+// Singleton pattern using globalThis to persist across SSR module re-evaluations
+const CATEGORIES_SERVICE_KEY = '__rezCategoriesService__';
+
+function getCategoriesService(): CategoriesService {
+  if (typeof globalThis !== 'undefined') {
+    if (!(globalThis as any)[CATEGORIES_SERVICE_KEY]) {
+      (globalThis as any)[CATEGORIES_SERVICE_KEY] = new CategoriesService();
+    }
+    return (globalThis as any)[CATEGORIES_SERVICE_KEY];
+  }
+  return new CategoriesService();
+}
+
+export default getCategoriesService();
