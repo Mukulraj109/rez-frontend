@@ -26,6 +26,7 @@
     "serve:web": "npx serve dist"
   },
   "dependencies": {
+    "entities": "^2.2.0",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/poppins": "^0.4.1",
     "@expo/vector-icons": "^14.0.3",
@@ -116,5 +117,8 @@
     "ts-jest": "^29.4.5",
     "typescript": "~5.3.3"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "entities": "^2.2.0"
+  }
 }
