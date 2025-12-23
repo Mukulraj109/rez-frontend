@@ -4,7 +4,7 @@
  * Adapted from Rez_v-2-main trending pattern
  */
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getTrendingHashtagsForCategory, TrendingHashtag } from '@/data/categoryDummyData';
+import categoryMetadataApi, { TrendingHashtag } from '@/services/categoryMetadataApi';
+import { getTrendingHashtagsForCategory } from '@/data/categoryDummyData';
 
 interface TrendingHashtagsProps {
   categorySlug: string;
@@ -55,7 +57,41 @@ const TrendingHashtags: React.FC<TrendingHashtagsProps> = ({
   onHashtagPress,
 }) => {
   const router = useRouter();
-  const displayHashtags = hashtags || getTrendingHashtagsForCategory(categorySlug);
+  const [apiHashtags, setApiHashtags] = useState<TrendingHashtag[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (hashtags) {
+      setApiHashtags(hashtags);
+      setLoading(false);
+      return;
+    }
+
+    const fetchHashtags = async () => {
+      try {
+        setLoading(true);
+        const response = await categoryMetadataApi.getHashtags(categorySlug);
+        if (response.success && response.data?.hashtags?.length > 0) {
+          setApiHashtags(response.data.hashtags);
+        } else {
+          // Fallback to dummy data if API returns empty
+          const fallbackHashtags = getTrendingHashtagsForCategory(categorySlug);
+          setApiHashtags(fallbackHashtags);
+        }
+      } catch (err) {
+        console.error('Error fetching hashtags:', err);
+        // Fallback to dummy data on error
+        const fallbackHashtags = getTrendingHashtagsForCategory(categorySlug);
+        setApiHashtags(fallbackHashtags);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHashtags();
+  }, [categorySlug, hashtags]);
+
+  const displayHashtags = hashtags || apiHashtags;
 
   const handlePress = useCallback((hashtag: TrendingHashtag) => {
     if (onHashtagPress) {
@@ -67,6 +103,14 @@ const TrendingHashtags: React.FC<TrendingHashtagsProps> = ({
       } as any);
     }
   }, [router, categorySlug, onHashtagPress]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="small" color="#EF4444" />
+      </View>
+    );
+  }
 
   if (!displayHashtags || displayHashtags.length === 0) {
     return null;
@@ -120,6 +164,11 @@ const styles = StyleSheet.create({
         boxShadow: '0 2px 8px rgba(11, 34, 64, 0.04)',
       },
     }),
+  },
+  loadingContainer: {
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     paddingHorizontal: 16,

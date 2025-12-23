@@ -182,7 +182,7 @@ const TrendingDealCard: React.FC<{
             />
           ) : (
             <LinearGradient
-              colors={['#00C06A', '#059669']}
+              colors={['#F97316', '#FB923C']}
               style={styles.logoPlaceholder}
             >
               <Text style={styles.logoInitial}>{deal.brand.name.charAt(0)}</Text>
@@ -376,7 +376,19 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    marginHorizontal: 16,
     borderRadius: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',

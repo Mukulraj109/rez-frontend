@@ -338,25 +338,37 @@ function ProductCard({
             </ThemedText>
           )}
 
-          {/* Cashback */}
-          {product.cashback && (
-            <View
-              style={styles.cashbackContainer}
-              accessibilityLabel={`${product.cashback.percentage || 0}% cashback available`}
-              accessibilityRole="text"
-            >
-              <ThemedText style={styles.cashbackText}>
-                {product.cashback.percentage || 0}% cashback
-              </ThemedText>
-            </View>
-          )}
-
           {/* Availability Status */}
           {availabilityStatus}
         </View>
 
         {/* Add to Cart Button / Quantity Controls - Bottom aligned */}
         <View style={styles.bottomSection}>
+          {/* Cashback - Enhanced for New Arrivals - Moved to bottom section */}
+          {product.cashback && (() => {
+            const cashbackPercentage = product.cashback.percentage || 0;
+            const cashbackAmount = Math.round((product.price.current * cashbackPercentage) / 100);
+            const maxCashback = product.cashback.maxAmount;
+            const finalCashback = maxCashback && cashbackAmount > maxCashback ? maxCashback : cashbackAmount;
+            
+            return (
+              <View
+                style={styles.cashbackContainer}
+                accessibilityLabel={`Earn ${cashbackPercentage}% cashback, up to ${formatPrice(finalCashback)}`}
+                accessibilityRole="text"
+              >
+                <Ionicons name="cash" size={12} color="#0B2240" style={{ marginRight: 4 }} />
+                <ThemedText style={styles.cashbackText}>
+                  Earn {cashbackPercentage}% cashback
+                </ThemedText>
+                {finalCashback > 0 && (
+                  <ThemedText style={styles.cashbackAmount}>
+                    {' '}(Up to {formatPrice(finalCashback)})
+                  </ThemedText>
+                )}
+              </View>
+            );
+          })()}
           {showAddToCart && (
             <>
               {isOutOfStock ? (
@@ -496,7 +508,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(0, 192, 106, 0.08)',
@@ -514,11 +526,11 @@ const styles = StyleSheet.create({
         boxShadow: '0px 8px 24px rgba(11, 34, 64, 0.08)',
       },
     }),
-    height: 320,
+    height: 280,
   },
   imageContainer: {
     position: 'relative',
-    height: 120,
+    height: 100,
   },
   image: {
     width: '100%',
@@ -578,21 +590,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   content: {
-    padding: 10,
-    paddingBottom: 48, // Space for bottom section
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 8,
     flex: 1,
+    gap: 6,
   },
   bottomSection: {
     position: 'absolute',
     bottom: 10,
     left: 10,
     right: 10,
+    gap: 8,
   },
   brand: {
     fontSize: 10,
     color: '#00796B',
     fontWeight: '600',
-    marginBottom: 4,
     textTransform: 'uppercase',
     lineHeight: 12,
   },
@@ -600,7 +614,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#0B2240',
-    marginBottom: 6,
     lineHeight: 18,
     minHeight: 36,
     maxHeight: 36,
@@ -609,7 +622,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    marginBottom: 4,
   },
   ratingText: {
     fontSize: 11,
@@ -624,7 +636,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 2,
   },
   currentPrice: {
     fontSize: 14,
@@ -640,19 +651,26 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#059669',
     fontWeight: '500',
-    marginBottom: 2,
   },
   cashbackContainer: {
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
     backgroundColor: '#FFF9E6',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFE4B5',
   },
   cashbackText: {
     fontSize: 11,
     color: '#0B2240',
+    fontWeight: '600',
+  },
+  cashbackAmount: {
+    fontSize: 10,
+    color: '#059669',
     fontWeight: '600',
   },
   lowStockContainer: {
@@ -687,7 +705,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: '#00C06A',
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
   },

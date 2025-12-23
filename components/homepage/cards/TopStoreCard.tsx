@@ -32,10 +32,13 @@ export interface TopStoreCardProps {
   width?: number;
 }
 
-// Calculate earn amount based on cashback percentage and average order
-const calculateEarnAmount = (cashbackPercentage: number): number => {
+// Calculate ReZ coins based on cashback percentage and average order
+// ReZ coins are typically 1 coin per ₹2 cashback earned
+const calculateRezCoins = (cashbackPercentage: number): number => {
   const avgOrderAmount = 1200; // Estimated average order amount in INR
-  return Math.round((cashbackPercentage / 100) * avgOrderAmount);
+  const cashbackAmount = (cashbackPercentage / 100) * avgOrderAmount;
+  const coinsPerRupee = 0.5; // 1 coin per ₹2 cashback = 0.5 coins per ₹1
+  return Math.round(cashbackAmount * coinsPerRupee);
 };
 
 // Custom comparison function for React.memo
@@ -70,11 +73,15 @@ function TopStoreCard({ store, onPress, width = 180 }: TopStoreCardProps) {
       : store.rating?.value || '0.0';
   }, [store.rating?.value]);
 
-  // Calculate earn amount
-  const earnAmount = useMemo(() => {
-    const percentage = store.cashback?.percentage || 10;
-    return calculateEarnAmount(percentage);
+  // Get cashback percentage
+  const cashbackPercentage = useMemo(() => {
+    return store.cashback?.percentage || 5;
   }, [store.cashback?.percentage]);
+
+  // Calculate ReZ coins
+  const rezCoins = useMemo(() => {
+    return calculateRezCoins(cashbackPercentage);
+  }, [cashbackPercentage]);
 
   // Handle press
   const handlePress = useCallback(() => {
@@ -133,11 +140,22 @@ function TopStoreCard({ store, onPress, width = 180 }: TopStoreCardProps) {
             )}
           </View>
 
-          {/* Earn Badge */}
-          <View style={styles.earnBadge}>
-            <ThemedText style={styles.earnText}>
-              Earn ₹{earnAmount}
-            </ThemedText>
+          {/* Cashback and ReZ Coins Row */}
+          <View style={styles.cashbackEarnRow}>
+            {/* Cashback Percentage - Left */}
+            <View style={styles.cashbackRow}>
+              <Ionicons name="refresh-circle" size={14} color="#22C55E" />
+              <ThemedText style={styles.cashbackText}>
+                {cashbackPercentage}%
+              </ThemedText>
+            </View>
+
+            {/* Earn ReZ Coins Badge - Right */}
+            <View style={styles.earnBadge}>
+              <ThemedText style={styles.earnText}>
+                Earn {rezCoins} ReZ Coin
+              </ThemedText>
+            </View>
           </View>
         </View>
       </ThemedView>
@@ -220,15 +238,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
   },
+  cashbackEarnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  cashbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  cashbackText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#22C55E',
+  },
   earnBadge: {
     backgroundColor: '#00C06A',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderRadius: 8,
-    alignSelf: 'flex-start',
+    marginLeft: 8,
+    flexShrink: 0,
   },
   earnText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
   },

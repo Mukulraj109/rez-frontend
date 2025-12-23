@@ -4,7 +4,7 @@
  * Adapted from Rez_v-2-main FashionExclusiveCard
  */
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { exclusiveOffersData, ExclusiveOffer } from '@/data/categoryDummyData';
+import exclusiveOffersApi, { ExclusiveOffer } from '@/services/exclusiveOffersApi';
+import { exclusiveOffersData } from '@/data/categoryDummyData';
 
 interface ExclusiveOffersSectionProps {
   categorySlug?: string;
@@ -64,23 +66,67 @@ OfferCard.displayName = 'OfferCard';
 
 const ExclusiveOffersSection: React.FC<ExclusiveOffersSectionProps> = ({
   categorySlug,
-  offers = exclusiveOffersData,
+  offers,
   onOfferPress,
 }) => {
   const router = useRouter();
+  const [apiOffers, setApiOffers] = useState<ExclusiveOffer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (offers) {
+      setApiOffers(offers);
+      setLoading(false);
+      return;
+    }
+
+    const fetchOffers = async () => {
+      try {
+        setLoading(true);
+        const response = await exclusiveOffersApi.getOffers(
+          categorySlug ? { category: categorySlug, limit: 10 } : { limit: 10 }
+        );
+        if (response.success && response.data?.offers?.length > 0) {
+          setApiOffers(response.data.offers);
+        } else {
+          // Fallback to dummy data if API returns empty
+          setApiOffers(exclusiveOffersData as any);
+        }
+      } catch (err) {
+        console.error('Error fetching exclusive offers:', err);
+        // Fallback to dummy data on error
+        setApiOffers(exclusiveOffersData as any);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOffers();
+  }, [categorySlug, offers]);
+
+  const displayOffers = offers || apiOffers;
 
   const handlePress = useCallback((offer: ExclusiveOffer) => {
     if (onOfferPress) {
       onOfferPress(offer);
     } else {
+      const offerId = offer._id || (offer as any).id;
       router.push({
         pathname: '/offer/[id]',
-        params: { id: offer.id },
+        params: { id: offerId },
       } as any);
     }
   }, [router, onOfferPress]);
 
-  if (!offers || offers.length === 0) {
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="small" color="#D97706" />
+      </View>
+    );
+  }
+
+  if (!displayOffers || displayOffers.length === 0) {
     return null;
   }
 
@@ -106,9 +152,9 @@ const ExclusiveOffersSection: React.FC<ExclusiveOffersSectionProps> = ({
         contentContainerStyle={styles.scrollContent}
         decelerationRate="fast"
       >
-        {offers.map((offer) => (
+        {displayOffers.map((offer) => (
           <OfferCard
-            key={offer.id}
+            key={offer._id || (offer as any).id}
             offer={offer}
             onPress={() => handlePress(offer)}
           />
@@ -139,6 +185,11 @@ const styles = StyleSheet.create({
         boxShadow: '0 2px 8px rgba(11, 34, 64, 0.04), 0 8px 24px rgba(11, 34, 64, 0.06)',
       },
     }),
+  },
+  loadingContainer: {
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',

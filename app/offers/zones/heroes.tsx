@@ -1,5 +1,8 @@
-// Heroes Zone Page
-// Special offers for Army/Doctor/Disabled/Teachers
+/**
+ * Heroes/Special Profiles Page
+ * Redesigned special profiles page for Army/Healthcare/Teachers/Seniors
+ * Based on Rez_v-2-main design, adapted for rez-frontend theme
+ */
 
 import React, { useState } from 'react';
 import {
@@ -9,258 +12,428 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
-  FlatList,
-  ActivityIndicator,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
-import { Colors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/DesignSystem';
+import { Colors, Spacing, BorderRadius, Shadows, Typography, Gradients } from '@/constants/DesignSystem';
 
-type HeroCategory = 'army' | 'doctor' | 'teacher' | 'disabled';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-interface HeroOffer {
+interface ProfileDeal {
   id: string;
-  title: string;
   store: string;
+  title: string;
   discount: string;
-  category: HeroCategory[];
-  image: string;
+  category: string;
+  storeLogo?: string;
 }
 
-const HERO_CATEGORIES = [
-  { id: 'army' as HeroCategory, label: 'Armed Forces', icon: '🎖️', color: '#059669' },
-  { id: 'doctor' as HeroCategory, label: 'Healthcare', icon: '🩺', color: '#0EA5E9' },
-  { id: 'teacher' as HeroCategory, label: 'Teachers', icon: '📚', color: '#8B5CF6' },
-  { id: 'disabled' as HeroCategory, label: 'Differently Abled', icon: '♿', color: '#F59E0B' },
-];
+interface SpecialProfile {
+  id: string;
+  title: string;
+  icon: string;
+  subtitle: string;
+  gradientColors: string[];
+  eligibility: string;
+  deals: ProfileDeal[];
+}
 
-const MOCK_OFFERS: HeroOffer[] = [
-  { id: '1', title: '30% Off Travel', store: 'MakeMyTrip', discount: '30%', category: ['army', 'doctor'], image: '✈️' },
-  { id: '2', title: 'Free Health Checkup', store: 'Apollo', discount: 'FREE', category: ['army', 'teacher'], image: '🏥' },
-  { id: '3', title: 'Education Discount', store: 'Coursera', discount: '50%', category: ['teacher', 'disabled'], image: '🎓' },
-  { id: '4', title: 'Accessible Travel', store: 'Uber', discount: '25%', category: ['disabled'], image: '🚗' },
-  { id: '5', title: 'Grocery Savings', store: 'BigBasket', discount: '15%', category: ['army', 'doctor', 'teacher', 'disabled'], image: '🛒' },
-  { id: '6', title: 'Electronics Deal', store: 'Croma', discount: '20%', category: ['army', 'doctor'], image: '📱' },
+const SPECIAL_PROFILES: SpecialProfile[] = [
+  {
+    id: 'army',
+    title: 'Defence Personnel',
+    icon: '🪖',
+    subtitle: 'Exclusive discounts for our heroes',
+    gradientColors: ['#059669', '#047857', '#065F46'],
+    eligibility: 'Valid defence ID card required',
+    deals: [
+      {
+        id: 'army1',
+        store: 'PVR Cinemas',
+        title: '25% OFF on all movies',
+        discount: '25%',
+        category: 'Entertainment',
+        storeLogo: 'https://logo.clearbit.com/pvrcinemas.com',
+      },
+      {
+        id: 'army2',
+        store: 'Shoppers Stop',
+        title: '20% OFF Storewide',
+        discount: '20%',
+        category: 'Shopping',
+        storeLogo: 'https://logo.clearbit.com/shoppersstop.com',
+      },
+      {
+        id: 'army3',
+        store: 'Tanishq',
+        title: '15% OFF on Jewellery',
+        discount: '15%',
+        category: 'Jewellery',
+        storeLogo: 'https://logo.clearbit.com/tanishq.co.in',
+      },
+      {
+        id: 'army4',
+        store: 'MakeMyTrip',
+        title: 'Defence Fare: Extra 10% OFF',
+        discount: '10%',
+        category: 'Travel',
+        storeLogo: 'https://logo.clearbit.com/makemytrip.com',
+      },
+    ],
+  },
+  {
+    id: 'healthcare',
+    title: 'Healthcare Workers',
+    icon: '🩺',
+    subtitle: 'Thank you for your service',
+    gradientColors: ['#0EA5E9', '#0284C7', '#0369A1'],
+    eligibility: 'Valid hospital/clinic ID required',
+    deals: [
+      {
+        id: 'health1',
+        store: 'Reliance Fresh',
+        title: '15% OFF on Groceries',
+        discount: '15%',
+        category: 'Grocery',
+        storeLogo: 'https://logo.clearbit.com/relianceretail.com',
+      },
+      {
+        id: 'health2',
+        store: 'DMart',
+        title: 'Priority Checkout + 10% OFF',
+        discount: '10%',
+        category: 'Shopping',
+        storeLogo: 'https://logo.clearbit.com/dmartindia.com',
+      },
+      {
+        id: 'health3',
+        store: 'Uber',
+        title: 'Healthcare Heroes: 20% OFF',
+        discount: '20%',
+        category: 'Transport',
+        storeLogo: 'https://logo.clearbit.com/uber.com',
+      },
+      {
+        id: 'health4',
+        store: 'Zomato',
+        title: 'Frontline Meals: 25% OFF',
+        discount: '25%',
+        category: 'Food',
+        storeLogo: 'https://logo.clearbit.com/zomato.com',
+      },
+    ],
+  },
+  {
+    id: 'senior',
+    title: 'Senior Citizens',
+    icon: '👴',
+    subtitle: 'Special care for our elders',
+    gradientColors: ['#F59E0B', '#D97706', '#B45309'],
+    eligibility: 'Age 60+ with valid ID proof',
+    deals: [
+      {
+        id: 'senior1',
+        store: 'Apollo Pharmacy',
+        title: '20% OFF on Medicines',
+        discount: '20%',
+        category: 'Healthcare',
+        storeLogo: 'https://logo.clearbit.com/apollopharmacy.in',
+      },
+      {
+        id: 'senior2',
+        store: 'Big Bazaar',
+        title: 'Senior Day: Extra 10% OFF',
+        discount: '10%',
+        category: 'Shopping',
+        storeLogo: 'https://logo.clearbit.com/bigbazaar.com',
+      },
+      {
+        id: 'senior3',
+        store: 'IRCTC',
+        title: 'Senior Concession Available',
+        discount: '40%',
+        category: 'Travel',
+        storeLogo: 'https://logo.clearbit.com/irctc.co.in',
+      },
+    ],
+  },
+  {
+    id: 'teacher',
+    title: 'Teachers & Educators',
+    icon: '📚',
+    subtitle: 'For those who shape minds',
+    gradientColors: ['#8B5CF6', '#7C3AED', '#6D28D9'],
+    eligibility: 'Valid teacher ID required',
+    deals: [
+      {
+        id: 'teach1',
+        store: 'Amazon',
+        title: 'Books & Stationery: 30% OFF',
+        discount: '30%',
+        category: 'Shopping',
+        storeLogo: 'https://logo.clearbit.com/amazon.in',
+      },
+      {
+        id: 'teach2',
+        store: 'Apple',
+        title: 'Education Pricing',
+        discount: '10%',
+        category: 'Electronics',
+        storeLogo: 'https://logo.clearbit.com/apple.com',
+      },
+    ],
+  },
 ];
 
 export default function HeroesZonePage() {
   const router = useRouter();
-  const [isVerified, setIsVerified] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<HeroCategory | null>(null);
-  const [verificationStep, setVerificationStep] = useState<'select' | 'upload' | 'review'>('select');
+  const insets = useSafeAreaInsets();
+  const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
+  const [verifiedProfiles, setVerifiedProfiles] = useState<string[]>([]);
+  
+  // Bottom padding = Fixed CTA height (80px) + Bottom nav bar (70px) + Safe area bottom
+  const bottomPadding = 80 + 70 + insets.bottom;
 
-  const filteredOffers = selectedCategory
-    ? MOCK_OFFERS.filter(o => o.category.includes(selectedCategory))
-    : MOCK_OFFERS;
-
-  const handleCategorySelect = (category: HeroCategory) => {
-    setSelectedCategory(category);
-    setVerificationStep('upload');
+  const handleVerify = (profileId: string) => {
+    // TODO: Implement verification flow
+    setVerifiedProfiles([...verifiedProfiles, profileId]);
   };
 
-  const handleUploadDocument = async () => {
-    setVerifying(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setVerifying(false);
-    setVerificationStep('review');
+  const handleDealPress = (deal: ProfileDeal) => {
+    // TODO: Navigate to deal detail
+    console.log('Deal pressed:', deal.id);
   };
 
-  const handleVerificationComplete = () => {
-    setIsVerified(true);
-  };
+  const renderProfileCard = (profile: SpecialProfile) => {
+    const isVerified = verifiedProfiles.includes(profile.id);
+    const isExpanded = selectedProfile === profile.id;
 
-  const getCategoryInfo = (category: HeroCategory) => {
-    return HERO_CATEGORIES.find(c => c.id === category);
-  };
+    return (
+      <View key={profile.id} style={styles.profileCard}>
+        {/* Profile Header */}
+        <TouchableOpacity
+          onPress={() => setSelectedProfile(isExpanded ? null : profile.id)}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={profile.gradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[
+              styles.profileHeader,
+              isExpanded && styles.profileHeaderExpanded,
+            ]}
+          >
+            <ThemedText style={styles.profileIcon}>{profile.icon}</ThemedText>
+            <View style={styles.profileHeaderContent}>
+              <View style={styles.profileTitleRow}>
+                <ThemedText style={styles.profileTitle}>{profile.title}</ThemedText>
+                {isVerified && (
+                  <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                )}
+              </View>
+              <ThemedText style={styles.profileSubtitle}>{profile.subtitle}</ThemedText>
+            </View>
+            <Ionicons
+              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color="rgba(255, 255, 255, 0.7)"
+            />
+          </LinearGradient>
+        </TouchableOpacity>
 
-  const renderOffer = ({ item }: { item: HeroOffer }) => (
-    <TouchableOpacity
-      style={styles.offerCard}
-      onPress={() => router.push(`/offers/${item.id}` as any)}
-    >
-      <View style={styles.offerImage}>
-        <ThemedText style={styles.offerEmoji}>{item.image}</ThemedText>
-      </View>
-      <View style={styles.offerInfo}>
-        <ThemedText style={styles.offerTitle}>{item.title}</ThemedText>
-        <ThemedText style={styles.offerStore}>{item.store}</ThemedText>
-        <View style={styles.offerMeta}>
-          <View style={styles.discountBadge}>
-            <ThemedText style={styles.discountText}>{item.discount} OFF</ThemedText>
-          </View>
-          <View style={styles.categoryIcons}>
-            {item.category.slice(0, 2).map(cat => (
-              <ThemedText key={cat} style={styles.categoryIcon}>
-                {getCategoryInfo(cat)?.icon}
+        {/* Expanded Content */}
+        {isExpanded && (
+          <View style={styles.profileContent}>
+            {/* Verification Status */}
+            {!isVerified ? (
+              <View style={styles.verificationCard}>
+                <View style={styles.verificationContent}>
+                  <Ionicons name="cloud-upload" size={20} color="#F59E0B" />
+                  <View style={styles.verificationText}>
+                    <ThemedText style={styles.verificationTitle}>
+                      Verification Required
+                    </ThemedText>
+                    <ThemedText style={styles.verificationSubtitle}>
+                      {profile.eligibility}
+                    </ThemedText>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.verifyButton}
+                    onPress={() => handleVerify(profile.id)}
+                    activeOpacity={0.8}
+                  >
+                    <ThemedText style={styles.verifyButtonText}>Verify</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.verifiedCard}>
+                <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                <ThemedText style={styles.verifiedText}>Verified - Access Granted</ThemedText>
+              </View>
+            )}
+
+            {/* Deals List */}
+            <ThemedText style={styles.dealsTitle}>Available Deals</ThemedText>
+            <View style={styles.dealsList}>
+              {profile.deals.map((deal) => (
+                <TouchableOpacity
+                  key={deal.id}
+                  style={[
+                    styles.dealItem,
+                    !isVerified && styles.dealItemDisabled,
+                  ]}
+                  onPress={() => handleDealPress(deal)}
+                  disabled={!isVerified}
+                  activeOpacity={0.7}
+                >
+                  {deal.storeLogo ? (
+                    <Image
+                      source={{ uri: deal.storeLogo }}
+                      style={styles.dealLogo}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={styles.dealLogoPlaceholder}>
+                      <Ionicons name="storefront" size={20} color={Colors.text.tertiary} />
+                    </View>
+                  )}
+                  <View style={styles.dealItemContent}>
+                    <ThemedText style={styles.dealItemStore}>{deal.store}</ThemedText>
+                    <ThemedText style={styles.dealItemTitle}>{deal.title}</ThemedText>
+                  </View>
+                  <View style={styles.dealItemDiscount}>
+                    <ThemedText style={styles.dealItemDiscountText}>{deal.discount}</ThemedText>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {!isVerified && (
+              <ThemedText style={styles.verificationHint}>
+                Verify your profile to unlock these exclusive deals
               </ThemedText>
-            ))}
-            {item.category.length > 2 && (
-              <ThemedText style={styles.moreCategories}>+{item.category.length - 2}</ThemedText>
             )}
           </View>
-        </View>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={Colors.text.tertiary} />
-    </TouchableOpacity>
-  );
-
-  if (!isVerified) {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#059669" />
-        <LinearGradient colors={['#059669', '#10B981']} style={styles.header}>
-          <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <ThemedText style={styles.headerTitle}>Heroes Zone</ThemedText>
-            <View style={styles.placeholder} />
-          </View>
-        </LinearGradient>
-
-        <ScrollView style={styles.content} contentContainerStyle={styles.verifyContent}>
-          {verificationStep === 'select' && (
-            <>
-              <View style={styles.verifyIcon}>
-                <ThemedText style={styles.verifyEmoji}>🦸</ThemedText>
-              </View>
-              <ThemedText style={styles.verifyTitle}>Saluting Our Heroes</ThemedText>
-              <ThemedText style={styles.verifySubtitle}>
-                Select your category to unlock exclusive benefits
-              </ThemedText>
-
-              <View style={styles.categoriesGrid}>
-                {HERO_CATEGORIES.map(category => (
-                  <TouchableOpacity
-                    key={category.id}
-                    style={[styles.categoryCard, { borderColor: category.color }]}
-                    onPress={() => handleCategorySelect(category.id)}
-                  >
-                    <View style={[styles.categoryIconContainer, { backgroundColor: category.color + '20' }]}>
-                      <ThemedText style={styles.categoryEmoji}>{category.icon}</ThemedText>
-                    </View>
-                    <ThemedText style={styles.categoryLabel}>{category.label}</ThemedText>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
-          )}
-
-          {verificationStep === 'upload' && selectedCategory && (
-            <>
-              <View style={[styles.verifyIcon, { backgroundColor: getCategoryInfo(selectedCategory)?.color + '15' }]}>
-                <ThemedText style={styles.verifyEmoji}>{getCategoryInfo(selectedCategory)?.icon}</ThemedText>
-              </View>
-              <ThemedText style={styles.verifyTitle}>
-                {getCategoryInfo(selectedCategory)?.label} Verification
-              </ThemedText>
-              <ThemedText style={styles.verifySubtitle}>
-                Upload your official ID or certificate for verification
-              </ThemedText>
-
-              <View style={styles.uploadSection}>
-                <TouchableOpacity style={styles.uploadButton} onPress={handleUploadDocument}>
-                  {verifying ? (
-                    <ActivityIndicator color={getCategoryInfo(selectedCategory)?.color} />
-                  ) : (
-                    <>
-                      <Ionicons name="cloud-upload-outline" size={40} color={getCategoryInfo(selectedCategory)?.color} />
-                      <ThemedText style={styles.uploadText}>Tap to upload document</ThemedText>
-                      <ThemedText style={styles.uploadHint}>
-                        Accepted: ID Card, Certificate, Letter
-                      </ThemedText>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={styles.backToCategories}
-                onPress={() => setVerificationStep('select')}
-              >
-                <ThemedText style={styles.backToCategoriesText}>← Choose different category</ThemedText>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {verificationStep === 'review' && (
-            <>
-              <View style={styles.reviewIcon}>
-                <Ionicons name="hourglass-outline" size={60} color={Colors.gold} />
-              </View>
-              <ThemedText style={styles.verifyTitle}>Under Review</ThemedText>
-              <ThemedText style={styles.verifySubtitle}>
-                Your document is being verified. This usually takes 24-48 hours.
-              </ThemedText>
-
-              <View style={styles.reviewInfo}>
-                <View style={styles.reviewStep}>
-                  <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-                  <ThemedText style={styles.reviewStepText}>Document uploaded</ThemedText>
-                </View>
-                <View style={styles.reviewStep}>
-                  <Ionicons name="time" size={24} color={Colors.gold} />
-                  <ThemedText style={styles.reviewStepText}>Verification in progress</ThemedText>
-                </View>
-                <View style={styles.reviewStep}>
-                  <Ionicons name="ellipse-outline" size={24} color={Colors.gray[300]} />
-                  <ThemedText style={[styles.reviewStepText, { color: Colors.gray[400] }]}>Benefits unlocked</ThemedText>
-                </View>
-              </View>
-
-              {/* For demo, allow skipping verification */}
-              <TouchableOpacity
-                style={styles.skipButton}
-                onPress={handleVerificationComplete}
-              >
-                <ThemedText style={styles.skipButtonText}>Skip for Demo</ThemedText>
-              </TouchableOpacity>
-            </>
-          )}
-        </ScrollView>
+        )}
       </View>
     );
-  }
+  };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#059669" />
-      <LinearGradient colors={['#059669', '#10B981']} style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Heroes Zone</ThemedText>
-          <View style={styles.placeholder} />
-        </View>
+      <StatusBar barStyle="light-content" backgroundColor="#6366F1" translucent />
+      
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={['#6366F1', '#4F46E5', '#4338CA']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <SafeAreaView edges={['top']} style={styles.safeHeader}>
+          <View style={styles.headerContent}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
 
-        <View style={styles.verifiedBadge}>
-          <Ionicons name="shield-checkmark" size={20} color="#FFF" />
-          <ThemedText style={styles.verifiedText}>
-            {getCategoryInfo(selectedCategory || 'army')?.label} Verified
-          </ThemedText>
-        </View>
+            <View style={styles.headerTitleContainer}>
+              <ThemedText style={styles.headerTitle}>Special Profiles</ThemedText>
+              <ThemedText style={styles.headerSubtitle}>
+                Exclusive access for verified members
+              </ThemedText>
+            </View>
+
+            <View style={styles.headerIcon}>
+              <ThemedText style={styles.emoji}>🎖️</ThemedText>
+            </View>
+          </View>
+        </SafeAreaView>
       </LinearGradient>
 
-      <FlatList
-        data={filteredOffers}
-        renderItem={renderOffer}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.thanksCard}>
-            <ThemedText style={styles.thanksEmoji}>🙏</ThemedText>
-            <ThemedText style={styles.thanksTitle}>Thank You for Your Service</ThemedText>
-            <ThemedText style={styles.thanksText}>
-              Enjoy exclusive benefits as our token of gratitude
+      >
+        {/* Hero Banner */}
+        <View style={styles.heroBanner}>
+          <LinearGradient
+            colors={['rgba(99, 102, 241, 0.3)', 'rgba(139, 92, 246, 0.3)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.heroGradient}
+          >
+            <View style={styles.heroContent}>
+              <View style={styles.heroIconContainer}>
+                <Ionicons name="shield-checkmark" size={32} color="#818CF8" />
+              </View>
+              <View style={styles.heroTextContainer}>
+                <ThemedText style={styles.heroTitle}>Honoring Our Heroes</ThemedText>
+                <ThemedText style={styles.heroSubtitle}>
+                  Exclusive deals for special community members
+                </ThemedText>
+              </View>
+            </View>
+
+            {/* Profile Icons Grid */}
+            <View style={styles.profileIconsGrid}>
+              {SPECIAL_PROFILES.map((profile) => (
+                <View key={profile.id} style={styles.profileIconCard}>
+                  <ThemedText style={styles.profileIconEmoji}>{profile.icon}</ThemedText>
+                  <ThemedText style={styles.profileIconLabel}>
+                    {profile.title.split(' ')[0]}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Profile Cards */}
+        <View style={styles.profilesSection}>
+          {SPECIAL_PROFILES.map((profile) => renderProfileCard(profile))}
+        </View>
+
+        {/* Support Message */}
+        <View style={styles.supportCard}>
+          <ThemedText style={styles.supportText}>
+            Don't see your category?{' '}
+            <ThemedText style={styles.supportLink}>Contact us</ThemedText> to request special
+            profile verification.
+          </ThemedText>
+        </View>
+      </ScrollView>
+
+      {/* Fixed CTA Button */}
+      <View style={styles.fixedCTA}>
+        <TouchableOpacity
+          style={styles.ctaButton}
+          onPress={() => {}}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={Gradients.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.ctaGradient}
+          >
+            <ThemedText style={styles.ctaButtonText}>
+              Apply for Special Profile Verification
             </ThemedText>
-          </View>
-        }
-      />
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -271,256 +444,304 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background.secondary,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight || 40,
-    paddingBottom: Spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight || 0,
+  },
+  safeHeader: {
+    paddingBottom: Spacing.base,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.md,
   },
   backButton: {
     padding: Spacing.sm,
     marginRight: Spacing.sm,
   },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
   headerTitle: {
-    flex: 1,
     ...Typography.h3,
-    color: '#FFF',
-    textAlign: 'center',
-    marginRight: 40,
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-  },
-  verifyContent: {
-    padding: Spacing.xl,
-    alignItems: 'center',
-  },
-  verifyIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#059669' + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-  },
-  verifyEmoji: {
-    fontSize: 48,
-  },
-  verifyTitle: {
-    ...Typography.h2,
-    color: Colors.text.primary,
-    marginBottom: Spacing.sm,
-    textAlign: 'center',
-  },
-  verifySubtitle: {
-    ...Typography.body,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-  },
-  categoriesGrid: {
-    width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.md,
-  },
-  categoryCard: {
-    width: '47%',
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    alignItems: 'center',
-    borderWidth: 2,
-    ...Shadows.subtle,
-  },
-  categoryIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  categoryEmoji: {
-    fontSize: 30,
-  },
-  categoryLabel: {
-    ...Typography.label,
-    color: Colors.text.primary,
-    textAlign: 'center',
-  },
-  uploadSection: {
-    width: '100%',
-    marginBottom: Spacing.lg,
-  },
-  uploadButton: {
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: Colors.gray[300],
-    ...Shadows.subtle,
-  },
-  uploadText: {
-    ...Typography.label,
-    color: Colors.text.primary,
-    marginTop: Spacing.md,
-  },
-  uploadHint: {
-    ...Typography.caption,
-    color: Colors.text.tertiary,
-    marginTop: Spacing.xs,
-  },
-  backToCategories: {
-    padding: Spacing.md,
-  },
-  backToCategoriesText: {
-    ...Typography.body,
-    color: Colors.primary[600],
-  },
-  reviewIcon: {
-    marginBottom: Spacing.lg,
-  },
-  reviewInfo: {
-    width: '100%',
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-    ...Shadows.subtle,
-  },
-  reviewStep: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.light,
-  },
-  reviewStepText: {
-    ...Typography.body,
-    color: Colors.text.primary,
-  },
-  skipButton: {
-    padding: Spacing.md,
-  },
-  skipButtonText: {
-    ...Typography.body,
-    color: Colors.text.tertiary,
-    textDecorationLine: 'underline',
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
-    marginHorizontal: Spacing.lg,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: BorderRadius.full,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-  },
-  verifiedText: {
-    ...Typography.label,
-    color: '#FFF',
-  },
-  listContent: {
-    padding: Spacing.base,
-    paddingBottom: Spacing['3xl'],
-  },
-  thanksCard: {
-    backgroundColor: '#059669' + '15',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#059669' + '30',
-  },
-  thanksEmoji: {
-    fontSize: 40,
-    marginBottom: Spacing.sm,
-  },
-  thanksTitle: {
-    ...Typography.h4,
-    color: '#059669',
-    marginBottom: Spacing.xs,
-  },
-  thanksText: {
-    ...Typography.body,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-  },
-  offerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
-    marginBottom: Spacing.sm,
-    gap: Spacing.md,
-    ...Shadows.subtle,
-  },
-  offerImage: {
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.gray[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  offerEmoji: {
-    fontSize: 28,
-  },
-  offerInfo: {
-    flex: 1,
-  },
-  offerTitle: {
-    ...Typography.label,
-    color: Colors.text.primary,
-    marginBottom: Spacing.xs,
-  },
-  offerStore: {
-    ...Typography.bodySmall,
-    color: Colors.text.tertiary,
-    marginBottom: Spacing.sm,
-  },
-  offerMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  discountBadge: {
-    backgroundColor: Colors.success + '20',
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-  },
-  discountText: {
-    ...Typography.caption,
-    color: Colors.success,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
-  categoryIcons: {
-    flexDirection: 'row',
+  headerSubtitle: {
+    ...Typography.bodySmall,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  headerIcon: {
+    width: 40,
     alignItems: 'center',
   },
-  categoryIcon: {
-    fontSize: 16,
-    marginLeft: 2,
+  emoji: {
+    fontSize: 32,
   },
-  moreCategories: {
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 150, // Will be overridden by dynamic padding
+  },
+  heroBanner: {
+    margin: Spacing.base,
+    borderRadius: BorderRadius['2xl'],
+    overflow: 'hidden',
+    ...Shadows.medium,
+  },
+  heroGradient: {
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+    borderRadius: BorderRadius['2xl'],
+  },
+  heroContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.base,
+  },
+  heroIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(129, 140, 248, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.base,
+  },
+  heroTextContainer: {
+    flex: 1,
+  },
+  heroTitle: {
+    ...Typography.h4,
+    color: Colors.text.primary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  heroSubtitle: {
+    ...Typography.bodySmall,
+    color: Colors.text.secondary,
+  },
+  profileIconsGrid: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: Spacing.base,
+  },
+  profileIconCard: {
+    flex: 1,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+  },
+  profileIconEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  profileIconLabel: {
     ...Typography.caption,
     color: Colors.text.tertiary,
-    marginLeft: 4,
+    textAlign: 'center',
+  },
+  profilesSection: {
+    paddingHorizontal: Spacing.base,
+    gap: Spacing.md,
+  },
+  profileCard: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    ...Shadows.medium,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.base,
+    gap: Spacing.base,
+  },
+  profileHeaderExpanded: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  profileIcon: {
+    fontSize: 32,
+  },
+  profileHeaderContent: {
+    flex: 1,
+  },
+  profileTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: 2,
+  },
+  profileTitle: {
+    ...Typography.h4,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  profileSubtitle: {
+    ...Typography.bodySmall,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  profileContent: {
+    backgroundColor: Colors.background.primary,
+    padding: Spacing.base,
+  },
+  verificationCard: {
+    padding: Spacing.base,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: Spacing.base,
+  },
+  verificationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  verificationText: {
+    flex: 1,
+  },
+  verificationTitle: {
+    ...Typography.body,
+    color: Colors.text.primary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  verificationSubtitle: {
+    ...Typography.caption,
+    color: Colors.text.tertiary,
+  },
+  verifyButton: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  verifyButtonText: {
+    ...Typography.labelSmall,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  verifiedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(46, 204, 113, 0.2)',
+    marginBottom: Spacing.base,
+    gap: Spacing.sm,
+  },
+  verifiedText: {
+    ...Typography.bodySmall,
+    color: Colors.success,
+  },
+  dealsTitle: {
+    ...Typography.label,
+    color: Colors.text.tertiary,
+    marginBottom: Spacing.md,
+  },
+  dealsList: {
+    gap: Spacing.sm,
+  },
+  dealItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    gap: Spacing.md,
+  },
+  dealItemDisabled: {
+    opacity: 0.5,
+  },
+  dealLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.background.primary,
+  },
+  dealLogoPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.gray[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dealItemContent: {
+    flex: 1,
+  },
+  dealItemStore: {
+    ...Typography.label,
+    color: Colors.text.primary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  dealItemTitle: {
+    ...Typography.caption,
+    color: Colors.text.tertiary,
+  },
+  dealItemDiscount: {
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  },
+  dealItemDiscountText: {
+    ...Typography.labelSmall,
+    color: '#6366F1',
+    fontWeight: '700',
+  },
+  verificationHint: {
+    ...Typography.caption,
+    color: Colors.text.tertiary,
+    textAlign: 'center',
+    marginTop: Spacing.base,
+  },
+  supportCard: {
+    margin: Spacing.base,
+    padding: Spacing.base,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+  },
+  supportText: {
+    ...Typography.bodySmall,
+    color: Colors.text.tertiary,
+    textAlign: 'center',
+  },
+  supportLink: {
+    color: '#6366F1',
+    fontWeight: '600',
+  },
+  fixedCTA: {
+    position: 'absolute',
+    bottom: 70, // Above bottom nav bar (70px height)
+    left: 0,
+    right: 0,
+    padding: Spacing.base,
+    backgroundColor: Colors.background.primary,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border.light,
+    ...Shadows.medium,
+  },
+  ctaButton: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+  },
+  ctaGradient: {
+    paddingVertical: Spacing.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaButtonText: {
+    ...Typography.button,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

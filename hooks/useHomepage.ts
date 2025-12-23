@@ -105,7 +105,7 @@ export function useHomepage(): UseHomepageDataResult {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      // NEW: Try to use batch endpoint first
+        // NEW: Try to use batch endpoint first
       try {
         const batchSections = await homepageDataService.fetchAllSectionsWithBatch();
 
@@ -120,8 +120,33 @@ export function useHomepage(): UseHomepageDataResult {
           batchSections.offers,
           batchSections.flashSales,
           batchSections.newArrivals
-        ].filter(section => section && section.items && section.items.length > 0);
-
+        ].filter(section => {
+          if (!section) return false;
+          
+          // Always include these sections (even if empty) so skeleton can show
+          const alwaysShowSections = ['new_arrivals', 'just_for_you', 'trending_stores'];
+          if (alwaysShowSections.includes(section.id)) {
+            // Don't include if using fallback data
+            if (section.error && section.error.includes('fallback')) {
+              return false;
+            }
+            // Always include these sections (even if empty) - will show skeleton or content
+            return true;
+          }
+          
+          // For other sections, only include if they have data
+          if (!section.items || section.items.length === 0) {
+            return false;
+          }
+          
+          // Don't include if using fallback data
+          if (section.error && section.error.includes('fallback')) {
+            return false;
+          }
+          
+          return true;
+        });
+        
         dispatch({ type: 'SET_SECTIONS', payload: sectionsArray });
         dispatch({ type: 'SET_LAST_REFRESH', payload: new Date().toISOString() });
 

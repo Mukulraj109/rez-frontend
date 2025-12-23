@@ -4,29 +4,84 @@
  * Adapted from Rez_v-2-main social proof pattern
  */
 
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
+import socialProofApi, { CategorySocialProofStats } from '@/services/socialProofApi';
 import { socialProofStats, SocialProofStats } from '@/data/categoryDummyData';
 
 interface SocialProofSectionProps {
   stats?: SocialProofStats;
+  categorySlug?: string;
   categoryName?: string;
 }
 
+// Helper to convert API stats to component format
+const convertApiToStats = (apiStats: CategorySocialProofStats): SocialProofStats => ({
+  shoppedToday: apiStats.shoppedToday,
+  totalEarned: apiStats.totalEarned,
+  topHashtags: apiStats.topHashtags,
+  recentBuyers: apiStats.recentBuyers,
+});
+
 const SocialProofSection: React.FC<SocialProofSectionProps> = ({
-  stats = socialProofStats,
+  stats,
+  categorySlug,
   categoryName = 'this category',
 }) => {
+  const [apiStats, setApiStats] = useState<SocialProofStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (stats) {
+      setApiStats(stats);
+      setLoading(false);
+      return;
+    }
+
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const response = await socialProofApi.getCategoryStats(categorySlug);
+        if (response.success && response.data?.stats) {
+          const converted = convertApiToStats(response.data.stats);
+          setApiStats(converted);
+        } else {
+          // Fallback to dummy data
+          setApiStats(socialProofStats);
+        }
+      } catch (err) {
+        console.error('Error fetching social proof stats:', err);
+        // Fallback to dummy data on error
+        setApiStats(socialProofStats);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [stats, categorySlug]);
+
+  const displayStats = stats || apiStats || socialProofStats;
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="small" color="#00C06A" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Avatar Stack */}
       <View style={styles.avatarStack}>
-        {stats.recentBuyers.slice(0, 4).map((buyer, index) => (
+        {displayStats.recentBuyers.slice(0, 4).map((buyer, index) => (
           <View
             key={index}
             style={[
@@ -38,24 +93,24 @@ const SocialProofSection: React.FC<SocialProofSectionProps> = ({
           </View>
         ))}
         <View style={[styles.avatar, styles.avatarMore, { marginLeft: -10, zIndex: 0 }]}>
-          <Text style={styles.avatarMoreText}>+{stats.shoppedToday - 4}</Text>
+          <Text style={styles.avatarMoreText}>+{displayStats.shoppedToday - 4}</Text>
         </View>
       </View>
 
       {/* Stats */}
       <View style={styles.statsContainer}>
         <Text style={styles.statsText}>
-          <Text style={styles.statsHighlight}>{stats.shoppedToday.toLocaleString()}</Text>
+          <Text style={styles.statsHighlight}>{displayStats.shoppedToday.toLocaleString()}</Text>
           {' '}people shopped {categoryName} today
         </Text>
         <Text style={styles.earningsText}>
-          Earned <Text style={styles.earningsHighlight}>₹{(stats.totalEarned / 1000).toFixed(0)}K+</Text> in cashback this month
+          Earned <Text style={styles.earningsHighlight}>₹{(displayStats.totalEarned / 1000).toFixed(0)}K+</Text> in cashback this month
         </Text>
       </View>
 
       {/* Hashtags */}
       <View style={styles.hashtagsRow}>
-        {stats.topHashtags.map((tag, index) => (
+        {displayStats.topHashtags.map((tag, index) => (
           <View key={index} style={styles.hashtagChip}>
             <Text style={styles.hashtagText}>{tag}</Text>
           </View>
@@ -64,7 +119,7 @@ const SocialProofSection: React.FC<SocialProofSectionProps> = ({
 
       {/* Recent Activity */}
       <View style={styles.recentActivity}>
-        {stats.recentBuyers.slice(0, 2).map((buyer, index) => (
+        {displayStats.recentBuyers.slice(0, 2).map((buyer, index) => (
           <View key={index} style={styles.activityItem}>
             <Text style={styles.activityText}>
               <Text style={styles.activityName}>{buyer.name}</Text>
@@ -100,6 +155,11 @@ const styles = StyleSheet.create({
         boxShadow: '0 2px 8px rgba(11, 34, 64, 0.04), 0 8px 24px rgba(11, 34, 64, 0.06)',
       },
     }),
+  },
+  loadingContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarStack: {
     flexDirection: 'row',

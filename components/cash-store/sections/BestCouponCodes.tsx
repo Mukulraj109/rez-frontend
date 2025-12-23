@@ -155,7 +155,7 @@ const CouponCard: React.FC<{
             <Image source={{ uri: coupon.brand.logo }} style={styles.brandLogo} resizeMode="contain" />
           ) : (
             <LinearGradient
-              colors={['#00C06A', '#059669']}
+              colors={['#F97316', '#FB923C']}
               style={styles.logoPlaceholder}
             >
               <Text style={styles.logoInitial}>{coupon.brand.name.charAt(0)}</Text>
@@ -329,7 +329,7 @@ const BestCouponCodes: React.FC<BestCouponCodesProps> = ({
           <View style={styles.titleRow}>
             <Text style={styles.headerTitle}>Best Coupon Codes</Text>
             <Animated.View style={{ transform: [{ scale: shieldPulseAnim }] }}>
-              <Ionicons name="shield-checkmark" size={20} color="#00C06A" />
+              <Ionicons name="shield-checkmark" size={20} color="#F97316" />
             </Animated.View>
           </View>
           <Text style={styles.subtitle}>Verified & tested daily</Text>
@@ -374,7 +374,19 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    marginHorizontal: 16,
     borderRadius: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
@@ -406,7 +418,7 @@ const styles = StyleSheet.create({
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00C06A',
+    backgroundColor: '#F97316',
     paddingLeft: 14,
     paddingRight: 6,
     paddingVertical: 8,
@@ -438,11 +450,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.1)',
+    borderColor: 'rgba(249, 115, 22, 0.1)',
     position: 'relative',
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#F97316',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
@@ -459,7 +471,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#00C06A',
+    backgroundColor: '#F97316',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -528,7 +540,7 @@ const styles = StyleSheet.create({
   discount: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#00C06A',
+    color: '#F97316',
     letterSpacing: -0.5,
   },
   title: {
@@ -559,7 +571,7 @@ const styles = StyleSheet.create({
   },
   successRateValue: {
     fontSize: 11,
-    color: '#00C06A',
+    color: '#F97316',
     fontWeight: '700',
   },
   successRateBarBg: {
@@ -570,7 +582,7 @@ const styles = StyleSheet.create({
   },
   successRateBarFill: {
     height: '100%',
-    backgroundColor: '#00C06A',
+    backgroundColor: '#F97316',
     borderRadius: 3,
   },
   codeSection: {
@@ -588,7 +600,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#00C06A',
+    borderColor: '#F97316',
     borderStyle: 'dashed',
   },
   codeText: {

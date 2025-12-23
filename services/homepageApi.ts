@@ -396,7 +396,6 @@ export class HomepageApiService {
       const url = `${ENDPOINTS.HOMEPAGE}${params}`;
 
       logApiRequest('GET', url, { batch: true });
-      console.log('📦 [HOMEPAGE API] Calling batch endpoint...');
 
       const response = await withRetry(
         () => ApiClient.get<HomepageBatchResponse>(url),

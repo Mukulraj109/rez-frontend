@@ -199,7 +199,7 @@ const ActivityItem: React.FC<{
               resizeMode="contain"
             />
           ) : (
-            <LinearGradient colors={['#00C06A', '#059669']} style={styles.logoPlaceholder}>
+            <LinearGradient colors={['#F97316', '#FB923C']} style={styles.logoPlaceholder}>
               <Text style={styles.logoInitial}>{activity.brand.name.charAt(0)}</Text>
             </LinearGradient>
           )}
@@ -317,7 +317,7 @@ const CashbackActivitySection: React.FC<CashbackActivitySectionProps> = ({
         <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
           <View style={styles.titleRow}>
             <LinearGradient
-              colors={['#00C06A', '#059669']}
+              colors={['#F97316', '#FB923C']}
               style={styles.headerIconContainer}
             >
               <Ionicons name="receipt" size={16} color="#FFFFFF" />
@@ -340,7 +340,7 @@ const CashbackActivitySection: React.FC<CashbackActivitySectionProps> = ({
           </Text>
           <TouchableOpacity style={styles.emptyButton}>
             <LinearGradient
-              colors={['#00C06A', '#059669']}
+              colors={['#F97316', '#FB923C']}
               style={styles.emptyButtonGradient}
             >
               <Text style={styles.emptyButtonText}>Start Shopping</Text>
@@ -359,7 +359,7 @@ const CashbackActivitySection: React.FC<CashbackActivitySectionProps> = ({
         <View style={styles.headerLeft}>
           <View style={styles.titleRow}>
             <LinearGradient
-              colors={['#00C06A', '#059669']}
+              colors={['#F97316', '#FB923C']}
               style={styles.headerIconContainer}
             >
               <Ionicons name="receipt" size={16} color="#FFFFFF" />
@@ -403,7 +403,19 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    marginHorizontal: 16,
     borderRadius: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
@@ -443,7 +455,7 @@ const styles = StyleSheet.create({
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00C06A',
+    backgroundColor: '#F97316',
     paddingLeft: 14,
     paddingRight: 6,
     paddingVertical: 8,

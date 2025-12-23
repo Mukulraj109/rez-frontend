@@ -1,5 +1,8 @@
-// Employee Zone Page
-// Corporate employee offers
+/**
+ * Corporate/Employee Zone Page
+ * Redesigned corporate employee offers page
+ * Based on Rez_v-2-main design, adapted for rez-frontend theme
+ */
 
 import React, { useState } from 'react';
 import {
@@ -9,222 +12,337 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
-  TextInput,
-  FlatList,
-  ActivityIndicator,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
-import { Colors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/DesignSystem';
+import { Colors, Spacing, BorderRadius, Shadows, Typography, Gradients } from '@/constants/DesignSystem';
 
-interface EmployeeOffer {
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface CorporateDeal {
   id: string;
-  title: string;
   store: string;
+  title: string;
   discount: string;
   category: string;
-  image: string;
+  description: string;
+  validTime?: string;
+  image?: string;
 }
 
-const MOCK_OFFERS: EmployeeOffer[] = [
-  { id: '1', title: 'Corporate Gym Membership', store: 'Gold\'s Gym', discount: '40%', category: 'Fitness', image: '🏋️' },
-  { id: '2', title: 'Office Lunch Deals', store: 'Swiggy Corporate', discount: '25%', category: 'Food', image: '🍱' },
-  { id: '3', title: 'Business Attire Sale', store: 'Van Heusen', discount: '35%', category: 'Fashion', image: '👔' },
-  { id: '4', title: 'Laptop Insurance', store: 'Digit', discount: '20%', category: 'Insurance', image: '💻' },
-  { id: '5', title: 'Mental Wellness', store: 'Practo', discount: '30%', category: 'Health', image: '🧘' },
+const DUMMY_CORPORATE_DEALS: CorporateDeal[] = [
+  {
+    id: 'corp1',
+    store: 'Box8',
+    title: 'Office Lunch: 25% OFF',
+    discount: '25%',
+    validTime: '12 PM - 3 PM',
+    category: 'Food & Dining',
+    description: 'Quick and affordable lunch delivered to your office',
+    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+  },
+  {
+    id: 'corp2',
+    store: 'Urban Company',
+    title: 'After-work Spa: 40% OFF',
+    discount: '40%',
+    validTime: 'After 6 PM',
+    category: 'Wellness',
+    description: 'Relax after a long workday with spa services',
+    image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400',
+  },
+  {
+    id: 'corp3',
+    store: 'Swiggy',
+    title: 'Team Orders: Extra 20% OFF',
+    discount: '20%',
+    validTime: '11 AM - 2 PM',
+    category: 'Food & Dining',
+    description: 'Bulk orders for team lunches at discounted rates',
+    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
+  },
+  {
+    id: 'corp4',
+    store: 'Cult.fit',
+    title: 'Corporate Fitness: 30% OFF',
+    discount: '30%',
+    category: 'Fitness',
+    description: 'Group fitness plans for your team',
+    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400',
+  },
+  {
+    id: 'corp5',
+    store: 'Starbucks',
+    title: 'Coffee Break: Buy 3 Get 1',
+    discount: 'BOGO',
+    validTime: '3 PM - 5 PM',
+    category: 'Food & Dining',
+    description: 'Perfect for team coffee breaks',
+    image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400',
+  },
+  {
+    id: 'corp6',
+    store: 'MakeMyTrip',
+    title: 'Business Travel: 15% OFF',
+    discount: '15%',
+    category: 'Travel',
+    description: 'Corporate rates on flights and hotels',
+    image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400',
+  },
 ];
 
-const PARTNER_COMPANIES = [
-  'Google', 'Microsoft', 'Amazon', 'Flipkart', 'Infosys', 'TCS', 'Wipro', 'HCL'
+const TIME_SLOTS = [
+  { id: 'all', label: 'All Day', icon: '🕐', time: '' },
+  { id: 'morning', label: 'Morning', icon: '🌅', time: '9 AM - 12 PM' },
+  { id: 'lunch', label: 'Lunch', icon: '🍽️', time: '12 PM - 3 PM' },
+  { id: 'evening', label: 'Evening', icon: '🌆', time: 'After 6 PM' },
+];
+
+const QUICK_CATEGORIES = [
+  { icon: 'cafe', label: 'Coffee', color: '#F59E0B' },
+  { icon: 'restaurant', label: 'Lunch', color: '#F97316' },
+  { icon: 'car', label: 'Commute', color: '#3B82F6' },
+  { icon: 'barbell', label: 'Fitness', color: Colors.success },
 ];
 
 export default function EmployeeZonePage() {
   const router = useRouter();
-  const [isVerified, setIsVerified] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [email, setEmail] = useState('');
-  const [step, setStep] = useState<'email' | 'otp'>('email');
-  const [otp, setOtp] = useState('');
-  const [company, setCompany] = useState('');
+  const insets = useSafeAreaInsets();
+  const [selectedTime, setSelectedTime] = useState('all');
+  
+  // Bottom padding = Fixed CTA height (80px) + Bottom nav bar (70px) + Safe area bottom
+  const bottomPadding = 80 + 70 + insets.bottom;
 
-  const handleVerifyEmail = async () => {
-    if (!email.includes('@') || !email.includes('.')) {
-      alert('Please enter a valid corporate email');
-      return;
-    }
+  const filteredDeals =
+    selectedTime === 'all'
+      ? DUMMY_CORPORATE_DEALS
+      : DUMMY_CORPORATE_DEALS.filter((d) => {
+          if (selectedTime === 'lunch' && d.validTime?.includes('12 PM')) return true;
+          if (selectedTime === 'evening' && d.validTime?.includes('6 PM')) return true;
+          return false;
+        });
 
-    setVerifying(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    // Extract company name from email domain
-    const domain = email.split('@')[1]?.split('.')[0] || '';
-    setCompany(domain.charAt(0).toUpperCase() + domain.slice(1));
-    setVerifying(false);
-    setStep('otp');
+  const handleDealPress = (deal: CorporateDeal) => {
+    // TODO: Navigate to deal detail
+    console.log('Deal pressed:', deal.id);
   };
 
-  const handleVerifyOTP = async () => {
-    setVerifying(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setVerifying(false);
-    setIsVerified(true);
-  };
-
-  const renderOffer = ({ item }: { item: EmployeeOffer }) => (
-    <TouchableOpacity style={styles.offerCard}>
-      <View style={styles.offerImage}>
-        <ThemedText style={styles.offerEmoji}>{item.image}</ThemedText>
-      </View>
-      <View style={styles.offerInfo}>
-        <ThemedText style={styles.offerTitle}>{item.title}</ThemedText>
-        <ThemedText style={styles.offerStore}>{item.store}</ThemedText>
-        <View style={styles.offerMeta}>
-          <View style={styles.discountBadge}>
-            <ThemedText style={styles.discountText}>{item.discount} OFF</ThemedText>
+  const renderDealCard = (deal: CorporateDeal) => (
+    <TouchableOpacity
+      key={deal.id}
+      style={styles.dealCard}
+      onPress={() => handleDealPress(deal)}
+      activeOpacity={0.7}
+    >
+      {deal.image && (
+        <Image source={{ uri: deal.image }} style={styles.dealImage} resizeMode="cover" />
+      )}
+      <View style={styles.dealContent}>
+        <View style={styles.dealHeader}>
+          <View style={styles.dealInfo}>
+            <ThemedText style={styles.dealStore}>{deal.store}</ThemedText>
+            <ThemedText style={styles.dealTitle}>{deal.title}</ThemedText>
           </View>
-          <ThemedText style={styles.categoryText}>{item.category}</ThemedText>
+          <View style={styles.discountBadge}>
+            <ThemedText style={styles.discountText}>{deal.discount}</ThemedText>
+          </View>
+        </View>
+
+        <ThemedText style={styles.dealDescription} numberOfLines={2}>
+          {deal.description}
+        </ThemedText>
+
+        <View style={styles.dealTags}>
+          {deal.validTime && (
+            <View style={styles.tag}>
+              <Ionicons name="time-outline" size={12} color={Colors.text.secondary} />
+              <ThemedText style={styles.tagText}>{deal.validTime}</ThemedText>
+            </View>
+          )}
+          <View style={styles.tag}>
+            <ThemedText style={styles.tagText}>🏢 Corporate</ThemedText>
+          </View>
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={20} color={Colors.text.tertiary} />
     </TouchableOpacity>
   );
 
-  if (!isVerified) {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#0EA5E9" />
-        <LinearGradient colors={['#0EA5E9', '#0284C7']} style={styles.header}>
-          <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <ThemedText style={styles.headerTitle}>Employee Zone</ThemedText>
-            <View style={styles.placeholder} />
-          </View>
-        </LinearGradient>
-
-        <ScrollView style={styles.content} contentContainerStyle={styles.verifyContent}>
-          <View style={styles.verifyIcon}>
-            <ThemedText style={styles.verifyEmoji}>💼</ThemedText>
-          </View>
-          <ThemedText style={styles.verifyTitle}>Employee Verification</ThemedText>
-          <ThemedText style={styles.verifySubtitle}>
-            Verify your corporate email to unlock exclusive employee benefits
-          </ThemedText>
-
-          {step === 'email' ? (
-            <>
-              <View style={styles.inputContainer}>
-                <ThemedText style={styles.inputLabel}>Corporate Email</ThemedText>
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="yourname@company.com"
-                  placeholderTextColor={Colors.text.tertiary}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-                <ThemedText style={styles.inputHint}>
-                  Use your official work email address
-                </ThemedText>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.verifyButton, !email && styles.verifyButtonDisabled]}
-                onPress={handleVerifyEmail}
-                disabled={!email || verifying}
-              >
-                {verifying ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <ThemedText style={styles.verifyButtonText}>Send Verification Code</ThemedText>
-                )}
-              </TouchableOpacity>
-
-              <View style={styles.partnersSection}>
-                <ThemedText style={styles.partnersTitle}>Partner Companies</ThemedText>
-                <View style={styles.partnersList}>
-                  {PARTNER_COMPANIES.map(company => (
-                    <View key={company} style={styles.partnerBadge}>
-                      <ThemedText style={styles.partnerText}>{company}</ThemedText>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.inputContainer}>
-                <ThemedText style={styles.inputLabel}>Verification Code</ThemedText>
-                <ThemedText style={styles.otpSentText}>
-                  We've sent a code to {email}
-                </ThemedText>
-                <TextInput
-                  style={styles.input}
-                  value={otp}
-                  onChangeText={setOtp}
-                  placeholder="Enter 6-digit code"
-                  placeholderTextColor={Colors.text.tertiary}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.verifyButton, otp.length < 6 && styles.verifyButtonDisabled]}
-                onPress={handleVerifyOTP}
-                disabled={otp.length < 6 || verifying}
-              >
-                {verifying ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <ThemedText style={styles.verifyButtonText}>Verify</ThemedText>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setStep('email')}>
-                <ThemedText style={styles.changeEmailText}>Change email</ThemedText>
-              </TouchableOpacity>
-            </>
-          )}
-        </ScrollView>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0EA5E9" />
-      <LinearGradient colors={['#0EA5E9', '#0284C7']} style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Employee Zone</ThemedText>
-          <View style={styles.placeholder} />
-        </View>
+      <StatusBar barStyle="light-content" backgroundColor="#475569" translucent />
+      
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={['#475569', '#334155', '#1E293B']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <SafeAreaView edges={['top']} style={styles.safeHeader}>
+          <View style={styles.headerContent}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
 
-        <View style={styles.verifiedBadge}>
-          <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
-          <ThemedText style={styles.verifiedText}>{company} Employee</ThemedText>
-        </View>
+            <View style={styles.headerTitleContainer}>
+              <ThemedText style={styles.headerTitle}>Corporate Perks</ThemedText>
+              <ThemedText style={styles.headerSubtitle}>Office hour specials & team deals</ThemedText>
+            </View>
+
+            <View style={styles.headerIcon}>
+              <ThemedText style={styles.emoji}>🏢</ThemedText>
+            </View>
+          </View>
+        </SafeAreaView>
       </LinearGradient>
 
-      <FlatList
-        data={MOCK_OFFERS}
-        renderItem={renderOffer}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.statsCard}>
-            <ThemedText style={styles.statsTitle}>💼 Corporate Benefits</ThemedText>
-            <ThemedText style={styles.statsValue}>Exclusive discounts for {company} employees</ThemedText>
+      >
+        {/* Hero Banner */}
+        <View style={styles.heroBanner}>
+          <LinearGradient
+            colors={['rgba(71, 85, 105, 0.3)', 'rgba(51, 65, 85, 0.3)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.heroGradient}
+          >
+            <View style={styles.heroContent}>
+              <View style={styles.heroIconContainer}>
+                <Ionicons name="business" size={32} color="#94A3B8" />
+              </View>
+              <View style={styles.heroTextContainer}>
+                <ThemedText style={styles.heroTitle}>Work Smarter, Save Better</ThemedText>
+                <ThemedText style={styles.heroSubtitle}>
+                  Exclusive deals for working professionals
+                </ThemedText>
+              </View>
+            </View>
+
+            {/* Current Time Indicator */}
+            <View style={styles.timeIndicator}>
+              <Ionicons name="time" size={20} color={Colors.success} />
+              <View style={styles.timeIndicatorText}>
+                <ThemedText style={styles.timeIndicatorTitle}>It's Lunch Time!</ThemedText>
+                <ThemedText style={styles.timeIndicatorSubtitle}>Best deals available now</ThemedText>
+              </View>
+              <View style={styles.liveBadge}>
+                <ThemedText style={styles.liveBadgeText}>Live</ThemedText>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Time-based Filter */}
+        <View style={styles.timeFilterSection}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>Deals by Time</ThemedText>
+            <ThemedText style={styles.sectionSubtitle}>Find deals perfect for your schedule</ThemedText>
           </View>
-        }
-      />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.timeScroll}
+          >
+            {TIME_SLOTS.map((slot) => (
+              <TouchableOpacity
+                key={slot.id}
+                style={[
+                  styles.timeSlot,
+                  selectedTime === slot.id && styles.timeSlotActive,
+                ]}
+                onPress={() => setSelectedTime(slot.id)}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={styles.timeSlotIcon}>{slot.icon}</ThemedText>
+                <ThemedText
+                  style={[
+                    styles.timeSlotLabel,
+                    selectedTime === slot.id && styles.timeSlotLabelActive,
+                  ]}
+                >
+                  {slot.label}
+                </ThemedText>
+                {slot.time && (
+                  <ThemedText style={styles.timeSlotTime}>{slot.time}</ThemedText>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Quick Access Categories */}
+        <View style={styles.quickCategories}>
+          {QUICK_CATEGORIES.map((cat, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[styles.quickCategory, { backgroundColor: `${cat.color}15` }]}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={cat.icon as any} size={24} color={cat.color} />
+              <ThemedText style={styles.quickCategoryLabel}>{cat.label}</ThemedText>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Deals List */}
+        <View style={styles.dealsSection}>
+          <ThemedText style={styles.sectionTitle}>Available Deals</ThemedText>
+          {filteredDeals.map((deal) => renderDealCard(deal))}
+        </View>
+
+        {/* Team Orders Section */}
+        <View style={styles.teamOrdersCard}>
+          <LinearGradient
+            colors={['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.2)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.teamOrdersGradient}
+          >
+            <ThemedText style={styles.teamOrdersIcon}>👥</ThemedText>
+            <View style={styles.teamOrdersContent}>
+              <ThemedText style={styles.teamOrdersTitle}>Team Orders</ThemedText>
+              <ThemedText style={styles.teamOrdersSubtitle}>
+                Order for your team & get extra discounts
+              </ThemedText>
+            </View>
+            <TouchableOpacity style={styles.teamOrdersButton} activeOpacity={0.8}>
+              <ThemedText style={styles.teamOrdersButtonText}>Explore</ThemedText>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      </ScrollView>
+
+      {/* Fixed CTA Button */}
+      <View style={styles.fixedCTA}>
+        <TouchableOpacity
+          style={styles.ctaButton}
+          onPress={() => {}}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={Gradients.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.ctaGradient}
+          >
+            <ThemedText style={styles.ctaButtonText}>
+              Connect Work Email for More Deals
+            </ThemedText>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -235,221 +353,322 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background.secondary,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight || 40,
-    paddingBottom: Spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight || 0,
+  },
+  safeHeader: {
+    paddingBottom: Spacing.base,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.md,
   },
   backButton: {
     padding: Spacing.sm,
     marginRight: Spacing.sm,
   },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
   headerTitle: {
-    flex: 1,
     ...Typography.h3,
-    color: '#FFF',
-    textAlign: 'center',
-    marginRight: 40,
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-  },
-  verifyContent: {
-    padding: Spacing.xl,
-    alignItems: 'center',
-  },
-  verifyIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#0EA5E9' + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-  },
-  verifyEmoji: {
-    fontSize: 48,
-  },
-  verifyTitle: {
-    ...Typography.h2,
-    color: Colors.text.primary,
-    marginBottom: Spacing.sm,
-  },
-  verifySubtitle: {
-    ...Typography.body,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-  },
-  inputContainer: {
-    width: '100%',
-    marginBottom: Spacing.lg,
-  },
-  inputLabel: {
-    ...Typography.label,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.sm,
-  },
-  input: {
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
-    ...Typography.body,
-    color: Colors.text.primary,
-    ...Shadows.subtle,
-  },
-  inputHint: {
-    ...Typography.caption,
-    color: Colors.text.tertiary,
-    marginTop: Spacing.xs,
-  },
-  otpSentText: {
-    ...Typography.bodySmall,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.sm,
-  },
-  verifyButton: {
-    width: '100%',
-    backgroundColor: '#0EA5E9',
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.base,
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-  },
-  verifyButtonDisabled: {
-    backgroundColor: Colors.gray[300],
-  },
-  verifyButtonText: {
-    ...Typography.button,
-    color: '#FFF',
-  },
-  changeEmailText: {
-    ...Typography.body,
-    color: '#0EA5E9',
-  },
-  partnersSection: {
-    width: '100%',
-    marginTop: Spacing.lg,
-  },
-  partnersTitle: {
-    ...Typography.label,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.md,
-    textAlign: 'center',
-  },
-  partnersList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-  },
-  partnerBadge: {
-    backgroundColor: Colors.gray[100],
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-  },
-  partnerText: {
-    ...Typography.caption,
-    color: Colors.text.secondary,
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
-    marginHorizontal: Spacing.lg,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: BorderRadius.full,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-  },
-  verifiedText: {
-    ...Typography.label,
-    color: '#FFF',
-  },
-  listContent: {
-    padding: Spacing.base,
-    paddingBottom: Spacing['3xl'],
-  },
-  statsCard: {
-    backgroundColor: '#0EA5E9' + '15',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#0EA5E9' + '30',
-  },
-  statsTitle: {
-    ...Typography.label,
-    color: '#0EA5E9',
-    marginBottom: Spacing.xs,
-  },
-  statsValue: {
-    ...Typography.body,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-  },
-  offerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
-    marginBottom: Spacing.sm,
-    gap: Spacing.md,
-    ...Shadows.subtle,
-  },
-  offerImage: {
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.gray[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  offerEmoji: {
-    fontSize: 28,
-  },
-  offerInfo: {
-    flex: 1,
-  },
-  offerTitle: {
-    ...Typography.label,
-    color: Colors.text.primary,
-    marginBottom: Spacing.xs,
-  },
-  offerStore: {
-    ...Typography.bodySmall,
-    color: Colors.text.tertiary,
-    marginBottom: Spacing.sm,
-  },
-  offerMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  discountBadge: {
-    backgroundColor: Colors.success + '20',
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-  },
-  discountText: {
-    ...Typography.caption,
-    color: Colors.success,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
-  categoryText: {
+  headerSubtitle: {
+    ...Typography.bodySmall,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  headerIcon: {
+    width: 40,
+    alignItems: 'center',
+  },
+  emoji: {
+    fontSize: 32,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 150, // Will be overridden by dynamic padding
+  },
+  heroBanner: {
+    margin: Spacing.base,
+    borderRadius: BorderRadius['2xl'],
+    overflow: 'hidden',
+    ...Shadows.medium,
+  },
+  heroGradient: {
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(71, 85, 105, 0.2)',
+    borderRadius: BorderRadius['2xl'],
+  },
+  heroContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.base,
+  },
+  heroIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(148, 163, 184, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.base,
+  },
+  heroTextContainer: {
+    flex: 1,
+  },
+  heroTitle: {
+    ...Typography.h4,
+    color: Colors.text.primary,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  heroSubtitle: {
+    ...Typography.bodySmall,
+    color: Colors.text.secondary,
+  },
+  timeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    gap: Spacing.sm,
+  },
+  timeIndicatorText: {
+    flex: 1,
+  },
+  timeIndicatorTitle: {
+    ...Typography.body,
+    color: Colors.text.primary,
+    fontWeight: '600',
+  },
+  timeIndicatorSubtitle: {
     ...Typography.caption,
     color: Colors.text.tertiary,
+  },
+  liveBadge: {
+    backgroundColor: Colors.success,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  },
+  liveBadgeText: {
+    ...Typography.caption,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  timeFilterSection: {
+    marginBottom: Spacing.lg,
+  },
+  sectionHeader: {
+    paddingHorizontal: Spacing.base,
+    marginBottom: Spacing.md,
+  },
+  sectionTitle: {
+    ...Typography.h4,
+    color: Colors.text.primary,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    ...Typography.bodySmall,
+    color: Colors.text.tertiary,
+  },
+  timeScroll: {
+    paddingHorizontal: Spacing.base,
+    gap: Spacing.sm,
+  },
+  timeSlot: {
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.gray[100],
+    minWidth: 90,
+  },
+  timeSlotActive: {
+    backgroundColor: 'rgba(71, 85, 105, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.5)',
+  },
+  timeSlotIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  timeSlotLabel: {
+    ...Typography.labelSmall,
+    color: Colors.text.secondary,
+  },
+  timeSlotLabelActive: {
+    color: '#FFFFFF',
+  },
+  timeSlotTime: {
+    ...Typography.caption,
+    color: Colors.text.tertiary,
+    marginTop: 2,
+  },
+  quickCategories: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.base,
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  quickCategory: {
+    flex: 1,
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.xs,
+  },
+  quickCategoryLabel: {
+    ...Typography.caption,
+    color: Colors.text.secondary,
+  },
+  dealsSection: {
+    paddingHorizontal: Spacing.base,
+  },
+  dealCard: {
+    flexDirection: 'row',
+    backgroundColor: Colors.background.primary,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: Spacing.md,
+    ...Shadows.subtle,
+  },
+  dealImage: {
+    width: 96,
+    height: 96,
+  },
+  dealContent: {
+    flex: 1,
+    padding: Spacing.base,
+  },
+  dealHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.xs,
+  },
+  dealInfo: {
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  dealStore: {
+    ...Typography.bodySmall,
+    color: Colors.text.tertiary,
+    marginBottom: 2,
+  },
+  dealTitle: {
+    ...Typography.label,
+    color: Colors.text.primary,
+    fontWeight: '600',
+  },
+  discountBadge: {
+    backgroundColor: 'rgba(71, 85, 105, 0.15)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  },
+  discountText: {
+    ...Typography.labelSmall,
+    color: '#94A3B8',
+    fontWeight: '700',
+  },
+  dealDescription: {
+    ...Typography.bodySmall,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.sm,
+  },
+  dealTags: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    flexWrap: 'wrap',
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.gray[100],
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+    gap: 4,
+  },
+  tagText: {
+    ...Typography.caption,
+    color: Colors.text.secondary,
+  },
+  teamOrdersCard: {
+    margin: Spacing.base,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    ...Shadows.medium,
+  },
+  teamOrdersGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.base,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.2)',
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.md,
+  },
+  teamOrdersIcon: {
+    fontSize: 32,
+  },
+  teamOrdersContent: {
+    flex: 1,
+  },
+  teamOrdersTitle: {
+    ...Typography.label,
+    color: Colors.text.primary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  teamOrdersSubtitle: {
+    ...Typography.bodySmall,
+    color: Colors.text.secondary,
+  },
+  teamOrdersButton: {
+    backgroundColor: Colors.primary[600],
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  teamOrdersButtonText: {
+    ...Typography.labelSmall,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  fixedCTA: {
+    position: 'absolute',
+    bottom: 70, // Above bottom nav bar (70px height)
+    left: 0,
+    right: 0,
+    padding: Spacing.base,
+    backgroundColor: Colors.background.primary,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border.light,
+    ...Shadows.medium,
+  },
+  ctaButton: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+  },
+  ctaGradient: {
+    paddingVertical: Spacing.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaButtonText: {
+    ...Typography.button,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

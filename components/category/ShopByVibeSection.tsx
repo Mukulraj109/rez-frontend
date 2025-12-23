@@ -4,7 +4,7 @@
  * Adapted from Rez_v-2-main FashionVibeCard
  */
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getVibesForCategory, Vibe } from '@/data/categoryDummyData';
+import categoryMetadataApi, { Vibe } from '@/services/categoryMetadataApi';
+import { getVibesForCategory } from '@/data/categoryDummyData';
 
 interface ShopByVibeSectionProps {
   categorySlug: string;
@@ -54,7 +56,45 @@ const ShopByVibeSection: React.FC<ShopByVibeSectionProps> = ({
   onVibePress,
 }) => {
   const router = useRouter();
-  const displayVibes = vibes || getVibesForCategory(categorySlug);
+  const [apiVibes, setApiVibes] = useState<Vibe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (vibes) {
+      setApiVibes(vibes);
+      setLoading(false);
+      return;
+    }
+
+    const fetchVibes = async () => {
+      try {
+        setLoading(true);
+        const response = await categoryMetadataApi.getVibes(categorySlug);
+        if (response.success && response.data?.vibes?.length > 0) {
+          setApiVibes(response.data.vibes);
+          setError(false);
+        } else {
+          // Fallback to dummy data if API returns empty
+          const fallbackVibes = getVibesForCategory(categorySlug);
+          setApiVibes(fallbackVibes);
+          setError(true);
+        }
+      } catch (err) {
+        console.error('Error fetching vibes:', err);
+        // Fallback to dummy data on error
+        const fallbackVibes = getVibesForCategory(categorySlug);
+        setApiVibes(fallbackVibes);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVibes();
+  }, [categorySlug, vibes]);
+
+  const displayVibes = vibes || apiVibes;
 
   const handlePress = useCallback((vibe: Vibe) => {
     if (onVibePress) {
@@ -66,6 +106,14 @@ const ShopByVibeSection: React.FC<ShopByVibeSectionProps> = ({
       } as any);
     }
   }, [router, categorySlug, onVibePress]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="small" color="#6366F1" />
+      </View>
+    );
+  }
 
   if (!displayVibes || displayVibes.length === 0) {
     return null;
@@ -119,6 +167,11 @@ const styles = StyleSheet.create({
         boxShadow: '0 2px 8px rgba(11, 34, 64, 0.04), 0 8px 24px rgba(11, 34, 64, 0.06)',
       },
     }),
+  },
+  loadingContainer: {
+    height: 160,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',

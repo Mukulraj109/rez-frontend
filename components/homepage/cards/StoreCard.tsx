@@ -496,6 +496,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(0, 192, 106, 0.08)',
+    minHeight: 320, // Fixed minimum height to ensure consistency
     ...Platform.select({
       ios: {
         shadowColor: '#0B2240',
@@ -610,6 +611,8 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 12,
     lineHeight: 18,
+    minHeight: 36, // Fixed height for 2 lines (18 * 2)
+    maxHeight: 36,
   },
   locationInfo: {
     flexDirection: 'row',

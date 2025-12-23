@@ -44,10 +44,7 @@ const StoreDiscoverySection = React.memo(function StoreDiscoverySection({
   const handleStorePress = useCallback(
     (store: DiscoveryStore) => {
       try {
-        router.push({
-          pathname: '/Store',
-          params: { storeId: store.id },
-        });
+        router.push(`/MainStorePage?storeId=${store.id}` as any);
       } catch (error) {
         console.error('Navigation error:', error);
       }

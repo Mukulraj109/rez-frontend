@@ -9,11 +9,40 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import CategoryCashbackGrid from './CategoryCashbackGrid';
 
 // Updated to 4 tabs
 export type TabId = 'near-u' | 'mall' | 'cash' | 'prive';
+
+// Tab configuration with icons and descriptions
+const TAB_CONFIG: Record<TabId, {
+  iconName: keyof typeof Ionicons.glyphMap;
+  label: string;
+  description: string;
+}> = {
+  'near-u': {
+    iconName: 'location-outline',
+    label: 'Near U',
+    description: 'Local discovery + payments',
+  },
+  'mall': {
+    iconName: 'storefront-outline',
+    label: 'Mall',
+    description: 'Curated brands, fast delivery',
+  },
+  'cash': {
+    iconName: 'wallet-outline',
+    label: 'Cash',
+    description: 'Affiliate cashback & coupons',
+  },
+  'prive': {
+    iconName: 'diamond-outline',
+    label: 'Privé',
+    description: 'Invite-only luxury deals',
+  },
+};
 
 // Comprehensive theme configuration for each tab
 const TAB_THEMES: Record<TabId, {
@@ -33,20 +62,20 @@ const TAB_THEMES: Record<TabId, {
     containerBg: '#ECFDF5',
   },
   'mall': {
-    heroGradient: ['#A7F3D0', '#6EE7B7', '#34D399'],
-    tabActiveColor: '#0D9488',
+    heroGradient: ['#E0F2FE', '#BAE6FD', '#7DD3FC'],
+    tabActiveColor: '#0284C7',
     tabActiveTextColor: '#FFFFFF',
-    tabInactiveTextColor: '#0D9488',
-    categoryIconColor: '#0D9488',
-    containerBg: '#ECFDF5',
+    tabInactiveTextColor: '#0284C7',
+    categoryIconColor: '#0284C7',
+    containerBg: '#F0F9FF',
   },
   'cash': {
-    heroGradient: ['#FEF3C7', '#FDE68A', '#FCD34D'],
-    tabActiveColor: '#F59E0B',
+    heroGradient: ['#FFF4E6', '#FFE8CC', '#FFD9B3'],
+    tabActiveColor: '#F97316',
     tabActiveTextColor: '#FFFFFF',
-    tabInactiveTextColor: '#F59E0B',
-    categoryIconColor: '#F59E0B',
-    containerBg: '#FFFBEB',
+    tabInactiveTextColor: '#F97316',
+    categoryIconColor: '#F97316',
+    containerBg: '#FFF7ED',
   },
   'prive': {
     heroGradient: ['#1F2937', '#374151', '#4B5563'],
@@ -90,6 +119,7 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
   isPriveEligible = false,
   onPriveLockedPress,
 }) => {
+  const router = useRouter();
   const theme = TAB_THEMES[activeTab];
   const isPriveMode = activeTab === 'prive';
   const [containerWidth, setContainerWidth] = useState(0);
@@ -151,7 +181,11 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
   }, [activeTab, tabLayouts, containerWidth]);
 
   // Get container background based on mode
-  const containerBg = isPriveMode ? '#111827' : '#ECFDF5';
+  const containerBg = isPriveMode 
+    ? '#111827' 
+    : activeTab === 'mall' 
+      ? '#F0F9FF' 
+      : '#ECFDF5';
 
   return (
     <View style={[styles.container, { backgroundColor: containerBg }]} onLayout={handleContainerLayout}>
@@ -183,13 +217,26 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
               ? styles.tabActiveTransparent
               : styles.tabInactive
           ]}>
-            <Text style={[
-              styles.tabText,
-              { color: activeTab === 'near-u'
+            <Ionicons
+              name={TAB_CONFIG['near-u'].iconName}
+              size={18}
+              color={activeTab === 'near-u'
                 ? '#059669'
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }
-            ]}>Near U</Text>
+              style={styles.tabIcon}
+            />
+            <Text 
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={0.8}
+              style={[
+                styles.tabText,
+                { color: activeTab === 'near-u'
+                  ? '#059669'
+                  : TAB_THEMES[activeTab].tabInactiveTextColor
+                }
+              ]}>{TAB_CONFIG['near-u'].label}</Text>
           </View>
         </TouchableOpacity>
 
@@ -207,13 +254,26 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
               ? styles.tabActiveTransparent
               : styles.tabInactive
           ]}>
-            <Text style={[
-              styles.tabText,
-              { color: activeTab === 'mall'
-                ? '#0D9488'
+            <Ionicons
+              name={TAB_CONFIG['mall'].iconName}
+              size={18}
+              color={activeTab === 'mall'
+                ? '#0284C7'
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }
-            ]}>Mall</Text>
+              style={styles.tabIcon}
+            />
+            <Text 
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={0.8}
+              style={[
+                styles.tabText,
+                { color: activeTab === 'mall'
+                  ? '#0284C7'
+                  : TAB_THEMES[activeTab].tabInactiveTextColor
+                }
+              ]}>{TAB_CONFIG['mall'].label}</Text>
           </View>
         </TouchableOpacity>
 
@@ -231,13 +291,26 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
               ? styles.tabActiveTransparent
               : styles.tabInactive
           ]}>
-            <Text style={[
-              styles.tabText,
-              { color: activeTab === 'cash'
-                ? '#F59E0B'
+            <Ionicons
+              name={TAB_CONFIG['cash'].iconName}
+              size={18}
+              color={activeTab === 'cash'
+                ? '#F97316'
                 : TAB_THEMES[activeTab].tabInactiveTextColor
               }
-            ]}>Cash</Text>
+              style={styles.tabIcon}
+            />
+            <Text 
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={0.8}
+              style={[
+                styles.tabText,
+                { color: activeTab === 'cash'
+                  ? '#F97316'
+                  : TAB_THEMES[activeTab].tabInactiveTextColor
+                }
+              ]}>{TAB_CONFIG['cash'].label}</Text>
           </View>
         </TouchableOpacity>
 
@@ -258,19 +331,23 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
             <View style={styles.priveTabContent}>
               {!isPriveEligible && activeTab !== 'prive' && (
                 <Ionicons
-                  name="lock-closed"
+                  name="lock-closed-outline"
                   size={12}
                   color={TAB_THEMES[activeTab].tabInactiveTextColor}
                   style={styles.lockIcon}
                 />
               )}
-              <Text style={[
-                styles.tabText,
-                { color: activeTab === 'prive'
-                  ? '#C9A962'
-                  : TAB_THEMES[activeTab].tabInactiveTextColor
-                }
-              ]}>Privé</Text>
+              <Text 
+                numberOfLines={1}
+                adjustsFontSizeToFit={true}
+                minimumFontScale={0.8}
+                style={[
+                  styles.tabText,
+                  { color: activeTab === 'prive'
+                    ? '#C9A962'
+                    : TAB_THEMES[activeTab].tabInactiveTextColor
+                  }
+                ]}>{TAB_CONFIG['prive'].label}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -283,6 +360,24 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
         end={{ x: 0.5, y: 1 }}
         style={styles.middleSection}
       >
+        {/* Tab Description Section - Center */}
+        <View style={styles.descriptionSection}>
+          <Text style={[
+            styles.descriptionText,
+            {
+              color: isPriveMode 
+                ? '#C9A962' 
+                : activeTab === 'mall'
+                  ? '#0284C7'
+                  : activeTab === 'cash'
+                    ? '#F97316'
+                    : '#059669'
+            }
+          ]}>
+            {TAB_CONFIG[activeTab].description}
+          </Text>
+        </View>
+
         {/* Search Row with Promo Banner */}
         <View style={styles.searchRow}>
           {/* Compact Search Bar */}
@@ -308,42 +403,40 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
             </Text>
           </TouchableOpacity>
 
-          {/* Promotional Banner */}
+          {/* Promotional Banner - Deals Button */}
           <TouchableOpacity
             style={styles.promoBannerContainer}
             activeOpacity={0.9}
+            onPress={() => {
+              router.push('/offers' as any);
+            }}
           >
-            <LinearGradient
-              colors={isPriveMode ? ['#2A2A2A', '#1F1F1F'] : ['#FFF5F5', '#FFFFFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.promoBannerGradient}
-            >
-              <View style={styles.promoBannerContent}>
-                <Text style={[
-                  styles.promoBannerTitle,
-                  isPriveMode && styles.promoBannerTitlePrive
-                ]}>
-                  {isPriveMode ? 'EXCLUSIVE' : 'FRESH'}
-                </Text>
-                <Text style={[
-                  styles.promoBannerSubtitle,
-                  isPriveMode && styles.promoBannerSubtitlePrive
-                ]}>
-                  {isPriveMode ? 'ACCESS' : 'DEALS'}
-                </Text>
-              </View>
-              <View style={[
-                styles.promoBannerIconWrapper,
-                isPriveMode && styles.promoBannerIconWrapperPrive
-              ]}>
-                <Ionicons
-                  name={isPriveMode ? 'diamond' : 'pricetag'}
-                  size={18}
-                  color={isPriveMode ? '#C9A962' : '#DC2626'}
-                />
-              </View>
-            </LinearGradient>
+            {isPriveMode ? (
+              <LinearGradient
+                colors={['#2A2A2A', '#1F1F1F']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.promoBannerGradient}
+              >
+                <View style={styles.promoBannerContent}>
+                  <Text style={styles.promoBannerTitlePrive}>EXCLUSIVE</Text>
+                  <Text style={styles.promoBannerSubtitlePrive}>ACCESS</Text>
+                </View>
+                <View style={styles.promoBannerIconWrapperPrive}>
+                  <Ionicons name="diamond" size={18} color="#C9A962" />
+                </View>
+              </LinearGradient>
+            ) : (
+              <LinearGradient
+                colors={['#00C06A', '#059669', '#10B981']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.promoBannerGradientDeals}
+              >
+                <Ionicons name="flash" size={18} color="#FFFFFF" style={styles.dealsIcon} />
+                <Text style={styles.dealsText}>Deals</Text>
+              </LinearGradient>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -371,12 +464,13 @@ const HomeTabSection: React.FC<HomeTabSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     paddingTop: 8,
     paddingBottom: 0,
     marginTop: -1,
+    marginBottom: 0,
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   // SVG curved background
   svgContainer: {
@@ -393,8 +487,11 @@ const styles = StyleSheet.create({
   },
   middleSection: {
     paddingTop: 12,
-    paddingBottom: 0,
+    paddingBottom: 16,
+    marginBottom: 0,
+    marginTop: 0,
     zIndex: 1,
+    borderBottomWidth: 0,
   },
   // Tabs
   tabsRow: {
@@ -414,12 +511,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
+    flexDirection: 'row',
+    gap: 6,
   },
   tabPill: {
     borderRadius: 18,
     paddingVertical: 12,
     paddingHorizontal: 10,
     minHeight: 54,
+  },
+  tabIcon: {
+    // Icon size is controlled by Ionicons size prop
   },
   tabActiveTransparent: {
     backgroundColor: 'transparent',
@@ -447,23 +549,46 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+    flexShrink: 1,
   },
   priveTabContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
   },
   lockIcon: {
-    marginRight: 4,
+    marginLeft: 0,
+  },
+  // Description Section
+  descriptionSection: {
+    paddingHorizontal: 16,
+    paddingTop: 0,
+    paddingBottom: 4,
+    marginTop: -4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  descriptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#059669',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  descriptionTextPrive: {
+    color: '#C9A962',
   },
   // Search
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
+    paddingBottom: 12,
+    marginBottom: 0,
     gap: 10,
   },
   searchContainerCompact: {
@@ -512,13 +637,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 3,
+        shadowColor: '#00C06A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 2,
+        elevation: 4,
       },
     }),
   },
@@ -529,6 +654,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 9,
+  },
+  promoBannerGradientDeals: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    gap: 8,
   },
   promoBannerContent: {
     flex: 1,
@@ -541,6 +675,9 @@ const styles = StyleSheet.create({
   },
   promoBannerTitlePrive: {
     color: '#C9A962',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   promoBannerSubtitle: {
     fontSize: 12,
@@ -551,6 +688,10 @@ const styles = StyleSheet.create({
   },
   promoBannerSubtitlePrive: {
     color: '#A88B4A',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    marginTop: -2,
   },
   promoBannerIconWrapper: {
     width: 28,
@@ -562,6 +703,21 @@ const styles = StyleSheet.create({
   },
   promoBannerIconWrapperPrive: {
     backgroundColor: 'rgba(201, 169, 98, 0.15)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Deals Button Styles (Orange Gradient)
+  dealsIcon: {
+    marginRight: 0,
+  },
+  dealsText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   // Category Cashback Grid Container
   categoryCashbackGrid: {

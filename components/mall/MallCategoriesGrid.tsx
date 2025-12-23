@@ -43,7 +43,7 @@ const MallCategoriesGrid: React.FC<MallCategoriesGridProps> = ({
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <LinearGradient
-              colors={['#8B5CF6', '#6366F1']}
+              colors={['#0284C7', '#0369A1']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.iconContainer}
@@ -54,7 +54,7 @@ const MallCategoriesGrid: React.FC<MallCategoriesGridProps> = ({
           </View>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#8B5CF6" />
+          <ActivityIndicator size="small" color="#0284C7" />
           <Text style={styles.loadingText}>Loading categories...</Text>
         </View>
       </View>
@@ -104,7 +104,7 @@ const MallCategoriesGrid: React.FC<MallCategoriesGridProps> = ({
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['#8B5CF6', '#6366F1']}
+                colors={['#0284C7', '#0369A1']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.viewAllGradient}
@@ -147,6 +147,10 @@ const MallCategoriesGrid: React.FC<MallCategoriesGridProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 24,
+    paddingTop: 16,
+    paddingBottom: 16,
+    borderRadius: 0,
+    backgroundColor: 'transparent',
   },
   header: {
     paddingHorizontal: 16,
@@ -171,7 +175,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#8B5CF6',
+        shadowColor: '#0284C7',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -197,7 +201,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#8B5CF6',
+        shadowColor: '#0284C7',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

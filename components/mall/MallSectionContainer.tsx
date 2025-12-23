@@ -174,7 +174,7 @@ const MallSectionContainer: React.FC<MallSectionContainerProps> = ({
   if (isLoading && !heroBanners.length && !featuredBrands.length) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00C06A" />
+        <ActivityIndicator size="large" color="#0284C7" />
         <Text style={styles.loadingText}>Loading ReZ Mall...</Text>
       </View>
     );
@@ -200,10 +200,10 @@ const MallSectionContainer: React.FC<MallSectionContainerProps> = ({
 
   return (
     <View style={styles.outerContainer}>
-      {/* Gradient Background - Starts from HomeTabSection's end color for seamless transition */}
+      {/* Gradient Background - Continues from HomeTabSection's blue gradient for seamless transition */}
       <LinearGradient
-        colors={['#34D399', '#6EE7B7', '#A7F3D0', '#D1FAE5', '#ECFDF5', '#F9FAFB', '#FFFFFF']}
-        locations={[0, 0.08, 0.2, 0.35, 0.5, 0.7, 1]}
+        colors={['#7DD3FC', '#BAE6FD', '#E0F2FE', '#F0F9FF', '#FFFFFF']}
+        locations={[0, 0.2, 0.5, 0.8, 1]}
         style={styles.gradientBackground}
       />
 
@@ -215,8 +215,8 @@ const MallSectionContainer: React.FC<MallSectionContainerProps> = ({
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={refresh}
-            tintColor="#00C06A"
-            colors={['#00C06A']}
+            tintColor="#0284C7"
+            colors={['#0284C7']}
           />
         }
       >
@@ -290,6 +290,8 @@ const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
     position: 'relative',
+    marginTop: 0,
+    borderTopWidth: 0,
   },
   gradientBackground: {
     position: 'absolute',
@@ -303,10 +305,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent', // Make transparent to show gradient
   },
   contentContainer: {
-    paddingTop: 12,
+    paddingTop: 0,
     paddingBottom: 32,
     paddingHorizontal: 0,
     backgroundColor: 'transparent',
+    marginTop: -16,
+    borderTopWidth: 0,
   },
   loadingContainer: {
     flex: 1,

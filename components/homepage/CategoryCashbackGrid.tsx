@@ -1,7 +1,7 @@
 /**
  * CategoryCashbackGrid Component
  * 2-column grid of category cards showing cashback percentages
- * With horizontal slider - 3 rows per page
+ * Static grid layout - no slider
  */
 
 import React, { useState, useEffect, memo, useCallback, useRef } from 'react';
@@ -15,8 +15,6 @@ import {
   Animated,
   Dimensions,
   ScrollView,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -101,7 +99,12 @@ const CategoryCashbackGridSkeleton: React.FC = memo(() => {
   });
 
   return (
-    <View style={styles.grid}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContainer}
+      style={styles.scrollView}
+    >
       {Array.from({ length: 10 }).map((_, index) => (
         <Animated.View key={index} style={[styles.card, styles.skeletonCard, { opacity }]}>
           <View style={styles.skeletonIcon} />
@@ -109,33 +112,16 @@ const CategoryCashbackGridSkeleton: React.FC = memo(() => {
           <View style={styles.skeletonCashback} />
         </Animated.View>
       ))}
-    </View>
+    </ScrollView>
   );
 });
 
 CategoryCashbackGridSkeleton.displayName = 'CategoryCashbackGridSkeleton';
 
-// Constants for slider
-const ITEMS_PER_PAGE = 6; // 3 rows x 2 columns
-const PAGE_GAP = 16; // Gap between pages
-const SLIDER_WIDTH = SCREEN_WIDTH - 32; // Account for container padding
-const PAGE_WIDTH = SLIDER_WIDTH + PAGE_GAP; // Width including gap for snap
-
 const CategoryCashbackGrid: React.FC<CategoryCashbackGridProps> = memo(({ onCategoryPress, style }) => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [cashbackRates, setCashbackRates] = useState<Record<string, number>>({});
-  const [currentPage, setCurrentPage] = useState(0);
-  const scrollViewRef = useRef<ScrollView>(null);
-
-  // Calculate total pages
-  const totalPages = Math.ceil(CATEGORIES.length / ITEMS_PER_PAGE);
-
-  // Split categories into pages
-  const categoryPages = [];
-  for (let i = 0; i < CATEGORIES.length; i += ITEMS_PER_PAGE) {
-    categoryPages.push(CATEGORIES.slice(i, i + ITEMS_PER_PAGE));
-  }
 
   useEffect(() => {
     fetchCashbackRates();
@@ -199,28 +185,14 @@ const CategoryCashbackGrid: React.FC<CategoryCashbackGridProps> = memo(({ onCate
     }
   }, [router, onCategoryPress]);
 
-  // Handle scroll end to update current page
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const page = Math.round(offsetX / PAGE_WIDTH);
-    setCurrentPage(page);
-  }, []);
-
-  // Handle pagination dot press
-  const handleDotPress = useCallback((pageIndex: number) => {
-    scrollViewRef.current?.scrollTo({
-      x: pageIndex * PAGE_WIDTH,
-      animated: true,
-    });
-    setCurrentPage(pageIndex);
-  }, []);
-
   if (loading) {
     return (
       <View style={[styles.container, style]}>
         <View style={styles.header}>
-          <Text style={styles.headerIcon}>🎉</Text>
-          <Text style={styles.headerTitle}>Earn rewards in every category</Text>
+          <View style={styles.headerLeft}>
+            <Ionicons name="gift" size={18} color="#059669" style={styles.headerIcon} />
+            <Text style={styles.headerTitle}>Earn rewards in every category</Text>
+          </View>
         </View>
         <Text style={styles.headerSubtitle}>Shop smarter across all your needs</Text>
         <CategoryCashbackGridSkeleton />
@@ -232,73 +204,80 @@ const CategoryCashbackGrid: React.FC<CategoryCashbackGridProps> = memo(({ onCate
     <View style={[styles.container, style]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerIcon}>🎉</Text>
-        <Text style={styles.headerTitle}>Earn rewards in every category</Text>
+        <View style={styles.headerLeft}>
+          <Ionicons name="gift" size={18} color="#059669" style={styles.headerIcon} />
+          <Text style={styles.headerTitle}>Earn rewards in every category</Text>
+        </View>
       </View>
       <Text style={styles.headerSubtitle}>Shop smarter across all your needs</Text>
 
-      {/* Slider */}
-      <View style={styles.sliderWrapper}>
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          pagingEnabled={false}
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleScroll}
-          decelerationRate="fast"
-          snapToInterval={PAGE_WIDTH}
-          snapToAlignment="start"
-          contentContainerStyle={styles.sliderContainer}
-          nestedScrollEnabled
-        >
-          {categoryPages.map((pageCategories, pageIndex) => (
-            <View key={pageIndex} style={styles.page}>
-              <View style={styles.grid}>
-                {pageCategories.map((category) => (
-                  <TouchableOpacity
-                    key={category.id}
-                    style={styles.card}
-                    onPress={() => handleCategoryPress(category)}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${category.label} category with ${getCashbackRate(category.id)}% cashback`}
-                  >
-                    <View style={[styles.iconContainer, { backgroundColor: category.iconBg }]}>
-                      <Image
-                        source={category.image}
-                        style={styles.categoryIcon}
-                        resizeMode="contain"
-                      />
-                    </View>
-                    <View style={styles.textContainer}>
-                      <Text style={styles.categoryName}>{category.label}</Text>
-                      <Text style={styles.cashbackText}>
-                        Earn up to {getCashbackRate(category.id)}% Cashback
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Pagination Dots */}
-      <View style={styles.paginationContainer}>
-        {Array.from({ length: totalPages }).map((_, index) => (
-          <TouchableOpacity
-            key={index}
-            onPress={() => handleDotPress(index)}
-            style={[
-              styles.paginationDot,
-              currentPage === index && styles.paginationDotActive,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`Go to page ${index + 1}`}
-          />
-        ))}
-      </View>
+      {/* Horizontal Scrollable Grid - 2 rows */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContainer}
+        style={styles.scrollView}
+        nestedScrollEnabled
+      >
+        <View>
+          {/* First Row */}
+          <View style={styles.gridRow}>
+            {CATEGORIES.slice(0, Math.ceil(CATEGORIES.length / 2)).map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={styles.card}
+                onPress={() => handleCategoryPress(category)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`${category.label} category with ${getCashbackRate(category.id)}% cashback`}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: category.iconBg }]}>
+                  <Image
+                    source={category.image}
+                    style={styles.categoryIcon}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.categoryName}>{category.label}</Text>
+                <View style={styles.cashbackContainer}>
+                  <Ionicons name="logo-bitcoin" size={10} color="#F59E0B" />
+                  <Text style={styles.cashbackText}>
+                    Up to {getCashbackRate(category.id)}%
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {/* Second Row */}
+          <View style={styles.gridRow}>
+            {CATEGORIES.slice(Math.ceil(CATEGORIES.length / 2)).map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={styles.card}
+                onPress={() => handleCategoryPress(category)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`${category.label} category with ${getCashbackRate(category.id)}% cashback`}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: category.iconBg }]}>
+                  <Image
+                    source={category.image}
+                    style={styles.categoryIcon}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.categoryName}>{category.label}</Text>
+                <View style={styles.cashbackContainer}>
+                  <Ionicons name="logo-bitcoin" size={10} color="#F59E0B" />
+                  <Text style={styles.cashbackText}>
+                    Up to {getCashbackRate(category.id)}%
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
 
       {/* Pay in Store Promo Card */}
       <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/pay-in-store' as any)}>
@@ -332,21 +311,28 @@ const CategoryCashbackGrid: React.FC<CategoryCashbackGridProps> = memo(({ onCate
 
 CategoryCashbackGrid.displayName = 'CategoryCashbackGrid';
 
-const CARD_WIDTH = (SLIDER_WIDTH - 24) / 2; // 2 cards per row with gap
+const CARD_WIDTH = 100; // Fixed width for horizontal scroll
+const CARD_HEIGHT = 120; // Height for 2-row layout
 
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
+    paddingTop: 8,
+    paddingBottom: 2,
+    backgroundColor: '#E6F9F0',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 2,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   headerIcon: {
-    fontSize: 16,
     marginRight: 6,
   },
   headerTitle: {
@@ -359,51 +345,27 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 8,
   },
-  // Slider styles
-  sliderWrapper: {
-    height: 276, // Fixed height for 3 rows: 3 × (84 card height + 8 margin) = 276
-    overflow: 'hidden',
+  scrollView: {
+    marginHorizontal: -16, // Offset container padding for full-width scroll
   },
-  sliderContainer: {
-    alignItems: 'flex-start',
+  scrollContainer: {
+    paddingHorizontal: 16, // Restore padding inside scroll
+    paddingBottom: 4,
   },
-  page: {
-    width: SLIDER_WIDTH,
-    marginRight: PAGE_GAP,
-  },
-  grid: {
+  gridRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  // Pagination styles
-  paginationContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 6,
-    marginBottom: 2,
-    gap: 8,
-  },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D1D5DB',
-  },
-  paginationDotActive: {
-    backgroundColor: '#059669',
-    width: 24,
-    borderRadius: 4,
+    gap: 12,
+    marginBottom: 8,
   },
   card: {
     width: CARD_WIDTH,
+    height: CARD_HEIGHT,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'stretch',
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -420,39 +382,40 @@ const styles = StyleSheet.create({
     }),
   },
   iconContainer: {
-    width: 60,
-    height: 60,
+    width: 56,
+    height: 56,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
   },
   categoryIcon: {
-    width: 42,
-    height: 42,
-  },
-  textContainer: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingVertical: 2,
+    width: 40,
+    height: 40,
   },
   categoryName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#0B2240',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  cashbackContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
   },
   cashbackText: {
-    fontSize: 11,
-    color: '#059669',
-    fontWeight: '500',
-    lineHeight: 15,
+    fontSize: 10,
+    color: '#F59E0B',
+    fontWeight: '600',
   },
   // Promo Card styles
   promoCard: {
-    marginTop: 10,
-    marginBottom: 8,
+    marginTop: 6,
+    marginBottom: 4,
     borderRadius: 18,
-    paddingVertical: 24,
+    paddingVertical: 18,
     paddingHorizontal: 20,
     ...Platform.select({
       ios: {
@@ -484,7 +447,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   promoButton: {
     flexDirection: 'row',
@@ -520,8 +483,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 14,
-    paddingTop: 12,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.15)',
     gap: 6,
@@ -536,24 +499,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   skeletonIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 14,
     backgroundColor: '#E5E7EB',
     marginBottom: 10,
+    alignSelf: 'center',
   },
   skeletonName: {
-    width: 60,
-    height: 15,
+    width: 80,
+    height: 14,
     borderRadius: 4,
     backgroundColor: '#E5E7EB',
     marginBottom: 6,
+    alignSelf: 'center',
   },
   skeletonCashback: {
-    width: 90,
-    height: 28,
+    width: 120,
+    height: 11,
     borderRadius: 4,
     backgroundColor: '#E5E7EB',
+    alignSelf: 'center',
   },
 });
 

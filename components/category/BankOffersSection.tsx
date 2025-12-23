@@ -4,7 +4,7 @@
  * Adapted from Rez_v-2-main bank offers pattern
  */
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { bankOffersData, BankOffer } from '@/data/categoryDummyData';
+import bankOffersApi, { BankOffer } from '@/services/bankOffersApi';
+import { bankOffersData } from '@/data/categoryDummyData';
 
 interface BankOffersSectionProps {
   categorySlug?: string;
@@ -67,23 +69,67 @@ BankOfferCard.displayName = 'BankOfferCard';
 
 const BankOffersSection: React.FC<BankOffersSectionProps> = ({
   categorySlug,
-  offers = bankOffersData,
+  offers,
   onOfferPress,
 }) => {
   const router = useRouter();
+  const [apiOffers, setApiOffers] = useState<BankOffer[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (offers) {
+      setApiOffers(offers);
+      setLoading(false);
+      return;
+    }
+
+    const fetchOffers = async () => {
+      try {
+        setLoading(true);
+        const response = await bankOffersApi.getOffers(
+          categorySlug ? { category: categorySlug, limit: 10 } : { limit: 10 }
+        );
+        if (response.success && response.data?.offers?.length > 0) {
+          setApiOffers(response.data.offers);
+        } else {
+          // Fallback to dummy data if API returns empty
+          setApiOffers(bankOffersData as any);
+        }
+      } catch (err) {
+        console.error('Error fetching bank offers:', err);
+        // Fallback to dummy data on error
+        setApiOffers(bankOffersData as any);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOffers();
+  }, [categorySlug, offers]);
+
+  const displayOffers = offers || apiOffers;
 
   const handlePress = useCallback((offer: BankOffer) => {
     if (onOfferPress) {
       onOfferPress(offer);
     } else {
+      const offerId = offer._id || (offer as any).id;
       router.push({
         pathname: '/offer/bank/[id]',
-        params: { id: offer.id },
+        params: { id: offerId },
       } as any);
     }
   }, [router, onOfferPress]);
 
-  if (!offers || offers.length === 0) {
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="small" color="#00C06A" />
+      </View>
+    );
+  }
+
+  if (!displayOffers || displayOffers.length === 0) {
     return null;
   }
 
@@ -109,9 +155,9 @@ const BankOffersSection: React.FC<BankOffersSectionProps> = ({
         contentContainerStyle={styles.scrollContent}
         decelerationRate="fast"
       >
-        {offers.map((offer) => (
+        {displayOffers.map((offer) => (
           <BankOfferCard
-            key={offer.id}
+            key={offer._id || (offer as any).id}
             offer={offer}
             onPress={() => handlePress(offer)}
           />
@@ -142,6 +188,11 @@ const styles = StyleSheet.create({
         boxShadow: '0 2px 8px rgba(11, 34, 64, 0.04), 0 8px 24px rgba(11, 34, 64, 0.06)',
       },
     }),
+  },
+  loadingContainer: {
+    height: 180,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',

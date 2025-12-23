@@ -4,16 +4,18 @@
  * Adapted from Rez_v-2-main StreakLoyaltySection
  */
 
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import userLoyaltyApi, { UserLoyalty } from '@/services/userLoyaltyApi';
 import { loyaltyData, LoyaltyData } from '@/data/categoryDummyData';
 
 interface StreakLoyaltySectionProps {
@@ -21,11 +23,74 @@ interface StreakLoyaltySectionProps {
   onMissionPress?: (missionId: string) => void;
 }
 
+// Helper to convert API loyalty data to component format
+const convertApiToLoyaltyData = (apiData: UserLoyalty): LoyaltyData => ({
+  streak: {
+    current: apiData.streak.current,
+    target: apiData.streak.target,
+  },
+  brandLoyalty: apiData.brandLoyalty.map(b => ({
+    brandId: b.brandId,
+    brandName: b.brandName,
+    purchaseCount: b.purchaseCount,
+    tier: b.tier,
+    progress: b.progress,
+    nextTierAt: b.nextTierAt,
+  })),
+  missions: apiData.missions.map(m => ({
+    id: m.missionId,
+    title: m.title,
+    progress: m.progress,
+    target: m.target,
+    reward: m.reward,
+    icon: m.icon,
+  })),
+  coins: {
+    available: apiData.coins.available,
+    expiring: apiData.coins.expiring,
+    expiryDate: apiData.coins.expiryDate || '',
+  },
+});
+
 const StreakLoyaltySection: React.FC<StreakLoyaltySectionProps> = ({
-  data = loyaltyData,
+  data,
   onMissionPress,
 }) => {
   const router = useRouter();
+  const [apiData, setApiData] = useState<LoyaltyData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (data) {
+      setApiData(data);
+      setLoading(false);
+      return;
+    }
+
+    const fetchLoyalty = async () => {
+      try {
+        setLoading(true);
+        const response = await userLoyaltyApi.getLoyalty();
+        if (response.success && response.data?.loyalty) {
+          const converted = convertApiToLoyaltyData(response.data.loyalty);
+          setApiData(converted);
+        } else {
+          // Fallback to dummy data
+          setApiData(loyaltyData);
+        }
+      } catch (err) {
+        console.error('Error fetching loyalty data:', err);
+        // Fallback to dummy data on error
+        setApiData(loyaltyData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLoyalty();
+  }, [data]);
+
+  const displayData = data || apiData || loyaltyData;
 
   const handleMissionPress = (missionId: string) => {
     if (onMissionPress) {
@@ -34,6 +99,14 @@ const StreakLoyaltySection: React.FC<StreakLoyaltySectionProps> = ({
       router.push(`/missions/${missionId}` as any);
     }
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="small" color="#00C06A" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -44,22 +117,22 @@ const StreakLoyaltySection: React.FC<StreakLoyaltySectionProps> = ({
           <Text style={styles.sectionTitle}>Daily Streak</Text>
         </View>
         <View style={styles.streakRow}>
-          {[...Array(data.streak.target)].map((_, i) => (
+          {[...Array(displayData.streak.target)].map((_, i) => (
             <View
               key={i}
               style={[
                 styles.streakDot,
-                i < data.streak.current && styles.streakDotActive,
+                i < displayData.streak.current && styles.streakDotActive,
               ]}
             >
-              {i < data.streak.current && (
+              {i < displayData.streak.current && (
                 <Ionicons name="checkmark" size={12} color="#FFFFFF" />
               )}
             </View>
           ))}
         </View>
         <Text style={styles.streakText}>
-          {data.streak.current}/{data.streak.target} days - Keep going!
+          {displayData.streak.current}/{displayData.streak.target} days - Keep going!
         </Text>
       </View>
 
@@ -70,7 +143,7 @@ const StreakLoyaltySection: React.FC<StreakLoyaltySectionProps> = ({
           <Text style={styles.sectionTitle}>Brand Loyalty</Text>
         </View>
         <View style={styles.loyaltyList}>
-          {data.brandLoyalty.slice(0, 3).map((brand) => (
+          {displayData.brandLoyalty.slice(0, 3).map((brand) => (
             <View key={brand.brandId} style={styles.loyaltyItem}>
               <View style={styles.loyaltyInfo}>
                 <Text style={styles.loyaltyBrand}>{brand.brandName}</Text>
@@ -96,7 +169,7 @@ const StreakLoyaltySection: React.FC<StreakLoyaltySectionProps> = ({
           <Text style={styles.sectionTitle}>Weekly Missions</Text>
         </View>
         <View style={styles.missionsList}>
-          {data.missions.slice(0, 3).map((mission) => (
+          {displayData.missions.slice(0, 3).map((mission) => (
             <TouchableOpacity
               key={mission.id}
               style={styles.missionItem}
@@ -155,6 +228,11 @@ const styles = StyleSheet.create({
         boxShadow: '0 2px 8px rgba(11, 34, 64, 0.04), 0 8px 24px rgba(11, 34, 64, 0.06)',
       },
     }),
+  },
+  loadingContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   section: {
     marginBottom: 20,

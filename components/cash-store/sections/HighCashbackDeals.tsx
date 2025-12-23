@@ -148,7 +148,7 @@ const DealCard: React.FC<{
               />
             ) : (
               <LinearGradient
-                colors={['#00C06A', '#059669']}
+                colors={['#F97316', '#FB923C']}
                 style={styles.logoPlaceholder}
               >
                 <Text style={styles.logoInitial}>{deal.brand.name.charAt(0)}</Text>
@@ -305,7 +305,7 @@ const HighCashbackDeals: React.FC<HighCashbackDealsProps> = ({
           <View style={styles.titleRow}>
             <Text style={styles.headerTitle}>High Cashback Deals</Text>
             <Animated.View style={{ transform: [{ translateY: rocketAnim }] }}>
-              <Ionicons name="rocket" size={20} color="#00C06A" />
+              <Ionicons name="rocket" size={20} color="#F97316" />
             </Animated.View>
           </View>
           <Text style={styles.subtitle}>10%+ cashback on these brands</Text>
@@ -352,7 +352,19 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    marginHorizontal: 16,
     borderRadius: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
@@ -384,7 +396,7 @@ const styles = StyleSheet.create({
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00C06A',
+    backgroundColor: '#F97316',
     paddingLeft: 14,
     paddingRight: 6,
     paddingVertical: 8,
@@ -416,11 +428,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     borderWidth: 2,
-    borderColor: 'rgba(0, 192, 106, 0.15)',
+    borderColor: 'rgba(249, 115, 22, 0.15)',
     position: 'relative',
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#F97316',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.12,
         shadowRadius: 8,
