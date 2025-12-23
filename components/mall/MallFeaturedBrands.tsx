@@ -55,7 +55,7 @@ const MallFeaturedBrands: React.FC<MallFeaturedBrandsProps> = ({
           </View>
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#00C06A" />
+          <ActivityIndicator size="small" color="#0284C7" />
           <Text style={styles.loadingText}>Loading stores...</Text>
         </View>
       </View>
@@ -116,6 +116,10 @@ const MallFeaturedBrands: React.FC<MallFeaturedBrandsProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 24,
+    paddingTop: 16,
+    paddingBottom: 16,
+    borderRadius: 0,
+    backgroundColor: 'transparent',
   },
   header: {
     paddingHorizontal: 16,
@@ -136,12 +140,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#00C06A',
+    backgroundColor: '#0284C7',
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#0284C7',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -165,7 +169,7 @@ const styles = StyleSheet.create({
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00C06A',
+    backgroundColor: '#0284C7',
     paddingLeft: 14,
     paddingRight: 6,
     paddingVertical: 8,
@@ -173,7 +177,7 @@ const styles = StyleSheet.create({
     gap: 6,
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#0284C7',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

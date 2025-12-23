@@ -120,7 +120,7 @@ const BrandCard: React.FC<{
             />
           ) : (
             <LinearGradient
-              colors={['#00C06A', '#059669']}
+              colors={['#F97316', '#EA580C']}
               style={styles.brandLogoPlaceholder}
             >
               <Text style={styles.brandInitial}>{brand.name.charAt(0)}</Text>
@@ -135,7 +135,7 @@ const BrandCard: React.FC<{
 
         {/* Cashback Badge */}
         <LinearGradient
-          colors={['#00C06A', '#059669']}
+          colors={['#F97316', '#EA580C']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.cashbackBadge}
@@ -231,12 +231,12 @@ const EmptyState: React.FC<{ onViewAllPress: () => void }> = memo(({ onViewAllPr
       ]}
     >
       <LinearGradient
-        colors={['#F0FDF4', '#DCFCE7']}
+        colors={['#FFFFFF', '#FFF7ED']}
         style={styles.emptyStateGradient}
       >
         <View style={styles.emptyIconContainer}>
           <LinearGradient
-            colors={['#00C06A', '#059669']}
+            colors={['#F97316', '#EA580C']}
             style={styles.emptyIconGradient}
           >
             <Ionicons name="storefront-outline" size={32} color="#FFFFFF" />
@@ -252,7 +252,7 @@ const EmptyState: React.FC<{ onViewAllPress: () => void }> = memo(({ onViewAllPr
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={['#00C06A', '#059669']}
+            colors={['#F97316', '#EA580C']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.emptyStateCTAGradient}
@@ -330,7 +330,7 @@ const FilteredEmptyState: React.FC<{
           style={styles.resetFilterButton}
           activeOpacity={0.7}
         >
-          <Ionicons name="refresh-outline" size={16} color="#00C06A" />
+          <Ionicons name="refresh-outline" size={16} color="#F97316" />
           <Text style={styles.resetFilterText}>Show All Brands</Text>
         </TouchableOpacity>
       )}
@@ -428,8 +428,19 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    marginHorizontal: 16,
     borderRadius: 24,
-    marginHorizontal: 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
@@ -474,7 +485,7 @@ const styles = StyleSheet.create({
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00C06A',
+    backgroundColor: '#F97316',
     paddingLeft: 16,
     paddingRight: 8,
     paddingVertical: 10,
@@ -482,7 +493,7 @@ const styles = StyleSheet.create({
     gap: 8,
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#F97316',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.35,
         shadowRadius: 6,
@@ -523,7 +534,7 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(0, 192, 106, 0.08)',
+    borderColor: 'rgba(249, 115, 22, 0.08)',
     position: 'relative',
     ...Platform.select({
       ios: {
@@ -601,7 +612,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#F97316',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
@@ -662,7 +673,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#F97316',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -753,16 +764,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: '#FFF7ED',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: '#FFE8CC',
     gap: 8,
   },
   resetFilterText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00C06A',
+    color: '#F97316',
   },
 });
 

@@ -157,7 +157,7 @@ const GiftCardCard: React.FC<{
 
           {/* Cashback Highlight */}
           <LinearGradient
-            colors={['#00C06A', '#059669']}
+            colors={['#F97316', '#FB923C']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.cashbackBadge}
@@ -203,7 +203,7 @@ const GiftCardCard: React.FC<{
         {/* Buy Button */}
         <TouchableOpacity style={styles.buyButton} onPress={onPress} activeOpacity={0.8}>
           <LinearGradient
-            colors={['#00C06A', '#059669']}
+            colors={['#F97316', '#FB923C']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.buyButtonGradient}
@@ -373,7 +373,19 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    marginHorizontal: 16,
     borderRadius: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',

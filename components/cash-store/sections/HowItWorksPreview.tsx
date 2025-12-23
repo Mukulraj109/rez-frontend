@@ -51,8 +51,8 @@ const STEPS = [
     icon: 'wallet',
     title: 'Earn',
     description: 'Get cashback credited',
-    color: '#00C06A',
-    gradient: ['#00C06A', '#059669'],
+    color: '#F97316',
+    gradient: ['#F97316', '#FB923C'],
   },
 ];
 
@@ -192,7 +192,7 @@ const HowItWorksPreview: React.FC<HowItWorksPreviewProps> = ({ onLearnMore }) =>
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <LinearGradient
-              colors={['#00C06A', '#059669']}
+              colors={['#F97316', '#FB923C']}
               style={styles.headerIconContainer}
             >
               <Ionicons name="help-circle" size={18} color="#FFFFFF" />
@@ -201,7 +201,7 @@ const HowItWorksPreview: React.FC<HowItWorksPreviewProps> = ({ onLearnMore }) =>
           </View>
           <TouchableOpacity onPress={onLearnMore} style={styles.learnMoreButton}>
             <Text style={styles.learnMoreText}>Learn More</Text>
-            <Ionicons name="chevron-forward" size={14} color="#00C06A" />
+            <Ionicons name="chevron-forward" size={14} color="#F97316" />
           </TouchableOpacity>
         </View>
 
@@ -219,7 +219,7 @@ const HowItWorksPreview: React.FC<HowItWorksPreviewProps> = ({ onLearnMore }) =>
 
         {/* Info Box */}
         <View style={styles.infoBox}>
-          <Ionicons name="information-circle" size={16} color="#00C06A" />
+          <Ionicons name="information-circle" size={16} color="#F97316" />
           <Text style={styles.infoText}>
             Cashback is typically credited within 24-72 hours after delivery
           </Text>
@@ -250,17 +250,30 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     backgroundColor: '#FFFFFF',
     marginTop: 8,
+    marginHorizontal: 16,
+    borderRadius: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   gradient: {
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0, 192, 106, 0.15)',
+    borderColor: 'rgba(249, 115, 22, 0.15)',
     position: 'relative',
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#F97316',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
@@ -277,7 +290,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(0, 192, 106, 0.05)',
+    backgroundColor: 'rgba(249, 115, 22, 0.05)',
   },
   decorativeCircle2: {
     position: 'absolute',
@@ -286,7 +299,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(0, 192, 106, 0.03)',
+    backgroundColor: 'rgba(249, 115, 22, 0.03)',
   },
   header: {
     flexDirection: 'row',
@@ -324,7 +337,7 @@ const styles = StyleSheet.create({
   learnMoreText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#00C06A',
+    color: '#F97316',
   },
   stepsContainer: {
     flexDirection: 'row',
@@ -408,7 +421,7 @@ const styles = StyleSheet.create({
   },
   connector: {
     height: 3,
-    backgroundColor: '#00C06A',
+    backgroundColor: '#F97316',
     borderRadius: 2,
   },
   connectorDot: {
@@ -417,7 +430,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#00C06A',
+    backgroundColor: '#F97316',
   },
   infoBox: {
     flexDirection: 'row',
@@ -441,7 +454,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#F97316',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

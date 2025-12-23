@@ -106,7 +106,7 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
           const urlToOpen = trackingResult?.trackingUrl || deal.externalUrl;
 
           await WebBrowser.openBrowserAsync(urlToOpen, {
-            toolbarColor: '#00C06A',
+            toolbarColor: '#F97316',
             controlsColor: '#FFFFFF',
           });
         } catch (error) {
@@ -148,7 +148,7 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
           const urlToOpen = trackingResult?.trackingUrl || deal.externalUrl;
 
           await WebBrowser.openBrowserAsync(urlToOpen, {
-            toolbarColor: '#00C06A',
+            toolbarColor: '#F97316',
             controlsColor: '#FFFFFF',
           });
         } catch (error) {
@@ -266,10 +266,10 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
 
   return (
     <View style={styles.outerContainer}>
-      {/* Gradient Background - Starts from HomeTabSection's end color for seamless transition */}
+      {/* Gradient Background - Continues from HomeTabSection's light orange gradient for seamless transition */}
       <LinearGradient
-        colors={['#4ADE80', '#6EE7B7', '#A7F3D0', '#D1FAE5', '#ECFDF5', '#F9FAFB', '#FFFFFF']}
-        locations={[0, 0.08, 0.2, 0.35, 0.5, 0.7, 1]}
+        colors={['#FFD9B3', '#FFE8CC', '#FFF4E6', '#FFF7ED', '#FFFFFF']}
+        locations={[0, 0.25, 0.5, 0.75, 1]}
         style={styles.gradientBackground}
       />
 
@@ -282,8 +282,8 @@ const CashStoreSectionContainer: React.FC<CashStoreSectionContainerProps> = ({
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={refresh}
-            tintColor="#00C06A"
-            colors={['#00C06A']}
+            tintColor="#F97316"
+            colors={['#F97316']}
           />
         }
       >
@@ -378,6 +378,8 @@ const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
     position: 'relative',
+    marginTop: 0,
+    borderTopWidth: 0,
   },
   gradientBackground: {
     position: 'absolute',
@@ -395,6 +397,8 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     paddingHorizontal: 0,
     backgroundColor: 'transparent',
+    marginTop: -16,
+    borderTopWidth: 0,
   },
   loadingContainer: {
     flex: 1,

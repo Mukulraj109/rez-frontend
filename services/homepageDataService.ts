@@ -192,13 +192,10 @@ class HomepageDataService {
    * Get "New Arrivals" section data
    */
   async getNewArrivalsSection(): Promise<HomepageSection> {
-
     const sectionTemplate = getSectionById('new_arrivals');
-    const fallbackSection = getFallbackSectionData('new_arrivals');
 
     if (!sectionTemplate) {
-      console.error('❌ [HOMEPAGE SERVICE] New arrivals section template not found');
-      return fallbackSection || {
+      return {
         id: 'new_arrivals',
         title: 'New Arrivals',
         type: 'products',
@@ -206,7 +203,7 @@ class HomepageDataService {
         isHorizontalScroll: true,
         items: [],
         loading: false,
-        error: 'Section configuration not found',
+        error: null,
         lastUpdated: new Date().toISOString(),
         refreshable: true,
         priority: 6
@@ -215,25 +212,84 @@ class HomepageDataService {
 
     const cacheKey = 'homepage_new_arrivals';
 
-    const { data: newArrivals, fromCache, isOffline } = await this.getWithCacheAndFallback(
-      cacheKey,
-      async () => {
-        const items = await productsService.getNewArrivalsForHomepage(20);
-        return items;
-      },
-      fallbackSection?.items || []
-    );
-    
-    // Use real backend data, no fallbacks (unless offline)
-    const result: HomepageSection = {
-      ...sectionTemplate,
-      items: newArrivals,
-      lastUpdated: new Date().toISOString(),
-      loading: false,
-      error: isOffline ? 'Showing offline data' : null
-    };
+    try {
+      // Try to get from cache first
+      const cachedData = await cacheService.get<ProductItem[]>(cacheKey);
+      
+      if (cachedData && cachedData.length > 0) {
+        // Try to refresh in background if backend is available
+        const isBackendAvailable = await this.checkBackendAvailability();
+        
+        if (isBackendAvailable) {
+          // Background refresh (stale-while-revalidate)
+          productsService.getNewArrivalsForHomepage(20)
+            .then(async freshData => {
+              if (freshData && freshData.length > 0) {
+                await cacheService.set(cacheKey, freshData, {
+                  ttl: this.CACHE_TTL,
+                  priority: 'high'
+                });
+              }
+            })
+            .catch(() => {
+              // Silently fail background refresh
+            });
+        }
+        
+        return {
+          ...sectionTemplate,
+          items: cachedData,
+          lastUpdated: new Date().toISOString(),
+          loading: false,
+          error: null
+        };
+      }
 
-    return result;
+      // No cache, try to fetch from backend
+      const isBackendAvailable = await this.checkBackendAvailability();
+      
+      if (isBackendAvailable) {
+        try {
+          const freshData = await productsService.getNewArrivalsForHomepage(20);
+          
+          // Only cache and return if we have real data
+          if (freshData && freshData.length > 0) {
+            await cacheService.set(cacheKey, freshData, {
+              ttl: this.CACHE_TTL,
+              priority: 'high'
+            });
+            
+            return {
+              ...sectionTemplate,
+              items: freshData,
+              lastUpdated: new Date().toISOString(),
+              loading: false,
+              error: null
+            };
+          }
+        } catch (error) {
+          // Silently fail - return empty section
+        }
+      }
+      
+      // No data available - return empty section (will be filtered out)
+      return {
+        ...sectionTemplate,
+        items: [],
+        lastUpdated: new Date().toISOString(),
+        loading: false,
+        error: null
+      };
+    } catch (error) {
+      // Return empty section on error (will be filtered out)
+      return {
+        ...sectionTemplate,
+        items: [],
+        lastUpdated: new Date().toISOString(),
+        loading: false,
+        error: null
+      };
+    }
   }
 
   /**
@@ -707,6 +763,7 @@ class HomepageDataService {
         throw new Error('Batch endpoint returned unsuccessful response');
       }
 
+
       const batchTime = Date.now() - startTime;
       this.performanceMetrics.avgBatchTime =
         (this.performanceMetrics.avgBatchTime * (this.performanceMetrics.batchSuccesses) + batchTime) /
@@ -714,7 +771,11 @@ class HomepageDataService {
       this.performanceMetrics.batchSuccesses++;
 
       // Transform batch response to individual sections
-      return this.transformBatchResponseToSections(response);
+      // Note: response is { success: true, data: apiResponse }
+      // apiResponse is HomepageBatchResponse which has { data: { sections: {...} } }
+      // So we need to pass response.data (the apiResponse) to transform
+      const transformed = this.transformBatchResponseToSections(response.data);
+      return transformed;
 
     } catch (error) {
       this.performanceMetrics.batchFailures++;
@@ -735,7 +796,7 @@ class HomepageDataService {
     offers: HomepageSection;
     flashSales: HomepageSection;
   } {
-    // Handle both formats: data.sections or data directly
+    // response is HomepageBatchResponse which has { data: { sections: {...} } }
     const data = response.data;
     const sections = data.sections || {
       justForYou: data.featuredProducts || [],
@@ -772,20 +833,42 @@ class HomepageDataService {
         priority: 2
       } as HomepageSection,
 
-      newArrivals: {
-        ...(newArrivalsTemplate || {}),
-        id: 'new_arrivals',
-        title: 'New Arrivals',
-        type: 'products',
-        items: sections.newArrivals || [],
-        lastUpdated: timestamp,
-        loading: false,
-        error: null,
-        showViewAll: false,
-        isHorizontalScroll: true,
-        refreshable: true,
-        priority: 6
-      } as HomepageSection,
+      newArrivals: (() => {
+        const apiItems = sections.newArrivals || [];
+        
+        // Only return section if there's real data (no fallback)
+        if (apiItems.length === 0) {
+          return {
+            ...(newArrivalsTemplate || {}),
+            id: 'new_arrivals',
+            title: 'New Arrivals',
+            type: 'products',
+            items: [],
+            lastUpdated: timestamp,
+            loading: false, // Set to false when no data
+            error: null,
+            showViewAll: false,
+            isHorizontalScroll: true,
+            refreshable: true,
+            priority: 6
+          } as HomepageSection;
+        }
+        
+        return {
+          ...(newArrivalsTemplate || {}),
+          id: 'new_arrivals',
+          title: 'New Arrivals',
+          type: 'products',
+          items: apiItems,
+          lastUpdated: timestamp,
+          loading: false, // Set to false when data is loaded
+          error: null,
+          showViewAll: false,
+          isHorizontalScroll: true,
+          refreshable: true,
+          priority: 6
+        } as HomepageSection;
+      })(),
 
       trendingStores: {
         ...(trendingStoresTemplate || {}),
@@ -883,6 +966,7 @@ class HomepageDataService {
       this.getOffersSection(),
       this.getFlashSalesSection()
     ]);
+
 
     const individualTime = Date.now() - startTime;
     this.performanceMetrics.avgIndividualTime =

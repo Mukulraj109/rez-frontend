@@ -33,7 +33,7 @@ const CATEGORY_FILTERS: CashStoreCategoryFilter[] = [
     label: 'All',
     icon: 'grid-outline',
     backgroundColor: '#E8F5E9',
-    iconColor: '#00C06A',
+    iconColor: '#F97316',
     isSpecialFilter: true,
   },
   {
@@ -206,7 +206,7 @@ const CategoryItem: React.FC<CategoryItemProps> = memo(
             <Ionicons
               name={filter.icon as any}
               size={24}
-              color={isSelected ? '#00C06A' : filter.iconColor}
+              color={isSelected ? '#F97316' : filter.iconColor}
             />
           </View>
           <Text
@@ -359,11 +359,11 @@ const styles = StyleSheet.create({
     }),
   },
   iconCircleSelected: {
-    borderColor: '#00C06A',
+    borderColor: '#F97316',
     borderWidth: 2.5,
     ...Platform.select({
       ios: {
-        shadowColor: '#00C06A',
+        shadowColor: '#F97316',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.25,
         shadowRadius: 6,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   labelSelected: {
-    color: '#00C06A',
+    color: '#F97316',
     fontWeight: '700',
   },
   // Skeleton styles

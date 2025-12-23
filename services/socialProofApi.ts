@@ -61,6 +61,30 @@ interface CityStatsResponse {
   message?: string;
 }
 
+// Category page social proof stats
+export interface RecentBuyer {
+  name: string;
+  avatar: string;
+  item: string;
+  timeAgo: string;
+}
+
+export interface CategorySocialProofStats {
+  _id: string | null;
+  category: string | null;
+  shoppedToday: number;
+  totalEarned: number;
+  topHashtags: string[];
+  recentBuyers: RecentBuyer[];
+  lastUpdated: string;
+}
+
+interface CategoryStatsResponse {
+  success: boolean;
+  data: { stats: CategorySocialProofStats };
+  message?: string;
+}
+
 class SocialProofApi {
   /**
    * Get nearby user activity for social proof display
@@ -125,6 +149,37 @@ class SocialProofApi {
           totalSavingsToday: 0,
           city,
           message: 'Be the first to save in your city today!',
+        },
+      };
+    }
+  }
+
+  /**
+   * Get social proof stats for a category page
+   * @param categorySlug - Optional category slug to filter stats
+   */
+  async getCategoryStats(categorySlug?: string): Promise<CategoryStatsResponse> {
+    try {
+      const params = categorySlug ? `?category=${encodeURIComponent(categorySlug)}` : '';
+      const response = await apiClient.get<CategoryStatsResponse>(
+        `/stats/social${params}`
+      );
+
+      return response;
+    } catch (error) {
+      console.error('Error fetching category stats:', error);
+      return {
+        success: false,
+        data: {
+          stats: {
+            _id: null,
+            category: categorySlug || null,
+            shoppedToday: 0,
+            totalEarned: 0,
+            topHashtags: [],
+            recentBuyers: [],
+            lastUpdated: new Date().toISOString(),
+          }
         },
       };
     }

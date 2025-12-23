@@ -49,8 +49,8 @@ const DEFAULT_QUICK_ACTIONS: CashStoreQuickAction[] = [
     title: 'Track Cashback',
     subtitle: 'View your earnings',
     icon: 'trending-up',
-    backgroundColor: '#00C06A',
-    gradientColors: ['#00C06A', '#059669'],
+    backgroundColor: '#F97316',
+    gradientColors: ['#F97316', '#EA580C'],
     action: 'track-cashback',
   },
   {

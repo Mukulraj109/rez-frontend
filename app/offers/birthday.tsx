@@ -1,5 +1,8 @@
-// Birthday Rewards Page
-// Special birthday month offers
+/**
+ * Birthday Specials Page
+ * Redesigned birthday rewards page
+ * Based on Rez_v-2-main design, adapted for rez-frontend theme
+ */
 
 import React, { useState } from 'react';
 import {
@@ -9,184 +12,298 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
-  FlatList,
-  TextInput,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
-import { Colors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/DesignSystem';
+import { Colors, Spacing, BorderRadius, Shadows, Typography, Gradients } from '@/constants/DesignSystem';
 
-interface BirthdayReward {
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface BirthdayDeal {
   id: string;
-  title: string;
   store: string;
-  type: 'free' | 'discount' | 'cashback';
-  value: string;
+  title: string;
+  discount: string;
   description: string;
-  image: string;
-  claimed: boolean;
+  image?: string;
 }
 
-const MOCK_REWARDS: BirthdayReward[] = [
-  { id: '1', title: 'Free Birthday Cake', store: 'Theobroma', type: 'free', value: 'FREE', description: 'Get a free slice of cake', image: '🎂', claimed: false },
-  { id: '2', title: 'Birthday Discount', store: 'Myntra', type: 'discount', value: '25%', description: '25% off on your birthday', image: '🎁', claimed: false },
-  { id: '3', title: 'Extra Cashback', store: 'Amazon', type: 'cashback', value: '10%', description: 'Birthday special cashback', image: '🎈', claimed: false },
-  { id: '4', title: 'Free Coffee', store: 'Starbucks', type: 'free', value: 'FREE', description: 'Any drink on your birthday', image: '☕', claimed: true },
-  { id: '5', title: 'Movie Ticket 50% Off', store: 'PVR', type: 'discount', value: '50%', description: 'Birthday movie treat', image: '🎬', claimed: false },
-  { id: '6', title: 'Spa Discount', store: 'O2 Spa', type: 'discount', value: '30%', description: 'Pamper yourself', image: '💆', claimed: false },
+const DUMMY_BIRTHDAY_DEALS: BirthdayDeal[] = [
+  {
+    id: 'bday1',
+    store: 'Baskin Robbins',
+    title: 'FREE Ice Cream Cake',
+    discount: 'FREE',
+    description: 'Celebrate with a complimentary ice cream cake',
+    image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400',
+  },
+  {
+    id: 'bday2',
+    store: 'PVR Cinemas',
+    title: 'FREE Movie Ticket',
+    discount: 'FREE',
+    description: 'Watch any movie on us',
+    image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',
+  },
+  {
+    id: 'bday3',
+    store: 'ReZ',
+    title: '500 Bonus ReZ Coins',
+    discount: '500 🪙',
+    description: 'Birthday gift from ReZ',
+    image: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=400',
+  },
+  {
+    id: 'bday4',
+    store: "Domino's",
+    title: 'FREE Medium Pizza',
+    discount: 'FREE',
+    description: 'Birthday pizza on the house',
+    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400',
+  },
+  {
+    id: 'bday5',
+    store: 'Starbucks',
+    title: 'FREE Birthday Drink',
+    discount: 'FREE',
+    description: 'Any handcrafted beverage on your birthday',
+    image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400',
+  },
+  {
+    id: 'bday6',
+    store: 'Sephora',
+    title: 'Birthday Beauty Gift',
+    discount: 'FREE',
+    description: 'Exclusive birthday beauty kit',
+    image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400',
+  },
 ];
 
 export default function BirthdayRewardsPage() {
   const router = useRouter();
-  const [birthdaySet, setBirthdaySet] = useState(true); // Mock: birthday is set
-  const [birthday, setBirthday] = useState('December 25');
+  const insets = useSafeAreaInsets();
+  const [birthdayActive, setBirthdayActive] = useState(true);
+  const [birthdayDate] = useState('December 25');
+  const [daysUntil] = useState(4);
+  
+  // Bottom padding = Fixed CTA height (80px) + Bottom nav bar (70px) + Safe area bottom
+  const bottomPadding = 80 + 70 + insets.bottom;
 
-  const renderReward = ({ item }: { item: BirthdayReward }) => (
-    <TouchableOpacity
-      style={[styles.rewardCard, item.claimed && styles.rewardCardClaimed]}
-      onPress={() => router.push(`/offers/${item.id}` as any)}
-      disabled={item.claimed}
-    >
-      {item.claimed && (
-        <View style={styles.claimedOverlay}>
-          <Ionicons name="checkmark-circle" size={40} color={Colors.success} />
-          <ThemedText style={styles.claimedText}>Claimed</ThemedText>
-        </View>
-      )}
-      <View style={styles.rewardImage}>
-        <ThemedText style={styles.rewardEmoji}>{item.image}</ThemedText>
-      </View>
-      <View style={styles.rewardInfo}>
-        <View style={[styles.typeBadge, { backgroundColor: getTypeColor(item.type) + '20' }]}>
-          <ThemedText style={[styles.typeText, { color: getTypeColor(item.type) }]}>
-            {item.value} {item.type === 'free' ? '' : 'OFF'}
-          </ThemedText>
-        </View>
-        <ThemedText style={styles.rewardTitle}>{item.title}</ThemedText>
-        <ThemedText style={styles.rewardStore}>{item.store}</ThemedText>
-        <ThemedText style={styles.rewardDescription}>{item.description}</ThemedText>
-      </View>
-      {!item.claimed && (
-        <TouchableOpacity style={styles.claimButton}>
-          <ThemedText style={styles.claimButtonText}>Claim</ThemedText>
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
-  );
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'free': return Colors.success;
-      case 'discount': return Colors.primary[600];
-      case 'cashback': return Colors.gold;
-      default: return Colors.gray[500];
-    }
+  const handleClaimGift = (deal: BirthdayDeal) => {
+    // TODO: Implement claim functionality
+    console.log('Claim gift:', deal.id);
   };
 
-  if (!birthdaySet) {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#EC4899" />
-        <LinearGradient colors={['#EC4899', '#F472B6']} style={styles.header}>
-          <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <ThemedText style={styles.headerTitle}>Birthday Rewards</ThemedText>
-            <View style={styles.placeholder} />
-          </View>
-        </LinearGradient>
+  const renderGiftCard = (deal: BirthdayDeal) => (
+    <View key={deal.id} style={styles.giftCard}>
+      {/* Gift Ribbon */}
+      <View style={styles.giftRibbon}>
+        <ThemedText style={styles.giftRibbonText}>FREE</ThemedText>
+      </View>
 
-        <ScrollView style={styles.content} contentContainerStyle={styles.setupContent}>
-          <View style={styles.birthdayIcon}>
-            <ThemedText style={styles.birthdayEmoji}>🎂</ThemedText>
+      <View style={styles.giftContent}>
+        {deal.image && (
+          <Image source={{ uri: deal.image }} style={styles.giftImage} resizeMode="cover" />
+        )}
+        <View style={styles.giftInfo}>
+          <View style={styles.giftHeader}>
+            <View style={styles.giftStoreInfo}>
+              <ThemedText style={styles.giftStore}>{deal.store || 'ReZ'}</ThemedText>
+              <ThemedText style={styles.giftTitle}>{deal.title}</ThemedText>
+            </View>
           </View>
-          <ThemedText style={styles.setupTitle}>When's Your Birthday?</ThemedText>
-          <ThemedText style={styles.setupSubtitle}>
-            Add your birthday to unlock special rewards and offers
-          </ThemedText>
 
-          <View style={styles.dateInputContainer}>
-            <TouchableOpacity style={styles.dateInput}>
-              <Ionicons name="calendar" size={24} color={Colors.primary[600]} />
-              <ThemedText style={styles.dateInputText}>Select your birthday</ThemedText>
-            </TouchableOpacity>
+          <ThemedText style={styles.giftDescription}>{deal.description}</ThemedText>
+
+          <View style={styles.giftTags}>
+            <View style={styles.tag}>
+              <ThemedText style={styles.tagText}>🎂 Birthday Gift</ThemedText>
+            </View>
           </View>
 
           <TouchableOpacity
-            style={styles.saveButton}
-            onPress={() => setBirthdaySet(true)}
+            style={styles.claimButton}
+            onPress={() => handleClaimGift(deal)}
+            activeOpacity={0.8}
           >
-            <ThemedText style={styles.saveButtonText}>Save Birthday</ThemedText>
+            <LinearGradient
+              colors={['#F59E0B', '#EA580C']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.claimGradient}
+            >
+              <ThemedText style={styles.claimButtonText}>Claim Gift</ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
-
-          <View style={styles.privacyNote}>
-            <Ionicons name="lock-closed" size={16} color={Colors.text.tertiary} />
-            <ThemedText style={styles.privacyText}>
-              Your birthday is private and only used to send you special rewards
-            </ThemedText>
-          </View>
-        </ScrollView>
+        </View>
       </View>
-    );
-  }
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#EC4899" />
-
+      <StatusBar barStyle="light-content" backgroundColor="#F59E0B" translucent />
+      
+      {/* Header with Gradient */}
       <LinearGradient
-        colors={['#EC4899', '#F472B6']}
+        colors={['#F59E0B', '#EA580C', '#DC2626']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={styles.header}
       >
-        <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Birthday Rewards</ThemedText>
-          <View style={styles.placeholder} />
-        </View>
+        <SafeAreaView edges={['top']} style={styles.safeHeader}>
+          <View style={styles.headerContent}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
 
-        <View style={styles.heroSection}>
-          <View style={styles.cakeContainer}>
-            <ThemedText style={styles.cakeEmoji}>🎂</ThemedText>
-          </View>
-          <ThemedText style={styles.heroTitle}>Happy Birthday!</ThemedText>
-          <ThemedText style={styles.heroSubtitle}>
-            Your birthday is on {birthday}
-          </ThemedText>
-        </View>
+            <View style={styles.headerTitleContainer}>
+              <ThemedText style={styles.headerTitle}>Birthday Specials</ThemedText>
+              <ThemedText style={styles.headerSubtitle}>Your special day rewards</ThemedText>
+            </View>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statValue}>{MOCK_REWARDS.length}</ThemedText>
-            <ThemedText style={styles.statLabel}>Rewards Available</ThemedText>
+            <View style={styles.headerIcon}>
+              <ThemedText style={styles.emoji}>🎂</ThemedText>
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statValue}>{MOCK_REWARDS.filter(r => r.claimed).length}</ThemedText>
-            <ThemedText style={styles.statLabel}>Claimed</ThemedText>
-          </View>
-        </View>
+        </SafeAreaView>
       </LinearGradient>
 
-      <FlatList
-        data={MOCK_REWARDS}
-        renderItem={renderReward}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.infoCard}>
-            <Ionicons name="gift" size={20} color="#EC4899" />
-            <ThemedText style={styles.infoText}>
-              Claim your birthday rewards within 7 days of your birthday!
+      >
+        {/* Hero Banner */}
+        <View style={styles.heroBanner}>
+          <LinearGradient
+            colors={['rgba(245, 158, 11, 0.3)', 'rgba(236, 72, 153, 0.2)', 'rgba(220, 38, 38, 0.3)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.heroGradient}
+          >
+            {birthdayActive ? (
+              <View style={styles.heroContent}>
+                <View style={styles.birthdayActiveBadge}>
+                  <Ionicons name="gift" size={20} color="#F472B6" />
+                  <ThemedText style={styles.birthdayActiveText}>Birthday Week Active!</ThemedText>
+                </View>
+
+                <ThemedText style={styles.heroTitle}>Happy Birthday! 🎉</ThemedText>
+                <ThemedText style={styles.heroSubtitle}>
+                  Enjoy exclusive gifts & rewards this week
+                </ThemedText>
+
+                <View style={styles.heroStats}>
+                  <View style={styles.heroStat}>
+                    <ThemedText style={styles.heroStatValue}>{DUMMY_BIRTHDAY_DEALS.length}</ThemedText>
+                    <ThemedText style={styles.heroStatLabel}>Free Gifts</ThemedText>
+                  </View>
+                  <View style={styles.heroStat}>
+                    <ThemedText style={[styles.heroStatValue, { color: '#F472B6' }]}>500</ThemedText>
+                    <ThemedText style={styles.heroStatLabel}>Bonus Coins</ThemedText>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.birthdayCountdown}>
+                <View style={styles.countdownIcon}>
+                  <Ionicons name="calendar" size={28} color="#A78BFA" />
+                </View>
+                <View style={styles.countdownContent}>
+                  <ThemedText style={styles.countdownTitle}>
+                    Your birthday: {birthdayDate}
+                  </ThemedText>
+                  <ThemedText style={styles.countdownSubtitle}>
+                    {daysUntil} days until your special day
+                  </ThemedText>
+                </View>
+                <TouchableOpacity style={styles.updateButton} activeOpacity={0.8}>
+                  <ThemedText style={styles.updateButtonText}>Update</ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
+          </LinearGradient>
+        </View>
+
+        {/* Birthday Gifts */}
+        <View style={styles.giftsSection}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderRow}>
+              <Ionicons name="gift" size={20} color="#F59E0B" />
+              <ThemedText style={styles.sectionTitle}>Your Birthday Gifts</ThemedText>
+            </View>
+            <ThemedText style={styles.sectionSubtitle}>Claim within your birthday week</ThemedText>
+          </View>
+
+          {DUMMY_BIRTHDAY_DEALS.map((deal) => renderGiftCard(deal))}
+        </View>
+
+        {/* Bonus Coins Card */}
+        <View style={styles.bonusCoinsCard}>
+          <LinearGradient
+            colors={['rgba(245, 158, 11, 0.2)', 'rgba(234, 179, 8, 0.2)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.bonusCoinsGradient}
+          >
+            <View style={styles.bonusCoinsIcon}>
+              <ThemedText style={styles.coinEmoji}>🪙</ThemedText>
+            </View>
+            <View style={styles.bonusCoinsContent}>
+              <ThemedText style={styles.bonusCoinsValue}>500 Bonus Coins</ThemedText>
+              <ThemedText style={styles.bonusCoinsSubtitle}>
+                Auto-credited to your wallet
+              </ThemedText>
+              <View style={styles.creditedBadge}>
+                <ThemedText style={styles.creditedBadgeText}>Credited</ThemedText>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Party Mode */}
+        <View style={styles.partyCard}>
+          <Ionicons name="balloon" size={24} color="#A78BFA" />
+          <View style={styles.partyContent}>
+            <ThemedText style={styles.partyTitle}>Share Your Birthday Joy</ThemedText>
+            <ThemedText style={styles.partySubtitle}>
+              Invite friends & both get bonus coins
             </ThemedText>
           </View>
-        }
-      />
+          <TouchableOpacity style={styles.shareButton} activeOpacity={0.8}>
+            <ThemedText style={styles.shareButtonText}>Share</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Fixed CTA Button */}
+      <View style={styles.fixedCTA}>
+        <TouchableOpacity
+          style={styles.ctaButton}
+          onPress={() => {}}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#F59E0B', '#EC4899']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.ctaGradient}
+          >
+            <Ionicons name="gift" size={20} color="#FFFFFF" style={{ marginRight: Spacing.sm }} />
+            <ThemedText style={styles.ctaButtonText}>Claim All Birthday Gifts</ThemedText>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -197,236 +314,365 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background.secondary,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight || 40,
-    paddingBottom: Spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight || 0,
+  },
+  safeHeader: {
+    paddingBottom: Spacing.base,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.md,
   },
   backButton: {
     padding: Spacing.sm,
     marginRight: Spacing.sm,
   },
-  headerTitle: {
+  headerTitleContainer: {
     flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
     ...Typography.h3,
-    color: '#FFF',
-    textAlign: 'center',
-    marginRight: 40,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
-  placeholder: {
+  headerSubtitle: {
+    ...Typography.bodySmall,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  headerIcon: {
     width: 40,
-  },
-  heroSection: {
     alignItems: 'center',
-    marginBottom: Spacing.lg,
   },
-  cakeContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
+  emoji: {
+    fontSize: 32,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 150, // Will be overridden by dynamic padding
+  },
+  heroBanner: {
+    margin: Spacing.base,
+    borderRadius: BorderRadius['2xl'],
+    overflow: 'hidden',
+    ...Shadows.medium,
+  },
+  heroGradient: {
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderRadius: BorderRadius['2xl'],
+  },
+  heroContent: {
     alignItems: 'center',
-    marginBottom: Spacing.md,
   },
-  cakeEmoji: {
-    fontSize: 40,
+  birthdayActiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: Spacing.base,
+  },
+  birthdayActiveText: {
+    ...Typography.labelSmall,
+    color: '#F472B6',
+    fontWeight: '600',
   },
   heroTitle: {
-    ...Typography.h2,
-    color: '#FFF',
+    ...Typography.h1,
+    color: Colors.text.primary,
+    fontWeight: '700',
+    marginBottom: Spacing.sm,
   },
   heroSubtitle: {
     ...Typography.body,
-    color: 'rgba(255,255,255,0.9)',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: Spacing.lg,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    ...Typography.h2,
-    color: '#FFF',
-  },
-  statLabel: {
-    ...Typography.bodySmall,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginVertical: Spacing.sm,
-  },
-  content: {
-    flex: 1,
-  },
-  setupContent: {
-    padding: Spacing.xl,
-    alignItems: 'center',
-  },
-  birthdayIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#EC4899' + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-  },
-  birthdayEmoji: {
-    fontSize: 60,
-  },
-  setupTitle: {
-    ...Typography.h2,
-    color: Colors.text.primary,
-    marginBottom: Spacing.sm,
-  },
-  setupSubtitle: {
-    ...Typography.body,
     color: Colors.text.secondary,
     textAlign: 'center',
-    marginBottom: Spacing.xl,
-  },
-  dateInputContainer: {
-    width: '100%',
     marginBottom: Spacing.lg,
   },
-  dateInput: {
+  heroStats: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.background.primary,
+    gap: Spacing.base,
+  },
+  heroStat: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    ...Shadows.subtle,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  dateInputText: {
-    ...Typography.body,
-    color: Colors.text.tertiary,
-  },
-  saveButton: {
-    width: '100%',
-    backgroundColor: '#EC4899',
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.base,
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-  },
-  saveButtonText: {
-    ...Typography.button,
-    color: '#FFF',
-  },
-  privacyNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  privacyText: {
-    ...Typography.caption,
-    color: Colors.text.tertiary,
-    flex: 1,
-  },
-  listContent: {
-    padding: Spacing.base,
-    paddingBottom: Spacing['3xl'],
-  },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EC4899' + '15',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  infoText: {
-    ...Typography.bodySmall,
-    color: Colors.text.secondary,
-    flex: 1,
-  },
-  rewardCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
-    marginBottom: Spacing.md,
-    gap: Spacing.md,
-    ...Shadows.subtle,
-  },
-  rewardCardClaimed: {
-    opacity: 0.6,
-  },
-  claimedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: BorderRadius.lg,
-    zIndex: 1,
-  },
-  claimedText: {
-    ...Typography.label,
-    color: Colors.success,
-    marginTop: Spacing.xs,
-  },
-  rewardImage: {
-    width: 60,
-    height: 60,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.gray[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  rewardEmoji: {
-    fontSize: 30,
-  },
-  rewardInfo: {
-    flex: 1,
-  },
-  typeBadge: {
-    alignSelf: 'flex-start',
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    marginBottom: Spacing.xs,
-  },
-  typeText: {
-    ...Typography.caption,
+  heroStatValue: {
+    ...Typography.h2,
+    color: '#F59E0B',
     fontWeight: '700',
+    marginBottom: 2,
   },
-  rewardTitle: {
+  heroStatLabel: {
+    ...Typography.caption,
+    color: Colors.text.tertiary,
+  },
+  birthdayCountdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.base,
+  },
+  countdownIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(167, 139, 250, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countdownContent: {
+    flex: 1,
+  },
+  countdownTitle: {
     ...Typography.label,
     color: Colors.text.primary,
+    fontWeight: '600',
+    marginBottom: 2,
   },
-  rewardStore: {
+  countdownSubtitle: {
     ...Typography.bodySmall,
     color: Colors.text.tertiary,
   },
-  rewardDescription: {
+  updateButton: {
+    backgroundColor: Colors.primary[600],
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  updateButtonText: {
+    ...Typography.labelSmall,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  giftsSection: {
+    paddingHorizontal: Spacing.base,
+  },
+  sectionHeader: {
+    marginBottom: Spacing.md,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    ...Typography.h4,
+    color: Colors.text.primary,
+    fontWeight: '600',
+  },
+  sectionSubtitle: {
+    ...Typography.bodySmall,
+    color: Colors.text.tertiary,
+  },
+  giftCard: {
+    backgroundColor: Colors.background.primary,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.md,
+    overflow: 'hidden',
+    ...Shadows.subtle,
+  },
+  giftRibbon: {
+    position: 'absolute',
+    top: 8,
+    right: -24,
+    width: 96,
+    height: 24,
+    backgroundColor: '#F59E0B',
+    transform: [{ rotate: '45deg' }],
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  giftRibbonText: {
+    ...Typography.caption,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  giftContent: {
+    flexDirection: 'row',
+    padding: Spacing.base,
+  },
+  giftImage: {
+    width: 80,
+    height: 80,
+    borderRadius: BorderRadius.md,
+    marginRight: Spacing.base,
+  },
+  giftInfo: {
+    flex: 1,
+  },
+  giftHeader: {
+    marginBottom: Spacing.xs,
+  },
+  giftStoreInfo: {
+    marginBottom: Spacing.xs,
+  },
+  giftStore: {
+    ...Typography.bodySmall,
+    color: Colors.text.tertiary,
+    marginBottom: 2,
+  },
+  giftTitle: {
+    ...Typography.label,
+    color: Colors.text.primary,
+    fontWeight: '600',
+  },
+  giftDescription: {
+    ...Typography.bodySmall,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.sm,
+  },
+  giftTags: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
+  },
+  tag: {
+    backgroundColor: Colors.gray[100],
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  tagText: {
     ...Typography.caption,
     color: Colors.text.secondary,
-    marginTop: Spacing.xs,
   },
   claimButton: {
-    backgroundColor: '#EC4899',
     borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.lg,
+    overflow: 'hidden',
+  },
+  claimGradient: {
     paddingVertical: Spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   claimButtonText: {
+    ...Typography.labelSmall,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  bonusCoinsCard: {
+    margin: Spacing.base,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    ...Shadows.medium,
+  },
+  bonusCoinsGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.base,
+  },
+  bonusCoinsIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(245, 158, 11, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coinEmoji: {
+    fontSize: 32,
+  },
+  bonusCoinsContent: {
+    flex: 1,
+  },
+  bonusCoinsValue: {
+    ...Typography.h2,
+    color: '#F59E0B',
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  bonusCoinsSubtitle: {
+    ...Typography.bodySmall,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.xs,
+  },
+  creditedBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.success,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  creditedBadgeText: {
+    ...Typography.caption,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  partyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background.primary,
+    padding: Spacing.base,
+    borderRadius: BorderRadius.lg,
+    margin: Spacing.base,
+    gap: Spacing.md,
+    ...Shadows.subtle,
+  },
+  partyContent: {
+    flex: 1,
+  },
+  partyTitle: {
     ...Typography.label,
-    color: '#FFF',
+    color: Colors.text.primary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  partySubtitle: {
+    ...Typography.bodySmall,
+    color: Colors.text.secondary,
+  },
+  shareButton: {
+    backgroundColor: Colors.primary[600],
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  shareButtonText: {
+    ...Typography.labelSmall,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  fixedCTA: {
+    position: 'absolute',
+    bottom: 70, // Above bottom nav bar (70px height)
+    left: 0,
+    right: 0,
+    padding: Spacing.base,
+    backgroundColor: Colors.background.primary,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border.light,
+    ...Shadows.medium,
+  },
+  ctaButton: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+  },
+  ctaGradient: {
+    flexDirection: 'row',
+    paddingVertical: Spacing.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaButtonText: {
+    ...Typography.button,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

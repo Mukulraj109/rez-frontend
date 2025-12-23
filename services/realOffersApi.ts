@@ -1138,6 +1138,237 @@ class RealOffersApi {
 
     return filteredDeals.slice(startIndex, endIndex);
   }
+
+  // =====================
+  // NEW OFFERS PAGE ENDPOINTS
+  // =====================
+
+  /**
+   * Get hotspot areas
+   */
+  async getHotspots(params?: {
+    lat?: number;
+    lng?: number;
+    limit?: number;
+  }): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/offers/hotspots', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching hotspots:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get offers for a specific hotspot
+   */
+  async getHotspotOffers(slug: string, limit?: number): Promise<ApiResponse<{ hotspot: any; offers: Offer[] }>> {
+    try {
+      const response = await apiClient.get<{ hotspot: any; offers: Offer[] }>(`/offers/hotspots/${slug}/offers`, { limit });
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error fetching hotspot ${slug} offers:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get BOGO (Buy One Get One) offers
+   */
+  async getBOGOOffers(params?: {
+    bogoType?: 'buy1get1' | 'buy2get1' | 'buy1get50' | 'buy2get50';
+    limit?: number;
+  }): Promise<ApiResponse<Offer[]>> {
+    try {
+      const response = await apiClient.get<Offer[]>('/offers/bogo', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching BOGO offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get sale and clearance offers
+   */
+  async getSaleOffers(params?: {
+    saleTag?: 'clearance' | 'sale' | 'last_pieces' | 'mega_sale';
+    limit?: number;
+  }): Promise<ApiResponse<Offer[]>> {
+    try {
+      const response = await apiClient.get<Offer[]>('/offers/sales-clearance', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching sale offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get free delivery offers
+   */
+  async getFreeDeliveryOffers(limit?: number): Promise<ApiResponse<Offer[]>> {
+    try {
+      const response = await apiClient.get<Offer[]>('/offers/free-delivery', { limit });
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching free delivery offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get bank and wallet offers
+   */
+  async getBankOffers(params?: {
+    cardType?: 'credit' | 'debit' | 'wallet' | 'upi' | 'bnpl';
+    limit?: number;
+  }): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/offers/bank-offers', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching bank offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get exclusive zones
+   */
+  async getExclusiveZones(): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/offers/exclusive-zones');
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching exclusive zones:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get offers for a specific exclusive zone
+   */
+  async getExclusiveZoneOffers(slug: string, limit?: number): Promise<ApiResponse<{ zone: any; offers: Offer[] }>> {
+    try {
+      const response = await apiClient.get<{ zone: any; offers: Offer[] }>(`/offers/exclusive-zones/${slug}/offers`, { limit });
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error fetching exclusive zone ${slug} offers:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get special profiles (Defence, Healthcare, etc.)
+   */
+  async getSpecialProfiles(): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/offers/special-profiles');
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching special profiles:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get offers for a specific special profile
+   */
+  async getSpecialProfileOffers(slug: string, limit?: number): Promise<ApiResponse<{ profile: any; offers: Offer[] }>> {
+    try {
+      const response = await apiClient.get<{ profile: any; offers: Offer[] }>(`/offers/special-profiles/${slug}/offers`, { limit });
+      return response;
+    } catch (error) {
+      console.error(`[OFFERS API] Error fetching special profile ${slug} offers:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get friends' redeemed offers (social proof)
+   */
+  async getFriendsRedeemed(limit?: number): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/offers/friends-redeemed', { limit });
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching friends redeemed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get double cashback campaigns
+   */
+  async getDoubleCashbackCampaigns(limit?: number): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/cashback/double-campaigns', { limit });
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching double cashback campaigns:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get coin drop events
+   */
+  async getCoinDrops(params?: {
+    category?: string;
+    limit?: number;
+  }): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/cashback/coin-drops', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching coin drops:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get upload bill stores
+   */
+  async getUploadBillStores(params?: {
+    category?: string;
+    limit?: number;
+  }): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/cashback/upload-bill-stores', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching upload bill stores:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get loyalty milestones
+   */
+  async getLoyaltyMilestones(): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/loyalty/milestones');
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching loyalty milestones:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's loyalty progress
+   */
+  async getLoyaltyProgress(): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/loyalty/progress');
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching loyalty progress:', error);
+      throw error;
+    }
+  }
 }
 
 // Create and export singleton instance

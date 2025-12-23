@@ -4,7 +4,7 @@
  * Adapted from Rez_v-2-main FashionOccasionCard
  */
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getOccasionsForCategory, Occasion } from '@/data/categoryDummyData';
+import categoryMetadataApi, { Occasion } from '@/services/categoryMetadataApi';
+import { getOccasionsForCategory } from '@/data/categoryDummyData';
 
 interface ShopByOccasionSectionProps {
   categorySlug: string;
@@ -95,7 +97,41 @@ const ShopByOccasionSection: React.FC<ShopByOccasionSectionProps> = ({
   onOccasionPress,
 }) => {
   const router = useRouter();
-  const displayOccasions = occasions || getOccasionsForCategory(categorySlug);
+  const [apiOccasions, setApiOccasions] = useState<Occasion[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (occasions) {
+      setApiOccasions(occasions);
+      setLoading(false);
+      return;
+    }
+
+    const fetchOccasions = async () => {
+      try {
+        setLoading(true);
+        const response = await categoryMetadataApi.getOccasions(categorySlug);
+        if (response.success && response.data?.occasions?.length > 0) {
+          setApiOccasions(response.data.occasions);
+        } else {
+          // Fallback to dummy data if API returns empty
+          const fallbackOccasions = getOccasionsForCategory(categorySlug);
+          setApiOccasions(fallbackOccasions);
+        }
+      } catch (err) {
+        console.error('Error fetching occasions:', err);
+        // Fallback to dummy data on error
+        const fallbackOccasions = getOccasionsForCategory(categorySlug);
+        setApiOccasions(fallbackOccasions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOccasions();
+  }, [categorySlug, occasions]);
+
+  const displayOccasions = occasions || apiOccasions;
 
   const handlePress = useCallback((occasion: Occasion) => {
     if (onOccasionPress) {
@@ -107,6 +143,14 @@ const ShopByOccasionSection: React.FC<ShopByOccasionSectionProps> = ({
       } as any);
     }
   }, [router, categorySlug, onOccasionPress]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="small" color="#6366F1" />
+      </View>
+    );
+  }
 
   if (!displayOccasions || displayOccasions.length === 0) {
     return null;
@@ -167,6 +211,11 @@ const styles = StyleSheet.create({
         boxShadow: '0 2px 8px rgba(11, 34, 64, 0.04), 0 8px 24px rgba(11, 34, 64, 0.06)',
       },
     }),
+  },
+  loadingContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',

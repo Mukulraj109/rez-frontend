@@ -9,7 +9,8 @@ const config = getDefaultConfig(__dirname);
 
 // Limit parallel workers - reduces memory significantly
 // Default uses all CPU cores which consumes too much memory
-config.maxWorkers = 2;
+// Use 50% of available cores for better balance
+config.maxWorkers = Math.max(1, Math.floor(require('os').cpus().length * 0.5));
 
 // Transformer optimizations
 config.transformer = {
@@ -21,11 +22,11 @@ config.transformer = {
       reduce_vars: false,
     },
   },
-  // Disable inline requires for better memory management
+  // Enable inline requires for better performance (but can use more memory)
   getTransformOptions: async () => ({
     transform: {
       experimentalImportSupport: false,
-      inlineRequires: false, // Disable to reduce memory
+      inlineRequires: true, // Enable for faster startup
     },
   }),
 };
@@ -68,8 +69,20 @@ config.server = {
   enhanceMiddleware: (middleware) => middleware,
 };
 
-// Cache settings - helps reduce rebundling memory
-config.cacheStores = [];
+// Cache settings - enable caching for faster rebuilds
+// Use FileStore for persistent cache (faster subsequent builds)
+try {
+  const { FileStore } = require('metro-cache');
+  config.cacheStores = [
+    new FileStore({
+      root: require('path').join(__dirname, 'node_modules/.cache/metro'),
+    }),
+  ];
+} catch (error) {
+  // metro-cache might not be available, use default cache
+  console.warn('metro-cache not available, using default cache');
+  config.cacheStores = [];
+}
 
 // =============================================================================
 // ASSET EXTENSIONS

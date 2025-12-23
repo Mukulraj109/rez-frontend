@@ -1,6 +1,35 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Offer, OfferFilters, OfferSection } from '@/types/offers.types';
 import { offersPageData } from '@/data/offersData';
+import realOffersApi from '@/services/realOffersApi';
+
+// Feature flag - set to true to use real API
+const USE_REAL_API = process.env.EXPO_PUBLIC_MOCK_API !== 'true';
+
+interface OffersPageApiData {
+  // Existing sections
+  lightningDeals: any[];
+  nearbyOffers: any[];
+  trendingOffers: any[];
+  friendsRedeemed: any[];
+
+  // Cashback tab
+  hotspots: any[];
+  doubleCashback: any[];
+  coinDrops: any[];
+  uploadBillStores: any[];
+  bankOffers: any[];
+
+  // Exclusive tab
+  exclusiveZones: any[];
+  specialProfiles: any[];
+  loyaltyMilestones: any[];
+
+  // Offer types
+  bogoOffers: any[];
+  saleOffers: any[];
+  freeDeliveryOffers: any[];
+}
 
 export function useOffersData() {
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -8,16 +37,112 @@ export function useOffersData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // API data states
+  const [apiData, setApiData] = useState<OffersPageApiData>({
+    lightningDeals: [],
+    nearbyOffers: [],
+    trendingOffers: [],
+    friendsRedeemed: [],
+    hotspots: [],
+    doubleCashback: [],
+    coinDrops: [],
+    uploadBillStores: [],
+    bankOffers: [],
+    exclusiveZones: [],
+    specialProfiles: [],
+    loyaltyMilestones: [],
+    bogoOffers: [],
+    saleOffers: [],
+    freeDeliveryOffers: [],
+  });
+
+  // Fetch data from real APIs
+  const fetchOffersData = useCallback(async () => {
+    if (!USE_REAL_API) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Fetch all data in parallel
+      const [
+        trendingRes,
+        nearbyRes,
+        hotspotsRes,
+        doubleCashbackRes,
+        coinDropsRes,
+        uploadBillRes,
+        bankOffersRes,
+        exclusiveZonesRes,
+        specialProfilesRes,
+        loyaltyRes,
+        bogoRes,
+        saleRes,
+        freeDeliveryRes,
+        friendsRedeemedRes,
+      ] = await Promise.allSettled([
+        realOffersApi.getTrendingOffers(10),
+        realOffersApi.getNearbyOffers({ lat: 12.9716, lng: 77.5946, limit: 10 }), // Default to Bangalore
+        realOffersApi.getHotspots({ limit: 10 }),
+        realOffersApi.getDoubleCashbackCampaigns(5),
+        realOffersApi.getCoinDrops({ limit: 20 }),
+        realOffersApi.getUploadBillStores({ limit: 20 }),
+        realOffersApi.getBankOffers({ limit: 10 }),
+        realOffersApi.getExclusiveZones(),
+        realOffersApi.getSpecialProfiles(),
+        realOffersApi.getLoyaltyMilestones(),
+        realOffersApi.getBOGOOffers({ limit: 10 }),
+        realOffersApi.getSaleOffers({ limit: 10 }),
+        realOffersApi.getFreeDeliveryOffers(10),
+        realOffersApi.getFriendsRedeemed(10),
+      ]);
+
+      // Extract data safely
+      const extractData = (result: PromiseSettledResult<any>) => {
+        if (result.status === 'fulfilled' && result.value?.success && result.value?.data) {
+          return result.value.data;
+        }
+        return [];
+      };
+
+      setApiData({
+        trendingOffers: extractData(trendingRes),
+        nearbyOffers: extractData(nearbyRes),
+        lightningDeals: extractData(trendingRes), // Use trending as lightning for now
+        friendsRedeemed: extractData(friendsRedeemedRes),
+        hotspots: extractData(hotspotsRes),
+        doubleCashback: extractData(doubleCashbackRes),
+        coinDrops: extractData(coinDropsRes),
+        uploadBillStores: extractData(uploadBillRes),
+        bankOffers: extractData(bankOffersRes),
+        exclusiveZones: extractData(exclusiveZonesRes),
+        specialProfiles: extractData(specialProfilesRes),
+        loyaltyMilestones: extractData(loyaltyRes),
+        bogoOffers: extractData(bogoRes),
+        saleOffers: extractData(saleRes),
+        freeDeliveryOffers: extractData(freeDeliveryRes),
+      });
+    } catch (err) {
+      console.error('[useOffersData] Error fetching offers data:', err);
+      setError('Failed to load offers data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Load initial data
   useEffect(() => {
-    setLoading(true);
-    // Simulate loading delay
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, []);
+    if (USE_REAL_API) {
+      fetchOffersData();
+    } else {
+      setLoading(true);
+      // Simulate loading delay for dummy data
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [fetchOffersData]);
 
   // Filter offers based on current filters
   const filteredSections = useMemo(() => {
@@ -30,14 +155,14 @@ export function useOffersData() {
 
       // Filter by category
       if (filters.category) {
-        filteredOffers = filteredOffers.filter(offer => 
+        filteredOffers = filteredOffers.filter(offer =>
           offer.category.toLowerCase() === filters.category?.toLowerCase()
         );
       }
 
       // Filter by cash back minimum
       if (filters.cashBackMin) {
-        filteredOffers = filteredOffers.filter(offer => 
+        filteredOffers = filteredOffers.filter(offer =>
           offer.cashBackPercentage >= filters.cashBackMin!
         );
       }
@@ -88,8 +213,8 @@ export function useOffersData() {
 
   // Toggle favorite
   const toggleFavorite = (offerId: string) => {
-    setFavorites(prev => 
-      prev.includes(offerId) 
+    setFavorites(prev =>
+      prev.includes(offerId)
         ? prev.filter(id => id !== offerId)
         : [...prev, offerId]
     );
@@ -113,13 +238,16 @@ export function useOffersData() {
   // Get offers by category
   const getOffersByCategory = (category: string): Offer[] => {
     const allOffers = offersPageData.sections.flatMap(section => section.offers);
-    return allOffers.filter(offer => 
+    return allOffers.filter(offer =>
       offer.category.toLowerCase() === category.toLowerCase()
     );
   };
 
   // Get trending offers
   const getTrendingOffers = (): Offer[] => {
+    if (USE_REAL_API && apiData.trendingOffers.length > 0) {
+      return apiData.trendingOffers;
+    }
     const allOffers = offersPageData.sections.flatMap(section => section.offers);
     return allOffers.filter(offer => offer.isTrending);
   };
@@ -139,16 +267,23 @@ export function useOffersData() {
   // Search offers
   const searchOffers = (query: string): Offer[] => {
     if (!query.trim()) return [];
-    
+
     const allOffers = offersPageData.sections.flatMap(section => section.offers);
     const lowercaseQuery = query.toLowerCase();
-    
+
     return allOffers.filter(offer =>
       offer.title.toLowerCase().includes(lowercaseQuery) ||
       offer.category.toLowerCase().includes(lowercaseQuery) ||
       offer.store.name.toLowerCase().includes(lowercaseQuery)
     );
   };
+
+  // Refresh data
+  const refreshData = useCallback(() => {
+    if (USE_REAL_API) {
+      fetchOffersData();
+    }
+  }, [fetchOffersData]);
 
   return {
     // Data
@@ -159,13 +294,18 @@ export function useOffersData() {
     filters,
     loading,
     error,
-    
+
+    // API Data (new)
+    apiData,
+    isUsingRealApi: USE_REAL_API,
+
     // Actions
     toggleFavorite,
     clearFavorites,
     updateFilters,
     resetFilters,
-    
+    refreshData,
+
     // Utilities
     getOffersByCategory,
     getTrendingOffers,

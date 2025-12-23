@@ -488,13 +488,13 @@ const styles = StyleSheet.create({
   ctaText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#00C06A',
+    color: '#F97316',
   },
   ctaArrowContainer: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#00C06A',
+    backgroundColor: '#F97316',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
   },
   paginationDotActive: {
     width: 24,
-    backgroundColor: '#00C06A',
+    backgroundColor: '#F97316',
   },
   skeletonBanner: {
     marginHorizontal: 16,

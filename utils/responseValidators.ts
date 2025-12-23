@@ -96,13 +96,51 @@ export function validateStore(rawStore: any): any | null {
     // Normalize rating with breakdown preservation
     const rating = normalizeStoreRating(rawStore);
 
+    // Normalize image - handle various formats: image, banner, images array, image.url
+    const normalizeStoreImage = () => {
+      // Try images array first (most common from backend)
+      if (rawStore.images && Array.isArray(rawStore.images) && rawStore.images.length > 0) {
+        const firstImage = rawStore.images[0];
+        if (typeof firstImage === 'string' && firstImage.trim().length > 0) {
+          return firstImage;
+        }
+        if (firstImage && typeof firstImage === 'object' && firstImage.url) {
+          return firstImage.url;
+        }
+      }
+      // Try banner field (can be string, array, or object)
+      if (rawStore.banner) {
+        if (typeof rawStore.banner === 'string' && rawStore.banner.trim().length > 0) {
+          return rawStore.banner;
+        }
+        if (Array.isArray(rawStore.banner) && rawStore.banner.length > 0) {
+          const firstBanner = rawStore.banner[0];
+          return typeof firstBanner === 'string' ? firstBanner : (firstBanner?.url || '');
+        }
+        if (typeof rawStore.banner === 'object' && rawStore.banner.url) {
+          return rawStore.banner.url;
+        }
+      }
+      // Try direct image field
+      if (rawStore.image) {
+        if (typeof rawStore.image === 'string' && rawStore.image.trim().length > 0) {
+          return rawStore.image;
+        }
+        if (typeof rawStore.image === 'object' && rawStore.image.url) {
+          return rawStore.image.url;
+        }
+      }
+      return '';
+    };
+
     // Build validated store object
+    const validatedImage = normalizeStoreImage();
     const validatedStore = {
       id,
       type: 'store',
       name,
       title: name,
-      image: rawStore.image || rawStore.banner || '',
+      image: validatedImage,
       logo: rawStore.logo || '',
       description: rawStore.description || '',
       rating,
@@ -224,6 +262,22 @@ function normalizePrice(data: any): ProductItem['price'] | null {
       };
     }
 
+    // Format 5: Try to extract any numeric price value as last resort
+    const anyPrice = data.price?.selling || data.price?.current || data.sellingPrice || data.amount;
+    if (typeof anyPrice === 'number' && anyPrice > 0) {
+      console.warn('[VALIDATOR] Using fallback price extraction for product:', data.id || data._id);
+      return {
+        current: anyPrice,
+        currency: data.price?.currency || data.currency || 'INR',
+      };
+    }
+
+    console.warn('[VALIDATOR] Could not normalize price for product:', {
+      id: data.id || data._id,
+      name: data.name || data.title,
+      pricing: data.pricing,
+      price: data.price,
+    });
     return null;
   } catch (error) {
     console.error('[VALIDATOR] Error normalizing price:', error);
@@ -329,6 +383,7 @@ function normalizeImages(data: any): Array<{ id: string; url: string; alt: strin
  */
 function normalizeCashback(data: any): { percentage: number; maxAmount?: number } | undefined {
   try {
+    // Format 1: Product has cashback
     if (data.cashback && typeof data.cashback === 'object') {
       return {
         percentage: data.cashback.percentage || 0,
@@ -336,10 +391,28 @@ function normalizeCashback(data: any): { percentage: number; maxAmount?: number 
       };
     }
 
+    // Format 2: Store has cashback (fallback for products without cashback)
+    if (data.store?.cashback && typeof data.store.cashback === 'object') {
+      return {
+        percentage: data.store.cashback.percentage || 0,
+        maxAmount: data.store.cashback.maxAmount || data.store.cashback.max,
+      };
+    }
+
+    // Format 3: Offers cashback
     if (data.offers?.cashback) {
       return {
         percentage: data.offers.cashback,
         maxAmount: data.offers.maxCashback,
+      };
+    }
+
+    // Format 4: Default cashback for new arrivals (if no cashback specified)
+    // This ensures new arrivals always show some cashback incentive
+    if (data.isNewArrival || data.arrivalDate) {
+      return {
+        percentage: 5, // Default 5% for new arrivals
+        maxAmount: 500
       };
     }
 

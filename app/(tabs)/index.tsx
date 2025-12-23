@@ -44,6 +44,7 @@ import {
   HeroBanner,
   StoreDiscoverySection,
 } from '@/components/homepage';
+import { SectionSkeleton } from '@/components/homepage/skeletons';
 import HomeTabSection, { TabId } from '@/components/homepage/HomeTabSection';
 import MallHeroBanner from '@/components/mall/MallHeroBanner';
 import HowRezWorksCard from '@/components/homepage/HowRezWorksCard';
@@ -55,7 +56,7 @@ import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import GoingOutSection from '@/components/homepage/GoingOutSection';
 import HomeDeliverySection from '@/components/homepage/HomeDeliverySection';
 import ServiceSection from '@/components/homepage/ServiceSection';
-import ExclusiveRewardsSection from '@/components/homepage/ExclusiveRewardsSection';
+import DealsThatSaveMoney from '@/components/homepage/DealsThatSaveMoney';
 import WalletSnapshotCard from '@/components/homepage/WalletSnapshotCard';
 import ZeroEMICard from '@/components/homepage/ZeroEMICard';
 import { StoreExperiencesSection } from '@/components/homepage/StoreExperiencesSection';
@@ -991,8 +992,8 @@ export default function HomeScreen() {
         {/* How ReZ Works Card - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && <HowRezWorksCard />}
 
-        {/* Exclusive ReZ Rewards Section - Only show when "near-u" tab is active */}
-        {activeTab === 'near-u' && <ExclusiveRewardsSection />}
+        {/* Deals that save you money - Offers, Cashback, Exclusive tabs - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <DealsThatSaveMoney />}
 
         {/* Recently Viewed Section - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && recentlyViewedItems.length > 0 && (
@@ -1003,6 +1004,55 @@ export default function HomeScreen() {
           />
         )}
 
+        {/* Store Discovery Section - Today's Top Stores & Popular Near You - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <StoreDiscoverySection limit={10} />}
+
+        {/* New Arrivals Section - Only show when "near-u" tab is active */}
+        {React.useMemo(() => {
+          if (activeTab !== 'near-u') return null;
+          
+          const newArrivalsSection = state.sections.find(section => section.id === 'new_arrivals');
+          
+          // Show skeleton while loading (global or section-level) or if section doesn't exist yet
+          const isGlobalLoading = state.loading;
+          const isSectionLoading = newArrivalsSection?.loading;
+          const hasNoItems = !newArrivalsSection?.items || newArrivalsSection.items.length === 0;
+          
+          // Show skeleton if: global loading (even if section doesn't exist), section loading, or section doesn't exist and we're loading
+          if (isGlobalLoading || !newArrivalsSection || (isSectionLoading && hasNoItems)) {
+            return (
+              <SectionSkeleton
+                cardType="product"
+                cardWidth={160}
+                spacing={16}
+                numCards={4}
+                showIndicator={false}
+              />
+            );
+          }
+          
+          // If section has items, show the actual section
+          if (!hasNoItems) {
+            return (
+              <HorizontalScrollSection
+                key={newArrivalsSection.id}
+                section={newArrivalsSection}
+                onItemPress={item => handleItemPress(newArrivalsSection.id, item)}
+                onRefresh={() => actions.refreshSection(newArrivalsSection.id)}
+                renderCard={item => renderProductCard(item)}
+                cardWidth={160}
+                spacing={16}
+                showIndicator={false}
+              />
+            );
+          }
+          
+          return null;
+        }, [activeTab, state.sections, state.loading, handleItemPress, actions, renderProductCard])}
+
+        {/* Popular Products Section - Shows products with highest order count - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <PopularProductsSection title="Popular Near You" limit={3} />}
+
         {/* Going Out Section - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && (
           <GoingOutSection />
@@ -1012,7 +1062,26 @@ export default function HomeScreen() {
         {React.useMemo(() => {
           if (activeTab !== 'near-u') return null;
           const justForYouSection = state.sections.find(section => section.id === 'just_for_you');
-          if (!justForYouSection || !justForYouSection.items || justForYouSection.items.length === 0) return null;
+          
+          // Show skeleton while loading (global or section-level) or if section doesn't exist yet
+          const isGlobalLoading = state.loading;
+          const isSectionLoading = justForYouSection?.loading;
+          const hasNoItems = !justForYouSection?.items || justForYouSection.items.length === 0;
+          
+          // Show skeleton if: global loading, section loading, section doesn't exist, OR section has no items (will show skeleton until data loads)
+          if (isGlobalLoading || !justForYouSection || (isSectionLoading && hasNoItems) || hasNoItems) {
+            return (
+              <SectionSkeleton
+                cardType="recommendation"
+                cardWidth={230}
+                spacing={12}
+                numCards={4}
+                showIndicator={false}
+              />
+            );
+          }
+          
+          // If section has items, show the actual section
           return (
             <HorizontalScrollSection
               key={justForYouSection.id}
@@ -1025,7 +1094,7 @@ export default function HomeScreen() {
               showIndicator={false}
             />
           );
-        }, [activeTab, state.sections, handleItemPress, actions, renderRecommendationCard])}
+        }, [activeTab, state.sections, state.loading, handleItemPress, actions, renderRecommendationCard])}
 
         {/* Home Delivery Section - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && (
@@ -1040,9 +1109,42 @@ export default function HomeScreen() {
         {/* Other Sections from state (excluding just_for_you) - Progressive loading with memoization - Only show when "near-u" tab is active */}
         {React.useMemo(() => {
           if (activeTab !== 'near-u') return null;
-          return state.sections
-            .filter(section => section.id !== 'just_for_you' && section.items && section.items.length > 0)
-            .map(section => (
+          
+          const filteredSections = state.sections.filter(section => {
+            // Only show sections with real data (not fallback/error states)
+            if (section.id === 'just_for_you') return false;
+            if (section.id === 'new_arrivals') return false; // New arrivals is rendered separately above
+            // Don't show if section has error and is using fallback data
+            if (section.error && section.error.includes('fallback')) return false;
+            return true;
+          });
+          
+          const isGlobalLoading = state.loading;
+          
+          return filteredSections.map(section => {
+            const isSectionLoading = section.loading;
+            const hasNoItems = !section.items || section.items.length === 0;
+            
+            // Show skeleton for trending stores while loading (global or section-level) OR if it has no items
+            if (section.id === 'trending_stores' && (isGlobalLoading || (isSectionLoading && hasNoItems) || hasNoItems)) {
+              return (
+                <SectionSkeleton
+                  key={`skeleton-${section.id}`}
+                  cardType="store"
+                  cardWidth={280}
+                  spacing={16}
+                  numCards={4}
+                  showIndicator={false}
+                />
+              );
+            }
+            
+            // Don't render section if it has no items and is not loading (for other sections)
+            if (hasNoItems && !isGlobalLoading && !isSectionLoading) {
+              return null;
+            }
+            
+            return (
               <HorizontalScrollSection
                 key={section.id}
                 section={section}
@@ -1065,7 +1167,7 @@ export default function HomeScreen() {
                   }
                 }}
                 cardWidth={
-                  section.id === 'new_arrivals' ? 180 :
+                  section.id === 'new_arrivals' ? 160 :
                     section.type === 'branded_stores' ? 200 : 280
                 }
                 spacing={
@@ -1073,11 +1175,9 @@ export default function HomeScreen() {
                 }
                 showIndicator={false}
               />
-            ));
-        }, [activeTab, state.sections, handleItemPress, actions, renderEventCard, renderRecommendationCard, renderStoreCard, renderBrandedStoreCard, renderProductCard])}
-
-        {/* Store Discovery Section - Today's Top Stores & Popular Near You - Only show when "near-u" tab is active */}
-        {activeTab === 'near-u' && <StoreDiscoverySection limit={10} />}
+            );
+          });
+        }, [activeTab, state.sections, state.loading, handleItemPress, actions, renderEventCard, renderRecommendationCard, renderStoreCard, renderBrandedStoreCard, renderProductCard])}
 
         {/* Promotional Banner - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && <PromoBanner />}
@@ -1087,9 +1187,6 @@ export default function HomeScreen() {
 
         {/* Best Seller Categories Section - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && <BestSellerSection title="Best Seller" limit={10} />}
-
-        {/* Popular Products Section - Shows products with highest order count - Only show when "near-u" tab is active */}
-        {activeTab === 'near-u' && <PopularProductsSection title="Popular" limit={10} />}
 
         {/* Discover & Shop Section - UGC Reels, Posts, Articles, Images with product tagging - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && (
