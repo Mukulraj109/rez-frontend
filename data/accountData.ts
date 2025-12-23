@@ -461,6 +461,33 @@ export const customerSupportCategories: AccountSettingsCategory[] = [
     isEnabled: true,
     showArrow: true,
   },
+  {
+    id: 'call-support',
+    title: 'Call Support',
+    icon: 'call-outline',
+    route: '/support/call',
+    description: 'Speak with a support agent',
+    isEnabled: true,
+    showArrow: true,
+  },
+  {
+    id: 'report-fraud',
+    title: 'Report Fraud',
+    icon: 'warning-outline',
+    route: '/support/report-fraud',
+    description: 'Report suspicious activity',
+    isEnabled: true,
+    showArrow: true,
+  },
+  {
+    id: 'feedback',
+    title: 'Feedback',
+    icon: 'chatbox-outline',
+    route: '/support/feedback',
+    description: 'Share your experience with us',
+    isEnabled: true,
+    showArrow: true,
+  },
 ];
 
 // Notification Categories

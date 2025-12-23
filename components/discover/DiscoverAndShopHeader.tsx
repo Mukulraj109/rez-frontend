@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { CategoryCard } from '@/types/discover.types';
 
 // Category icon images
@@ -109,6 +110,12 @@ export default function DiscoverAndShopHeader({
   onCategoryPress,
   showCategories = true,
 }: DiscoverAndShopHeaderProps) {
+  const router = useRouter();
+
+  const handleFullReels = () => {
+    router.push('/social/reels' as any);
+  };
+
   return (
     <View style={styles.container}>
       {/* Title Row */}
@@ -119,9 +126,9 @@ export default function DiscoverAndShopHeader({
           </View>
           <Text style={styles.title}>Discover & Shop</Text>
         </View>
-        <TouchableOpacity style={styles.viewAllButton}>
-          <Text style={styles.viewAllText}>View All</Text>
-          <Ionicons name="chevron-forward" size={14} color={REZ_COLORS.primaryGreen} />
+        <TouchableOpacity style={styles.reelsButton} onPress={handleFullReels}>
+          <Ionicons name="play-circle" size={16} color="#FFFFFF" />
+          <Text style={styles.reelsButtonText}>Reels</Text>
         </TouchableOpacity>
       </View>
 
@@ -242,19 +249,30 @@ const styles = StyleSheet.create({
     color: REZ_COLORS.navy,
     letterSpacing: -0.3,
   },
-  viewAllButton: {
+  reelsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+    backgroundColor: REZ_COLORS.primaryGreen,
+    ...Platform.select({
+      ios: {
+        shadowColor: REZ_COLORS.primaryGreen,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
-  viewAllText: {
+  reelsButtonText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: REZ_COLORS.primaryGreen,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   subtitle: {
     fontSize: 14,

@@ -38,6 +38,10 @@ class ApiClient {
   private logoutCallback: (() => void) | null = null;
   private isRefreshing: boolean = false;
   private refreshPromise: Promise<boolean> | null = null;
+  // System page callbacks
+  private maintenanceCallback: (() => void) | null = null;
+  private appUpdateCallback: ((minVersion: string) => void) | null = null;
+  private currentAppVersion: string = '1.0.0';
 
   constructor() {
     // Use environment variable or fallback to user backend localhost
@@ -71,6 +75,35 @@ class ApiClient {
   // Set logout callback
   setLogoutCallback(callback: (() => void) | null) {
     this.logoutCallback = callback;
+  }
+
+  // Set maintenance mode callback
+  setMaintenanceCallback(callback: (() => void) | null) {
+    this.maintenanceCallback = callback;
+  }
+
+  // Set app update callback
+  setAppUpdateCallback(callback: ((minVersion: string) => void) | null) {
+    this.appUpdateCallback = callback;
+  }
+
+  // Set current app version
+  setCurrentAppVersion(version: string) {
+    this.currentAppVersion = version;
+  }
+
+  // Compare semantic versions (returns -1 if v1 < v2, 0 if equal, 1 if v1 > v2)
+  private compareVersions(v1: string, v2: string): number {
+    const parts1 = v1.split('.').map(Number);
+    const parts2 = v2.split('.').map(Number);
+
+    for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+      const p1 = parts1[i] || 0;
+      const p2 = parts2[i] || 0;
+      if (p1 < p2) return -1;
+      if (p1 > p2) return 1;
+    }
+    return 0;
   }
 
   // Handle token refresh
@@ -140,6 +173,38 @@ class ApiClient {
 
       if (!response.ok) {
         console.error(`[API] ${method} ${endpoint} failed:`, response.status, responseData.message || response.statusText);
+
+        // Handle 503 Service Unavailable - Maintenance mode
+        if (response.status === 503 && this.maintenanceCallback) {
+          console.log('[API] Server in maintenance mode, redirecting...');
+          this.maintenanceCallback();
+          return {
+            success: false,
+            error: 'Server is under maintenance. Please try again later.'
+          };
+        }
+
+        // Handle 426 Upgrade Required - App version outdated
+        if (response.status === 426 && this.appUpdateCallback) {
+          const minVersion = responseData.minVersion || responseData.minimum_version || '1.0.0';
+          console.log('[API] App update required, minimum version:', minVersion);
+          this.appUpdateCallback(minVersion);
+          return {
+            success: false,
+            error: 'Please update your app to continue.'
+          };
+        }
+
+        // Check for version header in any response
+        const serverMinVersion = response.headers.get('X-Min-App-Version');
+        if (serverMinVersion && this.appUpdateCallback) {
+          // Compare versions
+          const needsUpdate = this.compareVersions(this.currentAppVersion, serverMinVersion) < 0;
+          if (needsUpdate) {
+            console.log('[API] App update required from header, minimum version:', serverMinVersion);
+            this.appUpdateCallback(serverMinVersion);
+          }
+        }
 
         // Handle 401 Unauthorized - try to refresh token
         if (response.status === 401 && this.authToken) {
