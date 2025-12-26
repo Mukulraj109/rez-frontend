@@ -18,8 +18,7 @@ import { useRouter } from 'expo-router';
 import { usePriveSection } from '@/hooks/usePriveSection';
 import { PRIVE_COLORS, PRIVE_SPACING, PRIVE_RADIUS } from './priveTheme';
 
-// Import all Privé components
-import { PriveMemberCard } from './PriveMemberCard';
+// Import all Privé components (PriveMemberCard moved to header in index.tsx)
 import { PriveHabitLoops } from './PriveHabitLoops';
 import { PriveHighlightsSection } from './PriveHighlightsSection';
 import { PriveBalanceCard } from './PriveBalanceCard';
@@ -29,6 +28,7 @@ import { PriveOffersCarousel } from './PriveOffersCarousel';
 import { PriveActivitySummary } from './PriveActivitySummary';
 import { PriveHowItWorks } from './PriveHowItWorks';
 import { PriveConciergeCard } from './PriveConciergeCard';
+import PriveHeroBanner from './PriveHeroBanner';
 
 export const PriveSectionContainer: React.FC = () => {
   const {
@@ -91,24 +91,8 @@ export const PriveSectionContainer: React.FC = () => {
           />
         }
       >
-        {/* Welcome Text */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeText}>
-            Welcome back, <Text style={styles.welcomeName}>{userData.name.split(' ')[0]}</Text>
-          </Text>
-        </View>
-
-        {/* Premium Member Card */}
-        <PriveMemberCard
-          memberName={userData.name}
-          tier={userData.tier}
-          tierProgress={userData.tierProgress}
-          nextTier={userData.nextTier}
-          pointsToNext={userData.pointsToNext}
-          memberId={userData.memberId}
-          validThru={userData.validThru}
-          totalScore={userData.totalScore}
-        />
+        {/* Hero Banner - Premium carousel (member card moved to header) */}
+        <PriveHeroBanner />
 
         {/* Daily Habit Loops Section */}
         <PriveHabitLoops

@@ -118,7 +118,7 @@ export default function DiscoverAndShopTabBar({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
+    paddingVertical: 6,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: REZ_COLORS.lightGray,

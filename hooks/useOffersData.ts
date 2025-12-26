@@ -6,6 +6,69 @@ import realOffersApi from '@/services/realOffersApi';
 // Feature flag - set to true to use real API
 const USE_REAL_API = process.env.EXPO_PUBLIC_MOCK_API !== 'true';
 
+// Helper function to transform offers to ensure proper store structure
+const transformOfferWithStore = (offer: any) => {
+  if (!offer) return offer;
+
+  // If store is already properly structured, return as-is
+  if (offer.store && typeof offer.store === 'object' && offer.store.name) {
+    return {
+      ...offer,
+      id: offer._id || offer.id,
+    };
+  }
+
+  // Transform flat structure to nested store structure
+  return {
+    ...offer,
+    id: offer._id || offer.id,
+    store: {
+      id: offer.storeId || offer.store?.id || offer.store?._id || '',
+      name: offer.storeName || offer.store?.name || 'Store',
+      logo: offer.storeLogo || offer.store?.logo || offer.image || '',
+      rating: offer.storeRating || offer.store?.rating,
+      verified: offer.storeVerified || offer.store?.verified,
+    },
+  };
+};
+
+// Helper to transform an array of offers
+const transformOffersArray = (offers: any[]): any[] => {
+  if (!Array.isArray(offers)) return [];
+  return offers.map(transformOfferWithStore);
+};
+
+// Helper to transform flash sales to LightningDeal format (has stores[] array instead of store object)
+const transformFlashSaleToLightningDeal = (flashSale: any) => {
+  if (!flashSale) return flashSale;
+
+  return {
+    id: flashSale._id || flashSale.id,
+    title: flashSale.title,
+    subtitle: flashSale.description || '',
+    image: flashSale.image,
+    store: {
+      id: flashSale.stores?.[0]?._id || flashSale.stores?.[0]?.id || '',
+      name: flashSale.stores?.[0]?.name || 'Store',
+      logo: flashSale.stores?.[0]?.logo || flashSale.image,
+    },
+    originalPrice: flashSale.originalPrice,
+    discountedPrice: flashSale.flashSalePrice,
+    discountPercentage: flashSale.discountPercentage,
+    cashbackPercentage: flashSale.cashbackPercentage || 0,
+    totalQuantity: flashSale.maxQuantity || 100,
+    claimedQuantity: flashSale.soldQuantity || 0,
+    endTime: flashSale.endTime,
+    promoCode: flashSale.promoCode,
+  };
+};
+
+// Transform flash sales array
+const transformFlashSalesArray = (flashSales: any[]): any[] => {
+  if (!Array.isArray(flashSales)) return [];
+  return flashSales.map(transformFlashSaleToLightningDeal);
+};
+
 interface OffersPageApiData {
   // Existing sections
   lightningDeals: any[];
@@ -13,12 +76,16 @@ interface OffersPageApiData {
   trendingOffers: any[];
   friendsRedeemed: any[];
 
+  // Discount buckets (real-time counts)
+  discountBuckets: any[];
+
   // Cashback tab
   hotspots: any[];
   doubleCashback: any[];
   coinDrops: any[];
   uploadBillStores: any[];
   bankOffers: any[];
+  superCashbackStores: any[];
 
   // Exclusive tab
   exclusiveZones: any[];
@@ -29,6 +96,12 @@ interface OffersPageApiData {
   bogoOffers: any[];
   saleOffers: any[];
   freeDeliveryOffers: any[];
+
+  // Additional sections (previously using dummy data)
+  todaysOffers: any[];
+  aiRecommendedOffers: any[];
+  lastChanceOffers: any[];
+  newTodayOffers: any[];
 }
 
 export function useOffersData() {
@@ -43,17 +116,23 @@ export function useOffersData() {
     nearbyOffers: [],
     trendingOffers: [],
     friendsRedeemed: [],
+    discountBuckets: [],
     hotspots: [],
     doubleCashback: [],
     coinDrops: [],
     uploadBillStores: [],
     bankOffers: [],
+    superCashbackStores: [],
     exclusiveZones: [],
     specialProfiles: [],
     loyaltyMilestones: [],
     bogoOffers: [],
     saleOffers: [],
     freeDeliveryOffers: [],
+    todaysOffers: [],
+    aiRecommendedOffers: [],
+    lastChanceOffers: [],
+    newTodayOffers: [],
   });
 
   // Fetch data from real APIs
@@ -66,6 +145,8 @@ export function useOffersData() {
     try {
       // Fetch all data in parallel
       const [
+        flashSalesRes,
+        discountBucketsRes,
         trendingRes,
         nearbyRes,
         hotspotsRes,
@@ -73,6 +154,7 @@ export function useOffersData() {
         coinDropsRes,
         uploadBillRes,
         bankOffersRes,
+        superCashbackStoresRes,
         exclusiveZonesRes,
         specialProfilesRes,
         loyaltyRes,
@@ -80,7 +162,14 @@ export function useOffersData() {
         saleRes,
         freeDeliveryRes,
         friendsRedeemedRes,
+        // New API calls for remaining sections
+        todaysOffersRes,
+        aiRecommendedRes,
+        lastChanceRes,
+        newTodayRes,
       ] = await Promise.allSettled([
+        realOffersApi.getFlashSales(10),
+        realOffersApi.getDiscountBuckets(),
         realOffersApi.getTrendingOffers(10),
         realOffersApi.getNearbyOffers({ lat: 12.9716, lng: 77.5946, limit: 10 }), // Default to Bangalore
         realOffersApi.getHotspots({ limit: 10 }),
@@ -88,6 +177,7 @@ export function useOffersData() {
         realOffersApi.getCoinDrops({ limit: 20 }),
         realOffersApi.getUploadBillStores({ limit: 20 }),
         realOffersApi.getBankOffers({ limit: 10 }),
+        realOffersApi.getSuperCashbackStores({ limit: 20 }),
         realOffersApi.getExclusiveZones(),
         realOffersApi.getSpecialProfiles(),
         realOffersApi.getLoyaltyMilestones(),
@@ -95,6 +185,11 @@ export function useOffersData() {
         realOffersApi.getSaleOffers({ limit: 10 }),
         realOffersApi.getFreeDeliveryOffers(10),
         realOffersApi.getFriendsRedeemed(10),
+        // New API calls for remaining sections
+        realOffersApi.getTodaysOffers(10),
+        realOffersApi.getRecommendedOffers(10),
+        realOffersApi.getExpiringSoonOffers(10),
+        realOffersApi.getNewArrivals(10),
       ]);
 
       // Extract data safely
@@ -105,22 +200,64 @@ export function useOffersData() {
         return [];
       };
 
+      const flashSalesData = extractData(flashSalesRes);
+      const todaysData = extractData(todaysOffersRes);
+      const aiRecommendedData = extractData(aiRecommendedRes);
+      const lastChanceData = extractData(lastChanceRes);
+      const newTodayData = extractData(newTodayRes);
+      const friendsRedeemedData = extractData(friendsRedeemedRes);
+
+      // Transform friends redeemed data to match frontend expected structure
+      const transformedFriendsRedeemed = friendsRedeemedData.map((item: any) => ({
+        id: item._id || item.id,
+        friendId: item.friendId,
+        friendName: item.friendName,
+        friendAvatar: item.friendAvatar,
+        offer: {
+          id: item.offerId || item._id,
+          title: item.offerTitle,
+          image: item.offerImage,
+          store: item.storeName,
+          savings: item.savings || 0,
+          cashbackPercentage: item.cashbackPercentage || 0,
+        },
+        redeemedAt: item.redeemedAt,
+      }));
+
+      console.log('⚡ [useOffersData] Lightning Deals from API:', flashSalesData.length);
+      console.log('📅 [useOffersData] Today\'s Offers from API:', todaysData.length);
+      console.log('🤖 [useOffersData] AI Recommended from API:', aiRecommendedData.length);
+      console.log('⏰ [useOffersData] Last Chance from API:', lastChanceData.length);
+      console.log('🆕 [useOffersData] New Today from API:', newTodayData.length);
+      console.log('👥 [useOffersData] Friends Redeemed from API:', transformedFriendsRedeemed.length);
+
+      const superCashbackData = extractData(superCashbackStoresRes);
+      console.log('🔥 [useOffersData] Super Cashback Stores from API:', superCashbackData.length);
+
       setApiData({
-        trendingOffers: extractData(trendingRes),
-        nearbyOffers: extractData(nearbyRes),
-        lightningDeals: extractData(trendingRes), // Use trending as lightning for now
-        friendsRedeemed: extractData(friendsRedeemedRes),
+        lightningDeals: flashSalesData, // Real flash sales from FlashSale model (transformed in OffersPageContent)
+        discountBuckets: extractData(discountBucketsRes),
+        // Transform all offer arrays to ensure proper store structure
+        trendingOffers: transformOffersArray(extractData(trendingRes)),
+        nearbyOffers: transformOffersArray(extractData(nearbyRes)),
+        friendsRedeemed: transformedFriendsRedeemed,
         hotspots: extractData(hotspotsRes),
         doubleCashback: extractData(doubleCashbackRes),
         coinDrops: extractData(coinDropsRes),
         uploadBillStores: extractData(uploadBillRes),
         bankOffers: extractData(bankOffersRes),
+        superCashbackStores: superCashbackData,
         exclusiveZones: extractData(exclusiveZonesRes),
         specialProfiles: extractData(specialProfilesRes),
         loyaltyMilestones: extractData(loyaltyRes),
-        bogoOffers: extractData(bogoRes),
-        saleOffers: extractData(saleRes),
-        freeDeliveryOffers: extractData(freeDeliveryRes),
+        bogoOffers: transformOffersArray(extractData(bogoRes)),
+        saleOffers: transformOffersArray(extractData(saleRes)),
+        freeDeliveryOffers: transformOffersArray(extractData(freeDeliveryRes)),
+        // New sections (previously using dummy data)
+        todaysOffers: transformOffersArray(todaysData),
+        aiRecommendedOffers: transformOffersArray(aiRecommendedData),
+        lastChanceOffers: transformFlashSalesArray(lastChanceData), // Flash sales need special transformation
+        newTodayOffers: transformOffersArray(newTodayData),
       });
     } catch (err) {
       console.error('[useOffersData] Error fetching offers data:', err);

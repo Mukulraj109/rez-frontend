@@ -29,7 +29,11 @@ const CARD_WIDTH = (width - 60) / 2; // 2 cards per row with padding
 
 export default function ViewAllOffersScreen() {
   const router = useRouter();
-  const { category } = useLocalSearchParams<{ category?: string }>();
+  const { category, discount, title } = useLocalSearchParams<{
+    category?: string;
+    discount?: string;
+    title?: string;
+  }>();
   const { state: authState } = useAuth();
   const [allOffers, setAllOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,11 +44,18 @@ export default function ViewAllOffersScreen() {
 
   // Get category display name
   const getCategoryTitle = () => {
+    // Use custom title if provided
+    if (title) return title;
+
     const categoryMap: { [key: string]: string } = {
       'mega': 'MEGA OFFERS',
       'student': 'Offer for the students',
       'new_arrival': 'New Arrivals',
-      'trending': 'Trending Now'
+      'trending': 'Trending Now',
+      'discount': 'Discount Offers',
+      'free-delivery': 'Free Delivery',
+      'nearby': 'Nearby Offers',
+      'bogo': 'Buy One Get One',
     };
     return categoryMap[category || ''] || 'All Offers';
   };
@@ -74,11 +85,62 @@ export default function ViewAllOffersScreen() {
 
       // Fetch offers by category if specified, otherwise fetch all
       let allOffersData: Offer[] = [];
-      
-      if (category) {
+
+      // Handle discount filter
+      if (discount) {
+        console.log('🔍 [VIEW ALL] Fetching offers with discount filter:', discount);
+
+        // Fetch all offers and filter by discount
+        let currentPage = 1;
+        const pageLimit = 50;
+        let hasMore = true;
+
+        while (hasMore && currentPage <= 10) {
+          const response = await realOffersApi.getOffers({
+            page: currentPage,
+            limit: pageLimit,
+          });
+
+          if (response.success && response.data) {
+            const offers = response.data.data || response.data || [];
+
+            if (Array.isArray(offers)) {
+              // Filter by discount percentage
+              const filteredOffers = offers.filter((offer: Offer) => {
+                if (discount === 'free_delivery') {
+                  return offer.isFreeDelivery === true;
+                }
+                const discountValue = parseInt(discount);
+                if (discountValue === 25) {
+                  return offer.discountPercentage >= 25 && offer.discountPercentage < 50;
+                } else if (discountValue === 50) {
+                  return offer.discountPercentage >= 50 && offer.discountPercentage < 80;
+                } else if (discountValue === 80) {
+                  return offer.discountPercentage >= 80;
+                }
+                return offer.discountPercentage >= discountValue;
+              });
+
+              allOffersData = [...allOffersData, ...filteredOffers];
+              if (offers.length < pageLimit) {
+                hasMore = false;
+              } else {
+                currentPage++;
+              }
+            } else {
+              hasMore = false;
+            }
+          } else {
+            hasMore = false;
+            if (currentPage === 1) {
+              setError(response.message || 'Failed to load offers');
+            }
+          }
+        }
+      } else if (category) {
         // Fetch offers by specific category
         console.log('🔍 [VIEW ALL] Fetching offers for category:', category);
-        
+
         let currentPage = 1;
         const pageLimit = 50;
         let hasMore = true;
@@ -93,7 +155,7 @@ export default function ViewAllOffersScreen() {
 
           if (response.success && response.data) {
             const offers = response.data.data || response.data || [];
-            
+
             if (Array.isArray(offers)) {
               allOffersData = [...allOffersData, ...offers];
               if (offers.length < pageLimit) {
@@ -164,7 +226,7 @@ export default function ViewAllOffersScreen() {
   useEffect(() => {
     loadAllOffers();
     fetchUserPoints();
-  }, [category]); // Reload when category changes
+  }, [category, discount]); // Reload when category or discount changes
 
   const handleRefresh = () => {
     setRefreshing(true);

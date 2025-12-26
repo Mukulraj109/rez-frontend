@@ -1,10 +1,10 @@
 /**
  * Loyalty Rewards Page
- * Redesigned loyalty progress and rewards page
- * Based on Rez_v-2-main design, adapted for rez-frontend theme
+ * Production-ready loyalty progress and rewards page
+ * Fetches real data from backend API
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -14,6 +14,8 @@ import {
   Platform,
   Image,
   Dimensions,
+  Animated,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,183 +23,356 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { Colors, Spacing, BorderRadius, Shadows, Typography, Gradients } from '@/constants/DesignSystem';
+import realOffersApi from '@/services/realOffersApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-interface LoyaltyDeal {
-  id: string;
-  store: string;
+// Types based on backend model
+interface LoyaltyMilestone {
+  _id: string;
+  title: string;
+  description: string;
+  targetType: 'orders' | 'spend' | 'referrals' | 'reviews' | 'checkins' | 'purchases';
+  targetValue: number;
   reward: string;
-  rewardValue: string;
-  currentVisits?: number;
-  requiredVisits?: number;
-  currentSpend?: number;
-  requiredSpend?: number;
-  progress: number;
-  nextMilestone: string;
-  storeLogo?: string;
-  history?: string[];
+  rewardType: 'coins' | 'badge' | 'discount' | 'freebie' | 'tier_upgrade';
+  rewardCoins?: number;
+  rewardDiscount?: number;
+  icon: string;
+  color: string;
+  badgeImage?: string;
+  tier?: 'bronze' | 'silver' | 'gold' | 'platinum';
+  order: number;
+  isActive: boolean;
+  // Progress fields (from getLoyaltyProgress)
+  currentValue?: number;
+  progress?: number;
+  isCompleted?: boolean;
+  claimedAt?: string;
 }
 
-const DUMMY_LOYALTY_DEALS: LoyaltyDeal[] = [
-  {
-    id: 'loyal1',
-    store: 'Starbucks',
-    reward: 'Free Grande Beverage',
-    rewardValue: '₹350',
-    currentVisits: 4,
-    requiredVisits: 5,
-    progress: 80,
-    nextMilestone: '1 more visit',
-    storeLogo: 'https://logo.clearbit.com/starbucks.in',
-    history: ['Visit 1: Dec 10', 'Visit 2: Dec 12', 'Visit 3: Dec 15', 'Visit 4: Dec 18'],
-  },
-  {
-    id: 'loyal2',
-    store: 'Wow Momo',
-    reward: '50% OFF next order',
-    rewardValue: '₹200',
-    currentSpend: 800,
-    requiredSpend: 1000,
-    progress: 80,
-    nextMilestone: 'Spend ₹200 more',
-    storeLogo: 'https://logo.clearbit.com/wowmomo.com',
-    history: ['Order 1: ₹300', 'Order 2: ₹250', 'Order 3: ₹250'],
-  },
-  {
-    id: 'loyal3',
-    store: "Domino's",
-    reward: 'Free Large Pizza',
-    rewardValue: '₹600',
-    currentVisits: 7,
-    requiredVisits: 10,
-    progress: 70,
-    nextMilestone: '3 more orders',
-    storeLogo: 'https://logo.clearbit.com/dominos.co.in',
-    history: ['Order 1', 'Order 2', 'Order 3', 'Order 4', 'Order 5', 'Order 6', 'Order 7'],
-  },
-  {
-    id: 'loyal4',
-    store: 'Cult.fit',
-    reward: 'Free Month Extension',
-    rewardValue: '₹1500',
-    currentVisits: 15,
-    requiredVisits: 20,
-    progress: 75,
-    nextMilestone: '5 more sessions',
-    storeLogo: 'https://logo.clearbit.com/cult.fit',
-  },
-];
+// Shimmer animation component
+const ShimmerPlaceholder: React.FC<{ style?: any }> = ({ style }) => {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
 
-const COMPLETED_REWARDS = [
-  { id: '1', store: 'Starbucks', reward: 'Free Coffee', date: 'Dec 15' },
-  { id: '2', store: 'McDonald\'s', reward: 'Free Burger', date: 'Dec 10' },
-  { id: '3', store: 'PVR', reward: 'Free Popcorn', date: 'Dec 5' },
-];
+  useEffect(() => {
+    const shimmerLoop = Animated.loop(
+      Animated.timing(shimmerAnim, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: true,
+      })
+    );
+    shimmerLoop.start();
+    return () => shimmerLoop.stop();
+  }, []);
+
+  const translateX = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-SCREEN_WIDTH, SCREEN_WIDTH],
+  });
+
+  return (
+    <View style={[styles.shimmerContainer, style]}>
+      <Animated.View
+        style={[
+          styles.shimmerGradient,
+          { transform: [{ translateX }] },
+        ]}
+      >
+        <LinearGradient
+          colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+    </View>
+  );
+};
+
+// Skeleton card for loading state
+const SkeletonMilestoneCard: React.FC = () => (
+  <View style={styles.loyaltyCard}>
+    <View style={styles.loyaltyContent}>
+      <ShimmerPlaceholder style={styles.skeletonLogo} />
+      <View style={styles.loyaltyInfo}>
+        <View style={styles.loyaltyHeader}>
+          <View style={styles.loyaltyStoreInfo}>
+            <ShimmerPlaceholder style={styles.skeletonTitle} />
+            <ShimmerPlaceholder style={styles.skeletonSubtitle} />
+          </View>
+          <ShimmerPlaceholder style={styles.skeletonBadge} />
+        </View>
+        <ShimmerPlaceholder style={styles.skeletonProgress} />
+        <ShimmerPlaceholder style={styles.skeletonMilestone} />
+      </View>
+    </View>
+  </View>
+);
+
+// Map icon names to Ionicons
+const mapIcon = (icon: string): keyof typeof Ionicons.glyphMap => {
+  const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
+    trophy: 'trophy-outline',
+    cart: 'cart-outline',
+    star: 'star-outline',
+    wallet: 'wallet-outline',
+    diamond: 'diamond-outline',
+    people: 'people-outline',
+    medal: 'medal-outline',
+    chatbubble: 'chatbubble-outline',
+    create: 'create-outline',
+    flame: 'flame-outline',
+    ribbon: 'ribbon-outline',
+    gift: 'gift-outline',
+    flag: 'flag-outline',
+  };
+  return iconMap[icon] || 'star-outline';
+};
+
+// Get progress label based on target type
+const getProgressLabel = (milestone: LoyaltyMilestone): string => {
+  const current = milestone.currentValue || 0;
+  const target = milestone.targetValue;
+
+  switch (milestone.targetType) {
+    case 'orders':
+      return `${current}/${target} orders`;
+    case 'spend':
+      return `₹${current.toLocaleString()}/₹${target.toLocaleString()} spent`;
+    case 'referrals':
+      return `${current}/${target} referrals`;
+    case 'reviews':
+      return `${current}/${target} reviews`;
+    case 'checkins':
+      return `${current}/${target} days`;
+    case 'purchases':
+      return `${current}/${target} purchases`;
+    default:
+      return `${current}/${target}`;
+  }
+};
+
+// Get remaining label
+const getRemainingLabel = (milestone: LoyaltyMilestone): string => {
+  const current = milestone.currentValue || 0;
+  const remaining = Math.max(0, milestone.targetValue - current);
+
+  switch (milestone.targetType) {
+    case 'orders':
+      return `${remaining} more order${remaining !== 1 ? 's' : ''}`;
+    case 'spend':
+      return `Spend ₹${remaining.toLocaleString()} more`;
+    case 'referrals':
+      return `${remaining} more referral${remaining !== 1 ? 's' : ''}`;
+    case 'reviews':
+      return `${remaining} more review${remaining !== 1 ? 's' : ''}`;
+    case 'checkins':
+      return `${remaining} more day${remaining !== 1 ? 's' : ''}`;
+    case 'purchases':
+      return `${remaining} more purchase${remaining !== 1 ? 's' : ''}`;
+    default:
+      return `${remaining} more`;
+  }
+};
 
 export default function LoyaltyRewardsPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const totalProgress =
-    DUMMY_LOYALTY_DEALS.reduce((acc, deal) => acc + deal.progress, 0) /
-    DUMMY_LOYALTY_DEALS.length;
-  
+  const [milestones, setMilestones] = useState<LoyaltyMilestone[]>([]);
+  const [completedMilestones, setCompletedMilestones] = useState<LoyaltyMilestone[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   // Bottom padding = Fixed CTA height (80px) + Bottom nav bar (70px) + Safe area bottom
   const bottomPadding = 80 + 70 + insets.bottom;
 
-  const handleDealPress = (deal: LoyaltyDeal) => {
-    // TODO: Navigate to deal detail
-    console.log('Deal pressed:', deal.id);
+  const fetchMilestones = async () => {
+    try {
+      setError(null);
+      const [milestonesResponse, progressResponse] = await Promise.all([
+        realOffersApi.getLoyaltyMilestones(),
+        realOffersApi.getLoyaltyProgress(),
+      ]);
+
+      // Merge milestones with progress data
+      const milestonesData = milestonesResponse?.data || [];
+      const progressData = progressResponse?.data || [];
+
+      // Create a map of progress by milestone ID
+      const progressMap = new Map();
+      progressData.forEach((p: any) => {
+        progressMap.set(p._id, p);
+      });
+
+      // Merge data
+      const mergedMilestones = milestonesData.map((milestone: any) => {
+        const progress = progressMap.get(milestone._id) || {};
+        return {
+          ...milestone,
+          currentValue: progress.currentValue || 0,
+          progress: progress.progress || 0,
+          isCompleted: progress.isCompleted || false,
+          claimedAt: progress.claimedAt,
+        };
+      });
+
+      // Separate active and completed
+      const active = mergedMilestones.filter((m: LoyaltyMilestone) => !m.isCompleted);
+      const completed = mergedMilestones.filter((m: LoyaltyMilestone) => m.isCompleted);
+
+      setMilestones(active);
+      setCompletedMilestones(completed);
+    } catch (err) {
+      console.error('Error fetching loyalty milestones:', err);
+      setError('Failed to load loyalty milestones');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const renderLoyaltyCard = (deal: LoyaltyDeal) => (
-    <TouchableOpacity
-      key={deal.id}
-      style={styles.loyaltyCard}
-      onPress={() => handleDealPress(deal)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.loyaltyContent}>
-        {deal.storeLogo ? (
-          <Image
-            source={{ uri: deal.storeLogo }}
-            style={styles.storeLogo}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={styles.storeLogoPlaceholder}>
-            <Ionicons name="storefront" size={24} color={Colors.primary[600]} />
-          </View>
-        )}
+  useEffect(() => {
+    fetchMilestones();
+  }, []);
 
-        <View style={styles.loyaltyInfo}>
-          <View style={styles.loyaltyHeader}>
-            <View style={styles.loyaltyStoreInfo}>
-              <ThemedText style={styles.loyaltyStore}>{deal.store}</ThemedText>
-              <ThemedText style={styles.loyaltyReward}>{deal.reward}</ThemedText>
-            </View>
-            <View style={styles.rewardValueContainer}>
-              <ThemedText style={styles.rewardValueLabel}>Worth</ThemedText>
-              <ThemedText style={styles.rewardValue}>{deal.rewardValue}</ThemedText>
-            </View>
-          </View>
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchMilestones();
+  };
 
-          {/* Progress */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressHeader}>
-              <ThemedText style={styles.progressLabel}>
-                {deal.currentVisits !== undefined
-                  ? `${deal.currentVisits}/${deal.requiredVisits} visits`
-                  : `₹${deal.currentSpend}/₹${deal.requiredSpend} spent`}
-              </ThemedText>
-              <ThemedText style={styles.progressPercentage}>{deal.progress}%</ThemedText>
-            </View>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${deal.progress}%` },
-                ]}
-              />
-            </View>
+  // Calculate stats
+  const totalProgress = milestones.length > 0
+    ? milestones.reduce((acc, m) => acc + (m.progress || 0), 0) / milestones.length
+    : 0;
+
+  const almostDoneCount = milestones.filter(m => (m.progress || 0) >= 70).length;
+
+  const handleMilestonePress = (milestone: LoyaltyMilestone) => {
+    // TODO: Navigate to milestone detail or show modal
+    console.log('Milestone pressed:', milestone._id);
+  };
+
+  const renderMilestoneCard = (milestone: LoyaltyMilestone) => {
+    const progress = milestone.progress || 0;
+    const isAlmostDone = progress >= 70;
+
+    return (
+      <TouchableOpacity
+        key={milestone._id}
+        style={styles.loyaltyCard}
+        onPress={() => handleMilestonePress(milestone)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.loyaltyContent}>
+          <View style={[styles.milestoneIcon, { backgroundColor: `${milestone.color}20` }]}>
+            <Ionicons name={mapIcon(milestone.icon)} size={28} color={milestone.color} />
           </View>
 
-          {/* Next Milestone */}
-          <View style={styles.milestoneContainer}>
-            <View style={styles.milestoneBadge}>
-              <Ionicons name="flag" size={12} color={Colors.text.secondary} />
-              <ThemedText style={styles.milestoneText}>{deal.nextMilestone}</ThemedText>
+          <View style={styles.loyaltyInfo}>
+            <View style={styles.loyaltyHeader}>
+              <View style={styles.loyaltyStoreInfo}>
+                <ThemedText style={styles.loyaltyStore}>{milestone.title}</ThemedText>
+                <ThemedText style={styles.loyaltyReward}>{milestone.reward}</ThemedText>
+              </View>
+              {milestone.rewardCoins && (
+                <View style={styles.rewardValueContainer}>
+                  <ThemedText style={styles.rewardValueLabel}>Earn</ThemedText>
+                  <ThemedText style={styles.rewardValue}>+{milestone.rewardCoins}</ThemedText>
+                </View>
+              )}
             </View>
-            <Ionicons name="chevron-forward" size={16} color={Colors.text.tertiary} />
-          </View>
 
-          {/* History */}
-          {deal.history && deal.history.length > 0 && (
-            <View style={styles.historyContainer}>
-              <ThemedText style={styles.historyTitle}>Recent activity</ThemedText>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.historyScroll}
+            {/* Progress */}
+            <View style={styles.progressContainer}>
+              <View style={styles.progressHeader}>
+                <ThemedText style={styles.progressLabel}>
+                  {getProgressLabel(milestone)}
+                </ThemedText>
+                <ThemedText style={styles.progressPercentage}>{Math.round(progress)}%</ThemedText>
+              </View>
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${progress}%`, backgroundColor: milestone.color },
+                  ]}
+                />
+              </View>
+            </View>
+
+            {/* Next Milestone */}
+            <View style={styles.milestoneContainer}>
+              <View style={[styles.milestoneBadge, isAlmostDone && styles.almostDoneBadge]}>
+                <Ionicons
+                  name={isAlmostDone ? 'flash' : 'flag'}
+                  size={12}
+                  color={isAlmostDone ? '#F59E0B' : Colors.text.secondary}
+                />
+                <ThemedText style={[styles.milestoneText, isAlmostDone && styles.almostDoneText]}>
+                  {getRemainingLabel(milestone)}
+                </ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.text.tertiary} />
+            </View>
+
+            {/* Description */}
+            <ThemedText style={styles.milestoneDescription} numberOfLines={1}>
+              {milestone.description}
+            </ThemedText>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // Render error state
+  if (error && !loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#059669" translucent />
+        <LinearGradient
+          colors={['#059669', '#047857', '#065F46']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <SafeAreaView edges={['top']} style={styles.safeHeader}>
+            <View style={styles.headerContent}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                {deal.history.slice(-4).map((item, i) => (
-                  <View key={i} style={styles.historyItem}>
-                    <ThemedText style={styles.historyItemText}>{item}</ThemedText>
-                  </View>
-                ))}
-              </ScrollView>
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <ThemedText style={styles.headerTitle}>Loyalty Rewards</ThemedText>
+              </View>
+              <View style={styles.headerIcon}>
+                <ThemedText style={styles.emoji}>🎯</ThemedText>
+              </View>
             </View>
-          )}
+          </SafeAreaView>
+        </LinearGradient>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color={Colors.text.tertiary} />
+          <ThemedText style={styles.errorText}>{error}</ThemedText>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchMilestones}>
+            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+          </TouchableOpacity>
         </View>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  }
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#059669" translucent />
-      
+
       {/* Header with Gradient */}
       <LinearGradient
         colors={['#059669', '#047857', '#065F46']}
@@ -231,6 +406,9 @@ export default function LoyaltyRewardsPage() {
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#059669']} />
+        }
       >
         {/* Overall Progress */}
         <View style={styles.progressBanner}>
@@ -247,7 +425,7 @@ export default function LoyaltyRewardsPage() {
               <View style={styles.progressTextContainer}>
                 <ThemedText style={styles.progressTitle}>Your Progress</ThemedText>
                 <ThemedText style={styles.progressSubtitle}>
-                  {DUMMY_LOYALTY_DEALS.length} active rewards in progress
+                  {loading ? 'Loading...' : `${milestones.length} active rewards in progress`}
                 </ThemedText>
               </View>
             </View>
@@ -274,16 +452,20 @@ export default function LoyaltyRewardsPage() {
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
                 <ThemedText style={[styles.statValue, { color: '#10B981' }]}>
-                  {DUMMY_LOYALTY_DEALS.length}
+                  {loading ? '-' : milestones.length}
                 </ThemedText>
                 <ThemedText style={styles.statLabel}>Active</ThemedText>
               </View>
               <View style={styles.statCard}>
-                <ThemedText style={[styles.statValue, { color: '#F59E0B' }]}>3</ThemedText>
+                <ThemedText style={[styles.statValue, { color: '#F59E0B' }]}>
+                  {loading ? '-' : almostDoneCount}
+                </ThemedText>
                 <ThemedText style={styles.statLabel}>Almost Done</ThemedText>
               </View>
               <View style={styles.statCard}>
-                <ThemedText style={[styles.statValue, { color: '#A78BFA' }]}>12</ThemedText>
+                <ThemedText style={[styles.statValue, { color: '#A78BFA' }]}>
+                  {loading ? '-' : completedMilestones.length}
+                </ThemedText>
                 <ThemedText style={styles.statLabel}>Completed</ThemedText>
               </View>
             </View>
@@ -295,43 +477,67 @@ export default function LoyaltyRewardsPage() {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderRow}>
               <Ionicons name="trending-up" size={20} color="#F59E0B" />
-              <ThemedText style={styles.sectionTitle}>Almost There!</ThemedText>
+              <ThemedText style={styles.sectionTitle}>
+                {almostDoneCount > 0 ? 'Almost There!' : 'Your Milestones'}
+              </ThemedText>
             </View>
             <ThemedText style={styles.sectionSubtitle}>Complete these to unlock rewards</ThemedText>
           </View>
 
-          {DUMMY_LOYALTY_DEALS.map((deal) => renderLoyaltyCard(deal))}
+          {loading ? (
+            <>
+              <SkeletonMilestoneCard />
+              <SkeletonMilestoneCard />
+              <SkeletonMilestoneCard />
+            </>
+          ) : milestones.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="trophy-outline" size={48} color={Colors.text.tertiary} />
+              <ThemedText style={styles.emptyText}>No active milestones</ThemedText>
+              <ThemedText style={styles.emptySubtext}>
+                Start shopping to unlock loyalty rewards!
+              </ThemedText>
+            </View>
+          ) : (
+            milestones.map(renderMilestoneCard)
+          )}
         </View>
 
         {/* Completed Rewards */}
-        <View style={styles.completedSection}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderRow}>
-              <Ionicons name="star" size={20} color="#A78BFA" />
-              <ThemedText style={styles.sectionTitle}>Completed Rewards</ThemedText>
-            </View>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.completedScroll}
-          >
-            {COMPLETED_REWARDS.map((reward) => (
-              <View key={reward.id} style={styles.completedCard}>
-                <View style={styles.completedHeader}>
-                  <ThemedText style={styles.completedEmoji}>🎁</ThemedText>
-                  <View style={styles.completedBadge}>
-                    <ThemedText style={styles.completedBadgeText}>Claimed</ThemedText>
-                  </View>
-                </View>
-                <ThemedText style={styles.completedReward}>{reward.reward}</ThemedText>
-                <ThemedText style={styles.completedStore}>
-                  {reward.store} • {reward.date}
-                </ThemedText>
+        {completedMilestones.length > 0 && (
+          <View style={styles.completedSection}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderRow}>
+                <Ionicons name="star" size={20} color="#A78BFA" />
+                <ThemedText style={styles.sectionTitle}>Completed Rewards</ThemedText>
               </View>
-            ))}
-          </ScrollView>
-        </View>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.completedScroll}
+            >
+              {completedMilestones.map((milestone) => (
+                <View key={milestone._id} style={styles.completedCard}>
+                  <View style={styles.completedHeader}>
+                    <View style={[styles.completedIcon, { backgroundColor: `${milestone.color}20` }]}>
+                      <Ionicons name={mapIcon(milestone.icon)} size={20} color={milestone.color} />
+                    </View>
+                    <View style={styles.completedBadge}>
+                      <ThemedText style={styles.completedBadgeText}>Claimed</ThemedText>
+                    </View>
+                  </View>
+                  <ThemedText style={styles.completedReward} numberOfLines={1}>
+                    {milestone.reward}
+                  </ThemedText>
+                  <ThemedText style={styles.completedStore} numberOfLines={1}>
+                    {milestone.title}
+                  </ThemedText>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* How it Works */}
         <View style={styles.howItWorks}>
@@ -369,7 +575,7 @@ export default function LoyaltyRewardsPage() {
       <View style={styles.fixedCTA}>
         <TouchableOpacity
           style={styles.ctaButton}
-          onPress={() => {}}
+          onPress={() => router.push('/offers' as any)}
           activeOpacity={0.8}
         >
           <LinearGradient
@@ -433,7 +639,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 150, // Will be overridden by dynamic padding
+    paddingBottom: 150,
   },
   progressBanner: {
     margin: Spacing.base,
@@ -556,17 +762,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.base,
   },
-  storeLogo: {
+  milestoneIcon: {
     width: 56,
     height: 56,
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.background.primary,
-  },
-  storeLogoPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.gray[100],
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -631,13 +830,13 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#10B981',
     borderRadius: BorderRadius.full,
   },
   milestoneContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: Spacing.xs,
   },
   milestoneBadge: {
     flexDirection: 'row',
@@ -648,31 +847,18 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     gap: 4,
   },
+  almostDoneBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+  },
   milestoneText: {
     ...Typography.caption,
     color: Colors.text.secondary,
   },
-  historyContainer: {
-    marginTop: Spacing.md,
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border.light,
+  almostDoneText: {
+    color: '#F59E0B',
+    fontWeight: '600',
   },
-  historyTitle: {
-    ...Typography.caption,
-    color: Colors.text.tertiary,
-    marginBottom: Spacing.sm,
-  },
-  historyScroll: {
-    gap: Spacing.xs,
-  },
-  historyItem: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  historyItemText: {
+  milestoneDescription: {
     ...Typography.caption,
     color: Colors.text.tertiary,
   },
@@ -697,8 +883,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.sm,
   },
-  completedEmoji: {
-    fontSize: 24,
+  completedIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   completedBadge: {
     backgroundColor: Colors.success,
@@ -763,7 +953,7 @@ const styles = StyleSheet.create({
   },
   fixedCTA: {
     position: 'absolute',
-    bottom: 70, // Above bottom nav bar (70px height)
+    bottom: 70,
     left: 0,
     right: 0,
     padding: Spacing.base,
@@ -787,5 +977,84 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
   },
+  // Shimmer styles
+  shimmerContainer: {
+    backgroundColor: '#E5E7EB',
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+  },
+  shimmerGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  skeletonLogo: {
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.md,
+  },
+  skeletonTitle: {
+    width: 120,
+    height: 16,
+    borderRadius: BorderRadius.sm,
+    marginBottom: 8,
+  },
+  skeletonSubtitle: {
+    width: 80,
+    height: 12,
+    borderRadius: BorderRadius.sm,
+  },
+  skeletonBadge: {
+    width: 50,
+    height: 24,
+    borderRadius: BorderRadius.sm,
+  },
+  skeletonProgress: {
+    width: '100%',
+    height: 8,
+    borderRadius: BorderRadius.full,
+    marginVertical: 12,
+  },
+  skeletonMilestone: {
+    width: 100,
+    height: 20,
+    borderRadius: BorderRadius.sm,
+  },
+  // Error & Empty states
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  errorText: {
+    ...Typography.body,
+    color: Colors.text.secondary,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.lg,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#059669',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+  },
+  retryButtonText: {
+    ...Typography.button,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+  },
+  emptyText: {
+    ...Typography.h4,
+    color: Colors.text.secondary,
+    marginTop: Spacing.md,
+  },
+  emptySubtext: {
+    ...Typography.bodySmall,
+    color: Colors.text.tertiary,
+    marginTop: Spacing.xs,
+  },
 });
-

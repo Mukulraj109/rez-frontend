@@ -1,10 +1,9 @@
 /**
- * Student Zone Page
- * Redesigned student-exclusive offers page with verification
- * Based on Rez_v-2-main design, adapted for rez-frontend theme
+ * Student Zone Page - Production Ready
+ * Fetches real data from backend API
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -14,7 +13,8 @@ import {
   Platform,
   Image,
   Dimensions,
-  FlatList,
+  Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,121 +22,225 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { Colors, Spacing, BorderRadius, Shadows, Typography, Gradients } from '@/constants/DesignSystem';
+import realOffersApi from '@/services/realOffersApi';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const ZONE_SLUG = 'student';
 
-// Dummy data for student deals
-interface StudentDeal {
-  id: string;
-  store: string;
+interface ZoneOffer {
+  _id: string;
   title: string;
-  discount: string;
-  category: string;
-  description: string;
+  subtitle?: string;
+  description?: string;
   image?: string;
-  originalPrice?: string;
+  cashbackPercentage?: number;
+  originalPrice?: number;
+  discountedPrice?: number;
+  type: string;
+  category?: string;
+  store?: {
+    name: string;
+    logo?: string;
+  };
+  eligibilityRequirement?: string;
 }
 
-const DUMMY_STUDENT_DEALS: StudentDeal[] = [
-  {
-    id: 'stu1',
-    store: 'Cafe Coffee Day',
-    title: 'Student Special: 30% OFF',
-    discount: '30%',
-    category: 'Food & Dining',
-    description: 'Show your student ID and get 30% off on all beverages',
-    image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=400',
-  },
-  {
-    id: 'stu2',
-    store: 'Spotify',
-    title: 'Student Plan at ₹59/month',
-    discount: '₹59',
-    originalPrice: '₹119',
-    category: 'Entertainment',
-    description: 'Premium music streaming at student-friendly prices',
-    image: 'https://images.unsplash.com/photo-1611339555312-e607c8352fd7?w=400',
-  },
-  {
-    id: 'stu3',
-    store: 'Zomato',
-    title: 'Campus Meals: 40% OFF',
-    discount: '40%',
-    category: 'Food & Dining',
-    description: 'Affordable meals delivered to your campus',
-    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400',
-  },
-  {
-    id: 'stu4',
-    store: 'Amazon Prime',
-    title: 'Prime Student: 50% OFF',
-    discount: '50%',
-    category: 'Shopping',
-    description: 'All Prime benefits at half the price',
-    image: 'https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=400',
-  },
-  {
-    id: 'stu5',
-    store: 'Headspace',
-    title: 'Free Premium for Students',
-    discount: 'FREE',
-    category: 'Wellness',
-    description: 'Meditation and mindfulness for stressed students',
-    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400',
-  },
-  {
-    id: 'stu6',
-    store: 'Decathlon',
-    title: 'Student Sports Gear: 25% OFF',
-    discount: '25%',
-    category: 'Sports',
-    description: 'Affordable sports equipment for active students',
-    image: 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=400',
-  },
-];
+interface ZoneInfo {
+  name: string;
+  description: string;
+  offersCount: number;
+  icon: string;
+  backgroundColor: string;
+  iconColor: string;
+  verificationRequired: boolean;
+  eligibilityDetails?: string;
+  userEligible?: boolean;
+}
 
-const CATEGORIES = [
-  { id: 'All', icon: '🎓', label: 'All' },
-  { id: 'Food & Dining', icon: '🍕', label: 'Food' },
-  { id: 'Entertainment', icon: '🎬', label: 'Entertainment' },
-  { id: 'Shopping', icon: '🛍️', label: 'Shopping' },
-  { id: 'Wellness', icon: '🧘', label: 'Wellness' },
-  { id: 'Sports', icon: '⚽', label: 'Sports' },
-];
+// Category icon mapping
+const CATEGORY_ICONS: Record<string, string> = {
+  all: '🎓',
+  food: '🍕',
+  entertainment: '🎬',
+  electronics: '📱',
+  general: '🛍️',
+  fashion: '👗',
+  beauty: '💄',
+  wellness: '💆',
+};
+
+// Category label mapping
+const CATEGORY_LABELS: Record<string, string> = {
+  all: 'All',
+  food: 'Food',
+  entertainment: 'Entertainment',
+  electronics: 'Electronics',
+  general: 'Shopping',
+  fashion: 'Fashion',
+  beauty: 'Beauty',
+  wellness: 'Wellness',
+};
 
 export default function StudentZonePage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [isVerified, setIsVerified] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  
-  // Bottom padding = Fixed CTA height (80px) + Bottom nav bar (70px) + Safe area bottom
+  const { state: authState } = useAuth();
+  const user = authState?.user;
+
+  const [loading, setLoading] = useState(true);
+  const [offers, setOffers] = useState<ZoneOffer[]>([]);
+  const [zoneInfo, setZoneInfo] = useState<ZoneInfo | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [categories, setCategories] = useState<{ id: string; icon: string; label: string }[]>([
+    { id: 'all', icon: '🎓', label: 'All' }
+  ]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Animation for skeleton
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
   const bottomPadding = 80 + 70 + insets.bottom;
 
-  const filteredDeals =
-    selectedCategory === 'All'
-      ? DUMMY_STUDENT_DEALS
-      : DUMMY_STUDENT_DEALS.filter((d) => d.category === selectedCategory);
+  // Check if user is verified for this zone
+  const isVerified = user?.verifications?.student?.verified === true || zoneInfo?.userEligible === true;
+
+  useEffect(() => {
+    fetchZoneData();
+    startShimmerAnimation();
+  }, []);
+
+  const startShimmerAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
+
+  const fetchZoneData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch zone info and offers in parallel
+      const [zonesResponse, offersResponse] = await Promise.all([
+        realOffersApi.getExclusiveZones(),
+        realOffersApi.getExclusiveZoneOffers(ZONE_SLUG),
+      ]);
+
+      // Get zone info
+      if (zonesResponse.success && zonesResponse.data) {
+        const zone = zonesResponse.data.find((z: any) => z.slug === ZONE_SLUG);
+        if (zone) {
+          setZoneInfo({
+            name: zone.name,
+            description: zone.description,
+            offersCount: zone.offersCount || 0,
+            icon: zone.icon,
+            backgroundColor: zone.backgroundColor,
+            iconColor: zone.iconColor,
+            verificationRequired: zone.verificationRequired,
+            eligibilityDetails: zone.eligibilityDetails,
+            userEligible: zone.userEligible,
+          });
+        }
+      }
+
+      // Get offers - API returns { zone, offers }
+      console.log('[STUDENT] offersResponse:', offersResponse);
+      if (offersResponse.success && offersResponse.data) {
+        const offersData = offersResponse.data.offers || offersResponse.data;
+        console.log('[STUDENT] offersData:', offersData);
+        const offersArray = Array.isArray(offersData) ? offersData : [];
+        setOffers(offersArray);
+
+        // Generate dynamic categories from offers
+        const uniqueCategories = new Set(offersArray.map((o: any) => o.category?.toLowerCase()).filter(Boolean));
+        const dynamicCategories = [
+          { id: 'all', icon: CATEGORY_ICONS['all'] || '🎓', label: 'All' },
+          ...Array.from(uniqueCategories).map((cat) => ({
+            id: cat as string,
+            icon: CATEGORY_ICONS[cat as string] || '📦',
+            label: CATEGORY_LABELS[cat as string] || (cat as string).charAt(0).toUpperCase() + (cat as string).slice(1),
+          })),
+        ];
+        setCategories(dynamicCategories);
+      }
+    } catch (err) {
+      console.error('Error fetching zone data:', err);
+      setError('Failed to load offers. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredOffers =
+    selectedCategory === 'all'
+      ? offers
+      : offers.filter((o) => o.category?.toLowerCase() === selectedCategory);
+
+  // Calculate stats from real data
+  const stats = {
+    totalDeals: offers.length,
+    maxDiscount: offers.reduce((max, o) => Math.max(max, o.cashbackPercentage || 0), 0),
+    avgSavings: offers.length > 0
+      ? Math.round(offers.reduce((sum, o) => sum + (o.cashbackPercentage || 0), 0) / offers.length)
+      : 0,
+  };
 
   const handleVerify = () => {
-    // TODO: Implement verification flow
-    setIsVerified(true);
+    // Navigate to verification page with zone parameter
+    router.push({
+      pathname: '/profile/verification',
+      params: { zone: 'student' }
+    } as any);
   };
 
-  const handleDealPress = (deal: StudentDeal) => {
-    // TODO: Navigate to deal detail page
-    console.log('Deal pressed:', deal.id);
+  const handleDealPress = (offer: ZoneOffer) => {
+    router.push(`/offers/${offer._id}` as any);
   };
 
-  const renderDealCard = ({ item }: { item: StudentDeal }) => (
+  const renderSkeletonCard = () => (
+    <View style={styles.dealCard}>
+      <Animated.View
+        style={[
+          styles.skeletonImage,
+          {
+            opacity: shimmerAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.3, 0.7],
+            }),
+          },
+        ]}
+      />
+      <View style={styles.dealContent}>
+        <View style={[styles.skeletonText, { width: '40%', marginBottom: 8 }]} />
+        <View style={[styles.skeletonText, { width: '80%', marginBottom: 8 }]} />
+        <View style={[styles.skeletonText, { width: '60%' }]} />
+      </View>
+    </View>
+  );
+
+  const renderDealCard = (offer: ZoneOffer) => (
     <TouchableOpacity
+      key={offer._id}
       style={styles.dealCard}
-      onPress={() => handleDealPress(item)}
+      onPress={() => handleDealPress(offer)}
       activeOpacity={0.7}
     >
       <View style={styles.dealImageContainer}>
-        {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.dealImage} resizeMode="cover" />
+        {offer.image ? (
+          <Image source={{ uri: offer.image }} style={styles.dealImage} resizeMode="cover" />
         ) : (
           <View style={styles.dealImagePlaceholder}>
             <Ionicons name="school" size={32} color={Colors.primary[600]} />
@@ -147,34 +251,50 @@ export default function StudentZonePage() {
       <View style={styles.dealContent}>
         <View style={styles.dealHeader}>
           <View style={styles.dealInfo}>
-            <ThemedText style={styles.dealStore}>{item.store}</ThemedText>
-            <ThemedText style={styles.dealTitle}>{item.title}</ThemedText>
+            <ThemedText style={styles.dealStore}>{offer.store?.name || 'Store'}</ThemedText>
+            <ThemedText style={styles.dealTitle}>{offer.title}</ThemedText>
           </View>
-          <View style={styles.discountBadge}>
-            <ThemedText style={styles.discountText}>{item.discount}</ThemedText>
-          </View>
+          {offer.cashbackPercentage && (
+            <View style={styles.discountBadge}>
+              <ThemedText style={styles.discountText}>{offer.cashbackPercentage}%</ThemedText>
+            </View>
+          )}
         </View>
 
         <ThemedText style={styles.dealDescription} numberOfLines={2}>
-          {item.description}
+          {offer.description || offer.subtitle || 'Exclusive student offer'}
         </ThemedText>
 
         <View style={styles.dealTags}>
           <View style={styles.tag}>
             <ThemedText style={styles.tagText}>🎓 Students Only</ThemedText>
           </View>
-          <View style={styles.tag}>
-            <ThemedText style={styles.tagText}>{item.category}</ThemedText>
-          </View>
+          {offer.category && (
+            <View style={styles.tag}>
+              <ThemedText style={styles.tagText}>{offer.category}</ThemedText>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
   );
 
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Ionicons name="alert-circle-outline" size={48} color={Colors.error} />
+        <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchZoneData}>
+          <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#3B82F6" translucent />
-      
+
       {/* Header with Gradient */}
       <LinearGradient
         colors={['#3B82F6', '#2563EB', '#1D4ED8']}
@@ -193,8 +313,12 @@ export default function StudentZonePage() {
             </TouchableOpacity>
 
             <View style={styles.headerTitleContainer}>
-              <ThemedText style={styles.headerTitle}>Student Zone</ThemedText>
-              <ThemedText style={styles.headerSubtitle}>Campus deals & student discounts</ThemedText>
+              <ThemedText style={styles.headerTitle}>
+                {zoneInfo?.name || 'Student Zone'}
+              </ThemedText>
+              <ThemedText style={styles.headerSubtitle}>
+                Campus deals & student discounts
+              </ThemedText>
             </View>
 
             <View style={styles.headerIcon}>
@@ -224,7 +348,7 @@ export default function StudentZonePage() {
               <View style={styles.heroTextContainer}>
                 <ThemedText style={styles.heroTitle}>Exclusive Student Discounts</ThemedText>
                 <ThemedText style={styles.heroSubtitle}>
-                  Verified students get access to special deals
+                  {zoneInfo?.description || 'Verified students get access to special deals'}
                 </ThemedText>
               </View>
             </View>
@@ -260,20 +384,24 @@ export default function StudentZonePage() {
           </LinearGradient>
         </View>
 
-        {/* Quick Stats */}
+        {/* Quick Stats - Dynamic */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <ThemedText style={[styles.statValue, { color: '#60A5FA' }]}>
-              {DUMMY_STUDENT_DEALS.length}+
+              {loading ? '...' : `${stats.totalDeals}+`}
             </ThemedText>
             <ThemedText style={styles.statLabel}>Active Deals</ThemedText>
           </View>
           <View style={styles.statCard}>
-            <ThemedText style={[styles.statValue, { color: '#A78BFA' }]}>50%</ThemedText>
+            <ThemedText style={[styles.statValue, { color: '#A78BFA' }]}>
+              {loading ? '...' : `${stats.maxDiscount}%`}
+            </ThemedText>
             <ThemedText style={styles.statLabel}>Max Discount</ThemedText>
           </View>
           <View style={styles.statCard}>
-            <ThemedText style={[styles.statValue, { color: Colors.success }]}>₹5000+</ThemedText>
+            <ThemedText style={[styles.statValue, { color: Colors.success }]}>
+              {loading ? '...' : `${stats.avgSavings}%`}
+            </ThemedText>
             <ThemedText style={styles.statLabel}>Avg. Savings</ThemedText>
           </View>
         </View>
@@ -286,7 +414,7 @@ export default function StudentZonePage() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoryScroll}
           >
-            {CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
                 style={[
@@ -315,9 +443,23 @@ export default function StudentZonePage() {
           <ThemedText style={styles.sectionTitle}>
             {selectedCategory === 'All' ? 'All Student Deals' : `${selectedCategory} Deals`}
           </ThemedText>
-          {filteredDeals.map((deal) => (
-            <View key={deal.id}>{renderDealCard({ item: deal })}</View>
-          ))}
+
+          {loading ? (
+            <>
+              {renderSkeletonCard()}
+              {renderSkeletonCard()}
+              {renderSkeletonCard()}
+            </>
+          ) : filteredOffers.length > 0 ? (
+            filteredOffers.map((offer) => renderDealCard(offer))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={48} color={Colors.text.tertiary} />
+              <ThemedText style={styles.emptyStateText}>
+                No offers found in this category
+              </ThemedText>
+            </View>
+          )}
         </View>
 
         {/* How to Verify */}
@@ -376,6 +518,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background.secondary,
   },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  errorText: {
+    ...Typography.body,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    marginTop: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  retryButton: {
+    backgroundColor: Colors.primary[600],
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  retryButtonText: {
+    ...Typography.button,
+    color: '#FFFFFF',
+  },
   header: {
     paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight || 0,
   },
@@ -417,7 +581,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 150, // Will be overridden by dynamic padding
+    paddingBottom: 150,
   },
   heroBanner: {
     margin: Spacing.base,
@@ -656,6 +820,27 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.text.secondary,
   },
+  skeletonImage: {
+    width: 80,
+    height: 80,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.gray[200],
+    marginRight: Spacing.base,
+  },
+  skeletonText: {
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.gray[200],
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  emptyStateText: {
+    ...Typography.body,
+    color: Colors.text.tertiary,
+    marginTop: Spacing.md,
+  },
   howToVerify: {
     margin: Spacing.base,
     marginTop: Spacing.lg,
@@ -699,7 +884,7 @@ const styles = StyleSheet.create({
   },
   fixedCTA: {
     position: 'absolute',
-    bottom: 70, // Above bottom nav bar (70px height)
+    bottom: 70,
     left: 0,
     right: 0,
     padding: Spacing.base,

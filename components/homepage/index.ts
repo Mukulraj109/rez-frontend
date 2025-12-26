@@ -19,6 +19,15 @@ export { default as PlayAndEarnSection } from './PlayAndEarnSection';
 export { default as SocialProofSection } from './SocialProofSection';
 export { StoreExperiencesSection } from './StoreExperiencesSection';
 export { default as ZeroEMICard } from './ZeroEMICard';
+export { default as LoyaltyRewardsHubCard } from './LoyaltyRewardsHubCard';
+export { default as WalletSnapshotCard } from './WalletSnapshotCard';
+export { default as FeatureTryCards } from './FeatureTryCards';
+export { default as StoresNearYou } from './StoresNearYou';
+export { default as PickedForYou } from './PickedForYou';
+export { default as BrandPartnerships } from './BrandPartnerships';
+export { default as StreaksGamification } from './StreaksGamification';
+export { default as TrendingNearYou } from './TrendingNearYou';
+export { default as FlashSales } from './FlashSales';
 
 // Card Components
 export { default as EventCard } from './cards/EventCard';

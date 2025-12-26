@@ -13,13 +13,14 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
-  ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import realOffersApi, { Offer } from '@/services/realOffersApi';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ReZ Brand Colors
 const COLORS = {
@@ -33,8 +34,8 @@ const COLORS = {
   tabActive: '#00C06A',
   tabInactive: '#E5E7EB',
   tabBg: '#F3F4F6',
-  background: '#E6F9F0', // ReZ brand light green background
-  backgroundLight: '#ECFDF5',
+  background: '#F0FDF4', // Lighter green background
+  backgroundLight: '#F7FEF9', // Even lighter
 };
 
 // Category card data structure
@@ -49,122 +50,173 @@ interface CategoryCard {
   count: number;
 }
 
-// Exclusive reward categories
-const EXCLUSIVE_CATEGORIES = [
+// Exclusive zone data structure (from API)
+interface ExclusiveZoneCard {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  gradientColors: readonly [string, string, string];
+  offersCount: number;
+  verificationRequired: boolean;
+  eligibilityType: string;
+  userEligible?: boolean; // From API - indicates if current user is eligible
+}
+
+// Cashback campaign data structure (from API)
+interface CashbackCard {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  gradientColors: readonly [string, string, string];
+  multiplier?: number;
+  type: 'double_cashback' | 'coin_drop' | 'campaign';
+}
+
+// Map backend icon names to Ionicons
+const mapIconToIonicon = (icon: string): keyof typeof Ionicons.glyphMap => {
+  // If icon already has -outline suffix, return as is (if valid)
+  if (icon && icon.endsWith('-outline')) {
+    return icon as keyof typeof Ionicons.glyphMap;
+  }
+
+  const mapping: Record<string, keyof typeof Ionicons.glyphMap> = {
+    // Exclusive zones
+    'school': 'school-outline',
+    'briefcase': 'briefcase-outline',
+    'woman': 'woman-outline',
+    'gift': 'gift-outline',
+    'heart': 'heart-outline',
+    'star': 'star-outline',
+    'shield': 'shield-outline',
+    'medkit': 'medkit-outline',
+    'accessibility': 'accessibility-outline',
+    'book': 'book-outline',
+    'business': 'business-outline',
+    // Cashback campaigns
+    'flash': 'flash-outline',
+    'cart': 'cart-outline',
+    'cafe': 'cafe-outline',
+    'shirt': 'shirt-outline',
+    'cash': 'cash-outline',
+    'wallet': 'wallet-outline',
+    'trophy': 'trophy-outline',
+    // Additional icons that might come from backend
+    'target': 'locate-outline',
+    'location': 'location-outline',
+    'time': 'time-outline',
+    'pricetag': 'pricetag-outline',
+    'people': 'people-outline',
+    'person': 'person-outline',
+    'ribbon': 'ribbon-outline',
+    'medal': 'medal-outline',
+    'diamond': 'diamond-outline',
+    'flame': 'flame-outline',
+    'chatbubble': 'chatbubble-outline',
+    'create': 'create-outline',
+    'sparkles': 'sparkles-outline',
+    'rocket': 'rocket-outline',
+    'bag': 'bag-outline',
+    'storefront': 'storefront-outline',
+    'receipt': 'receipt-outline',
+    'card': 'card-outline',
+    'phone': 'phone-portrait-outline',
+  };
+  return mapping[icon] || 'apps-outline';
+};
+
+// Generate gradient colors from background and icon color
+const generateGradientColors = (bgColor: string, iconColor: string): readonly [string, string, string] => {
+  // Use predefined gradients based on icon color
+  const gradientMap: Record<string, readonly [string, string, string]> = {
+    '#6366F1': ['#A5B4FC', '#818CF8', '#6366F1'], // Indigo - Student
+    '#0EA5E9': ['#7DD3FC', '#38BDF8', '#0EA5E9'], // Sky - Corporate
+    '#EC4899': ['#F9A8D4', '#F472B6', '#EC4899'], // Pink - Women
+    '#F59E0B': ['#FCD34D', '#FBBF24', '#F59E0B'], // Amber - Birthday
+    '#10B981': ['#6EE7B7', '#34D399', '#10B981'], // Emerald - Senior
+    '#8B5CF6': ['#C4B5FD', '#A78BFA', '#8B5CF6'], // Violet - First time
+    '#059669': ['#6EE7B7', '#34D399', '#059669'], // Green - Defence
+    '#DC2626': ['#FCA5A5', '#F87171', '#DC2626'], // Red - Healthcare
+    '#7C3AED': ['#C4B5FD', '#A78BFA', '#7C3AED'], // Purple - Senior
+    '#2563EB': ['#93C5FD', '#60A5FA', '#2563EB'], // Blue - Teachers
+    '#0891B2': ['#67E8F9', '#22D3EE', '#0891B2'], // Cyan - Government
+    '#EA580C': ['#FDBA74', '#FB923C', '#EA580C'], // Orange - Disabled
+  };
+  return gradientMap[iconColor] || ['#E5E7EB', '#D1D5DB', '#9CA3AF'];
+};
+
+// Fallback static exclusive categories (used when API fails)
+const FALLBACK_EXCLUSIVE_CATEGORIES: ExclusiveZoneCard[] = [
   {
-    id: 'students',
+    id: 'student',
+    slug: 'student',
     title: 'Students',
     subtitle: 'Campus Zone',
     icon: 'school-outline',
-    gradientColors: ['#3B82F6', '#2563EB', '#1D4ED8'] as const,
+    gradientColors: ['#60A5FA', '#3B82F6', '#2563EB'] as const,
+    offersCount: 0,
+    verificationRequired: true,
+    eligibilityType: 'student',
+    userEligible: false,
   },
   {
-    id: 'employees',
-    title: 'Employees',
+    id: 'corporate',
+    slug: 'corporate',
+    title: 'Corporate',
     subtitle: 'Corporate Zone',
     icon: 'briefcase-outline',
-    gradientColors: ['#8B5CF6', '#7C3AED', '#6D28D9'] as const,
+    gradientColors: ['#A78BFA', '#8B5CF6', '#7C3AED'] as const,
+    offersCount: 0,
+    verificationRequired: true,
+    eligibilityType: 'corporate_email',
+    userEligible: false,
   },
   {
     id: 'women',
+    slug: 'women',
     title: 'Women Exclusive',
     subtitle: 'Special Rewards',
     icon: 'heart-outline',
-    gradientColors: ['#EC4899', '#DB2777', '#BE185D'] as const,
+    gradientColors: ['#F472B6', '#EC4899', '#DB2777'] as const,
+    offersCount: 0,
+    verificationRequired: false,
+    eligibilityType: 'gender',
+    userEligible: false,
   },
   {
     id: 'birthday',
+    slug: 'birthday',
     title: 'Birthday Specials',
     subtitle: 'Celebrate & Save',
     icon: 'gift-outline',
-    gradientColors: ['#F97316', '#EA580C', '#DC2626'] as const,
-  },
-  {
-    id: 'loyalty',
-    title: 'Loyalty Progress',
-    subtitle: 'Tier Rewards',
-    icon: 'star-outline',
-    gradientColors: ['#FBBF24', '#F59E0B', '#D97706'] as const,
-  },
-  {
-    id: 'army',
-    title: 'Armed Forces',
-    subtitle: 'Heroes Deals',
-    icon: 'shield-outline',
-    gradientColors: ['#475569', '#334155', '#1E293B'] as const,
-  },
-  {
-    id: 'medical',
-    title: 'Doctor / Nurse',
-    subtitle: 'Healthcare',
-    icon: 'medkit-outline',
-    gradientColors: ['#14B8A6', '#0D9488', '#0F766E'] as const,
-  },
-  {
-    id: 'disabled',
-    title: 'Specially Abled',
-    subtitle: 'Inclusive',
-    icon: 'accessibility-outline',
-    gradientColors: ['#22C55E', '#16A34A', '#15803D'] as const,
+    gradientColors: ['#FB923C', '#F97316', '#EA580C'] as const,
+    offersCount: 0,
+    verificationRequired: false,
+    eligibilityType: 'birthday_month',
+    userEligible: false,
   },
 ];
 
-// Dummy cashback categories
-const CASHBACK_CATEGORIES: CategoryCard[] = [
+// Fallback cashback categories (used when API fails)
+const FALLBACK_CASHBACK_CATEGORIES: CashbackCard[] = [
   {
-    id: 'nearby',
-    title: 'Nearby Offers',
-    subtitle: '24 offers',
-    icon: 'location-outline',
-    iconColor: '#60A5FA',
-    bgColor: '#1E3A8A',
-    count: 24,
-  },
-  {
-    id: 'today',
-    title: "Today's Deals",
-    subtitle: '18 offers',
-    icon: 'time-outline',
-    iconColor: '#F97316',
-    bgColor: '#7C2D12',
-    count: 18,
-  },
-  {
-    id: 'bogo',
-    title: 'BOGO',
-    subtitle: '12 offers',
-    icon: 'pricetag-outline',
-    iconColor: '#22C55E',
-    bgColor: '#14532D',
-    badge: '2x',
-    count: 12,
-  },
-  {
-    id: 'flash',
-    title: 'Flash Sale',
-    subtitle: '8 offers',
-    icon: 'flash-outline',
-    iconColor: '#EF4444',
-    bgColor: '#7F1D1D',
-    count: 8,
-  },
-  {
-    id: 'cashback',
-    title: 'Super Cashback',
-    subtitle: '15 offers',
+    id: 'double-cashback',
+    title: 'Double Cashback',
+    subtitle: 'Earn 2X coins',
     icon: 'cash-outline',
-    iconColor: '#F59E0B',
-    bgColor: '#78350F',
-    count: 15,
+    gradientColors: ['#FDE68A', '#FCD34D', '#FBBF24'] as const,
+    multiplier: 2,
+    type: 'double_cashback',
   },
   {
-    id: 'freebie',
-    title: 'Freebies',
-    subtitle: '6 offers',
-    icon: 'gift-outline',
-    iconColor: '#A855F7',
-    bgColor: '#581C87',
-    count: 6,
+    id: 'coin-drops',
+    title: 'Coin Drops',
+    subtitle: 'Boosted rewards',
+    icon: 'flash-outline',
+    gradientColors: ['#FCA5A5', '#F87171', '#EF4444'] as const,
+    type: 'coin_drop',
   },
 ];
 
@@ -176,10 +228,180 @@ interface DealsThatSaveMoneyProps {
 
 const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
   const router = useRouter();
+  const { state: authState } = useAuth();
+  const user = authState?.user;
   const [activeTab, setActiveTab] = useState<TabType>('offers');
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(false);
   const [offerCategories, setOfferCategories] = useState<CategoryCard[]>([]);
+
+  // New state for dynamic data
+  const [exclusiveZones, setExclusiveZones] = useState<ExclusiveZoneCard[]>(FALLBACK_EXCLUSIVE_CATEGORIES);
+  const [cashbackData, setCashbackData] = useState<CashbackCard[]>(FALLBACK_CASHBACK_CATEGORIES);
+  const [exclusiveLoading, setExclusiveLoading] = useState(false);
+  const [cashbackLoading, setCashbackLoading] = useState(false);
+
+  // Skeleton animation
+  const shimmerAnim = useState(new Animated.Value(0))[0];
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  // Check user verification status for exclusive zones
+  const checkUserVerification = useCallback((eligibilityType: string): boolean => {
+    if (!user) return false;
+
+    switch (eligibilityType) {
+      case 'student':
+        return user?.verifications?.student === true;
+      case 'corporate_email':
+        return user?.verifications?.corporate === true;
+      case 'gender':
+        return user?.profile?.gender === 'female';
+      case 'birthday_month':
+        if (!user?.profile?.dateOfBirth) return false;
+        const birthMonth = new Date(user.profile.dateOfBirth).getMonth();
+        const currentMonth = new Date().getMonth();
+        return birthMonth === currentMonth;
+      case 'age':
+        if (!user?.profile?.dateOfBirth) return false;
+        const age = Math.floor((Date.now() - new Date(user.profile.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+        return age >= 60;
+      case 'verification':
+        return user?.isFirstOrder !== false;
+      default:
+        return false;
+    }
+  }, [user]);
+
+  // Fetch exclusive zones from backend
+  const fetchExclusiveZones = useCallback(async () => {
+    setExclusiveLoading(true);
+    try {
+      const [zonesResponse, profilesResponse] = await Promise.all([
+        realOffersApi.getExclusiveZones(),
+        realOffersApi.getSpecialProfiles(),
+      ]);
+
+      const zones: ExclusiveZoneCard[] = [];
+
+      // Map exclusive zones
+      if (zonesResponse.success && zonesResponse.data) {
+        zonesResponse.data.forEach((zone: any) => {
+          zones.push({
+            id: zone._id || zone.slug,
+            slug: zone.slug,
+            title: zone.name,
+            subtitle: zone.shortDescription || `${zone.offersCount || 0} offers`,
+            icon: mapIconToIonicon(zone.icon),
+            gradientColors: generateGradientColors(zone.backgroundColor, zone.iconColor),
+            offersCount: zone.offersCount || 0,
+            verificationRequired: zone.verificationRequired || false,
+            eligibilityType: zone.eligibilityType || 'none',
+            userEligible: zone.userEligible, // From API response
+          });
+        });
+      }
+
+      // Map special profiles (skip duplicates by slug)
+      if (profilesResponse.success && profilesResponse.data) {
+        const existingSlugs = new Set(zones.map(z => z.slug));
+        profilesResponse.data.forEach((profile: any) => {
+          // Skip if slug already exists (avoid duplicates like 'senior')
+          if (existingSlugs.has(profile.slug)) {
+            return;
+          }
+          zones.push({
+            id: profile._id || profile.slug,
+            slug: profile.slug,
+            title: profile.name,
+            subtitle: profile.discountRange || `${profile.offersCount || 0} offers`,
+            icon: mapIconToIonicon(profile.icon),
+            gradientColors: generateGradientColors(profile.backgroundColor, profile.iconColor),
+            offersCount: profile.offersCount || 0,
+            verificationRequired: !!profile.verificationRequired,
+            eligibilityType: profile.slug,
+            userEligible: profile.userEligible, // From API response
+          });
+        });
+      }
+
+      if (zones.length > 0) {
+        setExclusiveZones(zones);
+      }
+    } catch (error) {
+      console.error('Failed to fetch exclusive zones:', error);
+      // Keep fallback data
+    } finally {
+      setExclusiveLoading(false);
+    }
+  }, []);
+
+  // Fetch cashback campaigns from backend
+  const fetchCashbackData = useCallback(async () => {
+    setCashbackLoading(true);
+    try {
+      const [doubleCBResponse, coinDropsResponse] = await Promise.all([
+        realOffersApi.getDoubleCashbackCampaigns(10),
+        realOffersApi.getCoinDrops({ limit: 10 }),
+      ]);
+
+      const cards: CashbackCard[] = [];
+
+      // Map double cashback campaigns
+      if (doubleCBResponse.success && doubleCBResponse.data) {
+        doubleCBResponse.data.forEach((campaign: any) => {
+          cards.push({
+            id: campaign._id || campaign.title,
+            title: campaign.title,
+            subtitle: campaign.subtitle || `${campaign.multiplier}X cashback`,
+            icon: mapIconToIonicon(campaign.icon || 'flash'),
+            gradientColors: ['#FDE68A', '#FCD34D', '#FBBF24'] as const,
+            multiplier: campaign.multiplier,
+            type: 'double_cashback',
+          });
+        });
+      }
+
+      // Map coin drops
+      if (coinDropsResponse.success && coinDropsResponse.data) {
+        coinDropsResponse.data.forEach((drop: any) => {
+          cards.push({
+            id: drop._id || drop.storeName,
+            title: drop.storeName || 'Coin Drop',
+            subtitle: `${drop.multiplier}X - ₹${drop.boostedCashback} cashback`,
+            icon: mapIconToIonicon(drop.icon || 'flash'),
+            gradientColors: ['#FCA5A5', '#F87171', '#EF4444'] as const,
+            multiplier: drop.multiplier,
+            type: 'coin_drop',
+          });
+        });
+      }
+
+      if (cards.length > 0) {
+        setCashbackData(cards);
+      }
+    } catch (error) {
+      console.error('Failed to fetch cashback data:', error);
+      // Keep fallback data
+    } finally {
+      setCashbackLoading(false);
+    }
+  }, []);
 
   // Fetch offers from backend
   const fetchOffers = useCallback(async () => {
@@ -341,8 +563,12 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
   useEffect(() => {
     if (activeTab === 'offers') {
       fetchOffers();
+    } else if (activeTab === 'cashback') {
+      fetchCashbackData();
+    } else if (activeTab === 'exclusive') {
+      fetchExclusiveZones();
     }
-  }, [activeTab, fetchOffers]);
+  }, [activeTab, fetchOffers, fetchCashbackData, fetchExclusiveZones]);
 
   const handleViewAll = () => {
     if (activeTab === 'offers') {
@@ -360,33 +586,45 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
     } else if (activeTab === 'cashback') {
       router.push(`/offers?tab=cashback&category=${categoryId}` as any);
     } else if (activeTab === 'exclusive') {
-      // Map exclusive category IDs to routes
-      const routeMap: Record<string, string> = {
-        students: '/offers/zones/student',
-        employees: '/offers/zones/employee',
-        women: '/offers/zones/women',
-        birthday: '/offers/birthday',
-        loyalty: '/offers/zones/loyalty',
-        army: '/offers/zones/heroes',
-        medical: '/offers/zones/heroes',
-        disabled: '/offers/zones/heroes',
-      };
-      const route = routeMap[categoryId] || '/offers';
-      router.push(route as any);
+      // Use slug directly from API data
+      router.push(`/offers/zones/${categoryId}` as any);
     }
   };
 
-  // Generate gradient colors from bgColor
+  // Handle exclusive zone press with verification check
+  const handleExclusivePress = (zone: ExclusiveZoneCard) => {
+    // Special profiles redirect to heroes page
+    const heroesProfiles = ['defence', 'healthcare', 'teachers', 'government', 'differently-abled'];
+    if (heroesProfiles.includes(zone.slug)) {
+      router.push(`/offers/zones/heroes?profile=${zone.slug}` as any);
+    } else {
+      // Navigate to zone offers page - verification will be handled there
+      router.push(`/offers/zones/${zone.slug}` as any);
+    }
+  };
+
+  // Handle cashback card press
+  const handleCashbackPress = (card: CashbackCard) => {
+    if (card.type === 'double_cashback') {
+      router.push('/offers?tab=cashback&filter=double' as any);
+    } else if (card.type === 'coin_drop') {
+      router.push('/offers?tab=cashback&filter=coindrops' as any);
+    } else {
+      router.push('/offers?tab=cashback' as any);
+    }
+  };
+
+  // Generate gradient colors from bgColor - Lightened versions
   const getGradientColors = (bgColor: string, iconColor: string): [string, string, string] => {
-    // Create gradient variations based on the base color
+    // Create lighter, pastel gradient variations based on the base color
     const colorMap: Record<string, [string, string, string]> = {
-      '#1E3A8A': ['#3B82F6', '#2563EB', '#1E3A8A'], // Blue - Nearby
-      '#7C2D12': ['#F97316', '#EA580C', '#DC2626'], // Orange - Today's
-      '#14532D': ['#22C55E', '#16A34A', '#14532D'], // Green - BOGO
-      '#7F1D1D': ['#EF4444', '#DC2626', '#991B1B'], // Red - Flash
-      '#78350F': ['#F59E0B', '#D97706', '#92400E'], // Amber - Cashback
-      '#581C87': ['#A855F7', '#9333EA', '#7E22CE'], // Purple - Freebies
-      '#4C1D95': ['#8B5CF6', '#7C3AED', '#6D28D9'], // Purple - All
+      '#1E3A8A': ['#93C5FD', '#60A5FA', '#3B82F6'], // Light Blue - Nearby
+      '#7C2D12': ['#FED7AA', '#FDB573', '#FB923C'], // Light Orange - Today's
+      '#14532D': ['#86EFAC', '#4ADE80', '#22C55E'], // Light Green - BOGO
+      '#7F1D1D': ['#FCA5A5', '#F87171', '#EF4444'], // Light Red - Flash
+      '#78350F': ['#FDE68A', '#FCD34D', '#FBBF24'], // Light Amber - Cashback
+      '#581C87': ['#C4B5FD', '#A78BFA', '#8B5CF6'], // Light Purple - Freebies
+      '#4C1D95': ['#DDD6FE', '#C4B5FD', '#A78BFA'], // Light Purple - All
     };
     return colorMap[bgColor] || [bgColor, bgColor, bgColor];
   };
@@ -415,14 +653,14 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
           <BlurView intensity={20} style={styles.categoryCardBlur} tint="light">
             <View style={styles.categoryCardContent}>
               <View style={styles.categoryIconContainer}>
-                <Ionicons name={category.icon} size={18} color={COLORS.white} />
+                <Ionicons name={category.icon} size={18} color={COLORS.textDark} />
               </View>
               <View style={styles.categoryTextContainer}>
                 <Text style={styles.categoryTitle} numberOfLines={1}>{category.title}</Text>
                 <Text style={styles.categorySubtitle} numberOfLines={1}>{category.subtitle}</Text>
               </View>
               <View style={styles.categoryArrowContainer}>
-                <Ionicons name="chevron-forward" size={14} color={COLORS.white} />
+                <Ionicons name="chevron-forward" size={14} color={COLORS.textDark} />
               </View>
             </View>
           </BlurView>
@@ -431,15 +669,109 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
     );
   };
 
-  const renderExclusiveCard = (category: typeof EXCLUSIVE_CATEGORIES[0]) => (
+  // Skeleton loading card
+  const renderSkeletonCard = (index: number) => (
+    <View key={`skeleton-${index}`} style={styles.exclusiveCard}>
+      <LinearGradient
+        colors={['#E5E7EB', '#F3F4F6', '#E5E7EB']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.exclusiveCardGradient}
+      >
+        <View style={styles.exclusiveCardContent}>
+          <Animated.View
+            style={[
+              styles.skeletonIcon,
+              { opacity: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] }) }
+            ]}
+          />
+          <View style={styles.skeletonTextContainer}>
+            <Animated.View
+              style={[
+                styles.skeletonTitle,
+                { opacity: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] }) }
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.skeletonSubtitle,
+                { opacity: shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] }) }
+              ]}
+            />
+          </View>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+
+  // Render exclusive zone card with verification UI
+  const renderExclusiveCard = (zone: ExclusiveZoneCard) => {
+    // Use userEligible from API if available, otherwise fall back to local check
+    const isEligible = zone.userEligible !== undefined
+      ? zone.userEligible
+      : checkUserVerification(zone.eligibilityType);
+    const showLock = zone.verificationRequired && !isEligible;
+
+    return (
+      <TouchableOpacity
+        key={zone.id}
+        style={styles.exclusiveCard}
+        onPress={() => handleExclusivePress(zone)}
+        activeOpacity={0.9}
+      >
+        {/* Lock badge for unverified zones */}
+        {showLock && (
+          <View style={styles.lockBadgeContainer}>
+            <Ionicons name="lock-closed" size={12} color="#FFF" />
+          </View>
+        )}
+        <LinearGradient
+          colors={zone.gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.exclusiveCardGradient}
+        >
+          <BlurView intensity={20} style={styles.exclusiveCardBlur} tint="light">
+            <View style={styles.exclusiveCardContent}>
+              <View style={styles.exclusiveIconContainer}>
+                <Ionicons name={zone.icon} size={18} color={COLORS.textDark} />
+              </View>
+              <View style={styles.exclusiveTextContainer}>
+                <Text style={styles.exclusiveTitle} numberOfLines={1}>{zone.title}</Text>
+                <Text style={styles.exclusiveSubtitle} numberOfLines={1}>
+                  {showLock ? 'Verify to unlock' : zone.subtitle}
+                </Text>
+              </View>
+              <View style={styles.exclusiveArrowContainer}>
+                <Ionicons
+                  name={showLock ? 'lock-closed-outline' : 'chevron-forward'}
+                  size={14}
+                  color={COLORS.textDark}
+                />
+              </View>
+            </View>
+          </BlurView>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
+
+  // Render cashback campaign card
+  const renderCashbackCard = (card: CashbackCard) => (
     <TouchableOpacity
-      key={category.id}
+      key={card.id}
       style={styles.exclusiveCard}
-      onPress={() => handleCategoryPress(category.id)}
+      onPress={() => handleCashbackPress(card)}
       activeOpacity={0.9}
     >
+      {/* Multiplier badge */}
+      {card.multiplier && (
+        <View style={styles.multiplierBadgeContainer}>
+          <Text style={styles.multiplierBadgeText}>{card.multiplier}X</Text>
+        </View>
+      )}
       <LinearGradient
-        colors={category.gradientColors}
+        colors={card.gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.exclusiveCardGradient}
@@ -447,14 +779,14 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
         <BlurView intensity={20} style={styles.exclusiveCardBlur} tint="light">
           <View style={styles.exclusiveCardContent}>
             <View style={styles.exclusiveIconContainer}>
-              <Ionicons name={category.icon} size={18} color={COLORS.white} />
+              <Ionicons name={card.icon} size={18} color={COLORS.textDark} />
             </View>
             <View style={styles.exclusiveTextContainer}>
-              <Text style={styles.exclusiveTitle} numberOfLines={1}>{category.title}</Text>
-              <Text style={styles.exclusiveSubtitle} numberOfLines={1}>{category.subtitle}</Text>
+              <Text style={styles.exclusiveTitle} numberOfLines={1}>{card.title}</Text>
+              <Text style={styles.exclusiveSubtitle} numberOfLines={1}>{card.subtitle}</Text>
             </View>
             <View style={styles.exclusiveArrowContainer}>
-              <Ionicons name="chevron-forward" size={14} color={COLORS.white} />
+              <Ionicons name="chevron-forward" size={14} color={COLORS.textDark} />
             </View>
           </View>
         </BlurView>
@@ -463,13 +795,44 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
   );
 
   const renderContent = () => {
+    // Render skeleton loading for any tab
+    const renderSkeletonRows = () => (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.exclusiveScrollContainer}
+        style={styles.exclusiveScrollView}
+      >
+        {[0, 1, 2, 3].map((_, rowIndex) => (
+          <View key={rowIndex} style={styles.exclusiveRow}>
+            {renderSkeletonCard(rowIndex * 2)}
+            {renderSkeletonCard(rowIndex * 2 + 1)}
+          </View>
+        ))}
+      </ScrollView>
+    );
+
+    // Exclusive tab
     if (activeTab === 'exclusive') {
-      // Split categories into rows of 2 for horizontal scroll
-      const rows = [];
-      for (let i = 0; i < EXCLUSIVE_CATEGORIES.length; i += 2) {
-        rows.push(EXCLUSIVE_CATEGORIES.slice(i, i + 2));
+      if (exclusiveLoading) {
+        return renderSkeletonRows();
       }
-      
+
+      // Split zones into rows of 2 for horizontal scroll
+      const rows = [];
+      for (let i = 0; i < exclusiveZones.length; i += 2) {
+        rows.push(exclusiveZones.slice(i, i + 2));
+      }
+
+      if (exclusiveZones.length === 0) {
+        return (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color={COLORS.textMuted} />
+            <Text style={styles.emptyText}>No exclusive zones available</Text>
+          </View>
+        );
+      }
+
       return (
         <ScrollView
           horizontal
@@ -486,30 +849,61 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
       );
     }
 
-    if (activeTab === 'offers' && loading) {
+    // Cashback tab
+    if (activeTab === 'cashback') {
+      if (cashbackLoading) {
+        return renderSkeletonRows();
+      }
+
+      // Split cashback cards into rows of 2
+      const rows = [];
+      for (let i = 0; i < cashbackData.length; i += 2) {
+        rows.push(cashbackData.slice(i, i + 2));
+      }
+
+      if (cashbackData.length === 0) {
+        return (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color={COLORS.textMuted} />
+            <Text style={styles.emptyText}>No cashback campaigns available</Text>
+          </View>
+        );
+      }
+
       return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading offers...</Text>
-        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.exclusiveScrollContainer}
+          style={styles.exclusiveScrollView}
+        >
+          {rows.map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.exclusiveRow}>
+              {row.map(renderCashbackCard)}
+            </View>
+          ))}
+        </ScrollView>
       );
     }
 
-    const categories = activeTab === 'offers' ? offerCategories : CASHBACK_CATEGORIES;
+    // Offers tab
+    if (loading) {
+      return renderSkeletonRows();
+    }
 
-    if (categories.length === 0) {
+    if (offerCategories.length === 0) {
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={COLORS.textMuted} />
-          <Text style={styles.emptyText}>No {activeTab} available</Text>
+          <Text style={styles.emptyText}>No offers available</Text>
         </View>
       );
     }
 
-    // Split categories into rows of 2 for horizontal scroll (same as exclusive)
+    // Split categories into rows of 2 for horizontal scroll
     const rows = [];
-    for (let i = 0; i < categories.length; i += 2) {
-      rows.push(categories.slice(i, i + 2));
+    for (let i = 0; i < offerCategories.length; i += 2) {
+      rows.push(offerCategories.slice(i, i + 2));
     }
 
     return (
@@ -531,9 +925,9 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
   return (
     <View style={[styles.container, style]}>
       {/* Glassy background overlay */}
-      <BlurView intensity={20} style={styles.blurOverlay} tint="light">
+      <BlurView intensity={10} style={styles.blurOverlay} tint="light">
         <LinearGradient
-          colors={[COLORS.background, COLORS.backgroundLight, COLORS.white]}
+          colors={[COLORS.white, COLORS.backgroundLight, COLORS.white]}
           style={styles.gradientOverlay}
         />
       </BlurView>
@@ -541,12 +935,9 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <LinearGradient
-            colors={['#EC4899', '#DB2777']}
-            style={styles.headerIconGradient}
-          >
-            <Ionicons name="flash" size={20} color={COLORS.white} />
-          </LinearGradient>
+          <View style={styles.headerIconContainer}>
+            <Ionicons name="flash" size={20} color="#EC4899" />
+          </View>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle} numberOfLines={1}>Deals that save you money</Text>
             <Text style={styles.headerSubtitle} numberOfLines={1}>Discover amazing offers & cashback</Text>
@@ -598,13 +989,13 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
+            colors={['#86EFAC', '#4ADE80', '#22C55E']}
             style={styles.viewAllGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.viewAllTextBottom}>View All {activeTab === 'offers' ? 'Offers' : 'Cashback'}</Text>
-            <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
+            <Ionicons name="arrow-forward" size={18} color={COLORS.textDark} />
           </LinearGradient>
         </TouchableOpacity>
       )}
@@ -621,18 +1012,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     borderRadius: 24,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 4,
+        elevation: 2,
       },
       web: {
-        boxShadow: '0 4px 16px rgba(0, 192, 106, 0.15)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
       },
     }),
   },
@@ -658,24 +1051,14 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 1,
   },
-  headerIconGradient: {
+  headerIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 14,
+    backgroundColor: 'rgba(236, 72, 153, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#EC4899',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
   },
   headerTextContainer: {
     flex: 1,
@@ -703,13 +1086,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowColor: '#22C55E',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 4,
+        elevation: 2,
       },
     }),
   },
@@ -724,7 +1107,7 @@ const styles = StyleSheet.create({
   viewAllTextBottom: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.white,
+    color: COLORS.textDark,
     letterSpacing: 0.3,
   },
   tabsContainer: {
@@ -817,11 +1200,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.8)',
     flexShrink: 0,
   },
   categoryTextContainer: {
@@ -832,24 +1215,24 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.white,
+    color: COLORS.textDark,
     marginBottom: 3,
     letterSpacing: -0.2,
   },
   categorySubtitle: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.95)',
+    color: COLORS.textMuted,
     fontWeight: '500',
   },
   categoryArrowContainer: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderColor: 'rgba(255, 255, 255, 0.8)',
     flexShrink: 0,
   },
   badgeContainer: {
@@ -882,6 +1265,74 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.white,
     letterSpacing: 0.5,
+  },
+  // Lock badge for verification-required zones
+  lockBadgeContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  // Multiplier badge for cashback cards
+  multiplierBadgeContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: '#22C55E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    zIndex: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#22C55E',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  multiplierBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.white,
+    letterSpacing: 0.5,
+  },
+  // Skeleton loading styles
+  skeletonIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#D1D5DB',
+  },
+  skeletonTextContainer: {
+    flex: 1,
+    gap: 6,
+  },
+  skeletonTitle: {
+    width: '70%',
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#D1D5DB',
+  },
+  skeletonSubtitle: {
+    width: '50%',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#D1D5DB',
   },
   loadingContainer: {
     paddingVertical: 40,
@@ -957,11 +1408,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.8)',
     flexShrink: 0,
   },
   exclusiveTextContainer: {
@@ -972,24 +1423,24 @@ const styles = StyleSheet.create({
   exclusiveTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.white,
+    color: COLORS.textDark,
     marginBottom: 3,
     letterSpacing: -0.2,
   },
   exclusiveSubtitle: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.95)',
+    color: COLORS.textMuted,
     fontWeight: '500',
   },
   exclusiveArrowContainer: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderColor: 'rgba(255, 255, 255, 0.8)',
     flexShrink: 0,
   },
 });

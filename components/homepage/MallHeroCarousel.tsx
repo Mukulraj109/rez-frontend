@@ -340,11 +340,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(2, 132, 199, 0.3)', // Light blue for inactive dots
   },
   paginationDotActive: {
     width: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0284C7', // Blue for active dot (matching mall theme)
   },
 });
 

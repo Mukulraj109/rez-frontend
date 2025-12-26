@@ -58,6 +58,15 @@ import HomeDeliverySection from '@/components/homepage/HomeDeliverySection';
 import ServiceSection from '@/components/homepage/ServiceSection';
 import DealsThatSaveMoney from '@/components/homepage/DealsThatSaveMoney';
 import WalletSnapshotCard from '@/components/homepage/WalletSnapshotCard';
+import LoyaltyRewardsHubCard from '@/components/homepage/LoyaltyRewardsHubCard';
+import FeatureTryCards from '@/components/homepage/FeatureTryCards';
+import { useLoyaltySection } from '@/hooks/useLoyaltySection';
+import StoresNearYou from '@/components/homepage/StoresNearYou';
+import PickedForYou from '@/components/homepage/PickedForYou';
+import BrandPartnerships from '@/components/homepage/BrandPartnerships';
+import StreaksGamification from '@/components/homepage/StreaksGamification';
+import TrendingNearYou from '@/components/homepage/TrendingNearYou';
+import FlashSales from '@/components/homepage/FlashSales';
 import ZeroEMICard from '@/components/homepage/ZeroEMICard';
 import { StoreExperiencesSection } from '@/components/homepage/StoreExperiencesSection';
 import PlayAndEarnSection from '@/components/homepage/PlayAndEarnSection';
@@ -65,7 +74,8 @@ import SocialProofSection from '@/components/homepage/SocialProofSection';
 import { DiscoverAndShopSection } from '@/components/discover';
 import MallSectionContainer from '@/components/mall/MallSectionContainer';
 import CashStoreSectionContainer from '@/components/cash-store/CashStoreSectionContainer';
-import { PriveSectionContainer, PriveHeroBanner } from '@/components/prive';
+import { PriveSectionContainer, PriveMemberCard } from '@/components/prive';
+import { usePriveSection } from '@/hooks/usePriveSection';
 import CashbackSummaryHeaderCard from '@/components/cash-store/sections/CashbackSummaryHeaderCard';
 import { useHomepage, useHomepageNavigation } from '@/hooks/useHomepage';
 import { useCashStoreSection } from '@/hooks/useCashStoreSection';
@@ -117,11 +127,16 @@ const FABFallback = () => null; // No loader for FAB
 // Badge/Shield shaped avatar component - green/golden light mix with person icon
 interface BadgeAvatarProps {
   size?: number;
+  color?: string;
 }
 
-const BadgeAvatar: React.FC<BadgeAvatarProps> = ({ size = 24 }) => {
+const BadgeAvatar: React.FC<BadgeAvatarProps> = ({ size = 24, color }) => {
   const width = size;
   const height = size * 1.23;
+  
+  // Default to green, use provided color or theme-based color
+  const shieldColor = color || '#4ADE80';
+  const iconColor = color === '#0284C7' ? '#0EA5E9' : color === '#C9A962' ? '#D4AF37' : '#16A34A';
 
   // Shield path with tapered sides and smooth rounded bottom
   const shieldPath = `
@@ -140,10 +155,10 @@ const BadgeAvatar: React.FC<BadgeAvatarProps> = ({ size = 24 }) => {
   return (
     <View style={{ width, height }}>
       <Svg width={width} height={height}>
-        <Path d={shieldPath} fill="#4ADE80" />
+        <Path d={shieldPath} fill={shieldColor} />
       </Svg>
       <View style={{ position: 'absolute', width, height, justifyContent: 'center', alignItems: 'center', paddingBottom: height * 0.1 }}>
-        <Ionicons name="person" size={size * 0.5} color="#16A34A" />
+        <Ionicons name="person" size={size * 0.5} color={iconColor} />
       </View>
     </View>
   );
@@ -202,6 +217,17 @@ export default function HomeScreen() {
     cashbackSummary: cashStoreSummary,
     isLoading: isCashStoreLoading
   } = useCashStoreSection({ autoFetch: activeTab === 'cash' });
+
+  // Get loyalty section data for homepage cards - only fetch when near-u tab is active
+  const {
+    loyaltyHub,
+    featuredLockProduct,
+    trendingService,
+    isLoading: isLoyaltySectionLoading
+  } = useLoyaltySection({ autoFetch: activeTab === 'near-u' });
+
+  // Get prive section data for member card in header - only fetch when prive tab is active
+  const { userData: priveUserData } = usePriveSection();
 
   const animatedHeight = React.useRef(new Animated.Value(0)).current;
   const animatedOpacity = React.useRef(new Animated.Value(0)).current;
@@ -716,7 +742,11 @@ export default function HomeScreen() {
       <LinearGradient
         colors={activeTab === 'prive'
           ? ['#1F2937', '#1F2937', '#111827', '#111827']
-          : ['#86EFAC', '#A7F3D0', '#D1FAE5', '#ECFDF5']}
+          : activeTab === 'mall'
+            ? ['#BAE6FD', '#E0F2FE', '#F0F9FF', '#FFFFFF']
+            : activeTab === 'near-u'
+              ? ['#86EFAC', '#A7F3D0', '#D1FAE5', '#ECFDF5']
+              : ['#86EFAC', '#A7F3D0', '#D1FAE5', '#ECFDF5']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={viewStyles.header}
@@ -749,7 +779,8 @@ export default function HomeScreen() {
           >
             <View style={[
               viewStyles.locationIconWrapper,
-              activeTab === 'prive' && { backgroundColor: '#C9A962' }
+              activeTab === 'prive' && { backgroundColor: '#C9A962' },
+              activeTab === 'mall' && { backgroundColor: '#0284C7' }
             ]}>
               <Ionicons name="location" size={14} color="#FFFFFF" />
             </View>
@@ -765,7 +796,7 @@ export default function HomeScreen() {
               <Ionicons
                 name={showDetailedLocation ? "chevron-up" : "chevron-down"}
                 size={14}
-                color={activeTab === 'prive' ? '#C9A962' : '#666'}
+                color={activeTab === 'prive' ? '#C9A962' : activeTab === 'mall' ? '#0284C7' : '#666'}
               />
             </View>
           </Pressable>
@@ -784,7 +815,8 @@ export default function HomeScreen() {
               activeOpacity={0.7}
               style={[
                 viewStyles.headerCoinContainer,
-                activeTab === 'prive' && { backgroundColor: 'rgba(201, 169, 98, 0.2)', borderColor: 'rgba(201, 169, 98, 0.4)' }
+                activeTab === 'prive' && { backgroundColor: 'rgba(201, 169, 98, 0.2)', borderColor: 'rgba(201, 169, 98, 0.4)' },
+                activeTab === 'mall' && { backgroundColor: 'rgba(2, 132, 199, 0.15)', borderColor: 'rgba(2, 132, 199, 0.3)' }
               ]}
             >
               <Image
@@ -792,13 +824,18 @@ export default function HomeScreen() {
                 style={viewStyles.headerCoinImage}
                 resizeMode="contain"
               />
-              <Text style={[viewStyles.headerCoinText, activeTab === 'prive' && { color: '#C9A962' }]}>{userPoints}</Text>
+              <Text style={[
+                viewStyles.headerCoinText, 
+                activeTab === 'prive' && { color: '#C9A962' },
+                activeTab === 'mall' && { color: '#0284C7' }
+              ]}>{userPoints}</Text>
             </TouchableOpacity>
 
             {/* What's New Badge */}
             <WhatsNewBadge
               onPress={() => router.push('/whats-new')}
               style={viewStyles.whatsNewBadge}
+              variant={activeTab === 'mall' ? 'blue' : activeTab === 'prive' ? 'gold' : 'green'}
             />
 
             {/* Cart Button with Modern Badge */}
@@ -816,7 +853,7 @@ export default function HomeScreen() {
               accessibilityHint="Double tap to view your shopping cart"
               style={viewStyles.headerIconButton}
             >
-              <Ionicons name="cart-outline" size={24} color={activeTab === 'prive' ? '#FFFFFF' : '#1a1a1a'} />
+              <Ionicons name="cart-outline" size={24} color={activeTab === 'prive' ? '#FFFFFF' : activeTab === 'mall' ? '#0284C7' : '#1a1a1a'} />
               {cartState.totalItems > 0 && (
                 <LinearGradient
                   colors={['#FF6B6B', '#FF5252']}
@@ -845,18 +882,20 @@ export default function HomeScreen() {
               {/* Text pill - on left */}
               <View style={[
                 viewStyles.savedTextPill,
-                activeTab === 'prive' && { backgroundColor: 'rgba(201, 169, 98, 0.25)' }
+                activeTab === 'prive' && { backgroundColor: 'rgba(201, 169, 98, 0.25)' },
+                activeTab === 'mall' && { backgroundColor: 'rgba(2, 132, 199, 0.2)' }
               ]}>
                 <Text style={[
                   viewStyles.savedText,
-                  activeTab === 'prive' && { color: '#C9A962' }
+                  activeTab === 'prive' && { color: '#C9A962' },
+                  activeTab === 'mall' && { color: '#0284C7' }
                 ]}>
                   ₹{totalSaved} saved
                 </Text>
               </View>
               {/* Badge on right - overlaps text slightly with negative margin */}
               <View style={viewStyles.badgeOverlay}>
-                <BadgeAvatar />
+                <BadgeAvatar color={activeTab === 'mall' ? '#0284C7' : activeTab === 'prive' ? '#C9A962' : undefined} />
               </View>
             </TouchableOpacity>
           </View>
@@ -880,7 +919,7 @@ export default function HomeScreen() {
             {/* Full Address Section */}
             <View style={viewStyles.addressSection}>
               <View style={viewStyles.addressHeader}>
-                <Ionicons name="location" size={16} color="#00C06A" />
+                <Ionicons name="location" size={16} color={activeTab === 'mall' ? '#0284C7' : '#00C06A'} />
                 <Text style={viewStyles.addressHeaderText}>Current Location</Text>
               </View>
               <LocationDisplay
@@ -895,7 +934,13 @@ export default function HomeScreen() {
 
             {/* Change Location Button */}
             <TouchableOpacity
-              style={viewStyles.changeLocationButton}
+              style={[
+                viewStyles.changeLocationButton,
+                activeTab === 'mall' && { 
+                  backgroundColor: '#E0F2FE', 
+                  borderColor: '#BAE6FD' 
+                }
+              ]}
               onPress={() => {
                 setShowDetailedLocation(false);
                 // Collapse animation then open modal
@@ -916,11 +961,14 @@ export default function HomeScreen() {
               }}
               activeOpacity={0.7}
             >
-              <View style={viewStyles.changeLocationIconWrapper}>
+              <View style={[
+                viewStyles.changeLocationIconWrapper,
+                activeTab === 'mall' && { backgroundColor: '#0EA5E9' }
+              ]}>
                 <Ionicons name="search" size={12} color="#FFFFFF" />
               </View>
               <Text style={viewStyles.changeLocationText}>Change Location</Text>
-              <Ionicons name="chevron-forward" size={14} color="#00C06A" />
+              <Ionicons name="chevron-forward" size={14} color={activeTab === 'mall' ? '#0284C7' : '#00C06A'} />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -947,9 +995,18 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* Privé Hero Banner - Premium carousel for "prive" tab */}
-        {activeTab === 'prive' && (
-          <PriveHeroBanner />
+        {/* Privé Member Card - Premium card in header for "prive" tab */}
+        {activeTab === 'prive' && priveUserData && (
+          <PriveMemberCard
+            memberName={priveUserData.name}
+            tier={priveUserData.tier}
+            tierProgress={priveUserData.tierProgress}
+            nextTier={priveUserData.nextTier}
+            pointsToNext={priveUserData.pointsToNext}
+            memberId={priveUserData.memberId}
+            validThru={priveUserData.validThru}
+            totalScore={priveUserData.totalScore}
+          />
         )}
 
         </LinearGradient>
@@ -1006,6 +1063,12 @@ export default function HomeScreen() {
 
         {/* Store Discovery Section - Today's Top Stores & Popular Near You - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && <StoreDiscoverySection limit={10} />}
+
+        {/* Trending Near You Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <TrendingNearYou />}
+
+        {/* Flash Sales Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <FlashSales />}
 
         {/* New Arrivals Section - Only show when "near-u" tab is active */}
         {React.useMemo(() => {
@@ -1190,7 +1253,7 @@ export default function HomeScreen() {
 
         {/* Discover & Shop Section - UGC Reels, Posts, Articles, Images with product tagging - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && (
-          <View style={{ marginHorizontal: -20, marginTop: 16 }}>
+          <View style={{ marginHorizontal: -20, marginTop: 16, marginBottom: 16 }}>
             <DiscoverAndShopSection
               showHeader={true}
               showCategories={true}
@@ -1202,6 +1265,15 @@ export default function HomeScreen() {
 
         {/* In Your Area Section - Shows products from nearby stores - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && <NearbyProductsSection title="In Your Area" limit={10} radius={10} />}
+
+        {/* Stores Near You Section - Shows nearby stores with live status, distance, wait times, and cashback - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <StoresNearYou />}
+
+        {/* Picked For You Section - AI-powered product recommendations with match percentages - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <PickedForYou limit={2} />}
+
+        {/* Brand Partnerships Section - Exclusive deals on top brands - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <BrandPartnerships />}
 
         {/* Globe Banner - Best Deals on Internet - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && <GlobeBanner />}
@@ -1221,6 +1293,29 @@ export default function HomeScreen() {
 
         {/* Wallet Snapshot Card - Shows coin balance, cashback earned, and quick actions - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && <WalletSnapshotCard />}
+
+        {/* Loyalty & Rewards Hub Card - Shows loyalty progress, streaks, unlocked rewards, and tiers - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && (
+          <LoyaltyRewardsHubCard
+            activeBrands={loyaltyHub?.activeBrands}
+            streaks={loyaltyHub?.streaks}
+            unlocked={loyaltyHub?.unlocked}
+            tiers={loyaltyHub?.tiers}
+            isLoading={isLoyaltySectionLoading}
+          />
+        )}
+
+        {/* Feature Try Cards - Product Lock and Service Booking feature cards - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && (
+          <FeatureTryCards
+            lockProduct={featuredLockProduct}
+            trendingService={trendingService}
+            isLoading={isLoyaltySectionLoading}
+          />
+        )}
+
+        {/* Streaks Gamification - Saving streak and weekly missions - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <StreaksGamification />}
 
         {/* Zero EMI Card - Promotional card for 0% EMI payment option - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && <ZeroEMICard />}
@@ -1401,6 +1496,13 @@ const viewStyles = StyleSheet.create({
     marginVertical: 16,
   },
   header: {
+    paddingTop: Platform.OS === 'ios' ? 56 : 50,
+    paddingHorizontal: 20,
+    paddingBottom: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  headerExtended: {
     paddingTop: Platform.OS === 'ios' ? 56 : 50,
     paddingHorizontal: 20,
     paddingBottom: 0,

@@ -1,0 +1,210 @@
+// useStreaksGamification Hook
+// Fetches real streak and weekly missions data from the gamification API
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import gamificationAPI from '@/services/gamificationApi';
+import {
+  StreakData,
+  Mission,
+  UseStreaksGamificationResult,
+  PlayAndEarnResponse,
+} from '@/types/streaksGamification.types';
+
+// Default streak data (used as fallback)
+const DEFAULT_STREAK: StreakData = {
+  current: 0,
+  target: 7,
+  nextReward: 100,
+  type: 'order',
+  longestStreak: 0,
+  todayCheckedIn: false,
+};
+
+// Icon mapping for different challenge action types
+const getMissionIcon = (action?: string): keyof typeof Ionicons.glyphMap => {
+  switch (action) {
+    case 'visit_stores':
+      return 'location-outline';
+    case 'upload_bills':
+      return 'receipt-outline';
+    case 'share_deals':
+      return 'share-social-outline';
+    case 'order_count':
+      return 'cart-outline';
+    case 'review_count':
+      return 'star-outline';
+    case 'refer_friends':
+      return 'people-outline';
+    case 'spend_amount':
+      return 'wallet-outline';
+    case 'login_streak':
+      return 'flame-outline';
+    case 'explore_categories':
+      return 'compass-outline';
+    case 'add_favorites':
+      return 'heart-outline';
+    default:
+      return 'trophy-outline';
+  }
+};
+
+// Transform backend challenge to frontend Mission format
+const transformChallengeToMission = (challenge: PlayAndEarnResponse['challenges']['active'][0]): Mission => ({
+  id: challenge.id,
+  title: challenge.title,
+  progress: challenge.progress.current,
+  target: challenge.progress.target,
+  reward: challenge.reward,
+  icon: getMissionIcon(challenge.requirements?.action),
+  completed: challenge.progress.current >= challenge.progress.target,
+  expiresAt: challenge.expiresAt,
+  type: 'weekly', // Homepage shows weekly missions
+});
+
+export function useStreaksGamification(): UseStreaksGamificationResult {
+  const [streak, setStreak] = useState<StreakData>(DEFAULT_STREAK);
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [coinBalance, setCoinBalance] = useState<number>(0);
+
+  const isMountedRef = useRef(true);
+
+  // Fetch data from API
+  const fetchData = useCallback(async () => {
+    if (!isMountedRef.current) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await gamificationAPI.getPlayAndEarnData();
+
+      if (!isMountedRef.current) return;
+
+      if (response.success && response.data) {
+        const data = response.data;
+
+        // Transform streak data - prioritize order streak
+        const streakData: StreakData = {
+          current: data.streak?.currentStreak || 0,
+          target: data.streak?.nextMilestone?.day || 7,
+          nextReward: data.streak?.nextMilestone?.coins || 100,
+          type: (data.streak?.type as StreakData['type']) || 'order',
+          longestStreak: data.streak?.longestStreak || 0,
+          todayCheckedIn: data.streak?.todayCheckedIn || false,
+        };
+        setStreak(streakData);
+
+        // Transform challenges to missions (limit to 3 for homepage display)
+        const weeklyMissions = data.challenges?.active
+          ?.slice(0, 3)
+          ?.map(transformChallengeToMission) || [];
+        setMissions(weeklyMissions);
+
+        // Update coin balance
+        setCoinBalance(data.coinBalance || 0);
+      } else {
+        throw new Error(response.message || 'Failed to fetch gamification data');
+      }
+    } catch (err: any) {
+      if (!isMountedRef.current) return;
+      console.error('[useStreaksGamification] Error:', err);
+      setError(err.message || 'Failed to load data');
+
+      // Keep default/cached data on error
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  // Refresh data
+  const refresh = useCallback(async () => {
+    await fetchData();
+  }, [fetchData]);
+
+  // Claim mission reward
+  const claimReward = useCallback(async (missionId: string): Promise<boolean> => {
+    try {
+      const response = await gamificationAPI.claimChallengeReward(missionId);
+
+      if (response.success) {
+        // Update local state to reflect claimed reward
+        setMissions(prev =>
+          prev.map(mission =>
+            mission.id === missionId
+              ? { ...mission, completed: true }
+              : mission
+          )
+        );
+
+        // Update coin balance if returned
+        if (response.data?.newBalance) {
+          setCoinBalance(response.data.newBalance);
+        }
+
+        return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.error('[useStreaksGamification] Error claiming reward:', err);
+      return false;
+    }
+  }, []);
+
+  // Check in for streak
+  const checkin = useCallback(async () => {
+    try {
+      const response = await gamificationAPI.streakCheckin();
+
+      if (response.success && response.data) {
+        // Update streak data
+        setStreak(prev => ({
+          ...prev,
+          current: response.data.currentStreak,
+          longestStreak: response.data.longestStreak || prev.longestStreak,
+          todayCheckedIn: true,
+        }));
+
+        // Update coin balance if returned
+        if (response.data.newBalance) {
+          setCoinBalance(response.data.newBalance);
+        }
+      }
+    } catch (err) {
+      console.error('[useStreaksGamification] Error checking in:', err);
+    }
+  }, []);
+
+  // Track mounted state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return {
+    streak,
+    missions,
+    loading,
+    error,
+    coinBalance,
+    actions: {
+      refresh,
+      claimReward,
+      checkin,
+    },
+  };
+}
+
+export default useStreaksGamification;

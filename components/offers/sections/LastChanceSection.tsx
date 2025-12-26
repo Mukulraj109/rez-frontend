@@ -26,7 +26,7 @@ export const LastChanceSection: React.FC<LastChanceSectionProps> = ({
   if (offers.length === 0) return null;
 
   const handleOfferPress = (deal: LightningDeal) => {
-    router.push(`/offers/${deal.id}`);
+    router.push(`/flash-sales/${deal.id}`);
   };
 
   return (

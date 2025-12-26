@@ -47,6 +47,32 @@ export interface LoyaltyStats {
   tierBenefits: string[];
 }
 
+// Homepage Loyalty Section Types
+export interface LoyaltyHubStats {
+  activeBrands: number;
+  streaks: number;
+  unlocked: number;
+  tiers: number;
+}
+
+export interface FeaturedProduct {
+  productId: string;
+  name: string;
+  image: string;
+  originalPrice: number;
+  sellingPrice: number;
+  savings: number;
+  cashbackCoins: number;
+  storeName: string;
+  storeId: string;
+}
+
+export interface HomepageLoyaltySummary {
+  loyaltyHub: LoyaltyHubStats | null;
+  featuredLockProduct: FeaturedProduct | null;
+  trendingService: FeaturedProduct | null;
+}
+
 export interface RedeemRewardRequest {
   rewardId: string;
   points: number;
@@ -179,6 +205,18 @@ class LoyaltyApiService {
   }>> {
 
     return apiClient.get(`${this.baseUrl}/my-rewards`, status ? { status } : undefined);
+  }
+
+  /**
+   * Get homepage loyalty section summary
+   * Includes loyalty hub stats + featured products/services based on user location
+   */
+  async getHomepageSummary(latitude?: number, longitude?: number): Promise<ApiResponse<HomepageLoyaltySummary>> {
+    const params: Record<string, any> = {};
+    if (latitude !== undefined) params.latitude = latitude;
+    if (longitude !== undefined) params.longitude = longitude;
+
+    return apiClient.get(`${this.baseUrl}/homepage-summary`, Object.keys(params).length > 0 ? params : undefined);
   }
 }
 

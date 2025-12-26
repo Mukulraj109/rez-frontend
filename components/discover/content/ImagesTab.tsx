@@ -162,7 +162,7 @@ export default function ImagesTab({
         {productCount > 0 && item.products[0] && (
           <View style={styles.productPreview}>
             <Image
-              source={{ uri: item.products[0].image }}
+              source={{ uri: item.products[0].image || 'https://via.placeholder.com/32?text=Product' }}
               style={styles.productImage}
             />
             <View style={styles.productInfo}>

@@ -11,14 +11,23 @@ import { ThemedText } from '@/components/ThemedText';
 interface WhatsNewBadgeProps {
   onPress?: () => void;
   style?: ViewStyle;
+  variant?: 'green' | 'blue' | 'gold';
 }
 
-const WhatsNewBadge: React.FC<WhatsNewBadgeProps> = ({ onPress, style }) => {
+const WhatsNewBadge: React.FC<WhatsNewBadgeProps> = ({ onPress, style, variant = 'green' }) => {
+  const badgeColors = {
+    green: { bg: '#064E3B', border: '#059669' },
+    blue: { bg: '#0C4A6E', border: '#0284C7' },
+    gold: { bg: '#78350F', border: '#F59E0B' },
+  };
+
+  const colors = badgeColors[variant];
+
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
-      style={[styles.badge, style]}
+      style={[styles.badge, { backgroundColor: colors.bg, borderColor: colors.border }, style]}
       accessibilityRole="button"
       accessibilityLabel="What's New"
     >
@@ -32,12 +41,10 @@ const WhatsNewBadge: React.FC<WhatsNewBadgeProps> = ({ onPress, style }) => {
 
 const styles = StyleSheet.create({
   badge: {
-    backgroundColor: '#064E3B',
     paddingHorizontal: 6,
     paddingVertical: 0,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#059669',
   },
   content: {
     position: 'relative',

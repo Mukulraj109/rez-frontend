@@ -394,10 +394,13 @@ export default function RootLayout() {
                     <Stack.Screen name="offers/view-all" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/birthday" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/zones/student" options={{ headerShown: false }} />
-                    <Stack.Screen name="offers/zones/employee" options={{ headerShown: false }} />
+                    <Stack.Screen name="offers/zones/corporate" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/zones/women" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/zones/heroes" options={{ headerShown: false }} />
                     <Stack.Screen name="offers/zones/loyalty" options={{ headerShown: false }} />
+                    <Stack.Screen name="offers/zones/birthday" options={{ headerShown: false }} />
+                    <Stack.Screen name="offers/zones/senior" options={{ headerShown: false }} />
+                    <Stack.Screen name="offers/zones/first-time" options={{ headerShown: false }} />
                     
                     {/* Profile System Screens */}
                     <Stack.Screen name="wallet/index" options={{ headerShown: false }} />

@@ -148,6 +148,49 @@ class RecommendationService {
   }
 
   /**
+   * Get "Picked For You" recommendations for homepage
+   * Supports location-based filtering for hybrid recommendations (nearby + general)
+   */
+  async getPickedForYou(
+    limit: number = 10,
+    location?: { latitude: number; longitude: number }
+  ): Promise<ApiResponse<{
+    recommendations: Array<ProductItem & {
+      recommendationScore: number;
+      recommendationReason: string;
+      personalizedFor?: string;
+    }>;
+    total: number;
+  }>> {
+    try {
+      const params: Record<string, any> = { limit };
+
+      // Pass location as "lng,lat" format if available
+      if (location?.latitude && location?.longitude) {
+        params.location = `${location.longitude},${location.latitude}`;
+      }
+
+      const response = await apiClient.get('/recommendations/picked-for-you', params);
+
+      if (response.success && response.data) {
+        return response as ApiResponse<{
+          recommendations: Array<ProductItem & {
+            recommendationScore: number;
+            recommendationReason: string;
+            personalizedFor?: string;
+          }>;
+          total: number;
+        }>;
+      }
+
+      throw new Error(response.message || 'Failed to fetch picked for you recommendations');
+    } catch (error) {
+      console.error('❌ [RECOMMENDATION API] Error fetching picked for you:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Track product view for analytics
    */
   async trackProductView(productId: string): Promise<ApiResponse<{ productId: string; tracked: boolean }>> {

@@ -434,6 +434,60 @@ class StoresService {
     });
   }
 
+  // Get nearby stores for homepage - optimized endpoint with computed fields
+  async getNearbyStoresForHomepage(
+    latitude: number,
+    longitude: number,
+    radius: number = 2,
+    limit: number = 5
+  ): Promise<ApiResponse<{
+    stores: Array<{
+      id: string;
+      name: string;
+      distance: string;
+      isLive: boolean;
+      status: string;
+      waitTime: string;
+      cashback: string;
+      closingSoon?: boolean;
+    }>;
+  }>> {
+    try {
+      console.log('📍 [STORES API] Fetching nearby stores for homepage:', { latitude, longitude, radius, limit });
+
+      const response = await apiClient.get<{
+        stores: Array<{
+          id: string;
+          name: string;
+          distance: string;
+          isLive: boolean;
+          status: string;
+          waitTime: string;
+          cashback: string;
+          closingSoon?: boolean;
+        }>;
+      }>('/stores/nearby-homepage', {
+        latitude,
+        longitude,
+        radius,
+        limit
+      });
+
+      if (response.success && response.data) {
+        console.log(`✅ [STORES API] Got ${response.data.stores?.length || 0} nearby stores for homepage`);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('❌ [STORES API] Error fetching nearby stores for homepage:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch nearby stores',
+        message: error?.message || 'Failed to fetch nearby stores',
+      };
+    }
+  }
+
   // Search stores
   async searchStores(
     query: string,
@@ -705,10 +759,17 @@ class StoresService {
     try {
       const response = await apiClient.get('/stores/featured', { limit });
 
-      if (response.success && response.data && Array.isArray(response.data)) {
+      // Handle both response formats:
+      // 1. { success: true, data: [...] } - direct array
+      // 2. { success: true, data: { stores: [...] } } - nested stores array
+      const storesData = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.stores || []);
+
+      if (response.success && storesData.length > 0) {
 
         // Validate and normalize stores first
-        const validatedStores = validateStoreArray(response.data);
+        const validatedStores = validateStoreArray(storesData);
 
         // Transform backend store data to frontend StoreItem format
         const stores = validatedStores.map((store: any) => {
@@ -876,6 +937,52 @@ class StoresService {
         success: false,
         error: error.message || 'Failed to fetch recent earnings',
         data: []
+      };
+    }
+  }
+
+  /**
+   * Get trending stores for homepage "Trending Near You" section
+   * Fetches stores sorted by trending score (orders, views, revenue, rating)
+   */
+  async getTrendingStores(params?: {
+    category?: string;
+    limit?: number;
+    page?: number;
+    days?: number;
+  }): Promise<ApiResponse<{
+    stores: any[];
+    pagination: { total: number; page: number; limit: number; pages: number };
+  }>> {
+    try {
+      console.log('🔥 [STORES API] Fetching trending stores:', params);
+
+      const response = await apiClient.get<{
+        stores: any[];
+        pagination: { total: number; page: number; limit: number; pages: number };
+      }>('/stores/trending', {
+        limit: params?.limit || 4,
+        page: params?.page || 1,
+        days: params?.days || 7,
+        ...(params?.category && { category: params.category }),
+      });
+
+      if (response.success && response.data) {
+        console.log(`✅ [STORES API] Got ${response.data.stores?.length || 0} trending stores`);
+        return response;
+      }
+
+      return {
+        success: false,
+        error: 'No trending stores found',
+        message: 'Failed to fetch trending stores',
+      };
+    } catch (error: any) {
+      console.error('❌ [STORES API] Error fetching trending stores:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch trending stores',
+        message: error?.message || 'Failed to fetch trending stores',
       };
     }
   }
