@@ -145,6 +145,72 @@ export interface PriveHistory {
   currentTier: string;
 }
 
+export interface EarningItem {
+  id: string;
+  type: string;
+  amount: number;
+  coinType: 'rez' | 'prive' | 'branded';
+  description: string;
+  source?: any;
+  createdAt: string;
+  date: string;
+}
+
+export interface EarningsSummary {
+  thisWeek: number;
+  thisMonth: number;
+  allTime: number;
+}
+
+export interface TransactionItem {
+  id: string;
+  type: string;
+  amount: number;
+  coinType: 'rez' | 'prive' | 'branded';
+  description: string;
+  source?: any;
+  status: string;
+  createdAt: string;
+  date: string;
+  time: string;
+}
+
+export interface Voucher {
+  id: string;
+  code: string;
+  type: 'gift_card' | 'bill_pay' | 'experience' | 'charity';
+  value: number;
+  currency: string;
+  coinAmount: number;
+  status: 'active' | 'used' | 'expired' | 'cancelled';
+  expiresAt: string;
+  expiresIn: string | null;
+  usedAt?: string;
+  partnerName?: string;
+  partnerLogo?: string;
+  category?: string;
+  terms?: string[];
+  howToUse?: string;
+  createdAt: string;
+}
+
+export interface RedeemRequest {
+  coinAmount: number;
+  type: 'gift_card' | 'bill_pay' | 'experience' | 'charity';
+  category?: string;
+  partnerId?: string;
+  partnerName?: string;
+  partnerLogo?: string;
+}
+
+export interface RedeemResponse {
+  voucher: Voucher;
+  wallet: {
+    available: number;
+    total: number;
+  };
+}
+
 // API Endpoints
 const ENDPOINTS = {
   ELIGIBILITY: '/prive/eligibility',
@@ -157,6 +223,10 @@ const ENDPOINTS = {
   DASHBOARD: '/prive/dashboard',
   OFFERS: '/prive/offers',
   HIGHLIGHTS: '/prive/highlights',
+  EARNINGS: '/prive/earnings',
+  TRANSACTIONS: '/prive/transactions',
+  REDEEM: '/prive/redeem',
+  VOUCHERS: '/prive/vouchers',
 };
 
 class PriveApi {
@@ -259,6 +329,96 @@ class PriveApi {
    */
   async trackOfferClick(offerId: string): Promise<ApiResponse<void>> {
     return apiClient.post(`${ENDPOINTS.OFFERS}/${offerId}/click`);
+  }
+
+  /**
+   * Get user's coin earning history
+   */
+  async getEarnings(params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+  }): Promise<ApiResponse<{
+    earnings: EarningItem[];
+    summary: EarningsSummary;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }>> {
+    return apiClient.get(ENDPOINTS.EARNINGS, params);
+  }
+
+  /**
+   * Get user's coin transaction history
+   */
+  async getTransactions(params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    coinType?: string;
+  }): Promise<ApiResponse<{
+    transactions: TransactionItem[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }>> {
+    return apiClient.get(ENDPOINTS.TRANSACTIONS, params);
+  }
+
+  /**
+   * Redeem coins for a voucher
+   */
+  async redeemCoins(request: RedeemRequest): Promise<ApiResponse<RedeemResponse>> {
+    return apiClient.post<RedeemResponse>(ENDPOINTS.REDEEM, request);
+  }
+
+  /**
+   * Get user's voucher history
+   */
+  async getVouchers(params?: {
+    status?: string;
+    type?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{
+    vouchers: Voucher[];
+    stats: {
+      active: number;
+      total: number;
+    };
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }>> {
+    return apiClient.get(ENDPOINTS.VOUCHERS, params);
+  }
+
+  /**
+   * Get single voucher details
+   */
+  async getVoucherById(id: string): Promise<ApiResponse<Voucher>> {
+    return apiClient.get(`${ENDPOINTS.VOUCHERS}/${id}`);
+  }
+
+  /**
+   * Mark a voucher as used
+   */
+  async markVoucherUsed(id: string): Promise<ApiResponse<{
+    id: string;
+    code: string;
+    status: string;
+    usedAt: string;
+  }>> {
+    return apiClient.post(`${ENDPOINTS.VOUCHERS}/${id}/use`);
   }
 }
 

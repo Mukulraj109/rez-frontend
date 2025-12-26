@@ -225,14 +225,14 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         return 'Categories';
       }
 
-      // Check for Play tab - multiple formats
+      // Check for Explore tab - multiple formats
       if (
-        normalizedPath === '/play' ||
-        normalizedPath === '/(tabs)/play' ||
-        normalizedPath.startsWith('/play/') ||
-        normalizedPath.startsWith('/(tabs)/play/')
+        normalizedPath === '/explore' ||
+        normalizedPath === '/(tabs)/explore' ||
+        normalizedPath.startsWith('/explore/') ||
+        normalizedPath.startsWith('/(tabs)/explore/')
       ) {
-        return 'Play';
+        return 'Explore';
       }
 
       // Check for Earn tab - multiple formats
@@ -255,7 +255,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
       normalizedPath.startsWith('/(tabs)/index/') ||
       // If pathname includes (tabs) but doesn't match other tabs, it's home
       (normalizedPath.includes('/(tabs)') &&
-       !normalizedPath.includes('/play') &&
+       !normalizedPath.includes('/explore') &&
        !normalizedPath.includes('/earn') &&
        !normalizedPath.includes('/categories'))
     ) {
@@ -392,7 +392,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
         },
       ]
     : [
-        // Default tabs: Home, Categories, Pay in Store, Play, Earn
+        // Default tabs: Home, Categories, Pay in Store, Explore, Earn
         {
           name: 'Home',
           route: '/(tabs)',
@@ -415,10 +415,10 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ style }) => {
           isCenter: true,
         },
         {
-          name: 'Play',
-          route: '/(tabs)/play',
-          icon: 'play-circle',
-          isActive: activeTab === 'Play',
+          name: 'Explore',
+          route: '/explore',
+          icon: 'compass-outline',
+          isActive: activeTab === 'Explore',
           isCenter: false,
         },
         {

@@ -11,22 +11,25 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { PRIVE_COLORS, PRIVE_SPACING, PRIVE_RADIUS } from '@/components/prive/priveTheme';
+import { usePriveSection } from '@/hooks/usePriveSection';
 
 const REDEEM_OPTIONS = [
-  { id: '1', title: 'Gift Cards', description: 'Amazon, Flipkart, Swiggy & more', icon: '🎁', minCoins: 500 },
-  { id: '2', title: 'Bill Pay', description: 'Use coins at checkout', icon: '🧾', minCoins: 100 },
-  { id: '3', title: 'Experiences', description: 'Exclusive Privé experiences', icon: '✨', minCoins: 1000 },
-  { id: '4', title: 'Charity', description: 'Donate to causes', icon: '💝', minCoins: 100 },
+  { id: 'gift-cards', title: 'Gift Cards', description: 'Amazon, Flipkart, Swiggy & more', icon: '🎁', minCoins: 500, route: '/prive/redeem/gift-cards' },
+  { id: 'bill-pay', title: 'Bill Pay', description: 'Use coins at checkout', icon: '🧾', minCoins: 100, route: '/prive/redeem/bill-pay' },
+  { id: 'experiences', title: 'Experiences', description: 'Exclusive Privé experiences', icon: '✨', minCoins: 1000, route: '/prive/redeem/experiences' },
+  { id: 'charity', title: 'Charity', description: 'Donate to causes', icon: '💝', minCoins: 100, route: '/prive/redeem/charity' },
 ];
 
 export default function RedeemScreen() {
   const router = useRouter();
-  const availableCoins = 12450;
+  const { userData, isLoading } = usePriveSection();
+  const availableCoins = userData?.totalCoins || 0;
 
   return (
     <View style={styles.container}>
@@ -54,25 +57,41 @@ export default function RedeemScreen() {
 
           {/* Redeem Options */}
           <Text style={styles.sectionTitle}>Redeem Options</Text>
-          {REDEEM_OPTIONS.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              style={styles.optionCard}
-              activeOpacity={0.8}
-            >
-              <View style={styles.optionIcon}>
-                <Text style={styles.optionEmoji}>{option.icon}</Text>
-              </View>
-              <View style={styles.optionInfo}>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                <Text style={styles.optionDescription}>{option.description}</Text>
-              </View>
-              <View style={styles.optionRight}>
-                <Text style={styles.optionMinCoins}>Min {option.minCoins}</Text>
-                <Ionicons name="chevron-forward" size={20} color={PRIVE_COLORS.text.tertiary} />
-              </View>
-            </TouchableOpacity>
-          ))}
+          {REDEEM_OPTIONS.map((option) => {
+            const hasEnoughCoins = availableCoins >= option.minCoins;
+            return (
+              <TouchableOpacity
+                key={option.id}
+                style={[styles.optionCard, !hasEnoughCoins && styles.optionCardDisabled]}
+                activeOpacity={hasEnoughCoins ? 0.8 : 1}
+                onPress={() => {
+                  if (hasEnoughCoins) {
+                    router.push(option.route as any);
+                  }
+                }}
+              >
+                <View style={styles.optionIcon}>
+                  <Text style={styles.optionEmoji}>{option.icon}</Text>
+                </View>
+                <View style={styles.optionInfo}>
+                  <Text style={[styles.optionTitle, !hasEnoughCoins && styles.optionTitleDisabled]}>
+                    {option.title}
+                  </Text>
+                  <Text style={styles.optionDescription}>{option.description}</Text>
+                </View>
+                <View style={styles.optionRight}>
+                  <Text style={[styles.optionMinCoins, !hasEnoughCoins && styles.optionMinCoinsInsufficient]}>
+                    {hasEnoughCoins ? `Min ${option.minCoins}` : `Need ${option.minCoins - availableCoins} more`}
+                  </Text>
+                  <Ionicons
+                    name={hasEnoughCoins ? "chevron-forward" : "lock-closed"}
+                    size={20}
+                    color={hasEnoughCoins ? PRIVE_COLORS.text.tertiary : PRIVE_COLORS.text.disabled}
+                  />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
 
           {/* Info Card */}
           <View style={styles.infoCard}>
@@ -159,6 +178,10 @@ const styles = StyleSheet.create({
     borderColor: PRIVE_COLORS.border.primary,
     marginBottom: PRIVE_SPACING.md,
   },
+  optionCardDisabled: {
+    opacity: 0.6,
+    borderColor: PRIVE_COLORS.border.secondary,
+  },
   optionIcon: {
     width: 48,
     height: 48,
@@ -179,6 +202,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PRIVE_COLORS.text.primary,
   },
+  optionTitleDisabled: {
+    color: PRIVE_COLORS.text.tertiary,
+  },
   optionDescription: {
     fontSize: 12,
     color: PRIVE_COLORS.text.tertiary,
@@ -191,6 +217,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: PRIVE_COLORS.text.tertiary,
     marginBottom: 4,
+  },
+  optionMinCoinsInsufficient: {
+    color: PRIVE_COLORS.status.warning,
   },
   infoCard: {
     flexDirection: 'row',
@@ -212,3 +241,5 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+

@@ -460,6 +460,25 @@ export default function RootLayout() {
                     
                     {/* Social Media Earning Screen */}
                     <Stack.Screen name="earn-from-social-media" options={{ headerShown: false }} />
+
+                    {/* Play and Earn Screen */}
+                    <Stack.Screen name="playandearn" options={{ headerShown: false }} />
+                    
+                    {/* Play and Earn Sub-pages */}
+                    <Stack.Screen name="playandearn/CollegeAmbassador" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/BrandTasks" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/UGCCreator" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/CorporateEmployee" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/SocialImpact" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/SocialImpactEventDetail" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/TournamentDetail" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/quiz" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/memorymatch" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/luckydraw" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/guessprice" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/coinhunt" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/leaderboard" options={{ headerShown: false }} />
+                    <Stack.Screen name="playandearn/achievements" options={{ headerShown: false }} />
                     
                     {/* Online Voucher System */}
                     <Stack.Screen name="online-voucher" options={{ headerShown: false }} />

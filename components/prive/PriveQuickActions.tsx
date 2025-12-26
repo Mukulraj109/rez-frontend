@@ -24,7 +24,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   { id: 'wallet', label: 'Wallet', icon: '◈', route: '/prive/wallet' },
   { id: 'earnings', label: 'Earnings', icon: '↑', route: '/prive/earnings' },
   { id: 'redeem', label: 'Redeem', icon: '◇', route: '/prive/redeem' },
-  { id: 'invite', label: 'Invite', icon: '✦', route: '/referral' },
+  { id: 'invite', label: 'Invite', icon: '✦', route: '/referral/dashboard' },
 ];
 
 export const PriveQuickActions: React.FC = () => {
