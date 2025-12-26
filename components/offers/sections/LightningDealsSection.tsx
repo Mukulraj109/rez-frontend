@@ -26,7 +26,7 @@ export const LightningDealsSection: React.FC<LightningDealsSectionProps> = ({
   if (deals.length === 0) return null;
 
   const handleOfferPress = (deal: LightningDeal) => {
-    router.push(`/offers/${deal.id}`);
+    router.push(`/flash-sales/${deal.id}`);
   };
 
   return (

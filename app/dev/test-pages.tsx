@@ -79,7 +79,7 @@ const PAGE_CATEGORIES: PageCategory[] = [
     color: '#8B5CF6',
     pages: [
       { name: 'Student Zone', path: '/offers/zones/student', icon: 'school' },
-      { name: 'Employee Zone', path: '/offers/zones/employee', icon: 'briefcase' },
+      { name: 'Corporate Zone', path: '/offers/zones/corporate', icon: 'briefcase' },
       { name: 'Women Zone', path: '/offers/zones/women', icon: 'female' },
       { name: 'Heroes Zone', path: '/offers/zones/heroes', icon: 'shield' },
     ],

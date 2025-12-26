@@ -1,9 +1,9 @@
 /**
- * Privé Earnings Page
- * Shows earnings history and breakdown
+ * Prive Earnings Page
+ * Shows earnings history and breakdown with real data
  */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,21 +11,103 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { PRIVE_COLORS, PRIVE_SPACING, PRIVE_RADIUS } from '@/components/prive/priveTheme';
+import priveApi, { EarningItem, EarningsSummary } from '@/services/priveApi';
 
-const EARNINGS_DATA = [
-  { id: '1', type: 'campaign', title: 'Brand Campaign Completed', amount: '+500', date: 'Today' },
-  { id: '2', type: 'purchase', title: 'Purchase at StyleHub', amount: '+120', date: 'Yesterday' },
-  { id: '3', type: 'referral', title: 'Friend Joined Privé', amount: '+200', date: '2 days ago' },
-  { id: '4', type: 'content', title: 'Content Bonus', amount: '+75', date: '3 days ago' },
-];
+const EARNING_ICONS: Record<string, string> = {
+  campaign: '📢',
+  purchase: '🛍️',
+  referral: '👥',
+  content: '✍️',
+  check_in: '✅',
+  review: '⭐',
+  bonus: '🎁',
+  cashback: '💰',
+};
 
 export default function EarningsScreen() {
   const router = useRouter();
+  const [earnings, setEarnings] = useState<EarningItem[]>([]);
+  const [summary, setSummary] = useState<EarningsSummary>({ thisWeek: 0, thisMonth: 0, allTime: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchEarnings = useCallback(async (pageNum: number = 1, refresh: boolean = false) => {
+    try {
+      if (refresh) {
+        setIsRefreshing(true);
+      } else if (pageNum === 1) {
+        setIsLoading(true);
+      }
+      setError(null);
+
+      const response = await priveApi.getEarnings({ page: pageNum, limit: 20 });
+
+      if (response.success && response.data) {
+        const { earnings: newEarnings, summary: newSummary, pagination } = response.data;
+
+        if (pageNum === 1) {
+          setEarnings(newEarnings);
+        } else {
+          setEarnings(prev => [...prev, ...newEarnings]);
+        }
+
+        setSummary(newSummary);
+        setHasMore(pagination.page < pagination.pages);
+        setPage(pageNum);
+      } else {
+        setError('Failed to load earnings');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load earnings');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEarnings(1);
+  }, [fetchEarnings]);
+
+  const handleRefresh = () => {
+    fetchEarnings(1, true);
+  };
+
+  const handleLoadMore = () => {
+    if (!isLoading && hasMore) {
+      fetchEarnings(page + 1);
+    }
+  };
+
+  const formatAmount = (amount: number): string => {
+    return amount > 0 ? `+${amount.toLocaleString()}` : amount.toLocaleString();
+  };
+
+  const getEarningIcon = (type: string): string => {
+    return EARNING_ICONS[type] || '💎';
+  };
+
+  const getRelativeDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   return (
     <View style={styles.container}>
@@ -43,41 +125,97 @@ export default function EarningsScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Summary Card */}
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>This Week</Text>
-              <Text style={styles.summaryValue}>+2,840</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>This Month</Text>
-              <Text style={styles.summaryValue}>+8,450</Text>
-            </View>
+        {isLoading && !isRefreshing ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={PRIVE_COLORS.gold.primary} />
+            <Text style={styles.loadingText}>Loading earnings...</Text>
           </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchEarnings(1)}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={PRIVE_COLORS.gold.primary}
+              />
+            }
+            onScroll={({ nativeEvent }) => {
+              const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+              const isNearEnd = layoutMeasurement.height + contentOffset.y >= contentSize.height - 100;
+              if (isNearEnd && hasMore && !isLoading) {
+                handleLoadMore();
+              }
+            }}
+            scrollEventThrottle={400}
+          >
+            {/* Summary Card */}
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>This Week</Text>
+                <Text style={styles.summaryValue}>{formatAmount(summary.thisWeek)}</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>This Month</Text>
+                <Text style={styles.summaryValue}>{formatAmount(summary.thisMonth)}</Text>
+              </View>
+            </View>
 
-          {/* Earnings List */}
-          <View style={styles.listCard}>
-            <Text style={styles.sectionTitle}>Recent Earnings</Text>
-            {EARNINGS_DATA.map((item) => (
-              <View key={item.id} style={styles.earningRow}>
-                <View style={styles.earningIcon}>
-                  <Text style={styles.earningEmoji}>
-                    {item.type === 'campaign' ? '📢' :
-                     item.type === 'purchase' ? '🛍️' :
-                     item.type === 'referral' ? '👥' : '✍️'}
+            {/* All-time earnings */}
+            <View style={styles.allTimeCard}>
+              <Text style={styles.allTimeLabel}>All-Time Earnings</Text>
+              <Text style={styles.allTimeValue}>{summary.allTime.toLocaleString()} coins</Text>
+            </View>
+
+            {/* Earnings List */}
+            <View style={styles.listCard}>
+              <Text style={styles.sectionTitle}>Recent Earnings</Text>
+              {earnings.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyIcon}>📊</Text>
+                  <Text style={styles.emptyText}>No earnings yet</Text>
+                  <Text style={styles.emptySubtext}>
+                    Start earning coins through purchases, referrals, and campaigns!
                   </Text>
                 </View>
-                <View style={styles.earningInfo}>
-                  <Text style={styles.earningTitle}>{item.title}</Text>
-                  <Text style={styles.earningDate}>{item.date}</Text>
-                </View>
-                <Text style={styles.earningAmount}>{item.amount}</Text>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
+              ) : (
+                earnings.map((item, index) => (
+                  <View
+                    key={item.id}
+                    style={[
+                      styles.earningRow,
+                      index === earnings.length - 1 && styles.earningRowLast
+                    ]}
+                  >
+                    <View style={styles.earningIcon}>
+                      <Text style={styles.earningEmoji}>{getEarningIcon(item.type)}</Text>
+                    </View>
+                    <View style={styles.earningInfo}>
+                      <Text style={styles.earningTitle}>{item.description}</Text>
+                      <Text style={styles.earningDate}>{getRelativeDate(item.createdAt)}</Text>
+                    </View>
+                    <Text style={styles.earningAmount}>{formatAmount(item.amount)}</Text>
+                  </View>
+                ))
+              )}
+
+              {hasMore && earnings.length > 0 && (
+                <TouchableOpacity style={styles.loadMoreButton} onPress={handleLoadMore}>
+                  <Text style={styles.loadMoreText}>Load More</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </ScrollView>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -115,6 +253,39 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: PRIVE_SPACING.xl,
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: PRIVE_SPACING.md,
+    fontSize: 14,
+    color: PRIVE_COLORS.text.tertiary,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: PRIVE_SPACING.xl,
+  },
+  errorText: {
+    fontSize: 14,
+    color: PRIVE_COLORS.status.error,
+    textAlign: 'center',
+    marginBottom: PRIVE_SPACING.lg,
+  },
+  retryButton: {
+    paddingHorizontal: PRIVE_SPACING.xl,
+    paddingVertical: PRIVE_SPACING.md,
+    backgroundColor: PRIVE_COLORS.gold.primary,
+    borderRadius: PRIVE_RADIUS.lg,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: PRIVE_COLORS.background.primary,
+  },
   summaryCard: {
     flexDirection: 'row',
     backgroundColor: PRIVE_COLORS.background.card,
@@ -122,7 +293,7 @@ const styles = StyleSheet.create({
     padding: PRIVE_SPACING.xl,
     borderWidth: 1,
     borderColor: PRIVE_COLORS.border.goldMuted,
-    marginBottom: PRIVE_SPACING.xl,
+    marginBottom: PRIVE_SPACING.lg,
   },
   summaryItem: {
     flex: 1,
@@ -141,6 +312,23 @@ const styles = StyleSheet.create({
   summaryDivider: {
     width: 1,
     backgroundColor: PRIVE_COLORS.transparent.white10,
+  },
+  allTimeCard: {
+    backgroundColor: PRIVE_COLORS.transparent.gold10,
+    borderRadius: PRIVE_RADIUS.lg,
+    padding: PRIVE_SPACING.lg,
+    alignItems: 'center',
+    marginBottom: PRIVE_SPACING.xl,
+  },
+  allTimeLabel: {
+    fontSize: 12,
+    color: PRIVE_COLORS.text.tertiary,
+    marginBottom: PRIVE_SPACING.xs,
+  },
+  allTimeValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: PRIVE_COLORS.gold.primary,
   },
   listCard: {
     backgroundColor: PRIVE_COLORS.background.card,
@@ -162,6 +350,9 @@ const styles = StyleSheet.create({
     paddingVertical: PRIVE_SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: PRIVE_COLORS.transparent.white08,
+  },
+  earningRowLast: {
+    borderBottomWidth: 0,
   },
   earningIcon: {
     width: 40,
@@ -190,5 +381,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: PRIVE_COLORS.status.success,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: PRIVE_SPACING.xxl,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: PRIVE_SPACING.md,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: PRIVE_COLORS.text.primary,
+    marginBottom: PRIVE_SPACING.sm,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: PRIVE_COLORS.text.tertiary,
+    textAlign: 'center',
+    paddingHorizontal: PRIVE_SPACING.lg,
+  },
+  loadMoreButton: {
+    alignItems: 'center',
+    paddingVertical: PRIVE_SPACING.lg,
+    marginTop: PRIVE_SPACING.md,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    color: PRIVE_COLORS.gold.primary,
+    fontWeight: '500',
   },
 });

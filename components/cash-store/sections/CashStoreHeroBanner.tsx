@@ -181,7 +181,7 @@ const CashStoreHeroBanner: React.FC<CashStoreHeroBannerProps> = ({
           ]}
         >
           <LinearGradient
-            colors={item.gradientColors || ['#FF9F1C', '#F77F00']}
+            colors={item.gradientColors || ['#FFF4E6', '#FFF8F0', '#FFFBF5']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.bannerCard}
@@ -231,11 +231,11 @@ const CashStoreHeroBanner: React.FC<CashStoreHeroBannerProps> = ({
             {/* Content */}
             <View style={styles.bannerContent}>
               <View style={styles.textContainer}>
-                <Text style={[styles.title, { color: item.textColor }]}>
+                <Text style={[styles.title, { color: item.textColor || '#2D3748' }]}>
                   {item.title}
                 </Text>
                 {item.subtitle && (
-                  <Text style={[styles.subtitle, { color: item.textColor }]}>
+                  <Text style={[styles.subtitle, { color: item.textColor || '#4A5568' }]}>
                     {item.subtitle}
                   </Text>
                 )}
@@ -257,7 +257,7 @@ const CashStoreHeroBanner: React.FC<CashStoreHeroBannerProps> = ({
               {/* Icon/Image */}
               <View style={styles.iconContainer}>
                 <View style={styles.iconBackground}>
-                  <Ionicons name="cart" size={44} color="rgba(255,255,255,0.9)" />
+                  <Ionicons name="cart" size={44} color="#D97706" />
                 </View>
               </View>
             </View>
@@ -367,15 +367,17 @@ const styles = StyleSheet.create({
     minHeight: 180,
     position: 'relative',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F5E6D3',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 16,
+        shadowColor: '#E5D5C0',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 8,
+        elevation: 4,
       },
     }),
   },
@@ -395,7 +397,7 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,245,230,0.6)',
   },
   decorativeCircle2: {
     position: 'absolute',
@@ -404,7 +406,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,245,230,0.5)',
   },
   decorativeCircle3: {
     position: 'absolute',
@@ -413,7 +415,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,245,230,0.7)',
   },
   badge: {
     position: 'absolute',
@@ -488,13 +490,13 @@ const styles = StyleSheet.create({
   ctaText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#F97316',
+    color: '#D97706',
   },
   ctaArrowContainer: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F97316',
+    backgroundColor: '#D97706',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -508,11 +510,22 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: '#F5E6D3',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#E5D5C0',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   pagination: {
     flexDirection: 'row',
@@ -532,7 +545,7 @@ const styles = StyleSheet.create({
   },
   paginationDotActive: {
     width: 24,
-    backgroundColor: '#F97316',
+    backgroundColor: '#D97706',
   },
   skeletonBanner: {
     marginHorizontal: 16,

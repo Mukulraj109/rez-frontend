@@ -46,9 +46,16 @@ const DailySpinCard: React.FC<DailySpinCardProps> = ({
         style={styles.cardGradient}
       >
         <View style={styles.glassOverlay}>
-          {/* Icon */}
-          <View style={styles.iconContainer}>
-            <Ionicons name="disc" size={24} color={COLORS.white} />
+          {/* Top Row: Icon and Badge */}
+          <View style={styles.topRow}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="disc" size={24} color={COLORS.white} />
+            </View>
+            <View style={[styles.badge, canSpin ? styles.badgeActive : styles.badgeInactive]}>
+              <Text style={styles.badgeText}>
+                {spinsRemaining}/{maxSpins}
+              </Text>
+            </View>
           </View>
 
           {/* Content */}
@@ -57,22 +64,19 @@ const DailySpinCard: React.FC<DailySpinCardProps> = ({
             <Text style={styles.cardSubtitle}>Win up to 500 coins</Text>
           </View>
 
-          {/* Spin Count Badge */}
-          <View style={styles.badgeContainer}>
-            <View style={[styles.badge, canSpin ? styles.badgeActive : styles.badgeInactive]}>
-              <Text style={styles.badgeText}>
-                {spinsRemaining}/{maxSpins}
-              </Text>
-            </View>
-          </View>
-
           {/* Action Indicator */}
-          {canSpin && (
-            <View style={styles.actionIndicator}>
-              <Text style={styles.actionText}>Spin Now!</Text>
-              <Ionicons name="arrow-forward" size={14} color={COLORS.white} />
-            </View>
-          )}
+          <View style={styles.actionContainer}>
+            {canSpin ? (
+              <View style={styles.actionIndicator}>
+                <Text style={styles.actionText}>Spin Now!</Text>
+                <Ionicons name="arrow-forward" size={14} color={COLORS.white} />
+              </View>
+            ) : (
+              <View style={styles.actionIndicatorDisabled}>
+                <Text style={styles.actionTextDisabled}>Try Later</Text>
+              </View>
+            )}
+          </View>
         </View>
       </LinearGradient>
     </TouchableOpacity>
@@ -99,6 +103,7 @@ const styles = StyleSheet.create({
   cardGradient: {
     borderRadius: 16,
     overflow: 'hidden',
+    flex: 1,
   },
   glassOverlay: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -107,7 +112,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 16,
-    minHeight: 140,
+    minHeight: 160,
+    justifyContent: 'space-between',
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   iconContainer: {
     width: 44,
@@ -116,12 +128,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   contentContainer: {
     flex: 1,
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   cardTitle: {
     fontSize: 16,
@@ -149,15 +162,10 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.85)',
     marginTop: 2,
   },
-  badgeContainer: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-  },
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   badgeActive: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
@@ -170,21 +178,38 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.white,
   },
+  actionContainer: {
+    marginTop: 'auto',
+  },
   actionIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  actionIndicatorDisabled: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 12,
     alignSelf: 'flex-start',
   },
   actionText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     color: COLORS.white,
+  },
+  actionTextDisabled: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
 });
 

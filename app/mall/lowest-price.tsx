@@ -10,6 +10,7 @@ import {
   StatusBar,
   Platform,
   FlatList,
+  SafeAreaView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,11 +30,11 @@ interface PriceCompareItem {
 }
 
 const CATEGORIES = [
-  { id: 'all', label: 'All' },
-  { id: 'electronics', label: 'Electronics' },
-  { id: 'grocery', label: 'Grocery' },
-  { id: 'fashion', label: 'Fashion' },
-  { id: 'home', label: 'Home' },
+  { id: 'all', label: 'All', color: '#10B981' },
+  { id: 'electronics', label: 'Electronics', color: '#10B981' },
+  { id: 'grocery', label: 'Grocery', color: '#10B981' },
+  { id: 'fashion', label: 'Fashion', color: '#10B981' },
+  { id: 'home', label: 'Home', color: '#10B981' },
 ];
 
 const MOCK_PRODUCTS: PriceCompareItem[] = [
@@ -120,6 +121,7 @@ export default function LowestPricePage() {
     <TouchableOpacity
       style={styles.productCard}
       onPress={() => router.push(`/product/${item.id}` as any)}
+      activeOpacity={0.8}
     >
       <View style={styles.guaranteeBadge}>
         <Ionicons name="shield-checkmark" size={12} color="#FFF" />
@@ -127,12 +129,17 @@ export default function LowestPricePage() {
       </View>
 
       <View style={styles.productHeader}>
-        <View style={styles.productImage}>
-          <ThemedText style={styles.productEmoji}>{item.image}</ThemedText>
+        <View style={styles.productImageContainer}>
+          <View style={styles.productImage}>
+            <ThemedText style={styles.productEmoji}>{item.image}</ThemedText>
+          </View>
         </View>
         <View style={styles.productInfo}>
-          <ThemedText style={styles.productName}>{item.name}</ThemedText>
-          <ThemedText style={styles.lowestStore}>at {item.lowestStore}</ThemedText>
+          <ThemedText style={styles.productName} numberOfLines={2}>{item.name}</ThemedText>
+          <View style={styles.storeBadge}>
+            <Ionicons name="storefront" size={10} color={Colors.success} />
+            <ThemedText style={styles.lowestStore}>{item.lowestStore}</ThemedText>
+          </View>
         </View>
       </View>
 
@@ -154,12 +161,22 @@ export default function LowestPricePage() {
 
       <View style={styles.savingsContainer}>
         <View style={styles.savingsBadge}>
-          <Ionicons name="trending-down" size={14} color={Colors.success} />
-          <ThemedText style={styles.savingsText}>Save {item.savings}</ThemedText>
+          <LinearGradient
+            colors={['#10B981', '#059669']}
+            style={styles.savingsBadgeGradient}
+          >
+            <Ionicons name="trending-down" size={14} color="#FFF" />
+            <ThemedText style={styles.savingsText}>Save {item.savings}</ThemedText>
+          </LinearGradient>
         </View>
-        <TouchableOpacity style={styles.shopButton}>
-          <ThemedText style={styles.shopButtonText}>Shop Now</ThemedText>
-          <Ionicons name="arrow-forward" size={14} color="#FFF" />
+        <TouchableOpacity style={styles.shopButton} activeOpacity={0.8}>
+          <LinearGradient
+            colors={['#00C06A', '#00A85A']}
+            style={styles.shopButtonGradient}
+          >
+            <ThemedText style={styles.shopButtonText}>Shop Now</ThemedText>
+            <Ionicons name="arrow-forward" size={14} color="#FFF" />
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -167,65 +184,103 @@ export default function LowestPricePage() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.success} />
-
-      <LinearGradient
-        colors={[Colors.success, '#059669']}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Lowest Prices</ThemedText>
-          <View style={styles.placeholder} />
-        </View>
-
-        <View style={styles.heroSection}>
-          <View style={styles.heroIcon}>
-            <Ionicons name="pricetag" size={32} color="#FFF" />
-          </View>
-          <ThemedText style={styles.heroTitle}>Price Match Guarantee</ThemedText>
-          <ThemedText style={styles.heroSubtitle}>
-            We compare prices across stores to find you the best deals
-          </ThemedText>
-        </View>
-
-        <View style={styles.savingsCard}>
-          <ThemedText style={styles.savingsCardLabel}>Total Savings Available</ThemedText>
-          <ThemedText style={styles.savingsCardValue}>₹{totalSavings.toLocaleString()}</ThemedText>
-        </View>
-      </LinearGradient>
-
-      <View style={styles.categoryTabs}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {CATEGORIES.map(category => (
-            <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.categoryTab,
-                selectedCategory === category.id && styles.categoryTabActive,
-              ]}
-              onPress={() => setSelectedCategory(category.id)}
+      <StatusBar barStyle="light-content" backgroundColor="#10B981" />
+      
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        {/* Modern Gradient Header */}
+        <LinearGradient
+          colors={['#10B981', '#059669', '#047857']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <View style={styles.headerTop}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => router.back()}
+              activeOpacity={0.7}
             >
-              <ThemedText style={[
-                styles.categoryTabText,
-                selectedCategory === category.id && styles.categoryTabTextActive,
-              ]}>
-                {category.label}
-              </ThemedText>
+              <View style={styles.backButtonInner}>
+                <Ionicons name="chevron-back" size={22} color="#10B981" />
+              </View>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            
+            <View style={styles.headerTitleContainer}>
+              <ThemedText style={styles.headerTitle}>Lowest Prices</ThemedText>
+            </View>
+            
+            <View style={styles.placeholder} />
+          </View>
 
-      <FlatList
-        data={filteredProducts}
-        renderItem={renderProduct}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+          <View style={styles.heroSection}>
+            <View style={styles.heroIconContainer}>
+              <Ionicons name="pricetag" size={32} color="#FFF" />
+            </View>
+            <ThemedText style={styles.heroTitle}>Price Match Guarantee</ThemedText>
+            <ThemedText style={styles.heroSubtitle}>
+              We compare prices across stores to find you the best deals
+            </ThemedText>
+          </View>
+
+          <View style={styles.savingsCard}>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
+              style={styles.savingsCardGradient}
+            >
+              <ThemedText style={styles.savingsCardLabel}>Total Savings Available</ThemedText>
+              <ThemedText style={styles.savingsCardValue}>₹{totalSavings.toLocaleString()}</ThemedText>
+            </LinearGradient>
+          </View>
+        </LinearGradient>
+
+        {/* Enhanced Category Tabs */}
+        <View style={styles.categoryTabsContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryTabs}
+          >
+            {CATEGORIES.map((category) => {
+              const isActive = selectedCategory === category.id;
+              return (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryTab,
+                    isActive && styles.categoryTabActive,
+                    isActive && { backgroundColor: category.color },
+                  ]}
+                  onPress={() => setSelectedCategory(category.id)}
+                  activeOpacity={0.8}
+                >
+                  <ThemedText style={[
+                    styles.categoryTabText,
+                    isActive && styles.categoryTabTextActive,
+                  ]}>
+                    {category.label}
+                  </ThemedText>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Product List */}
+        <FlatList
+          data={filteredProducts}
+          renderItem={renderProduct}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="search-outline" size={64} color={Colors.text.tertiary} />
+              <ThemedText style={styles.emptyText}>No products found</ThemedText>
+              <ThemedText style={styles.emptySubtext}>Try selecting a different category</ThemedText>
+            </View>
+          }
+        />
+      </SafeAreaView>
     </View>
   );
 }
@@ -233,220 +288,323 @@ export default function LowestPricePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: '#F9FAFB',
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight || 40,
-    paddingBottom: Spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 8 : 12,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    ...Shadows.medium,
   },
-  headerContent: {
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   backButton: {
-    padding: Spacing.sm,
-    marginRight: Spacing.sm,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backButtonInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.subtle,
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    flex: 1,
-    ...Typography.h3,
+    fontSize: 20,
+    fontWeight: '700',
     color: '#FFF',
-    textAlign: 'center',
-    marginRight: 40,
+    letterSpacing: -0.5,
   },
   placeholder: {
     width: 40,
   },
   heroSection: {
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    marginBottom: 16,
   },
-  heroIcon: {
+  heroIconContainer: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: 12,
+    ...Shadows.subtle,
   },
   heroTitle: {
-    ...Typography.h2,
+    fontSize: 22,
+    fontWeight: '800',
     color: '#FFF',
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   heroSubtitle: {
-    ...Typography.body,
-    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.95)',
     textAlign: 'center',
+    fontWeight: '500',
   },
   savingsCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
+    marginHorizontal: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Shadows.subtle,
+  },
+  savingsCardGradient: {
+    padding: 16,
     alignItems: 'center',
   },
   savingsCardLabel: {
-    ...Typography.bodySmall,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 4,
+    fontWeight: '500',
   },
   savingsCardValue: {
-    ...Typography.h1,
+    fontSize: 32,
+    fontWeight: '800',
     color: '#FFF',
+    letterSpacing: -1,
+  },
+  categoryTabsContainer: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   categoryTabs: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.base,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
   },
   categoryTab: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.background.primary,
-    marginRight: Spacing.sm,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    marginRight: 8,
+    minHeight: 40,
     ...Shadows.subtle,
   },
   categoryTabActive: {
-    backgroundColor: Colors.success,
+    backgroundColor: '#10B981',
+    ...Shadows.medium,
   },
   categoryTabText: {
-    ...Typography.label,
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.text.secondary,
   },
   categoryTabTextActive: {
     color: '#FFF',
+    fontWeight: '700',
   },
   listContent: {
-    paddingHorizontal: Spacing.base,
-    paddingBottom: Spacing['3xl'],
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 100,
   },
   productCard: {
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
-    marginBottom: Spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
     position: 'relative',
     ...Shadows.subtle,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   guaranteeBadge: {
     position: 'absolute',
     top: 0,
-    right: Spacing.md,
+    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.success,
-    borderBottomLeftRadius: BorderRadius.sm,
-    borderBottomRightRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
+    backgroundColor: '#10B981',
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    zIndex: 1,
+    ...Shadows.subtle,
   },
   guaranteeText: {
-    ...Typography.caption,
-    color: '#FFF',
     fontSize: 10,
+    color: '#FFF',
     fontWeight: '700',
+    letterSpacing: 0.5,
   },
   productHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-    paddingTop: Spacing.sm,
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    paddingTop: 8,
+  },
+  productImageContainer: {
+    marginRight: 12,
   },
   productImage: {
-    width: 60,
-    height: 60,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.gray[100],
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Spacing.md,
+    borderWidth: 2,
+    borderColor: '#F3F4F6',
   },
   productEmoji: {
-    fontSize: 30,
+    fontSize: 32,
   },
   productInfo: {
     flex: 1,
   },
   productName: {
-    ...Typography.label,
+    fontSize: 16,
+    fontWeight: '700',
     color: Colors.text.primary,
+    marginBottom: 6,
+    lineHeight: 22,
+  },
+  storeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   lowestStore: {
-    ...Typography.bodySmall,
-    color: Colors.success,
+    fontSize: 11,
+    color: '#10B981',
+    fontWeight: '600',
   },
   priceComparison: {
     flexDirection: 'row',
-    marginBottom: Spacing.md,
-    paddingBottom: Spacing.md,
+    marginBottom: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border.light,
+    borderBottomColor: '#F3F4F6',
+    gap: 12,
   },
   lowestPriceContainer: {
     flex: 1,
-    backgroundColor: Colors.success + '15',
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginRight: Spacing.md,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#10B98120',
   },
   lowestPriceLabel: {
-    ...Typography.caption,
-    color: Colors.success,
-    marginBottom: Spacing.xs,
+    fontSize: 11,
+    color: '#10B981',
+    marginBottom: 4,
+    fontWeight: '600',
   },
   lowestPrice: {
-    ...Typography.h3,
-    color: Colors.success,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#10B981',
+    letterSpacing: -0.5,
   },
   otherPricesContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
   otherPriceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
+    paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border.light,
+    borderBottomColor: '#F3F4F6',
   },
   otherStore: {
-    ...Typography.bodySmall,
+    fontSize: 12,
     color: Colors.text.tertiary,
+    fontWeight: '500',
   },
   otherPrice: {
-    ...Typography.body,
+    fontSize: 13,
     color: Colors.text.secondary,
     textDecorationLine: 'line-through',
+    fontWeight: '500',
   },
   savingsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
   },
   savingsBadge: {
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  savingsBadgeGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   savingsText: {
-    ...Typography.label,
-    color: Colors.success,
+    fontSize: 13,
+    color: '#FFF',
+    fontWeight: '700',
   },
   shopButton: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    ...Shadows.subtle,
+  },
+  shopButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
-    backgroundColor: Colors.primary[600],
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   shopButtonText: {
-    ...Typography.label,
+    fontSize: 14,
     color: '#FFF',
+    fontWeight: '700',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: Colors.text.tertiary,
   },
 });

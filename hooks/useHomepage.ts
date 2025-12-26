@@ -216,6 +216,8 @@ export function useHomepage(): UseHomepageDataResult {
         sectionData = await homepageDataService.getNewArrivalsSection();
       } else if (sectionId === 'trending_stores') {
         sectionData = await homepageDataService.getTrendingStoresSection();
+      } else if (sectionId === 'brand_partnerships') {
+        sectionData = await homepageDataService.getBrandPartnershipsSection();
       } else {
         // Use fallback for other sections
         sectionData = await fetchSectionData(sectionId);
@@ -347,6 +349,11 @@ export function useTopStores() {
 // New Arrivals Section Hook
 export function useNewArrivals() {
   return useHomepageSection('new_arrivals');
+}
+
+// Brand Partnerships Section Hook
+export function useBrandPartnerships() {
+  return useHomepageSection('brand_partnerships');
 }
 
 // Helper hook for navigation actions

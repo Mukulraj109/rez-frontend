@@ -10,6 +10,8 @@ import {
   StatusBar,
   Platform,
   FlatList,
+  SafeAreaView,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +30,7 @@ interface AllianceStore {
 }
 
 const ALLIANCES = [
-  { id: 'all', name: 'All' },
+  { id: 'all', name: 'All', color: '#00C06A' },
   { id: 'tata', name: 'Tata', color: '#00539F' },
   { id: 'reliance', name: 'Reliance', color: '#0055A5' },
   { id: 'aditya', name: 'Aditya Birla', color: '#C7161C' },
@@ -61,26 +63,35 @@ export default function AllianceStorePage() {
     <TouchableOpacity
       style={styles.storeCard}
       onPress={() => router.push(`/store/${item.id}` as any)}
+      activeOpacity={0.8}
     >
       <View style={[styles.allianceBadge, { backgroundColor: getAllianceColor(item.alliance) + '20' }]}>
         <ThemedText style={[styles.allianceText, { color: getAllianceColor(item.alliance) }]}>
           {ALLIANCES.find(a => a.id === item.alliance)?.name}
         </ThemedText>
       </View>
-      <View style={styles.storeImage}>
-        <ThemedText style={styles.storeEmoji}>{item.image}</ThemedText>
+      
+      <View style={styles.storeImageContainer}>
+        <View style={styles.storeImage}>
+          <ThemedText style={styles.storeEmoji}>{item.image}</ThemedText>
+        </View>
       </View>
-      <ThemedText style={styles.storeName}>{item.name}</ThemedText>
-      <ThemedText style={styles.storeCategory}>{item.category}</ThemedText>
+      
+      <ThemedText style={styles.storeName} numberOfLines={1}>{item.name}</ThemedText>
+      <ThemedText style={styles.storeCategory} numberOfLines={1}>{item.category}</ThemedText>
 
       <View style={styles.benefitsContainer}>
         <View style={styles.benefitRow}>
-          <Ionicons name="wallet" size={14} color={Colors.success} />
-          <ThemedText style={styles.benefitText}>{item.cashback} Cashback</ThemedText>
+          <View style={styles.benefitIconContainer}>
+            <Ionicons name="wallet" size={12} color={Colors.success} />
+          </View>
+          <ThemedText style={styles.benefitText} numberOfLines={1}>{item.cashback} Cashback</ThemedText>
         </View>
         <View style={styles.benefitRow}>
-          <Ionicons name="star" size={14} color={Colors.gold} />
-          <ThemedText style={styles.benefitText}>{item.partnerPoints}</ThemedText>
+          <View style={styles.benefitIconContainer}>
+            <Ionicons name="star" size={12} color={Colors.gold} />
+          </View>
+          <ThemedText style={styles.benefitText} numberOfLines={1}>{item.partnerPoints}</ThemedText>
         </View>
       </View>
     </TouchableOpacity>
@@ -88,74 +99,120 @@ export default function AllianceStorePage() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary[600]} />
-
-      <LinearGradient
-        colors={[Colors.primary[600], Colors.secondary[700]]}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Alliance Stores</ThemedText>
-          <View style={styles.placeholder} />
-        </View>
-
-        <View style={styles.heroSection}>
-          <Ionicons name="link" size={40} color="#FFF" />
-          <ThemedText style={styles.heroTitle}>Partner Benefits</ThemedText>
-          <ThemedText style={styles.heroSubtitle}>
-            Earn ReZ Coins + Partner Points together
-          </ThemedText>
-        </View>
-      </LinearGradient>
-
-      <View style={styles.allianceTabs}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {ALLIANCES.map(alliance => (
-            <TouchableOpacity
-              key={alliance.id}
-              style={[
-                styles.allianceTab,
-                selectedAlliance === alliance.id && styles.allianceTabActive,
-                selectedAlliance === alliance.id && alliance.color && { backgroundColor: alliance.color },
-              ]}
-              onPress={() => setSelectedAlliance(alliance.id)}
+      <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
+      
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        {/* Modern Gradient Header */}
+        <LinearGradient
+          colors={['#00C06A', '#00A85A', '#00996B']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <View style={styles.headerTop}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => router.back()}
+              activeOpacity={0.7}
             >
-              <ThemedText style={[
-                styles.allianceTabText,
-                selectedAlliance === alliance.id && styles.allianceTabTextActive,
-              ]}>
-                {alliance.name}
-              </ThemedText>
+              <View style={styles.backButtonInner}>
+                <Ionicons name="chevron-back" size={22} color="#00C06A" />
+              </View>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <FlatList
-        data={filteredStores}
-        renderItem={renderStore}
-        keyExtractor={item => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.infoCard}>
-            <View style={styles.infoIcon}>
-              <Ionicons name="gift" size={24} color={Colors.primary[600]} />
+            
+            <View style={styles.headerTitleContainer}>
+              <ThemedText style={styles.headerTitle}>Alliance Stores</ThemedText>
             </View>
-            <View style={styles.infoContent}>
-              <ThemedText style={styles.infoTitle}>Double Rewards</ThemedText>
-              <ThemedText style={styles.infoText}>
-                Shop at alliance stores to earn both ReZ Coins and partner loyalty points
-              </ThemedText>
-            </View>
+            
+            <View style={styles.placeholder} />
           </View>
-        }
-      />
+
+          <View style={styles.heroSection}>
+            <View style={styles.heroIconContainer}>
+              <Ionicons name="link" size={32} color="#FFF" />
+            </View>
+            <ThemedText style={styles.heroTitle}>Partner Benefits</ThemedText>
+            <ThemedText style={styles.heroSubtitle}>
+              Earn ReZ Coins + Partner Points together
+            </ThemedText>
+          </View>
+        </LinearGradient>
+
+        {/* Enhanced Filter Tabs */}
+        <View style={styles.allianceTabsContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.allianceTabs}
+          >
+            {ALLIANCES.map((alliance, index) => {
+              const isActive = selectedAlliance === alliance.id;
+              return (
+                <TouchableOpacity
+                  key={alliance.id}
+                  style={[
+                    styles.allianceTab,
+                    isActive && styles.allianceTabActive,
+                    isActive && { backgroundColor: alliance.color },
+                  ]}
+                  onPress={() => setSelectedAlliance(alliance.id)}
+                  activeOpacity={0.8}
+                >
+                  <ThemedText style={[
+                    styles.allianceTabText,
+                    isActive && styles.allianceTabTextActive,
+                  ]}>
+                    {alliance.name}
+                  </ThemedText>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Store Grid */}
+        <FlatList
+          data={filteredStores}
+          renderItem={renderStore}
+          keyExtractor={item => item.id}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <View style={styles.infoCard}>
+              <LinearGradient
+                colors={['#E6F7F0', '#F0FDF4']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.infoCardGradient}
+              >
+                <View style={styles.infoIconContainer}>
+                  <LinearGradient
+                    colors={['#00C06A', '#00A85A']}
+                    style={styles.infoIconGradient}
+                  >
+                    <Ionicons name="gift" size={20} color="#FFF" />
+                  </LinearGradient>
+                </View>
+                <View style={styles.infoContent}>
+                  <ThemedText style={styles.infoTitle}>Double Rewards</ThemedText>
+                  <ThemedText style={styles.infoText}>
+                    Shop at alliance stores to earn both ReZ Coins and partner loyalty points
+                  </ThemedText>
+                </View>
+              </LinearGradient>
+            </View>
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="storefront-outline" size={64} color={Colors.text.tertiary} />
+              <ThemedText style={styles.emptyText}>No stores found</ThemedText>
+              <ThemedText style={styles.emptySubtext}>Try selecting a different alliance</ThemedText>
+            </View>
+          }
+        />
+      </SafeAreaView>
     </View>
   );
 }
@@ -163,160 +220,264 @@ export default function AllianceStorePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background.secondary,
+    backgroundColor: '#F9FAFB',
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight || 40,
-    paddingBottom: Spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 8 : 12,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    ...Shadows.medium,
   },
-  headerContent: {
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   backButton: {
-    padding: Spacing.sm,
-    marginRight: Spacing.sm,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backButtonInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.subtle,
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    flex: 1,
-    ...Typography.h3,
+    fontSize: 20,
+    fontWeight: '700',
     color: '#FFF',
-    textAlign: 'center',
-    marginRight: 40,
+    letterSpacing: -0.5,
   },
   placeholder: {
     width: 40,
   },
   heroSection: {
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  heroIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    ...Shadows.subtle,
   },
   heroTitle: {
-    ...Typography.h2,
+    fontSize: 22,
+    fontWeight: '800',
     color: '#FFF',
-    marginTop: Spacing.md,
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   heroSubtitle: {
-    ...Typography.body,
-    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.95)',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  allianceTabsContainer: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   allianceTabs: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.base,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
   },
   allianceTab: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    backgroundColor: Colors.background.primary,
-    marginRight: Spacing.sm,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    marginRight: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+    minHeight: 40,
     ...Shadows.subtle,
   },
   allianceTabActive: {
     backgroundColor: Colors.primary[600],
+    ...Shadows.medium,
   },
   allianceTabText: {
-    ...Typography.label,
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.text.secondary,
   },
   allianceTabTextActive: {
     color: '#FFF',
+    fontWeight: '700',
   },
   listContent: {
-    paddingHorizontal: Spacing.base,
-    paddingBottom: Spacing['3xl'],
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 100,
   },
   row: {
     justifyContent: 'space-between',
+    gap: 12,
   },
   infoCard: {
-    flexDirection: 'row',
-    backgroundColor: Colors.primary[50],
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
-    marginBottom: Spacing.lg,
-    gap: Spacing.md,
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Shadows.subtle,
   },
-  infoIcon: {
+  infoCardGradient: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+  },
+  infoIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.primary[100],
+    overflow: 'hidden',
+  },
+  infoIconGradient: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
   infoContent: {
     flex: 1,
+    justifyContent: 'center',
   },
   infoTitle: {
-    ...Typography.label,
-    color: Colors.primary[600],
-    marginBottom: Spacing.xs,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#00C06A',
+    marginBottom: 4,
   },
   infoText: {
-    ...Typography.bodySmall,
+    fontSize: 13,
     color: Colors.text.secondary,
+    lineHeight: 18,
   },
   storeCard: {
     width: '48%',
-    backgroundColor: Colors.background.primary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
     alignItems: 'center',
     position: 'relative',
     ...Shadows.subtle,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   allianceBadge: {
     position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+    top: 12,
+    right: 12,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    zIndex: 1,
   },
   allianceText: {
-    ...Typography.caption,
     fontSize: 9,
     fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  storeImageContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 12,
   },
   storeImage: {
-    width: 64,
-    height: 64,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.gray[100],
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.md,
-    marginTop: Spacing.sm,
+    borderWidth: 2,
+    borderColor: '#F3F4F6',
   },
   storeEmoji: {
-    fontSize: 32,
+    fontSize: 36,
   },
   storeName: {
-    ...Typography.label,
+    fontSize: 15,
+    fontWeight: '700',
     color: Colors.text.primary,
     textAlign: 'center',
+    marginBottom: 4,
+    width: '100%',
   },
   storeCategory: {
-    ...Typography.caption,
+    fontSize: 12,
     color: Colors.text.tertiary,
-    marginBottom: Spacing.md,
+    marginBottom: 12,
+    textAlign: 'center',
+    width: '100%',
   },
   benefitsContainer: {
     width: '100%',
-    gap: Spacing.xs,
+    gap: 6,
+    marginTop: 'auto',
   },
   benefitRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xs,
+    gap: 6,
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  benefitIconContainer: {
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   benefitText: {
-    ...Typography.caption,
+    fontSize: 11,
     color: Colors.text.secondary,
+    fontWeight: '600',
+    flex: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: Colors.text.tertiary,
   },
 });

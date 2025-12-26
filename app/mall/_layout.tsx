@@ -83,6 +83,22 @@ export default function MallLayout() {
           headerTitle: 'Exclusive Offers',
         }}
       />
+
+      {/* Alliance Store Page - Custom header */}
+      <Stack.Screen
+        name="alliance-store"
+        options={{
+          headerShown: false,
+        }}
+      />
+
+      {/* Lowest Price Page - Custom header */}
+      <Stack.Screen
+        name="lowest-price"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

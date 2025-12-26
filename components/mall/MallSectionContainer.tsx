@@ -418,12 +418,13 @@ const styles = StyleSheet.create({
   },
   quickActionsSection: {
     paddingHorizontal: 16,
+    paddingTop: 16,
     marginBottom: 20,
   },
   quickActionsTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: '800',
+    color: '#111827',
     marginBottom: 12,
   },
   quickActionsRow: {

@@ -21,8 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { PRIVE_COLORS, PRIVE_SPACING, PRIVE_RADIUS } from './priveTheme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BANNER_WIDTH = SCREEN_WIDTH - 56;
-const BANNER_HEIGHT = 210;
+const BANNER_WIDTH = SCREEN_WIDTH - 20; // 10px padding on each side
+const BANNER_HEIGHT = 170; // Compact height
 const AUTO_SCROLL_INTERVAL = 4500;
 
 interface PriveBanner {
@@ -123,7 +123,7 @@ const PriveHeroBanner: React.FC<PriveHeroBannerProps> = ({
 
   const handleScroll = useCallback((event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / (BANNER_WIDTH + 14));
+    const index = Math.round(offsetX / (BANNER_WIDTH + 10));
     if (index !== currentIndex && index >= 0 && index < banners.length) {
       setCurrentIndex(index);
     }
@@ -286,12 +286,12 @@ const PriveHeroBanner: React.FC<PriveHeroBannerProps> = ({
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        snapToInterval={BANNER_WIDTH + 14}
+        snapToInterval={BANNER_WIDTH + 10}
         decelerationRate="fast"
         contentContainerStyle={styles.listContent}
         getItemLayout={(_, index) => ({
-          length: BANNER_WIDTH + 14,
-          offset: (BANNER_WIDTH + 14) * index,
+          length: BANNER_WIDTH + 10,
+          offset: (BANNER_WIDTH + 10) * index,
           index,
         })}
       />
@@ -302,16 +302,16 @@ const PriveHeroBanner: React.FC<PriveHeroBannerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: PRIVE_SPACING.lg,
+    paddingVertical: 8,
   },
   listContent: {
-    paddingHorizontal: 28,
-    paddingRight: 40,
+    paddingHorizontal: 10,
+    paddingRight: 16,
   },
   bannerWrapper: {
     width: BANNER_WIDTH,
     height: BANNER_HEIGHT,
-    marginRight: 14,
+    marginRight: 10,
   },
   glowOuter: {
     position: 'absolute',
@@ -387,37 +387,37 @@ const styles = StyleSheet.create({
   bannerContent: {
     flex: 1,
     flexDirection: 'row',
-    padding: PRIVE_SPACING.xl,
-    paddingTop: PRIVE_SPACING.xxl,
-    paddingRight: PRIVE_SPACING.xl,
-    paddingBottom: PRIVE_SPACING.sm,
+    padding: 16,
+    paddingTop: 18,
+    paddingRight: 16,
+    paddingBottom: 8,
   },
   bannerLeft: {
     flex: 1,
     justifyContent: 'center',
-    paddingRight: PRIVE_SPACING.lg,
+    paddingRight: 12,
   },
   badgeContainer: {
     alignSelf: 'flex-start',
     borderRadius: PRIVE_RADIUS.sm,
     borderWidth: 1,
-    marginBottom: PRIVE_SPACING.sm,
+    marginBottom: 6,
     overflow: 'hidden',
   },
   badgeGradient: {
-    paddingHorizontal: PRIVE_SPACING.md,
-    paddingVertical: PRIVE_SPACING.xs,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     letterSpacing: 1,
   },
   bannerTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: 6,
     letterSpacing: 0,
     ...Platform.select({
       ios: {
@@ -428,24 +428,24 @@ const styles = StyleSheet.create({
     }),
   },
   bannerSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: PRIVE_SPACING.md,
-    lineHeight: 18,
+    marginBottom: 10,
+    lineHeight: 16,
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: PRIVE_RADIUS.full,
     borderWidth: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   ctaText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   statContainer: {
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statCard: {
-    borderRadius: PRIVE_RADIUS.lg,
+    borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
     ...Platform.select({
@@ -469,48 +469,48 @@ const styles = StyleSheet.create({
     }),
   },
   statCardInner: {
-    paddingVertical: PRIVE_SPACING.lg,
-    paddingHorizontal: PRIVE_SPACING.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 85,
+    minWidth: 75,
   },
   statValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 9,
+    fontSize: 8,
     color: 'rgba(255, 255, 255, 0.6)',
-    marginTop: 4,
+    marginTop: 3,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   statCardShadow: {
     position: 'absolute',
-    bottom: -8,
-    left: 10,
-    right: 10,
-    height: 20,
-    borderRadius: 10,
+    bottom: -6,
+    left: 8,
+    right: 8,
+    height: 16,
+    borderRadius: 8,
     opacity: 0.4,
     transform: [{ scaleX: 0.8 }],
   },
   highlightContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: PRIVE_SPACING.lg,
-    paddingBottom: PRIVE_SPACING.md,
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+    gap: 6,
   },
   highlightDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   highlightText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.3,
   },

@@ -19,7 +19,7 @@ export const PriveConciergeCard: React.FC = () => {
   return (
     <TouchableOpacity
       style={styles.container}
-      onPress={() => router.push('/support/concierge' as any)}
+      onPress={() => router.push('/support/chat' as any)}
       activeOpacity={0.8}
     >
       <View style={styles.icon}>

@@ -4,7 +4,7 @@
  * Redesigned offers page with ReZ brand styling
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -12,6 +12,8 @@ import {
   StatusBar,
   Image,
   Dimensions,
+  Share,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,12 +55,28 @@ export default function OffersScreen() {
     }
   }, [authState.isAuthenticated]);
 
+  // Reference to OffersPageContent for refresh
+  const contentRef = useRef<any>(null);
+
   const handleBack = () => {
     router.back();
   };
 
   const handleShare = async () => {
-    // TODO: Implement share functionality
+    try {
+      const result = await Share.share({
+        message: 'Check out amazing offers on ReZ! Get up to 50% off + extra cashback on your favorite stores. Download now!',
+        url: 'https://rez.app/offers',
+        title: 'ReZ Offers',
+      });
+
+      if (result.action === Share.sharedAction) {
+        console.log('Shared successfully');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      Alert.alert('Error', 'Failed to share. Please try again.');
+    }
   };
 
   const handleFavorite = () => {
@@ -66,7 +84,16 @@ export default function OffersScreen() {
   };
 
   const handleRefresh = useCallback(async () => {
-    // TODO: Implement refresh with real API
+    // Refresh wallet balance
+    try {
+      const walletResponse = await walletApi.getBalance();
+      if (walletResponse.success && walletResponse.data) {
+        const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
+        setUserCoins(rezCoin?.amount || 0);
+      }
+    } catch (error) {
+      console.error('Error refreshing wallet balance:', error);
+    }
   }, []);
 
   return (

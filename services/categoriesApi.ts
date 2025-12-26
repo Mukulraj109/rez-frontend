@@ -11,7 +11,7 @@ export interface Category {
   bannerImage?: string;
   type: 'going_out' | 'home_delivery' | 'earn' | 'play' | 'general';
   parentCategory?: string;
-  childCategories?: string[];
+  childCategories?: Category[];
   isActive: boolean;
   sortOrder: number;
   metadata: {
@@ -25,8 +25,37 @@ export interface Category {
   isBestDiscount?: boolean;
   isBestSeller?: boolean;
   maxCashback?: number;
+  vibes?: CategoryVibe[];
+  occasions?: CategoryOccasion[];
+  trendingHashtags?: CategoryHashtag[];
   createdAt: string;
   updatedAt: string;
+}
+
+// Category page data interfaces
+export interface CategoryVibe {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  description: string;
+}
+
+export interface CategoryOccasion {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  tag?: string | null;
+  discount: number;
+}
+
+export interface CategoryHashtag {
+  id: string;
+  tag: string;
+  count: number;
+  color: string;
+  trending: boolean;
 }
 
 export interface CategoryFilters {
@@ -127,6 +156,45 @@ class CategoriesService {
   // Get best seller categories
   async getBestSellerCategories(limit: number = 10): Promise<ApiResponse<Category[]>> {
     return apiClient.get(`${this.baseUrl}/best-seller?limit=${limit}`);
+  }
+
+  // Get category vibes
+  async getCategoryVibes(slug: string): Promise<ApiResponse<{ vibes: CategoryVibe[] }>> {
+    return apiClient.get(`${this.baseUrl}/${slug}/vibes`);
+  }
+
+  // Get category occasions
+  async getCategoryOccasions(slug: string): Promise<ApiResponse<{ occasions: CategoryOccasion[] }>> {
+    return apiClient.get(`${this.baseUrl}/${slug}/occasions`);
+  }
+
+  // Get category hashtags
+  async getCategoryHashtags(slug: string, limit: number = 6): Promise<ApiResponse<{ hashtags: CategoryHashtag[] }>> {
+    return apiClient.get(`${this.baseUrl}/${slug}/hashtags?limit=${limit}`);
+  }
+
+  // Get full category page data (category details + vibes + occasions + hashtags)
+  async getCategoryPageData(slug: string): Promise<ApiResponse<Category>> {
+    try {
+      // Get category which includes childCategories populated
+      const response = await apiClient.get<Category>(`${this.baseUrl}/${slug}`);
+
+      if (response.success && response.data) {
+        return response;
+      }
+
+      return {
+        success: false,
+        error: 'Category not found',
+        message: `Category with slug '${slug}' not found`,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch category data',
+        message: error?.message || 'Failed to fetch category data',
+      };
+    }
   }
 }
 

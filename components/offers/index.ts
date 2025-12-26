@@ -6,6 +6,9 @@
 export { OffersTabs } from './OffersTabs';
 export { OffersPageContent } from './OffersPageContent';
 
+// Modal Components
+export { OfferRedemptionModal } from './OfferRedemptionModal';
+
 // Common Components
 export * from './common';
 

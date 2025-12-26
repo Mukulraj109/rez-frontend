@@ -2,7 +2,10 @@ import productsService from './productsApi';
 import storesService from './storesApi';
 import eventsApiService from './eventsApi';
 import realOffersApi from './realOffersApi';
+import brandApiService from './brandApi';
 import cacheService from './cacheService';
+import locationService from './locationService';
+import recommendationService from './recommendationApi';
 import { ProductItem, RecommendationItem, HomepageSection, EventItem, HomepageBatchResponse } from '@/types/homepage.types';
 import { getSectionById } from '@/data/homepageData';
 import {
@@ -140,7 +143,8 @@ class HomepageDataService {
   }
 
   /**
-   * Get "Just for You" section data (Featured Products as Recommendations)
+   * Get "Just for You" section data (Location-Aware Personalized Recommendations)
+   * Uses hybrid approach: mix of nearby products + general recommendations
    */
   async getJustForYouSection(): Promise<HomepageSection> {
 
@@ -167,15 +171,44 @@ class HomepageDataService {
 
     const cacheKey = 'homepage_just_for_you';
 
+    // Try to get user location for location-aware recommendations
+    let userLocation: { latitude: number; longitude: number } | undefined;
+    try {
+      const cachedLocation = await locationService.getCachedLocation();
+      if (cachedLocation?.coordinates) {
+        userLocation = cachedLocation.coordinates;
+      }
+    } catch (error) {
+      // Location not available, will use general recommendations
+    }
+
     const { data: recommendations, fromCache, isOffline } = await this.getWithCacheAndFallback(
       cacheKey,
       async () => {
+        // Try location-aware recommendations first
+        if (userLocation) {
+          try {
+            const pickedForYouResponse = await recommendationService.getPickedForYou(20, userLocation);
+            if (pickedForYouResponse.success && pickedForYouResponse.data?.recommendations?.length > 0) {
+              // Transform recommendations to ProductItem format
+              return pickedForYouResponse.data.recommendations.map((rec: any) => ({
+                ...rec,
+                recommendationReason: rec.recommendationReason || 'Recommended for you',
+                recommendationScore: rec.recommendationScore || 0.85,
+              }));
+            }
+          } catch (error) {
+            // Fall through to featured products
+          }
+        }
+
+        // Fallback: Get featured products without location
         const items = await productsService.getFeaturedForHomepage(20);
         return items;
       },
       fallbackSection?.items || []
     );
-    
+
     // Use real backend data, no fallbacks (unless offline)
     const result: HomepageSection = {
       ...sectionTemplate,
@@ -658,6 +691,81 @@ class HomepageDataService {
   }
 
   /**
+   * Get "Brand Partnerships" section data
+   */
+  async getBrandPartnershipsSection(): Promise<HomepageSection> {
+    const sectionTemplate = getSectionById('brand_partnerships') || {
+      id: 'brand_partnerships',
+      title: 'Brand Partnerships',
+      type: 'brands',
+      showViewAll: false,
+      isHorizontalScroll: false,
+      priority: 7
+    };
+
+    const cacheKey = 'homepage_brand_partnerships';
+
+    try {
+      const isBackendAvailable = await this.checkBackendAvailability();
+
+      if (isBackendAvailable) {
+        try {
+          const brands = await brandApiService.getFeaturedBrands(6);
+
+          if (brands && brands.length > 0) {
+            // Cache the data
+            await cacheService.set(cacheKey, brands, {
+              ttl: this.CACHE_TTL,
+              priority: 'high'
+            });
+
+            return {
+              ...sectionTemplate,
+              items: brands as any,
+              lastUpdated: new Date().toISOString(),
+              loading: false,
+              error: null
+            };
+          }
+        } catch (error) {
+          console.error('[HOMEPAGE SERVICE] Error fetching brand partnerships:', error);
+        }
+      }
+
+      // Try to get from cache
+      const cachedData = await cacheService.get<any[]>(cacheKey);
+      if (cachedData && cachedData.length > 0) {
+        return {
+          ...sectionTemplate,
+          items: cachedData,
+          lastUpdated: new Date().toISOString(),
+          loading: false,
+          error: null
+        };
+      }
+
+      // No data available - return empty section (will be hidden)
+      return {
+        ...sectionTemplate,
+        items: [],
+        lastUpdated: new Date().toISOString(),
+        loading: false,
+        error: null
+      };
+
+    } catch (error) {
+      console.error('[HOMEPAGE SERVICE] Error in getBrandPartnershipsSection:', error);
+      return {
+        ...sectionTemplate,
+        items: [],
+        lastUpdated: new Date().toISOString(),
+        loading: false,
+        error: null
+      };
+    }
+  }
+
+  /**
    * Get current backend status
    */
   getBackendStatus(): {
@@ -714,7 +822,8 @@ class HomepageDataService {
         'homepage_trending_stores',
         'homepage_events',
         'homepage_offers',
-        'homepage_flash_sales'
+        'homepage_flash_sales',
+        'homepage_brand_partnerships'
       ];
 
       await Promise.all(keys.map(key => cacheService.remove(key)));

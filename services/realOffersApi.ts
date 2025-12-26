@@ -516,19 +516,6 @@ class RealOffersApi {
   }
 
   /**
-   * Get recommended offers
-   */
-  async getRecommendedOffers(limit?: number): Promise<ApiResponse<Offer[]>> {
-    try {
-      const response = await apiClient.get<Offer[]>('/offers/user/recommendations', { limit });
-      return response;
-    } catch (error) {
-      console.error('[OFFERS API] Error fetching recommended offers:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Redeem an offer - generates a voucher for the user
    */
   async redeemOffer(id: string, redemptionType: 'online' | 'instore' = 'online'): Promise<ApiResponse<{
@@ -1345,6 +1332,22 @@ class RealOffersApi {
   }
 
   /**
+   * Get super cashback stores (stores with 10%+ cashback)
+   */
+  async getSuperCashbackStores(params?: {
+    minCashback?: number;
+    limit?: number;
+  }): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any[]>('/cashback/super-cashback-stores', params);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching super cashback stores:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get loyalty milestones
    */
   async getLoyaltyMilestones(): Promise<ApiResponse<any[]>> {
@@ -1366,6 +1369,374 @@ class RealOffersApi {
       return response;
     } catch (error) {
       console.error('[OFFERS API] Error fetching loyalty progress:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get discount buckets (real-time aggregation counts)
+   * Returns counts for 25% OFF, 50% OFF, 80% OFF, and Free Delivery
+   */
+  async getDiscountBuckets(): Promise<ApiResponse<{
+    id: string;
+    label: string;
+    icon: string;
+    count: number;
+    filterValue: string;
+  }[]>> {
+    try {
+      console.log('📊 [OFFERS API] Fetching discount buckets');
+      const response = await apiClient.get<any[]>('/offers/discount-buckets');
+
+      if (response.success && response.data) {
+        // Add default colors if not provided by backend
+        const bucketsWithColors = (Array.isArray(response.data) ? response.data : []).map((bucket: any) => ({
+          ...bucket,
+          backgroundColor: bucket.backgroundColor || this.getDefaultBucketColor(bucket.filterValue).bg,
+          textColor: bucket.textColor || this.getDefaultBucketColor(bucket.filterValue).text,
+          iconColor: bucket.iconColor || this.getDefaultBucketColor(bucket.filterValue).icon,
+        }));
+
+        console.log(`✅ [OFFERS API] Got ${bucketsWithColors.length} discount buckets`);
+        return {
+          ...response,
+          data: bucketsWithColors,
+        };
+      }
+
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching discount buckets:', error);
+      throw error;
+    }
+  }
+
+  // Helper to get default colors for discount buckets
+  private getDefaultBucketColor(filterValue: string): { bg: string; text: string; icon: string } {
+    switch (filterValue) {
+      case '25':
+        return { bg: '#D1FAE5', text: '#059669', icon: '#10B981' };
+      case '50':
+        return { bg: '#FEF3C7', text: '#D97706', icon: '#F59E0B' };
+      case '80':
+        return { bg: '#FEE2E2', text: '#DC2626', icon: '#EF4444' };
+      case 'free_delivery':
+        return { bg: '#DBEAFE', text: '#2563EB', icon: '#3B82F6' };
+      default:
+        return { bg: '#F3F4F6', text: '#374151', icon: '#6B7280' };
+    }
+  }
+
+  /**
+   * Get active flash sales (Lightning Deals)
+   * Uses the FlashSale model directly (not offers with flash sale metadata)
+   */
+  async getFlashSales(limit?: number): Promise<ApiResponse<any[]>> {
+    try {
+      console.log('⚡ [OFFERS API] Fetching flash sales (lightning deals)');
+      const response = await apiClient.get<any[]>('/flash-sales/active', { limit });
+
+      if (response.success && response.data) {
+        const flashSales = Array.isArray(response.data)
+          ? response.data
+          : (response.data as any).data || [];
+
+        console.log(`✅ [OFFERS API] Got ${flashSales.length} flash sales`);
+        return {
+          ...response,
+          data: flashSales,
+        };
+      }
+
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching flash sales:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get flash sale by ID
+   * Fetches a single flash sale with full details
+   */
+  async getFlashSaleById(flashSaleId: string): Promise<ApiResponse<any>> {
+    try {
+      console.log('⚡ [OFFERS API] Fetching flash sale by ID:', flashSaleId);
+      const response = await apiClient.get<any>(`/flash-sales/${flashSaleId}`);
+
+      if (response.success && response.data) {
+        console.log('✅ [OFFERS API] Got flash sale:', response.data.title);
+        return response;
+      }
+
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching flash sale by ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get new arrival offers (New Today)
+   * Offers marked as new and recently added
+   */
+  async getNewArrivals(limit: number = 10): Promise<ApiResponse<any[]>> {
+    try {
+      console.log('🆕 [OFFERS API] Fetching new arrivals');
+      const response = await apiClient.get<any[]>('/offers/new-arrivals', { limit });
+
+      if (response.success && response.data) {
+        const offers = Array.isArray(response.data)
+          ? response.data
+          : (response.data as any).data || [];
+
+        console.log(`✅ [OFFERS API] Got ${offers.length} new arrivals`);
+        return {
+          ...response,
+          data: offers,
+        };
+      }
+
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching new arrivals:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get AI recommended offers for user
+   * Personalized recommendations based on user behavior
+   */
+  async getRecommendedOffers(limit: number = 10): Promise<ApiResponse<any[]>> {
+    try {
+      console.log('🤖 [OFFERS API] Fetching AI recommended offers');
+      const response = await apiClient.get<any[]>('/offers/user/recommendations', { limit });
+
+      if (response.success && response.data) {
+        const offers = Array.isArray(response.data)
+          ? response.data
+          : (response.data as any).data || [];
+
+        console.log(`✅ [OFFERS API] Got ${offers.length} recommended offers`);
+        return {
+          ...response,
+          data: offers,
+        };
+      }
+
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching recommended offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get expiring soon offers (Last Chance)
+   * Offers that are about to expire within 24 hours
+   */
+  async getExpiringSoonOffers(limit: number = 10): Promise<ApiResponse<any[]>> {
+    try {
+      console.log('⏰ [OFFERS API] Fetching expiring soon offers');
+      const response = await apiClient.get<any[]>('/flash-sales/expiring-soon', { limit, minutes: 1440 });
+
+      if (response.success && response.data) {
+        const offers = Array.isArray(response.data)
+          ? response.data
+          : (response.data as any).data || [];
+
+        console.log(`✅ [OFFERS API] Got ${offers.length} expiring soon offers`);
+        return {
+          ...response,
+          data: offers,
+        };
+      }
+
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching expiring offers:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get today's offers
+   * Active flash sale offers for today
+   */
+  async getTodaysOffers(limit: number = 10): Promise<ApiResponse<any[]>> {
+    try {
+      console.log('📅 [OFFERS API] Fetching today\'s offers');
+      const response = await apiClient.get<any[]>('/offers/flash-sales', { limit });
+
+      if (response.success && response.data) {
+        const offers = Array.isArray(response.data)
+          ? response.data
+          : (response.data as any).data || [];
+
+        console.log(`✅ [OFFERS API] Got ${offers.length} today's offers`);
+        return {
+          ...response,
+          data: offers,
+        };
+      }
+
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching today\'s offers:', error);
+      throw error;
+    }
+  }
+
+  // ============================================
+  // FLASH SALE PURCHASE METHODS (Stripe)
+  // ============================================
+
+  /**
+   * Initiate flash sale purchase - creates Stripe checkout session
+   */
+  async initiateFlashSalePurchase(
+    flashSaleId: string,
+    quantity: number = 1,
+    options?: { successUrl?: string; cancelUrl?: string }
+  ): Promise<ApiResponse<{
+    purchaseId: string;
+    stripeSessionId: string;
+    stripeCheckoutUrl: string;
+    amount: number;
+    currency: string;
+    flashSale: {
+      title: string;
+      image: string;
+      originalPrice: number;
+      flashSalePrice: number;
+      discountPercentage: number;
+    };
+  }>> {
+    try {
+      console.log('💳 [OFFERS API] Initiating flash sale purchase with Stripe:', flashSaleId);
+      const response = await apiClient.post<{
+        purchaseId: string;
+        stripeSessionId: string;
+        stripeCheckoutUrl: string;
+        amount: number;
+        currency: string;
+        flashSale: {
+          title: string;
+          image: string;
+          originalPrice: number;
+          flashSalePrice: number;
+          discountPercentage: number;
+        };
+      }>('/flash-sales/purchase/initiate', {
+        flashSaleId,
+        quantity,
+        successUrl: options?.successUrl,
+        cancelUrl: options?.cancelUrl,
+      });
+
+      if (response.success) {
+        console.log('✅ [OFFERS API] Flash sale purchase initiated:', response.data?.purchaseId);
+      }
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error initiating flash sale purchase:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify flash sale payment - completes the purchase (for Stripe)
+   */
+  async verifyFlashSalePayment(data: {
+    purchaseId: string;
+    stripeSessionId: string;
+  }): Promise<ApiResponse<{
+    voucherCode: string;
+    promoCode?: string;
+    expiresAt: string;
+    amount: number;
+  }>> {
+    try {
+      console.log('✔️ [OFFERS API] Verifying flash sale payment:', data.purchaseId);
+      const response = await apiClient.post<{
+        voucherCode: string;
+        promoCode?: string;
+        expiresAt: string;
+        amount: number;
+      }>('/flash-sales/purchase/verify', data);
+
+      if (response.success) {
+        console.log('✅ [OFFERS API] Flash sale payment verified, voucher:', response.data?.voucherCode);
+      }
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error verifying flash sale payment:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark flash sale purchase as failed
+   */
+  async failFlashSalePurchase(purchaseId: string, reason: string): Promise<ApiResponse<void>> {
+    try {
+      console.log('❌ [OFFERS API] Marking flash sale purchase as failed:', purchaseId);
+      const response = await apiClient.post<void>('/flash-sales/purchase/fail', { purchaseId, reason });
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error failing flash sale purchase:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's flash sale purchases
+   */
+  async getMyFlashSalePurchases(): Promise<ApiResponse<Array<{
+    _id: string;
+    flashSale: {
+      _id: string;
+      title: string;
+      image: string;
+      discountPercentage: number;
+    };
+    amount: number;
+    voucherCode: string;
+    promoCode?: string;
+    paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+    isRedeemed: boolean;
+    voucherExpiresAt: string;
+    purchasedAt: string;
+  }>>> {
+    try {
+      console.log('📋 [OFFERS API] Fetching user flash sale purchases');
+      const response = await apiClient.get<Array<any>>('/flash-sales/purchases');
+
+      if (response.success) {
+        const purchases = Array.isArray(response.data)
+          ? response.data
+          : (response.data as any)?.data || [];
+        console.log(`✅ [OFFERS API] Got ${purchases.length} flash sale purchases`);
+        return { ...response, data: purchases };
+      }
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching flash sale purchases:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get flash sale purchase by ID
+   */
+  async getFlashSalePurchaseById(purchaseId: string): Promise<ApiResponse<any>> {
+    try {
+      console.log('🔍 [OFFERS API] Fetching flash sale purchase:', purchaseId);
+      const response = await apiClient.get<any>(`/flash-sales/purchases/${purchaseId}`);
+      return response;
+    } catch (error) {
+      console.error('[OFFERS API] Error fetching flash sale purchase:', error);
       throw error;
     }
   }

@@ -12,7 +12,9 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useOffersTheme } from '@/contexts/OffersThemeContext';
@@ -58,6 +60,17 @@ export const OfferCardLightning: React.FC<OfferCardLightningProps> = ({
   const { theme, isDark } = useOffersTheme();
   const claimedPercentage = Math.round((claimedQuantity / totalQuantity) * 100);
   const remaining = totalQuantity - claimedQuantity;
+
+  // Handle copy promo code
+  const handleCopyCode = async () => {
+    if (!promoCode) return;
+    try {
+      await Clipboard.setStringAsync(promoCode);
+      Alert.alert('Copied!', `Promo code "${promoCode}" copied to clipboard`);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
 
   // Determine urgency color based on remaining stock
   const getUrgencyColor = () => {
@@ -330,7 +343,7 @@ export const OfferCardLightning: React.FC<OfferCardLightningProps> = ({
             style={styles.promoIcon}
           />
           <Text style={styles.promoCode}>{promoCode}</Text>
-          <TouchableOpacity style={styles.copyButton}>
+          <TouchableOpacity style={styles.copyButton} onPress={handleCopyCode}>
             <Ionicons
               name="copy-outline"
               size={14}
