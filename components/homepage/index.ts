@@ -28,6 +28,7 @@ export { default as BrandPartnerships } from './BrandPartnerships';
 export { default as StreaksGamification } from './StreaksGamification';
 export { default as TrendingNearYou } from './TrendingNearYou';
 export { default as FlashSales } from './FlashSales';
+export { default as EarnRezCoinsSection } from './EarnRezCoinsSection';
 
 // Card Components
 export { default as EventCard } from './cards/EventCard';

@@ -7,11 +7,31 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
+
+// White theme colors
+const COLORS = {
+  white: '#FFFFFF',
+  background: '#FFFFFF',
+  navy: '#0B2240',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray400: '#9CA3AF',
+  gray500: '#6B7280',
+  gray600: '#4B5563',
+  green500: '#22C55E',
+  amber400: '#FBBF24',
+  amber500: '#F59E0B',
+  purple500: '#A855F7',
+  blue500: '#3B82F6',
+  orange500: '#F97316',
+};
 
 const Leaderboard = () => {
   const router = useRouter();
@@ -32,21 +52,21 @@ const Leaderboard = () => {
   const myRank = { rank: 147, name: 'You', coins: 2480, trend: '+85' };
 
   const getRankDisplay = (rank: number) => {
-    if (rank === 1) return <Ionicons name="trophy" size={24} color="#F59E0B" />;
-    if (rank === 2) return <Ionicons name="medal" size={24} color="#9CA3AF" />;
-    if (rank === 3) return <Ionicons name="medal" size={24} color="#F97316" />;
+    if (rank === 1) return <Ionicons name="trophy" size={24} color={COLORS.amber500} />;
+    if (rank === 2) return <Ionicons name="medal" size={24} color={COLORS.gray400} />;
+    if (rank === 3) return <Ionicons name="medal" size={24} color={COLORS.orange500} />;
     return <Text style={styles.rankNumber}>#{rank}</Text>;
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.navy} />
         </TouchableOpacity>
         <View>
           <Text style={styles.headerTitle}>🏆 Weekly Leaderboard</Text>
@@ -54,27 +74,31 @@ const Leaderboard = () => {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Prize Banner */}
         <View style={styles.section}>
           <LinearGradient
-            colors={['#A855F720', '#EC489920']}
+            colors={['rgba(168, 85, 247, 0.15)', 'rgba(236, 72, 153, 0.15)']}
             style={styles.prizeBanner}
           >
-            <Ionicons name="trophy" size={48} color="#F59E0B" />
+            <Ionicons name="trophy" size={48} color={COLORS.amber500} />
             <Text style={styles.prizeTitle}>Weekly Prizes</Text>
             <View style={styles.prizeGrid}>
               <View style={styles.prizeItem}>
                 <Text style={styles.prizeLabel}>1st Place</Text>
-                <Text style={[styles.prizeValue, { color: '#F59E0B' }]}>₹5,000</Text>
+                <Text style={[styles.prizeValue, { color: COLORS.amber500 }]}>₹5,000</Text>
               </View>
               <View style={styles.prizeItem}>
                 <Text style={styles.prizeLabel}>2-10th</Text>
-                <Text style={[styles.prizeValue, { color: '#A855F7' }]}>₹1,000</Text>
+                <Text style={[styles.prizeValue, { color: COLORS.purple500 }]}>₹1,000</Text>
               </View>
               <View style={styles.prizeItem}>
                 <Text style={styles.prizeLabel}>11-100th</Text>
-                <Text style={[styles.prizeValue, { color: '#3B82F6' }]}>500 coins</Text>
+                <Text style={[styles.prizeValue, { color: COLORS.blue500 }]}>500 coins</Text>
               </View>
             </View>
           </LinearGradient>
@@ -96,16 +120,16 @@ const Leaderboard = () => {
 
           {/* 1st Place */}
           <View style={styles.podiumItem}>
-            <Ionicons name="trophy" size={24} color="#F59E0B" style={{ marginBottom: 4 }} />
+            <Ionicons name="trophy" size={24} color={COLORS.amber500} style={{ marginBottom: 4 }} />
             <View style={[styles.podiumAvatar, styles.podiumFirst]}>
               <Text style={styles.podiumAvatarTextLarge}>{topUsers[0].avatar}</Text>
             </View>
             <Text style={styles.podiumName}>{topUsers[0].name.split(' ')[0]}</Text>
-            <Text style={[styles.podiumCoins, { color: '#F59E0B', fontWeight: 'bold' }]}>
+            <Text style={[styles.podiumCoins, { color: COLORS.amber500, fontWeight: 'bold' }]}>
               {topUsers[0].coins.toLocaleString()}
             </Text>
             <LinearGradient
-              colors={['rgba(245,158,11,0.3)', 'rgba(245,158,11,0.1)']}
+              colors={['rgba(245,158,11,0.3)', 'rgba(245,158,11,0.15)']}
               style={[styles.podiumBar, { height: 112 }]}
             >
               <Text style={styles.podiumTrophy}>🏆</Text>
@@ -139,7 +163,7 @@ const Leaderboard = () => {
                 <Text style={styles.rankCoinsText}>{user.coins.toLocaleString()} coins</Text>
               </View>
               <View style={styles.trendContainer}>
-                <Ionicons name="trending-up" size={16} color="#22C55E" />
+                <Ionicons name="trending-up" size={16} color={COLORS.green500} />
                 <Text style={styles.trendText}>{user.trend}</Text>
               </View>
             </View>
@@ -179,17 +203,17 @@ const Leaderboard = () => {
 
           <TouchableOpacity onPress={() => router.push('/playandearn' as any)}>
             <LinearGradient
-              colors={['#F59E0B20', '#EAB30820']}
+              colors={['rgba(245, 158, 11, 0.15)', 'rgba(234, 179, 8, 0.1)']}
               style={styles.ctaCard}
             >
-              <View style={[styles.ctaIcon, { backgroundColor: '#F59E0B30' }]}>
-                <Ionicons name="locate" size={20} color="#F59E0B" />
+              <View style={[styles.ctaIcon, { backgroundColor: 'rgba(245, 158, 11, 0.2)' }]}>
+                <Ionicons name="locate" size={20} color={COLORS.amber500} />
               </View>
               <View style={styles.ctaContent}>
                 <Text style={styles.ctaTitle}>Daily Challenges</Text>
                 <Text style={styles.ctaDesc}>Complete tasks & earn up to 500 coins/day</Text>
               </View>
-              <View style={[styles.ctaBadge, { backgroundColor: '#F59E0B' }]}>
+              <View style={[styles.ctaBadge, { backgroundColor: COLORS.amber500 }]}>
                 <Text style={styles.ctaBadgeText}>+500</Text>
               </View>
             </LinearGradient>
@@ -197,17 +221,17 @@ const Leaderboard = () => {
 
           <TouchableOpacity onPress={() => router.push('/refer' as any)}>
             <LinearGradient
-              colors={['#A855F720', '#EC489920']}
+              colors={['rgba(168, 85, 247, 0.15)', 'rgba(236, 72, 153, 0.1)']}
               style={styles.ctaCard}
             >
-              <View style={[styles.ctaIcon, { backgroundColor: '#A855F730' }]}>
-                <Ionicons name="gift" size={20} color="#A855F7" />
+              <View style={[styles.ctaIcon, { backgroundColor: 'rgba(168, 85, 247, 0.2)' }]}>
+                <Ionicons name="gift" size={20} color={COLORS.purple500} />
               </View>
               <View style={styles.ctaContent}>
                 <Text style={styles.ctaTitle}>Refer & Earn Big</Text>
                 <Text style={styles.ctaDesc}>Get 1000 coins for each friend you invite</Text>
               </View>
-              <View style={[styles.ctaBadge, { backgroundColor: '#A855F7' }]}>
+              <View style={[styles.ctaBadge, { backgroundColor: COLORS.purple500 }]}>
                 <Text style={styles.ctaBadgeText}>+1000</Text>
               </View>
             </LinearGradient>
@@ -215,17 +239,17 @@ const Leaderboard = () => {
 
           <TouchableOpacity onPress={() => router.push('/mall' as any)}>
             <LinearGradient
-              colors={['#3B82F620', '#06B6D420']}
+              colors={['rgba(59, 130, 246, 0.15)', 'rgba(6, 182, 212, 0.1)']}
               style={styles.ctaCard}
             >
-              <View style={[styles.ctaIcon, { backgroundColor: '#3B82F630' }]}>
-                <Ionicons name="rocket" size={20} color="#3B82F6" />
+              <View style={[styles.ctaIcon, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]}>
+                <Ionicons name="rocket" size={20} color={COLORS.blue500} />
               </View>
               <View style={styles.ctaContent}>
                 <Text style={styles.ctaTitle}>Shop & Earn</Text>
                 <Text style={styles.ctaDesc}>Earn coins on every purchase you make</Text>
               </View>
-              <View style={[styles.ctaBadge, { backgroundColor: '#3B82F6' }]}>
+              <View style={[styles.ctaBadge, { backgroundColor: COLORS.blue500 }]}>
                 <Text style={styles.ctaBadgeText}>Up to 10%</Text>
               </View>
             </LinearGradient>
@@ -233,12 +257,12 @@ const Leaderboard = () => {
 
           {/* Motivational Message */}
           <LinearGradient
-            colors={['#00C06A15', '#14B8A615']}
+            colors={['rgba(0, 192, 106, 0.1)', 'rgba(20, 184, 166, 0.1)']}
             style={styles.motivationalCard}
           >
-            <Ionicons name="trophy" size={48} color="#F59E0B" />
+            <Ionicons name="trophy" size={48} color={COLORS.amber500} />
             <Text style={styles.motivationalTitle}>You're on Your Way! 🚀</Text>
-            <Text style={styles.motivationalText}>
+            <Text style={styles.motivationalText2}>
               Complete daily tasks, refer friends, and shop smart to climb the ranks!
             </Text>
             <LinearGradient
@@ -252,57 +276,58 @@ const Leaderboard = () => {
             </LinearGradient>
           </LinearGradient>
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: COLORS.white,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 48,
-    paddingBottom: 16,
+    paddingVertical: 12,
     gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: COLORS.gray200,
   },
   backButton: {
     padding: 8,
     borderRadius: 20,
+    backgroundColor: COLORS.gray100,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: COLORS.navy,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: COLORS.gray500,
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 120,
   },
   section: {
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: COLORS.navy,
     marginBottom: 12,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: COLORS.gray500,
     marginBottom: 16,
   },
   prizeBanner: {
@@ -315,7 +340,7 @@ const styles = StyleSheet.create({
   prizeTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: COLORS.navy,
     marginTop: 12,
     marginBottom: 16,
   },
@@ -328,7 +353,7 @@ const styles = StyleSheet.create({
   },
   prizeLabel: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: COLORS.gray500,
   },
   prizeValue: {
     fontSize: 14,
@@ -358,15 +383,15 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#F59E0B30',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
     borderWidth: 4,
     borderColor: 'rgba(245,158,11,0.5)',
   },
   podiumSecond: {
-    backgroundColor: 'rgba(156,163,175,0.3)',
+    backgroundColor: 'rgba(156,163,175,0.2)',
   },
   podiumThird: {
-    backgroundColor: 'rgba(249,115,22,0.3)',
+    backgroundColor: 'rgba(249,115,22,0.2)',
   },
   podiumAvatarText: {
     fontSize: 28,
@@ -377,11 +402,11 @@ const styles = StyleSheet.create({
   podiumName: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: COLORS.navy,
   },
   podiumCoins: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: COLORS.gray500,
   },
   podiumBar: {
     width: '100%',
@@ -402,7 +427,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: COLORS.gray50,
     marginBottom: 8,
     gap: 16,
   },
@@ -413,7 +438,7 @@ const styles = StyleSheet.create({
   rankNumber: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#6B7280',
+    color: COLORS.gray500,
   },
   rankAvatar: {
     fontSize: 28,
@@ -424,11 +449,11 @@ const styles = StyleSheet.create({
   rankName: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: COLORS.navy,
   },
   rankCoinsText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: COLORS.gray500,
   },
   trendContainer: {
     flexDirection: 'row',
@@ -438,7 +463,7 @@ const styles = StyleSheet.create({
   trendText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#22C55E',
+    color: COLORS.green500,
   },
   myRankCard: {
     flexDirection: 'row',
@@ -468,7 +493,7 @@ const styles = StyleSheet.create({
   },
   motivationText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: COLORS.gray500,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -480,7 +505,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: COLORS.gray200,
   },
   ctaIcon: {
     width: 44,
@@ -495,12 +520,12 @@ const styles = StyleSheet.create({
   ctaTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: COLORS.navy,
     marginBottom: 2,
   },
   ctaDesc: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: COLORS.gray500,
   },
   ctaBadge: {
     paddingHorizontal: 12,
@@ -523,13 +548,13 @@ const styles = StyleSheet.create({
   motivationalTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: COLORS.navy,
     marginTop: 12,
     marginBottom: 8,
   },
-  motivationalText: {
+  motivationalText2: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: COLORS.gray600,
     textAlign: 'center',
     marginBottom: 16,
   },
