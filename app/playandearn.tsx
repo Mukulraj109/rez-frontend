@@ -135,7 +135,7 @@ const PlayAndEarn = () => {
       reward: 'Earn ₹50-₹200 Coins',
       iconBg: ['#3B82F620', '#3B82F610'],
       iconColor: '#3B82F6',
-      path: '/upload-bill',
+      path: '/bill-upload',
     },
     {
       id: 'share-offer',
@@ -144,7 +144,7 @@ const PlayAndEarn = () => {
       reward: 'Earn 20 ReZ Coins',
       iconBg: ['#A855F720', '#A855F710'],
       iconColor: '#A855F7',
-      path: '/refer',
+      path: '/referral',
     },
     {
       id: 'write-review',
@@ -162,7 +162,7 @@ const PlayAndEarn = () => {
       reward: 'Earn 100 Coins',
       iconBg: ['#EC489920', '#EC489910'],
       iconColor: '#EC4899',
-      path: '/refer',
+      path: '/referral',
     },
     {
       id: 'daily-checkin',
@@ -208,11 +208,11 @@ const PlayAndEarn = () => {
 
   // Social & Community Actions
   const socialActions = [
-    { icon: 'share-social' as keyof typeof Ionicons.glyphMap, title: 'Share Store/Offer', coins: '20-50', description: 'Friends must view', path: '/refer' },
-    { icon: 'thumbs-up' as keyof typeof Ionicons.glyphMap, title: 'Vote in Polls', coins: '10', description: 'Daily polls available', path: '/social' },
-    { icon: 'chatbubble' as keyof typeof Ionicons.glyphMap, title: 'Comment on Offers', coins: '15', description: 'Quality comments', path: '/social' },
-    { icon: 'camera' as keyof typeof Ionicons.glyphMap, title: 'Upload Photos', coins: '25-100', description: 'Store/product photos', path: '/upload-bill' },
-    { icon: 'videocam' as keyof typeof Ionicons.glyphMap, title: 'Create Reels', coins: '50-200', description: 'UGC content rewards', path: '/social' },
+    { icon: 'share-social' as keyof typeof Ionicons.glyphMap, title: 'Share Store/Offer', coins: '20-50', description: 'Friends must view', path: '/referral' },
+    { icon: 'thumbs-up' as keyof typeof Ionicons.glyphMap, title: 'Vote in Polls', coins: '10', description: 'Daily polls available', path: '/social-media' },
+    { icon: 'chatbubble' as keyof typeof Ionicons.glyphMap, title: 'Comment on Offers', coins: '15', description: 'Quality comments', path: '/social-media' },
+    { icon: 'camera' as keyof typeof Ionicons.glyphMap, title: 'Upload Photos', coins: '25-100', description: 'Store/product photos', path: '/bill-upload' },
+    { icon: 'videocam' as keyof typeof Ionicons.glyphMap, title: 'Create Reels', coins: '50-200', description: 'UGC content rewards', path: '/social-media' },
     { icon: 'heart' as keyof typeof Ionicons.glyphMap, title: 'Rate Events', coins: '20', description: 'After event attendance', path: '/events' },
   ];
 
@@ -225,7 +225,7 @@ const PlayAndEarn = () => {
       badge: '🎓',
       rewards: ['Student of the Month', 'Event participation', 'Campus ambassador'],
       earnings: 'Up to 5,000 coins/month',
-      path: '/exclusive/student',
+      path: '/offers/zones/student',
     },
     {
       id: 'corporate',
@@ -234,7 +234,7 @@ const PlayAndEarn = () => {
       badge: '🧑‍💼',
       rewards: ['Employee of the Month', 'Corporate events', 'Exclusive BNPL'],
       earnings: 'Up to 3,000 coins/month',
-      path: '/exclusive/corporate',
+      path: '/offers/zones/corporate',
     },
     {
       id: 'prive',
@@ -243,7 +243,7 @@ const PlayAndEarn = () => {
       badge: '👑',
       rewards: ['Premium campaigns', 'High multipliers', 'Brand collaborations'],
       earnings: 'Unlimited potential',
-      path: '/exclusive/prive',
+      path: '/prive',
     },
   ];
 
@@ -276,7 +276,7 @@ const PlayAndEarn = () => {
   const dailyGames = [
     { id: 1, title: 'Spin the Wheel', icon: '🎡', coins: 50, plays: '3 left', colors: ['#A855F720', '#EC489920'], route: '/explore/spin-win' },
     { id: 2, title: 'Daily Check-in', icon: '📅', coins: 25, plays: 'Today', colors: ['#3B82F620', '#06B6D420'], route: '/explore/daily-checkin' },
-    { id: 3, title: 'Scratch Card', icon: '🎫', coins: 100, plays: '1 left', colors: ['#F59E0B20', '#F9731620'], route: '/earn/scratch-card' },
+    { id: 3, title: 'Scratch Card', icon: '🎫', coins: 100, plays: '1 left', colors: ['#F59E0B20', '#F9731620'], route: '/scratch-card' },
     { id: 4, title: 'Coin Hunt', icon: '🪙', coins: 75, plays: 'Unlimited', colors: ['#22C55E20', '#10B98120'], route: '/playandearn/coinhunt' },
   ];
 
@@ -642,7 +642,7 @@ const PlayAndEarn = () => {
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.impactCard}
-            onPress={() => navigateTo('/playandearn/SocialImpact')}
+            onPress={() => navigateTo('/social-impact')}
           >
             <LinearGradient
               colors={['#ECFDF5', '#EFF6FF', '#F0FDF4']}

@@ -48,6 +48,20 @@ import { SectionSkeleton } from '@/components/homepage/skeletons';
 import HomeTabSection, { TabId } from '@/components/homepage/HomeTabSection';
 import MallHeroBanner from '@/components/mall/MallHeroBanner';
 import HowRezWorksCard from '@/components/homepage/HowRezWorksCard';
+import EarnRezCoinsSection from '@/components/homepage/EarnRezCoinsSection';
+import PlayAndEarnSectionV2 from '@/components/homepage/PlayAndEarnSectionV2';
+import NewOnRezSection from '@/components/homepage/NewOnRezSection';
+import EventsExperiencesSection from '@/components/homepage/EventsExperiencesSection';
+import ShopByCategorySection from '@/components/homepage/ShopByCategorySection';
+import BeautyWellnessSection from '@/components/homepage/BeautyWellnessSection';
+import FitnessSportsSection from '@/components/homepage/FitnessSportsSection';
+import GroceryEssentialsSection from '@/components/homepage/GroceryEssentialsSection';
+import HealthcareSection from '@/components/homepage/HealthcareSection';
+import HomeServicesSection from '@/components/homepage/HomeServicesSection';
+import FinancialServicesSection from '@/components/homepage/FinancialServicesSection';
+import TravelSection from '@/components/homepage/TravelSection';
+import ExcitingDealsSection from '@/components/homepage/ExcitingDealsSection';
+import ShopByExperienceSection from '@/components/homepage/ShopByExperienceSection';
 import { useMallSection } from '@/hooks/useMallSection';
 import PromoBanner from '@/components/homepage/PromoBanner';
 import GlobeBanner from '@/components/homepage/GlobeBanner';
@@ -1048,6 +1062,48 @@ export default function HomeScreen() {
 
         {/* How ReZ Works Card - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && <HowRezWorksCard />}
+
+        {/* Earn ReZ Coins Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <EarnRezCoinsSection />}
+
+        {/* Play & Earn Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <PlayAndEarnSectionV2 />}
+
+        {/* New on ReZ Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <NewOnRezSection />}
+
+        {/* Events & Experiences Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <EventsExperiencesSection />}
+
+        {/* Shop by Category Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <ShopByCategorySection />}
+
+        {/* Beauty & Wellness Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <BeautyWellnessSection />}
+
+        {/* Fitness & Sports Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <FitnessSportsSection />}
+
+        {/* Grocery & Essentials Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <GroceryEssentialsSection />}
+
+        {/* Healthcare Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <HealthcareSection />}
+
+        {/* Home Services Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <HomeServicesSection />}
+
+        {/* Financial Services Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <FinancialServicesSection />}
+
+        {/* Travel Section - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <TravelSection />}
+
+        {/* Exciting Deals Section - All deal categories (Cashback, Coins, Bank Offers, etc.) - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <ExcitingDealsSection />}
+
+        {/* Shop by Experience Section - Curated shopping experiences grid - Only show when "near-u" tab is active */}
+        {activeTab === 'near-u' && <ShopByExperienceSection />}
 
         {/* Deals that save you money - Offers, Cashback, Exclusive tabs - Only show when "near-u" tab is active */}
         {activeTab === 'near-u' && <DealsThatSaveMoney />}
