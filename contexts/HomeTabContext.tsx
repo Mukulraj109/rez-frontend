@@ -90,6 +90,10 @@ interface HomeTabContextType {
   setActiveHomeTab: (tab: HomeTabId) => void;
   isRezMallActive: boolean;
   isCashStoreActive: boolean;
+
+  // Scroll to top functionality
+  scrollToTop: () => void;
+  registerScrollToTop: (callback: () => void) => void;
 }
 
 const HomeTabContext = createContext<HomeTabContextType | undefined>(undefined);
@@ -105,6 +109,9 @@ export const HomeTabProvider: React.FC<HomeTabProviderProps> = ({ children }) =>
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [priveEligibility, setPriveEligibility] = useState<PriveEligibility>(DEFAULT_PRIVE_ELIGIBILITY);
   const [hasSeenGlow, setHasSeenGlow] = useState(false);
+
+  // Scroll to top callback ref
+  const scrollToTopCallbackRef = React.useRef<(() => void) | null>(null);
 
   // Load persisted tab on mount
   useEffect(() => {
@@ -185,6 +192,17 @@ export const HomeTabProvider: React.FC<HomeTabProviderProps> = ({ children }) =>
     [setActiveTab]
   );
 
+  // Scroll to top functionality
+  const registerScrollToTop = useCallback((callback: () => void) => {
+    scrollToTopCallbackRef.current = callback;
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    if (scrollToTopCallbackRef.current) {
+      scrollToTopCallbackRef.current();
+    }
+  }, []);
+
   const contextValue: HomeTabContextType = {
     // New API
     activeTab,
@@ -212,6 +230,10 @@ export const HomeTabProvider: React.FC<HomeTabProviderProps> = ({ children }) =>
     setActiveHomeTab,
     isRezMallActive,
     isCashStoreActive,
+
+    // Scroll to top
+    scrollToTop,
+    registerScrollToTop,
   };
 
   return (

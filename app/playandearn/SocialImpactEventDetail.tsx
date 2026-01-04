@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   View,
@@ -9,9 +9,11 @@ import {
   Modal,
   Linking,
   useColorScheme,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import programApi from '../../services/programApi';
 
 const SocialImpactEventDetail = () => {
   const router = useRouter();
@@ -21,6 +23,35 @@ const SocialImpactEventDetail = () => {
   const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : params.id?.toString() || '1';
   const [isRegistered, setIsRegistered] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [eventData, setEventData] = useState<any>(null);
+
+  // Fetch event details
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const res = await programApi.getSocialImpactEventById(id);
+        if (res.data) {
+          setEventData(res.data);
+        }
+      } catch (error) {
+        console.error('Error fetching event:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvent();
+  }, [id]);
+
+  const handleRegister = async () => {
+    try {
+      await programApi.registerForSocialImpact(id);
+      setIsRegistered(true);
+      setShowConfirmation(true);
+    } catch (error) {
+      console.error('Error registering:', error);
+    }
+  };
 
   const events: { [key: string]: any } = {
     '1': {
@@ -202,14 +233,6 @@ const SocialImpactEventDetail = () => {
   };
 
   const event = events[id] || events['1'];
-
-  const handleRegister = () => {
-    setShowConfirmation(true);
-    setTimeout(() => {
-      setIsRegistered(true);
-      setShowConfirmation(false);
-    }, 1500);
-  };
 
   const handleCall = () => {
     Linking.openURL(`tel:${event.contact.phone}`);

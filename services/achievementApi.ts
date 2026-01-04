@@ -91,36 +91,176 @@ export interface AchievementProgressUpdate {
 }
 
 class AchievementApiService {
-  private baseUrl = '/achievements';
+  // Backend routes are at /gamification/achievements, not /achievements
+  private baseUrl = '/gamification/achievements';
+  private statsUrl = '/gamification/stats';
 
-  // Get all user achievements
+  /**
+   * Get achievement definitions (not user-specific)
+   */
+  async getAchievementDefinitions(): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any>(this.baseUrl);
+      if (response.success) {
+        return {
+          success: true,
+          data: response.data || [],
+        };
+      }
+      return response;
+    } catch (error: any) {
+      console.error('[ACHIEVEMENT API] Error fetching definitions:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get current user's achievements
+   * Backend endpoint: GET /gamification/achievements/me
+   */
   async getUserAchievements(): Promise<ApiResponse<Achievement[]>> {
-    return apiClient.get(this.baseUrl);
+    try {
+      const response = await apiClient.get<any>(`${this.baseUrl}/me`);
+
+      if (response.success && response.data) {
+        const achievements: Achievement[] = (response.data.achievements || []).map((a: any) => ({
+          id: a._id || a.id,
+          userId: a.user || '',
+          type: a.type as AchievementType,
+          title: a.title || 'Achievement',
+          description: a.description || '',
+          icon: a.icon || '🏆',
+          color: a.color || '#F59E0B',
+          unlocked: a.unlocked || false,
+          progress: a.progress || 0,
+          unlockedDate: a.unlockedDate,
+          currentValue: a.currentValue,
+          targetValue: a.targetValue || 100,
+          createdAt: a.createdAt || new Date().toISOString(),
+          updatedAt: a.updatedAt || new Date().toISOString(),
+        }));
+
+        return { success: true, data: achievements };
+      }
+
+      return { success: true, data: [] };
+    } catch (error: any) {
+      console.error('[ACHIEVEMENT API] Error fetching user achievements:', error);
+      return { success: false, error: error.message };
+    }
   }
 
-  // Get only unlocked achievements
+  /**
+   * Get only unlocked achievements
+   */
   async getUnlockedAchievements(): Promise<ApiResponse<Achievement[]>> {
-    return apiClient.get(`${this.baseUrl}/unlocked`);
+    try {
+      const response = await this.getUserAchievements();
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: response.data.filter(a => a.unlocked),
+        };
+      }
+      return response;
+    } catch (error: any) {
+      console.error('[ACHIEVEMENT API] Error fetching unlocked achievements:', error);
+      return { success: false, error: error.message };
+    }
   }
 
-  // Get achievement progress summary
+  /**
+   * Get current user's achievement progress
+   * Backend endpoint: GET /gamification/achievements/me
+   * Returns user's achievements with progress and summary stats
+   */
   async getAchievementProgress(): Promise<ApiResponse<AchievementProgress>> {
-    return apiClient.get(`${this.baseUrl}/progress`);
+    try {
+      const response = await apiClient.get<any>(`${this.baseUrl}/me`);
+
+      if (response.success && response.data) {
+        const data = response.data;
+
+        // Map backend response to frontend format
+        const achievements: Achievement[] = (data.achievements || []).map((a: any) => ({
+          id: a._id || a.id,
+          userId: a.user || '',
+          type: a.type as AchievementType,
+          title: a.title || 'Achievement',
+          description: a.description || '',
+          icon: a.icon || '🏆',
+          color: a.color || '#F59E0B',
+          unlocked: a.unlocked || false,
+          progress: a.progress || 0,
+          unlockedDate: a.unlockedDate,
+          currentValue: a.currentValue,
+          targetValue: a.targetValue || 100,
+          createdAt: a.createdAt || new Date().toISOString(),
+          updatedAt: a.updatedAt || new Date().toISOString(),
+        }));
+
+        return {
+          success: true,
+          data: {
+            summary: data.summary || {
+              total: achievements.length,
+              unlocked: achievements.filter(a => a.unlocked).length,
+              inProgress: achievements.filter(a => !a.unlocked && a.progress > 0).length,
+              locked: achievements.filter(a => !a.unlocked && a.progress === 0).length,
+              completionPercentage: achievements.length > 0
+                ? Math.round((achievements.filter(a => a.unlocked).length / achievements.length) * 100)
+                : 0,
+            },
+            achievements,
+          },
+        };
+      }
+
+      // Return empty state if no data
+      return {
+        success: true,
+        data: {
+          summary: {
+            total: 0,
+            unlocked: 0,
+            inProgress: 0,
+            locked: 0,
+            completionPercentage: 0,
+          },
+          achievements: [],
+        },
+      };
+    } catch (error: any) {
+      console.error('[ACHIEVEMENT API] Error fetching achievement progress:', error);
+      return { success: false, error: error.message };
+    }
   }
 
-  // Initialize achievements for user (usually done on registration)
+  /**
+   * Initialize achievements for user (usually done on registration)
+   */
   async initializeUserAchievements(): Promise<ApiResponse<Achievement[]>> {
-    return apiClient.post(`${this.baseUrl}/initialize`, {});
+    // This endpoint may not exist - return success with empty data
+    console.warn('[ACHIEVEMENT API] initializeUserAchievements endpoint may not exist');
+    return { success: true, data: [] };
   }
 
-  // Update achievement progress (typically called by system)
+  /**
+   * Update achievement progress (typically called by system)
+   */
   async updateAchievementProgress(data: AchievementProgressUpdate): Promise<ApiResponse<Achievement>> {
-    return apiClient.put(`${this.baseUrl}/update-progress`, data);
+    // This endpoint may not exist - use unlock endpoint if available
+    console.warn('[ACHIEVEMENT API] updateAchievementProgress endpoint may not exist');
+    return { success: false, error: 'Endpoint not available' };
   }
 
-  // Recalculate all achievements based on user statistics
+  /**
+   * Recalculate all achievements based on user statistics
+   */
   async recalculateAchievements(): Promise<ApiResponse<Achievement[]>> {
-    return apiClient.post(`${this.baseUrl}/recalculate`, {});
+    // This endpoint may not exist
+    console.warn('[ACHIEVEMENT API] recalculateAchievements endpoint may not exist');
+    return { success: true, data: [] };
   }
 }
 

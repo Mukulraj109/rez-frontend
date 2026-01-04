@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,44 +6,47 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import reelApi from '../../../services/reelApi';
 
 const { width } = Dimensions.get('window');
 
-const ugcPosts = [
+// Fallback data
+const fallbackUgcPosts = [
   {
-    id: 1,
+    id: '1',
     user: { name: 'Arjun Kumar', avatar: 'https://i.pravatar.cc/100?img=11', distance: '0.5 km away' },
     store: 'Cafe Noir',
     storeEmoji: '☕',
     image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
-    caption: 'Saved ₹90 at this café using ReZ 😊 Amazing coffee and service!',
+    caption: 'Saved ₹90 at this café using ReZ. Amazing coffee and service!',
     saved: 90,
     helpful: 45,
     comments: 12,
     time: '2 hours ago',
   },
   {
-    id: 2,
+    id: '2',
     user: { name: 'Neha Patel', avatar: 'https://i.pravatar.cc/100?img=5', distance: '1.2 km away' },
     store: 'Fresh Groceries',
     storeEmoji: '🛒',
     image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400',
-    caption: 'Monthly grocery shopping with 15% cashback. ReZ makes it so easy! 🎉',
+    caption: 'Monthly grocery shopping with 15% cashback. ReZ makes it so easy!',
     saved: 340,
     helpful: 78,
     comments: 23,
     time: '5 hours ago',
   },
   {
-    id: 3,
+    id: '3',
     user: { name: 'Raj Sharma', avatar: 'https://i.pravatar.cc/100?img=12', distance: '0.8 km away' },
     store: 'Nike Store',
     storeEmoji: '👟',
     image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
-    caption: 'Got these amazing sneakers with 20% cashback! Best deal ever! 🔥',
+    caption: 'Got these amazing sneakers with 20% cashback! Best deal ever!',
     saved: 1400,
     helpful: 156,
     comments: 34,
@@ -51,8 +54,88 @@ const ugcPosts = [
   },
 ];
 
+const storeEmojis: Record<string, string> = {
+  'food': '🍛',
+  'restaurant': '🍽️',
+  'cafe': '☕',
+  'coffee': '☕',
+  'fashion': '👗',
+  'clothing': '👕',
+  'shoes': '👟',
+  'electronics': '📱',
+  'grocery': '🛒',
+  'beauty': '💄',
+  'spa': '💆',
+  'fitness': '💪',
+  'gym': '🏋️',
+  'default': '🏪',
+};
+
+const getStoreEmoji = (category?: string, storeName?: string): string => {
+  if (category) {
+    const lowerCat = category.toLowerCase();
+    for (const [key, emoji] of Object.entries(storeEmojis)) {
+      if (lowerCat.includes(key)) return emoji;
+    }
+  }
+  if (storeName) {
+    const lowerName = storeName.toLowerCase();
+    for (const [key, emoji] of Object.entries(storeEmojis)) {
+      if (lowerName.includes(key)) return emoji;
+    }
+  }
+  return storeEmojis.default;
+};
+
+const formatTimeAgo = (dateString?: string): string => {
+  if (!dateString) return '1 hour ago';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  return 'Just now';
+};
+
 const UGCPostsFeed = () => {
   const router = useRouter();
+  const [ugcPosts, setUgcPosts] = useState<any[]>(fallbackUgcPosts);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUgcPosts = async () => {
+      try {
+        const response = await reelApi.getTrendingReels({ limit: 5 });
+        if (response.success && response.data && response.data.length > 0) {
+          const transformed = response.data.map((video: any, index: number) => ({
+            id: video.id || video._id,
+            user: {
+              name: video.creator?.username || video.creator?.name || `User ${index + 1}`,
+              avatar: video.creator?.avatar || video.creator?.profilePicture || `https://i.pravatar.cc/100?img=${10 + index}`,
+              distance: `${(Math.random() * 2 + 0.3).toFixed(1)} km away`,
+            },
+            store: video.store?.name || video.storeName || 'Local Store',
+            storeEmoji: getStoreEmoji(video.category, video.store?.name),
+            image: video.thumbnail || video.thumbnailUrl || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
+            caption: video.description || video.caption || 'Great experience with ReZ cashback!',
+            saved: video.amountSaved || Math.floor(Math.random() * 500) + 50,
+            helpful: video.likes || video.likesCount || Math.floor(Math.random() * 100) + 10,
+            comments: video.comments?.length || video.commentsCount || Math.floor(Math.random() * 30) + 5,
+            time: formatTimeAgo(video.createdAt),
+          }));
+          setUgcPosts(transformed);
+        }
+      } catch (error) {
+        console.error('[UGC POSTS FEED] Error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchUgcPosts();
+  }, []);
 
   const navigateTo = (path: string) => {
     router.push(path as any);

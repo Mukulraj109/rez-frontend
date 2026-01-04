@@ -987,6 +987,79 @@ class StoresService {
     }
   }
 
+  /**
+   * Get new stores for homepage NewOnRezSection
+   */
+  async getNewStores(params?: {
+    limit?: number;
+    days?: number;
+    latitude?: number;
+    longitude?: number;
+  }): Promise<ApiResponse<{
+    stores: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      category: string;
+      image: string;
+      people: number;
+      cashback: string;
+      rating: number;
+      distance?: number;
+      isNew: boolean;
+    }>;
+    total: number;
+    featuredStore: any;
+    smallStores: any[];
+    horizontalStore: any;
+  }>> {
+    try {
+      console.log('📦 [STORES API] Fetching new stores for homepage...');
+
+      const response = await apiClient.get<{
+        stores: Array<{
+          id: string;
+          name: string;
+          slug: string;
+          category: string;
+          image: string;
+          people: number;
+          cashback: string;
+          rating: number;
+          distance?: number;
+          isNew: boolean;
+        }>;
+        total: number;
+        featuredStore: any;
+        smallStores: any[];
+        horizontalStore: any;
+      }>('/stores/new', {
+        limit: params?.limit || 4,
+        days: params?.days || 30,
+        ...(params?.latitude && { latitude: params.latitude }),
+        ...(params?.longitude && { longitude: params.longitude }),
+      });
+
+      if (response.success && response.data) {
+        console.log(`✅ [STORES API] Got ${response.data.stores?.length || 0} new stores`);
+        return response;
+      }
+
+      return {
+        success: false,
+        error: 'No new stores found',
+        message: 'Failed to fetch new stores',
+      };
+    } catch (error: any) {
+      console.error('❌ [STORES API] Error fetching new stores:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch new stores',
+        message: error?.message || 'Failed to fetch new stores',
+      };
+    }
+  }
+
   private determineCategory(deliveryCategories: any): string {
     if (deliveryCategories?.premium) return 'Premium';
     if (deliveryCategories?.organic) return 'Organic';

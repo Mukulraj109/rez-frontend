@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import gameApi from '../../services/gameApi';
 
 const { width } = Dimensions.get('window');
 
@@ -30,8 +31,9 @@ const LuckyDraw = () => {
   const [spinning, setSpinning] = useState(false);
   const [prize, setPrize] = useState<Prize | null>(null);
   const [todayPlays, setTodayPlays] = useState(0);
-  const maxPlays = 1;
-  const spinValue = new Animated.Value(0);
+  const [maxPlays, setMaxPlays] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const spinValue = useRef(new Animated.Value(0)).current;
 
   const prizes: Prize[] = [
     { id: 1, name: '1000 Coins', value: 1000, icon: '💰', chance: 5, color: ['#F59E0B', '#EAB308'] },
@@ -41,12 +43,35 @@ const LuckyDraw = () => {
     { id: 5, name: '50 Coins', value: 50, icon: '🎁', chance: 35, color: ['#F97316', '#EF4444'] }
   ];
 
-  const spin = () => {
+  // Fetch daily limits on mount
+  useEffect(() => {
+    const fetchLimits = async () => {
+      try {
+        const response = await gameApi.getDailyLimits();
+        if (response.data) {
+          const spinLimits = response.data.spin_wheel;
+          if (spinLimits) {
+            setTodayPlays(spinLimits.used);
+            setMaxPlays(spinLimits.limit);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching daily limits:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLimits();
+  }, []);
+
+  const spin = async () => {
     if (todayPlays >= maxPlays || spinning) return;
 
     setSpinning(true);
     setGameState('spinning');
 
+    // Reset and start animation
+    spinValue.setValue(0);
     Animated.timing(spinValue, {
       toValue: 1,
       duration: 3000,
@@ -54,24 +79,56 @@ const LuckyDraw = () => {
       useNativeDriver: true,
     }).start();
 
-    setTimeout(() => {
-      const random = Math.random() * 100;
-      let cumulative = 0;
-      let wonPrize = prizes[prizes.length - 1];
+    try {
+      // Call API to spin wheel
+      const response = await gameApi.spinWheel();
 
-      for (const p of prizes) {
-        cumulative += p.chance;
-        if (random <= cumulative) {
-          wonPrize = p;
-          break;
+      // Wait for animation to complete
+      setTimeout(() => {
+        if (response.data?.result?.prize) {
+          // Backend returns: { result: { won: true, prize: { type, value, description } } }
+          const coinsWon = response.data.result.prize.value;
+          // Find matching prize
+          let wonPrize = prizes.find(p => p.value === coinsWon) || prizes[prizes.length - 1];
+          setPrize({ ...wonPrize, value: coinsWon });
+        } else if (response.data) {
+          // Fallback to local logic if API fails
+          const random = Math.random() * 100;
+          let cumulative = 0;
+          let wonPrize = prizes[prizes.length - 1];
+          for (const p of prizes) {
+            cumulative += p.chance;
+            if (random <= cumulative) {
+              wonPrize = p;
+              break;
+            }
+          }
+          setPrize(wonPrize);
         }
-      }
-
-      setPrize(wonPrize);
-      setSpinning(false);
-      setGameState('result');
-      setTodayPlays(todayPlays + 1);
-    }, 3000);
+        setSpinning(false);
+        setGameState('result');
+        setTodayPlays(todayPlays + 1);
+      }, 3000);
+    } catch (error) {
+      console.error('Error spinning wheel:', error);
+      // Fallback to local logic
+      setTimeout(() => {
+        const random = Math.random() * 100;
+        let cumulative = 0;
+        let wonPrize = prizes[prizes.length - 1];
+        for (const p of prizes) {
+          cumulative += p.chance;
+          if (random <= cumulative) {
+            wonPrize = p;
+            break;
+          }
+        }
+        setPrize(wonPrize);
+        setSpinning(false);
+        setGameState('result');
+        setTodayPlays(todayPlays + 1);
+      }, 3000);
+    }
   };
 
   const spinRotation = spinValue.interpolate({

@@ -1,9 +1,9 @@
 /**
  * Beauty & Wellness Hub Page
- * Converted from V2
+ * Connected to /api/stores (beauty category)
  */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,13 @@ import {
   Image,
   Platform,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import storesApi from '@/services/storesApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -33,7 +36,8 @@ const COLORS = {
   amber500: '#F59E0B',
 };
 
-const categories = [
+// Beauty categories
+const BEAUTY_CATEGORIES = [
   { id: 'salon', title: 'Salon', icon: '💇‍♀️', color: '#EC4899', services: '500+ salons' },
   { id: 'spa', title: 'Spa & Massage', icon: '💆‍♀️', color: '#8B5CF6', services: '200+ spas' },
   { id: 'products', title: 'Products', icon: '💄', color: '#F43F5E', services: '10k+ products' },
@@ -42,29 +46,98 @@ const categories = [
   { id: 'haircare', title: 'Hair Care', icon: '💇', color: '#3B82F6', services: '3k+ products' },
 ];
 
-const featuredSalons = [
-  { id: 1, name: 'Lakme Salon', rating: 4.8, distance: '1.2 km', cashback: '25%', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400' },
-  { id: 2, name: 'Jawed Habib', rating: 4.6, distance: '2.0 km', cashback: '20%', image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
-  { id: 3, name: 'Looks Salon', rating: 4.5, distance: '0.8 km', cashback: '30%', image: 'https://images.unsplash.com/photo-1633681926022-84c23e8cb2d6?w=400' },
+// Fallback salons
+const FALLBACK_SALONS = [
+  { id: '1', name: 'Lakme Salon', rating: 4.8, distance: '1.2 km', cashback: '25%', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400' },
+  { id: '2', name: 'Jawed Habib', rating: 4.6, distance: '2.0 km', cashback: '20%', image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
+  { id: '3', name: 'Looks Salon', rating: 4.5, distance: '0.8 km', cashback: '30%', image: 'https://images.unsplash.com/photo-1633681926022-84c23e8cb2d6?w=400' },
 ];
 
-const topBrands = [
-  { id: 1, name: 'Nykaa', logo: '💅', discount: 'Up to 40% off' },
-  { id: 2, name: 'Sephora', logo: '💄', discount: 'Buy 2 Get 1' },
-  { id: 3, name: 'MAC', logo: '💋', discount: '15% cashback' },
-  { id: 4, name: 'Forest Essentials', logo: '🌿', discount: '20% off' },
+// Top brands
+const TOP_BRANDS = [
+  { id: '1', name: 'Nykaa', logo: '💅', discount: 'Up to 40% off' },
+  { id: '2', name: 'Sephora', logo: '💄', discount: 'Buy 2 Get 1' },
+  { id: '3', name: 'MAC', logo: '💋', discount: '15% cashback' },
+  { id: '4', name: 'Forest Essentials', logo: '🌿', discount: '20% off' },
 ];
+
+interface DisplaySalon {
+  id: string;
+  name: string;
+  rating: number;
+  distance: string;
+  cashback: string;
+  image: string;
+}
 
 const BeautyPage: React.FC = () => {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [featuredSalons, setFeaturedSalons] = useState<DisplaySalon[]>(FALLBACK_SALONS);
+  const [stats, setStats] = useState({ salons: 500, maxCashback: 30 });
+
+  const transformStoreToSalon = (store: any): DisplaySalon => {
+    return {
+      id: store._id || store.id,
+      name: store.name,
+      rating: store.ratings?.average || 4.5,
+      distance: store.distance ? `${store.distance.toFixed(1)} km` : '1.0 km',
+      cashback: store.cashback?.maxPercentage ? `${store.cashback.maxPercentage}%` : '20%',
+      image: store.logo || store.banner || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
+    };
+  };
+
+  const fetchBeautyData = useCallback(async () => {
+    try {
+      // Fetch stores with beauty/salon tags
+      const response = await storesApi.getStores({
+        tags: ['beauty', 'salon', 'spa'],
+        limit: 6,
+        isActive: true,
+      });
+
+      if (response.success && response.data?.stores && response.data.stores.length > 0) {
+        setFeaturedSalons(response.data.stores.slice(0, 3).map(transformStoreToSalon));
+        setStats({
+          salons: response.data.pagination?.total || 500,
+          maxCashback: 30,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching beauty data:', error);
+      // Keep fallback data
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBeautyData();
+  }, [fetchBeautyData]);
+
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    fetchBeautyData();
+  }, [fetchBeautyData]);
 
   const handleCategoryPress = (categoryId: string) => {
     router.push(`/beauty/${categoryId}` as any);
   };
 
-  const handleSalonPress = (salonId: number) => {
-    router.push(`/store/${salonId}` as any);
+  const handleSalonPress = (salonId: string) => {
+    router.push(`/MainStorePage?storeId=${salonId}` as any);
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={COLORS.pink500} />
+        <Text style={styles.loadingText}>Loading beauty services...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -83,7 +156,7 @@ const BeautyPage: React.FC = () => {
             <Text style={styles.headerTitle}>Beauty & Wellness</Text>
             <Text style={styles.headerSubtitle}>Pamper yourself, earn rewards</Text>
           </View>
-          <TouchableOpacity style={styles.searchButton}>
+          <TouchableOpacity style={styles.searchButton} onPress={() => router.push('/search' as any)}>
             <Ionicons name="search" size={24} color={COLORS.white} />
           </TouchableOpacity>
         </View>
@@ -91,12 +164,12 @@ const BeautyPage: React.FC = () => {
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>500+</Text>
+            <Text style={styles.statValue}>{stats.salons}+</Text>
             <Text style={styles.statLabel}>Salons</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>30%</Text>
+            <Text style={styles.statValue}>{stats.maxCashback}%</Text>
             <Text style={styles.statLabel}>Max Cashback</Text>
           </View>
           <View style={styles.statDivider} />
@@ -107,12 +180,17 @@ const BeautyPage: React.FC = () => {
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.pink500]} />
+        }
+      >
         {/* Categories */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Categories</Text>
           <View style={styles.categoriesGrid}>
-            {categories.map((cat) => (
+            {BEAUTY_CATEGORIES.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
                 style={styles.categoryCard}
@@ -133,7 +211,7 @@ const BeautyPage: React.FC = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Featured Salons</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/beauty/salon' as any)}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -168,8 +246,13 @@ const BeautyPage: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Top Brands</Text>
           <View style={styles.brandsGrid}>
-            {topBrands.map((brand) => (
-              <TouchableOpacity key={brand.id} style={styles.brandCard} activeOpacity={0.8}>
+            {TOP_BRANDS.map((brand) => (
+              <TouchableOpacity
+                key={brand.id}
+                style={styles.brandCard}
+                activeOpacity={0.8}
+                onPress={() => router.push(`/brand/${brand.name.toLowerCase()}` as any)}
+              >
                 <Text style={styles.brandLogo}>{brand.logo}</Text>
                 <Text style={styles.brandName}>{brand.name}</Text>
                 <Text style={styles.brandDiscount}>{brand.discount}</Text>
@@ -188,8 +271,11 @@ const BeautyPage: React.FC = () => {
           >
             <Text style={styles.promoEmoji}>💅</Text>
             <Text style={styles.promoTitle}>Beauty Week Special</Text>
-            <Text style={styles.promoSubtitle}>Extra 15% cashback on all bookings • Limited time</Text>
-            <TouchableOpacity style={styles.promoButton}>
+            <Text style={styles.promoSubtitle}>Extra 15% cashback on all bookings</Text>
+            <TouchableOpacity
+              style={styles.promoButton}
+              onPress={() => router.push('/offers' as any)}
+            >
               <Text style={styles.promoButtonText}>Book Now</Text>
             </TouchableOpacity>
           </LinearGradient>
@@ -205,6 +291,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.white,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.gray600,
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 56 : 16,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import {
   View,
@@ -8,9 +8,11 @@ import {
   TouchableOpacity,
   useColorScheme,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import programApi from '../../services/programApi';
 
 const { width } = Dimensions.get('window');
 
@@ -19,6 +21,33 @@ const CollegeAmbassador = () => {
   const colorScheme = useColorScheme();
   const isDark = false; // Force white theme
   const [activeTab, setActiveTab] = useState('tasks');
+  const [loading, setLoading] = useState(true);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [myPrograms, setMyPrograms] = useState<any[]>([]);
+
+  // Fetch college programs
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [programsRes, myProgramsRes] = await Promise.all([
+          programApi.getCollegePrograms(),
+          programApi.getMyPrograms()
+        ]);
+
+        if (programsRes.data) {
+          setPrograms(programsRes.data);
+        }
+        if (myProgramsRes.data) {
+          setMyPrograms(myProgramsRes.data.filter(p => p.type === 'college_ambassador'));
+        }
+      } catch (error) {
+        console.error('Error fetching college programs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const ambassadorTasks = [
     {

@@ -1,7 +1,7 @@
 // Review to Earn Page
 // Earn coins for writing reviews
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from '@/components/ThemedText';
 import { Colors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/DesignSystem';
+import streakApi from '../../services/streakApi';
 
 interface PendingReview {
   id: string;

@@ -6,10 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import gameApi, { QuizQuestion } from '../../services/gameApi';
 
 const { width } = Dimensions.get('window');
 
@@ -21,51 +23,80 @@ const Quiz = () => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(15);
   const [streak, setStreak] = useState(0);
-  const [todayPlays, setTodayPlays] = useState(2);
-  const maxPlays = 5;
+  const [todayPlays, setTodayPlays] = useState(0);
+  const [maxPlays, setMaxPlays] = useState(5);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [answers, setAnswers] = useState<Array<{ questionId: string; selectedAnswer: number; timeSpent: number }>>([]);
 
-  const quizQuestions = [
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([
     {
-      id: 1,
+      _id: '1',
       question: 'Which brand offers the highest cashback on electronics?',
       options: ['Amazon', 'Flipkart', 'Croma', 'Reliance Digital'],
-      correct: 1,
+      correctAnswer: 1,
       coins: 50,
-      category: 'Shopping'
+      category: 'Shopping',
+      difficulty: 'medium'
     },
     {
-      id: 2,
+      _id: '2',
       question: 'What is the minimum order value for free delivery on most food apps?',
       options: ['₹99', '₹149', '₹199', '₹299'],
-      correct: 2,
+      correctAnswer: 2,
       coins: 50,
-      category: 'Food & Dining'
+      category: 'Food & Dining',
+      difficulty: 'medium'
     },
     {
-      id: 3,
+      _id: '3',
       question: 'Which ReZ coin can be used to buy gift cards?',
       options: ['ReZ Coin', 'Branded Coin', 'Privé Coin', 'Promo Coin'],
-      correct: 2,
+      correctAnswer: 2,
       coins: 50,
-      category: 'ReZ System'
+      category: 'ReZ System',
+      difficulty: 'medium'
     },
     {
-      id: 4,
+      _id: '4',
       question: 'Best time to book flights for maximum savings?',
       options: ['Monday morning', 'Tuesday afternoon', 'Friday evening', 'Sunday night'],
-      correct: 1,
+      correctAnswer: 1,
       coins: 50,
-      category: 'Travel'
+      category: 'Travel',
+      difficulty: 'medium'
     },
     {
-      id: 5,
+      _id: '5',
       question: 'Which payment method gives extra ReZ coins?',
       options: ['Cash', 'Credit Card', 'ReZ Wallet', 'Net Banking'],
-      correct: 2,
+      correctAnswer: 2,
       coins: 50,
-      category: 'ReZ System'
+      category: 'ReZ System',
+      difficulty: 'medium'
     }
-  ];
+  ]);
+
+  // Fetch daily limits on mount
+  useEffect(() => {
+    const fetchLimits = async () => {
+      try {
+        const response = await gameApi.getDailyLimits();
+        if (response.data) {
+          const quizLimits = response.data.quiz;
+          if (quizLimits) {
+            setTodayPlays(quizLimits.used);
+            setMaxPlays(quizLimits.limit);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching daily limits:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLimits();
+  }, []);
 
   useEffect(() => {
     if (gameState === 'playing' && timeLeft > 0 && selectedAnswer === null) {
@@ -84,16 +115,26 @@ const Quiz = () => {
     setSelectedAnswer(null);
     setTimeLeft(15);
     setStreak(0);
+    setAnswers([]);
   };
 
   const handleAnswer = (answerIndex: number) => {
     if (selectedAnswer !== null) return;
 
     setSelectedAnswer(answerIndex);
-    const isCorrect = answerIndex === quizQuestions[currentQuestion].correct;
+    const currentQ = quizQuestions[currentQuestion];
+    const isCorrect = answerIndex === currentQ.correctAnswer;
+
+    // Track answer
+    const timeSpent = 15 - timeLeft;
+    setAnswers(prev => [...prev, {
+      questionId: currentQ._id,
+      selectedAnswer: answerIndex,
+      timeSpent
+    }]);
 
     if (isCorrect) {
-      setScore(score + quizQuestions[currentQuestion].coins);
+      setScore(score + currentQ.coins);
       setStreak(streak + 1);
     } else {
       setStreak(0);
@@ -105,10 +146,25 @@ const Quiz = () => {
         setSelectedAnswer(null);
         setTimeLeft(15);
       } else {
-        setGameState('result');
-        setTodayPlays(todayPlays + 1);
+        submitQuizResults();
       }
     }, 1500);
+  };
+
+  const submitQuizResults = async () => {
+    setSubmitting(true);
+    try {
+      const response = await gameApi.submitQuiz(answers);
+      if (response.data) {
+        setScore(response.data.totalCoins);
+      }
+    } catch (error) {
+      console.error('Error submitting quiz:', error);
+    } finally {
+      setSubmitting(false);
+      setGameState('result');
+      setTodayPlays(todayPlays + 1);
+    }
   };
 
   const getStreakBonus = () => {
@@ -254,7 +310,7 @@ const Quiz = () => {
               <View style={styles.optionsContainer}>
                 {quizQuestions[currentQuestion].options.map((option, index) => {
                   const isSelected = selectedAnswer === index;
-                  const isCorrect = index === quizQuestions[currentQuestion].correct;
+                  const isCorrect = index === quizQuestions[currentQuestion].correctAnswer;
                   const showResult = selectedAnswer !== null;
 
                   return (

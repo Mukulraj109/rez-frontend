@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,17 +6,31 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import streakApi from '../../services/streakApi';
 
 const { width } = Dimensions.get('window');
 
+interface Achievement {
+  id: number;
+  title: string;
+  desc: string;
+  icon: string;
+  unlocked: boolean;
+  coins: number;
+  category: string;
+  progress?: number;
+}
+
 const Achievements = () => {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
-  const achievements = [
+  const [achievements, setAchievements] = useState<Achievement[]>([
     { id: 1, title: 'First Purchase', desc: 'Make your first purchase', icon: '🎯', unlocked: true, coins: 100, category: 'Shopping' },
     { id: 2, title: 'Week Streak', desc: 'Login 7 days in a row', icon: '🔥', unlocked: true, coins: 500, category: 'Engagement' },
     { id: 3, title: 'Social Butterfly', desc: 'Refer 10 friends', icon: '🦋', unlocked: false, coins: 300, progress: 60, category: 'Social' },
@@ -29,10 +43,39 @@ const Achievements = () => {
     { id: 10, title: 'Cashback King', desc: 'Earn ₹5,000 cashback', icon: '👑', unlocked: false, coins: 2000, progress: 45, category: 'Shopping' },
     { id: 11, title: 'Explorer', desc: 'Visit 30 stores', icon: '🗺️', unlocked: false, coins: 350, progress: 50, category: 'Shopping' },
     { id: 12, title: 'Loyal Member', desc: '30 days streak', icon: '💎', unlocked: false, coins: 1500, progress: 20, category: 'Engagement' },
-  ];
+  ]);
 
   const categories = ['All', 'Shopping', 'Social', 'Engagement', 'Gaming'];
   const [activeCategory, setActiveCategory] = useState('All');
+
+  // Fetch achievements data - could integrate with achievement API when available
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch streak data to update streak-related achievements
+        const streakResponse = await streakApi.getStreakStatus('login');
+        if (streakResponse.data) {
+          const currentStreak = streakResponse.data.current;
+
+          // Update streak-related achievements
+          setAchievements(prev => prev.map(a => {
+            if (a.id === 2) { // Week Streak
+              return { ...a, unlocked: currentStreak >= 7, progress: currentStreak >= 7 ? undefined : Math.round((currentStreak / 7) * 100) };
+            }
+            if (a.id === 12) { // Loyal Member
+              return { ...a, unlocked: currentStreak >= 30, progress: currentStreak >= 30 ? undefined : Math.round((currentStreak / 30) * 100) };
+            }
+            return a;
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching achievements data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const filteredAchievements = activeCategory === 'All'
     ? achievements

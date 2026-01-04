@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import gameApi from '../../services/gameApi';
 
 const { width } = Dimensions.get('window');
 
@@ -27,10 +28,33 @@ const MemoryMatch = () => {
   const [moves, setMoves] = useState(0);
   const [timeLeft, setTimeLeft] = useState(60);
   const [score, setScore] = useState(0);
-  const [todayPlays, setTodayPlays] = useState(1);
-  const maxPlays = 3;
+  const [todayPlays, setTodayPlays] = useState(0);
+  const [maxPlays, setMaxPlays] = useState(3);
+  const [loading, setLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const cardEmojis = ['🛍️', '💳', '🎁', '⭐', '💰', '🏪', '🎯', '🔥'];
+
+  // Fetch daily limits on mount
+  useEffect(() => {
+    const fetchLimits = async () => {
+      try {
+        const response = await gameApi.getDailyLimits();
+        if (response.data) {
+          const memoryLimits = response.data.memory_match;
+          if (memoryLimits) {
+            setTodayPlays(memoryLimits.used);
+            setMaxPlays(memoryLimits.limit);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching daily limits:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLimits();
+  }, []);
 
   useEffect(() => {
     if (gameState === 'playing' && timeLeft > 0) {
@@ -61,7 +85,7 @@ const MemoryMatch = () => {
     }
   }, [matched]);
 
-  const initializeGame = () => {
+  const initializeGame = async () => {
     const shuffled = [...cardEmojis, ...cardEmojis]
       .sort(() => Math.random() - 0.5)
       .map((emoji, index) => ({ id: index, emoji }));
@@ -72,6 +96,16 @@ const MemoryMatch = () => {
     setTimeLeft(60);
     setScore(0);
     setGameState('playing');
+
+    // Start session with backend
+    try {
+      const response = await gameApi.startMemoryMatch();
+      if (response.data?.sessionId) {
+        setSessionId(response.data.sessionId);
+      }
+    } catch (error) {
+      console.error('Error starting memory match session:', error);
+    }
   };
 
   const handleCardClick = (index: number) => {
@@ -85,7 +119,7 @@ const MemoryMatch = () => {
     setFlipped([...flipped, index]);
   };
 
-  const endGame = () => {
+  const endGame = async () => {
     setGameState('result');
     setTodayPlays(todayPlays + 1);
     let bonus = 0;
@@ -94,7 +128,25 @@ const MemoryMatch = () => {
       if (timeLeft > 40) bonus += 25;
       if (moves <= 12) bonus += 25;
     }
-    setScore(score + bonus);
+    const finalScore = score + bonus;
+    setScore(finalScore);
+
+    // Submit results to backend
+    if (sessionId) {
+      try {
+        const response = await gameApi.completeMemoryMatch(
+          sessionId,
+          finalScore,
+          60 - timeLeft,  // timeSpent
+          moves
+        );
+        if (response.data?.coins) {
+          setScore(response.data.coins);
+        }
+      } catch (error) {
+        console.error('Error completing memory match:', error);
+      }
+    }
   };
 
   const getPerformanceRating = () => {

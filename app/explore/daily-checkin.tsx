@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,118 +13,194 @@ import {
   Share,
   Linking,
   Animated,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import gamificationApi, {
+  CheckInReward,
+  StreakData,
+  AffiliateStats,
+  PromotionalPoster,
+  ShareSubmission,
+  StreakBonus,
+} from '@/services/gamificationApi';
 
 const { width } = Dimensions.get('window');
 
-// Mock data
-const checkInRewardsData = [
-  { day: 1, coins: 10, claimed: true },
-  { day: 2, coins: 15, claimed: true },
-  { day: 3, coins: 20, claimed: true },
+// Default data (used as fallback)
+const defaultCheckInRewardsData: CheckInReward[] = [
+  { day: 1, coins: 10, claimed: false },
+  { day: 2, coins: 15, claimed: false },
+  { day: 3, coins: 20, claimed: false },
   { day: 4, coins: 25, claimed: false, today: true },
   { day: 5, coins: 30, claimed: false },
   { day: 6, coins: 40, claimed: false },
   { day: 7, coins: 100, claimed: false, bonus: true },
 ];
 
-const promotionalPosters = [
+// Default promotional posters (fallback)
+const defaultPosters: PromotionalPoster[] = [
   {
-    id: 1,
+    id: '1',
     title: 'Mega Diwali Sale',
     subtitle: 'Up to 70% off + Extra Cashback',
     image: 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?w=500',
-    colors: ['#F97316', '#EF4444'] as const,
+    colors: ['#F97316', '#EF4444'],
     shareBonus: 50,
   },
   {
-    id: 2,
+    id: '2',
     title: 'Weekend Bonanza',
     subtitle: '3X Coins on All Purchases',
     image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=500',
-    colors: ['#A855F7', '#EC4899'] as const,
+    colors: ['#A855F7', '#EC4899'],
     shareBonus: 30,
   },
   {
-    id: 3,
+    id: '3',
     title: 'New User Special',
     subtitle: 'Get Rs.500 Welcome Bonus',
     image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=500',
-    colors: ['#3B82F6', '#06B6D4'] as const,
+    colors: ['#3B82F6', '#06B6D4'],
     shareBonus: 100,
   },
   {
-    id: 4,
+    id: '4',
     title: 'Flash Sale Today',
     subtitle: 'Limited Time Mega Deals',
     image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?w=500',
-    colors: ['#22C55E', '#14B8A6'] as const,
+    colors: ['#22C55E', '#14B8A6'],
     shareBonus: 40,
   },
 ];
 
-type Submission = {
-  id: number;
-  posterTitle: string;
-  postUrl: string;
-  platform: string;
-  status: 'pending' | 'approved' | 'rejected';
-  submittedAt: string;
-  approvedAt?: string;
-  shareBonus: number;
-  rejectionReason?: string;
-};
+// Default streak bonuses (fallback)
+const defaultStreakBonuses: StreakBonus[] = [
+  { days: 7, reward: 100, achieved: false },
+  { days: 30, reward: 500, achieved: false },
+  { days: 100, reward: 2000, achieved: false },
+];
 
 export default function DailyCheckInPage() {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
   const postersYPosition = useRef(0);
 
-  const [checkInRewards, setCheckInRewards] = useState(checkInRewardsData);
-  const [currentStreak, setCurrentStreak] = useState(3);
-  const [totalEarned, setTotalEarned] = useState(45);
+  // API state
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [checkInLoading, setCheckInLoading] = useState(false);
+
+  const [checkInRewards, setCheckInRewards] = useState<CheckInReward[]>(defaultCheckInRewardsData);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [totalEarned, setTotalEarned] = useState(0);
+  const [hasCheckedInToday, setHasCheckedInToday] = useState(false);
   const [showReward, setShowReward] = useState(false);
-  const [selectedPoster, setSelectedPoster] = useState<typeof promotionalPosters[0] | null>(null);
-  const [affiliateStats, setAffiliateStats] = useState({
-    totalShares: 12,
-    appDownloads: 5,
-    purchases: 2,
-    commissionEarned: 450,
+  const [selectedPoster, setSelectedPoster] = useState<PromotionalPoster | null>(null);
+
+  // Data fetched from API
+  const [promotionalPosters, setPromotionalPosters] = useState<PromotionalPoster[]>(defaultPosters);
+  const [affiliateStats, setAffiliateStats] = useState<AffiliateStats>({
+    totalShares: 0,
+    appDownloads: 0,
+    purchases: 0,
+    commissionEarned: 0,
   });
+  const [streakBonuses, setStreakBonuses] = useState<StreakBonus[]>(defaultStreakBonuses);
+
+  // Fetch all check-in page data from APIs
+  const fetchCheckInData = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      // Fetch all data in parallel for performance
+      const [
+        streakResponse,
+        calendarResponse,
+        affiliateResponse,
+        postersResponse,
+        submissionsResponse,
+        bonusesResponse,
+      ] = await Promise.all([
+        gamificationApi.getStreakStatus(),
+        gamificationApi.getWeeklyCalendar(),
+        gamificationApi.getAffiliateStats(),
+        gamificationApi.getPromotionalPosters(),
+        gamificationApi.getShareSubmissions(),
+        gamificationApi.getStreakBonuses(),
+      ]);
+
+      // Update streak data
+      if (streakResponse.success && streakResponse.data) {
+        const { currentStreak: streak, longestStreak, hasCheckedInToday: checkedIn, totalEarned: earned } = streakResponse.data;
+        setCurrentStreak(streak);
+        setBestStreak(longestStreak);
+        setHasCheckedInToday(checkedIn);
+        setTotalEarned(earned);
+      }
+
+      // Update calendar
+      if (calendarResponse.success && calendarResponse.data) {
+        setCheckInRewards(calendarResponse.data);
+      }
+
+      // Update affiliate stats
+      if (affiliateResponse.success && affiliateResponse.data) {
+        setAffiliateStats(affiliateResponse.data);
+      }
+
+      // Update promotional posters
+      if (postersResponse.success && postersResponse.data) {
+        setPromotionalPosters(postersResponse.data);
+      }
+
+      // Update submissions
+      if (submissionsResponse.success && submissionsResponse.data) {
+        setSubmissions(submissionsResponse.data);
+      }
+
+      // Update streak bonuses
+      if (bonusesResponse.success && bonusesResponse.data) {
+        setStreakBonuses(bonusesResponse.data);
+      }
+    } catch (error) {
+      console.error('[DAILY CHECKIN] Error fetching data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchCheckInData();
+  }, [fetchCheckInData]);
+
+  const onRefresh = useCallback(() => {
+    fetchCheckInData(true);
+  }, [fetchCheckInData]);
 
   // Submission workflow states
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [submitUrl, setSubmitUrl] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState('');
-  const [submissions, setSubmissions] = useState<Submission[]>([
-    {
-      id: 1,
-      posterTitle: 'Mega Diwali Sale',
-      postUrl: 'https://instagram.com/p/xyz123',
-      platform: 'instagram',
-      status: 'approved',
-      submittedAt: '2024-12-25 10:30 AM',
-      approvedAt: '2024-12-25 11:00 AM',
-      shareBonus: 50,
-    },
-    {
-      id: 2,
-      posterTitle: 'Weekend Bonanza',
-      postUrl: 'https://facebook.com/post/abc456',
-      platform: 'facebook',
-      status: 'pending',
-      submittedAt: '2024-12-26 09:15 AM',
-      shareBonus: 30,
-    },
-  ]);
+  const [submissions, setSubmissions] = useState<ShareSubmission[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const [checkInStarted, setCheckInStarted] = useState(false);
-  const [pendingCheckInReward, setPendingCheckInReward] = useState<typeof checkInRewardsData[0] | null>(null);
+  const [pendingCheckInReward, setPendingCheckInReward] = useState<CheckInReward | null>(null);
 
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
+    if (hasCheckedInToday || checkInLoading) return;
+
     const todayReward = checkInRewards.find(r => r.today);
     if (todayReward && !todayReward.claimed) {
       setCheckInStarted(true);
@@ -136,23 +212,39 @@ export default function DailyCheckInPage() {
     }
   };
 
-  const completeCheckIn = () => {
+  const completeCheckIn = async () => {
     if (pendingCheckInReward) {
-      setShowReward(true);
-      setCurrentStreak(prev => prev + 1);
-      setTotalEarned(prev => prev + pendingCheckInReward.coins);
+      try {
+        setCheckInLoading(true);
 
-      // Update the checkInRewards to mark as claimed
-      setCheckInRewards(prev => prev.map(r =>
-        r.day === pendingCheckInReward.day ? { ...r, claimed: true } : r
-      ));
+        // Call API to perform check-in
+        const response = await gamificationApi.performCheckIn();
 
-      setCheckInStarted(false);
-      setPendingCheckInReward(null);
+        if (response.success && response.data) {
+          setShowReward(true);
+          setCurrentStreak(response.data.streak);
+          setTotalEarned(prev => prev + response.data.totalEarned);
+          setHasCheckedInToday(true);
 
-      setTimeout(() => {
-        setShowReward(false);
-      }, 3000);
+          // Update the checkInRewards to mark as claimed
+          setCheckInRewards(prev => prev.map(r =>
+            r.day === pendingCheckInReward.day ? { ...r, claimed: true, today: false } : r
+          ));
+
+          setTimeout(() => {
+            setShowReward(false);
+          }, 3000);
+        } else {
+          Alert.alert('Check-in Failed', response.error || 'Please try again later');
+        }
+      } catch (error: any) {
+        console.error('[DAILY CHECKIN] Check-in error:', error);
+        Alert.alert('Error', error.message || 'Something went wrong');
+      } finally {
+        setCheckInLoading(false);
+        setCheckInStarted(false);
+        setPendingCheckInReward(null);
+      }
     }
   };
 
@@ -188,7 +280,7 @@ export default function DailyCheckInPage() {
     }
   };
 
-  const handleSubmitPost = () => {
+  const handleSubmitPost = async () => {
     if (!submitUrl.trim()) {
       Alert.alert('Error', 'Please enter the URL of your shared post');
       return;
@@ -202,38 +294,50 @@ export default function DailyCheckInPage() {
       return;
     }
 
-    // Create new submission
-    const newSubmission: Submission = {
-      id: submissions.length + 1,
-      posterTitle: selectedPoster?.title || 'Promotional Poster',
-      postUrl: submitUrl,
-      platform: selectedPlatform,
-      status: 'pending',
-      submittedAt: new Date().toLocaleString('en-IN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      }),
-      shareBonus: selectedPoster?.shareBonus || 0,
-    };
+    setSubmitting(true);
 
-    setSubmissions(prev => [newSubmission, ...prev]);
-    setShowSubmitModal(false);
-    setSubmitUrl('');
-    setSelectedPlatform('');
+    try {
+      // Call API to submit the post
+      const response = await gamificationApi.submitSharePost({
+        posterId: selectedPoster?.id || '',
+        posterTitle: selectedPoster?.title || 'Promotional Poster',
+        postUrl: submitUrl,
+        platform: selectedPlatform,
+        shareBonus: selectedPoster?.shareBonus || 0,
+      });
 
-    // Complete the check-in if it was started
-    if (checkInStarted) {
-      completeCheckIn();
+      if (response.success && response.data) {
+        // Add the new submission to the list
+        setSubmissions(prev => [response.data!, ...prev]);
+
+        // Update affiliate stats locally
+        setAffiliateStats(prev => ({
+          ...prev,
+          totalShares: prev.totalShares + 1,
+        }));
+
+        setShowSubmitModal(false);
+        setSubmitUrl('');
+        setSelectedPlatform('');
+
+        // Complete the check-in if it was started
+        if (checkInStarted) {
+          await completeCheckIn();
+        }
+
+        Alert.alert(
+          'Success!',
+          'Your post has been submitted for review! Check-in completed! You will receive share bonus coins once approved.'
+        );
+      } else {
+        Alert.alert('Submission Failed', response.error || 'Please try again later');
+      }
+    } catch (error: any) {
+      console.error('[DAILY CHECKIN] Submit error:', error);
+      Alert.alert('Error', error.message || 'Something went wrong');
+    } finally {
+      setSubmitting(false);
     }
-
-    Alert.alert(
-      'Success!',
-      'Your post has been submitted for review! Check-in completed! You will receive share bonus coins once approved.'
-    );
   };
 
   const todayReward = checkInRewards.find(r => r.today);
@@ -256,6 +360,9 @@ export default function DailyCheckInPage() {
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B82F6']} />
+        }
       >
         {/* Stats */}
         <View style={styles.statsContainer}>
@@ -271,13 +378,21 @@ export default function DailyCheckInPage() {
           </View>
           <View style={[styles.statCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.2)' }]}>
             <Ionicons name="trending-up" size={20} color="#8B5CF6" />
-            <Text style={styles.statValue}>7</Text>
+            <Text style={styles.statValue}>{bestStreak}</Text>
             <Text style={styles.statLabel}>Best streak</Text>
           </View>
         </View>
 
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text style={styles.loadingText}>Loading check-in data...</Text>
+          </View>
+        )}
+
         {/* Info Banner */}
-        <View style={styles.infoBannerContainer}>
+        {!loading && <View style={styles.infoBannerContainer}>
           {checkInStarted ? (
             <LinearGradient
               colors={['#F59E0B', '#F97316']}
@@ -309,9 +424,10 @@ export default function DailyCheckInPage() {
               </Text>
             </LinearGradient>
           )}
-        </View>
+        </View>}
 
         {/* Check-In Calendar */}
+        {!loading && (<>
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Ionicons name="calendar" size={16} color="#1F2937" />
@@ -576,36 +692,45 @@ export default function DailyCheckInPage() {
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Streak Bonuses</Text>
           <View style={styles.streakList}>
-            <View style={styles.streakCard}>
-              <View style={[styles.streakIcon, { backgroundColor: 'rgba(59, 130, 246, 0.2)' }]}>
-                <Ionicons name="flame" size={20} color="#3B82F6" />
-              </View>
-              <View style={styles.streakInfo}>
-                <Text style={styles.streakTitle}>7-Day Streak</Text>
-                <Text style={styles.streakDescription}>Complete 7 days</Text>
-              </View>
-              <Text style={styles.streakReward}>Rs.100</Text>
-            </View>
-            <View style={styles.streakCard}>
-              <View style={[styles.streakIcon, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
-                <Ionicons name="flame" size={20} color="#8B5CF6" />
-              </View>
-              <View style={styles.streakInfo}>
-                <Text style={styles.streakTitle}>30-Day Streak</Text>
-                <Text style={styles.streakDescription}>Complete 30 days</Text>
-              </View>
-              <Text style={styles.streakReward}>Rs.500</Text>
-            </View>
-            <View style={styles.streakCard}>
-              <View style={[styles.streakIcon, { backgroundColor: 'rgba(236, 72, 153, 0.2)' }]}>
-                <Ionicons name="flame" size={20} color="#EC4899" />
-              </View>
-              <View style={styles.streakInfo}>
-                <Text style={styles.streakTitle}>100-Day Streak</Text>
-                <Text style={styles.streakDescription}>Complete 100 days</Text>
-              </View>
-              <Text style={styles.streakReward}>Rs.2000</Text>
-            </View>
+            {streakBonuses.map((bonus, index) => {
+              // Dynamic colors based on index
+              const colors = [
+                { bg: 'rgba(59, 130, 246, 0.2)', icon: '#3B82F6' },
+                { bg: 'rgba(139, 92, 246, 0.2)', icon: '#8B5CF6' },
+                { bg: 'rgba(236, 72, 153, 0.2)', icon: '#EC4899' },
+              ];
+              const colorSet = colors[index % colors.length];
+
+              return (
+                <View
+                  key={bonus.days}
+                  style={[
+                    styles.streakCard,
+                    bonus.achieved && styles.streakCardAchieved,
+                  ]}
+                >
+                  <View style={[styles.streakIcon, { backgroundColor: colorSet.bg }]}>
+                    <Ionicons
+                      name={bonus.achieved ? "checkmark-circle" : "flame"}
+                      size={20}
+                      color={bonus.achieved ? "#10B981" : colorSet.icon}
+                    />
+                  </View>
+                  <View style={styles.streakInfo}>
+                    <Text style={styles.streakTitle}>{bonus.days}-Day Streak</Text>
+                    <Text style={styles.streakDescription}>
+                      {bonus.achieved ? 'Completed!' : `Complete ${bonus.days} days`}
+                    </Text>
+                  </View>
+                  <Text style={[
+                    styles.streakReward,
+                    bonus.achieved && { color: '#10B981' },
+                  ]}>
+                    {bonus.achieved ? '✓ ' : ''}Rs.{bonus.reward}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </View>
 
@@ -631,6 +756,7 @@ export default function DailyCheckInPage() {
             </View>
           </View>
         </View>
+        </>)}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -789,16 +915,24 @@ export default function DailyCheckInPage() {
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.submitButton}
+                style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
                 onPress={handleSubmitPost}
+                disabled={submitting}
               >
                 <LinearGradient
-                  colors={['#3B82F6', '#8B5CF6']}
+                  colors={submitting ? ['#9CA3AF', '#9CA3AF'] : ['#3B82F6', '#8B5CF6']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.submitButtonGradient}
                 >
-                  <Text style={styles.submitButtonText}>Submit for Review</Text>
+                  {submitting ? (
+                    <View style={styles.submitButtonLoading}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text style={styles.submitButtonText}>Submitting...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.submitButtonText}>Submit for Review</Text>
+                  )}
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -845,6 +979,17 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -1245,6 +1390,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+  streakCardAchieved: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: '#10B981',
+  },
   streakIcon: {
     width: 40,
     height: 40,
@@ -1524,9 +1673,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
   },
+  submitButtonDisabled: {
+    opacity: 0.7,
+  },
   submitButtonGradient: {
     paddingVertical: 14,
     alignItems: 'center',
+  },
+  submitButtonLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   submitButtonText: {
     fontSize: 14,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,153 @@ import {
   Animated,
   ActivityIndicator,
 } from 'react-native';
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { storesApi } from '@/services/storesApi';
+
+// Web Video Component - renders native HTML5 video on web platform
+const WebVideoPlayer: React.FC<{ uri: string; poster?: string }> = ({ uri, poster }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && videoRef.current) {
+      const video = videoRef.current;
+
+      // Ensure video properties are set
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+
+      // Try to play
+      const playVideo = async () => {
+        try {
+          await video.play();
+          console.log('✅ Video playing:', uri);
+        } catch (err: any) {
+          console.log('⚠️ Autoplay failed, retrying...', err?.message);
+          // Retry after a short delay
+          setTimeout(async () => {
+            try {
+              await video.play();
+              console.log('✅ Video playing on retry:', uri);
+            } catch (e) {
+              console.log('❌ Video autoplay blocked:', e);
+            }
+          }, 100);
+        }
+      };
+
+      if (video.readyState >= 2) {
+        playVideo();
+      } else {
+        video.addEventListener('loadeddata', playVideo, { once: true });
+      }
+    }
+  }, [uri]);
+
+  if (Platform.OS === 'web') {
+    return (
+      <View style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+        <video
+          ref={videoRef as any}
+          src={uri}
+          poster={poster || ''}
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            backgroundColor: '#F3F4F6',
+          } as any}
+        />
+      </View>
+    );
+  }
+
+  // For non-web platforms, show poster image (native video handled separately)
+  return (
+    <Image
+      source={{ uri: poster || uri }}
+      style={{ width: '100%', height: '100%' }}
+      resizeMode="cover"
+    />
+  );
+};
+
+// Video component that works on both web and native
+const AutoPlayVideo: React.FC<{
+  uri: string;
+  poster?: string;
+  style?: any;
+}> = ({ uri, poster, style }) => {
+
+  // For web, use native HTML5 video element
+  if (Platform.OS === 'web') {
+    return (
+      <View style={[styles.storeVideo, style]}>
+        <WebVideoPlayer uri={uri} poster={poster} />
+      </View>
+    );
+  }
+
+  // For native (iOS/Android), use expo-av Video
+  const videoRef = useRef<Video>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [showPoster, setShowPoster] = useState(true);
+
+  useEffect(() => {
+    const startPlayback = async () => {
+      if (isLoaded && videoRef.current) {
+        try {
+          await videoRef.current.playAsync();
+          setShowPoster(false);
+          console.log('✅ Video started playing:', uri);
+        } catch (err) {
+          console.log('⚠️ Video autoplay failed:', err);
+        }
+      }
+    };
+    startPlayback();
+  }, [isLoaded, uri]);
+
+  return (
+    <View style={[styles.storeVideo, style]}>
+      {showPoster && poster && (
+        <Image
+          source={{ uri: poster }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+      )}
+      <Video
+        ref={videoRef}
+        source={{ uri }}
+        style={[StyleSheet.absoluteFill, showPoster && { opacity: 0 }]}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay={false}
+        isLooping={true}
+        isMuted={true}
+        useNativeControls={false}
+        onLoad={() => {
+          console.log('📹 Video loaded:', uri);
+          setIsLoaded(true);
+        }}
+        onError={(error) => console.log('❌ Video error:', error)}
+      />
+    </View>
+  );
+};
 
 interface TrendingStore {
   id: string;
   name: string;
   image: string;
+  video?: string;           // Video URL for auto-play loop
+  videoThumbnail?: string;  // Thumbnail/poster for video
   category: string;
   trending: string; // e.g., "324 people"
   cashback: string; // e.g., "15%"
@@ -49,6 +188,17 @@ const transformStoreData = (backendStore: any): TrendingStore => {
       : backendStore.image;
   }
 
+  // Get video if available (for auto-play loop)
+  let video = '';
+  let videoThumbnail = '';
+  if (backendStore.videos && Array.isArray(backendStore.videos) && backendStore.videos.length > 0) {
+    video = backendStore.videos[0].url || '';
+    videoThumbnail = backendStore.videos[0].thumbnail || '';
+    console.log(`📹 [TrendingNearYou] Store "${name}" has video:`, video);
+  } else {
+    console.log(`🖼️ [TrendingNearYou] Store "${name}" has NO video, videos field:`, backendStore.videos);
+  }
+
   // Get category - handle string or object
   let category = 'General';
   if (typeof backendStore.category === 'string') {
@@ -71,6 +221,8 @@ const transformStoreData = (backendStore: any): TrendingStore => {
     id,
     name,
     image,
+    video,
+    videoThumbnail,
     category,
     trending,
     cashback,
@@ -223,18 +375,33 @@ const TrendingNearYou: React.FC<TrendingNearYouProps> = ({
           activeOpacity={0.9}
           style={styles.storeCard}
         >
-          {/* Image Container */}
+          {/* Media Container - Video or Image */}
           <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: store.image || 'https://via.placeholder.com/150x150?text=Store' }}
-              style={styles.storeImage}
-              resizeMode="cover"
-            />
+            {store.video ? (
+              <AutoPlayVideo
+                uri={store.video}
+                poster={store.videoThumbnail || store.image}
+                style={styles.storeVideo}
+              />
+            ) : (
+              // Fallback to static image
+              <Image
+                source={{ uri: store.image || 'https://via.placeholder.com/150x150?text=Store' }}
+                style={styles.storeImage}
+                resizeMode="cover"
+              />
+            )}
             {/* Trending Badge */}
             <View style={styles.trendingBadge}>
               <Ionicons name="flame" size={10} color="#FFFFFF" />
               <Text style={styles.trendingText}>{store.trending}</Text>
             </View>
+            {/* Video indicator badge */}
+            {store.video && (
+              <View style={styles.videoBadge}>
+                <Ionicons name="videocam" size={10} color="#FFFFFF" />
+              </View>
+            )}
           </View>
 
           {/* Store Info */}
@@ -383,6 +550,25 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#F3F4F6',
+  },
+  storeVideo: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F3F4F6',
+  },
+  videoPoster: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  videoBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   trendingBadge: {
     position: 'absolute',

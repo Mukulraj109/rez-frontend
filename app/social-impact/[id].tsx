@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,14 @@ import {
   Linking,
   Modal,
   ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import socialImpactApi, { SocialImpactEvent } from '@/services/socialImpactApi';
 
 // ReZ Brand Colors
 const COLORS = {
@@ -27,403 +30,281 @@ const COLORS = {
   border: 'rgba(0, 0, 0, 0.08)',
 };
 
-interface EventData {
-  type: string;
-  title: string;
-  icon: string;
-  iconBg: string;
-  organizer: string;
-  sponsor: string | null;
-  csrActivity: boolean;
-  logo: string;
-  date: string;
-  time: string;
-  location: string;
-  fullAddress: string;
-  distance: string;
-  rewards: { rezCoins: number; brandCoins: number; brandName: string | null };
-  enrolled: number;
-  goal: number;
-  impact: string;
-  status: string;
-  description: string;
-  requirements: string[];
-  benefits: string[];
-  contact: { phone: string; email: string };
-  schedule: { time: string; activity: string }[];
-}
+// Helper function for event type icon background colors
+const getEventTypeIconBg = (eventType?: string): string => {
+  const bgMap: Record<string, string> = {
+    'blood-donation': 'rgba(239, 68, 68, 0.15)',
+    'tree-plantation': 'rgba(16, 185, 129, 0.15)',
+    'beach-cleanup': 'rgba(59, 130, 246, 0.15)',
+    'digital-literacy': 'rgba(99, 102, 241, 0.15)',
+    'food-drive': 'rgba(249, 115, 22, 0.15)',
+    'health-camp': 'rgba(6, 182, 212, 0.15)',
+    'skill-training': 'rgba(236, 72, 153, 0.15)',
+    'women-empowerment': 'rgba(236, 72, 153, 0.15)',
+    'education': 'rgba(99, 102, 241, 0.15)',
+    'environment': 'rgba(16, 185, 129, 0.15)',
+  };
+  return bgMap[eventType || ''] || 'rgba(139, 92, 246, 0.15)';
+};
 
-const eventsData: Record<string, EventData> = {
-  '1': {
-    type: 'blood-donation',
-    title: 'Blood Donation Drive',
-    icon: '🩸',
-    iconBg: 'rgba(239, 68, 68, 0.15)',
-    organizer: 'Apollo Hospitals',
-    sponsor: 'Tata Group',
-    csrActivity: true,
-    logo: '🏥',
-    date: 'Dec 28, 2024',
-    time: '9:00 AM - 5:00 PM',
-    location: 'Apollo Hospital, Sector 18',
-    fullAddress: 'Apollo Hospitals, Sector 18, Noida, Uttar Pradesh 201301',
-    distance: '2.3 km',
-    rewards: { rezCoins: 200, brandCoins: 300, brandName: 'Tata Coins' },
-    enrolled: 234,
-    goal: 500,
-    impact: 'Save 3 lives per donation',
-    status: 'upcoming',
-    description: 'Join us for a life-saving blood donation drive. Every donation can save up to 3 lives. Registered donors will receive health checkup and refreshments.',
-    requirements: [
-      'Age between 18-65 years',
-      'Weight above 50kg',
-      'Valid ID proof required',
-      'No recent illness or medication',
-      'Fasting not required, eat normally',
-    ],
-    benefits: [
-      'Free health checkup',
-      'Refreshments provided',
-      'Blood donor certificate',
-      'ReZ Coins + Tata brand coins',
-      'Priority access to blood bank if needed',
-    ],
-    contact: { phone: '+91-9876543210', email: 'blooddrive@apollo.com' },
-    schedule: [
-      { time: '9:00 AM', activity: 'Registration & Check-in' },
-      { time: '9:30 AM', activity: 'Health Screening' },
-      { time: '10:00 AM', activity: 'Blood Donation' },
-      { time: '4:30 PM', activity: 'Refreshments & Certificate' },
-    ],
-  },
-  '2': {
-    type: 'tree-plantation',
-    title: 'Green India Mission',
-    icon: '🌳',
-    iconBg: 'rgba(16, 185, 129, 0.15)',
-    organizer: 'Green Earth Foundation',
-    sponsor: 'Reliance Industries',
-    csrActivity: true,
-    logo: '🌍',
-    date: 'Dec 30, 2024',
-    time: '7:00 AM - 11:00 AM',
-    location: 'City Park, Botanical Gardens',
-    fullAddress: 'Botanical Gardens, Sector 38, Noida, Uttar Pradesh 201303',
-    distance: '4.1 km',
-    rewards: { rezCoins: 150, brandCoins: 250, brandName: 'Reliance Coins' },
-    enrolled: 156,
-    goal: 200,
-    impact: 'Plant 1000+ saplings',
-    status: 'upcoming',
-    description: 'Help us make the city greener! Join our tree plantation drive and contribute to a sustainable future. Each participant will plant at least 5 saplings.',
-    requirements: [
-      'Comfortable outdoor clothing',
-      'Closed-toe shoes required',
-      'Bring your own water bottle',
-      'Sun protection (hat, sunscreen)',
-      'Minimum age 12 years (with guardian)',
-    ],
-    benefits: [
-      'Contribute to environmental conservation',
-      'Learn about native tree species',
-      'Breakfast and refreshments',
-      'Tree adoption certificate',
-      'ReZ + Branded coins',
-    ],
-    contact: { phone: '+91-9876543211', email: 'events@greenearth.org' },
-    schedule: [
-      { time: '7:00 AM', activity: 'Assembly & Breakfast' },
-      { time: '7:30 AM', activity: 'Site allocation & Tools distribution' },
-      { time: '8:00 AM', activity: 'Plantation begins' },
-      { time: '10:30 AM', activity: 'Certificates & Photo session' },
-    ],
-  },
-  '3': {
-    type: 'cleanup',
-    title: 'Beach Cleanup Drive',
-    icon: '🏖️',
-    iconBg: 'rgba(59, 130, 246, 0.15)',
-    organizer: 'Clean Beaches Initiative',
-    sponsor: 'Infosys Foundation',
-    csrActivity: true,
-    logo: '🌊',
-    date: 'Jan 2, 2025',
-    time: '6:00 AM - 9:00 AM',
-    location: 'Marina Beach',
-    fullAddress: 'Marina Beach, Chennai, Tamil Nadu 600001',
-    distance: '8.5 km',
-    rewards: { rezCoins: 120, brandCoins: 180, brandName: 'Infosys Coins' },
-    enrolled: 89,
-    goal: 150,
-    impact: 'Clean 5 km of coastline',
-    status: 'upcoming',
-    description: 'Join us in keeping our beaches clean! Participate in this beach cleanup drive and help protect marine life. All equipment will be provided.',
-    requirements: [
-      'Comfortable clothes you can get dirty',
-      'Closed-toe shoes (no flip-flops)',
-      'Sun protection essential',
-      'Bring reusable water bottle',
-      'Gloves will be provided',
-    ],
-    benefits: [
-      'Protect marine ecosystem',
-      'Morning refreshments',
-      'Cleanup completion certificate',
-      'ReZ + Branded coins',
-      'Photo with collected waste stats',
-    ],
-    contact: { phone: '+91-9876543212', email: 'cleanup@cleanbeaches.org' },
-    schedule: [
-      { time: '6:00 AM', activity: 'Registration & Equipment' },
-      { time: '6:30 AM', activity: 'Beach Cleanup begins' },
-      { time: '8:30 AM', activity: 'Waste sorting & counting' },
-      { time: '9:00 AM', activity: 'Certificates & Group photo' },
-    ],
-  },
-  '4': {
-    type: 'education',
-    title: 'Digital Literacy Program',
-    icon: '📚',
-    iconBg: 'rgba(99, 102, 241, 0.15)',
-    organizer: 'Teach India Initiative',
-    sponsor: 'Wipro',
-    csrActivity: true,
-    logo: '✏️',
-    date: 'Jan 5, 2025',
-    time: '2:00 PM - 5:00 PM',
-    location: 'Government School, Whitefield',
-    fullAddress: 'Government School, Whitefield, Bangalore, Karnataka 560066',
-    distance: '5.2 km',
-    rewards: { rezCoins: 180, brandCoins: 220, brandName: 'Wipro Coins' },
-    enrolled: 67,
-    goal: 100,
-    impact: 'Teach 50+ students',
-    status: 'upcoming',
-    description: 'Volunteer to teach basic computer and smartphone skills to students. Help bridge the digital divide and empower young minds with essential tech knowledge.',
-    requirements: [
-      'Basic computer/smartphone knowledge',
-      'Patient and friendly demeanor',
-      'Available for 3 hours',
-      'Teaching materials provided',
-      'Age 16+ (or with guardian)',
-    ],
-    benefits: [
-      'Make real impact in digital inclusion',
-      'Teaching experience certificate',
-      'Volunteer certificate',
-      'ReZ Coins + Wipro brand coins',
-      'Meet like-minded people',
-    ],
-    contact: { phone: '+91-9876543213', email: 'volunteer@teachindia.org' },
-    schedule: [
-      { time: '2:00 PM', activity: 'Arrival & Briefing' },
-      { time: '2:30 PM', activity: 'Session 1: Basic smartphone usage' },
-      { time: '3:30 PM', activity: 'Session 2: Online safety & apps' },
-      { time: '4:30 PM', activity: 'Q&A & Certificates' },
-    ],
-  },
-  '5': {
-    type: 'food-drive',
-    title: 'Hunger-Free India Campaign',
-    icon: '🍲',
-    iconBg: 'rgba(249, 115, 22, 0.15)',
-    organizer: 'Feed the Need NGO',
-    sponsor: 'ITC Limited',
-    csrActivity: true,
-    logo: '🤝',
-    date: 'Every Sunday',
-    time: '11:00 AM - 2:00 PM',
-    location: 'Community Center, MG Road',
-    fullAddress: 'Community Center, MG Road, Bangalore, Karnataka 560001',
-    distance: '3.7 km',
-    rewards: { rezCoins: 100, brandCoins: 150, brandName: 'ITC Coins' },
-    enrolled: 145,
-    goal: 200,
-    impact: 'Feed 200+ people',
-    status: 'ongoing',
-    description: 'Help distribute meals to underprivileged families. Every Sunday, join us in serving food and spreading smiles to those in need.',
-    requirements: [
-      'Willingness to serve',
-      'Comfortable clothes',
-      'Be punctual',
-      'Follow hygiene protocols',
-      'Minimum age 14 years',
-    ],
-    benefits: [
-      'Direct impact on hunger relief',
-      'Volunteer certificate',
-      'ReZ + ITC branded coins',
-      'Lunch provided',
-      'Community service hours',
-    ],
-    contact: { phone: '+91-9876543214', email: 'volunteer@feedtheneed.org' },
-    schedule: [
-      { time: '11:00 AM', activity: 'Arrival & Briefing' },
-      { time: '11:30 AM', activity: 'Food preparation assistance' },
-      { time: '12:00 PM', activity: 'Meal distribution' },
-      { time: '1:30 PM', activity: 'Cleanup & Certificates' },
-    ],
-  },
-  '6': {
-    type: 'skill-training',
-    title: 'Women Empowerment Workshop',
-    icon: '💪',
-    iconBg: 'rgba(236, 72, 153, 0.15)',
-    organizer: 'Skill India Mission',
-    sponsor: 'HDFC Bank',
-    csrActivity: true,
-    logo: '👩',
-    date: 'Jan 8, 2025',
-    time: '10:00 AM - 4:00 PM',
-    location: 'HDFC Training Center, HSR Layout',
-    fullAddress: 'HDFC Training Center, HSR Layout, Bangalore, Karnataka 560102',
-    distance: '6.4 km',
-    rewards: { rezCoins: 200, brandCoins: 300, brandName: 'HDFC Coins' },
-    enrolled: 78,
-    goal: 120,
-    impact: 'Empower 60+ women',
-    status: 'upcoming',
-    description: 'Volunteer to help conduct skill development workshops for women. Assist in teaching financial literacy, digital skills, and entrepreneurship basics.',
-    requirements: [
-      'Good communication skills',
-      'Knowledge of basic finance/digital tools',
-      'Available for full day',
-      'Training materials provided',
-      'Age 18+',
-    ],
-    benefits: [
-      'Help empower women economically',
-      'Professional development',
-      'Volunteer certificate from HDFC',
-      'ReZ + HDFC branded coins',
-      'Networking opportunities',
-    ],
-    contact: { phone: '+91-9876543215', email: 'volunteer@skillindia.org' },
-    schedule: [
-      { time: '10:00 AM', activity: 'Welcome & Introduction' },
-      { time: '10:30 AM', activity: 'Session 1: Financial Literacy' },
-      { time: '1:00 PM', activity: 'Lunch Break' },
-      { time: '2:00 PM', activity: 'Session 2: Digital Skills' },
-      { time: '3:30 PM', activity: 'Certificates & Closing' },
-    ],
-  },
-  '7': {
-    type: 'health-camp',
-    title: 'Free Health Checkup Camp',
-    icon: '⚕️',
-    iconBg: 'rgba(6, 182, 212, 0.15)',
-    organizer: 'Healthcare for All',
-    sponsor: 'Sun Pharma',
-    csrActivity: true,
-    logo: '🏥',
-    date: 'Jan 12, 2025',
-    time: '8:00 AM - 12:00 PM',
-    location: 'Community Hall, JP Nagar',
-    fullAddress: 'Community Hall, JP Nagar, Bangalore, Karnataka 560078',
-    distance: '7.1 km',
-    rewards: { rezCoins: 170, brandCoins: 230, brandName: 'Sun Pharma Coins' },
-    enrolled: 112,
-    goal: 180,
-    impact: 'Serve 300+ patients',
-    status: 'upcoming',
-    description: 'Volunteer at a free health checkup camp. Help with registration, crowd management, and assist medical professionals in serving the community.',
-    requirements: [
-      'Basic first aid knowledge (preferred)',
-      'Good communication skills',
-      'Comfortable standing for long hours',
-      'Training provided on-site',
-      'Age 18+',
-    ],
-    benefits: [
-      'Healthcare volunteering experience',
-      'Learn basic health screening',
-      'Volunteer certificate',
-      'ReZ + Sun Pharma branded coins',
-      'Free health checkup for volunteers',
-    ],
-    contact: { phone: '+91-9876543216', email: 'volunteer@healthcareforall.org' },
-    schedule: [
-      { time: '8:00 AM', activity: 'Volunteer briefing' },
-      { time: '8:30 AM', activity: 'Registration desk setup' },
-      { time: '9:00 AM', activity: 'Health camp begins' },
-      { time: '11:30 AM', activity: 'Wrap up & Certificates' },
-    ],
-  },
-  '8': {
-    type: 'blood-donation',
-    title: 'Emergency Blood Camp',
-    icon: '🩸',
-    iconBg: 'rgba(239, 68, 68, 0.15)',
-    organizer: 'Red Cross Society',
-    sponsor: null,
-    csrActivity: false,
-    logo: '❤️',
-    date: 'Dec 26, 2024',
-    time: 'Completed',
-    location: 'City Hospital',
-    fullAddress: 'City Hospital, Central Road, Delhi 110001',
-    distance: '1.8 km',
-    rewards: { rezCoins: 200, brandCoins: 0, brandName: null },
-    enrolled: 312,
-    goal: 300,
-    impact: 'Saved 900+ lives',
-    status: 'completed',
-    description: 'Emergency blood donation camp organized to meet critical blood shortage. Thanks to all donors who participated!',
-    requirements: [
-      'Age between 18-65 years',
-      'Weight above 50kg',
-      'Valid ID proof required',
-      'No recent illness or medication',
-      'Fasting not required',
-    ],
-    benefits: [
-      'Free health checkup',
-      'Refreshments provided',
-      'Blood donor certificate',
-      'ReZ Coins reward',
-      'Priority blood access',
-    ],
-    contact: { phone: '+91-9876543217', email: 'bloodcamp@redcross.org' },
-    schedule: [
-      { time: '8:00 AM', activity: 'Registration' },
-      { time: '8:30 AM', activity: 'Health Screening' },
-      { time: '9:00 AM', activity: 'Blood Donation' },
-      { time: '12:00 PM', activity: 'Certificates' },
-    ],
-  },
+// Helper function for event type emoji
+const getEventTypeEmoji = (eventType?: string): string => {
+  const emojiMap: Record<string, string> = {
+    'blood-donation': '🩸',
+    'tree-plantation': '🌳',
+    'beach-cleanup': '🏖️',
+    'digital-literacy': '💻',
+    'food-drive': '🍛',
+    'health-camp': '🏥',
+    'skill-training': '👩‍💼',
+    'women-empowerment': '👩‍💼',
+    'education': '📚',
+    'environment': '🌍',
+  };
+  return emojiMap[eventType || ''] || '✨';
+};
+
+// Format event time for display
+const formatEventTime = (eventTime?: { start: string; end: string }): string => {
+  if (!eventTime) return 'TBD';
+  return `${eventTime.start} - ${eventTime.end}`;
+};
+
+// Format date for display
+const formatEventDate = (dateString?: string): string => {
+  if (!dateString) return 'TBD';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 };
 
 export default function SocialImpactEventDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const event = eventsData[id || '1'] || eventsData['1'];
+  // State
+  const [event, setEvent] = useState<SocialImpactEvent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalState, setModalState] = useState<'loading' | 'success' | 'error'>('loading');
+  const [modalMessage, setModalMessage] = useState('');
 
-  const handleRegister = () => {
-    setShowConfirmation(true);
-    setTimeout(() => {
-      setIsRegistered(true);
-      setShowConfirmation(false);
-    }, 1500);
+  // Fetch event data
+  const fetchEvent = useCallback(async (isRefresh = false) => {
+    if (!id) return;
+
+    try {
+      if (!isRefresh) setLoading(true);
+      setError(null);
+
+      const response = await socialImpactApi.getEventById(id);
+
+      if (response.success && response.data) {
+        setEvent(response.data);
+      } else {
+        setError('Event not found');
+      }
+    } catch (err: any) {
+      console.error('Error fetching event:', err);
+      setError(err.message || 'Failed to load event');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [id]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchEvent();
+  }, [fetchEvent]);
+
+  // Pull to refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchEvent(true);
+  }, [fetchEvent]);
+
+  // Handle registration
+  const handleRegister = async () => {
+    if (!id || !event) return;
+
+    setShowModal(true);
+    setModalState('loading');
+    setModalMessage('Processing your registration...');
+    setActionLoading(true);
+
+    try {
+      const response = await socialImpactApi.registerForEvent(id);
+
+      if (response.success) {
+        setModalState('success');
+        setModalMessage('Registration successful!');
+        // Update local state
+        setEvent(prev => prev ? {
+          ...prev,
+          isEnrolled: true,
+          enrollmentStatus: 'registered',
+          capacity: prev.capacity ? {
+            ...prev.capacity,
+            enrolled: prev.capacity.enrolled + 1
+          } : undefined
+        } : null);
+
+        // Close modal after delay
+        setTimeout(() => {
+          setShowModal(false);
+        }, 1500);
+      } else {
+        setModalState('error');
+        setModalMessage(response.message || 'Registration failed');
+      }
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      setModalState('error');
+      setModalMessage(err.message || 'Something went wrong');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle cancel registration
+  const handleCancelRegistration = () => {
+    Alert.alert(
+      'Cancel Registration',
+      'Are you sure you want to cancel your registration for this event?',
+      [
+        { text: 'No, Keep It', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            if (!id || !event) return;
+
+            setShowModal(true);
+            setModalState('loading');
+            setModalMessage('Cancelling registration...');
+            setActionLoading(true);
+
+            try {
+              const response = await socialImpactApi.cancelRegistration(id);
+
+              if (response.success) {
+                setModalState('success');
+                setModalMessage('Registration cancelled');
+                // Update local state
+                setEvent(prev => prev ? {
+                  ...prev,
+                  isEnrolled: false,
+                  enrollmentStatus: undefined,
+                  enrollmentId: undefined,
+                  capacity: prev.capacity ? {
+                    ...prev.capacity,
+                    enrolled: Math.max(0, prev.capacity.enrolled - 1)
+                  } : undefined
+                } : null);
+
+                setTimeout(() => {
+                  setShowModal(false);
+                }, 1500);
+              } else {
+                setModalState('error');
+                setModalMessage(response.message || 'Cancellation failed');
+              }
+            } catch (err: any) {
+              console.error('Cancel error:', err);
+              setModalState('error');
+              setModalMessage(err.message || 'Something went wrong');
+            } finally {
+              setActionLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const openMaps = () => {
+    if (!event?.location?.address) return;
+    const address = `${event.location.address}${event.location.city ? ', ' + event.location.city : ''}`;
     const url = Platform.select({
-      ios: `maps:0,0?q=${encodeURIComponent(event.fullAddress)}`,
-      android: `geo:0,0?q=${encodeURIComponent(event.fullAddress)}`,
+      ios: `maps:0,0?q=${encodeURIComponent(address)}`,
+      android: `geo:0,0?q=${encodeURIComponent(address)}`,
     });
     if (url) Linking.openURL(url);
   };
 
   const callPhone = () => {
-    Linking.openURL(`tel:${event.contact.phone}`);
+    if (event?.contact?.phone) {
+      Linking.openURL(`tel:${event.contact.phone}`);
+    }
   };
 
   const sendEmail = () => {
-    Linking.openURL(`mailto:${event.contact.email}`);
+    if (event?.contact?.email) {
+      Linking.openURL(`mailto:${event.contact.email}`);
+    }
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Loading...</Text>
+            </View>
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Loading event details...</Text>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  // Error state
+  if (error || !event) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={22} color={COLORS.textDark} />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Event Not Found</Text>
+            </View>
+          </View>
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={64} color={COLORS.textMuted} />
+            <Text style={styles.errorTitle}>Oops!</Text>
+            <Text style={styles.errorText}>{error || 'Event not found'}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchEvent()}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  const isEventFull = event.capacity && event.capacity.enrolled >= event.capacity.goal;
 
   return (
     <>
@@ -438,18 +319,18 @@ export default function SocialImpactEventDetail() {
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <View style={styles.headerTitleRow}>
-              <Text style={styles.headerTitle} numberOfLines={1}>{event.title}</Text>
-              {event.csrActivity && (
+              <Text style={styles.headerTitle} numberOfLines={1}>{event.name}</Text>
+              {event.isCsrActivity && (
                 <View style={styles.csrBadge}>
                   <Text style={styles.csrBadgeText}>CSR</Text>
                 </View>
               )}
             </View>
-            <Text style={styles.headerSubtitle}>{event.organizer}</Text>
+            <Text style={styles.headerSubtitle}>{event.organizer?.name || 'Unknown Organizer'}</Text>
             {event.sponsor && (
               <View style={styles.sponsorRow}>
                 <Ionicons name="business" size={11} color="#8B5CF6" />
-                <Text style={styles.sponsorText}>Sponsored by {event.sponsor}</Text>
+                <Text style={styles.sponsorText}>Sponsored by {event.sponsor.name}</Text>
               </View>
             )}
           </View>
@@ -458,10 +339,30 @@ export default function SocialImpactEventDetail() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+              tintColor={COLORS.primary}
+            />
+          }
+        >
           {/* Hero Icon */}
-          <View style={[styles.heroSection, { backgroundColor: event.iconBg }]}>
-            <Text style={styles.heroEmoji}>{event.icon}</Text>
+          <View style={[styles.heroSection, { backgroundColor: getEventTypeIconBg(event.eventType) }]}>
+            <Text style={styles.heroEmoji}>{getEventTypeEmoji(event.eventType)}</Text>
+            {event.isEnrolled && (
+              <View style={styles.enrolledBadgeHero}>
+                <Ionicons name="checkmark-circle" size={14} color={COLORS.white} />
+                <Text style={styles.enrolledBadgeHeroText}>
+                  {event.enrollmentStatus === 'completed' ? 'Completed' :
+                   event.enrollmentStatus === 'checked_in' ? 'Checked In' : 'Enrolled'}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Quick Info */}
@@ -471,169 +372,229 @@ export default function SocialImpactEventDetail() {
                 <Ionicons name="calendar" size={16} color="#3B82F6" />
                 <Text style={styles.quickInfoLabel}>Date</Text>
               </View>
-              <Text style={styles.quickInfoValue}>{event.date}</Text>
+              <Text style={styles.quickInfoValue}>{formatEventDate(event.eventDate)}</Text>
             </View>
             <View style={styles.quickInfoCard}>
               <View style={styles.quickInfoHeader}>
                 <Ionicons name="time" size={16} color="#F97316" />
                 <Text style={styles.quickInfoLabel}>Time</Text>
               </View>
-              <Text style={styles.quickInfoValue}>{event.time}</Text>
+              <Text style={styles.quickInfoValue}>{formatEventTime(event.eventTime)}</Text>
             </View>
           </View>
 
           {/* Location */}
-          <View style={styles.sectionCard}>
-            <View style={styles.locationHeader}>
-              <Ionicons name="location" size={18} color="#EF4444" />
-              <View style={styles.locationContent}>
-                <Text style={styles.locationTitle}>{event.location}</Text>
-                <Text style={styles.locationAddress}>{event.fullAddress}</Text>
-                <Text style={styles.locationDistance}>{event.distance} away</Text>
+          {event.location && (
+            <View style={styles.sectionCard}>
+              <View style={styles.locationHeader}>
+                <Ionicons name="location" size={18} color="#EF4444" />
+                <View style={styles.locationContent}>
+                  <Text style={styles.locationTitle}>{event.location.address || 'Location'}</Text>
+                  {event.location.city && (
+                    <Text style={styles.locationAddress}>{event.location.city}</Text>
+                  )}
+                </View>
               </View>
+              <TouchableOpacity style={styles.mapsButton} onPress={openMaps}>
+                <Text style={styles.mapsButtonText}>Open in Maps</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.mapsButton} onPress={openMaps}>
-              <Text style={styles.mapsButtonText}>Open in Maps</Text>
-            </TouchableOpacity>
-          </View>
+          )}
 
           {/* Description */}
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>About This Event</Text>
-            <Text style={styles.descriptionText}>{event.description}</Text>
-          </View>
+          {event.description && (
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>About This Event</Text>
+              <Text style={styles.descriptionText}>{event.description}</Text>
+            </View>
+          )}
 
           {/* Impact & Progress */}
-          <View style={styles.impactCard}>
-            <View style={styles.impactHeader}>
-              <Ionicons name="trending-up" size={18} color={COLORS.primary} />
-              <Text style={styles.impactTitle}>Expected Impact</Text>
-            </View>
-            <Text style={styles.impactText}>{event.impact}</Text>
-            <View style={styles.progressSection}>
-              <View style={styles.progressHeader}>
-                <Text style={styles.progressLabel}>Participants</Text>
-                <Text style={styles.progressValue}>{event.enrolled}/{event.goal}</Text>
+          {(event.impact || event.capacity) && (
+            <View style={styles.impactCard}>
+              <View style={styles.impactHeader}>
+                <Ionicons name="trending-up" size={18} color={COLORS.primary} />
+                <Text style={styles.impactTitle}>Expected Impact</Text>
               </View>
-              <View style={styles.progressBar}>
-                <View
-                  style={[styles.progressFill, { width: `${(event.enrolled / event.goal) * 100}%` }]}
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* Rewards */}
-          <View style={styles.rewardsCard}>
-            <View style={styles.rewardsHeader}>
-              <Ionicons name="trophy" size={18} color="#F59E0B" />
-              <Text style={styles.rewardsTitle}>Participation Rewards</Text>
-            </View>
-            {event.sponsor && (
-              <Text style={styles.rewardsSubtitle}>
-                Double rewards: ReZ Coins + Brand Coins from CSR sponsor
-              </Text>
-            )}
-            <View style={styles.rewardsGrid}>
-              <View style={styles.rewardItem}>
-                <View style={styles.rewardIconRow}>
-                  <Ionicons name="wallet" size={18} color={COLORS.primary} />
-                  <Text style={styles.rewardLabel}>ReZ Coins</Text>
-                </View>
-                <Text style={styles.rewardValue}>+{event.rewards.rezCoins}</Text>
-              </View>
-              {event.rewards.brandCoins > 0 && (
-                <View style={[styles.rewardItem, styles.rewardItemPurple]}>
-                  <View style={styles.rewardIconRow}>
-                    <Ionicons name="sparkles" size={18} color="#8B5CF6" />
-                    <Text style={styles.rewardLabel}>Brand Coins</Text>
+              {event.impact?.description && (
+                <Text style={styles.impactText}>{event.impact.description}</Text>
+              )}
+              {event.capacity && event.capacity.goal > 0 && (
+                <View style={styles.progressSection}>
+                  <View style={styles.progressHeader}>
+                    <Text style={styles.progressLabel}>Participants</Text>
+                    <Text style={styles.progressValue}>{event.capacity.enrolled}/{event.capacity.goal}</Text>
                   </View>
-                  <Text style={[styles.rewardValue, { color: '#8B5CF6' }]}>+{event.rewards.brandCoins}</Text>
-                  <Text style={styles.brandName}>{event.rewards.brandName}</Text>
+                  <View style={styles.progressBar}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: `${Math.min((event.capacity.enrolled / event.capacity.goal) * 100, 100)}%` }
+                      ]}
+                    />
+                  </View>
+                  {isEventFull && (
+                    <Text style={styles.eventFullText}>This event is full</Text>
+                  )}
                 </View>
               )}
             </View>
-          </View>
+          )}
+
+          {/* Rewards */}
+          {event.rewards && (event.rewards.rezCoins > 0 || event.rewards.brandCoins > 0) && (
+            <View style={styles.rewardsCard}>
+              <View style={styles.rewardsHeader}>
+                <Ionicons name="trophy" size={18} color="#F59E0B" />
+                <Text style={styles.rewardsTitle}>Participation Rewards</Text>
+              </View>
+              {event.sponsor && (
+                <Text style={styles.rewardsSubtitle}>
+                  Double rewards: ReZ Coins + Brand Coins from CSR sponsor
+                </Text>
+              )}
+              <View style={styles.rewardsGrid}>
+                {event.rewards.rezCoins > 0 && (
+                  <View style={styles.rewardItem}>
+                    <View style={styles.rewardIconRow}>
+                      <Ionicons name="wallet" size={18} color={COLORS.primary} />
+                      <Text style={styles.rewardLabel}>ReZ Coins</Text>
+                    </View>
+                    <Text style={styles.rewardValue}>+{event.rewards.rezCoins}</Text>
+                  </View>
+                )}
+                {event.rewards.brandCoins > 0 && event.sponsor && (
+                  <View style={[styles.rewardItem, styles.rewardItemPurple]}>
+                    <View style={styles.rewardIconRow}>
+                      <Ionicons name="sparkles" size={18} color="#8B5CF6" />
+                      <Text style={styles.rewardLabel}>Brand Coins</Text>
+                    </View>
+                    <Text style={[styles.rewardValue, { color: '#8B5CF6' }]}>+{event.rewards.brandCoins}</Text>
+                    <Text style={styles.brandName}>{event.sponsor.brandCoinName}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Requirements */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionTitleRow}>
-              <Ionicons name="information-circle" size={18} color="#3B82F6" />
-              <Text style={styles.sectionTitle}>Requirements</Text>
-            </View>
-            {event.requirements.map((req, idx) => (
-              <View key={idx} style={styles.listItem}>
-                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
-                <Text style={styles.listText}>{req}</Text>
+          {event.eventRequirements && event.eventRequirements.length > 0 && (
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="information-circle" size={18} color="#3B82F6" />
+                <Text style={styles.sectionTitle}>Requirements</Text>
               </View>
-            ))}
-          </View>
+              {event.eventRequirements.map((req, idx) => (
+                <View key={idx} style={styles.listItem}>
+                  <Ionicons
+                    name={req.isMandatory ? "alert-circle" : "checkmark-circle"}
+                    size={16}
+                    color={req.isMandatory ? "#EF4444" : COLORS.primary}
+                  />
+                  <Text style={styles.listText}>
+                    {req.text}
+                    {req.isMandatory && <Text style={styles.mandatoryText}> (Required)</Text>}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Benefits */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionTitleRow}>
-              <Ionicons name="heart" size={18} color="#EF4444" />
-              <Text style={styles.sectionTitle}>What You Get</Text>
-            </View>
-            {event.benefits.map((benefit, idx) => (
-              <View key={idx} style={styles.listItem}>
-                <View style={styles.bulletPoint} />
-                <Text style={styles.listText}>{benefit}</Text>
+          {event.benefits && event.benefits.length > 0 && (
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="heart" size={18} color="#EF4444" />
+                <Text style={styles.sectionTitle}>What You Get</Text>
               </View>
-            ))}
-          </View>
+              {event.benefits.map((benefit, idx) => (
+                <View key={idx} style={styles.listItem}>
+                  <View style={styles.bulletPoint} />
+                  <Text style={styles.listText}>{benefit}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Schedule */}
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Event Schedule</Text>
-            {event.schedule.map((item, idx) => (
-              <View key={idx} style={styles.scheduleItem}>
-                <Text style={styles.scheduleTime}>{item.time}</Text>
-                <Text style={styles.scheduleActivity}>{item.activity}</Text>
-              </View>
-            ))}
-          </View>
+          {event.schedule && event.schedule.length > 0 && (
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Event Schedule</Text>
+              {event.schedule.map((item, idx) => (
+                <View key={idx} style={styles.scheduleItem}>
+                  <Text style={styles.scheduleTime}>{item.time}</Text>
+                  <Text style={styles.scheduleActivity}>{item.activity}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Contact */}
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Contact Organizer</Text>
-            <TouchableOpacity style={styles.contactItem} onPress={callPhone}>
-              <Ionicons name="call" size={18} color={COLORS.primary} />
-              <Text style={styles.contactText}>{event.contact.phone}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.contactItem} onPress={sendEmail}>
-              <Ionicons name="mail" size={18} color="#EF4444" />
-              <Text style={styles.contactText}>{event.contact.email}</Text>
-            </TouchableOpacity>
-          </View>
+          {event.contact && (event.contact.phone || event.contact.email) && (
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Contact Organizer</Text>
+              {event.contact.phone && (
+                <TouchableOpacity style={styles.contactItem} onPress={callPhone}>
+                  <Ionicons name="call" size={18} color={COLORS.primary} />
+                  <Text style={styles.contactText}>{event.contact.phone}</Text>
+                </TouchableOpacity>
+              )}
+              {event.contact.email && (
+                <TouchableOpacity style={styles.contactItem} onPress={sendEmail}>
+                  <Ionicons name="mail" size={18} color="#EF4444" />
+                  <Text style={styles.contactText}>{event.contact.email}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
 
           <View style={{ height: 100 }} />
         </ScrollView>
 
-        {/* Fixed Register Button */}
+        {/* Fixed Action Button */}
         <View style={styles.fixedButtonContainer}>
-          <TouchableOpacity
-            style={[
-              styles.registerButton,
-              isRegistered && styles.registeredButton,
-              event.status === 'completed' && styles.completedButton,
-            ]}
-            onPress={handleRegister}
-            disabled={isRegistered || event.status === 'completed'}
-          >
-            {isRegistered ? (
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primary]}
-                style={styles.buttonGradient}
-              >
-                <Ionicons name="checkmark" size={20} color="#fff" />
-                <Text style={styles.buttonText}>Registered Successfully</Text>
-              </LinearGradient>
-            ) : event.status === 'completed' ? (
-              <View style={styles.disabledButtonInner}>
-                <Text style={styles.disabledButtonText}>Event Completed</Text>
+          {event.eventStatus === 'completed' ? (
+            <View style={styles.completedButtonContainer}>
+              <Ionicons name="checkmark-circle" size={20} color={COLORS.textMuted} />
+              <Text style={styles.completedButtonText}>Event Completed</Text>
+            </View>
+          ) : event.isEnrolled ? (
+            event.enrollmentStatus === 'completed' ? (
+              <View style={styles.completedButtonContainer}>
+                <Ionicons name="trophy" size={20} color="#F59E0B" />
+                <Text style={styles.completedButtonText}>You completed this event!</Text>
+              </View>
+            ) : event.enrollmentStatus === 'checked_in' ? (
+              <View style={styles.checkedInButtonContainer}>
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                <Text style={styles.checkedInButtonText}>Checked In - Awaiting Completion</Text>
               </View>
             ) : (
+              <View style={styles.enrolledButtonsRow}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={handleCancelRegistration}
+                  disabled={actionLoading}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <View style={styles.enrolledStatus}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.primary} />
+                  <Text style={styles.enrolledStatusText}>You're Registered!</Text>
+                </View>
+              </View>
+            )
+          ) : isEventFull ? (
+            <View style={styles.eventFullContainer}>
+              <Ionicons name="people" size={20} color={COLORS.textMuted} />
+              <Text style={styles.eventFullButtonText}>Event is Full</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.registerButton}
+              onPress={handleRegister}
+              disabled={actionLoading}
+            >
               <LinearGradient
                 colors={[COLORS.primary, '#14B8A6']}
                 start={{ x: 0, y: 0 }}
@@ -642,19 +603,40 @@ export default function SocialImpactEventDetail() {
               >
                 <Text style={styles.buttonText}>Register Now</Text>
               </LinearGradient>
-            )}
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Confirmation Modal */}
-        <Modal visible={showConfirmation} transparent animationType="fade">
+        {/* Modal */}
+        <Modal visible={showModal} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <View style={styles.modalIcon}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-              </View>
-              <Text style={styles.modalTitle}>Processing...</Text>
-              <Text style={styles.modalSubtitle}>Confirming your registration</Text>
+              {modalState === 'loading' ? (
+                <>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={styles.modalTitle}>{modalMessage}</Text>
+                </>
+              ) : modalState === 'success' ? (
+                <>
+                  <View style={[styles.modalIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                    <Ionicons name="checkmark-circle" size={48} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.modalTitle}>{modalMessage}</Text>
+                </>
+              ) : (
+                <>
+                  <View style={[styles.modalIconContainer, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                    <Ionicons name="close-circle" size={48} color="#EF4444" />
+                  </View>
+                  <Text style={styles.modalTitle}>{modalMessage}</Text>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setShowModal(false)}
+                  >
+                    <Text style={styles.modalButtonText}>OK</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         </Modal>
@@ -667,6 +649,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.textMuted,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
   },
   header: {
     flexDirection: 'row',
@@ -736,9 +759,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    position: 'relative',
   },
   heroEmoji: {
     fontSize: 72,
+  },
+  enrolledBadgeHero: {
+    position: 'absolute',
+    bottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  enrolledBadgeHeroText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.white,
   },
   quickInfoGrid: {
     flexDirection: 'row',
@@ -794,11 +834,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textMuted,
     lineHeight: 18,
-  },
-  locationDistance: {
-    fontSize: 12,
-    color: '#3B82F6',
-    marginTop: 6,
   },
   mapsButton: {
     backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -877,6 +912,12 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: COLORS.primary,
     borderRadius: 4,
+  },
+  eventFullText: {
+    fontSize: 11,
+    color: '#EF4444',
+    marginTop: 8,
+    fontWeight: '500',
   },
   rewardsCard: {
     backgroundColor: COLORS.white,
@@ -957,6 +998,10 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     lineHeight: 20,
   },
+  mandatoryText: {
+    color: '#EF4444',
+    fontWeight: '500',
+  },
   scheduleItem: {
     flexDirection: 'row',
     gap: 16,
@@ -1008,8 +1053,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
   },
-  registeredButton: {},
-  completedButton: {},
   buttonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1022,13 +1065,80 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.white,
   },
-  disabledButtonInner: {
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    paddingVertical: 16,
+  completedButtonContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    paddingVertical: 16,
     borderRadius: 14,
   },
-  disabledButtonText: {
+  completedButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  checkedInButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  checkedInButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  enrolledButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 14,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  enrolledStatus: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  enrolledStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  eventFullContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    paddingVertical: 16,
+    borderRadius: 14,
+  },
+  eventFullButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: COLORS.textMuted,
@@ -1045,18 +1155,33 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
     marginHorizontal: 32,
+    minWidth: 200,
   },
-  modalIcon: {
+  modalIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: COLORS.textDark,
-    marginBottom: 8,
+    textAlign: 'center',
+    marginTop: 12,
   },
-  modalSubtitle: {
-    fontSize: 13,
-    color: COLORS.textMuted,
+  modalButton: {
+    marginTop: 20,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
   },
 });

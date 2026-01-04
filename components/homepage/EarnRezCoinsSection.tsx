@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useHomeTab } from '@/contexts/HomeTabContext';
 
 const { width } = Dimensions.get('window');
 const CARD_GAP = 10;
@@ -28,9 +29,18 @@ const COLORS = {
 
 const EarnRezCoinsSection: React.FC = () => {
   const router = useRouter();
+  const { setActiveTab, scrollToTop } = useHomeTab();
 
   const handleViewAll = () => {
     router.push('/(tabs)/earn');
+  };
+
+  const handleOnlineShoppingPress = () => {
+    setActiveTab('cash');
+    // Scroll to top after switching tab
+    setTimeout(() => {
+      scrollToTop();
+    }, 100);
   };
 
   return (
@@ -64,7 +74,7 @@ const EarnRezCoinsSection: React.FC = () => {
           {/* Large Card: Online Shopping */}
           <TouchableOpacity
             style={styles.largeCard}
-            onPress={() => router.push('/Store' as any)}
+            onPress={handleOnlineShoppingPress}
             activeOpacity={0.9}
           >
             <LinearGradient

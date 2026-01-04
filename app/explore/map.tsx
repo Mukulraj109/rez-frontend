@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,14 @@ import {
   ScrollView,
   Image,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import exploreApi, { NearbyStore } from '@/services/exploreApi';
 
 const { width, height } = Dimensions.get('window');
 
@@ -83,10 +86,72 @@ const categories = [
   { id: 'grocery', label: 'Grocery', icon: 'cart' },
 ];
 
+// Default location (Hyderabad, India - can be replaced with actual location)
+const DEFAULT_LOCATION = {
+  latitude: 17.385044,
+  longitude: 78.486671,
+};
+
 const ExploreMapPage = () => {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedStore, setSelectedStore] = useState<number | null>(null);
+  const [selectedStore, setSelectedStore] = useState<string | null>(null);
+
+  // API state
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stores, setStores] = useState<NearbyStore[]>([]);
+
+  // Fetch nearby stores from API
+  const fetchNearbyStores = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const response = await exploreApi.getNearbyStores({
+        latitude: DEFAULT_LOCATION.latitude,
+        longitude: DEFAULT_LOCATION.longitude,
+        radius: 5,
+        limit: 20,
+      });
+
+      if (response.success && response.data) {
+        setStores(response.data);
+      } else {
+        setError(response.error || 'Failed to fetch nearby stores');
+        // Use mock data as fallback
+        setStores(nearbyStores.map(s => ({
+          id: String(s.id),
+          name: s.name,
+          distance: s.distance,
+          isLive: s.isOpen,
+          status: s.isOpen ? 'Open' : 'Closed',
+          cashback: s.cashback,
+          location: { coordinates: [0, 0] as [number, number] },
+        })));
+      }
+    } catch (err: any) {
+      console.error('[MAP PAGE] Error:', err);
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchNearbyStores();
+  }, [fetchNearbyStores]);
+
+  const onRefresh = useCallback(() => {
+    fetchNearbyStores(true);
+  }, [fetchNearbyStores]);
 
   const navigateTo = (path: string) => {
     router.push(path as any);
@@ -153,12 +218,12 @@ const ExploreMapPage = () => {
             <Ionicons name="map" size={48} color="#3B82F6" />
             <Text style={styles.mapText}>Interactive Map</Text>
             <Text style={styles.mapSubtext}>
-              {nearbyStores.length} stores within 3 km
+              {stores.length} stores within 5 km
             </Text>
 
             {/* Store Markers */}
             <View style={styles.markerContainer}>
-              {nearbyStores.slice(0, 3).map((store, index) => (
+              {stores.slice(0, 3).map((store, index) => (
                 <TouchableOpacity
                   key={store.id}
                   style={[
@@ -187,15 +252,47 @@ const ExploreMapPage = () => {
       {/* Store List */}
       <View style={styles.storeListHeader}>
         <Text style={styles.storeListTitle}>Nearby Stores</Text>
-        <Text style={styles.storeCount}>{nearbyStores.length} stores</Text>
+        <Text style={styles.storeCount}>{stores.length} stores</Text>
       </View>
 
       <ScrollView
         style={styles.storeList}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.storeListContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00C06A']} />
+        }
       >
-        {nearbyStores.map((store) => (
+        {/* Loading State */}
+        {loading && !refreshing && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00C06A" />
+            <Text style={styles.loadingText}>Finding nearby stores...</Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color="#EF4444" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchNearbyStores()}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && stores.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="storefront-outline" size={48} color="#9CA3AF" />
+            <Text style={styles.emptyText}>No stores nearby</Text>
+            <Text style={styles.emptySubtext}>Try expanding your search radius</Text>
+          </View>
+        )}
+
+        {/* Stores */}
+        {!loading && stores.map((store) => (
           <TouchableOpacity
             key={store.id}
             style={[
@@ -204,23 +301,32 @@ const ExploreMapPage = () => {
             ]}
             onPress={() => navigateTo(`/MainStorePage?id=${store.id}`)}
           >
-            <Image source={{ uri: store.image }} style={styles.storeImage} />
+            <View style={styles.storeImagePlaceholder}>
+              <Ionicons name="storefront" size={28} color="#6B7280" />
+            </View>
             <View style={styles.storeInfo}>
               <View style={styles.storeHeader}>
-                <Text style={styles.storeName}>{store.name}</Text>
-                <View style={styles.ratingBadge}>
-                  <Ionicons name="star" size={12} color="#F59E0B" />
-                  <Text style={styles.ratingText}>{store.rating}</Text>
+                <Text style={styles.storeName} numberOfLines={1}>{store.name}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: store.isLive ? '#F0FDF4' : '#FEF2F2' }]}>
+                  <View style={[styles.statusDot, { backgroundColor: store.isLive ? '#10B981' : '#EF4444' }]} />
+                  <Text style={[styles.statusText, { color: store.isLive ? '#10B981' : '#EF4444' }]}>
+                    {store.status}
+                  </Text>
                 </View>
               </View>
-              <Text style={styles.storeCategory}>{store.category}</Text>
               <View style={styles.storeFooter}>
                 <View style={styles.distanceBadge}>
                   <Ionicons name="location" size={12} color="#6B7280" />
                   <Text style={styles.distanceText}>{store.distance}</Text>
                 </View>
+                {store.waitTime && (
+                  <View style={styles.distanceBadge}>
+                    <Ionicons name="time" size={12} color="#6B7280" />
+                    <Text style={styles.distanceText}>{store.waitTime}</Text>
+                  </View>
+                )}
                 <View style={styles.cashbackBadge}>
-                  <Text style={styles.cashbackText}>{store.offer}</Text>
+                  <Text style={styles.cashbackText}>{store.cashback} Cashback</Text>
                 </View>
               </View>
             </View>
@@ -405,6 +511,60 @@ const styles = StyleSheet.create({
   },
   storeListContent: {
     paddingHorizontal: 16,
+    minHeight: 200,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#00C06A',
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  emptySubtext: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#9CA3AF',
   },
   storeCard: {
     flexDirection: 'row',
@@ -425,6 +585,31 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 10,
     backgroundColor: '#F3F4F6',
+  },
+  storeImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    gap: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   storeInfo: {
     flex: 1,

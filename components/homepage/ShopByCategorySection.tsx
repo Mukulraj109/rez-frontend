@@ -1,18 +1,20 @@
 /**
- * Shop by Category Section - Converted from V2
+ * Shop by Category Section - Connected to /api/categories
  * Icon card grid with Electronics, Fashion, Food & Dining
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { categoriesApi, Category } from '@/services/categoriesApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
@@ -26,16 +28,170 @@ const COLORS = {
   emerald500: '#10B981',
 };
 
+// Category style configurations
+const CATEGORY_STYLES: Record<string, {
+  gradientColors: string[];
+  icon: string;
+  cashback: string;
+  badge?: string;
+  badgeType?: 'trending' | 'popular';
+}> = {
+  electronics: {
+    gradientColors: ['#3B82F6', '#06B6D4', '#2563EB'],
+    icon: '📱',
+    cashback: '10-15%',
+  },
+  fashion: {
+    gradientColors: ['#EC4899', '#9333EA'],
+    icon: '👗',
+    cashback: '15-25%',
+    badge: 'Trending',
+    badgeType: 'trending',
+  },
+  'food-dining': {
+    gradientColors: ['#F97316', '#DC2626'],
+    icon: '🍽️',
+    cashback: '10-20%',
+    badge: 'Popular',
+    badgeType: 'popular',
+  },
+  food: {
+    gradientColors: ['#F97316', '#DC2626'],
+    icon: '🍽️',
+    cashback: '10-20%',
+    badge: 'Popular',
+    badgeType: 'popular',
+  },
+  grocery: {
+    gradientColors: ['#22C55E', '#16A34A'],
+    icon: '🥬',
+    cashback: '5-10%',
+  },
+  beauty: {
+    gradientColors: ['#F472B6', '#DB2777'],
+    icon: '💄',
+    cashback: '15-20%',
+    badge: 'Trending',
+    badgeType: 'trending',
+  },
+  health: {
+    gradientColors: ['#06B6D4', '#0891B2'],
+    icon: '💊',
+    cashback: '10-15%',
+  },
+};
+
+interface CategoryData {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string;
+  subtitle: string;
+  cashback: string;
+  gradientColors: string[];
+  badge?: string;
+  badgeType?: 'trending' | 'popular';
+}
+
+// Fallback categories
+const FALLBACK_CATEGORIES: CategoryData[] = [
+  {
+    id: '1',
+    name: 'Electronics',
+    slug: 'electronics',
+    icon: '📱',
+    subtitle: 'Phones, laptops, gadgets',
+    cashback: '10-15%',
+    gradientColors: ['#3B82F6', '#06B6D4', '#2563EB'],
+  },
+  {
+    id: '2',
+    name: 'Fashion',
+    slug: 'fashion',
+    icon: '👗',
+    subtitle: 'Clothing & accessories',
+    cashback: '15-25%',
+    gradientColors: ['#EC4899', '#9333EA'],
+    badge: 'Trending',
+    badgeType: 'trending',
+  },
+  {
+    id: '3',
+    name: 'Food & Dining',
+    slug: 'food-dining',
+    icon: '🍽️',
+    subtitle: 'Restaurants & cafes',
+    cashback: '10-20%',
+    gradientColors: ['#F97316', '#DC2626'],
+    badge: 'Popular',
+    badgeType: 'popular',
+  },
+];
+
 const ShopByCategorySection: React.FC = () => {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [categories, setCategories] = useState<CategoryData[]>(FALLBACK_CATEGORIES);
+  const [totalCategories, setTotalCategories] = useState(15);
 
-  const handlePress = (route: string) => {
-    router.push(route as any);
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setIsLoading(true);
+        const response = await categoriesApi.getFeaturedCategories(undefined, 5);
+
+        if (response.success && response.data && response.data.length > 0) {
+          const transformed = response.data.slice(0, 3).map((cat: Category) => {
+            const style = CATEGORY_STYLES[cat.slug] || CATEGORY_STYLES.electronics;
+            return {
+              id: cat._id,
+              name: cat.name,
+              slug: cat.slug,
+              icon: cat.icon || style.icon,
+              subtitle: cat.description || `${cat.name} & more`,
+              cashback: cat.maxCashback ? `Up to ${cat.maxCashback}%` : style.cashback,
+              gradientColors: style.gradientColors,
+              badge: style.badge,
+              badgeType: style.badgeType,
+            };
+          });
+          setCategories(transformed);
+
+          // Get total count
+          const allResponse = await categoriesApi.getCategories({ isActive: true });
+          if (allResponse.success && allResponse.data) {
+            setTotalCategories(allResponse.data.length);
+          }
+        }
+      } catch (error) {
+        console.error('❌ [ShopByCategorySection] Error fetching categories:', error);
+        // Keep using fallback data
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  const handlePress = (slug: string) => {
+    router.push(`/categories/${slug}` as any);
   };
 
   const handleViewAll = () => {
     router.push('/categories' as any);
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={COLORS.green500} />
+      </View>
+    );
+  }
+
+  const featuredCategory = categories[0];
+  const otherCategories = categories.slice(1, 3);
 
   return (
     <View style={styles.container}>
@@ -49,88 +205,70 @@ const ShopByCategorySection: React.FC = () => {
 
       {/* Cards Grid */}
       <View style={styles.grid}>
-        {/* Electronics - Featured Large */}
-        <TouchableOpacity
-          style={styles.electronicsCard}
-          onPress={() => handlePress('/electronics')}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={['#3B82F6', '#06B6D4', '#2563EB']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.electronicsGradient}
+        {/* Featured Large Card */}
+        {featuredCategory && (
+          <TouchableOpacity
+            style={styles.electronicsCard}
+            onPress={() => handlePress(featuredCategory.slug)}
+            activeOpacity={0.9}
           >
-            <View style={styles.electronicsIconBox}>
-              <Text style={styles.electronicsIcon}>📱</Text>
-            </View>
-            <View style={styles.electronicsContent}>
-              <Text style={styles.electronicsTitle}>Electronics</Text>
-              <Text style={styles.electronicsSubtitle}>Phones, laptops, gadgets</Text>
-              <View style={styles.electronicsBadges}>
-                <View style={styles.cashbackBadge}>
-                  <Text style={styles.cashbackText}>10-15% cashback</Text>
-                </View>
-                <Text style={styles.coinsText}>+ 2x coins</Text>
+            <LinearGradient
+              colors={featuredCategory.gradientColors as any}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.electronicsGradient}
+            >
+              <View style={styles.electronicsIconBox}>
+                <Text style={styles.electronicsIcon}>{featuredCategory.icon}</Text>
               </View>
-            </View>
-            <Text style={styles.electronicsArrow}>→</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+              <View style={styles.electronicsContent}>
+                <Text style={styles.electronicsTitle}>{featuredCategory.name}</Text>
+                <Text style={styles.electronicsSubtitle}>{featuredCategory.subtitle}</Text>
+                <View style={styles.electronicsBadges}>
+                  <View style={styles.cashbackBadge}>
+                    <Text style={styles.cashbackText}>{featuredCategory.cashback} cashback</Text>
+                  </View>
+                  <Text style={styles.coinsText}>+ 2x coins</Text>
+                </View>
+              </View>
+              <Text style={styles.electronicsArrow}>→</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
 
-        {/* Fashion & Food Row */}
+        {/* Other Categories Row */}
         <View style={styles.row}>
-          {/* Fashion */}
-          <TouchableOpacity
-            style={styles.categoryCard}
-            onPress={() => handlePress('/fashion')}
-            activeOpacity={0.9}
-          >
-            <LinearGradient
-              colors={['#EC4899', '#9333EA']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.categoryGradient}
+          {otherCategories.map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              style={styles.categoryCard}
+              onPress={() => handlePress(category.slug)}
+              activeOpacity={0.9}
             >
-              <View style={styles.categoryIconBox}>
-                <Text style={styles.categoryIcon}>👗</Text>
-              </View>
-              <Text style={styles.categoryTitle}>Fashion</Text>
-              <Text style={styles.categorySubtitle}>Clothing & accessories</Text>
-              <View style={styles.categoryFooter}>
-                <Text style={styles.categoryPercent}>15-25%</Text>
-                <View style={styles.trendingBadge}>
-                  <Text style={styles.trendingText}>Trending</Text>
+              <LinearGradient
+                colors={category.gradientColors as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.categoryGradient}
+              >
+                <View style={styles.categoryIconBox}>
+                  <Text style={styles.categoryIcon}>{category.icon}</Text>
                 </View>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Food & Dining */}
-          <TouchableOpacity
-            style={styles.categoryCard}
-            onPress={() => handlePress('/food')}
-            activeOpacity={0.9}
-          >
-            <LinearGradient
-              colors={['#F97316', '#DC2626']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.categoryGradient}
-            >
-              <View style={styles.categoryIconBox}>
-                <Text style={styles.categoryIcon}>🍽️</Text>
-              </View>
-              <Text style={styles.categoryTitle}>Food & Dining</Text>
-              <Text style={styles.categorySubtitle}>Restaurants & cafes</Text>
-              <View style={styles.categoryFooter}>
-                <Text style={styles.categoryPercent}>10-20%</Text>
-                <View style={styles.popularBadge}>
-                  <Text style={styles.popularText}>Popular</Text>
+                <Text style={styles.categoryTitle}>{category.name}</Text>
+                <Text style={styles.categorySubtitle}>{category.subtitle}</Text>
+                <View style={styles.categoryFooter}>
+                  <Text style={styles.categoryPercent}>{category.cashback}</Text>
+                  {category.badge && (
+                    <View style={category.badgeType === 'trending' ? styles.trendingBadge : styles.popularBadge}>
+                      <Text style={category.badgeType === 'trending' ? styles.trendingText : styles.popularText}>
+                        {category.badge}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
@@ -140,7 +278,7 @@ const ShopByCategorySection: React.FC = () => {
         onPress={handleViewAll}
         activeOpacity={0.8}
       >
-        <Text style={styles.viewAllButtonText}>View All 15+ Categories</Text>
+        <Text style={styles.viewAllButtonText}>View All {totalCategories}+ Categories</Text>
         <Text style={styles.viewAllArrow}>→</Text>
       </TouchableOpacity>
     </View>
@@ -151,6 +289,11 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     marginBottom: 24,
+  },
+  loadingContainer: {
+    height: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     marginBottom: 16,

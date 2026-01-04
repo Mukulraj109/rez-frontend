@@ -1,18 +1,20 @@
 /**
- * Events & Experiences Section - Converted from V2
+ * Events & Experiences Section - Connected to /api/events
  * Magazine-style grid layout with Movies, Concerts, Workshops, Parks, Gaming
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import eventsApiService from '@/services/eventsApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 8;
@@ -24,8 +26,91 @@ const COLORS = {
   green500: '#22C55E',
 };
 
+// Event category configurations
+interface EventCategoryConfig {
+  slug: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  gradientColors: string[];
+  discount?: string;
+  badge?: string;
+}
+
+const FALLBACK_CATEGORIES: EventCategoryConfig[] = [
+  {
+    slug: 'movies',
+    title: 'Movies',
+    subtitle: 'Latest blockbusters',
+    icon: '🎬',
+    gradientColors: ['#9333EA', '#EC4899', '#7C3AED'],
+    discount: 'Up to 20% off',
+  },
+  {
+    slug: 'concerts',
+    title: 'Concerts',
+    subtitle: 'Live music',
+    icon: '🎤',
+    gradientColors: ['#F97316', '#DC2626'],
+    badge: '2x coins',
+  },
+  {
+    slug: 'parks',
+    title: 'Parks',
+    subtitle: 'Theme parks & fun',
+    icon: '🎢',
+    gradientColors: ['rgba(34, 197, 94, 0.3)', 'rgba(16, 185, 129, 0.2)'],
+  },
+  {
+    slug: 'workshops',
+    title: 'Workshops',
+    subtitle: 'Learn & grow',
+    icon: '📚',
+    gradientColors: ['rgba(59, 130, 246, 0.2)', 'rgba(99, 102, 241, 0.1)'],
+  },
+  {
+    slug: 'gaming',
+    title: 'Gaming',
+    subtitle: 'Gaming events',
+    icon: '🎮',
+    gradientColors: ['rgba(168, 85, 247, 0.3)', 'rgba(236, 72, 153, 0.2)'],
+  },
+];
+
 const EventsExperiencesSection: React.FC = () => {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [categories, setCategories] = useState<EventCategoryConfig[]>(FALLBACK_CATEGORIES);
+  const [featuredEvent, setFeaturedEvent] = useState<{ title: string; discount?: string } | null>(null);
+
+  useEffect(() => {
+    const fetchEventData = async () => {
+      try {
+        setIsLoading(true);
+
+        // Fetch featured events to show dynamic content
+        const featuredEvents = await eventsApiService.getFeaturedEvents(5);
+
+        if (featuredEvents && featuredEvents.length > 0) {
+          // Get a featured movie event if available
+          const movieEvent = featuredEvents.find(e => e.category?.toLowerCase() === 'movies');
+          if (movieEvent) {
+            setFeaturedEvent({
+              title: movieEvent.title,
+              discount: movieEvent.price?.isFree ? 'Free Entry' : 'Up to 20% off',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('❌ [EventsExperiencesSection] Error fetching events:', error);
+        // Keep using fallback data
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEventData();
+  }, []);
 
   const handleViewAll = () => {
     router.push('/events' as any);
@@ -34,6 +119,20 @@ const EventsExperiencesSection: React.FC = () => {
   const handlePress = (route: string) => {
     router.push(route as any);
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="small" color={COLORS.green500} />
+      </View>
+    );
+  }
+
+  const moviesCategory = categories[0];
+  const concertsCategory = categories[1];
+  const parksCategory = categories[2];
+  const workshopsCategory = categories[3];
+  const gamingCategory = categories[4];
 
   return (
     <View style={styles.container}>
@@ -55,24 +154,24 @@ const EventsExperiencesSection: React.FC = () => {
           {/* Movies - Large Card (2 rows height) */}
           <TouchableOpacity
             style={styles.moviesCard}
-            onPress={() => handlePress('/events/movies')}
+            onPress={() => handlePress(`/events/${moviesCategory.slug}`)}
             activeOpacity={0.9}
           >
             <LinearGradient
-              colors={['#9333EA', '#EC4899', '#7C3AED']}
+              colors={moviesCategory.gradientColors as any}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.moviesGradient}
             >
               <View style={styles.moviesTop}>
-                <Text style={styles.moviesIcon}>🎬</Text>
+                <Text style={styles.moviesIcon}>{moviesCategory.icon}</Text>
                 <View style={styles.discountBadge}>
-                  <Text style={styles.discountText}>Up to 20% off</Text>
+                  <Text style={styles.discountText}>{featuredEvent?.discount || moviesCategory.discount}</Text>
                 </View>
               </View>
               <View style={styles.moviesBottom}>
-                <Text style={styles.moviesTitle}>Movies</Text>
-                <Text style={styles.moviesSubtitle}>Latest blockbusters</Text>
+                <Text style={styles.moviesTitle}>{moviesCategory.title}</Text>
+                <Text style={styles.moviesSubtitle}>{featuredEvent?.title || moviesCategory.subtitle}</Text>
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -82,20 +181,22 @@ const EventsExperiencesSection: React.FC = () => {
             {/* Concerts */}
             <TouchableOpacity
               style={styles.concertsCard}
-              onPress={() => handlePress('/events/concerts')}
+              onPress={() => handlePress(`/events/${concertsCategory.slug}`)}
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#F97316', '#DC2626']}
+                colors={concertsCategory.gradientColors as any}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.concertsGradient}
               >
-                <Text style={styles.concertsIcon}>🎤</Text>
+                <Text style={styles.concertsIcon}>{concertsCategory.icon}</Text>
                 <View>
-                  <Text style={styles.concertsTitle}>Concerts</Text>
-                  <Text style={styles.concertsSubtitle}>Live music</Text>
-                  <Text style={styles.concertsCoins}>2x coins</Text>
+                  <Text style={styles.concertsTitle}>{concertsCategory.title}</Text>
+                  <Text style={styles.concertsSubtitle}>{concertsCategory.subtitle}</Text>
+                  {concertsCategory.badge && (
+                    <Text style={styles.concertsCoins}>{concertsCategory.badge}</Text>
+                  )}
                 </View>
               </LinearGradient>
             </TouchableOpacity>
@@ -103,15 +204,15 @@ const EventsExperiencesSection: React.FC = () => {
             {/* Parks */}
             <TouchableOpacity
               style={styles.smallCard}
-              onPress={() => handlePress('/events/parks')}
+              onPress={() => handlePress(`/events/${parksCategory.slug}`)}
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['rgba(34, 197, 94, 0.3)', 'rgba(16, 185, 129, 0.2)']}
+                colors={parksCategory.gradientColors as any}
                 style={styles.smallCardGradient}
               >
-                <Text style={styles.smallCardIcon}>🎢</Text>
-                <Text style={styles.smallCardTitle}>Parks</Text>
+                <Text style={styles.smallCardIcon}>{parksCategory.icon}</Text>
+                <Text style={styles.smallCardTitle}>{parksCategory.title}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -122,21 +223,21 @@ const EventsExperiencesSection: React.FC = () => {
           {/* Workshops - Wide Card */}
           <TouchableOpacity
             style={styles.workshopsCard}
-            onPress={() => handlePress('/events/workshops')}
+            onPress={() => handlePress(`/events/${workshopsCategory.slug}`)}
             activeOpacity={0.9}
           >
             <LinearGradient
-              colors={['rgba(59, 130, 246, 0.2)', 'rgba(99, 102, 241, 0.1)']}
+              colors={workshopsCategory.gradientColors as any}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.workshopsGradient}
             >
               <View style={styles.workshopsIconBox}>
-                <Text style={styles.workshopsIcon}>📚</Text>
+                <Text style={styles.workshopsIcon}>{workshopsCategory.icon}</Text>
               </View>
               <View style={styles.workshopsContent}>
-                <Text style={styles.workshopsTitle}>Workshops</Text>
-                <Text style={styles.workshopsSubtitle}>Learn & grow</Text>
+                <Text style={styles.workshopsTitle}>{workshopsCategory.title}</Text>
+                <Text style={styles.workshopsSubtitle}>{workshopsCategory.subtitle}</Text>
               </View>
               <Text style={styles.workshopsArrow}>→</Text>
             </LinearGradient>
@@ -145,15 +246,15 @@ const EventsExperiencesSection: React.FC = () => {
           {/* Gaming */}
           <TouchableOpacity
             style={styles.smallCard}
-            onPress={() => handlePress('/events/gaming')}
+            onPress={() => handlePress(`/events/${gamingCategory.slug}`)}
             activeOpacity={0.9}
           >
             <LinearGradient
-              colors={['rgba(168, 85, 247, 0.3)', 'rgba(236, 72, 153, 0.2)']}
+              colors={gamingCategory.gradientColors as any}
               style={styles.smallCardGradient}
             >
-              <Text style={styles.smallCardIcon}>🎮</Text>
-              <Text style={styles.smallCardTitle}>Gaming</Text>
+              <Text style={styles.smallCardIcon}>{gamingCategory.icon}</Text>
+              <Text style={styles.smallCardTitle}>{gamingCategory.title}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -166,6 +267,11 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     marginBottom: 24,
+  },
+  loadingContainer: {
+    height: 280,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',

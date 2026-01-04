@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,18 @@ import {
   TouchableOpacity,
   Dimensions,
   Image,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import LearnMaximiseSection from '../components/earn/LearnMaximiseSection';
+import walletApi from '@/services/walletApi';
+import streakApi from '@/services/streakApi';
+import leaderboardApi from '@/services/leaderboardApi';
+import { challengesApi } from '@/services/challengesApi';
+import { achievementApi } from '@/services/achievementApi';
 
 const { width } = Dimensions.get('window');
 
@@ -51,17 +58,148 @@ const IconMap: { [key: string]: keyof typeof Ionicons.glyphMap } = {
   'coins': 'cash',
 };
 
+// Achievement type for display
+interface DisplayAchievement {
+  id: string;
+  title: string;
+  icon: string;
+  unlocked: boolean;
+  coins: number;
+  progress?: number;
+}
+
+// Challenge type for display
+interface DisplayChallenge {
+  id: string;
+  title: string;
+  progress: number;
+  reward: number;
+  icon: string;
+  timeLeft: string;
+}
+
 const PlayAndEarn = () => {
   const router = useRouter();
-  const [currentStreak] = useState(7);
-  const [monthlyEarnings] = useState(2480);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [monthlyEarnings, setMonthlyEarnings] = useState(0);
+  const [rezCoins, setRezCoins] = useState(0);
+  const [totalBrandedCoins, setTotalBrandedCoins] = useState(0);
+  const [totalPromoCoins, setTotalPromoCoins] = useState(0);
+
+  // API-driven data
+  const [achievements, setAchievements] = useState<DisplayAchievement[]>([]);
+  const [challenges, setChallenges] = useState<DisplayChallenge[]>([]);
+  const [myRank, setMyRank] = useState<number | null>(null);
+
   // Force white theme
   const isDark = false;
 
-  // Mock wallet data (replace with actual context/API)
-  const rezCoins = 1250;
-  const totalBrandedCoins = 450;
-  const totalPromoCoins = 200;
+  // Fetch data from APIs
+  const fetchData = useCallback(async (isRefresh = false) => {
+    try {
+      if (!isRefresh) setLoading(true);
+
+      // Parallel fetch for better performance
+      const [walletResponse, streakResponse, challengesResponse, achievementsResponse, leaderboardResponse] = await Promise.all([
+        walletApi.getBalance(),
+        streakApi.getStreakStatus('login'),
+        challengesApi.getMyProgress(),
+        achievementApi.getAchievementProgress(),
+        leaderboardApi.getLeaderboard({ type: 'spending', period: 'weekly' }),
+      ]);
+
+      // Wallet data
+      if (walletResponse.success && walletResponse.data) {
+        const wallet = walletResponse.data;
+        setRezCoins(wallet.balance?.available || wallet.coins?.find((c: any) => c.type === 'rez')?.balance || 0);
+        setTotalBrandedCoins(wallet.brandedCoins?.reduce((sum: number, c: any) => sum + c.balance, 0) || 0);
+        setTotalPromoCoins(wallet.coins?.find((c: any) => c.type === 'promo')?.balance || 0);
+        if (wallet.statistics) {
+          setMonthlyEarnings(wallet.statistics.totalEarned || 0);
+        }
+      }
+
+      // Streak data
+      if (streakResponse.success && streakResponse.data) {
+        setCurrentStreak(streakResponse.data.current || 0);
+      }
+
+      // Challenges data - take first 4
+      if (challengesResponse.success && challengesResponse.data) {
+        const mappedChallenges = challengesResponse.data.slice(0, 4).map((cp: any) => ({
+          id: cp.challenge._id,
+          title: cp.challenge.title,
+          progress: cp.target > 0 ? Math.round((cp.progress / cp.target) * 100) : 0,
+          reward: cp.challenge.rewards?.coins || 0,
+          icon: getEmojiForChallenge(cp.challenge.requirements?.action),
+          timeLeft: challengesApi.getTimeRemaining(cp.challenge.endDate),
+        }));
+        setChallenges(mappedChallenges);
+      }
+
+      // Achievements data - take first 4
+      if (achievementsResponse.success && achievementsResponse.data?.achievements) {
+        const mappedAchievements = achievementsResponse.data.achievements.slice(0, 4).map((a: any) => ({
+          id: a.id,
+          title: a.title,
+          icon: getEmojiForAchievement(a.type),
+          unlocked: a.unlocked,
+          coins: a.targetValue || 100,
+          progress: a.unlocked ? 100 : a.progress,
+        }));
+        setAchievements(mappedAchievements);
+      }
+
+      // Leaderboard rank
+      if (leaderboardResponse.success && leaderboardResponse.data) {
+        setMyRank(leaderboardResponse.data.myRank?.rank || null);
+      }
+    } catch (error) {
+      console.error('Error fetching PlayAndEarn data:', error);
+    } finally {
+      setLoading(false);
+      if (isRefresh) setRefreshing(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Pull to refresh
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData(true);
+  }, [fetchData]);
+
+  // Helper to get emoji for challenge type
+  const getEmojiForChallenge = (action?: string): string => {
+    switch (action) {
+      case 'visit_stores': return '🏪';
+      case 'upload_bills': return '📄';
+      case 'refer_friends': return '👥';
+      case 'spend_amount': return '💳';
+      case 'order_count': return '🛒';
+      case 'review_count': return '⭐';
+      case 'login_streak': return '🔥';
+      case 'share_deals': return '📤';
+      default: return '🎯';
+    }
+  };
+
+  // Helper to get emoji for achievement type
+  const getEmojiForAchievement = (type?: string): string => {
+    if (!type) return '🏆';
+    if (type.includes('ORDER') || type.includes('PURCHASE')) return '🎯';
+    if (type.includes('STREAK')) return '🔥';
+    if (type.includes('SOCIAL') || type.includes('REFERRAL')) return '🦋';
+    if (type.includes('REVIEW')) return '⭐';
+    if (type.includes('SPENT')) return '💰';
+    return '🎪';
+  };
 
   // Featured Creators Data
   const featuredCreators = [
@@ -280,13 +418,7 @@ const PlayAndEarn = () => {
     { id: 4, title: 'Coin Hunt', icon: '🪙', coins: 75, plays: 'Unlimited', colors: ['#22C55E20', '#10B98120'], route: '/playandearn/coinhunt' },
   ];
 
-  // Active Challenges
-  const challenges = [
-    { id: 1, title: 'Shop 3 Stores Today', progress: 66, reward: 200, icon: '🏪', timeLeft: '6h left' },
-    { id: 2, title: 'Invite 5 Friends', progress: 40, reward: 500, icon: '👥', timeLeft: '2d left' },
-    { id: 3, title: 'Scan 10 Bills', progress: 80, reward: 300, icon: '📄', timeLeft: '1d left' },
-    { id: 4, title: 'Complete Profile', progress: 90, reward: 150, icon: '✅', timeLeft: 'Anytime' },
-  ];
+  // Active Challenges - now from API (challenges state)
 
   // Live Tournaments
   const tournaments = [
@@ -303,21 +435,28 @@ const PlayAndEarn = () => {
     { id: 4, title: 'Guess the Price', icon: '💰', plays: 'Unlimited', earnings: '50 coins/win', path: '/playandearn/guessprice' },
   ];
 
-  // Achievements
-  const achievements = [
-    { id: 1, title: 'First Purchase', icon: '🎯', unlocked: true, coins: 100 },
-    { id: 2, title: 'Week Streak', icon: '🔥', unlocked: true, coins: 500 },
-    { id: 3, title: 'Social Butterfly', icon: '🦋', unlocked: false, coins: 300, progress: 60 },
-    { id: 4, title: 'Deal Hunter', icon: '🎪', unlocked: false, coins: 400, progress: 25 },
-  ];
+  // Achievements - now from API (achievements state)
 
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        <ScrollView
+          style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#00C06A']}
+            tintColor="#00C06A"
+          />
+        }
+      >
         {/* Header: Earnings Snapshot */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>💰 Your Earnings</Text>
@@ -854,6 +993,12 @@ const PlayAndEarn = () => {
             </TouchableOpacity>
           </View>
 
+          {challenges.length === 0 && !loading && (
+            <View style={styles.emptySection}>
+              <Text style={styles.emptySectionText}>No active challenges. Check back soon!</Text>
+            </View>
+          )}
+
           {challenges.map((challenge) => (
             <View key={challenge.id} style={styles.challengeCard}>
               <View style={styles.challengeHeader}>
@@ -958,10 +1103,16 @@ const PlayAndEarn = () => {
               <Text style={styles.sectionTitle}>Achievements</Text>
               <Text style={styles.sectionSubtitle}>Unlock badges & coins</Text>
             </View>
-            <TouchableOpacity onPress={() => navigateTo('/playandearn/achievements')}>
+            <TouchableOpacity onPress={() => navigateTo('/badges')}>
               <Text style={styles.viewAllLink}>View all →</Text>
             </TouchableOpacity>
           </View>
+
+          {achievements.length === 0 && !loading && (
+            <View style={styles.emptySection}>
+              <Text style={styles.emptySectionText}>Complete activities to earn achievements!</Text>
+            </View>
+          )}
 
           <View style={styles.achievementsGrid}>
             {achievements.map((achievement) => (
@@ -979,7 +1130,7 @@ const PlayAndEarn = () => {
                 </View>
                 <Text style={styles.achievementTitle}>{achievement.title}</Text>
                 <Text style={styles.achievementCoins}>+{achievement.coins} coins</Text>
-                {!achievement.unlocked && achievement.progress && (
+                {!achievement.unlocked && achievement.progress !== undefined && (
                   <View style={styles.achievementProgressContainer}>
                     <View style={styles.achievementProgressBar}>
                       <View style={[styles.achievementProgressFill, { width: `${achievement.progress}%` }]} />
@@ -1001,8 +1152,9 @@ const PlayAndEarn = () => {
             <Ionicons name="trophy" size={48} color="#F59E0B" />
             <Text style={styles.leaderboardTitle}>Weekly Leaderboard</Text>
             <Text style={styles.leaderboardText}>
-              You're ranked #147 this week{'\n'}
-              Top 100 win bonus coins!
+              {myRank
+                ? `You're ranked #${myRank} this week\nTop 100 win bonus coins!`
+                : 'Complete activities to rank!\nTop 100 win bonus coins!'}
             </Text>
             <TouchableOpacity
               style={styles.leaderboardButton}
@@ -1064,8 +1216,9 @@ const PlayAndEarn = () => {
             <Ionicons name="arrow-forward" size={24} color="#FFF" />
           </LinearGradient>
         </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </>
   );
 };
 
@@ -2275,6 +2428,19 @@ const styles = StyleSheet.create({
   bottomCTASubtitle: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.9)',
+  },
+  emptySection: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F7FAFC',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  emptySectionText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });
 

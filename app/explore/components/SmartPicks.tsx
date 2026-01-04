@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,48 +6,101 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import exploreApi from '../../../services/exploreApi';
 
 const { width } = Dimensions.get('window');
 
-const smartPicks = [
+// Fallback data
+const fallbackSmartPicks = [
   {
-    id: 1,
+    id: '1',
     title: 'Popular with people like you',
     icon: 'people',
     color: '#3B82F6',
     items: [
-      { id: 1, name: 'Premium Haircut', store: 'Style Studio', price: 399, cashback: '20%', distance: '0.6 km', buyers: 45 },
-      { id: 2, name: 'Veg Thali', store: 'Sagar Ratna', price: 250, cashback: '15%', distance: '1.2 km', buyers: 78 },
+      { id: '1', name: 'Premium Haircut', store: 'Style Studio', price: 399, cashback: '20%', distance: '0.6 km', buyers: 45 },
+      { id: '2', name: 'Veg Thali', store: 'Sagar Ratna', price: 250, cashback: '15%', distance: '1.2 km', buyers: 78 },
     ],
   },
   {
-    id: 2,
+    id: '2',
     title: 'Best deals in your budget',
     icon: 'wallet',
     color: '#10B981',
     items: [
-      { id: 3, name: 'Coffee & Sandwich', store: 'Cafe Delight', price: 180, cashback: '12%', distance: '0.4 km', trending: true },
-      { id: 4, name: 'Movie Ticket', store: 'PVR Cinemas', price: 350, cashback: '10%', distance: '2.1 km', trending: true },
+      { id: '3', name: 'Coffee & Sandwich', store: 'Cafe Delight', price: 180, cashback: '12%', distance: '0.4 km', trending: true },
+      { id: '4', name: 'Movie Ticket', store: 'PVR Cinemas', price: 350, cashback: '10%', distance: '2.1 km', trending: true },
     ],
   },
   {
-    id: 3,
+    id: '3',
     title: 'Based on your recent visits',
     icon: 'time',
     color: '#A855F7',
     items: [
-      { id: 5, name: 'Chicken Wings', store: 'Buffalo Wild Wings', price: 499, cashback: '18%', distance: '1.5 km', buyers: 32 },
-      { id: 6, name: 'Gym Day Pass', store: 'Cult Fit', price: 199, cashback: '25%', distance: '0.8 km', trending: true },
+      { id: '5', name: 'Chicken Wings', store: 'Buffalo Wild Wings', price: 499, cashback: '18%', distance: '1.5 km', buyers: 32 },
+      { id: '6', name: 'Gym Day Pass', store: 'Cult Fit', price: 199, cashback: '25%', distance: '0.8 km', trending: true },
     ],
   },
 ];
 
 const SmartPicks = () => {
   const router = useRouter();
+  const [smartPicks, setSmartPicks] = useState<any[]>(fallbackSmartPicks);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSmartPicks = async () => {
+      try {
+        // Fetch products for smart picks
+        const response = await exploreApi.getProducts({ limit: 12 });
+        if (response.success && response.data && response.data.length > 0) {
+          const categoryConfigs = [
+            { id: '1', title: 'Popular with people like you', icon: 'people', color: '#3B82F6' },
+            { id: '2', title: 'Best deals in your budget', icon: 'wallet', color: '#10B981' },
+            { id: '3', title: 'Based on your recent visits', icon: 'time', color: '#A855F7' },
+          ];
+
+          // Group products into categories
+          const products = response.data;
+          const chunkSize = Math.ceil(products.length / 3);
+
+          const transformed = categoryConfigs.map((config, catIndex) => {
+            const startIdx = catIndex * chunkSize;
+            const categoryProducts = products.slice(startIdx, startIdx + chunkSize).slice(0, 2);
+
+            return {
+              ...config,
+              items: categoryProducts.map((product: any, idx: number) => ({
+                id: product.id || product._id,
+                name: product.name || 'Product',
+                store: product.store?.name || 'Store',
+                price: product.price || 299,
+                cashback: `${product.cashbackPercentage || 15}%`,
+                distance: product.distance ? `${product.distance} km` : '1.0 km',
+                buyers: Math.floor(Math.random() * 80) + 20,
+                trending: Math.random() > 0.5,
+              })),
+            };
+          });
+
+          if (transformed.every(cat => cat.items.length > 0)) {
+            setSmartPicks(transformed);
+          }
+        }
+      } catch (error) {
+        console.error('[SMART PICKS] Error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSmartPicks();
+  }, []);
 
   const navigateTo = (path: string) => {
     router.push(path as any);

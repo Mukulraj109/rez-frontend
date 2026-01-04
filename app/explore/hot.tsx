@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,95 +8,16 @@ import {
   ScrollView,
   Image,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import exploreApi, { HotProduct } from '@/services/exploreApi';
 
 const { width } = Dimensions.get('window');
-
-// Mock hot items data
-const hotItems = [
-  {
-    id: 1,
-    name: 'Nike Air Max 90',
-    store: 'Nike Store',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
-    offer: '20% Cashback',
-    distance: '1.2 km',
-    price: 6999,
-    originalPrice: 8999,
-    rating: 4.8,
-    reviews: 234,
-    buyers: 45,
-  },
-  {
-    id: 2,
-    name: 'Chicken Biryani',
-    store: 'Paradise Biryani',
-    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
-    offer: 'Flat ₹100 Off',
-    distance: '800 m',
-    price: 350,
-    originalPrice: 450,
-    rating: 4.5,
-    reviews: 567,
-    buyers: 123,
-  },
-  {
-    id: 3,
-    name: 'Hair Spa Treatment',
-    store: 'Wellness Studio',
-    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
-    offer: '25% Cashback',
-    distance: '2.1 km',
-    price: 1499,
-    originalPrice: 1999,
-    rating: 4.7,
-    reviews: 189,
-    buyers: 67,
-  },
-  {
-    id: 4,
-    name: 'Cold Brew Coffee',
-    store: 'Cafe Noir',
-    image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400',
-    offer: 'Buy 1 Get 1',
-    distance: '500 m',
-    price: 299,
-    originalPrice: 399,
-    rating: 4.3,
-    reviews: 345,
-    buyers: 89,
-  },
-  {
-    id: 5,
-    name: 'Gym Membership',
-    store: 'Gym Plus',
-    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400',
-    offer: '30% Off',
-    distance: '1.5 km',
-    price: 2999,
-    originalPrice: 4299,
-    rating: 4.6,
-    reviews: 278,
-    buyers: 156,
-  },
-  {
-    id: 6,
-    name: 'iPhone 15 Pro',
-    store: 'Apple Store',
-    image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400',
-    offer: '15% Cashback',
-    distance: '3.2 km',
-    price: 129900,
-    originalPrice: 134900,
-    rating: 4.9,
-    reviews: 456,
-    buyers: 34,
-  },
-];
 
 const sortOptions = [
   { id: 'trending', label: 'Trending' },
@@ -108,6 +29,58 @@ const sortOptions = [
 const ExploreHotPage = () => {
   const router = useRouter();
   const [selectedSort, setSelectedSort] = useState('trending');
+  const [hotItems, setHotItems] = useState<HotProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch hot deals from API
+  const fetchHotDeals = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const response = await exploreApi.getHotDeals({ limit: 20 });
+
+      if (response.success && response.data) {
+        let products = response.data.products || [];
+
+        // Sort locally based on selected sort option
+        if (selectedSort === 'price') {
+          products = [...products].sort((a, b) => a.price - b.price);
+        } else if (selectedSort === 'cashback') {
+          products = [...products].sort((a, b) => {
+            const aDiscount = ((a.originalPrice - a.price) / a.originalPrice) * 100;
+            const bDiscount = ((b.originalPrice - b.price) / b.originalPrice) * 100;
+            return bDiscount - aDiscount;
+          });
+        }
+
+        setHotItems(products);
+      } else {
+        setError(response.error || 'Failed to fetch hot deals');
+      }
+    } catch (err: any) {
+      console.error('[HOT PAGE] Error:', err);
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [selectedSort]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchHotDeals();
+  }, [fetchHotDeals]);
+
+  const onRefresh = useCallback(() => {
+    fetchHotDeals(true);
+  }, [fetchHotDeals]);
 
   const navigateTo = (path: string) => {
     router.push(path as any);
@@ -167,7 +140,40 @@ const ExploreHotPage = () => {
         style={styles.itemsScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.itemsContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00C06A']} />
+        }
       >
+        {/* Loading State */}
+        {loading && !refreshing && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00C06A" />
+            <Text style={styles.loadingText}>Loading hot deals...</Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color="#EF4444" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchHotDeals()}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && hotItems.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="flame-outline" size={48} color="#9CA3AF" />
+            <Text style={styles.emptyText}>No hot deals available</Text>
+            <Text style={styles.emptySubtext}>Check back later for trending items</Text>
+          </View>
+        )}
+
+        {/* Items Grid */}
+        {!loading && !error && hotItems.length > 0 && (
         <View style={styles.grid}>
           {hotItems.map((item) => (
             <TouchableOpacity
@@ -226,6 +232,7 @@ const ExploreHotPage = () => {
             </TouchableOpacity>
           ))}
         </View>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -308,6 +315,60 @@ const styles = StyleSheet.create({
   itemsContainer: {
     paddingHorizontal: 16,
     paddingTop: 8,
+    minHeight: 200,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#00C06A',
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  emptySubtext: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#9CA3AF',
   },
   grid: {
     flexDirection: 'row',

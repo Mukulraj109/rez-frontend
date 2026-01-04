@@ -1,9 +1,9 @@
 /**
  * Missions Screen - Converted from V2 Web
- * Exact match to Rez_v-2-main/src/pages/Missions.jsx
+ * Now integrated with challengesApi for real data
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,16 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { challengesApi, ChallengeProgress } from '@/services/challengesApi';
+import streakApi from '@/services/streakApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -48,34 +53,43 @@ const COLORS = {
 };
 
 interface Mission {
-  id: number;
+  id: string; // Display/key ID (challenge._id)
+  progressId: string; // Progress record ID for claiming (cp._id)
   title: string;
   description: string;
   reward: { coins: number; cashback: number };
   progress: number;
   target: number;
   completed: boolean;
+  claimed: boolean;
   difficulty: 'easy' | 'medium' | 'hard' | 'legendary';
   endsIn: string;
+  type: 'daily' | 'weekly' | 'monthly' | 'special';
   special?: boolean;
 }
 
-const dailyMissions: Mission[] = [
-  { id: 1, title: 'Morning Shopper', description: 'Make a purchase before 12 PM', reward: { coins: 50, cashback: 10 }, progress: 0, target: 1, completed: false, difficulty: 'easy', endsIn: '8h 24m' },
-  { id: 2, title: 'Product Explorer', description: 'Browse 10 products', reward: { coins: 30, cashback: 0 }, progress: 7, target: 10, completed: false, difficulty: 'easy', endsIn: '8h 24m' },
-  { id: 3, title: 'Social Butterfly', description: 'Share 3 products with friends', reward: { coins: 40, cashback: 5 }, progress: 1, target: 3, completed: false, difficulty: 'medium', endsIn: '8h 24m' },
-  { id: 4, title: 'Review Master', description: 'Write 2 product reviews', reward: { coins: 100, cashback: 20 }, progress: 2, target: 2, completed: true, difficulty: 'medium', endsIn: '8h 24m' },
-];
-
-const weeklyMissions: Mission[] = [
-  { id: 5, title: 'Shopping Spree', description: 'Complete 5 purchases this week', reward: { coins: 500, cashback: 100 }, progress: 3, target: 5, completed: false, difficulty: 'hard', endsIn: '4d 12h' },
-  { id: 6, title: 'Category Champion', description: 'Shop from 3 different categories', reward: { coins: 300, cashback: 50 }, progress: 2, target: 3, completed: false, difficulty: 'medium', endsIn: '4d 12h' },
-];
-
-const specialMissions: Mission[] = [
-  { id: 7, title: 'New Year Bonanza', description: 'Spend ₹5,000 in January', reward: { coins: 1000, cashback: 250 }, progress: 3200, target: 5000, completed: false, difficulty: 'legendary', endsIn: '7 days', special: true },
-  { id: 8, title: 'Refer 5 Friends', description: 'Invite 5 friends to ReZ', reward: { coins: 2000, cashback: 500 }, progress: 2, target: 5, completed: false, difficulty: 'legendary', endsIn: '15 days', special: true },
-];
+// Helper to map API challenge to local Mission format
+const mapChallengeToMission = (cp: ChallengeProgress): Mission => {
+  const challenge = cp.challenge;
+  return {
+    id: challenge._id, // For display/key purposes
+    progressId: cp._id, // IMPORTANT: Use this for claiming rewards
+    title: challenge.title,
+    description: challenge.description,
+    reward: {
+      coins: challenge.rewards.coins,
+      cashback: 0, // API doesn't have cashback, could be added later
+    },
+    progress: cp.progress,
+    target: cp.target,
+    completed: cp.completed,
+    claimed: cp.rewardsClaimed,
+    difficulty: challenge.difficulty as Mission['difficulty'],
+    endsIn: challengesApi.getTimeRemaining(challenge.endDate),
+    type: challenge.type,
+    special: challenge.type === 'special' || challenge.type === 'monthly',
+  };
+};
 
 const tabs = [
   { id: 'daily', label: 'Daily', icon: 'calendar' as const },
@@ -97,6 +111,102 @@ const MissionsScreen: React.FC = () => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('daily');
 
+  // API state
+  const [allMissions, setAllMissions] = useState<Mission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [streak, setStreak] = useState(0);
+  const [stats, setStats] = useState({
+    completed: 0,
+    coinsEarned: 0,
+    active: 0,
+  });
+
+  // Fetch missions from API
+  const fetchMissions = useCallback(async (isRefresh = false) => {
+    try {
+      if (!isRefresh) setLoading(true);
+      setError(null);
+
+      // Fetch challenges + stats in one call, plus streak data
+      const [progressResponse, streakResponse] = await Promise.all([
+        challengesApi.getMyProgressWithStats(),
+        streakApi.getStreakStatus('login'),
+      ]);
+
+      if (progressResponse.success && progressResponse.data) {
+        const { challenges, stats: challengeStats } = progressResponse.data;
+        const mapped = challenges.map(mapChallengeToMission);
+        setAllMissions(mapped);
+        setStats({
+          completed: challengeStats.totalCompleted,
+          coinsEarned: challengeStats.totalCoinsEarned,
+          active: challengeStats.activeChallenges,
+        });
+      } else {
+        setError(progressResponse.error || 'Failed to load missions');
+      }
+
+      // Set streak from API
+      if (streakResponse.success && streakResponse.data) {
+        setStreak(streakResponse.data.current);
+      }
+    } catch (err: any) {
+      console.error('[MISSIONS] Error fetching:', err);
+      setError(err.message || 'Failed to load missions');
+    } finally {
+      setLoading(false);
+      if (isRefresh) setRefreshing(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchMissions();
+  }, [fetchMissions]);
+
+  // Handle pull-to-refresh
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchMissions(true);
+  }, [fetchMissions]);
+
+  // Handle claiming rewards - uses progressId, not challenge id
+  const handleClaimReward = async (progressId: string) => {
+    setClaiming(progressId);
+    try {
+      const response = await challengesApi.claimReward(progressId);
+      if (response.success && response.data) {
+        // Update local state to mark as claimed (match by progressId)
+        setAllMissions(prev =>
+          prev.map(m =>
+            m.progressId === progressId ? { ...m, claimed: true } : m
+          )
+        );
+        // Update stats
+        setStats(prev => ({
+          ...prev,
+          coinsEarned: prev.coinsEarned + (response.data?.coinsEarned || 0),
+        }));
+        Alert.alert('Rewards Claimed!', `+${response.data.coinsEarned} coins added to your wallet!`);
+      } else {
+        Alert.alert('Error', response.error || 'Failed to claim rewards');
+      }
+    } catch (err: any) {
+      console.error('[MISSIONS] Error claiming reward:', err);
+      Alert.alert('Error', err.message || 'Failed to claim rewards');
+    } finally {
+      setClaiming(null);
+    }
+  };
+
+  // Filter missions by type
+  const dailyMissions = allMissions.filter(m => m.type === 'daily');
+  const weeklyMissions = allMissions.filter(m => m.type === 'weekly');
+  const specialMissions = allMissions.filter(m => m.type === 'special' || m.type === 'monthly');
+
   const getMissions = () => {
     switch (activeTab) {
       case 'daily': return dailyMissions;
@@ -108,9 +218,19 @@ const MissionsScreen: React.FC = () => {
 
   const missions = getMissions();
 
+  // Format large numbers
+  const formatNumber = (num: number) => {
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
       <LinearGradient
         colors={[COLORS.purple600, COLORS.indigo600]}
         style={styles.header}
@@ -128,7 +248,7 @@ const MissionsScreen: React.FC = () => {
           </View>
           <View style={styles.streakBadge}>
             <Ionicons name="flame" size={14} color={COLORS.orange400} />
-            <Text style={styles.streakText}>7 Day Streak</Text>
+            <Text style={styles.streakText}>{streak} Day Streak</Text>
           </View>
         </View>
 
@@ -153,137 +273,202 @@ const MissionsScreen: React.FC = () => {
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[COLORS.purple600]}
+            tintColor={COLORS.purple600}
+          />
+        }
+      >
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.purple600} />
+            <Text style={styles.loadingText}>Loading missions...</Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {!loading && error && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="cloud-offline-outline" size={48} color={COLORS.gray400} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={() => fetchMissions()} style={styles.retryButton}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Stats */}
-        <View style={styles.statsRow}>
-          <LinearGradient
-            colors={['rgba(16, 185, 129, 0.2)', 'rgba(34, 197, 94, 0.2)']}
-            style={styles.statCard}
-          >
-            <Ionicons name="trophy" size={20} color={COLORS.emerald500} />
-            <Text style={[styles.statValue, { color: COLORS.green600 }]}>24</Text>
-            <Text style={styles.statLabel}>Completed</Text>
-          </LinearGradient>
-          <LinearGradient
-            colors={['rgba(245, 158, 11, 0.2)', 'rgba(249, 115, 22, 0.2)']}
-            style={styles.statCard}
-          >
-            <Ionicons name="gift" size={20} color={COLORS.amber500} />
-            <Text style={[styles.statValue, { color: COLORS.amber600 }]}>2.4K</Text>
-            <Text style={styles.statLabel}>Coins Earned</Text>
-          </LinearGradient>
-          <LinearGradient
-            colors={['rgba(59, 130, 246, 0.2)', 'rgba(99, 102, 241, 0.2)']}
-            style={styles.statCard}
-          >
-            <Ionicons name="flash" size={20} color={COLORS.blue500} />
-            <Text style={[styles.statValue, { color: COLORS.blue600 }]}>12</Text>
-            <Text style={styles.statLabel}>Active</Text>
-          </LinearGradient>
-        </View>
+        {!loading && !error && (
+          <View style={styles.statsRow}>
+            <LinearGradient
+              colors={['rgba(16, 185, 129, 0.2)', 'rgba(34, 197, 94, 0.2)']}
+              style={styles.statCard}
+            >
+              <Ionicons name="trophy" size={20} color={COLORS.emerald500} />
+              <Text style={[styles.statValue, { color: COLORS.green600 }]}>{stats.completed}</Text>
+              <Text style={styles.statLabel}>Completed</Text>
+            </LinearGradient>
+            <LinearGradient
+              colors={['rgba(245, 158, 11, 0.2)', 'rgba(249, 115, 22, 0.2)']}
+              style={styles.statCard}
+            >
+              <Ionicons name="gift" size={20} color={COLORS.amber500} />
+              <Text style={[styles.statValue, { color: COLORS.amber600 }]}>{formatNumber(stats.coinsEarned)}</Text>
+              <Text style={styles.statLabel}>Coins Earned</Text>
+            </LinearGradient>
+            <LinearGradient
+              colors={['rgba(59, 130, 246, 0.2)', 'rgba(99, 102, 241, 0.2)']}
+              style={styles.statCard}
+            >
+              <Ionicons name="flash" size={20} color={COLORS.blue500} />
+              <Text style={[styles.statValue, { color: COLORS.blue600 }]}>{stats.active}</Text>
+              <Text style={styles.statLabel}>Active</Text>
+            </LinearGradient>
+          </View>
+        )}
 
         {/* Missions List */}
-        <View style={styles.missionsList}>
-          {missions.map(mission => {
-            const diffStyle = getDifficultyStyle(mission.difficulty);
-            const progressPercent = Math.round((mission.progress / mission.target) * 100);
+        {!loading && !error && (
+          <View style={styles.missionsList}>
+            {/* Empty State */}
+            {missions.length === 0 && (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="flag-outline" size={48} color={COLORS.gray400} />
+                <Text style={styles.emptyTitle}>No {activeTab} missions</Text>
+                <Text style={styles.emptyText}>
+                  Check back later for new challenges!
+                </Text>
+              </View>
+            )}
 
-            return (
-              <View
-                key={mission.id}
-                style={[
-                  styles.missionCard,
-                  mission.completed && styles.missionCardCompleted,
-                  mission.special && styles.missionCardSpecial,
-                ]}
-              >
-                <View style={styles.missionRow}>
-                  <View style={[
-                    styles.missionIconBox,
-                    mission.completed && styles.missionIconBoxCompleted
-                  ]}>
-                    {mission.completed ? (
-                      <Ionicons name="checkmark-circle" size={24} color={COLORS.white} />
-                    ) : (
-                      <Ionicons name="flag" size={24} color={COLORS.purple500} />
-                    )}
-                  </View>
+            {missions.map(mission => {
+              const diffStyle = getDifficultyStyle(mission.difficulty);
+              const progressPercent = Math.round((mission.progress / mission.target) * 100);
+              const isClaimable = mission.completed && !mission.claimed;
+              const isClaiming = claiming === mission.progressId;
 
-                  <View style={styles.missionContent}>
-                    <View style={styles.missionHeader}>
-                      <Text style={styles.missionTitle}>{mission.title}</Text>
-                      <View style={[styles.difficultyBadge, { backgroundColor: diffStyle.bg }]}>
-                        <Text style={[styles.difficultyText, { color: diffStyle.color }]}>
-                          {mission.difficulty}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text style={styles.missionDesc}>{mission.description}</Text>
-
-                    {/* Progress Bar */}
-                    {!mission.completed && (
-                      <View style={styles.progressSection}>
-                        <View style={styles.progressHeader}>
-                          <Text style={styles.progressLabel}>
-                            Progress: {mission.progress}/{mission.target}
-                          </Text>
-                          <Text style={styles.progressPercent}>{progressPercent}%</Text>
-                        </View>
-                        <View style={styles.progressTrack}>
-                          <LinearGradient
-                            colors={[COLORS.purple500, COLORS.indigo500]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={[styles.progressFill, { width: `${progressPercent}%` }]}
-                          />
-                        </View>
-                      </View>
-                    )}
-
-                    {/* Rewards */}
-                    <View style={styles.rewardsRow}>
-                      <View style={styles.rewardBadge}>
-                        <Ionicons name="gift" size={12} color={COLORS.amber500} />
-                        <Text style={styles.rewardText}>+{mission.reward.coins} coins</Text>
-                      </View>
-                      {mission.reward.cashback > 0 && (
-                        <View style={[styles.rewardBadge, styles.cashbackBadge]}>
-                          <Ionicons name="flash" size={12} color={COLORS.emerald500} />
-                          <Text style={[styles.rewardText, { color: COLORS.green600 }]}>
-                            ₹{mission.reward.cashback} cashback
-                          </Text>
-                        </View>
+              return (
+                <View
+                  key={mission.id}
+                  style={[
+                    styles.missionCard,
+                    mission.completed && styles.missionCardCompleted,
+                    mission.special && styles.missionCardSpecial,
+                  ]}
+                >
+                  <View style={styles.missionRow}>
+                    <View style={[
+                      styles.missionIconBox,
+                      mission.completed && styles.missionIconBoxCompleted
+                    ]}>
+                      {mission.completed ? (
+                        <Ionicons name="checkmark-circle" size={24} color={COLORS.white} />
+                      ) : (
+                        <Ionicons name="flag" size={24} color={COLORS.purple500} />
                       )}
                     </View>
 
-                    <Text style={styles.endsIn}>
-                      Ends in: <Text style={styles.endsInValue}>{mission.endsIn}</Text>
-                    </Text>
-                  </View>
-                </View>
+                    <View style={styles.missionContent}>
+                      <View style={styles.missionHeader}>
+                        <Text style={styles.missionTitle}>{mission.title}</Text>
+                        <View style={[styles.difficultyBadge, { backgroundColor: diffStyle.bg }]}>
+                          <Text style={[styles.difficultyText, { color: diffStyle.color }]}>
+                            {mission.difficulty}
+                          </Text>
+                        </View>
+                      </View>
 
-                {/* Claim Button */}
-                {mission.completed && (
-                  <TouchableOpacity activeOpacity={0.8} style={styles.claimButtonWrapper}>
-                    <LinearGradient
-                      colors={[COLORS.emerald500, COLORS.green500]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.claimButton}
+                      <Text style={styles.missionDesc}>{mission.description}</Text>
+
+                      {/* Progress Bar */}
+                      {!mission.completed && (
+                        <View style={styles.progressSection}>
+                          <View style={styles.progressHeader}>
+                            <Text style={styles.progressLabel}>
+                              Progress: {mission.progress}/{mission.target}
+                            </Text>
+                            <Text style={styles.progressPercent}>{progressPercent}%</Text>
+                          </View>
+                          <View style={styles.progressTrack}>
+                            <LinearGradient
+                              colors={[COLORS.purple500, COLORS.indigo500]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={[styles.progressFill, { width: `${progressPercent}%` }]}
+                            />
+                          </View>
+                        </View>
+                      )}
+
+                      {/* Rewards */}
+                      <View style={styles.rewardsRow}>
+                        <View style={styles.rewardBadge}>
+                          <Ionicons name="gift" size={12} color={COLORS.amber500} />
+                          <Text style={styles.rewardText}>+{mission.reward.coins} coins</Text>
+                        </View>
+                        {mission.reward.cashback > 0 && (
+                          <View style={[styles.rewardBadge, styles.cashbackBadge]}>
+                            <Ionicons name="flash" size={12} color={COLORS.emerald500} />
+                            <Text style={[styles.rewardText, { color: COLORS.green600 }]}>
+                              ₹{mission.reward.cashback} cashback
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <Text style={styles.endsIn}>
+                        Ends in: <Text style={styles.endsInValue}>{mission.endsIn}</Text>
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Claim Button - Only show if completed and not yet claimed */}
+                  {isClaimable && (
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={styles.claimButtonWrapper}
+                      onPress={() => handleClaimReward(mission.progressId)}
+                      disabled={isClaiming}
                     >
-                      <Text style={styles.claimButtonText}>Claim Rewards</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                )}
-              </View>
-            );
-          })}
-        </View>
+                      <LinearGradient
+                        colors={[COLORS.emerald500, COLORS.green500]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.claimButton}
+                      >
+                        {isClaiming ? (
+                          <ActivityIndicator size="small" color={COLORS.white} />
+                        ) : (
+                          <Text style={styles.claimButtonText}>Claim Rewards</Text>
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Already Claimed Badge */}
+                  {mission.claimed && (
+                    <View style={styles.claimedBadge}>
+                      <Ionicons name="checkmark-circle" size={16} color={COLORS.emerald500} />
+                      <Text style={styles.claimedText}>Rewards Claimed</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         <View style={{ height: 100 }} />
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 };
 
@@ -525,6 +710,74 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.gray600,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.gray600,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: COLORS.purple600,
+    borderRadius: 8,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyTitle: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.gray700,
+  },
+  emptyText: {
+    marginTop: 4,
+    fontSize: 14,
+    color: COLORS.gray600,
+    textAlign: 'center',
+  },
+  claimedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 8,
+  },
+  claimedText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.emerald500,
   },
 });
 
