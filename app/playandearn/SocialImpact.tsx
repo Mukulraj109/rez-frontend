@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, Link } from 'expo-router';
 import {
   View,
@@ -8,9 +8,11 @@ import {
   TouchableOpacity,
   useColorScheme,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import programApi from '../../services/programApi';
 
 const { width } = Dimensions.get('window');
 
@@ -19,6 +21,25 @@ const SocialImpact = () => {
   const colorScheme = useColorScheme();
   const isDark = false; // Force white theme
   const [activeTab, setActiveTab] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState<any[]>([]);
+
+  // Fetch social impact events
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const eventsRes = await programApi.getSocialImpactEvents();
+        if (eventsRes.data) {
+          setEvents(eventsRes.data);
+        }
+      } catch (error) {
+        console.error('Error fetching social impact events:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const impactActivities = [
     {

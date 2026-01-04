@@ -5,15 +5,17 @@
  * - ₹1 Store (budgetFriendly)
  * - Luxury Store (premium)
  * - Organic Store (organic)
+ * Connected to /api/experiences/homepage
  */
 
-import React, { memo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { memo, useEffect, useState } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { StoreExperienceCard, StoreExperienceCardProps } from './cards/StoreExperienceCard';
+import { experiencesApi } from '@/services/experiencesApi';
 
-// Store experience configurations
-const STORE_EXPERIENCES: StoreExperienceCardProps[] = [
+// Fallback store experience configurations
+const FALLBACK_STORE_EXPERIENCES: StoreExperienceCardProps[] = [
   {
     title: '60-Minute Delivery',
     subtitle: 'Fashion, beauty, grocery & essentials',
@@ -52,6 +54,16 @@ const STORE_EXPERIENCES: StoreExperienceCardProps[] = [
   },
 ];
 
+// Map experience types to gradient colors and button text colors
+const EXPERIENCE_STYLES: Record<string, { gradientColors: readonly [string, string]; buttonTextColor: string; buttonText: string }> = {
+  fastDelivery: { gradientColors: ['#3B82F6', '#1D4ED8'], buttonTextColor: '#1D4ED8', buttonText: 'Shop Now' },
+  oneRupee: { gradientColors: ['#F97316', '#EA580C'], buttonTextColor: '#EA580C', buttonText: 'Explore Deals' },
+  budgetFriendly: { gradientColors: ['#F97316', '#EA580C'], buttonTextColor: '#EA580C', buttonText: 'Explore Deals' },
+  luxury: { gradientColors: ['#1E293B', '#0F172A'], buttonTextColor: '#1E293B', buttonText: 'Shop Luxury' },
+  premium: { gradientColors: ['#1E293B', '#0F172A'], buttonTextColor: '#1E293B', buttonText: 'Shop Luxury' },
+  organic: { gradientColors: ['#22C55E', '#16A34A'], buttonTextColor: '#16A34A', buttonText: 'Go Green' },
+};
+
 interface StoreExperiencesSectionProps {
   showTitle?: boolean;
 }
@@ -59,13 +71,60 @@ interface StoreExperiencesSectionProps {
 const StoreExperiencesSection: React.FC<StoreExperiencesSectionProps> = memo(({
   showTitle = true,
 }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [experiences, setExperiences] = useState<StoreExperienceCardProps[]>(FALLBACK_STORE_EXPERIENCES);
+
+  useEffect(() => {
+    const fetchExperiences = async () => {
+      try {
+        setIsLoading(true);
+        const response = await experiencesApi.getHomepageExperiences(4);
+
+        if (response.success && response.data && response.data.experiences.length > 0) {
+          // Transform API data to component format
+          const transformedExperiences = response.data.experiences.map((exp, index) => {
+            const styles = EXPERIENCE_STYLES[exp.type] || EXPERIENCE_STYLES.fastDelivery;
+            const fallback = FALLBACK_STORE_EXPERIENCES[index] || FALLBACK_STORE_EXPERIENCES[0];
+
+            return {
+              title: exp.title,
+              subtitle: exp.subtitle || fallback.subtitle,
+              icon: exp.icon,
+              buttonText: styles.buttonText,
+              gradientColors: styles.gradientColors,
+              storeType: exp.type,
+              buttonTextColor: styles.buttonTextColor,
+            } as StoreExperienceCardProps;
+          });
+
+          setExperiences(transformedExperiences);
+        }
+      } catch (error) {
+        console.error('❌ [StoreExperiencesSection] Error fetching experiences:', error);
+        // Keep using fallback data
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchExperiences();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="small" color="#22C55E" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {showTitle && (
         <ThemedText style={styles.sectionTitle}>Store Experiences</ThemedText>
       )}
       <View style={styles.cardsContainer}>
-        {STORE_EXPERIENCES.map((experience) => (
+        {experiences.map((experience) => (
           <StoreExperienceCard
             key={experience.storeType}
             {...experience}
@@ -82,6 +141,11 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingVertical: 12,
+  },
+  loadingContainer: {
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sectionTitle: {
     fontSize: 20,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import gameApi from '../../services/gameApi';
 
 const { width } = Dimensions.get('window');
 
@@ -37,24 +38,77 @@ const GuessPrice = () => {
   const [guess, setGuess] = useState('');
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [todayPlays, setTodayPlays] = useState(0);
+  const [maxPlays, setMaxPlays] = useState(5);
+  const [loading, setLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
-  const products: Product[] = [
+  const [products, setProducts] = useState<Product[]>([
     { id: 1, name: 'iPhone 15 Pro', image: '📱', actualPrice: 134900, category: 'Electronics' },
     { id: 2, name: 'Nike Air Max', image: '👟', actualPrice: 12995, category: 'Fashion' },
     { id: 3, name: 'PS5 Console', image: '🎮', actualPrice: 49990, category: 'Gaming' },
     { id: 4, name: 'Starbucks Latte', image: '☕', actualPrice: 320, category: 'Food' },
     { id: 5, name: 'MacBook Air M2', image: '💻', actualPrice: 114900, category: 'Electronics' }
-  ];
+  ]);
 
-  const startGame = () => {
+  // Fetch daily limits on mount
+  useEffect(() => {
+    const fetchLimits = async () => {
+      try {
+        const response = await gameApi.getDailyLimits();
+        if (response.data) {
+          const guessLimits = response.data.guess_price;
+          if (guessLimits) {
+            setTodayPlays(guessLimits.used);
+            setMaxPlays(guessLimits.limit);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching daily limits:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLimits();
+  }, []);
+
+  const startGame = async () => {
+    if (todayPlays >= maxPlays) return;
+
     setGameState('playing');
     setCurrentProduct(0);
     setScore(0);
     setGuess('');
     setFeedback(null);
+
+    // Start session with backend
+    try {
+      const response = await gameApi.startGuessPrice();
+      if (response.data) {
+        setSessionId(response.data.sessionId);
+        // If backend provides a product, use it
+        if (response.data.product) {
+          const backendProduct = response.data.product;
+          // Update first product with backend data
+          setProducts(prev => {
+            const updated = [...prev];
+            updated[0] = {
+              id: 1,
+              name: backendProduct.name,
+              image: backendProduct.image || '📱',
+              actualPrice: backendProduct.actualPrice,
+              category: backendProduct.category
+            };
+            return updated;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error starting guess price session:', error);
+    }
   };
 
-  const submitGuess = () => {
+  const submitGuess = async () => {
     if (!guess || parseInt(guess) <= 0) return;
 
     const product = products[currentProduct];
@@ -80,6 +134,28 @@ const GuessPrice = () => {
       message = 'Try again!';
     }
 
+    // Submit guess to backend
+    if (sessionId) {
+      try {
+        const response = await gameApi.submitGuessPrice(sessionId, guessValue);
+        if (response.data) {
+          earnedCoins = response.data.coins;
+          const percentOff = 100 - response.data.accuracy; // Convert accuracy to percentOff
+          if (percentOff <= 5) {
+            message = 'Perfect! Within 5%';
+          } else if (percentOff <= 10) {
+            message = 'Great! Within 10%';
+          } else if (percentOff <= 20) {
+            message = 'Good! Within 20%';
+          } else {
+            message = response.data.message || 'Try again!';
+          }
+        }
+      } catch (error) {
+        console.error('Error submitting guess:', error);
+      }
+    }
+
     setScore(score + earnedCoins);
     setFeedback({
       message,
@@ -96,6 +172,7 @@ const GuessPrice = () => {
         setFeedback(null);
       } else {
         setGameState('result');
+        setTodayPlays(todayPlays + 1);
       }
     }, 2000);
   };

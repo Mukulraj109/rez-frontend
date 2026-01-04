@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,14 @@ import {
   TextInput,
   StatusBar,
   Animated,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Video, ResizeMode } from 'expo-av';
 
 // Import explore components
 import UGCPostsFeed from './explore/components/UGCPostsFeed';
@@ -29,41 +32,74 @@ import ExclusiveOffers from './explore/components/ExclusiveOffers';
 import EarnLikeThem from './explore/components/EarnLikeThem';
 import StoresNearYou from './explore/components/StoresNearYou';
 
+// Import API services
+import reelApi from '../services/reelApi';
+import exploreApi from '../services/exploreApi';
+
+// Import location context
+import { useLocation } from '../contexts/LocationContext';
+
 const { width } = Dimensions.get('window');
 
-// Mock data for UGC Reels
-const ugcReels = [
-  {
-    id: 1,
-    user: { name: 'Priya S.', avatar: 'https://i.pravatar.cc/100?img=1' },
-    store: 'Starbucks',
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
-    product: 'Cappuccino & Croissant',
-    saved: 120,
-    likes: 234,
-    comments: 45,
-  },
-  {
-    id: 2,
-    user: { name: 'Rahul K.', avatar: 'https://i.pravatar.cc/100?img=2' },
-    store: 'Nike Store',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
-    product: 'Air Max 90',
-    saved: 2000,
-    likes: 456,
-    comments: 89,
-  },
-  {
-    id: 3,
-    user: { name: 'Sneha M.', avatar: 'https://i.pravatar.cc/100?img=3' },
-    store: 'Paradise Biryani',
-    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
-    product: 'Chicken Biryani',
-    saved: 150,
-    likes: 312,
-    comments: 67,
-  },
-];
+// AutoPlay Video Component for Trending Reels
+const AutoPlayVideoReel: React.FC<{ uri: string; poster?: string; style?: any }> = ({ uri, poster, style }) => {
+  const videoRef = useRef<Video>(null);
+  const webVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      // For web, create native video element
+      const container = document.querySelector(`[data-video-uri="${uri}"]`);
+      if (container && !container.querySelector('video')) {
+        const video = document.createElement('video');
+        video.src = uri;
+        video.poster = poster || '';
+        video.autoplay = true;
+        video.loop = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.setAttribute('webkit-playsinline', 'true');
+        video.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;';
+        container.appendChild(video);
+        video.play().catch(() => {});
+        webVideoRef.current = video;
+      }
+    }
+    return () => {
+      if (webVideoRef.current) {
+        webVideoRef.current.pause();
+        webVideoRef.current.remove();
+      }
+    };
+  }, [uri, poster]);
+
+  if (Platform.OS === 'web') {
+    return (
+      <View
+        style={[{ width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#1a1a1a' }, style]}
+        // @ts-ignore
+        dataSet={{ videoUri: uri }}
+      />
+    );
+  }
+
+  // For mobile, use expo-av
+  return (
+    <Video
+      ref={videoRef}
+      source={{ uri }}
+      posterSource={poster ? { uri: poster } : undefined}
+      style={[{ width: '100%', height: '100%' }, style]}
+      resizeMode={ResizeMode.COVER}
+      shouldPlay={true}
+      isLooping={true}
+      isMuted={true}
+      useNativeControls={false}
+    />
+  );
+};
+
+// No fallback data - only real data from backend
 
 // Category filter data
 const categoryFilters = [
@@ -89,6 +125,138 @@ const searchSuggestions = [
   'Coffee shops nearby',
 ];
 
+// Map Ionicon names to emojis for category display
+const iconToEmojiMap: { [key: string]: string } = {
+  // Food & Dining
+  'restaurant-outline': '🍔',
+  'restaurant': '🍔',
+  'fast-food-outline': '🍔',
+  'fast-food': '🍔',
+  'cafe-outline': '☕',
+  'cafe': '☕',
+  'pizza-outline': '🍕',
+  'pizza': '🍕',
+  // Fashion & Shopping
+  'shirt-outline': '👔',
+  'shirt': '👔',
+  'bag-outline': '👜',
+  'bag': '👜',
+  'bag-handle-outline': '👜',
+  'bag-handle': '👜',
+  // Electronics
+  'phone-portrait-outline': '📱',
+  'phone-portrait': '📱',
+  'laptop-outline': '💻',
+  'laptop': '💻',
+  'calculator-outline': '📱',
+  'calculator': '📱',
+  'tv-outline': '📺',
+  'tv': '📺',
+  // Beauty & Personal Care
+  'color-palette-outline': '💄',
+  'color-palette': '💄',
+  'sparkles-outline': '💄',
+  'sparkles': '💄',
+  'flower-outline': '💐',
+  'flower': '💐',
+  // Grocery
+  'cart-outline': '🛒',
+  'cart': '🛒',
+  'basket-outline': '🧺',
+  'basket': '🧺',
+  // Fitness & Sports
+  'barbell-outline': '🏋️',
+  'barbell': '🏋️',
+  'fitness-outline': '🏋️',
+  'fitness': '🏋️',
+  'bicycle-outline': '🚴',
+  'bicycle': '🚴',
+  'trophy-outline': '🏆',
+  'trophy': '🏆',
+  // Home & Services
+  'home-outline': '🏠',
+  'home': '🏠',
+  'construct-outline': '🔧',
+  'construct': '🔧',
+  'hammer-outline': '🔨',
+  'hammer': '🔨',
+  'build-outline': '🛠️',
+  'build': '🛠️',
+  // Weather & Seasonal
+  'snow-outline': '❄️',
+  'snow': '❄️',
+  'sunny-outline': '☀️',
+  'sunny': '☀️',
+  // Payments & Bills
+  'receipt-outline': '🧾',
+  'receipt': '🧾',
+  'card-outline': '💳',
+  'card': '💳',
+  'cash-outline': '💵',
+  'cash': '💵',
+  // Education & Coaching
+  'book-outline': '📚',
+  'book': '📚',
+  'school-outline': '🎓',
+  'school': '🎓',
+  // Medical & Health
+  'medical-outline': '🏥',
+  'medical': '🏥',
+  'medkit-outline': '💊',
+  'medkit': '💊',
+  'heart-outline': '❤️',
+  'heart': '❤️',
+  // Entertainment
+  'film-outline': '🎬',
+  'film': '🎬',
+  'musical-notes-outline': '🎵',
+  'musical-notes': '🎵',
+  'game-controller-outline': '🎮',
+  'game-controller': '🎮',
+  // Travel & Transport
+  'airplane-outline': '✈️',
+  'airplane': '✈️',
+  'car-outline': '🚗',
+  'car': '🚗',
+  'bus-outline': '🚌',
+  'bus': '🚌',
+  'train-outline': '🚆',
+  'train': '🚆',
+  // Pets
+  'paw-outline': '🐾',
+  'paw': '🐾',
+  // Default fallbacks by category name keywords
+};
+
+// Get emoji from icon name or category name
+const getEmojiForCategory = (icon?: string, name?: string): string => {
+  // First try to get emoji from icon name
+  if (icon && iconToEmojiMap[icon]) {
+    return iconToEmojiMap[icon];
+  }
+
+  // Fallback: try to match by category name
+  const lowerName = (name || '').toLowerCase();
+  if (lowerName.includes('food') || lowerName.includes('dining') || lowerName.includes('restaurant')) return '🍔';
+  if (lowerName.includes('fashion') || lowerName.includes('cloth')) return '👜';
+  if (lowerName.includes('electronic') || lowerName.includes('mobile') || lowerName.includes('phone')) return '📱';
+  if (lowerName.includes('beauty') || lowerName.includes('salon') || lowerName.includes('spa')) return '💄';
+  if (lowerName.includes('grocery') || lowerName.includes('supermarket')) return '🛒';
+  if (lowerName.includes('fitness') || lowerName.includes('gym') || lowerName.includes('sport')) return '🏋️';
+  if (lowerName.includes('home') || lowerName.includes('delivery')) return '🏠';
+  if (lowerName.includes('service') || lowerName.includes('repair')) return '🔧';
+  if (lowerName.includes('ac') || lowerName.includes('cooling')) return '❄️';
+  if (lowerName.includes('bill') || lowerName.includes('payment')) return '🧾';
+  if (lowerName.includes('coach') || lowerName.includes('education') || lowerName.includes('tutor')) return '📚';
+  if (lowerName.includes('health') || lowerName.includes('medical') || lowerName.includes('pharmacy')) return '💊';
+  if (lowerName.includes('travel') || lowerName.includes('hotel')) return '✈️';
+  if (lowerName.includes('pet')) return '🐾';
+  if (lowerName.includes('entertainment') || lowerName.includes('movie')) return '🎬';
+
+  // Default emoji
+  return '🏷️';
+};
+
 
 const ExplorePage = () => {
   const router = useRouter();
@@ -98,8 +266,115 @@ const ExplorePage = () => {
   const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
 
+  // API data state - no fallback, only real data
+  const [ugcReels, setUgcReels] = useState<any[]>([]);
+  const [hotDeals, setHotDeals] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [trendingStores, setTrendingStores] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch data from APIs
+  useEffect(() => {
+    const fetchExploreData = async () => {
+      try {
+        setIsLoading(true);
+
+        // Fetch all data in parallel
+        const [reelsRes, hotDealsRes, categoriesRes, storesRes] = await Promise.all([
+          reelApi.getTrendingReels({ limit: 6 }),
+          exploreApi.getHotDeals({ limit: 4 }),
+          exploreApi.getCategories(),
+          exploreApi.getTrendingStores({ limit: 5 }),
+        ]);
+
+        // Update reels - reelApi already transforms the data
+        if (reelsRes.success && reelsRes.data && reelsRes.data.length > 0) {
+          console.log('[EXPLORE] Reels data from API:', reelsRes.data);
+          const transformedReels = reelsRes.data.map((reel: any, index: number) => {
+            // reelApi already transforms creator data correctly
+            const creatorName = reel.creator?.name || 'Creator';
+            const creatorAvatar = reel.creator?.avatar || `https://i.pravatar.cc/100?img=${(index % 70) + 1}`;
+
+            // Get stats from transformed data
+            const likesCount = reel.stats?.likes || 0;
+            const commentsCount = reel.stats?.comments || 0;
+            const viewsCount = reel.stats?.views || 0;
+
+            // Calculate saved amount based on views
+            const savedAmount = Math.floor(viewsCount * 0.05) + 50;
+
+            return {
+              id: reel.id,
+              user: {
+                name: creatorName,
+                avatar: creatorAvatar,
+              },
+              image: reel.thumbnailUrl || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
+              videoUrl: reel.videoUrl || '',
+              product: reel.title || reel.description?.substring(0, 30) || 'Video',
+              saved: savedAmount,
+              likes: likesCount,
+              comments: commentsCount,
+            };
+          });
+          console.log('[EXPLORE] Final reels:', transformedReels);
+          setUgcReels(transformedReels);
+        }
+
+        // Update hot deals
+        const dealsData = hotDealsRes.data?.products || hotDealsRes.data || [];
+        if (hotDealsRes.success && dealsData && dealsData.length > 0) {
+          const transformedDeals = dealsData.slice(0, 4).map((deal: any) => ({
+            id: deal.id || deal._id,
+            name: deal.name || deal.title,
+            store: deal.store?.name || deal.storeName || null,
+            image: deal.image || deal.images?.[0]?.url || null,
+            offer: deal.offer || (deal.cashback ? `${deal.cashback}% Cashback` : (deal.cashbackPercentage ? `${deal.cashbackPercentage}% Cashback` : null)),
+            distance: deal.distance ? `${deal.distance} km` : null,
+            price: deal.price || deal.pricing?.selling || deal.pricing?.salePrice || null,
+          }));
+          setHotDeals(transformedDeals);
+        }
+
+        // Update categories
+        if (categoriesRes.success && categoriesRes.data && categoriesRes.data.length > 0) {
+          const transformedCategories = categoriesRes.data.slice(0, 6).map((cat: any) => ({
+            id: cat.slug || cat.id,
+            name: cat.name,
+            emoji: getEmojiForCategory(cat.icon, cat.name),
+            cashback: cat.maxCashback ? `Up to ${cat.maxCashback}%` : null,
+            stores: cat.storeCount || null,
+          }));
+          setCategories(transformedCategories);
+        }
+
+        // Update trending stores
+        const storesData = storesRes.data?.stores || storesRes.data || [];
+        if (storesRes.success && storesData && storesData.length > 0) {
+          const transformedStores = storesData.slice(0, 5).map((store: any) => ({
+            id: store.id || store._id,
+            name: store.name,
+            offer: store.cashback ? `${store.cashback}` : (store.offers?.cashback ? `${store.offers.cashback}% Cashback` : null),
+            distance: store.distance ? `${store.distance}` : null,
+            activity: store.activity || store.visitCount ? `${store.visitCount} people visited` : null,
+            badge: store.badge || (store.isTrending ? 'Trending' : (store.isFeatured ? 'Featured' : null)),
+            badgeColor: store.badgeColor || (store.isTrending ? '#EF4444' : (store.isFeatured ? '#F97316' : null)),
+          }));
+          setTrendingStores(transformedStores);
+        }
+      } catch (error) {
+        console.error('[EXPLORE] Error fetching data:', error);
+        // Keep fallback data on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchExploreData();
+  }, []);
+
   // Rotate placeholder
-  React.useEffect(() => {
+  useEffect(() => {
     const interval = setInterval(() => {
       setCurrentPlaceholder((prev) => (prev + 1) % searchSuggestions.length);
     }, 3000);
@@ -249,9 +524,29 @@ const ExplorePage = () => {
               </View>
               <Text style={styles.sectionSubtitle}>Real experiences • Real savings</Text>
             </View>
+            <TouchableOpacity onPress={() => navigateTo('/explore/reels')}>
+              <Text style={styles.viewAllText}>View All Reels</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* UGC Reels Grid */}
+          {/* Loading State */}
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#00C06A" />
+              <Text style={styles.loadingText}>Loading trending content...</Text>
+            </View>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && ugcReels.length === 0 && (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="videocam-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.emptyText}>No trending videos available</Text>
+            </View>
+          )}
+
+          {/* UGC Reels Grid with Video Autoplay */}
+          {ugcReels.length > 0 && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -263,7 +558,16 @@ const ExplorePage = () => {
                 style={styles.reelCard}
                 onPress={() => navigateTo(`/explore/reel/${reel.id}`)}
               >
-                <Image source={{ uri: reel.image }} style={styles.reelImage} />
+                {/* Video or Image Background */}
+                {reel.videoUrl ? (
+                  <AutoPlayVideoReel
+                    uri={reel.videoUrl}
+                    poster={reel.image}
+                    style={styles.reelImage}
+                  />
+                ) : (
+                  <Image source={{ uri: reel.image }} style={styles.reelImage} />
+                )}
 
                 {/* User Badge */}
                 <View style={styles.reelUserBadge}>
@@ -271,55 +575,47 @@ const ExplorePage = () => {
                   <Text style={styles.reelUserName}>{reel.user.name}</Text>
                 </View>
 
-                {/* Play Button Overlay */}
-                <View style={styles.playButtonOverlay}>
-                  <View style={styles.playButton}>
-                    <Ionicons name="play" size={24} color="#FFFFFF" />
+                {/* Play Button Overlay - only show if no video */}
+                {!reel.videoUrl && (
+                  <View style={styles.playButtonOverlay}>
+                    <View style={styles.playButton}>
+                      <Ionicons name="play" size={24} color="#FFFFFF" />
+                    </View>
                   </View>
-                </View>
+                )}
 
                 {/* Bottom Gradient */}
                 <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  colors={['transparent', 'rgba(0,0,0,0.85)']}
                   style={styles.reelGradient}
                 >
-                  <Text style={styles.reelProduct}>{reel.product}</Text>
-                  <View style={styles.reelStoreRow}>
-                    <Ionicons name="storefront" size={12} color="#FFFFFF" />
-                    <Text style={styles.reelStore}>{reel.store}</Text>
-                  </View>
+                  <Text style={styles.reelProduct} numberOfLines={2}>{reel.product}</Text>
 
                   {/* Saved Badge */}
                   <View style={styles.savedBadge}>
-                    <Ionicons name="pricetag" size={12} color="#FFFFFF" />
+                    <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
                     <Text style={styles.savedText}>Saved ₹{reel.saved}</Text>
                   </View>
 
                   {/* Stats Row */}
                   <View style={styles.reelStats}>
                     <View style={styles.statItem}>
-                      <Ionicons name="heart-outline" size={16} color="#FFFFFF" />
+                      <Ionicons name="heart-outline" size={18} color="#FFFFFF" />
                       <Text style={styles.statText}>{reel.likes}</Text>
                     </View>
                     <View style={styles.statItem}>
-                      <Ionicons name="chatbubble-outline" size={16} color="#FFFFFF" />
+                      <Ionicons name="chatbubble-outline" size={18} color="#FFFFFF" />
                       <Text style={styles.statText}>{reel.comments}</Text>
                     </View>
                     <TouchableOpacity style={styles.bookmarkButton}>
-                      <Ionicons name="bookmark-outline" size={16} color="#FFFFFF" />
+                      <Ionicons name="bookmark-outline" size={18} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
                 </LinearGradient>
               </TouchableOpacity>
             ))}
           </ScrollView>
-
-          {/* View All Reels */}
-          <View style={styles.actionsRow}>
-            <TouchableOpacity onPress={() => navigateTo('/explore/reels')}>
-              <Text style={styles.viewAllLink}>View All Reels</Text>
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
 
         {/* What's Hot Near You Section */}
@@ -332,62 +628,29 @@ const ExplorePage = () => {
           </View>
 
           <View style={styles.hotGrid}>
-            {[
-              {
-                id: 1,
-                name: 'Nike Air Max 90',
-                store: 'Nike Store',
-                image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300',
-                offer: '20% Cashback',
-                distance: '1.2 km',
-                price: 6999,
-              },
-              {
-                id: 2,
-                name: 'Chicken Biryani',
-                store: 'Paradise Biryani',
-                image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=300',
-                offer: 'Flat ₹100 Off',
-                distance: '800 m',
-                price: 350,
-              },
-              {
-                id: 3,
-                name: 'Hair Spa',
-                store: 'Wellness Studio',
-                image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300',
-                offer: '25% Cashback',
-                distance: '2.1 km',
-                price: 1499,
-              },
-              {
-                id: 4,
-                name: 'Coffee & Snacks',
-                store: 'Cafe Noir',
-                image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=300',
-                offer: 'Buy 1 Get 1',
-                distance: '500 m',
-                price: 299,
-              },
-            ].map((item) => (
+            {hotDeals.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 style={styles.hotCard}
                 onPress={() => navigateTo(`/MainStorePage?id=${item.id}`)}
               >
-                <Image source={{ uri: item.image }} style={styles.hotImage} />
-                <View style={styles.offerBadge}>
-                  <Text style={styles.offerText}>{item.offer}</Text>
-                </View>
+                {item.image && <Image source={{ uri: item.image }} style={styles.hotImage} />}
+                {item.offer && (
+                  <View style={styles.offerBadge}>
+                    <Text style={styles.offerText}>{item.offer}</Text>
+                  </View>
+                )}
                 <View style={styles.hotContent}>
                   <Text style={styles.hotName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.hotStore}>{item.store}</Text>
+                  {item.store && <Text style={styles.hotStore}>{item.store}</Text>}
                   <View style={styles.hotFooter}>
-                    <Text style={styles.hotPrice}>₹{item.price}</Text>
-                    <View style={styles.distanceBadge}>
-                      <Ionicons name="location" size={10} color="#6B7280" />
-                      <Text style={styles.distanceText}>{item.distance}</Text>
-                    </View>
+                    {item.price && <Text style={styles.hotPrice}>₹{item.price}</Text>}
+                    {item.distance && (
+                      <View style={styles.distanceBadge}>
+                        <Ionicons name="location" size={10} color="#6B7280" />
+                        <Text style={styles.distanceText}>{item.distance}</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               </TouchableOpacity>
@@ -405,14 +668,7 @@ const ExplorePage = () => {
           </View>
 
           <View style={styles.categoryGrid}>
-            {[
-              { id: 'food', name: 'Food & Dining', emoji: '🍔', cashback: '12%', stores: 234 },
-              { id: 'fashion', name: 'Fashion', emoji: '🛍️', cashback: '15%', stores: 156 },
-              { id: 'electronics', name: 'Electronics', emoji: '📱', cashback: '8%', stores: 89 },
-              { id: 'beauty', name: 'Beauty', emoji: '💄', cashback: '18%', stores: 178 },
-              { id: 'grocery', name: 'Grocery', emoji: '🛒', cashback: '5%', stores: 312 },
-              { id: 'fitness', name: 'Fitness', emoji: '🏋️', cashback: '20%', stores: 67 },
-            ].map((cat) => (
+            {categories.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
                 style={styles.categoryCard}
@@ -420,8 +676,8 @@ const ExplorePage = () => {
               >
                 <Text style={styles.categoryCardEmoji}>{cat.emoji}</Text>
                 <Text style={styles.categoryCardName}>{cat.name}</Text>
-                <Text style={styles.categoryCardCashback}>Up to {cat.cashback}</Text>
-                <Text style={styles.categoryCardStores}>{cat.stores} stores</Text>
+                {cat.cashback && <Text style={styles.categoryCardCashback}>{cat.cashback}</Text>}
+                {cat.stores && <Text style={styles.categoryCardStores}>{cat.stores} stores</Text>}
               </TouchableOpacity>
             ))}
           </View>
@@ -441,11 +697,7 @@ const ExplorePage = () => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.storesContainer}
           >
-            {[
-              { id: 1, name: 'Paradise Biryani', offer: '20% Cashback', distance: '0.8 km', activity: '12 people earned today', badge: 'Hot Deal', badgeColor: '#F97316' },
-              { id: 2, name: 'Nike Store', offer: '15% + Bonus', distance: '1.2 km', activity: '8 people shopping', badge: 'Trending', badgeColor: '#EF4444' },
-              { id: 3, name: 'Wellness Spa', offer: '25% Cashback', distance: '2.1 km', activity: '5 people booked', badge: 'High Cashback', badgeColor: '#10B981' },
-            ].map((store) => (
+            {trendingStores.map((store) => (
               <TouchableOpacity
                 key={store.id}
                 style={styles.storeCard}
@@ -453,23 +705,29 @@ const ExplorePage = () => {
               >
                 <View style={styles.storeHeader}>
                   <View style={styles.storeLogo}>
-                    <Text style={styles.storeLogoText}>{store.name.charAt(0)}</Text>
+                    <Text style={styles.storeLogoText}>{store.name?.charAt(0) || 'S'}</Text>
                   </View>
-                  <View style={[styles.storeBadge, { backgroundColor: store.badgeColor }]}>
-                    <Text style={styles.storeBadgeText}>{store.badge}</Text>
-                  </View>
+                  {store.badge && store.badgeColor && (
+                    <View style={[styles.storeBadge, { backgroundColor: store.badgeColor }]}>
+                      <Text style={styles.storeBadgeText}>{store.badge}</Text>
+                    </View>
+                  )}
                 </View>
                 <Text style={styles.storeName}>{store.name}</Text>
-                <Text style={styles.storeOffer}>{store.offer}</Text>
+                {store.offer && <Text style={styles.storeOffer}>{store.offer}</Text>}
                 <View style={styles.storeFooter}>
-                  <View style={styles.storeDistance}>
-                    <Ionicons name="location" size={12} color="#6B7280" />
-                    <Text style={styles.storeDistanceText}>{store.distance}</Text>
-                  </View>
-                  <View style={styles.storeActivity}>
-                    <View style={styles.activityDot} />
-                    <Text style={styles.activityText}>{store.activity}</Text>
-                  </View>
+                  {store.distance && (
+                    <View style={styles.storeDistance}>
+                      <Ionicons name="location" size={12} color="#6B7280" />
+                      <Text style={styles.storeDistanceText}>{store.distance}</Text>
+                    </View>
+                  )}
+                  {store.activity && (
+                    <View style={styles.storeActivity}>
+                      <View style={styles.activityDot} />
+                      <Text style={styles.activityText}>{store.activity}</Text>
+                    </View>
+                  )}
                 </View>
                 <TouchableOpacity style={styles.payNowButton}>
                   <Text style={styles.payNowText}>Pay Now</Text>
@@ -760,10 +1018,10 @@ const styles = StyleSheet.create({
   },
   reelCard: {
     width: 180,
-    height: 280,
+    height: 320,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#1a1a1a',
   },
   reelImage: {
     width: '100%',
@@ -814,24 +1072,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 12,
-    paddingTop: 40,
+    padding: 14,
+    paddingTop: 50,
   },
   reelProduct: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  reelStoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  reelStore: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    opacity: 0.9,
+    marginBottom: 4,
   },
   savedBadge: {
     flexDirection: 'row',
@@ -852,32 +1100,21 @@ const styles = StyleSheet.create({
   reelStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    gap: 12,
+    marginTop: 12,
+    gap: 16,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   statText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#FFFFFF',
+    fontWeight: '500',
   },
   bookmarkButton: {
     marginLeft: 'auto',
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginTop: 16,
-  },
-  viewAllLink: {
-    fontSize: 14,
-    color: '#00C06A',
-    fontWeight: '600',
   },
   mapViewButton: {
     flexDirection: 'row',
@@ -1108,6 +1345,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#9CA3AF',
   },
 });
 

@@ -1,11 +1,11 @@
 /**
- * Exciting Deals Section - Converted from V2
+ * Exciting Deals Section - Connected to /api/campaigns/exciting-deals
  * All deal categories in one section with horizontal scroll cards
  * Includes: Super Cashback Weekend, Triple Coin Day, Mega Bank Offers,
  * Upload Bill Bonanza, Flash Coin Drops, New User Bonanza
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,11 @@ import {
   Image,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { campaignsApi, DealCategory, CampaignDeal } from '@/services/campaignsApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -36,28 +38,8 @@ const COLORS = {
   cyan500: '#06B6D4',
 };
 
-interface Deal {
-  store: string;
-  image: string;
-  cashback?: string;
-  coins?: string;
-  bonus?: string;
-  drop?: string;
-  endsIn?: string;
-}
-
-interface DealCategory {
-  id: string;
-  title: string;
-  subtitle: string;
-  badge: string;
-  gradientColors: string[];
-  badgeBg: string;
-  badgeColor: string;
-  deals: Deal[];
-}
-
-const dealCategories: DealCategory[] = [
+// Fallback dummy data
+const FALLBACK_DEAL_CATEGORIES: DealCategory[] = [
   {
     id: 'super-cashback',
     title: 'Super Cashback Weekend',
@@ -146,6 +128,33 @@ const dealCategories: DealCategory[] = [
 
 const ExcitingDealsSection: React.FC = () => {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [dealCategories, setDealCategories] = useState<DealCategory[]>(FALLBACK_DEAL_CATEGORIES);
+
+  useEffect(() => {
+    const fetchDeals = async () => {
+      try {
+        setIsLoading(true);
+        const response = await campaignsApi.getExcitingDeals(6);
+
+        if (response.success && response.data && response.data.dealCategories.length > 0) {
+          // Merge API data with fallback styling
+          const mergedCategories = response.data.dealCategories.map((cat, index) => ({
+            ...FALLBACK_DEAL_CATEGORIES[index] || FALLBACK_DEAL_CATEGORIES[0],
+            ...cat,
+          }));
+          setDealCategories(mergedCategories);
+        }
+      } catch (error) {
+        console.error('❌ [ExcitingDealsSection] Error fetching deals:', error);
+        // Keep using fallback data
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDeals();
+  }, []);
 
   const handleViewAll = () => {
     router.push('/deal-store' as any);
@@ -155,7 +164,7 @@ const ExcitingDealsSection: React.FC = () => {
     router.push('/deal-store' as any);
   };
 
-  const renderDealValue = (deal: Deal) => {
+  const renderDealValue = (deal: CampaignDeal) => {
     if (deal.cashback) {
       return <Text style={styles.dealCashback}>{deal.cashback}</Text>;
     }
@@ -170,6 +179,14 @@ const ExcitingDealsSection: React.FC = () => {
     }
     return null;
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={COLORS.green500} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -199,8 +216,8 @@ const ExcitingDealsSection: React.FC = () => {
                 <Text style={styles.categoryTitle}>{category.title}</Text>
                 <Text style={styles.categorySubtitle}>{category.subtitle}</Text>
               </View>
-              <View style={[styles.badge, { backgroundColor: category.badgeBg }]}>
-                <Text style={[styles.badgeText, { color: category.badgeColor }]}>
+              <View style={[styles.badge, { backgroundColor: category.badgeBg || COLORS.white }]}>
+                <Text style={[styles.badgeText, { color: category.badgeColor || COLORS.navy }]}>
                   {category.badge}
                 </Text>
               </View>
@@ -281,6 +298,11 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     marginBottom: 24,
+  },
+  loadingContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',

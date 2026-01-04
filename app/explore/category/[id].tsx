@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,14 @@ import {
   ScrollView,
   Image,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import exploreApi, { ExploreStore, Category } from '@/services/exploreApi';
 
 const { width } = Dimensions.get('window');
 
@@ -139,7 +142,82 @@ const CategoryDetailPage = () => {
   const { id } = useLocalSearchParams();
   const [selectedFilter, setSelectedFilter] = useState('all');
 
-  const category = categoryData[id as string] || categoryData.food;
+  // API state
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stores, setStores] = useState<ExploreStore[]>([]);
+  const [categoryInfo, setCategoryInfo] = useState<Category | null>(null);
+
+  // Get fallback category data
+  const fallbackCategory = categoryData[id as string] || categoryData.food;
+
+  // Fetch category data and stores
+  const fetchCategoryData = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const categorySlug = id as string;
+
+      // Fetch category details and stores in parallel
+      const [categoryResponse, storesResponse] = await Promise.all([
+        exploreApi.getCategoryBySlug(categorySlug),
+        exploreApi.getStoresByCategory(categorySlug, { limit: 20 }),
+      ]);
+
+      if (categoryResponse.success && categoryResponse.data) {
+        setCategoryInfo(categoryResponse.data);
+      }
+
+      if (storesResponse.success && storesResponse.data) {
+        let fetchedStores = storesResponse.data.stores || [];
+
+        // Apply local filtering based on selected filter
+        if (selectedFilter === 'topRated') {
+          fetchedStores = [...fetchedStores].sort((a, b) => b.rating - a.rating);
+        } else if (selectedFilter === 'highCashback') {
+          fetchedStores = [...fetchedStores].sort((a, b) => {
+            const aRate = parseInt(a.cashback?.replace('%', '') || '0');
+            const bRate = parseInt(b.cashback?.replace('%', '') || '0');
+            return bRate - aRate;
+          });
+        }
+
+        setStores(fetchedStores);
+      } else {
+        setError(storesResponse.error || 'Failed to fetch stores');
+      }
+    } catch (err: any) {
+      console.error('[CATEGORY PAGE] Error:', err);
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [id, selectedFilter]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchCategoryData();
+  }, [fetchCategoryData]);
+
+  const onRefresh = useCallback(() => {
+    fetchCategoryData(true);
+  }, [fetchCategoryData]);
+
+  // Get display category info (from API or fallback)
+  const category = {
+    name: categoryInfo?.name || fallbackCategory.name,
+    emoji: fallbackCategory.emoji, // Fallback always has emoji
+    color: fallbackCategory.color,
+    stores: categoryInfo?.storeCount || stores.length || fallbackCategory.stores,
+    avgCashback: fallbackCategory.avgCashback,
+  };
 
   const navigateTo = (path: string) => {
     router.push(path as any);
@@ -219,8 +297,40 @@ const CategoryDetailPage = () => {
         style={styles.storesList}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.storesContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00C06A']} />
+        }
       >
-        {storesData.map((store) => (
+        {/* Loading State */}
+        {loading && !refreshing && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00C06A" />
+            <Text style={styles.loadingText}>Loading stores...</Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color="#EF4444" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchCategoryData()}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && stores.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="storefront-outline" size={48} color="#9CA3AF" />
+            <Text style={styles.emptyText}>No stores found</Text>
+            <Text style={styles.emptySubtext}>Try a different filter or come back later</Text>
+          </View>
+        )}
+
+        {/* Stores */}
+        {!loading && !error && stores.map((store) => (
           <TouchableOpacity
             key={store.id}
             style={styles.storeCard}
@@ -230,7 +340,7 @@ const CategoryDetailPage = () => {
 
             <View style={styles.storeContent}>
               <View style={styles.storeHeader}>
-                <Text style={styles.storeName}>{store.name}</Text>
+                <Text style={styles.storeName} numberOfLines={1}>{store.name}</Text>
                 <View style={styles.ratingBadge}>
                   <Ionicons name="star" size={12} color="#F59E0B" />
                   <Text style={styles.ratingText}>{store.rating}</Text>
@@ -239,18 +349,20 @@ const CategoryDetailPage = () => {
 
               <View style={styles.offerRow}>
                 <View style={styles.offerBadge}>
-                  <Text style={styles.offerText}>{store.offer}</Text>
+                  <Text style={styles.offerText}>{store.offer || `${store.cashback} Cashback`}</Text>
                 </View>
               </View>
 
               <View style={styles.storeFooter}>
+                {store.distance && (
+                  <View style={styles.infoItem}>
+                    <Ionicons name="location" size={14} color="#6B7280" />
+                    <Text style={styles.infoText}>{store.distance}</Text>
+                  </View>
+                )}
                 <View style={styles.infoItem}>
-                  <Ionicons name="location" size={14} color="#6B7280" />
-                  <Text style={styles.infoText}>{store.distance}</Text>
-                </View>
-                <View style={styles.infoItem}>
-                  <Ionicons name="time" size={14} color="#6B7280" />
-                  <Text style={styles.infoText}>{store.deliveryTime}</Text>
+                  <Ionicons name={store.isOpen ? 'checkmark-circle' : 'close-circle'} size={14} color={store.isOpen ? '#10B981' : '#EF4444'} />
+                  <Text style={styles.infoText}>{store.isOpen ? 'Open' : 'Closed'}</Text>
                 </View>
                 <View style={styles.infoItem}>
                   <Ionicons name="chatbubble" size={14} color="#6B7280" />
@@ -386,6 +498,60 @@ const styles = StyleSheet.create({
   storesContainer: {
     paddingHorizontal: 16,
     paddingTop: 8,
+    minHeight: 200,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#00C06A',
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  emptySubtext: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#9CA3AF',
   },
   storeCard: {
     flexDirection: 'row',

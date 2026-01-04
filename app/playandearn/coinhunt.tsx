@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import gameApi from '../../services/gameApi';
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +28,32 @@ const CoinHunt = () => {
   const [timeLeft, setTimeLeft] = useState(30);
   const [gameStarted, setGameStarted] = useState(false);
   const [coins, setCoins] = useState<Coin[]>([]);
+  const [todayPlays, setTodayPlays] = useState(0);
+  const [maxPlays, setMaxPlays] = useState(5);
+  const [loading, setLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [coinsCollected, setCoinsCollected] = useState(0);
+
+  // Fetch daily limits on mount
+  useEffect(() => {
+    const fetchLimits = async () => {
+      try {
+        const response = await gameApi.getDailyLimits();
+        if (response.data) {
+          const huntLimits = response.data.coin_hunt;
+          if (huntLimits) {
+            setTodayPlays(huntLimits.used);
+            setMaxPlays(huntLimits.limit);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching daily limits:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLimits();
+  }, []);
 
   useEffect(() => {
     if (gameStarted && timeLeft > 0) {
@@ -34,10 +61,31 @@ const CoinHunt = () => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
       return () => clearInterval(timer);
-    } else if (timeLeft === 0) {
-      setGameStarted(false);
+    } else if (timeLeft === 0 && gameStarted) {
+      endGame();
     }
   }, [gameStarted, timeLeft]);
+
+  const endGame = async () => {
+    setGameStarted(false);
+    setTodayPlays(todayPlays + 1);
+
+    // Submit results to backend
+    if (sessionId) {
+      try {
+        const response = await gameApi.completeCoinHunt(
+          sessionId,
+          coinsCollected,
+          score
+        );
+        if (response.data?.coinsEarned) {
+          setScore(response.data.coinsEarned);
+        }
+      } catch (error) {
+        console.error('Error completing coin hunt:', error);
+      }
+    }
+  };
 
   useEffect(() => {
     if (gameStarted) {
@@ -57,16 +105,30 @@ const CoinHunt = () => {
     }
   }, [gameStarted]);
 
-  const startGame = () => {
+  const startGame = async () => {
+    if (todayPlays >= maxPlays) return;
+
     setGameStarted(true);
     setScore(0);
     setTimeLeft(30);
     setCoins([]);
+    setCoinsCollected(0);
+
+    // Start session with backend
+    try {
+      const response = await gameApi.startCoinHunt();
+      if (response.data?.sessionId) {
+        setSessionId(response.data.sessionId);
+      }
+    } catch (error) {
+      console.error('Error starting coin hunt session:', error);
+    }
   };
 
   const catchCoin = (coin: Coin) => {
     setScore(prev => prev + coin.value);
     setCoins(prev => prev.filter(c => c.id !== coin.id));
+    setCoinsCollected(prev => prev + 1);
   };
 
   return (

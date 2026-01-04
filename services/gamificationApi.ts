@@ -1,587 +1,681 @@
 // Gamification API Service
-// Handles all gamification-related API calls (mini-games, challenges, achievements, leaderboard)
+// Handles daily check-in, spin wheel, and other gamification features
 
 import apiClient, { ApiResponse } from './apiClient';
-import type {
-  SpinWheelResult,
-  ScratchCardData,
-  QuizGame,
-  QuizQuestion,
-  Challenge,
-  Achievement,
-  LeaderboardData,
-  GamificationStats,
-  CoinTransaction,
-} from '@/types/gamification.types';
 
-/**
- * Gamification API Service Class
- */
-class GamificationAPI {
-  // ==================== SPIN WHEEL ====================
+// ============================================
+// TYPES
+// ============================================
+
+export interface CheckInReward {
+  day: number;
+  coins: number;
+  claimed: boolean;
+  today?: boolean;
+  bonus?: boolean;
+}
+
+export interface StreakData {
+  currentStreak: number;
+  longestStreak: number;
+  hasCheckedInToday: boolean;
+  lastCheckInDate?: string;
+  weeklyEarnings: number;
+  totalEarned: number;
+  checkInHistory: {
+    date: string;
+    coinsEarned: number;
+    bonusEarned: number;
+    streak: number;
+  }[];
+}
+
+export interface CheckInResult {
+  success: boolean;
+  streak: number;
+  coinsEarned: number;
+  bonusEarned: number;
+  totalEarned: number;
+  message: string;
+}
+
+export interface SpinWheelSegment {
+  id: string;
+  label: string;
+  value: number;
+  color: string;
+  type: 'coins' | 'discount' | 'voucher' | 'nothing';
+  icon: string;
+  probability?: number;
+}
+
+export interface SpinWheelData {
+  segments: SpinWheelSegment[];
+  isActive: boolean;
+  rulesPerDay: {
+    maxSpins: number;
+    spinResetHour: number;
+  };
+  cooldownMinutes: number;
+}
+
+export interface SpinEligibility {
+  canSpin: boolean;
+  spinsRemaining: number;
+  spinsUsedToday: number;
+  nextSpinEligibleAt?: string;
+  totalCoinsEarned: number;
+  lastSpinAt?: string;
+}
+
+export interface SpinResult {
+  success: boolean;
+  segmentId: string;
+  segmentLabel: string;
+  rewardType: 'coins' | 'discount' | 'voucher' | 'nothing';
+  rewardValue: number;
+  spinsRemaining: number;
+  message: string;
+}
+
+export interface GamificationStats {
+  coins: {
+    balance: number;
+    lifetimeEarned: number;
+  };
+  streak: StreakData;
+  spinWheel: SpinEligibility;
+  achievements: number;
+  level: number;
+}
+
+export interface AffiliateStats {
+  totalShares: number;
+  appDownloads: number;
+  purchases: number;
+  commissionEarned: number;
+}
+
+export interface PromotionalPoster {
+  id: string;
+  title: string;
+  subtitle: string;
+  image: string;
+  colors: [string, string];
+  shareBonus: number;
+  isActive?: boolean;
+}
+
+export interface ShareSubmission {
+  id: string;
+  posterTitle: string;
+  posterId?: string;
+  postUrl: string;
+  platform: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
+  approvedAt?: string;
+  shareBonus: number;
+  rejectionReason?: string;
+}
+
+export interface StreakBonus {
+  days: number;
+  reward: number;
+  achieved: boolean;
+}
+
+export interface ReviewableItem {
+  id: string;
+  type: 'store' | 'product';
+  name: string;
+  image: string | null;
+  category: string;
+  visitDate?: string;
+  purchaseDate?: string;
+  coins: number;
+  hasReceipt?: boolean;
+  brand?: string | null;
+}
+
+// ============================================
+// GAMIFICATION API SERVICE
+// ============================================
+
+class GamificationApiService {
+  // ========================================
+  // DAILY CHECK-IN / STREAK ENDPOINTS
+  // ========================================
 
   /**
-   * Spin the wheel to win coins/prizes
+   * Get current user's streak and check-in status
    */
-  async spinWheel(): Promise<ApiResponse<{
-    result: SpinWheelResult;
-    coinsAdded: number;
-    newBalance: number;
-  }>> {
+  async getStreakStatus(): Promise<ApiResponse<StreakData>> {
     try {
+      const response = await apiClient.get<any>('/gamification/streaks');
 
-      const response = await apiClient.post<{
-        result: SpinWheelResult;
-        coinsAdded: number;
-        newBalance: number;
-      }>('/gamification/spin-wheel/spin');
+      if (response.success && response.data) {
+        const data = response.data;
+        return {
+          success: true,
+          data: {
+            currentStreak: data.currentStreak || data.streak || 0,
+            longestStreak: data.longestStreak || data.bestStreak || 0,
+            hasCheckedInToday: data.hasCheckedInToday ?? data.checkedInToday ?? false,
+            lastCheckInDate: data.lastCheckInDate || data.lastCheckIn,
+            weeklyEarnings: data.weeklyEarnings || 0,
+            totalEarned: data.totalEarned || 0,
+            checkInHistory: data.checkInHistory || data.history || [],
+          },
+        };
+      }
+
       return response;
     } catch (error: any) {
-      console.error('Error spinning wheel:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error fetching streak:', error);
+      return { success: false, error: error.message };
     }
   }
 
   /**
-   * Check if user can spin wheel (cooldown, eligibility)
+   * Perform daily check-in
    */
-  async canSpinWheel(): Promise<ApiResponse<{
-    canSpin: boolean;
-    nextSpinAt?: string;
-    remainingCooldown?: number;
-  }>> {
+  async performCheckIn(): Promise<ApiResponse<CheckInResult>> {
     try {
-      const response = await apiClient.get<{
-        canSpin: boolean;
-        nextSpinAt?: string;
-        remainingCooldown?: number;
-      }>('/gamification/spin-wheel/eligibility');
-      return response;
-    } catch (error: any) {
-      console.error('Error checking spin eligibility:', error);
-      throw error;
-    }
-  }
+      const response = await apiClient.post<any>('/gamification/streak/checkin');
 
-  /**
-   * Get spin wheel configuration and user data
-   */
-  async getSpinWheelData(): Promise<ApiResponse<{
-    segments: any[];
-    spinsRemaining: number;
-    spinHistory?: any[];
-  }>> {
-    try {
-      const response = await apiClient.get<{
-        segments: any[];
-        spinsRemaining: number;
-        spinHistory?: any[];
-      }>('/gamification/spin-wheel/data');
-      return response;
-    } catch (error: any) {
-      console.error('Error getting spin wheel data:', error);
-      throw error;
-    }
-  }
+      if (response.success && response.data) {
+        const data = response.data;
+        return {
+          success: true,
+          data: {
+            success: true,
+            streak: data.streak || data.currentStreak || 1,
+            coinsEarned: data.coinsEarned || data.coins || 10,
+            bonusEarned: data.bonusEarned || data.bonus || 0,
+            totalEarned: data.totalEarned || (data.coinsEarned + data.bonusEarned) || 10,
+            message: data.message || 'Check-in successful!',
+          },
+        };
+      }
 
-  /**
-   * Get spin wheel history
-   */
-  async getSpinWheelHistory(limit: number = 20): Promise<ApiResponse<{
-    history: Array<{
-      id: string;
-      completedAt: string;
-      prize: string;
-      segment: number;
-      reward: {
-        coins?: number;
-        cashback?: number;
-        discount?: number;
-        voucher?: any;
+      return {
+        success: false,
+        error: response.error || 'Check-in failed',
       };
-    }>;
-    total: number;
-  }>> {
-    try {
-      const response = await apiClient.get<{
-        history: any[];
-        total: number;
-      }>('/gamification/spin-wheel/history', { limit });
-      return response;
     } catch (error: any) {
-      console.error('Error getting spin wheel history:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error performing check-in:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  // ==================== SCRATCH CARD ====================
-
   /**
-   * Create a new scratch card
+   * Get weekly check-in calendar data
    */
-  async createScratchCard(): Promise<ApiResponse<ScratchCardData>> {
+  async getWeeklyCalendar(): Promise<ApiResponse<CheckInReward[]>> {
     try {
+      const streakResponse = await this.getStreakStatus();
 
-      const response = await apiClient.post<ScratchCardData>('/gamification/scratch-card');
-      return response;
+      if (streakResponse.success && streakResponse.data) {
+        const { currentStreak, hasCheckedInToday } = streakResponse.data;
+
+        // Build 7-day calendar
+        const calendar: CheckInReward[] = [];
+        const baseCoins = [10, 15, 20, 25, 30, 40, 100]; // Day 1-7 rewards
+
+        for (let day = 1; day <= 7; day++) {
+          const isClaimed = day <= currentStreak && (day < 7 || hasCheckedInToday);
+          const isToday = day === currentStreak + 1 && !hasCheckedInToday;
+
+          calendar.push({
+            day,
+            coins: baseCoins[day - 1],
+            claimed: isClaimed,
+            today: isToday,
+            bonus: day === 7,
+          });
+        }
+
+        return { success: true, data: calendar };
+      }
+
+      // Return default calendar if API fails
+      return {
+        success: true,
+        data: [
+          { day: 1, coins: 10, claimed: false },
+          { day: 2, coins: 15, claimed: false },
+          { day: 3, coins: 20, claimed: false },
+          { day: 4, coins: 25, claimed: false, today: true },
+          { day: 5, coins: 30, claimed: false },
+          { day: 6, coins: 40, claimed: false },
+          { day: 7, coins: 100, claimed: false, bonus: true },
+        ],
+      };
     } catch (error: any) {
-      console.error('Error creating scratch card:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error fetching calendar:', error);
+      return { success: false, error: error.message };
     }
   }
 
+  // ========================================
+  // SPIN WHEEL ENDPOINTS
+  // ========================================
+
   /**
-   * Scratch and reveal card prize
+   * Get spin wheel configuration (prizes/segments)
    */
-  async scratchCard(cardId: string): Promise<ApiResponse<{
-    card: ScratchCardData;
-    prize: any;
-    coinsAdded: number;
-  }>> {
+  async getSpinWheelData(): Promise<ApiResponse<SpinWheelData>> {
     try {
+      const response = await apiClient.get<any>('/gamification/spin-wheel/data');
 
-      const response = await apiClient.post<{
-        card: ScratchCardData;
-        prize: any;
-        coinsAdded: number;
-      }>(`/gamification/scratch-card/${cardId}/scratch`);
-      return response;
+      if (response.success && response.data) {
+        const data = response.data;
+        return {
+          success: true,
+          data: {
+            segments: data.segments || data.prizes || [],
+            isActive: data.isActive ?? true,
+            rulesPerDay: data.rulesPerDay || { maxSpins: 3, spinResetHour: 0 },
+            cooldownMinutes: data.cooldownMinutes || 0,
+          },
+        };
+      }
+
+      // Return default wheel if API fails
+      return {
+        success: true,
+        data: {
+          segments: [
+            { id: '1', label: '₹10', value: 10, color: '#10B981', type: 'coins', icon: 'cash', probability: 30 },
+            { id: '2', label: '₹25', value: 25, color: '#3B82F6', type: 'coins', icon: 'cash', probability: 25 },
+            { id: '3', label: '₹50', value: 50, color: '#8B5CF6', type: 'coins', icon: 'cash', probability: 20 },
+            { id: '4', label: '₹5', value: 5, color: '#F59E0B', type: 'coins', icon: 'cash', probability: 15 },
+            { id: '5', label: '₹100', value: 100, color: '#EC4899', type: 'coins', icon: 'cash', probability: 5 },
+            { id: '6', label: '₹15', value: 15, color: '#F97316', type: 'coins', icon: 'cash', probability: 5 },
+          ],
+          isActive: true,
+          rulesPerDay: { maxSpins: 3, spinResetHour: 0 },
+          cooldownMinutes: 0,
+        },
+      };
     } catch (error: any) {
-      console.error('Error scratching card:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error fetching spin wheel data:', error);
+      return { success: false, error: error.message };
     }
   }
 
   /**
-   * Check scratch card eligibility
+   * Get spin wheel eligibility (can spin, spins remaining)
    */
-  async canCreateScratchCard(): Promise<ApiResponse<{
-    canCreate: boolean;
-    reason?: string;
-    nextAvailableAt?: string;
-  }>> {
+  async getSpinEligibility(): Promise<ApiResponse<SpinEligibility>> {
     try {
-      const response = await apiClient.get<{
-        canCreate: boolean;
-        reason?: string;
-        nextAvailableAt?: string;
-      }>('/gamification/scratch-card/eligibility');
+      const response = await apiClient.get<any>('/gamification/spin-wheel/eligibility');
+
+      if (response.success && response.data) {
+        const data = response.data;
+        return {
+          success: true,
+          data: {
+            canSpin: data.canSpin ?? data.eligible ?? (data.spinsRemaining > 0),
+            spinsRemaining: data.spinsRemaining ?? data.remaining ?? 3,
+            spinsUsedToday: data.spinsUsedToday ?? data.used ?? 0,
+            nextSpinEligibleAt: data.nextSpinEligibleAt || data.nextSpinAt,
+            totalCoinsEarned: data.totalCoinsEarned ?? data.totalWon ?? 0,
+            lastSpinAt: data.lastSpinAt || data.lastSpin,
+          },
+        };
+      }
+
       return response;
     } catch (error: any) {
-      console.error('Error checking scratch card eligibility:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error fetching spin eligibility:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  // ==================== QUIZ GAME ====================
-
   /**
-   * Start a new quiz game
+   * Execute a spin
    */
-  async startQuiz(difficulty?: 'easy' | 'medium' | 'hard', category?: string): Promise<ApiResponse<QuizGame>> {
+  async executeSpin(): Promise<ApiResponse<SpinResult>> {
     try {
+      const response = await apiClient.post<any>('/gamification/spin-wheel/spin');
 
-      const response = await apiClient.post<QuizGame>('/gamification/quiz/start', {
-        difficulty,
-        category,
-      });
-      return response;
+      if (response.success && response.data) {
+        const data = response.data;
+        return {
+          success: true,
+          data: {
+            success: true,
+            segmentId: data.segmentId || data.segment?.id || '1',
+            segmentLabel: data.segmentLabel || data.segment?.label || data.prize?.label || '',
+            rewardType: data.rewardType || data.type || 'coins',
+            rewardValue: data.rewardValue || data.value || data.amount || 0,
+            spinsRemaining: data.spinsRemaining ?? data.remaining ?? 0,
+            message: data.message || `You won ${data.rewardValue || data.value}!`,
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Spin failed',
+      };
     } catch (error: any) {
-      console.error('Error starting quiz:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error executing spin:', error);
+      return { success: false, error: error.message };
     }
   }
 
   /**
-   * Submit quiz answer
+   * Get spin history
    */
-  async submitQuizAnswer(
-    gameId: string,
-    questionId: string,
-    answer: number
-  ): Promise<ApiResponse<{
-    isCorrect: boolean;
-    coinsEarned: number;
-    currentScore: number;
-    nextQuestion?: QuizQuestion;
-    gameCompleted: boolean;
-    totalCoins?: number;
-  }>> {
+  async getSpinHistory(params?: { limit?: number }): Promise<ApiResponse<SpinResult[]>> {
     try {
+      const response = await apiClient.get<any>('/gamification/spin-wheel/history', params);
 
-      const response = await apiClient.post<{
-        isCorrect: boolean;
-        coinsEarned: number;
-        currentScore: number;
-        nextQuestion?: QuizQuestion;
-        gameCompleted: boolean;
-        totalCoins?: number;
-      }>('/gamification/quiz/answer', {
-        gameId,
-        questionId,
-        answer,
-      });
+      if (response.success && response.data) {
+        const spins = (response.data.spins || response.data || []).map((spin: any) => ({
+          success: true,
+          segmentId: spin.segmentId,
+          segmentLabel: spin.segmentLabel,
+          rewardType: spin.rewardType,
+          rewardValue: spin.rewardValue,
+          spinsRemaining: 0,
+          message: spin.message || '',
+        }));
+
+        return { success: true, data: spins };
+      }
+
       return response;
     } catch (error: any) {
-      console.error('Error submitting quiz answer:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error fetching spin history:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Get current quiz game
-   */
-  async getCurrentQuiz(): Promise<ApiResponse<QuizGame | null>> {
-    try {
-      const response = await apiClient.get<QuizGame | null>('/gamification/quiz/current');
-      return response;
-    } catch (error: any) {
-      console.error('Error getting current quiz:', error);
-      throw error;
-    }
-  }
-
-  // ==================== CHALLENGES ====================
+  // ========================================
+  // GAMIFICATION STATS
+  // ========================================
 
   /**
-   * Get all active challenges
-   */
-  async getChallenges(): Promise<ApiResponse<Challenge[]>> {
-    try {
-
-      const response = await apiClient.get<Challenge[]>('/gamification/challenges');
-      return response;
-    } catch (error: any) {
-      console.error('Error getting challenges:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get challenge by ID
-   */
-  async getChallenge(challengeId: string): Promise<ApiResponse<Challenge>> {
-    try {
-      const response = await apiClient.get<Challenge>(`/gamification/challenges/${challengeId}`);
-      return response;
-    } catch (error: any) {
-      console.error('Error getting challenge:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Claim challenge reward
-   */
-  async claimChallengeReward(challengeId: string): Promise<ApiResponse<{
-    challenge: Challenge;
-    rewards: {
-      coins: number;
-      badges: string[];
-      vouchers: any[];
-    };
-    newBalance: number;
-  }>> {
-    try {
-
-      const response = await apiClient.post<{
-        challenge: Challenge;
-        rewards: { coins: number; badges: string[]; vouchers: any[] };
-        newBalance: number;
-      }>('/gamification/claim-reward', {
-        challengeId,
-      });
-      return response;
-    } catch (error: any) {
-      console.error('Error claiming reward:', error);
-      throw error;
-    }
-  }
-
-  // ==================== ACHIEVEMENTS ====================
-
-  /**
-   * Get all achievements
-   */
-  async getAchievements(): Promise<ApiResponse<Achievement[]>> {
-    try {
-
-      const response = await apiClient.get<Achievement[]>('/gamification/achievements');
-      return response;
-    } catch (error: any) {
-      console.error('Error getting achievements:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Unlock achievement
-   */
-  async unlockAchievement(achievementId: string): Promise<ApiResponse<{
-    achievement: Achievement;
-    coinsEarned: number;
-    newBalance: number;
-  }>> {
-    try {
-      const response = await apiClient.post<{
-        achievement: Achievement;
-        coinsEarned: number;
-        newBalance: number;
-      }>(`/gamification/achievements/${achievementId}/unlock`);
-      return response;
-    } catch (error: any) {
-      console.error('Error unlocking achievement:', error);
-      throw error;
-    }
-  }
-
-  // ==================== LEADERBOARD ====================
-
-  /**
-   * Get leaderboard
-   */
-  async getLeaderboard(
-    period: 'daily' | 'weekly' | 'monthly' | 'all-time' = 'monthly',
-    limit: number = 50
-  ): Promise<ApiResponse<LeaderboardData>> {
-    try {
-
-      const response = await apiClient.get<LeaderboardData>('/gamification/leaderboard', {
-        period,
-        limit,
-      });
-      return response;
-    } catch (error: any) {
-      console.error('Error getting leaderboard:', error);
-      throw error;
-    }
-  }
-
-  // ==================== STATS & COINS ====================
-
-  /**
-   * Get user gamification stats
+   * Get overall gamification stats
    */
   async getGamificationStats(): Promise<ApiResponse<GamificationStats>> {
     try {
+      const response = await apiClient.get<any>('/gamification/stats');
 
-      const response = await apiClient.get<GamificationStats>('/gamification/stats');
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      }
+
       return response;
     } catch (error: any) {
-      console.error('Error getting stats:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error fetching stats:', error);
+      return { success: false, error: error.message };
     }
   }
 
   /**
    * Get coin balance
    */
-  async getCoinBalance(): Promise<ApiResponse<{
-    balance: number;
-    lifetimeEarned: number;
-    lifetimeSpent: number;
-  }>> {
+  async getCoinBalance(): Promise<ApiResponse<{ balance: number; lifetimeEarned: number }>> {
     try {
-      const response = await apiClient.get<{
-        balance: number;
-        lifetimeEarned: number;
-        lifetimeSpent: number;
-      }>('/gamification/coins/balance');
+      const response = await apiClient.get<any>('/gamification/coins/balance');
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            balance: response.data.balance || response.data.coins || 0,
+            lifetimeEarned: response.data.lifetimeEarned || response.data.total || 0,
+          },
+        };
+      }
+
       return response;
     } catch (error: any) {
-      console.error('Error getting coin balance:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error fetching coin balance:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ========================================
+  // AFFILIATE / SHARE ENDPOINTS
+  // ========================================
+
+  /**
+   * Get affiliate performance stats
+   */
+  async getAffiliateStats(): Promise<ApiResponse<AffiliateStats>> {
+    try {
+      const response = await apiClient.get<any>('/gamification/affiliate/stats');
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            totalShares: response.data.totalShares || 0,
+            appDownloads: response.data.appDownloads || response.data.downloads || 0,
+            purchases: response.data.purchases || 0,
+            commissionEarned: response.data.commissionEarned || response.data.commission || 0,
+          },
+        };
+      }
+
+      // Return zeros if API fails (graceful degradation)
+      return {
+        success: true,
+        data: {
+          totalShares: 0,
+          appDownloads: 0,
+          purchases: 0,
+          commissionEarned: 0,
+        },
+      };
+    } catch (error: any) {
+      console.error('[GAMIFICATION API] Error fetching affiliate stats:', error);
+      return {
+        success: true,
+        data: {
+          totalShares: 0,
+          appDownloads: 0,
+          purchases: 0,
+          commissionEarned: 0,
+        },
+      };
     }
   }
 
   /**
-   * Get coin transaction history
+   * Get promotional posters for sharing
    */
-  async getCoinTransactions(
-    page: number = 1,
-    limit: number = 20
-  ): Promise<ApiResponse<{
-    transactions: CoinTransaction[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
-  }>> {
+  async getPromotionalPosters(): Promise<ApiResponse<PromotionalPoster[]>> {
     try {
-      const response = await apiClient.get<{
-        transactions: CoinTransaction[];
-        pagination: {
-          page: number;
-          limit: number;
-          total: number;
-          totalPages: number;
-        };
-      }>('/gamification/coins/transactions', {
-        page,
-        limit,
-      });
-      return response;
-    } catch (error: any) {
-      console.error('Error getting coin transactions:', error);
-      throw error;
-    }
-  }
+      const response = await apiClient.get<any>('/gamification/promotional-posters');
 
-  // ==================== PLAY & EARN HUB ====================
+      if (response.success && response.data) {
+        // Backend returns { posters: [...] }
+        const postersArray = response.data.posters || response.data || [];
+        const posters = postersArray.map((poster: any) => ({
+          id: poster._id || poster.id,
+          title: poster.title,
+          subtitle: poster.subtitle || poster.description,
+          image: poster.image || poster.imageUrl,
+          colors: Array.isArray(poster.colors) ? poster.colors : ['#F97316', '#EF4444'],
+          shareBonus: poster.shareBonus || poster.bonus || 50,
+          isActive: poster.isActive ?? true,
+        }));
 
-  /**
-   * Get all play & earn hub data in one call
-   * Includes: daily spin, challenges, streak, surprise drops
-   */
-  async getPlayAndEarnData(): Promise<ApiResponse<{
-    dailySpin: {
-      spinsRemaining: number;
-      maxSpins: number;
-      lastSpinAt: string | null;
-      canSpin: boolean;
-      nextSpinAt: string | null;
-    };
-    challenges: {
-      active: Array<{
-        id: string;
-        title: string;
-        progress: {
-          current: number;
-          target: number;
-          percentage: number;
-        };
-        reward: number;
-        expiresAt: string;
-      }>;
-      totalActive: number;
-      completedToday: number;
-    };
-    streak: {
-      type: string;
-      currentStreak: number;
-      longestStreak: number;
-      nextMilestone: { day: number; coins: number };
-      todayCheckedIn: boolean;
-    };
-    surpriseDrop: {
-      id?: string;
-      available: boolean;
-      coins: number;
-      message: string | null;
-      expiresAt: string | null;
-      reason?: string;
-    };
-    coinBalance: number;
-  }>> {
-    try {
-      const response = await apiClient.get<{
-        dailySpin: {
-          spinsRemaining: number;
-          maxSpins: number;
-          lastSpinAt: string | null;
-          canSpin: boolean;
-          nextSpinAt: string | null;
-        };
-        challenges: {
-          active: Array<{
-            id: string;
-            title: string;
-            progress: {
-              current: number;
-              target: number;
-              percentage: number;
-            };
-            reward: number;
-            expiresAt: string;
-          }>;
-          totalActive: number;
-          completedToday: number;
-        };
-        streak: {
-          type: string;
-          currentStreak: number;
-          longestStreak: number;
-          nextMilestone: { day: number; coins: number };
-          todayCheckedIn: boolean;
-        };
-        surpriseDrop: {
-          id?: string;
-          available: boolean;
-          coins: number;
-          message: string | null;
-          expiresAt: string | null;
-          reason?: string;
-        };
-        coinBalance: number;
-      }>('/gamification/play-and-earn');
-      return response;
+        return { success: true, data: posters };
+      }
+
+      // Return default posters if API fails
+      return {
+        success: true,
+        data: [
+          { id: '1', title: 'Mega Sale', subtitle: 'Up to 70% off + Extra Cashback', image: 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?w=500', colors: ['#F97316', '#EF4444'], shareBonus: 50 },
+          { id: '2', title: 'Weekend Bonanza', subtitle: '3X Coins on All Purchases', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=500', colors: ['#A855F7', '#EC4899'], shareBonus: 30 },
+          { id: '3', title: 'New User Special', subtitle: 'Get Rs.500 Welcome Bonus', image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=500', colors: ['#3B82F6', '#06B6D4'], shareBonus: 100 },
+          { id: '4', title: 'Flash Sale Today', subtitle: 'Limited Time Mega Deals', image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?w=500', colors: ['#22C55E', '#14B8A6'], shareBonus: 40 },
+        ],
+      };
     } catch (error: any) {
-      console.error('Error getting play and earn data:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error fetching promotional posters:', error);
+      return { success: false, error: error.message };
     }
   }
 
   /**
-   * Claim a surprise coin drop
+   * Get user's share submissions history
    */
-  async claimSurpriseDrop(dropId: string): Promise<ApiResponse<{
-    coins: number;
-    newBalance: number;
-    message: string;
-  }>> {
+  async getShareSubmissions(): Promise<ApiResponse<ShareSubmission[]>> {
     try {
-      const response = await apiClient.post<{
-        coins: number;
-        newBalance: number;
-        message: string;
-      }>('/gamification/surprise-drop/claim', { dropId });
-      return response;
+      const response = await apiClient.get<any>('/gamification/affiliate/submissions');
+
+      if (response.success && response.data) {
+        // Backend returns { submissions: [...] }
+        const submissionsArray = response.data.submissions || response.data || [];
+        const submissions = submissionsArray.map((sub: any) => ({
+          id: sub._id || sub.id,
+          posterTitle: sub.posterTitle || sub.poster?.title || 'Promotional Poster',
+          posterId: sub.posterId || sub.poster?._id,
+          postUrl: sub.postUrl || sub.url,
+          platform: sub.platform,
+          status: sub.status || 'pending',
+          submittedAt: sub.submittedAt || sub.createdAt,
+          approvedAt: sub.approvedAt,
+          shareBonus: sub.shareBonus || sub.bonus || 0,
+          rejectionReason: sub.rejectionReason,
+        }));
+
+        return { success: true, data: submissions };
+      }
+
+      return { success: true, data: [] };
     } catch (error: any) {
-      console.error('Error claiming surprise drop:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error fetching submissions:', error);
+      return { success: true, data: [] };
     }
   }
 
   /**
-   * Check in for daily streak
+   * Submit a shared post for review
    */
-  async streakCheckin(): Promise<ApiResponse<{
-    streakUpdated: boolean;
-    currentStreak: number;
-    longestStreak?: number;
-    coinsEarned: number;
-    milestoneReached: {
-      day: number;
-      coins: number;
-      badge?: string;
-    } | null;
-    newBalance?: number;
-    message: string;
+  async submitSharePost(data: {
+    posterId: string;
+    posterTitle: string;
+    postUrl: string;
+    platform: string;
+    shareBonus: number;
+  }): Promise<ApiResponse<ShareSubmission>> {
+    try {
+      const response = await apiClient.post<any>('/gamification/affiliate/submit', data);
+
+      if (response.success && response.data) {
+        // Backend returns { submission: {...} }
+        const sub = response.data.submission || response.data;
+        return {
+          success: true,
+          data: {
+            id: sub._id || sub.id || String(Date.now()),
+            posterTitle: sub.posterTitle || data.posterTitle,
+            posterId: sub.posterId || data.posterId,
+            postUrl: sub.postUrl || data.postUrl,
+            platform: sub.platform || data.platform,
+            status: sub.status || 'pending',
+            submittedAt: sub.submittedAt || new Date().toISOString(),
+            shareBonus: sub.shareBonus || data.shareBonus,
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Failed to submit post',
+      };
+    } catch (error: any) {
+      console.error('[GAMIFICATION API] Error submitting post:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get streak bonus milestones
+   */
+  async getStreakBonuses(): Promise<ApiResponse<StreakBonus[]>> {
+    try {
+      const response = await apiClient.get<any>('/gamification/streak/bonuses');
+
+      if (response.success && response.data) {
+        // Backend returns { bonuses: [...] }
+        const bonusesArray = response.data.bonuses || response.data || [];
+        const bonuses = bonusesArray.map((b: any) => ({
+          days: b.days || b.day,
+          reward: b.reward || b.coinsReward || 0,
+          achieved: b.achieved ?? false,
+        }));
+
+        if (bonuses.length > 0) {
+          return { success: true, data: bonuses };
+        }
+      }
+
+      // Return default bonuses if API fails or returns empty
+      return {
+        success: true,
+        data: [
+          { days: 7, reward: 100, achieved: false },
+          { days: 30, reward: 500, achieved: false },
+          { days: 100, reward: 2000, achieved: false },
+        ],
+      };
+    } catch (error: any) {
+      console.error('[GAMIFICATION API] Error fetching streak bonuses:', error);
+      return {
+        success: true,
+        data: [
+          { days: 7, reward: 100, achieved: false },
+          { days: 30, reward: 500, achieved: false },
+          { days: 100, reward: 2000, achieved: false },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Get reviewable items (stores/products user can review)
+   */
+  async getReviewableItems(): Promise<ApiResponse<{
+    items: ReviewableItem[];
+    totalPending: number;
+    potentialEarnings: number;
   }>> {
     try {
-      const response = await apiClient.post<{
-        streakUpdated: boolean;
-        currentStreak: number;
-        longestStreak?: number;
-        coinsEarned: number;
-        milestoneReached: {
-          day: number;
-          coins: number;
-          badge?: string;
-        } | null;
-        newBalance?: number;
-        message: string;
-      }>('/gamification/streak/checkin');
+      const response = await apiClient.get<any>('/gamification/reviewable-items');
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            items: response.data.items || [],
+            totalPending: response.data.totalPending || 0,
+            potentialEarnings: response.data.potentialEarnings || 0,
+          },
+        };
+      }
+
       return response;
     } catch (error: any) {
-      console.error('Error checking in for streak:', error);
-      throw error;
+      console.error('[GAMIFICATION API] Error fetching reviewable items:', error);
+      return { success: false, error: error.message };
     }
   }
 }
 
-// Export singleton instance
-const gamificationAPI = new GamificationAPI();
-export default gamificationAPI;
+// Create singleton instance
+const gamificationApi = new GamificationApiService();
+
+export default gamificationApi;
+export { gamificationApi };

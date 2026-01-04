@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,86 +9,223 @@ import {
   StatusBar,
   ScrollView,
   TextInput,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Video, ResizeMode } from 'expo-av';
+import reelApi, { Reel, ReelComment } from '@/services/reelApi';
 
 const { width, height } = Dimensions.get('window');
-
-// Mock reel data
-const reelData = {
-  id: 1,
-  user: {
-    name: 'Priya Sharma',
-    avatar: 'https://i.pravatar.cc/100?img=1',
-    followers: 1234,
-    isFollowing: false,
-  },
-  store: {
-    name: 'Starbucks',
-    logo: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=100',
-    cashback: '10%',
-  },
-  image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800',
-  product: 'Cappuccino & Croissant Combo',
-  description:
-    'Amazing coffee and croissant combo! Got 10% cashback instantly. The croissant was fresh and the coffee was perfect. Highly recommend visiting during morning hours for the best experience.',
-  saved: 120,
-  likes: 234,
-  comments: 45,
-  shares: 12,
-  createdAt: '2 hours ago',
-  tags: ['#coffee', '#breakfast', '#cashback', '#starbucks'],
-};
-
-const commentsData = [
-  {
-    id: 1,
-    user: 'Rahul K.',
-    avatar: 'https://i.pravatar.cc/100?img=2',
-    comment: 'Looks delicious! Going there tomorrow.',
-    time: '1h ago',
-    likes: 5,
-  },
-  {
-    id: 2,
-    user: 'Sneha M.',
-    avatar: 'https://i.pravatar.cc/100?img=3',
-    comment: 'The cashback is amazing! Thanks for sharing.',
-    time: '45m ago',
-    likes: 3,
-  },
-  {
-    id: 3,
-    user: 'Arjun P.',
-    avatar: 'https://i.pravatar.cc/100?img=4',
-    comment: 'Which outlet is this?',
-    time: '30m ago',
-    likes: 1,
-  },
-];
 
 const ReelDetailPage = () => {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const reelId = Array.isArray(id) ? id[0] : id;
+
+  // UI state
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [comment, setComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+
+  // API state
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reel, setReel] = useState<Reel | null>(null);
+  const [comments, setComments] = useState<ReelComment[]>([]);
+  const [likesCount, setLikesCount] = useState(0);
+
+  // Fetch reel data
+  const fetchReelData = useCallback(async (isRefresh = false) => {
+    if (!reelId) return;
+
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const [reelResponse, commentsResponse] = await Promise.all([
+        reelApi.getReelById(reelId),
+        reelApi.getComments(reelId, { limit: 20 }),
+      ]);
+
+      if (reelResponse.success && reelResponse.data) {
+        setReel(reelResponse.data);
+        setIsLiked(reelResponse.data.isLiked || false);
+        setIsSaved(reelResponse.data.isBookmarked || false);
+        setLikesCount(reelResponse.data.stats.likes);
+      } else {
+        setError(reelResponse.error || 'Failed to load reel');
+      }
+
+      if (commentsResponse.success && commentsResponse.data) {
+        setComments(commentsResponse.data.comments || []);
+      }
+
+      // Track view
+      reelApi.trackView(reelId).catch(() => {});
+    } catch (err: any) {
+      console.error('[REEL DETAIL] Error:', err);
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [reelId]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchReelData();
+  }, [fetchReelData]);
+
+  const onRefresh = useCallback(() => {
+    fetchReelData(true);
+  }, [fetchReelData]);
+
+  // Handle like toggle
+  const handleLike = async () => {
+    if (!reelId) return;
+
+    const newLiked = !isLiked;
+    setIsLiked(newLiked);
+    setLikesCount(prev => newLiked ? prev + 1 : prev - 1);
+
+    try {
+      const response = await reelApi.toggleLike(reelId);
+      if (response.success && response.data) {
+        setLikesCount(response.data.likesCount);
+      }
+    } catch (err) {
+      // Revert on error
+      setIsLiked(!newLiked);
+      setLikesCount(prev => newLiked ? prev - 1 : prev + 1);
+    }
+  };
+
+  // Handle bookmark toggle
+  const handleBookmark = async () => {
+    if (!reelId) return;
+
+    const newSaved = !isSaved;
+    setIsSaved(newSaved);
+
+    try {
+      await reelApi.toggleBookmark(reelId);
+    } catch (err) {
+      setIsSaved(!newSaved);
+    }
+  };
+
+  // Handle add comment
+  const handleAddComment = async () => {
+    if (!reelId || !comment.trim()) return;
+
+    try {
+      setSubmittingComment(true);
+      const response = await reelApi.addComment(reelId, comment.trim());
+
+      if (response.success && response.data) {
+        setComments(prev => [response.data!, ...prev]);
+        setComment('');
+      } else {
+        Alert.alert('Error', response.error || 'Failed to add comment');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to add comment');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
 
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+  // Loading state
+  if (loading && !reel) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <StatusBar barStyle="light-content" backgroundColor="#000000" />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00C06A" />
+            <Text style={styles.loadingText}>Loading reel...</Text>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
 
-      {/* Full Screen Image/Video */}
+  // Error state
+  if (error && !reel) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <StatusBar barStyle="light-content" backgroundColor="#000000" />
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color="#EF4444" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchReelData()}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.backButtonAlt} onPress={() => router.back()}>
+              <Text style={styles.backButtonAltText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  if (!reel) return null;
+
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+
+      {/* Full Screen Video/Image */}
       <View style={styles.mediaContainer}>
-        <Image source={{ uri: reelData.image }} style={styles.mediaImage} />
+        {reel.videoUrl ? (
+          Platform.OS === 'web' ? (
+            <video
+              src={reel.videoUrl}
+              poster={reel.thumbnailUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover' } as any}
+            />
+          ) : (
+            <Video
+              source={{ uri: reel.videoUrl }}
+              posterSource={reel.thumbnailUrl ? { uri: reel.thumbnailUrl } : undefined}
+              style={styles.mediaVideo}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay
+              isLooping
+              isMuted={false}
+              useNativeControls={false}
+            />
+          )
+        ) : (
+          <Image source={{ uri: reel.thumbnailUrl }} style={styles.mediaImage} />
+        )}
 
         {/* Top Header */}
         <View style={styles.topHeader}>
@@ -107,29 +244,29 @@ const ReelDetailPage = () => {
         <View style={styles.rightActions}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => setIsLiked(!isLiked)}
+            onPress={handleLike}
           >
             <Ionicons
               name={isLiked ? 'heart' : 'heart-outline'}
               size={28}
               color={isLiked ? '#EF4444' : '#FFFFFF'}
             />
-            <Text style={styles.actionText}>{reelData.likes}</Text>
+            <Text style={styles.actionText}>{likesCount}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
             <Ionicons name="chatbubble-outline" size={26} color="#FFFFFF" />
-            <Text style={styles.actionText}>{reelData.comments}</Text>
+            <Text style={styles.actionText}>{reel.stats.comments}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
             <Ionicons name="share-social-outline" size={26} color="#FFFFFF" />
-            <Text style={styles.actionText}>{reelData.shares}</Text>
+            <Text style={styles.actionText}>{reel.stats.shares}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => setIsSaved(!isSaved)}
+            onPress={handleBookmark}
           >
             <Ionicons
               name={isSaved ? 'bookmark' : 'bookmark-outline'}
@@ -146,13 +283,18 @@ const ReelDetailPage = () => {
         >
           {/* User Info */}
           <View style={styles.userInfo}>
-            <Image
-              source={{ uri: reelData.user.avatar }}
-              style={styles.avatar}
-            />
+            {reel.creator.avatar ? (
+              <Image source={{ uri: reel.creator.avatar }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarInitials}>
+                  {reel.creator.name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'U'}
+                </Text>
+              </View>
+            )}
             <View style={styles.userText}>
-              <Text style={styles.userName}>{reelData.user.name}</Text>
-              <Text style={styles.timestamp}>{reelData.createdAt}</Text>
+              <Text style={styles.userName}>{reel.creator.name}</Text>
+              <Text style={styles.timestamp}>{new Date(reel.createdAt).toLocaleDateString()}</Text>
             </View>
             <TouchableOpacity
               style={[
@@ -174,36 +316,45 @@ const ReelDetailPage = () => {
 
           {/* Product & Store */}
           <View style={styles.productInfo}>
-            <Text style={styles.productName}>{reelData.product}</Text>
-            <TouchableOpacity
-              style={styles.storeButton}
-              onPress={() => navigateTo('/MainStorePage')}
-            >
-              <Ionicons name="storefront" size={14} color="#FFFFFF" />
-              <Text style={styles.storeName}>{reelData.store.name}</Text>
-              <View style={styles.cashbackBadge}>
-                <Text style={styles.cashbackText}>
-                  {reelData.store.cashback} Cashback
-                </Text>
-              </View>
-            </TouchableOpacity>
+            <Text style={styles.productName}>{reel.title}</Text>
+            {reel.store && (
+              <TouchableOpacity
+                style={styles.storeButton}
+                onPress={() => navigateTo(`/MainStorePage?id=${reel.store?.id}`)}
+              >
+                <Ionicons name="storefront" size={14} color="#FFFFFF" />
+                <Text style={styles.storeName}>{reel.store.name}</Text>
+                {reel.products && reel.products.length > 0 && (
+                  <View style={styles.cashbackBadge}>
+                    <Text style={styles.cashbackText}>
+                      ₹{reel.products[0].price}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Description */}
-          <Text style={styles.description} numberOfLines={2}>
-            {reelData.description}
-          </Text>
+          {reel.description && (
+            <Text style={styles.description} numberOfLines={2}>
+              {reel.description}
+            </Text>
+          )}
 
           {/* Tags */}
+          {reel.tags && reel.tags.length > 0 && (
           <View style={styles.tagsRow}>
-            {reelData.tags.map((tag, index) => (
+            {reel.tags.map((tag, index) => (
               <Text key={index} style={styles.tag}>
-                {tag}
+                {tag.startsWith('#') ? tag : `#${tag}`}
               </Text>
             ))}
           </View>
+          )}
 
-          {/* Savings Badge */}
+          {/* Savings Badge / Store Action */}
+          {reel.store && (
           <View style={styles.savingsContainer}>
             <LinearGradient
               colors={['#00C06A', '#10B981']}
@@ -211,70 +362,97 @@ const ReelDetailPage = () => {
               end={{ x: 1, y: 0 }}
               style={styles.savingsBadge}
             >
-              <Ionicons name="pricetag" size={16} color="#FFFFFF" />
-              <Text style={styles.savingsText}>Saved ₹{reelData.saved}</Text>
+              <Ionicons name="eye" size={16} color="#FFFFFF" />
+              <Text style={styles.savingsText}>{reel.stats.views} Views</Text>
             </LinearGradient>
             <TouchableOpacity
               style={styles.visitStoreButton}
-              onPress={() => navigateTo('/MainStorePage')}
+              onPress={() => navigateTo(`/MainStorePage?id=${reel.store?.id}`)}
             >
               <Text style={styles.visitStoreText}>Visit Store</Text>
               <Ionicons name="arrow-forward" size={16} color="#00C06A" />
             </TouchableOpacity>
           </View>
+          )}
         </LinearGradient>
       </View>
 
       {/* Comments Section */}
       <View style={styles.commentsSection}>
-        <Text style={styles.commentsTitle}>Comments ({reelData.comments})</Text>
+        <Text style={styles.commentsTitle}>Comments ({comments.length})</Text>
 
         <ScrollView
           style={styles.commentsList}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00C06A']} />
+          }
         >
-          {commentsData.map((item) => (
-            <View key={item.id} style={styles.commentItem}>
-              <Image source={{ uri: item.avatar }} style={styles.commentAvatar} />
-              <View style={styles.commentContent}>
-                <View style={styles.commentHeader}>
-                  <Text style={styles.commentUser}>{item.user}</Text>
-                  <Text style={styles.commentTime}>{item.time}</Text>
-                </View>
-                <Text style={styles.commentText}>{item.comment}</Text>
-                <View style={styles.commentActions}>
-                  <TouchableOpacity style={styles.commentAction}>
-                    <Ionicons name="heart-outline" size={14} color="#6B7280" />
-                    <Text style={styles.commentActionText}>{item.likes}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.commentAction}>
-                    <Text style={styles.commentActionText}>Reply</Text>
-                  </TouchableOpacity>
+          {comments.length === 0 ? (
+            <View style={styles.emptyComments}>
+              <Ionicons name="chatbubble-outline" size={32} color="#9CA3AF" />
+              <Text style={styles.emptyCommentsText}>No comments yet</Text>
+              <Text style={styles.emptyCommentsSubtext}>Be the first to comment!</Text>
+            </View>
+          ) : (
+            comments.map((item) => (
+              <View key={item.id} style={styles.commentItem}>
+                {item.userAvatar ? (
+                  <Image source={{ uri: item.userAvatar }} style={styles.commentAvatar} />
+                ) : (
+                  <View style={[styles.commentAvatar, { backgroundColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' }]}>
+                    <Ionicons name="person" size={14} color="#9CA3AF" />
+                  </View>
+                )}
+                <View style={styles.commentContent}>
+                  <View style={styles.commentHeader}>
+                    <Text style={styles.commentUser}>{item.userName}</Text>
+                    <Text style={styles.commentTime}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+                  </View>
+                  <Text style={styles.commentText}>{item.comment}</Text>
+                  <View style={styles.commentActions}>
+                    <TouchableOpacity style={styles.commentAction}>
+                      <Ionicons name={item.isLiked ? 'heart' : 'heart-outline'} size={14} color={item.isLiked ? '#EF4444' : '#6B7280'} />
+                      <Text style={styles.commentActionText}>{item.likes}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.commentAction}>
+                      <Text style={styles.commentActionText}>Reply</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
+            ))
+          )}
         </ScrollView>
 
         {/* Comment Input */}
         <View style={styles.commentInputContainer}>
-          <Image
-            source={{ uri: 'https://i.pravatar.cc/100?img=10' }}
-            style={styles.myAvatar}
-          />
+          <View style={[styles.myAvatar, { backgroundColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="person" size={14} color="#9CA3AF" />
+          </View>
           <TextInput
             style={styles.commentInput}
             placeholder="Add a comment..."
             placeholderTextColor="#9CA3AF"
             value={comment}
             onChangeText={setComment}
+            editable={!submittingComment}
           />
-          <TouchableOpacity style={styles.sendButton}>
-            <Ionicons name="send" size={20} color="#00C06A" />
+          <TouchableOpacity
+            style={[styles.sendButton, (!comment.trim() || submittingComment) && { opacity: 0.5 }]}
+            onPress={handleAddComment}
+            disabled={!comment.trim() || submittingComment}
+          >
+            {submittingComment ? (
+              <ActivityIndicator size="small" color="#00C06A" />
+            ) : (
+              <Ionicons name="send" size={20} color="#00C06A" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 };
 
@@ -283,11 +461,77 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#00C06A',
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  backButtonAlt: {
+    marginTop: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  backButtonAltText: {
+    color: '#9CA3AF',
+    fontSize: 14,
+  },
+  emptyComments: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyCommentsText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  emptyCommentsSubtext: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
   mediaContainer: {
     height: height * 0.6,
     position: 'relative',
   },
   mediaImage: {
+    width: '100%',
+    height: '100%',
+  },
+  mediaVideo: {
     width: '100%',
     height: '100%',
   },
@@ -351,6 +595,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  avatarPlaceholder: {
+    backgroundColor: '#00C06A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitials: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   userText: {
     flex: 1,

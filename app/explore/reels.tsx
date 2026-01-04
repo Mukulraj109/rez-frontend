@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  ScrollView,
   Image,
   StatusBar,
   FlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import reelApi, { Reel } from '@/services/reelApi';
 
 const { width } = Dimensions.get('window');
 const REEL_WIDTH = (width - 48) / 2;
@@ -99,21 +101,105 @@ const ExploreReelsPage = () => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('trending');
 
+  // API state
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reels, setReels] = useState<Reel[]>([]);
+
+  // Fetch reels based on active tab
+  const fetchReels = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      let response;
+      if (activeTab === 'trending') {
+        response = await reelApi.getTrendingReels({ limit: 20 });
+        if (response.success && response.data) {
+          setReels(response.data);
+        }
+      } else {
+        // For 'following' and 'nearby' tabs, use general reels endpoint
+        response = await reelApi.getReels({
+          sortBy: activeTab === 'following' ? 'newest' : 'popular',
+          limit: 20,
+        });
+        if (response.success && response.data) {
+          setReels(response.data.reels || []);
+        }
+      }
+
+      if (!response?.success) {
+        setError(response?.error || 'Failed to fetch reels');
+        // Use mock data as fallback
+        setReels(reelsData.map(r => ({
+          id: String(r.id),
+          title: r.product,
+          videoUrl: '',
+          thumbnailUrl: r.image,
+          category: 'general',
+          creator: {
+            id: String(r.id),
+            name: r.user.name,
+            avatar: r.user.avatar,
+          },
+          store: {
+            id: String(r.id),
+            name: r.store,
+          },
+          stats: {
+            views: r.views,
+            likes: r.likes,
+            comments: r.comments,
+            shares: 0,
+          },
+          createdAt: new Date().toISOString(),
+        })));
+      }
+    } catch (err: any) {
+      console.error('[REELS PAGE] Error:', err);
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [activeTab]);
+
+  // Initial fetch and refetch on tab change
+  useEffect(() => {
+    fetchReels();
+  }, [fetchReels]);
+
+  const onRefresh = useCallback(() => {
+    fetchReels(true);
+  }, [fetchReels]);
+
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
 
-  const renderReel = ({ item }: { item: typeof reelsData[0] }) => (
+  const renderReel = ({ item }: { item: Reel }) => (
     <TouchableOpacity
       style={styles.reelCard}
       onPress={() => navigateTo(`/explore/reel/${item.id}`)}
     >
-      <Image source={{ uri: item.image }} style={styles.reelImage} />
+      <Image source={{ uri: item.thumbnailUrl || item.videoUrl }} style={styles.reelImage} />
 
       {/* User Badge */}
       <View style={styles.userBadge}>
-        <Image source={{ uri: item.user.avatar }} style={styles.avatar} />
-        <Text style={styles.userName}>{item.user.name}</Text>
+        {item.creator.avatar ? (
+          <Image source={{ uri: item.creator.avatar }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, { backgroundColor: '#6B7280', justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="person" size={10} color="#FFFFFF" />
+          </View>
+        )}
+        <Text style={styles.userName}>{item.creator.name}</Text>
       </View>
 
       {/* Play Button */}
@@ -126,7 +212,9 @@ const ExploreReelsPage = () => {
       {/* Views Count */}
       <View style={styles.viewsContainer}>
         <Ionicons name="eye" size={12} color="#FFFFFF" />
-        <Text style={styles.viewsText}>{(item.views / 1000).toFixed(1)}K</Text>
+        <Text style={styles.viewsText}>
+          {item.stats.views >= 1000 ? `${(item.stats.views / 1000).toFixed(1)}K` : item.stats.views}
+        </Text>
       </View>
 
       {/* Bottom Gradient */}
@@ -135,26 +223,30 @@ const ExploreReelsPage = () => {
         style={styles.gradient}
       >
         <Text style={styles.productName} numberOfLines={1}>
-          {item.product}
+          {item.title}
         </Text>
-        <View style={styles.storeRow}>
-          <Ionicons name="storefront" size={10} color="#FFFFFF" />
-          <Text style={styles.storeName}>{item.store}</Text>
-        </View>
+        {item.store && (
+          <View style={styles.storeRow}>
+            <Ionicons name="storefront" size={10} color="#FFFFFF" />
+            <Text style={styles.storeName}>{item.store.name}</Text>
+          </View>
+        )}
 
-        <View style={styles.savedBadge}>
-          <Ionicons name="pricetag" size={10} color="#FFFFFF" />
-          <Text style={styles.savedText}>Saved ₹{item.saved}</Text>
-        </View>
+        {item.products && item.products.length > 0 && (
+          <View style={styles.savedBadge}>
+            <Ionicons name="pricetag" size={10} color="#FFFFFF" />
+            <Text style={styles.savedText}>₹{item.products[0].price}</Text>
+          </View>
+        )}
 
         <View style={styles.statsRow}>
           <View style={styles.stat}>
-            <Ionicons name="heart" size={14} color="#FFFFFF" />
-            <Text style={styles.statText}>{item.likes}</Text>
+            <Ionicons name={item.isLiked ? 'heart' : 'heart-outline'} size={14} color={item.isLiked ? '#EF4444' : '#FFFFFF'} />
+            <Text style={styles.statText}>{item.stats.likes}</Text>
           </View>
           <View style={styles.stat}>
             <Ionicons name="chatbubble" size={14} color="#FFFFFF" />
-            <Text style={styles.statText}>{item.comments}</Text>
+            <Text style={styles.statText}>{item.stats.comments}</Text>
           </View>
         </View>
       </LinearGradient>
@@ -162,8 +254,10 @@ const ExploreReelsPage = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -225,16 +319,45 @@ const ExploreReelsPage = () => {
 
       {/* Reels Grid */}
       <FlatList
-        data={reelsData}
+        data={reels}
         renderItem={renderReel}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00C06A']} />
+        }
+        ListHeaderComponent={
+          loading && !refreshing ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#00C06A" />
+              <Text style={styles.loadingText}>Loading reels...</Text>
+            </View>
+          ) : error && reels.length === 0 ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={48} color="#EF4444" />
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => fetchReels()}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          !loading && !error ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="videocam-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.emptyText}>No reels yet</Text>
+              <Text style={styles.emptySubtext}>Be the first to share your experience!</Text>
+            </View>
+          ) : null
+        }
         ListFooterComponent={<View style={{ height: 100 }} />}
-      />
-    </SafeAreaView>
+        />
+      </SafeAreaView>
+    </>
   );
 };
 
@@ -337,6 +460,63 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 16,
+    minHeight: 200,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    width: '100%',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    width: '100%',
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#00C06A',
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    width: '100%',
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  emptySubtext: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#9CA3AF',
   },
   row: {
     justifyContent: 'space-between',

@@ -1,7 +1,7 @@
 // Share to Earn Page
 // Earn coins by sharing content
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -11,12 +11,14 @@ import {
   Platform,
   Share,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { Colors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/DesignSystem';
+import shareApi from '../../services/shareApi';
 
 interface ShareableContent {
   id: string;
@@ -50,28 +52,70 @@ export default function ShareToEarnPage() {
   const [selectedContent, setSelectedContent] = useState<ShareableContent | null>(null);
   const [totalEarned, setTotalEarned] = useState(250);
   const [totalShares, setTotalShares] = useState(15);
+  const [loading, setLoading] = useState(true);
+  const [shareableContent, setShareableContent] = useState<ShareableContent[]>(SHAREABLE_CONTENT);
+
+  // Fetch share stats and content
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsRes, contentRes] = await Promise.all([
+          shareApi.getShareStats(),
+          shareApi.getShareableContent()
+        ]);
+
+        if (statsRes.data) {
+          setTotalEarned(statsRes.data.totalCoinsEarned);
+          setTotalShares(statsRes.data.totalShares);
+        }
+
+        // Could update shareable content from API if available
+        // if (contentRes.data) { ... }
+      } catch (error) {
+        console.error('Error fetching share data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const handleShare = async (content: ShareableContent, platform: string) => {
     try {
       const message = `Check out ${content.title} on ReZ! ${content.description}`;
 
+      // Track share with backend
+      const platformMap: { [key: string]: 'whatsapp' | 'facebook' | 'twitter' | 'instagram' | 'copy_link' | 'other' } = {
+        'whatsapp': 'whatsapp',
+        'facebook': 'facebook',
+        'twitter': 'twitter',
+        'instagram': 'instagram',
+        'copy': 'copy_link',
+        'more': 'other'
+      };
+
+      const contentTypeMap: { [key: string]: 'product' | 'store' | 'offer' | 'referral' } = {
+        'product': 'product',
+        'store': 'store',
+        'offer': 'offer',
+        'referral': 'referral'
+      };
+
+      await shareApi.createShare(
+        contentTypeMap[content.type] || 'product',
+        content.id,
+        platformMap[platform] || 'other'
+      );
+
       if (platform === 'copy') {
-        // Copy to clipboard logic
         alert('Link copied to clipboard!');
-      } else if (platform === 'more') {
-        await Share.share({
-          message,
-          title: content.title,
-        });
       } else {
-        // Platform-specific sharing
         await Share.share({
           message,
           title: content.title,
         });
       }
 
-      // Track the share
       setTotalEarned(prev => prev + content.coins);
       setTotalShares(prev => prev + 1);
       setSelectedContent(null);

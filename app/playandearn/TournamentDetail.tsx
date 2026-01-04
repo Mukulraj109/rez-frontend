@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   View,
@@ -6,9 +7,11 @@ import {
   ScrollView,
   TouchableOpacity,
   useColorScheme,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import tournamentApi, { Tournament, TournamentLeaderboardEntry } from '../../services/tournamentApi';
 
 const TournamentDetail = () => {
   const router = useRouter();
@@ -16,6 +19,42 @@ const TournamentDetail = () => {
   const isDark = false; // Force white theme
   const params = useLocalSearchParams();
   const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : params.id?.toString() || '1';
+
+  const [loading, setLoading] = useState(true);
+  const [tournamentData, setTournamentData] = useState<Tournament | null>(null);
+  const [leaderboardData, setLeaderboardData] = useState<TournamentLeaderboardEntry[]>([]);
+  const [myRankData, setMyRankData] = useState<{ rank: number; score: number } | null>(null);
+
+  // Fetch tournament data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [tournamentRes, leaderboardRes, myRankRes] = await Promise.all([
+          tournamentApi.getTournamentById(id),
+          tournamentApi.getTournamentLeaderboard(id, 5),
+          tournamentApi.getMyRankInTournament(id)
+        ]);
+
+        if (tournamentRes.data) {
+          setTournamentData(tournamentRes.data);
+        }
+        if (leaderboardRes.data) {
+          setLeaderboardData(leaderboardRes.data);
+        }
+        if (myRankRes.data) {
+          setMyRankData({
+            rank: myRankRes.data.rank,
+            score: myRankRes.data.score
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching tournament data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
 
   const tournaments: { [key: string]: any } = {
     '1': {

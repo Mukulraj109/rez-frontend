@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,137 +9,16 @@ import {
   Image,
   StatusBar,
   TextInput,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import exploreApi, { ExploreStore } from '@/services/exploreApi';
 
 const { width } = Dimensions.get('window');
-
-// Mock stores data
-const allStores = [
-  {
-    id: 1,
-    name: 'Paradise Biryani',
-    category: 'Food & Dining',
-    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
-    rating: 4.5,
-    reviews: 567,
-    distance: '0.8 km',
-    cashback: '20%',
-    offer: 'Flat 20% Cashback',
-    isOpen: true,
-    activity: '12 people earned today',
-    badge: 'Hot Deal',
-    badgeColor: '#F97316',
-  },
-  {
-    id: 2,
-    name: 'Nike Store',
-    category: 'Fashion',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
-    rating: 4.8,
-    reviews: 234,
-    distance: '1.2 km',
-    cashback: '15%',
-    offer: '15% + Bonus Coins',
-    isOpen: true,
-    activity: '8 people shopping',
-    badge: 'Trending',
-    badgeColor: '#EF4444',
-  },
-  {
-    id: 3,
-    name: 'Starbucks',
-    category: 'Cafe',
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
-    rating: 4.3,
-    reviews: 345,
-    distance: '0.5 km',
-    cashback: '10%',
-    offer: 'Buy 1 Get 1 Free',
-    isOpen: true,
-    activity: '20 people visited',
-    badge: 'Popular',
-    badgeColor: '#F59E0B',
-  },
-  {
-    id: 4,
-    name: 'Wellness Spa',
-    category: 'Beauty & Wellness',
-    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
-    rating: 4.7,
-    reviews: 189,
-    distance: '2.1 km',
-    cashback: '25%',
-    offer: '25% Cashback',
-    isOpen: true,
-    activity: '5 people booked',
-    badge: 'High Cashback',
-    badgeColor: '#10B981',
-  },
-  {
-    id: 5,
-    name: 'Fresh Mart',
-    category: 'Grocery',
-    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400',
-    rating: 4.2,
-    reviews: 278,
-    distance: '0.3 km',
-    cashback: '5%',
-    offer: '5% on All Items',
-    isOpen: true,
-    activity: '15 people bought',
-    badge: 'Nearby',
-    badgeColor: '#3B82F6',
-  },
-  {
-    id: 6,
-    name: 'Cafe Noir',
-    category: 'Cafe',
-    image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400',
-    rating: 4.6,
-    reviews: 156,
-    distance: '0.9 km',
-    cashback: '12%',
-    offer: '12% Cashback',
-    isOpen: true,
-    activity: '18 people visited',
-    badge: 'Popular',
-    badgeColor: '#F59E0B',
-  },
-  {
-    id: 7,
-    name: 'Gym Plus',
-    category: 'Fitness',
-    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400',
-    rating: 4.4,
-    reviews: 198,
-    distance: '1.5 km',
-    cashback: '30%',
-    offer: '30% Off Membership',
-    isOpen: true,
-    activity: '10 people enrolled',
-    badge: 'High Cashback',
-    badgeColor: '#10B981',
-  },
-  {
-    id: 8,
-    name: 'Apple Store',
-    category: 'Electronics',
-    image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400',
-    rating: 4.9,
-    reviews: 456,
-    distance: '3.2 km',
-    cashback: '15%',
-    offer: '15% Cashback',
-    isOpen: true,
-    activity: '6 people shopping',
-    badge: 'Premium',
-    badgeColor: '#A855F7',
-  },
-];
 
 const categories = [
   { id: 'all', label: 'All', icon: 'grid' },
@@ -154,17 +33,80 @@ const ExploreStoresPage = () => {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [stores, setStores] = useState<ExploreStore[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch stores from API
+  const fetchStores = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      let response;
+      if (searchQuery.trim()) {
+        response = await exploreApi.searchStores(searchQuery);
+      } else {
+        response = await exploreApi.getStores({
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+          limit: 20,
+        });
+      }
+
+      if (response.success && response.data) {
+        setStores(response.data.stores || []);
+      } else {
+        setError(response.error || 'Failed to fetch stores');
+      }
+    } catch (err: any) {
+      console.error('[STORES PAGE] Error:', err);
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [selectedCategory, searchQuery]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchStores();
+  }, [fetchStores]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim()) {
+        fetchStores();
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const onRefresh = useCallback(() => {
+    fetchStores(true);
+  }, [fetchStores]);
 
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
 
-  const filteredStores = allStores.filter((store) => {
+  // Filter stores based on category (already filtered from API, but keep local filter for instant UI)
+  const filteredStores = stores.filter((store) => {
     if (selectedCategory !== 'all') {
-      return store.category.toLowerCase().includes(selectedCategory);
+      return store.category?.toLowerCase().includes(selectedCategory);
     }
     return true;
   });
+
+  // Handle category change
+  const handleCategoryChange = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -218,7 +160,7 @@ const ExploreStoresPage = () => {
               styles.categoryChip,
               selectedCategory === cat.id && styles.categoryChipActive,
             ]}
-            onPress={() => setSelectedCategory(cat.id)}
+            onPress={() => handleCategoryChange(cat.id)}
           >
             <Ionicons
               name={cat.icon as any}
@@ -253,8 +195,40 @@ const ExploreStoresPage = () => {
         style={styles.storesList}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.storesContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00C06A']} />
+        }
       >
-        {filteredStores.map((store) => (
+        {/* Loading State */}
+        {loading && !refreshing && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00C06A" />
+            <Text style={styles.loadingText}>Loading stores...</Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color="#EF4444" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchStores()}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && filteredStores.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="storefront-outline" size={48} color="#9CA3AF" />
+            <Text style={styles.emptyText}>No stores found</Text>
+            <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+          </View>
+        )}
+
+        {/* Store Cards */}
+        {!loading && !error && filteredStores.map((store) => (
           <TouchableOpacity
             key={store.id}
             style={styles.storeCard}
@@ -263,11 +237,13 @@ const ExploreStoresPage = () => {
             <Image source={{ uri: store.image }} style={styles.storeImage} />
 
             {/* Badge */}
-            <View
-              style={[styles.storeBadge, { backgroundColor: store.badgeColor }]}
-            >
-              <Text style={styles.storeBadgeText}>{store.badge}</Text>
-            </View>
+            {store.badge && (
+              <View
+                style={[styles.storeBadge, { backgroundColor: store.badgeColor || '#F97316' }]}
+              >
+                <Text style={styles.storeBadgeText}>{store.badge}</Text>
+              </View>
+            )}
 
             <View style={styles.storeContent}>
               <View style={styles.storeHeader}>
@@ -445,6 +421,60 @@ const styles = StyleSheet.create({
   },
   storesContainer: {
     paddingHorizontal: 16,
+    minHeight: 200,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#00C06A',
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  emptySubtext: {
+    marginTop: 4,
+    fontSize: 14,
+    color: '#9CA3AF',
   },
   storeCard: {
     backgroundColor: '#FFFFFF',

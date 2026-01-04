@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,72 +8,130 @@ import {
   Dimensions,
   Animated,
   Easing,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import gamificationApi, { SpinWheelSegment } from '@/services/gamificationApi';
 
 const { width } = Dimensions.get('window');
 
-const prizes = [
-  { id: 1, label: '₹10', value: 10, color: '#10B981', probability: 0.3 },
-  { id: 2, label: '₹25', value: 25, color: '#3B82F6', probability: 0.25 },
-  { id: 3, label: '₹50', value: 50, color: '#8B5CF6', probability: 0.2 },
-  { id: 4, label: '₹5', value: 5, color: '#F59E0B', probability: 0.15 },
-  { id: 5, label: '₹100', value: 100, color: '#EC4899', probability: 0.05 },
-  { id: 6, label: '₹15', value: 15, color: '#F97316', probability: 0.05 },
+// Default prizes as fallback
+const defaultPrizes: SpinWheelSegment[] = [
+  { id: '1', label: '₹10', value: 10, color: '#10B981', type: 'coins', icon: 'cash', probability: 30 },
+  { id: '2', label: '₹25', value: 25, color: '#3B82F6', type: 'coins', icon: 'cash', probability: 25 },
+  { id: '3', label: '₹50', value: 50, color: '#8B5CF6', type: 'coins', icon: 'cash', probability: 20 },
+  { id: '4', label: '₹5', value: 5, color: '#F59E0B', type: 'coins', icon: 'cash', probability: 15 },
+  { id: '5', label: '₹100', value: 100, color: '#EC4899', type: 'coins', icon: 'cash', probability: 5 },
+  { id: '6', label: '₹15', value: 15, color: '#F97316', type: 'coins', icon: 'cash', probability: 5 },
 ];
 
 export default function SpinWinPage() {
   const router = useRouter();
   const spinAnim = useRef(new Animated.Value(0)).current;
 
+  // API state
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [prizes, setPrizes] = useState<SpinWheelSegment[]>(defaultPrizes);
+
   const [spinning, setSpinning] = useState(false);
-  const [wonPrize, setWonPrize] = useState<typeof prizes[0] | null>(null);
+  const [wonPrize, setWonPrize] = useState<SpinWheelSegment | null>(null);
   const [spinsLeft, setSpinsLeft] = useState(3);
   const [totalWon, setTotalWon] = useState(0);
   const [currentRotation, setCurrentRotation] = useState(0);
 
-  const handleSpin = () => {
+  // Fetch spin wheel data and eligibility
+  const fetchSpinData = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const [wheelResponse, eligibilityResponse] = await Promise.all([
+        gamificationApi.getSpinWheelData(),
+        gamificationApi.getSpinEligibility(),
+      ]);
+
+      if (wheelResponse.success && wheelResponse.data) {
+        const segments = wheelResponse.data.segments;
+        if (segments && segments.length > 0) {
+          setPrizes(segments);
+        }
+      }
+
+      if (eligibilityResponse.success && eligibilityResponse.data) {
+        setSpinsLeft(eligibilityResponse.data.spinsRemaining);
+        setTotalWon(eligibilityResponse.data.totalCoinsEarned);
+      }
+    } catch (error) {
+      console.error('[SPIN WIN] Error fetching data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchSpinData();
+  }, [fetchSpinData]);
+
+  const onRefresh = useCallback(() => {
+    fetchSpinData(true);
+  }, [fetchSpinData]);
+
+  const handleSpin = async () => {
     if (spinsLeft <= 0 || spinning) return;
 
     setSpinning(true);
     setWonPrize(null);
 
-    // Random prize selection weighted by probability
-    const random = Math.random();
-    let cumulativeProbability = 0;
-    let selectedPrize = prizes[0];
+    try {
+      // Call API to execute spin
+      const response = await gamificationApi.executeSpin();
 
-    for (const prize of prizes) {
-      cumulativeProbability += prize.probability;
-      if (random <= cumulativeProbability) {
-        selectedPrize = prize;
-        break;
+      if (response.success && response.data) {
+        const { segmentId, rewardValue, spinsRemaining } = response.data;
+
+        // Find the prize segment
+        const selectedPrize = prizes.find(p => p.id === segmentId) || prizes[0];
+
+        // Calculate rotation
+        const prizeIndex = prizes.findIndex(p => p.id === segmentId);
+        const degreesPerSlice = 360 / prizes.length;
+        const prizeAngle = prizeIndex * degreesPerSlice;
+        const fullSpins = 5;
+        const newRotation = currentRotation + (fullSpins * 360) + (360 - prizeAngle);
+
+        setCurrentRotation(newRotation);
+
+        // Animate the spin
+        Animated.timing(spinAnim, {
+          toValue: newRotation,
+          duration: 4000,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }).start(() => {
+          setSpinning(false);
+          setWonPrize(selectedPrize);
+          setSpinsLeft(spinsRemaining);
+          setTotalWon(prev => prev + rewardValue);
+        });
+      } else {
+        setSpinning(false);
+        Alert.alert('Spin Failed', response.error || 'Unable to spin. Please try again.');
       }
-    }
-
-    // Calculate rotation
-    const prizeIndex = prizes.findIndex(p => p.id === selectedPrize.id);
-    const degreesPerSlice = 360 / prizes.length;
-    const prizeAngle = prizeIndex * degreesPerSlice;
-    const fullSpins = 5;
-    const newRotation = currentRotation + (fullSpins * 360) + (360 - prizeAngle);
-
-    setCurrentRotation(newRotation);
-
-    // Animate the spin
-    Animated.timing(spinAnim, {
-      toValue: newRotation,
-      duration: 4000,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start(() => {
+    } catch (error: any) {
       setSpinning(false);
-      setWonPrize(selectedPrize);
-      setSpinsLeft(prev => prev - 1);
-      setTotalWon(prev => prev + selectedPrize.value);
-    });
+      console.error('[SPIN WIN] Spin error:', error);
+      Alert.alert('Error', error.message || 'Something went wrong');
+    }
   };
 
   const spin = spinAnim.interpolate({
@@ -98,7 +156,20 @@ export default function SpinWinPage() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#F59E0B']} />
+        }
+      >
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#F59E0B" />
+            <Text style={styles.loadingText}>Loading spin wheel...</Text>
+          </View>
+        )}
+
         {/* Stats */}
         <View style={styles.statsContainer}>
           <View style={[styles.statCard, { backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }]}>
@@ -220,7 +291,7 @@ export default function SpinWinPage() {
                 <View style={[styles.prizeColor, { backgroundColor: prize.color }]} />
                 <Text style={styles.prizeRowLabel}>{prize.label}</Text>
               </View>
-              <Text style={styles.prizeRowChance}>{(prize.probability * 100).toFixed(0)}% chance</Text>
+              <Text style={styles.prizeRowChance}>{prize.probability}% chance</Text>
             </View>
           ))}
         </View>
@@ -299,6 +370,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
   },
   statsContainer: {
     flexDirection: 'row',

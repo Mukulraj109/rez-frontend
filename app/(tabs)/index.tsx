@@ -195,6 +195,7 @@ export default function HomeScreen() {
     isPriveEligible,
     activeHomeTab,
     setActiveHomeTab,
+    registerScrollToTop,
   } = useHomeTab();
   const [refreshing, setRefreshing] = React.useState(false);
   const [showDetailedLocation, setShowDetailedLocation] = React.useState(false);
@@ -248,9 +249,17 @@ export default function HomeScreen() {
   const scrollY = React.useRef(new Animated.Value(0)).current; // For sticky header
   const statsLoadedRef = React.useRef(false); // Prevent redundant loads
   const lastFocusRefreshRef = React.useRef(0); // Throttle focus refreshes
+  const scrollViewRef = React.useRef<Animated.ScrollView>(null); // ScrollView ref for scrollToTop
 
   // Initialize push notifications
   usePushNotifications();
+
+  // Register scroll to top callback
+  React.useEffect(() => {
+    registerScrollToTop(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    });
+  }, [registerScrollToTop]);
 
   // Defer heavy renders until after animations complete
   React.useEffect(() => {
@@ -737,6 +746,7 @@ export default function HomeScreen() {
   return (
     <View style={viewStyles.mainContainer}>
       <Animated.ScrollView
+        ref={scrollViewRef}
         style={viewStyles.container}
         contentContainerStyle={viewStyles.scrollContentContainer}
         showsVerticalScrollIndicator={false}

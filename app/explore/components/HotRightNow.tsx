@@ -1,136 +1,148 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Image,
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import exploreApi, { HotProduct } from '../../../services/exploreApi';
 
 const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48) / 2;
 
-const hotDeals = [
+// Fallback data - defined outside component
+const FALLBACK_PRODUCTS: HotProduct[] = [
   {
-    id: 1,
-    name: 'Paradise Biryani',
-    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=200',
-    emoji: '🍛',
-    distance: '0.8 km',
-    cashback: '20%',
-    peopleEarned: 12,
-    badge: 'Hot Deal',
-    badgeColor: '#F97316',
-  },
-  {
-    id: 2,
-    name: 'Nike Store',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200',
-    emoji: '👟',
+    id: '1',
+    name: 'Nike Air Max 90',
+    store: 'Nike Store',
+    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
+    offer: '20% Cashback',
     distance: '1.2 km',
-    cashback: '15%',
-    peopleEarned: 8,
-    badge: 'Trending',
-    badgeColor: '#EF4444',
+    price: 6999,
+    originalPrice: 8999,
+    rating: 4.5,
+    reviews: 120,
   },
   {
-    id: 3,
-    name: 'Starbucks',
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200',
-    emoji: '☕',
-    distance: '0.5 km',
-    cashback: '10%',
-    peopleEarned: 23,
-    badge: 'Popular',
-    badgeColor: '#3B82F6',
+    id: '2',
+    name: 'Chicken Biryani',
+    store: 'Paradise Biryani',
+    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
+    offer: 'Flat \u20B9100 Off',
+    distance: '800 m',
+    price: 350,
+    originalPrice: 450,
+    rating: 4.8,
+    reviews: 250,
   },
   {
-    id: 4,
-    name: 'Wellness Spa',
-    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200',
-    emoji: '💆',
+    id: '3',
+    name: 'Hair Spa',
+    store: 'Wellness Studio',
+    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
+    offer: '25% Cashback',
     distance: '2.1 km',
-    cashback: '25%',
-    peopleEarned: 5,
-    badge: 'High Cashback',
-    badgeColor: '#10B981',
+    price: 1499,
+    originalPrice: 1999,
+    rating: 4.6,
+    reviews: 89,
+  },
+  {
+    id: '4',
+    name: 'Coffee & Snacks',
+    store: 'Cafe Noir',
+    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
+    offer: 'Buy 1 Get 1',
+    distance: '500 m',
+    price: 299,
+    originalPrice: 598,
+    rating: 4.4,
+    reviews: 156,
   },
 ];
 
 const HotRightNow = () => {
   const router = useRouter();
+  const [hotDeals, setHotDeals] = useState<HotProduct[]>(FALLBACK_PRODUCTS);
+
+  useEffect(() => {
+    const fetchHotDeals = async () => {
+      try {
+        console.log('[HOT RIGHT NOW] Fetching hot deals...');
+        const response = await exploreApi.getHotDeals({ limit: 6 });
+        console.log('[HOT RIGHT NOW] Response:', response);
+
+        const products = response.data?.products || response.data || [];
+        console.log('[HOT RIGHT NOW] Products found:', products.length);
+
+        if (response.success && Array.isArray(products) && products.length > 0) {
+          console.log('[HOT RIGHT NOW] Using API products');
+          setHotDeals(products);
+        } else {
+          console.log('[HOT RIGHT NOW] No API products, keeping fallback');
+        }
+      } catch (error) {
+        console.error('[HOT RIGHT NOW] Error:', error);
+      }
+    };
+    fetchHotDeals();
+  }, []);
 
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
 
+  const getOfferBadgeColor = (offer: string) => {
+    if (offer?.toLowerCase().includes('cashback')) return '#00C06A';
+    if (offer?.toLowerCase().includes('off')) return '#0B2240';
+    if (offer?.toLowerCase().includes('buy')) return '#0B2240';
+    return '#00C06A';
+  };
+
+  console.log('[HOT RIGHT NOW] Rendering with', hotDeals.length, 'products');
+
   return (
     <View style={styles.container}>
-      {/* Section Header */}
       <View style={styles.sectionHeader}>
-        <View style={styles.titleRow}>
-          <Ionicons name="flame" size={22} color="#F97316" />
-          <View>
-            <Text style={styles.sectionTitle}>Hot Right Now</Text>
-            <Text style={styles.sectionSubtitle}>Live activity • Real-time deals</Text>
-          </View>
-        </View>
-        <TouchableOpacity onPress={() => navigateTo('/explore/map')}>
-          <Text style={styles.mapViewText}>Map View</Text>
+        <Text style={styles.sectionTitle}>What's Hot Near You</Text>
+        <TouchableOpacity onPress={() => navigateTo('/explore/hot-deals')}>
+          <Text style={styles.viewAllText}>View all →</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Hot Deals Cards */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.cardsContainer}
-      >
-        {hotDeals.map((deal) => (
-          <View key={deal.id} style={styles.dealCard}>
-            {/* Store Info Row */}
-            <View style={styles.storeRow}>
-              <View style={styles.storeImageContainer}>
-                <Image source={{ uri: deal.image }} style={styles.storeImage} />
+      <View style={styles.gridContainer}>
+        {hotDeals.slice(0, 4).map((product, index) => (
+          <TouchableOpacity
+            key={product.id || index}
+            style={styles.productCard}
+            onPress={() => navigateTo(`/product/${product.id}`)}
+          >
+            <View style={styles.imageContainer}>
+              <Image source={{ uri: product.image }} style={styles.productImage} />
+              <View style={[styles.offerBadge, { backgroundColor: getOfferBadgeColor(product.offer) }]}>
+                <Text style={styles.offerBadgeText}>{product.offer}</Text>
               </View>
-              <View style={styles.storeInfo}>
-                <Text style={styles.storeName}>{deal.name}</Text>
-                <View style={styles.distanceRow}>
-                  <Ionicons name="location-outline" size={14} color="#6B7280" />
-                  <Text style={styles.distanceText}>{deal.distance}</Text>
+            </View>
+
+            <View style={styles.productInfo}>
+              <Text style={styles.productName} numberOfLines={1}>{product.name}</Text>
+              <Text style={styles.storeName} numberOfLines={1}>{product.store}</Text>
+              <View style={styles.priceRow}>
+                <Text style={styles.price}>{'\u20B9'}{(product.price || 0).toLocaleString('en-IN')}</Text>
+                <View style={styles.distanceContainer}>
+                  <Ionicons name="location" size={12} color="#6B7280" />
+                  <Text style={styles.distanceText}>{product.distance || '1 km'}</Text>
                 </View>
               </View>
-              <View style={[styles.badge, { backgroundColor: deal.badgeColor }]}>
-                <Text style={styles.badgeText}>{deal.badge}</Text>
-              </View>
             </View>
-
-            {/* Cashback Row */}
-            <View style={styles.cashbackRow}>
-              <Ionicons name="flash" size={18} color="#00C06A" />
-              <Text style={styles.cashbackText}>{deal.cashback} Cashback</Text>
-            </View>
-
-            {/* Activity Row */}
-            <View style={styles.activityRow}>
-              <View style={styles.liveDot} />
-              <Ionicons name="people-outline" size={14} color="#6B7280" />
-              <Text style={styles.activityText}>{deal.peopleEarned} people earned here today</Text>
-            </View>
-
-            {/* Pay Now Button */}
-            <TouchableOpacity
-              style={styles.payNowButton}
-              onPress={() => navigateTo(`/MainStorePage?id=${deal.id}`)}
-            >
-              <Text style={styles.payNowText}>Pay Now</Text>
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -138,129 +150,97 @@ const HotRightNow = () => {
 const styles = StyleSheet.create({
   container: {
     paddingTop: 24,
+    paddingHorizontal: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
+    alignItems: 'center',
     marginBottom: 16,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#0B2240',
   },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  mapViewText: {
+  viewAllText: {
     fontSize: 14,
-    color: '#3B82F6',
+    color: '#00C06A',
     fontWeight: '600',
   },
-  cardsContainer: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  dealCard: {
-    width: width * 0.7,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  storeRow: {
+  gridContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
-  storeImageContainer: {
-    width: 50,
-    height: 50,
+  productCard: {
+    width: CARD_WIDTH,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  imageContainer: {
+    width: '100%',
+    height: CARD_WIDTH * 0.8,
+    position: 'relative',
     backgroundColor: '#F3F4F6',
   },
-  storeImage: {
+  productImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
-  storeInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  storeName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0B2240',
-  },
-  distanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
-  distanceText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  badge: {
+  offerBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: 6,
   },
-  badgeText: {
+  offerBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
-  cashbackRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
+  productInfo: {
+    padding: 12,
   },
-  cashbackText: {
+  productName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0B2240',
+    marginBottom: 2,
+  },
+  storeName: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  price: {
     fontSize: 16,
     fontWeight: '700',
     color: '#0B2240',
   },
-  activityRow: {
+  distanceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 14,
+    gap: 2,
   },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#00C06A',
-  },
-  activityText: {
+  distanceText: {
     fontSize: 12,
     color: '#6B7280',
-  },
-  payNowButton: {
-    backgroundColor: '#00C06A',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  payNowText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
 });
 

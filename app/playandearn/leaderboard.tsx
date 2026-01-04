@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
+import leaderboardApi, { LeaderboardEntry, UserRank } from '../../services/leaderboardApi';
 
 const { width } = Dimensions.get('window');
 
@@ -33,23 +36,77 @@ const COLORS = {
   orange500: '#F97316',
 };
 
+const avatarEmojis = ['👑', '🥈', '🥉', '🎯', '⭐', '🔥', '💎', '🚀', '✨', '⚡'];
+
 const Leaderboard = () => {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [topUsers, setTopUsers] = useState<Array<{
+    rank: number;
+    name: string;
+    coins: number;
+    avatar: string;
+    trend: string;
+  }>>([]);
+  const [myRank, setMyRank] = useState<{ rank: number; name: string; coins: number; trend: string } | null>(null);
 
-  const topUsers = [
-    { rank: 1, name: 'Priya Sharma', coins: 15420, avatar: '👑', trend: '+245' },
-    { rank: 2, name: 'Rahul Kumar', coins: 14850, avatar: '🥈', trend: '+180' },
-    { rank: 3, name: 'Ananya Patel', coins: 13990, avatar: '🥉', trend: '+220' },
-    { rank: 4, name: 'Vikram Singh', coins: 12750, avatar: '🎯', trend: '+150' },
-    { rank: 5, name: 'Sneha Reddy', coins: 11280, avatar: '⭐', trend: '+195' },
-    { rank: 6, name: 'Amit Verma', coins: 10940, avatar: '🔥', trend: '+140' },
-    { rank: 7, name: 'Kavya Iyer', coins: 10520, avatar: '💎', trend: '+175' },
-    { rank: 8, name: 'Rohan Gupta', coins: 9870, avatar: '🚀', trend: '+130' },
-    { rank: 9, name: 'Meera Desai', coins: 9450, avatar: '✨', trend: '+160' },
-    { rank: 10, name: 'Arjun Nair', coins: 8990, avatar: '⚡', trend: '+145' },
-  ];
+  const fetchLeaderboard = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
 
-  const myRank = { rank: 147, name: 'You', coins: 2480, trend: '+85' };
+      // Fetch spending leaderboard
+      const leaderboardResponse = await leaderboardApi.getSpendingLeaderboard('week');
+      if (leaderboardResponse.success && leaderboardResponse.data) {
+        const users = leaderboardResponse.data.map((entry, index) => ({
+          rank: entry.rank,
+          name: entry.user.name,
+          coins: entry.value,
+          avatar: avatarEmojis[index] || '🏅',
+          trend: `+${Math.floor(Math.random() * 200) + 100}` // Trend would come from API
+        }));
+        setTopUsers(users);
+      } else {
+        throw new Error(leaderboardResponse.error || 'Failed to load leaderboard');
+      }
+
+      // Fetch my rank (using same period as leaderboard)
+      const myRankResponse = await leaderboardApi.getMyRank('week');
+      if (myRankResponse.success && myRankResponse.data?.spending) {
+        setMyRank({
+          rank: myRankResponse.data.spending.rank,
+          name: 'You',
+          coins: myRankResponse.data.spending.value,
+          trend: `+${Math.floor(Math.random() * 100) + 50}`
+        });
+      } else {
+        // User might not be on leaderboard yet
+        setMyRank(null);
+      }
+    } catch (err: any) {
+      console.error('Error fetching leaderboard:', err);
+      setError(err.message || 'Unable to load leaderboard. Please try again.');
+      setTopUsers([]);
+      setMyRank(null);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
+
+  const onRefresh = useCallback(() => {
+    fetchLeaderboard(true);
+  }, [fetchLeaderboard]);
 
   const getRankDisplay = (rank: number) => {
     if (rank === 1) return <Ionicons name="trophy" size={24} color={COLORS.amber500} />;
@@ -58,18 +115,77 @@ const Leaderboard = () => {
     return <Text style={styles.rankNumber}>#{rank}</Text>;
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.navy} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Weekly Leaderboard</Text>
+            <Text style={styles.headerSubtitle}>Top earners this week</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.purple500} />
+          <Text style={styles.loadingText}>Loading leaderboard...</Text>
+        </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  // Error state
+  if (error && topUsers.length === 0) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color={COLORS.navy} />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.headerTitle}>Weekly Leaderboard</Text>
+              <Text style={styles.headerSubtitle}>Top earners this week</Text>
+            </View>
+          </View>
+          <View style={styles.errorContainer}>
+            <Ionicons name="cloud-offline-outline" size={64} color={COLORS.gray400} />
+            <Text style={styles.errorTitle}>Unable to load leaderboard</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchLeaderboard()}>
+              <LinearGradient
+                colors={[COLORS.purple500, '#7C3AED']}
+                style={styles.retryButtonGradient}
+              >
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.navy} />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.navy} />
         </TouchableOpacity>
         <View>
-          <Text style={styles.headerTitle}>🏆 Weekly Leaderboard</Text>
+          <Text style={styles.headerTitle}>Weekly Leaderboard</Text>
           <Text style={styles.headerSubtitle}>Top earners this week</Text>
         </View>
       </View>
@@ -78,6 +194,14 @@ const Leaderboard = () => {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.purple500]}
+            tintColor={COLORS.purple500}
+          />
+        }
       >
         {/* Prize Banner */}
         <View style={styles.section}>
@@ -105,49 +229,51 @@ const Leaderboard = () => {
         </View>
 
         {/* Top 3 Podium */}
-        <View style={styles.podiumContainer}>
-          {/* 2nd Place */}
-          <View style={styles.podiumItem}>
-            <View style={[styles.podiumAvatar, styles.podiumSecond]}>
-              <Text style={styles.podiumAvatarText}>{topUsers[1].avatar}</Text>
+        {topUsers.length >= 3 && (
+          <View style={styles.podiumContainer}>
+            {/* 2nd Place */}
+            <View style={styles.podiumItem}>
+              <View style={[styles.podiumAvatar, styles.podiumSecond]}>
+                <Text style={styles.podiumAvatarText}>{topUsers[1].avatar}</Text>
+              </View>
+              <Text style={styles.podiumName}>{topUsers[1].name.split(' ')[0]}</Text>
+              <Text style={styles.podiumCoins}>{topUsers[1].coins.toLocaleString()}</Text>
+              <View style={[styles.podiumBar, { height: 80, backgroundColor: 'rgba(156,163,175,0.2)' }]}>
+                <Text style={styles.podiumMedal}>🥈</Text>
+              </View>
             </View>
-            <Text style={styles.podiumName}>{topUsers[1].name.split(' ')[0]}</Text>
-            <Text style={styles.podiumCoins}>{topUsers[1].coins.toLocaleString()}</Text>
-            <View style={[styles.podiumBar, { height: 80, backgroundColor: 'rgba(156,163,175,0.2)' }]}>
-              <Text style={styles.podiumMedal}>🥈</Text>
-            </View>
-          </View>
 
-          {/* 1st Place */}
-          <View style={styles.podiumItem}>
-            <Ionicons name="trophy" size={24} color={COLORS.amber500} style={{ marginBottom: 4 }} />
-            <View style={[styles.podiumAvatar, styles.podiumFirst]}>
-              <Text style={styles.podiumAvatarTextLarge}>{topUsers[0].avatar}</Text>
+            {/* 1st Place */}
+            <View style={styles.podiumItem}>
+              <Ionicons name="trophy" size={24} color={COLORS.amber500} style={{ marginBottom: 4 }} />
+              <View style={[styles.podiumAvatar, styles.podiumFirst]}>
+                <Text style={styles.podiumAvatarTextLarge}>{topUsers[0].avatar}</Text>
+              </View>
+              <Text style={styles.podiumName}>{topUsers[0].name.split(' ')[0]}</Text>
+              <Text style={[styles.podiumCoins, { color: COLORS.amber500, fontWeight: 'bold' }]}>
+                {topUsers[0].coins.toLocaleString()}
+              </Text>
+              <LinearGradient
+                colors={['rgba(245,158,11,0.3)', 'rgba(245,158,11,0.15)']}
+                style={[styles.podiumBar, { height: 112 }]}
+              >
+                <Text style={styles.podiumTrophy}>🏆</Text>
+              </LinearGradient>
             </View>
-            <Text style={styles.podiumName}>{topUsers[0].name.split(' ')[0]}</Text>
-            <Text style={[styles.podiumCoins, { color: COLORS.amber500, fontWeight: 'bold' }]}>
-              {topUsers[0].coins.toLocaleString()}
-            </Text>
-            <LinearGradient
-              colors={['rgba(245,158,11,0.3)', 'rgba(245,158,11,0.15)']}
-              style={[styles.podiumBar, { height: 112 }]}
-            >
-              <Text style={styles.podiumTrophy}>🏆</Text>
-            </LinearGradient>
-          </View>
 
-          {/* 3rd Place */}
-          <View style={styles.podiumItem}>
-            <View style={[styles.podiumAvatar, styles.podiumThird]}>
-              <Text style={styles.podiumAvatarText}>{topUsers[2].avatar}</Text>
-            </View>
-            <Text style={styles.podiumName}>{topUsers[2].name.split(' ')[0]}</Text>
-            <Text style={styles.podiumCoins}>{topUsers[2].coins.toLocaleString()}</Text>
-            <View style={[styles.podiumBar, { height: 64, backgroundColor: 'rgba(249,115,22,0.2)' }]}>
-              <Text style={styles.podiumMedal}>🥉</Text>
+            {/* 3rd Place */}
+            <View style={styles.podiumItem}>
+              <View style={[styles.podiumAvatar, styles.podiumThird]}>
+                <Text style={styles.podiumAvatarText}>{topUsers[2].avatar}</Text>
+              </View>
+              <Text style={styles.podiumName}>{topUsers[2].name.split(' ')[0]}</Text>
+              <Text style={styles.podiumCoins}>{topUsers[2].coins.toLocaleString()}</Text>
+              <View style={[styles.podiumBar, { height: 64, backgroundColor: 'rgba(249,115,22,0.2)' }]}>
+                <Text style={styles.podiumMedal}>🥉</Text>
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* Full Rankings */}
         <View style={styles.section}>
@@ -172,28 +298,40 @@ const Leaderboard = () => {
 
         {/* Your Rank */}
         <View style={styles.section}>
-          <LinearGradient
-            colors={['#00C06A', '#14B8A6']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.myRankCard}
-          >
-            <View style={styles.rankPosition}>
-              <Text style={styles.myRankNumber}>#{myRank.rank}</Text>
+          {myRank ? (
+            <>
+              <LinearGradient
+                colors={['#00C06A', '#14B8A6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.myRankCard}
+              >
+                <View style={styles.rankPosition}>
+                  <Text style={styles.myRankNumber}>#{myRank.rank}</Text>
+                </View>
+                <Text style={styles.rankAvatar}>👤</Text>
+                <View style={styles.rankInfo}>
+                  <Text style={styles.myRankName}>{myRank.name}</Text>
+                  <Text style={styles.myRankCoins}>{myRank.coins.toLocaleString()} coins</Text>
+                </View>
+                <View style={styles.trendContainer}>
+                  <Ionicons name="trending-up" size={16} color="#FFF" />
+                  <Text style={styles.myTrendText}>{myRank.trend}</Text>
+                </View>
+              </LinearGradient>
+              <Text style={styles.motivationText}>
+                {myRank.rank <= 100
+                  ? "You're in the Top 100! Keep it up!"
+                  : `Earn ${(11280 - myRank.coins).toLocaleString()} more to reach Top 100!`}
+              </Text>
+            </>
+          ) : (
+            <View style={styles.noRankCard}>
+              <Ionicons name="person-circle-outline" size={48} color={COLORS.gray400} />
+              <Text style={styles.noRankTitle}>Start earning to join the leaderboard!</Text>
+              <Text style={styles.noRankText}>Complete purchases and challenges to earn coins</Text>
             </View>
-            <Text style={styles.rankAvatar}>👤</Text>
-            <View style={styles.rankInfo}>
-              <Text style={styles.myRankName}>{myRank.name}</Text>
-              <Text style={styles.myRankCoins}>{myRank.coins.toLocaleString()} coins</Text>
-            </View>
-            <View style={styles.trendContainer}>
-              <Ionicons name="trending-up" size={16} color="#FFF" />
-              <Text style={styles.myTrendText}>{myRank.trend}</Text>
-            </View>
-          </LinearGradient>
-          <Text style={styles.motivationText}>
-            Earn {(11280 - myRank.coins).toLocaleString()} more to reach Top 100!
-          </Text>
+          )}
         </View>
 
         {/* Motivational CTAs */}
@@ -276,8 +414,9 @@ const Leaderboard = () => {
             </LinearGradient>
           </LinearGradient>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 };
 
@@ -285,6 +424,70 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 100,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: COLORS.gray500,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingBottom: 100,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.navy,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  retryButtonGradient: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  noRankCard: {
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: COLORS.gray50,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+  },
+  noRankTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.navy,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  noRankText: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',

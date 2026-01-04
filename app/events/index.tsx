@@ -1,9 +1,9 @@
 /**
  * Events Page - Main events hub
- * Converted from V2
+ * Connected to /api/events
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,14 @@ import {
   Image,
   Platform,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import eventsApiService from '@/services/eventsApi';
+import { EventItem } from '@/types/homepage.types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -36,7 +40,7 @@ const COLORS = {
   red500: '#EF4444',
 };
 
-const categories = [
+const EVENT_CATEGORIES = [
   { id: 'movies', title: 'Movies', icon: '🎬', color: '#EF4444', route: '/events/movies' },
   { id: 'concerts', title: 'Concerts', icon: '🎵', color: '#8B5CF6', route: '/events/concerts' },
   { id: 'parks', title: 'Parks', icon: '🎢', color: '#22C55E', route: '/events/parks' },
@@ -45,10 +49,11 @@ const categories = [
   { id: 'sports', title: 'Sports', icon: '⚽', color: '#10B981', route: '/events/sports' },
 ];
 
-const featuredEvents = [
+// Fallback data
+const FALLBACK_FEATURED = [
   {
-    id: 1,
-    title: 'Avengers: Secret Wars',
+    id: '1',
+    title: 'Weekend Movie Marathon',
     type: 'Movie',
     date: 'Now Showing',
     location: 'PVR Cinemas',
@@ -57,30 +62,30 @@ const featuredEvents = [
     cashback: '20%',
   },
   {
-    id: 2,
-    title: 'Coldplay Live',
+    id: '2',
+    title: 'Live Music Concert',
     type: 'Concert',
     date: 'Jan 15, 2025',
-    location: 'DY Patil Stadium',
+    location: 'Arena Stadium',
     price: '₹4,999',
     image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
     cashback: '15%',
   },
   {
-    id: 3,
-    title: 'Imagica Theme Park',
+    id: '3',
+    title: 'Theme Park Day',
     type: 'Park',
     date: 'Open Daily',
-    location: 'Khopoli',
+    location: 'Wonderla',
     price: '₹1,499',
     image: 'https://images.unsplash.com/photo-1513889961551-628c1e5e2ee9?w=400',
     cashback: '25%',
   },
 ];
 
-const upcomingEvents = [
+const FALLBACK_UPCOMING = [
   {
-    id: 4,
+    id: '4',
     title: 'Art Workshop',
     type: 'Workshop',
     date: 'Dec 30',
@@ -88,7 +93,7 @@ const upcomingEvents = [
     image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=300',
   },
   {
-    id: 5,
+    id: '5',
     title: 'Gaming Tournament',
     type: 'Gaming',
     date: 'Jan 5',
@@ -96,7 +101,7 @@ const upcomingEvents = [
     image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=300',
   },
   {
-    id: 6,
+    id: '6',
     title: 'Cricket Match',
     type: 'Sports',
     date: 'Jan 10',
@@ -105,16 +110,84 @@ const upcomingEvents = [
   },
 ];
 
+interface DisplayEvent {
+  id: string;
+  title: string;
+  type: string;
+  date: string;
+  location?: string;
+  price: string;
+  image: string;
+  cashback?: string;
+}
+
 const EventsPage: React.FC = () => {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [featuredEvents, setFeaturedEvents] = useState<DisplayEvent[]>(FALLBACK_FEATURED);
+  const [upcomingEvents, setUpcomingEvents] = useState<DisplayEvent[]>(FALLBACK_UPCOMING);
+
+  const transformEventToDisplay = (event: EventItem): DisplayEvent => {
+    return {
+      id: event.id,
+      title: event.title,
+      type: event.category || 'Event',
+      date: event.date ? new Date(event.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'TBD',
+      location: typeof event.location === 'string' ? event.location : 'Venue',
+      price: event.price?.isFree ? 'Free' : `${event.price?.currency || '₹'}${event.price?.amount || 0}`,
+      image: event.image || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',
+      cashback: '15%',
+    };
+  };
+
+  const fetchEvents = useCallback(async () => {
+    try {
+      // Fetch featured events
+      const featured = await eventsApiService.getFeaturedEvents(6);
+      if (featured && featured.length > 0) {
+        setFeaturedEvents(featured.slice(0, 3).map(transformEventToDisplay));
+      }
+
+      // Fetch upcoming events
+      const upcoming = await eventsApiService.getEvents({ upcoming: true, todayAndFuture: true }, 6, 0);
+      if (upcoming && upcoming.events && upcoming.events.length > 0) {
+        setUpcomingEvents(upcoming.events.slice(0, 6).map(transformEventToDisplay));
+      }
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      // Keep fallback data
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    fetchEvents();
+  }, [fetchEvents]);
 
   const handleCategoryPress = (route: string) => {
     router.push(route as any);
   };
 
-  const handleEventPress = (eventId: number) => {
-    router.push(`/events/${eventId}` as any);
+  const handleEventPress = (eventId: string) => {
+    router.push(`/EventPage?id=${eventId}` as any);
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={COLORS.green500} />
+        <Text style={styles.loadingText}>Loading events...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -127,17 +200,22 @@ const EventsPage: React.FC = () => {
           <Text style={styles.headerTitle}>Events & Experiences</Text>
           <Text style={styles.headerSubtitle}>Book tickets, earn coins</Text>
         </View>
-        <TouchableOpacity style={styles.searchButton}>
+        <TouchableOpacity style={styles.searchButton} onPress={() => router.push('/search' as any)}>
           <Ionicons name="search" size={24} color={COLORS.navy} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.green500]} />
+        }
+      >
         {/* Categories */}
         <View style={styles.categoriesSection}>
           <Text style={styles.sectionTitle}>Browse Categories</Text>
           <View style={styles.categoriesGrid}>
-            {categories.map((cat) => (
+            {EVENT_CATEGORIES.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
                 style={styles.categoryCard}
@@ -157,7 +235,7 @@ const EventsPage: React.FC = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Featured Events</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/EventsListPage' as any)}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -174,16 +252,20 @@ const EventsPage: React.FC = () => {
                   colors={['transparent', 'rgba(0,0,0,0.8)']}
                   style={styles.featuredOverlay}
                 >
-                  <View style={styles.cashbackBadge}>
-                    <Text style={styles.cashbackText}>{event.cashback} Cashback</Text>
-                  </View>
+                  {event.cashback && (
+                    <View style={styles.cashbackBadge}>
+                      <Text style={styles.cashbackText}>{event.cashback} Cashback</Text>
+                    </View>
+                  )}
                   <Text style={styles.featuredTitle}>{event.title}</Text>
                   <Text style={styles.featuredMeta}>{event.type} • {event.date}</Text>
                   <View style={styles.featuredFooter}>
-                    <View style={styles.locationContainer}>
-                      <Ionicons name="location" size={14} color={COLORS.white} />
-                      <Text style={styles.locationText}>{event.location}</Text>
-                    </View>
+                    {event.location && (
+                      <View style={styles.locationContainer}>
+                        <Ionicons name="location" size={14} color={COLORS.white} />
+                        <Text style={styles.locationText}>{event.location}</Text>
+                      </View>
+                    )}
                     <Text style={styles.priceText}>{event.price}</Text>
                   </View>
                 </LinearGradient>
@@ -196,7 +278,7 @@ const EventsPage: React.FC = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Upcoming Events</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/EventsListPage' as any)}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -247,6 +329,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.white,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.gray600,
   },
   header: {
     flexDirection: 'row',

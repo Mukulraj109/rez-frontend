@@ -1,9 +1,10 @@
 /**
  * Badges/Achievements Screen - Converted from V2 Web
  * Exact match to Rez_v-2-main/src/pages/earn/Achievements.jsx
+ * Now integrated with achievementApi for real data
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,11 +13,14 @@ import {
   ScrollView,
   Dimensions,
   Platform,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { achievementApi, AchievementType, Achievement as ApiAchievement } from '@/services/achievementApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 48 - 12) / 2;
@@ -42,7 +46,7 @@ const COLORS = {
 };
 
 interface Achievement {
-  id: number;
+  id: string;
   title: string;
   desc: string;
   icon: string;
@@ -52,73 +56,248 @@ interface Achievement {
   progress?: number;
 }
 
-const achievements: Achievement[] = [
-  { id: 1, title: 'First Purchase', desc: 'Make your first purchase', icon: '🎯', unlocked: true, coins: 100, category: 'Shopping' },
-  { id: 2, title: 'Week Streak', desc: 'Login 7 days in a row', icon: '🔥', unlocked: true, coins: 500, category: 'Engagement' },
-  { id: 3, title: 'Social Butterfly', desc: 'Refer 10 friends', icon: '🦋', unlocked: false, coins: 300, progress: 60, category: 'Social' },
-  { id: 4, title: 'Deal Hunter', desc: 'Redeem 20 offers', icon: '🎪', unlocked: false, coins: 400, progress: 25, category: 'Shopping' },
-  { id: 5, title: 'Review Master', desc: 'Write 15 reviews', icon: '⭐', unlocked: false, coins: 250, progress: 40, category: 'Social' },
-  { id: 6, title: 'Big Spender', desc: 'Spend ₹10,000', icon: '💰', unlocked: false, coins: 1000, progress: 75, category: 'Shopping' },
-  { id: 7, title: 'Early Bird', desc: 'Check-in before 8 AM', icon: '🌅', unlocked: true, coins: 150, category: 'Engagement' },
-  { id: 8, title: 'Night Owl', desc: 'Shop after 10 PM', icon: '🦉', unlocked: false, coins: 150, progress: 0, category: 'Engagement' },
-  { id: 9, title: 'Game Master', desc: 'Play 50 games', icon: '🎮', unlocked: false, coins: 500, progress: 30, category: 'Gaming' },
-  { id: 10, title: 'Cashback King', desc: 'Earn ₹5,000 cashback', icon: '👑', unlocked: false, coins: 2000, progress: 45, category: 'Shopping' },
-  { id: 11, title: 'Explorer', desc: 'Visit 30 stores', icon: '🗺️', unlocked: false, coins: 350, progress: 50, category: 'Shopping' },
-  { id: 12, title: 'Loyal Member', desc: '30 days streak', icon: '💎', unlocked: false, coins: 1500, progress: 20, category: 'Engagement' },
-];
+// Helper function to get category from achievement type
+const getCategoryFromType = (type: string): string => {
+  if (type.includes('ORDER') || type.includes('SPENT') || type.includes('VOUCHER') || type.includes('OFFERS')) return 'Shopping';
+  if (type.includes('REFERRAL')) return 'Social';
+  if (type.includes('REVIEW')) return 'Engagement';
+  if (type.includes('VIDEO') || type.includes('PROJECT')) return 'Content';
+  if (type.includes('STREAK') || type.includes('ACTIVITY') || type.includes('EARLY') || type.includes('YEAR')) return 'Engagement';
+  return 'General';
+};
 
-const categories = ['All', 'Shopping', 'Social', 'Engagement', 'Gaming'];
+// Helper function to get icon from achievement type
+const getIconFromType = (type: string, existingIcon?: string): string => {
+  if (existingIcon && existingIcon.length <= 2) return existingIcon; // Already an emoji
+
+  const iconMap: Record<string, string> = {
+    FIRST_ORDER: '🎯',
+    ORDERS_10: '🛒',
+    ORDERS_50: '🛍️',
+    ORDERS_100: '🏆',
+    FREQUENT_BUYER: '⭐',
+    SPENT_1000: '💸',
+    SPENT_5000: '💰',
+    SPENT_10000: '👑',
+    BIG_SPENDER: '💎',
+    FIRST_REVIEW: '📝',
+    REVIEWS_10: '✍️',
+    REVIEWS_25: '📚',
+    REVIEW_MASTER: '⭐',
+    FIRST_VIDEO: '🎬',
+    VIDEOS_10: '📹',
+    VIEWS_1000: '👁️',
+    VIEWS_10000: '🔥',
+    INFLUENCER: '🌟',
+    FIRST_PROJECT: '🎨',
+    PROJECTS_10: '🖼️',
+    PROJECT_APPROVED: '✅',
+    TOP_EARNER: '🏅',
+    VOUCHER_REDEEMED: '🎟️',
+    OFFERS_10: '🎪',
+    CASHBACK_EARNED: '💵',
+    FIRST_REFERRAL: '🤝',
+    REFERRALS_5: '👥',
+    REFERRALS_10: '🦋',
+    REFERRAL_MASTER: '👑',
+    EARLY_BIRD: '🌅',
+    ONE_YEAR: '🎂',
+    ACTIVITY_100: '⚡',
+    ACTIVITY_500: '🚀',
+    SUPER_USER: '🦸',
+  };
+
+  return iconMap[type] || '🏅';
+};
+
+const categories = ['All', 'Shopping', 'Social', 'Engagement', 'Content', 'General'];
 
 const BadgesScreen: React.FC = () => {
   const router = useRouter();
   const [activeCategory, setActiveCategory] = useState('All');
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    unlocked: 0,
+    total: 0,
+    totalCoins: 0,
+    completionPercent: 0,
+  });
+
+  // Fetch achievements from API
+  const fetchAchievements = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const response = await achievementApi.getAchievementProgress();
+
+      if (response.success && response.data) {
+        // Map API response to local interface
+        const mapped: Achievement[] = response.data.achievements.map((a: ApiAchievement) => ({
+          id: a.id,
+          title: a.title,
+          desc: a.description,
+          icon: getIconFromType(a.type, a.icon),
+          unlocked: a.unlocked,
+          coins: a.targetValue,
+          category: getCategoryFromType(a.type),
+          progress: a.unlocked ? 100 : a.progress,
+        }));
+
+        setAchievements(mapped);
+        setStats({
+          unlocked: response.data.summary.unlocked,
+          total: response.data.summary.total,
+          totalCoins: mapped.filter(a => a.unlocked).reduce((sum, a) => sum + a.coins, 0),
+          completionPercent: Math.round(response.data.summary.completionPercentage),
+        });
+      } else {
+        setError(response.error || 'Failed to load achievements');
+      }
+    } catch (err: any) {
+      console.error('Error fetching achievements:', err);
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAchievements();
+  }, [fetchAchievements]);
+
+  const onRefresh = useCallback(() => {
+    fetchAchievements(true);
+  }, [fetchAchievements]);
 
   const filteredAchievements = activeCategory === 'All'
     ? achievements
     : achievements.filter(a => a.category === activeCategory);
 
-  const totalUnlocked = achievements.filter(a => a.unlocked).length;
-  const totalCoins = achievements.filter(a => a.unlocked).reduce((sum, a) => sum + a.coins, 0);
-  const completionPercent = Math.round((totalUnlocked / achievements.length) * 100);
+  // Loading state
+  if (loading) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={20} color={COLORS.navy} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Achievements</Text>
+            <Text style={styles.headerSubtitle}>Unlock badges & earn coins</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.purple500} />
+          <Text style={styles.loadingText}>Loading achievements...</Text>
+        </View>
+        </SafeAreaView>
+      </>
+    );
+  }
+
+  // Error state
+  if (error && achievements.length === 0) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={20} color={COLORS.navy} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Achievements</Text>
+            <Text style={styles.headerSubtitle}>Unlock badges & earn coins</Text>
+          </View>
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons name="cloud-offline-outline" size={64} color={COLORS.gray400} />
+          <Text style={styles.errorTitle}>Unable to load achievements</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => fetchAchievements()}>
+            <LinearGradient
+              colors={[COLORS.purple500, COLORS.purple600]}
+              style={styles.retryButtonGradient}
+            >
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+        </SafeAreaView>
+      </>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={20} color={COLORS.navy} />
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>🏅 Achievements</Text>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={20} color={COLORS.navy} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Achievements</Text>
           <Text style={styles.headerSubtitle}>Unlock badges & earn coins</Text>
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.purple500]}
+            tintColor={COLORS.purple500}
+          />
+        }
+      >
         {/* Stats */}
         <View style={styles.statsRow}>
           <LinearGradient
             colors={['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.2)']}
             style={styles.statCard}
           >
-            <Text style={styles.statValue}>{totalUnlocked}/{achievements.length}</Text>
+            <Text style={styles.statValue}>{stats.unlocked}/{stats.total}</Text>
             <Text style={styles.statLabel}>Unlocked</Text>
           </LinearGradient>
           <LinearGradient
             colors={['rgba(245, 158, 11, 0.2)', 'rgba(234, 179, 8, 0.2)']}
             style={styles.statCard}
           >
-            <Text style={[styles.statValue, { color: COLORS.amber400 }]}>{totalCoins}</Text>
+            <Text style={[styles.statValue, { color: COLORS.amber400 }]}>{stats.totalCoins}</Text>
             <Text style={styles.statLabel}>Coins Earned</Text>
           </LinearGradient>
           <LinearGradient
             colors={['rgba(34, 197, 94, 0.2)', 'rgba(16, 185, 129, 0.2)']}
             style={styles.statCard}
           >
-            <Text style={[styles.statValue, { color: COLORS.green500 }]}>{completionPercent}%</Text>
+            <Text style={[styles.statValue, { color: COLORS.green500 }]}>{stats.completionPercent}%</Text>
             <Text style={styles.statLabel}>Complete</Text>
           </LinearGradient>
         </View>
+
+        {/* Empty State */}
+        {achievements.length === 0 && !loading && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>🏅</Text>
+            <Text style={styles.emptyTitle}>No Achievements Yet</Text>
+            <Text style={styles.emptyText}>Start shopping and engaging to unlock your first badge!</Text>
+          </View>
+        )}
 
         {/* Category Filter */}
         <ScrollView
@@ -282,8 +461,9 @@ const BadgesScreen: React.FC = () => {
         </View>
 
         <View style={{ height: 100 }} />
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 };
 
@@ -291,6 +471,70 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 100,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: COLORS.gray500,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingBottom: 100,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.navy,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  retryButtonGradient: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.navy,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',
