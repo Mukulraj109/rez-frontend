@@ -21,76 +21,6 @@ const { width } = Dimensions.get('window');
 const REEL_WIDTH = (width - 48) / 2;
 const REEL_HEIGHT = REEL_WIDTH * 1.5;
 
-// Mock reels data
-const reelsData = [
-  {
-    id: 1,
-    user: { name: 'Priya S.', avatar: 'https://i.pravatar.cc/100?img=1' },
-    store: 'Starbucks',
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
-    product: 'Cappuccino & Croissant',
-    saved: 120,
-    likes: 234,
-    comments: 45,
-    views: 1200,
-  },
-  {
-    id: 2,
-    user: { name: 'Rahul K.', avatar: 'https://i.pravatar.cc/100?img=2' },
-    store: 'Nike Store',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
-    product: 'Air Max 90',
-    saved: 2000,
-    likes: 456,
-    comments: 89,
-    views: 3400,
-  },
-  {
-    id: 3,
-    user: { name: 'Sneha M.', avatar: 'https://i.pravatar.cc/100?img=3' },
-    store: 'Paradise Biryani',
-    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
-    product: 'Chicken Biryani',
-    saved: 150,
-    likes: 312,
-    comments: 67,
-    views: 2100,
-  },
-  {
-    id: 4,
-    user: { name: 'Arjun P.', avatar: 'https://i.pravatar.cc/100?img=4' },
-    store: 'Wellness Spa',
-    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
-    product: 'Hair Spa Treatment',
-    saved: 400,
-    likes: 189,
-    comments: 34,
-    views: 890,
-  },
-  {
-    id: 5,
-    user: { name: 'Neha R.', avatar: 'https://i.pravatar.cc/100?img=5' },
-    store: 'Cafe Noir',
-    image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400',
-    product: 'Cold Brew Coffee',
-    saved: 80,
-    likes: 156,
-    comments: 23,
-    views: 670,
-  },
-  {
-    id: 6,
-    user: { name: 'Vikram S.', avatar: 'https://i.pravatar.cc/100?img=6' },
-    store: 'Gym Plus',
-    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400',
-    product: 'Monthly Membership',
-    saved: 600,
-    likes: 278,
-    comments: 45,
-    views: 1500,
-  },
-];
-
 const tabs = [
   { id: 'trending', label: 'Trending', icon: 'flame' },
   { id: 'following', label: 'Following', icon: 'people' },
@@ -136,30 +66,6 @@ const ExploreReelsPage = () => {
 
       if (!response?.success) {
         setError(response?.error || 'Failed to fetch reels');
-        // Use mock data as fallback
-        setReels(reelsData.map(r => ({
-          id: String(r.id),
-          title: r.product,
-          videoUrl: '',
-          thumbnailUrl: r.image,
-          category: 'general',
-          creator: {
-            id: String(r.id),
-            name: r.user.name,
-            avatar: r.user.avatar,
-          },
-          store: {
-            id: String(r.id),
-            name: r.store,
-          },
-          stats: {
-            views: r.views,
-            likes: r.likes,
-            comments: r.comments,
-            shares: 0,
-          },
-          createdAt: new Date().toISOString(),
-        })));
       }
     } catch (err: any) {
       console.error('[REELS PAGE] Error:', err);

@@ -1,51 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import exploreApi, { VerifiedReview } from '@/services/exploreApi';
 
 const { width } = Dimensions.get('window');
 
-const verifiedReviews = [
-  {
-    id: 1,
-    user: 'Priya S.',
-    rating: 5,
-    review: '"Best biryani in town! The portion size is generous and ReZ cashback made it even better."',
-    store: 'Paradise Biryani',
-    cashback: 52,
-    verified: true,
-    time: '2 days ago',
-  },
-  {
-    id: 2,
-    user: 'Rahul K.',
-    rating: 4.5,
-    review: '"Great quality sneakers and authentic products. Fast delivery and good cashback."',
-    store: 'Nike Store',
-    cashback: 1260,
-    verified: true,
-    time: '1 week ago',
-  },
-  {
-    id: 3,
-    user: 'Ananya M.',
-    rating: 5,
-    review: '"Amazing spa experience! Professional service and the ReZ rewards were a nice bonus."',
-    store: 'Wellness Spa',
-    cashback: 400,
-    verified: true,
-    time: '3 days ago',
-  },
-];
-
 const VerifiedReviews = () => {
   const router = useRouter();
+  const [reviews, setReviews] = useState<VerifiedReview[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchVerifiedReviews();
+  }, []);
+
+  const fetchVerifiedReviews = async () => {
+    try {
+      const response = await exploreApi.getVerifiedReviews({ limit: 3 });
+      if (response.success && response.data) {
+        setReviews(response.data.reviews);
+      }
+    } catch (error) {
+      console.error('[VerifiedReviews] Error fetching reviews:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const navigateTo = (path: string) => {
     router.push(path as any);
@@ -74,6 +62,41 @@ const VerifiedReviews = () => {
     return stars;
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Top Reviews Near You</Text>
+            <Text style={styles.sectionSubtitle}>Trusted feedback from verified purchases</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#00C06A" />
+        </View>
+      </View>
+    );
+  }
+
+  // Empty state
+  if (reviews.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Top Reviews Near You</Text>
+            <Text style={styles.sectionSubtitle}>Trusted feedback from verified purchases</Text>
+          </View>
+        </View>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="chatbubble-outline" size={32} color="#9CA3AF" />
+          <Text style={styles.emptyText}>No reviews available yet</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Section Header */}
@@ -82,14 +105,14 @@ const VerifiedReviews = () => {
           <Text style={styles.sectionTitle}>Top Reviews Near You</Text>
           <Text style={styles.sectionSubtitle}>Trusted feedback from verified purchases</Text>
         </View>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigateTo('/explore/reviews')}>
           <Text style={styles.allReviewsText}>All Reviews</Text>
         </TouchableOpacity>
       </View>
 
       {/* Reviews List */}
       <View style={styles.reviewsList}>
-        {verifiedReviews.map((review) => (
+        {reviews.map((review) => (
           <View key={review.id} style={styles.reviewCard}>
             {/* Rating Row */}
             <View style={styles.ratingRow}>
@@ -97,16 +120,18 @@ const VerifiedReviews = () => {
                 {renderStars(review.rating)}
                 <Text style={styles.ratingNumber}>{review.rating}</Text>
               </View>
-              <View style={styles.cashbackBadge}>
-                <View style={styles.cashbackIcon}>
-                  <Ionicons name="wallet-outline" size={12} color="#FFFFFF" />
+              {review.cashback > 0 && (
+                <View style={styles.cashbackBadge}>
+                  <View style={styles.cashbackIcon}>
+                    <Ionicons name="wallet-outline" size={12} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.cashbackText}>₹{review.cashback}</Text>
                 </View>
-                <Text style={styles.cashbackText}>₹{review.cashback}</Text>
-              </View>
+              )}
             </View>
 
             {/* Review Text */}
-            <Text style={styles.reviewText}>{review.review}</Text>
+            <Text style={styles.reviewText}>"{review.review}"</Text>
 
             {/* Store & Verified Row */}
             <View style={styles.storeRow}>
@@ -135,6 +160,19 @@ const VerifiedReviews = () => {
 const styles = StyleSheet.create({
   container: {
     paddingTop: 24,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#9CA3AF',
   },
   sectionHeader: {
     flexDirection: 'row',

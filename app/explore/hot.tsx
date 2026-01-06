@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import exploreApi, { HotProduct } from '@/services/exploreApi';
 
@@ -87,8 +87,10 @@ const ExploreHotPage = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -179,21 +181,25 @@ const ExploreHotPage = () => {
             <TouchableOpacity
               key={item.id}
               style={styles.itemCard}
-              onPress={() => navigateTo(`/MainStorePage?id=${item.id}`)}
+              onPress={() => navigateTo(`/ProductPage?cardId=${item.id}&cardType=product`)}
             >
               <View style={styles.imageContainer}>
-                <Image source={{ uri: item.image }} style={styles.itemImage} />
+                {item.image && <Image source={{ uri: item.image }} style={styles.itemImage} />}
 
                 {/* Offer Badge */}
-                <View style={styles.offerBadge}>
-                  <Text style={styles.offerText}>{item.offer}</Text>
-                </View>
+                {item.offer && (
+                  <View style={styles.offerBadge}>
+                    <Text style={styles.offerText}>{item.offer}</Text>
+                  </View>
+                )}
 
                 {/* Hot Badge */}
-                <View style={styles.hotBadge}>
-                  <Ionicons name="flame" size={12} color="#FFFFFF" />
-                  <Text style={styles.hotText}>{item.buyers} bought</Text>
-                </View>
+                {item.buyers && item.buyers > 0 && (
+                  <View style={styles.hotBadge}>
+                    <Ionicons name="flame" size={12} color="#FFFFFF" />
+                    <Text style={styles.hotText}>{item.buyers} bought</Text>
+                  </View>
+                )}
 
                 {/* Wishlist */}
                 <TouchableOpacity style={styles.wishlistButton}>
@@ -205,28 +211,36 @@ const ExploreHotPage = () => {
                 <Text style={styles.itemName} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <View style={styles.storeRow}>
-                  <Ionicons name="storefront" size={12} color="#6B7280" />
-                  <Text style={styles.storeName}>{item.store}</Text>
-                </View>
+                {item.store && (
+                  <View style={styles.storeRow}>
+                    <Ionicons name="storefront" size={12} color="#6B7280" />
+                    <Text style={styles.storeName}>{item.store}</Text>
+                  </View>
+                )}
 
                 <View style={styles.priceRow}>
-                  <Text style={styles.price}>₹{item.price.toLocaleString()}</Text>
-                  <Text style={styles.originalPrice}>
-                    ₹{item.originalPrice.toLocaleString()}
-                  </Text>
+                  {item.price > 0 && <Text style={styles.price}>₹{item.price.toLocaleString()}</Text>}
+                  {item.originalPrice > 0 && item.originalPrice !== item.price && (
+                    <Text style={styles.originalPrice}>
+                      ₹{item.originalPrice.toLocaleString()}
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.bottomRow}>
-                  <View style={styles.ratingBadge}>
-                    <Ionicons name="star" size={12} color="#F59E0B" />
-                    <Text style={styles.ratingText}>{item.rating}</Text>
-                    <Text style={styles.reviewsText}>({item.reviews})</Text>
-                  </View>
-                  <View style={styles.distanceBadge}>
-                    <Ionicons name="location" size={12} color="#6B7280" />
-                    <Text style={styles.distanceText}>{item.distance}</Text>
-                  </View>
+                  {item.rating > 0 && (
+                    <View style={styles.ratingBadge}>
+                      <Ionicons name="star" size={12} color="#F59E0B" />
+                      <Text style={styles.ratingText}>{item.rating}</Text>
+                      {item.reviews > 0 && <Text style={styles.reviewsText}>({item.reviews})</Text>}
+                    </View>
+                  )}
+                  {item.distance && (
+                    <View style={styles.distanceBadge}>
+                      <Ionicons name="location" size={12} color="#6B7280" />
+                      <Text style={styles.distanceText}>{item.distance}</Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </TouchableOpacity>
@@ -236,7 +250,8 @@ const ExploreHotPage = () => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 };
 

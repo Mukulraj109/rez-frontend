@@ -15,43 +15,16 @@ import exploreApi from '../../../services/exploreApi';
 
 const { width } = Dimensions.get('window');
 
-// Fallback data
-const fallbackSmartPicks = [
-  {
-    id: '1',
-    title: 'Popular with people like you',
-    icon: 'people',
-    color: '#3B82F6',
-    items: [
-      { id: '1', name: 'Premium Haircut', store: 'Style Studio', price: 399, cashback: '20%', distance: '0.6 km', buyers: 45 },
-      { id: '2', name: 'Veg Thali', store: 'Sagar Ratna', price: 250, cashback: '15%', distance: '1.2 km', buyers: 78 },
-    ],
-  },
-  {
-    id: '2',
-    title: 'Best deals in your budget',
-    icon: 'wallet',
-    color: '#10B981',
-    items: [
-      { id: '3', name: 'Coffee & Sandwich', store: 'Cafe Delight', price: 180, cashback: '12%', distance: '0.4 km', trending: true },
-      { id: '4', name: 'Movie Ticket', store: 'PVR Cinemas', price: 350, cashback: '10%', distance: '2.1 km', trending: true },
-    ],
-  },
-  {
-    id: '3',
-    title: 'Based on your recent visits',
-    icon: 'time',
-    color: '#A855F7',
-    items: [
-      { id: '5', name: 'Chicken Wings', store: 'Buffalo Wild Wings', price: 499, cashback: '18%', distance: '1.5 km', buyers: 32 },
-      { id: '6', name: 'Gym Day Pass', store: 'Cult Fit', price: 199, cashback: '25%', distance: '0.8 km', trending: true },
-    ],
-  },
+// Category configs for organizing products
+const categoryConfigs = [
+  { id: '1', title: 'Popular with people like you', icon: 'people', color: '#3B82F6' },
+  { id: '2', title: 'Best deals in your budget', icon: 'wallet', color: '#10B981' },
+  { id: '3', title: 'Based on your recent visits', icon: 'time', color: '#A855F7' },
 ];
 
 const SmartPicks = () => {
   const router = useRouter();
-  const [smartPicks, setSmartPicks] = useState<any[]>(fallbackSmartPicks);
+  const [smartPicks, setSmartPicks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -60,12 +33,6 @@ const SmartPicks = () => {
         // Fetch products for smart picks
         const response = await exploreApi.getProducts({ limit: 12 });
         if (response.success && response.data && response.data.length > 0) {
-          const categoryConfigs = [
-            { id: '1', title: 'Popular with people like you', icon: 'people', color: '#3B82F6' },
-            { id: '2', title: 'Best deals in your budget', icon: 'wallet', color: '#10B981' },
-            { id: '3', title: 'Based on your recent visits', icon: 'time', color: '#A855F7' },
-          ];
-
           // Group products into categories
           const products = response.data;
           const chunkSize = Math.ceil(products.length / 3);
@@ -76,21 +43,24 @@ const SmartPicks = () => {
 
             return {
               ...config,
-              items: categoryProducts.map((product: any, idx: number) => ({
+              items: categoryProducts.map((product: any) => ({
                 id: product.id || product._id,
                 name: product.name || 'Product',
-                store: product.store?.name || 'Store',
-                price: product.price || 299,
-                cashback: `${product.cashbackPercentage || 15}%`,
-                distance: product.distance ? `${product.distance} km` : '1.0 km',
-                buyers: Math.floor(Math.random() * 80) + 20,
-                trending: Math.random() > 0.5,
+                store: product.store || 'Store',
+                storeId: product.storeId,
+                price: product.price || 0,
+                cashback: product.cashbackPercentage ? `${product.cashbackPercentage}%` : (product.offer || null),
+                distance: product.distance || null,
+                buyers: product.buyers || null,
+                trending: product.rating && product.rating >= 4,
               })),
             };
           });
 
-          if (transformed.every(cat => cat.items.length > 0)) {
-            setSmartPicks(transformed);
+          // Only set if we have at least one category with items
+          const validCategories = transformed.filter(cat => cat.items.length > 0);
+          if (validCategories.length > 0) {
+            setSmartPicks(validCategories);
           }
         }
       } catch (error) {
@@ -105,6 +75,34 @@ const SmartPicks = () => {
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <View style={styles.titleRow}>
+              <Text style={styles.sectionTitle}>Smart Picks by ReZ</Text>
+              <View style={styles.aiTag}>
+                <Ionicons name="sparkles" size={12} color="#FFFFFF" />
+                <Text style={styles.aiTagText}>AI</Text>
+              </View>
+            </View>
+            <Text style={styles.sectionSubtitle}>Personalized just for you</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#00C06A" />
+        </View>
+      </View>
+    );
+  }
+
+  // Empty state - don't render section if no data
+  if (smartPicks.length === 0) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -177,7 +175,10 @@ const SmartPicks = () => {
             ))}
 
             {/* View More */}
-            <TouchableOpacity style={styles.viewMoreButton}>
+            <TouchableOpacity
+              style={styles.viewMoreButton}
+              onPress={() => navigateTo(`/explore/search?q=${encodeURIComponent(category.title)}`)}
+            >
               <Text style={styles.viewMoreText}>See more like this</Text>
               <Ionicons name="arrow-forward" size={14} color="#00C06A" />
             </TouchableOpacity>
@@ -191,6 +192,11 @@ const SmartPicks = () => {
 const styles = StyleSheet.create({
   container: {
     paddingTop: 20,
+  },
+  loadingContainer: {
+    height: 150,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sectionHeader: {
     paddingHorizontal: 16,

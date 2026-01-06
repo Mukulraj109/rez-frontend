@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -14,80 +15,31 @@ import exploreApi, { HotProduct } from '../../../services/exploreApi';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
 
-// Fallback data - defined outside component
-const FALLBACK_PRODUCTS: HotProduct[] = [
-  {
-    id: '1',
-    name: 'Nike Air Max 90',
-    store: 'Nike Store',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
-    offer: '20% Cashback',
-    distance: '1.2 km',
-    price: 6999,
-    originalPrice: 8999,
-    rating: 4.5,
-    reviews: 120,
-  },
-  {
-    id: '2',
-    name: 'Chicken Biryani',
-    store: 'Paradise Biryani',
-    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
-    offer: 'Flat \u20B9100 Off',
-    distance: '800 m',
-    price: 350,
-    originalPrice: 450,
-    rating: 4.8,
-    reviews: 250,
-  },
-  {
-    id: '3',
-    name: 'Hair Spa',
-    store: 'Wellness Studio',
-    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
-    offer: '25% Cashback',
-    distance: '2.1 km',
-    price: 1499,
-    originalPrice: 1999,
-    rating: 4.6,
-    reviews: 89,
-  },
-  {
-    id: '4',
-    name: 'Coffee & Snacks',
-    store: 'Cafe Noir',
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
-    offer: 'Buy 1 Get 1',
-    distance: '500 m',
-    price: 299,
-    originalPrice: 598,
-    rating: 4.4,
-    reviews: 156,
-  },
-];
-
 const HotRightNow = () => {
   const router = useRouter();
-  const [hotDeals, setHotDeals] = useState<HotProduct[]>(FALLBACK_PRODUCTS);
+  const [hotDeals, setHotDeals] = useState<HotProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchHotDeals = async () => {
       try {
-        console.log('[HOT RIGHT NOW] Fetching hot deals...');
+        console.log('[HOT RIGHT NOW] Fetching hot deals from API...');
         const response = await exploreApi.getHotDeals({ limit: 6 });
-        console.log('[HOT RIGHT NOW] Response:', response);
+        console.log('[HOT RIGHT NOW] API Response:', response);
 
         const products = response.data?.products || response.data || [];
-        console.log('[HOT RIGHT NOW] Products found:', products.length);
+        console.log('[HOT RIGHT NOW] Products extracted:', products.length);
 
         if (response.success && Array.isArray(products) && products.length > 0) {
-          console.log('[HOT RIGHT NOW] Using API products');
+          console.log('[HOT RIGHT NOW] Setting', products.length, 'products');
           setHotDeals(products);
         } else {
-          console.log('[HOT RIGHT NOW] No API products, keeping fallback');
+          console.log('[HOT RIGHT NOW] No products received from API');
         }
       } catch (error) {
-        console.error('[HOT RIGHT NOW] Error:', error);
+        console.error('[HOT RIGHT NOW] API Error:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchHotDeals();
@@ -104,13 +56,30 @@ const HotRightNow = () => {
     return '#00C06A';
   };
 
-  console.log('[HOT RIGHT NOW] Rendering with', hotDeals.length, 'products');
+  // Don't render if no data
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>What's Hot Near You</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#00C06A" />
+        </View>
+      </View>
+    );
+  }
+
+  // Don't render section if no products
+  if (hotDeals.length === 0) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>What's Hot Near You</Text>
-        <TouchableOpacity onPress={() => navigateTo('/explore/hot-deals')}>
+        <TouchableOpacity onPress={() => navigateTo('/explore/hot')}>
           <Text style={styles.viewAllText}>View all →</Text>
         </TouchableOpacity>
       </View>
@@ -120,24 +89,28 @@ const HotRightNow = () => {
           <TouchableOpacity
             key={product.id || index}
             style={styles.productCard}
-            onPress={() => navigateTo(`/product/${product.id}`)}
+            onPress={() => navigateTo(`/ProductPage?cardId=${product.id}&cardType=product`)}
           >
             <View style={styles.imageContainer}>
-              <Image source={{ uri: product.image }} style={styles.productImage} />
-              <View style={[styles.offerBadge, { backgroundColor: getOfferBadgeColor(product.offer) }]}>
-                <Text style={styles.offerBadgeText}>{product.offer}</Text>
-              </View>
+              {product.image && <Image source={{ uri: product.image }} style={styles.productImage} />}
+              {product.offer && (
+                <View style={[styles.offerBadge, { backgroundColor: getOfferBadgeColor(product.offer) }]}>
+                  <Text style={styles.offerBadgeText}>{product.offer}</Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.productInfo}>
               <Text style={styles.productName} numberOfLines={1}>{product.name}</Text>
-              <Text style={styles.storeName} numberOfLines={1}>{product.store}</Text>
+              {product.store && <Text style={styles.storeName} numberOfLines={1}>{product.store}</Text>}
               <View style={styles.priceRow}>
-                <Text style={styles.price}>{'\u20B9'}{(product.price || 0).toLocaleString('en-IN')}</Text>
-                <View style={styles.distanceContainer}>
-                  <Ionicons name="location" size={12} color="#6B7280" />
-                  <Text style={styles.distanceText}>{product.distance || '1 km'}</Text>
-                </View>
+                {product.price > 0 && <Text style={styles.price}>{'\u20B9'}{product.price.toLocaleString('en-IN')}</Text>}
+                {product.distance && (
+                  <View style={styles.distanceContainer}>
+                    <Ionicons name="location" size={12} color="#6B7280" />
+                    <Text style={styles.distanceText}>{product.distance}</Text>
+                  </View>
+                )}
               </View>
             </View>
           </TouchableOpacity>
@@ -151,6 +124,10 @@ const styles = StyleSheet.create({
   container: {
     paddingTop: 24,
     paddingHorizontal: 16,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
   },
   sectionHeader: {
     flexDirection: 'row',

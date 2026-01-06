@@ -35,9 +35,9 @@ import StoresNearYou from './explore/components/StoresNearYou';
 // Import API services
 import reelApi from '../services/reelApi';
 import exploreApi from '../services/exploreApi';
+import { useWallet } from '@/hooks/useWallet';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Import location context
-import { useLocation } from '../contexts/LocationContext';
 
 const { width } = Dimensions.get('window');
 
@@ -260,7 +260,9 @@ const getEmojiForCategory = (icon?: string, name?: string): string => {
 
 const ExplorePage = () => {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
+  const { walletState } = useWallet({ userId: user?.id, autoFetch: true });
+
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedChip, setSelectedChip] = useState('trending');
   const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
@@ -268,10 +270,14 @@ const ExplorePage = () => {
 
   // API data state - no fallback, only real data
   const [ugcReels, setUgcReels] = useState<any[]>([]);
-  const [hotDeals, setHotDeals] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [trendingStores, setTrendingStores] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Get ReZ coins from wallet - find the 'rez' type coin
+  const rezCoins = walletState.data?.coins?.find(c => c.type === 'rez')?.amount ||
+                   walletState.data?.balance?.total ||
+                   0;
 
   // Fetch data from APIs
   useEffect(() => {
@@ -279,10 +285,9 @@ const ExplorePage = () => {
       try {
         setIsLoading(true);
 
-        // Fetch all data in parallel
-        const [reelsRes, hotDealsRes, categoriesRes, storesRes] = await Promise.all([
+        // Fetch all data in parallel (hotDeals handled by HotRightNow component)
+        const [reelsRes, categoriesRes, storesRes] = await Promise.all([
           reelApi.getTrendingReels({ limit: 6 }),
-          exploreApi.getHotDeals({ limit: 4 }),
           exploreApi.getCategories(),
           exploreApi.getTrendingStores({ limit: 5 }),
         ]);
@@ -321,20 +326,7 @@ const ExplorePage = () => {
           setUgcReels(transformedReels);
         }
 
-        // Update hot deals
-        const dealsData = hotDealsRes.data?.products || hotDealsRes.data || [];
-        if (hotDealsRes.success && dealsData && dealsData.length > 0) {
-          const transformedDeals = dealsData.slice(0, 4).map((deal: any) => ({
-            id: deal.id || deal._id,
-            name: deal.name || deal.title,
-            store: deal.store?.name || deal.storeName || null,
-            image: deal.image || deal.images?.[0]?.url || null,
-            offer: deal.offer || (deal.cashback ? `${deal.cashback}% Cashback` : (deal.cashbackPercentage ? `${deal.cashbackPercentage}% Cashback` : null)),
-            distance: deal.distance ? `${deal.distance} km` : null,
-            price: deal.price || deal.pricing?.selling || deal.pricing?.salePrice || null,
-          }));
-          setHotDeals(transformedDeals);
-        }
+        // Hot deals are now handled by the HotRightNow component
 
         // Update categories
         if (categoriesRes.success && categoriesRes.data && categoriesRes.data.length > 0) {
@@ -348,17 +340,18 @@ const ExplorePage = () => {
           setCategories(transformedCategories);
         }
 
-        // Update trending stores
+        // Update trending stores - data already transformed by API service
         const storesData = storesRes.data?.stores || storesRes.data || [];
         if (storesRes.success && storesData && storesData.length > 0) {
+          // API service already transforms data, just use it directly
           const transformedStores = storesData.slice(0, 5).map((store: any) => ({
             id: store.id || store._id,
             name: store.name,
-            offer: store.cashback ? `${store.cashback}` : (store.offers?.cashback ? `${store.offers.cashback}% Cashback` : null),
-            distance: store.distance ? `${store.distance}` : null,
-            activity: store.activity || store.visitCount ? `${store.visitCount} people visited` : null,
-            badge: store.badge || (store.isTrending ? 'Trending' : (store.isFeatured ? 'Featured' : null)),
-            badgeColor: store.badgeColor || (store.isTrending ? '#EF4444' : (store.isFeatured ? '#F97316' : null)),
+            offer: store.cashback || null,
+            distance: store.distance || null,
+            activity: store.activity || null,
+            badge: store.badge || null,
+            badgeColor: store.badgeColor || null,
           }));
           setTrendingStores(transformedStores);
         }
@@ -380,8 +373,6 @@ const ExplorePage = () => {
     }, 3000);
     return () => clearInterval(interval);
   }, []);
-
-  const rezCoins = 1970;
 
   const navigateTo = (path: string) => {
     router.push(path as any);
@@ -433,19 +424,22 @@ const ExplorePage = () => {
             </View>
           </View>
 
-          {/* Search Bar */}
+          {/* Search Bar - Navigate to search page on tap */}
           <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
+            <TouchableOpacity
+              style={styles.searchBar}
+              onPress={() => navigateTo('/explore/search')}
+              activeOpacity={0.7}
+            >
               <Ionicons name="search" size={20} color="#9CA3AF" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder={searchSuggestions[currentPlaceholder]}
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
-            <TouchableOpacity style={styles.filterButton}>
+              <Text style={styles.searchPlaceholder}>
+                {searchSuggestions[currentPlaceholder]}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => navigateTo('/explore/stores')}
+            >
               <Ionicons name="options" size={22} color="#0B2240" />
             </TouchableOpacity>
           </View>
@@ -464,7 +458,13 @@ const ExplorePage = () => {
                   styles.categoryChip,
                   selectedCategory === category.id && styles.categoryChipActive,
                 ]}
-                onPress={() => setSelectedCategory(category.id)}
+                onPress={() => {
+                  setSelectedCategory(category.id);
+                  // Navigate to category page for non-all filters
+                  if (category.id !== 'all') {
+                    navigateTo(`/explore/category/${category.id}`);
+                  }
+                }}
               >
                 <Text style={styles.categoryEmoji}>{category.emoji}</Text>
                 <Text
@@ -494,7 +494,15 @@ const ExplorePage = () => {
                   styles.quickChip,
                   selectedChip === chip.id && styles.quickChipActive,
                 ]}
-                onPress={() => setSelectedChip(chip.id)}
+                onPress={() => {
+                  setSelectedChip(chip.id);
+                  // Navigate to relevant page
+                  if (chip.id === 'trending') {
+                    navigateTo('/explore/hot');
+                  } else if (chip.id === 'delivery') {
+                    navigateTo('/explore/stores');
+                  }
+                }}
               >
                 <Ionicons
                   name={chip.icon as any}
@@ -618,45 +626,8 @@ const ExplorePage = () => {
           )}
         </View>
 
-        {/* What's Hot Near You Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>What's Hot Near You</Text>
-            <TouchableOpacity onPress={() => navigateTo('/explore/hot')}>
-              <Text style={styles.viewAllText}>View all →</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.hotGrid}>
-            {hotDeals.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.hotCard}
-                onPress={() => navigateTo(`/MainStorePage?id=${item.id}`)}
-              >
-                {item.image && <Image source={{ uri: item.image }} style={styles.hotImage} />}
-                {item.offer && (
-                  <View style={styles.offerBadge}>
-                    <Text style={styles.offerText}>{item.offer}</Text>
-                  </View>
-                )}
-                <View style={styles.hotContent}>
-                  <Text style={styles.hotName} numberOfLines={1}>{item.name}</Text>
-                  {item.store && <Text style={styles.hotStore}>{item.store}</Text>}
-                  <View style={styles.hotFooter}>
-                    {item.price && <Text style={styles.hotPrice}>₹{item.price}</Text>}
-                    {item.distance && (
-                      <View style={styles.distanceBadge}>
-                        <Ionicons name="location" size={10} color="#6B7280" />
-                        <Text style={styles.distanceText}>{item.distance}</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        {/* What's Hot Near You - Using HotRightNow Component */}
+        <HotRightNow />
 
         {/* Shop by Category */}
         <View style={styles.section}>
@@ -701,7 +672,7 @@ const ExplorePage = () => {
               <TouchableOpacity
                 key={store.id}
                 style={styles.storeCard}
-                onPress={() => navigateTo(`/MainStorePage?id=${store.id}`)}
+                onPress={() => navigateTo(`/MainStorePage?storeId=${store.id}`)}
               >
                 <View style={styles.storeHeader}>
                   <View style={styles.storeLogo}>
@@ -729,7 +700,10 @@ const ExplorePage = () => {
                     </View>
                   )}
                 </View>
-                <TouchableOpacity style={styles.payNowButton}>
+                <TouchableOpacity
+                  style={styles.payNowButton}
+                  onPress={() => navigateTo(`/MainStorePage?storeId=${store.id}`)}
+                >
                   <Text style={styles.payNowText}>Pay Now</Text>
                 </TouchableOpacity>
               </TouchableOpacity>
@@ -739,9 +713,6 @@ const ExplorePage = () => {
 
         {/* Live Stats Strip */}
         <LiveStatsStrip />
-
-        {/* Hot Right Now */}
-        <HotRightNow />
 
         {/* Exclusive Offers Banner */}
         <ExclusiveOffers />
@@ -895,6 +866,12 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 14,
     color: '#0B2240',
+  },
+  searchPlaceholder: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#9CA3AF',
   },
   filterButton: {
     width: 44,
