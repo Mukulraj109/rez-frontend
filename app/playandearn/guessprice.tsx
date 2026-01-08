@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import gameApi from '../../services/gameApi';
+import { useGamification } from '@/contexts/GamificationContext';
 
 const { width } = Dimensions.get('window');
 
@@ -33,6 +34,7 @@ interface Feedback {
 
 const GuessPrice = () => {
   const router = useRouter();
+  const { actions: gamificationActions } = useGamification();
   const [gameState, setGameState] = useState<'start' | 'playing' | 'result'>('start');
   const [currentProduct, setCurrentProduct] = useState(0);
   const [guess, setGuess] = useState('');
@@ -165,14 +167,27 @@ const GuessPrice = () => {
       percentDiff: percentDiff.toFixed(1)
     });
 
-    setTimeout(() => {
+    setTimeout(async () => {
       if (currentProduct < products.length - 1) {
         setCurrentProduct(currentProduct + 1);
         setGuess('');
         setFeedback(null);
       } else {
         setGameState('result');
-        setTodayPlays(todayPlays + 1);
+        // Refresh daily limits to get accurate plays count
+        try {
+          const limitsResponse = await gameApi.getDailyLimits();
+          if (limitsResponse.data?.guess_price) {
+            setTodayPlays(limitsResponse.data.guess_price.used);
+          } else {
+            setTodayPlays(todayPlays + 1);
+          }
+          // Sync global GamificationContext to update coin balance across the app
+          await gamificationActions.syncCoinsFromWallet();
+        } catch (error) {
+          console.error('Error refreshing limits:', error);
+          setTodayPlays(todayPlays + 1);
+        }
       }
     }, 2000);
   };

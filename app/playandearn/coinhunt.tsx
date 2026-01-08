@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import gameApi from '../../services/gameApi';
+import { useGamification } from '@/contexts/GamificationContext';
 
 const { width } = Dimensions.get('window');
 
@@ -24,6 +25,7 @@ interface Coin {
 
 const CoinHunt = () => {
   const router = useRouter();
+  const { actions: gamificationActions } = useGamification();
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(30);
   const [gameStarted, setGameStarted] = useState(false);
@@ -68,7 +70,6 @@ const CoinHunt = () => {
 
   const endGame = async () => {
     setGameStarted(false);
-    setTodayPlays(todayPlays + 1);
 
     // Submit results to backend
     if (sessionId) {
@@ -78,12 +79,26 @@ const CoinHunt = () => {
           coinsCollected,
           score
         );
-        if (response.data?.coinsEarned) {
-          setScore(response.data.coinsEarned);
+        if (response.data) {
+          if (response.data.coinsEarned !== undefined) {
+            setScore(response.data.coinsEarned);
+          }
         }
+        // Refresh daily limits to get accurate plays count
+        const limitsResponse = await gameApi.getDailyLimits();
+        if (limitsResponse.data?.coin_hunt) {
+          setTodayPlays(limitsResponse.data.coin_hunt.used);
+        }
+        // Sync global GamificationContext to update coin balance across the app
+        await gamificationActions.syncCoinsFromWallet();
       } catch (error) {
         console.error('Error completing coin hunt:', error);
+        // Fallback: increment locally if API fails
+        setTodayPlays(todayPlays + 1);
       }
+    } else {
+      // No session - increment locally
+      setTodayPlays(todayPlays + 1);
     }
   };
 

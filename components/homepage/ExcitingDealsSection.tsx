@@ -19,6 +19,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { campaignsApi, DealCategory, CampaignDeal } from '@/services/campaignsApi';
+import CoinIcon from '@/components/ui/CoinIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -169,7 +170,12 @@ const ExcitingDealsSection: React.FC = () => {
       return <Text style={styles.dealCashback}>{deal.cashback}</Text>;
     }
     if (deal.coins) {
-      return <Text style={styles.dealCoins}>🪙 {deal.coins}</Text>;
+      return (
+        <View style={styles.dealCoinsRow}>
+          <CoinIcon size={16} />
+          <Text style={styles.dealCoins}>{deal.coins}</Text>
+        </View>
+      );
     }
     if (deal.bonus) {
       return <Text style={styles.dealBonus}>{deal.bonus}</Text>;
@@ -416,6 +422,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.emerald500,
+  },
+  dealCoinsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   dealCoins: {
     fontSize: 14,

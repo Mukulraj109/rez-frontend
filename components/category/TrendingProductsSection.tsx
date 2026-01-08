@@ -17,6 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getProductsForCategory, DummyProduct } from '@/data/categoryDummyData';
+import CoinIcon from '@/components/ui/CoinIcon';
 
 interface TrendingProductsSectionProps {
   categorySlug: string;
@@ -93,9 +94,7 @@ const ProductCard = memo(({
 
         {/* Cashback */}
         <View style={styles.cashbackRow}>
-          <View style={styles.coinIcon}>
-            <Text style={styles.coinEmoji}>🪙</Text>
-          </View>
+          <CoinIcon size={14} />
           <Text style={styles.cashbackText}>Earn {product.coinsEarned} coins</Text>
         </View>
       </View>

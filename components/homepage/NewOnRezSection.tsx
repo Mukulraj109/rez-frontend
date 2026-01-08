@@ -33,6 +33,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { storesApi } from '@/services/storesApi';
+import CoinIcon from '@/components/ui/CoinIcon';
 
 // Video Component - uses native video for web, expo-av for mobile
 const AutoPlayVideo: React.FC<{ uri: string; poster?: string; style?: any }> = ({ uri, poster, style }) => {
@@ -688,7 +689,7 @@ const NewOnRezSection: React.FC = () => {
                     <Text style={styles.smallName} numberOfLines={1}>{incomingStore.name}</Text>
                     <View style={styles.smallRewardRow}>
                       <Text style={styles.smallCashback}>{incomingStore.cashback}</Text>
-                      <Text style={styles.coinDot}>🪙</Text>
+                      <CoinIcon size={12} />
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -727,7 +728,7 @@ const NewOnRezSection: React.FC = () => {
                     <Text style={styles.smallName} numberOfLines={1}>{smallStores[0].name}</Text>
                     <View style={styles.smallRewardRow}>
                       <Text style={styles.smallCashback}>{smallStores[0].cashback}</Text>
-                      <Text style={styles.coinDot}>🪙</Text>
+                      <CoinIcon size={12} />
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -766,7 +767,7 @@ const NewOnRezSection: React.FC = () => {
                     <Text style={styles.smallName} numberOfLines={1}>{smallStores[1].name}</Text>
                     <View style={styles.smallRewardRow}>
                       <Text style={styles.smallCashback}>{smallStores[1].cashback}</Text>
-                      <Text style={styles.coinDot}>🪙</Text>
+                      <CoinIcon size={12} />
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -817,7 +818,10 @@ const NewOnRezSection: React.FC = () => {
               </View>
               <View style={styles.horizontalRight}>
                 <Text style={styles.horizontalCashback}>{horizontalStore.cashback} cashback</Text>
-                <Text style={styles.horizontalCoins}>🪙 Earn coins</Text>
+                <View style={styles.horizontalCoinsRow}>
+                  <CoinIcon size={14} />
+                  <Text style={styles.horizontalCoins}>Earn coins</Text>
+                </View>
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -1117,6 +1121,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.emerald500,
     marginBottom: 2,
+  },
+  horizontalCoinsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   horizontalCoins: {
     fontSize: 11,

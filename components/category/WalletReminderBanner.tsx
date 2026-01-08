@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { loyaltyData } from '@/data/categoryDummyData';
+import CoinIcon from '@/components/ui/CoinIcon';
 
 interface WalletReminderBannerProps {
   availableCoins?: number;
@@ -57,7 +58,7 @@ const WalletReminderBanner: React.FC<WalletReminderBannerProps> = ({
         <View style={styles.content}>
           {/* Coin Icon */}
           <View style={styles.coinIconContainer}>
-            <Text style={styles.coinEmoji}>🪙</Text>
+            <CoinIcon size={28} />
           </View>
 
           {/* Balance Info */}

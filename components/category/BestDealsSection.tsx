@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getProductsForCategory, DummyProduct } from '@/data/categoryDummyData';
+import CoinIcon from '@/components/ui/CoinIcon';
 
 interface BestDealsSectionProps {
   categorySlug: string;
@@ -64,7 +65,7 @@ const DealCard = memo(({
 
         {/* Coins Earned */}
         <View style={styles.coinsRow}>
-          <Text style={styles.coinEmoji}>🪙</Text>
+          <CoinIcon size={14} />
           <Text style={styles.coinsText}>+{product.coinsEarned}</Text>
         </View>
       </View>

@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { loyaltyData } from '@/data/categoryDummyData';
+import CoinIcon from '@/components/ui/CoinIcon';
 
 interface FooterTrustSectionProps {
   coinsEarnable?: number;
@@ -50,7 +51,7 @@ const FooterTrustSection: React.FC<FooterTrustSectionProps> = ({
       {/* Coins Info */}
       <View style={styles.coinsInfo}>
         <View style={styles.coinsRow}>
-          <Text style={styles.coinEmoji}>🪙</Text>
+          <CoinIcon size={16} />
           <Text style={styles.coinsLabel}>
             Earn up to <Text style={styles.coinsHighlight}>{coinsEarnable} coins</Text> on this page
           </Text>

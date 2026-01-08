@@ -431,6 +431,29 @@ class WalletService {
     console.log('🧪 [DEV] Adding test funds:', { amount, type });
     return apiClient.post('/wallet/dev-topup', { amount, type });
   }
+
+  /**
+   * Sync wallet balance from CoinTransaction (fixes discrepancies)
+   * Call this to ensure wallet balance matches the actual coin transactions
+   */
+  async syncBalance(): Promise<ApiResponse<{
+    previousBalance: number;
+    newBalance: number;
+    wallet: {
+      balance: {
+        total: number;
+        available: number;
+        pending: number;
+        cashback: number;
+      };
+      coins: any[];
+      currency: string;
+    };
+    synced: boolean;
+  }>> {
+    console.log('🔄 [WALLET API] Syncing wallet balance from CoinTransaction...');
+    return apiClient.post('/wallet/sync-balance', {});
+  }
 }
 
 // Export singleton instance

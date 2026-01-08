@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EarningCard as EarningCardType, EarningCardTheme } from '@/types/earning';
 import { formatPrice } from '@/utils/priceFormatter';
+import CoinIcon from '@/components/ui/CoinIcon';
 
 interface EarningCardProps {
   card: EarningCardType;
@@ -87,7 +88,7 @@ const EarningCard: React.FC<EarningCardProps> = ({ card }) => {
           {/* Earning indicator */}
           <View style={styles.earningSection}>
             <View style={styles.coinIndicator}>
-              <Text style={styles.coinIcon}>🪙</Text>
+              <CoinIcon size={20} />
               <Text style={[styles.earningText, { color: theme.iconColor }]}>
                 = {formattedEarning}
               </Text>

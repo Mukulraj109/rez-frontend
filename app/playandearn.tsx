@@ -19,6 +19,10 @@ import streakApi from '@/services/streakApi';
 import leaderboardApi from '@/services/leaderboardApi';
 import { challengesApi } from '@/services/challengesApi';
 import { achievementApi } from '@/services/achievementApi';
+import creatorsApi, { Creator, CreatorPick } from '@/services/creatorsApi';
+import gameApi, { AvailableGame } from '@/services/gameApi';
+import tournamentApi, { LiveTournament } from '@/services/tournamentApi';
+import gamificationApi, { BonusOpportunity } from '@/services/gamificationApi';
 
 const { width } = Dimensions.get('window');
 
@@ -87,27 +91,56 @@ const PlayAndEarn = () => {
   const [rezCoins, setRezCoins] = useState(0);
   const [totalBrandedCoins, setTotalBrandedCoins] = useState(0);
   const [totalPromoCoins, setTotalPromoCoins] = useState(0);
+  const fetchingRef = React.useRef(false); // Prevent duplicate API calls
 
   // API-driven data
   const [achievements, setAchievements] = useState<DisplayAchievement[]>([]);
   const [challenges, setChallenges] = useState<DisplayChallenge[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
 
+  // New API-driven data (formerly hardcoded)
+  const [featuredCreators, setFeaturedCreators] = useState<Creator[]>([]);
+  const [trendingPicks, setTrendingPicks] = useState<CreatorPick[]>([]);
+  const [bonusOpportunities, setBonusOpportunities] = useState<BonusOpportunity[]>([]);
+  const [dailyGames, setDailyGames] = useState<AvailableGame[]>([]);
+  const [tournaments, setTournaments] = useState<LiveTournament[]>([]);
+  const [miniGames, setMiniGames] = useState<AvailableGame[]>([]);
+
   // Force white theme
   const isDark = false;
 
   // Fetch data from APIs
   const fetchData = useCallback(async (isRefresh = false) => {
+    // Prevent duplicate concurrent API calls
+    if (fetchingRef.current && !isRefresh) return;
+    fetchingRef.current = true;
+
     try {
       if (!isRefresh) setLoading(true);
 
       // Parallel fetch for better performance
-      const [walletResponse, streakResponse, challengesResponse, achievementsResponse, leaderboardResponse] = await Promise.all([
+      const [
+        walletResponse,
+        streakResponse,
+        challengesResponse,
+        achievementsResponse,
+        leaderboardResponse,
+        creatorsResponse,
+        trendingPicksResponse,
+        bonusResponse,
+        gamesResponse,
+        tournamentsResponse
+      ] = await Promise.all([
         walletApi.getBalance(),
         streakApi.getStreakStatus('login'),
         challengesApi.getMyProgress(),
         achievementApi.getAchievementProgress(),
         leaderboardApi.getLeaderboard({ type: 'spending', period: 'weekly' }),
+        creatorsApi.getFeaturedCreators(4),
+        creatorsApi.getTrendingPicks(6),
+        gamificationApi.getBonusOpportunities(),
+        gameApi.getAvailableGames(),
+        tournamentApi.getLiveTournaments(5),
       ]);
 
       // Wallet data
@@ -156,11 +189,41 @@ const PlayAndEarn = () => {
       if (leaderboardResponse.success && leaderboardResponse.data) {
         setMyRank(leaderboardResponse.data.myRank?.rank || null);
       }
+
+      // Featured Creators
+      if (creatorsResponse.success && creatorsResponse.data?.creators) {
+        setFeaturedCreators(creatorsResponse.data.creators);
+      }
+
+      // Trending Picks
+      if (trendingPicksResponse.success && trendingPicksResponse.data?.picks) {
+        setTrendingPicks(trendingPicksResponse.data.picks);
+      }
+
+      // Bonus Opportunities
+      if (bonusResponse.success && bonusResponse.data?.opportunities) {
+        setBonusOpportunities(bonusResponse.data.opportunities);
+      }
+
+      // Available Games - split into daily games and mini games
+      if (gamesResponse.success && gamesResponse.data?.games) {
+        const games = gamesResponse.data.games;
+        // First 4 games for daily games section
+        setDailyGames(games.slice(0, 4));
+        // All games for mini games section
+        setMiniGames(games);
+      }
+
+      // Live Tournaments
+      if (tournamentsResponse.success && tournamentsResponse.data?.tournaments) {
+        setTournaments(tournamentsResponse.data.tournaments);
+      }
     } catch (error) {
       console.error('Error fetching PlayAndEarn data:', error);
     } finally {
       setLoading(false);
       if (isRefresh) setRefreshing(false);
+      fetchingRef.current = false;
     }
   }, []);
 
@@ -201,59 +264,7 @@ const PlayAndEarn = () => {
     return '🎪';
   };
 
-  // Featured Creators Data
-  const featuredCreators = [
-    {
-      id: 'creator-1',
-      name: 'Sarah Johnson',
-      avatar: 'https://i.pravatar.cc/150?img=1',
-      verified: true,
-      rating: 4.8,
-      totalPicks: 245,
-    },
-    {
-      id: 'creator-2',
-      name: 'Mike Chen',
-      avatar: 'https://i.pravatar.cc/150?img=12',
-      verified: true,
-      rating: 4.7,
-      totalPicks: 156,
-    },
-  ];
-
-  // Trending Picks Data
-  const trendingPicks = [
-    {
-      id: 'pick-1',
-      title: 'Holy Grail Serum for...',
-      productImage: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500',
-      productPrice: 599,
-      productBrand: 'Minimalist',
-      tag: '#skincare',
-      views: 12400,
-      purchases: 456,
-    },
-    {
-      id: 'pick-2',
-      title: 'Best Noise-Cancelling...',
-      productImage: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500',
-      productPrice: 29990,
-      productBrand: 'Sony',
-      tag: '#headphones',
-      views: 8200,
-      purchases: 245,
-    },
-    {
-      id: 'pick-3',
-      title: 'My Go-To Summer...',
-      productImage: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=500',
-      productPrice: 2499,
-      productBrand: 'Zara',
-      tag: '#summer',
-      views: 5400,
-      purchases: 127,
-    },
-  ];
+  // Featured Creators and Trending Picks are now fetched from API (see state variables above)
 
   // Quick Earn Actions
   const quickEarnActions = [
@@ -385,57 +396,8 @@ const PlayAndEarn = () => {
     },
   ];
 
-  // Bonus Opportunities
-  const bonusOpportunities = [
-    {
-      title: 'Big Coin Drop',
-      description: 'Complete 3 purchases today',
-      reward: '+500 Coins',
-      timeLeft: '6h 24m',
-      icon: 'happy' as keyof typeof Ionicons.glyphMap,
-    },
-    {
-      title: 'Double Cashback Day',
-      description: 'All fashion purchases',
-      reward: '2X Earnings',
-      timeLeft: '12h 45m',
-      icon: 'flash' as keyof typeof Ionicons.glyphMap,
-    },
-    {
-      title: 'Last Chance Bonus',
-      description: 'Refer 2 friends today',
-      reward: '+200 Coins',
-      timeLeft: '3h 15m',
-      icon: 'time' as keyof typeof Ionicons.glyphMap,
-    },
-  ];
-
-  // Daily Games
-  const dailyGames = [
-    { id: 1, title: 'Spin the Wheel', icon: '🎡', coins: 50, plays: '3 left', colors: ['#A855F720', '#EC489920'], route: '/explore/spin-win' },
-    { id: 2, title: 'Daily Check-in', icon: '📅', coins: 25, plays: 'Today', colors: ['#3B82F620', '#06B6D420'], route: '/explore/daily-checkin' },
-    { id: 3, title: 'Scratch Card', icon: '🎫', coins: 100, plays: '1 left', colors: ['#F59E0B20', '#F9731620'], route: '/scratch-card' },
-    { id: 4, title: 'Coin Hunt', icon: '🪙', coins: 75, plays: 'Unlimited', colors: ['#22C55E20', '#10B98120'], route: '/playandearn/coinhunt' },
-  ];
-
-  // Active Challenges - now from API (challenges state)
-
-  // Live Tournaments
-  const tournaments = [
-    { id: 1, title: 'Weekend Shopping Sprint', prize: '₹10,000', participants: 1247, endsIn: '2d 5h', status: 'Live', rank: 23, icon: '🏆', path: '/playandearn/TournamentDetail' },
-    { id: 2, title: 'Coin Master Challenge', prize: '50,000 coins', participants: 892, endsIn: '5d', status: 'Live', rank: 45, icon: '🪙', path: '/playandearn/TournamentDetail' },
-    { id: 3, title: 'Referral Rally', prize: '₹5,000', participants: 543, endsIn: '1d 12h', status: 'Ending Soon', rank: 12, icon: '👥', path: '/playandearn/TournamentDetail' },
-  ];
-
-  // Mini Games
-  const miniGames = [
-    { id: 1, title: 'Quiz Master', icon: '🧠', plays: '5/day', earnings: '250 coins/day', path: '/playandearn/quiz' },
-    { id: 2, title: 'Memory Match', icon: '🃏', plays: '3/day', earnings: '150 coins/day', path: '/playandearn/memorymatch' },
-    { id: 3, title: 'Lucky Draw', icon: '🎰', plays: '1/day', earnings: 'Up to 1000 coins', path: '/playandearn/luckydraw' },
-    { id: 4, title: 'Guess the Price', icon: '💰', plays: 'Unlimited', earnings: '50 coins/win', path: '/playandearn/guessprice' },
-  ];
-
-  // Achievements - now from API (achievements state)
+  // Bonus Opportunities, Daily Games, Tournaments, Mini Games are now fetched from API (see state variables above)
+  // Achievements and Challenges are also from API (achievements and challenges state)
 
   const navigateTo = (path: string) => {
     router.push(path as any);
@@ -547,7 +509,7 @@ const PlayAndEarn = () => {
 
           {/* Featured Creators */}
           <View style={styles.featuredCreatorsGrid}>
-            {featuredCreators.map((creator) => (
+            {featuredCreators.length > 0 ? featuredCreators.slice(0, 2).map((creator) => (
               <TouchableOpacity
                 key={creator.id}
                 style={styles.creatorCard}
@@ -572,7 +534,11 @@ const PlayAndEarn = () => {
                   <Text style={styles.creatorStatText}>{creator.totalPicks} picks</Text>
                 </View>
               </TouchableOpacity>
-            ))}
+            )) : (
+              <View style={[styles.emptySection, { flex: 1 }]}>
+                <Text style={styles.emptySectionText}>Loading creators...</Text>
+              </View>
+            )}
           </View>
 
           {/* Trending Picks */}
@@ -583,7 +549,7 @@ const PlayAndEarn = () => {
               showsHorizontalScrollIndicator={false}
               style={styles.trendingScroll}
             >
-              {trendingPicks.map((pick) => (
+              {trendingPicks.length > 0 ? trendingPicks.map((pick) => (
                 <TouchableOpacity
                   key={pick.id}
                   style={styles.pickCard}
@@ -591,7 +557,7 @@ const PlayAndEarn = () => {
                 >
                   <View style={styles.pickImageContainer}>
                     <Image
-                      source={{ uri: pick.productImage }}
+                      source={{ uri: pick.productImage || 'https://via.placeholder.com/150' }}
                       style={styles.pickImage}
                     />
                     <TouchableOpacity style={styles.pickHeartButton}>
@@ -619,7 +585,11 @@ const PlayAndEarn = () => {
                     </View>
                   </View>
                 </TouchableOpacity>
-              ))}
+              )) : (
+                <View style={[styles.emptySection, { width: width - 64 }]}>
+                  <Text style={styles.emptySectionText}>Loading trending picks...</Text>
+                </View>
+              )}
             </ScrollView>
           </View>
 
@@ -926,10 +896,14 @@ const PlayAndEarn = () => {
             <Text style={styles.sectionTitle}>Bonus Zone</Text>
           </View>
 
-          {bonusOpportunities.map((bonus, idx) => (
-            <View key={idx} style={styles.bonusCard}>
+          {bonusOpportunities.length > 0 ? bonusOpportunities.map((bonus) => (
+            <TouchableOpacity
+              key={bonus.id}
+              style={styles.bonusCard}
+              onPress={() => bonus.path && navigateTo(bonus.path)}
+            >
               <View style={styles.bonusIconContainer}>
-                <Ionicons name={bonus.icon} size={24} color="#F97316" />
+                <Text style={{ fontSize: 24 }}>{bonus.icon}</Text>
               </View>
               <View style={styles.bonusContent}>
                 <Text style={styles.bonusTitle}>{bonus.title}</Text>
@@ -942,8 +916,12 @@ const PlayAndEarn = () => {
                   </View>
                 </View>
               </View>
+            </TouchableOpacity>
+          )) : (
+            <View style={styles.emptySection}>
+              <Text style={styles.emptySectionText}>No bonus opportunities right now. Check back soon!</Text>
             </View>
-          ))}
+          )}
         </View>
 
         {/* Learn & Maximise Section */}
@@ -958,26 +936,34 @@ const PlayAndEarn = () => {
           <Text style={styles.sectionSubtitle}>Free coins every day!</Text>
 
           <View style={styles.gamesGrid}>
-            {dailyGames.map((game) => (
+            {dailyGames.length > 0 ? dailyGames.map((game) => (
               <TouchableOpacity
                 key={game.id}
-                onPress={() => navigateTo(game.route)}
+                onPress={() => navigateTo(game.path)}
               >
                 <LinearGradient
-                  colors={game.colors}
+                  colors={['#A855F720', '#EC489920']}
                   style={styles.gameCard}
                 >
                   <View style={styles.gameHeader}>
                     <Text style={styles.gameIcon}>{game.icon}</Text>
                     <View style={styles.gameCoinsBadge}>
-                      <Text style={styles.gameCoinsText}>+{game.coins}</Text>
+                      <Text style={styles.gameCoinsText}>{game.reward}</Text>
                     </View>
                   </View>
                   <Text style={styles.gameTitle}>{game.title}</Text>
-                  <Text style={styles.gamePlays}>{game.plays}</Text>
+                  <Text style={styles.gamePlays}>
+                    {game.playsRemaining > 0
+                      ? `${game.playsRemaining} plays left`
+                      : 'No plays left'}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
-            ))}
+            )) : (
+              <View style={styles.emptySection}>
+                <Text style={styles.emptySectionText}>Loading games...</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -1029,7 +1015,7 @@ const PlayAndEarn = () => {
           </View>
           <Text style={styles.sectionSubtitle}>Compete with thousands</Text>
 
-          {tournaments.map((tournament) => (
+          {tournaments.length > 0 ? tournaments.map((tournament) => (
             <TouchableOpacity
               key={tournament.id}
               onPress={() => navigateTo(tournament.path)}
@@ -1048,9 +1034,9 @@ const PlayAndEarn = () => {
                       </Text>
                     </View>
                   </View>
-                  {tournament.status === 'Ending Soon' && (
-                    <View style={styles.endingSoonBadge}>
-                      <Text style={styles.endingSoonText}>{tournament.status}</Text>
+                  {tournament.status === 'upcoming' && tournament.startsIn && (
+                    <View style={[styles.endingSoonBadge, { backgroundColor: '#3B82F6' }]}>
+                      <Text style={styles.endingSoonText}>Starts {tournament.startsIn}</Text>
                     </View>
                   )}
                 </View>
@@ -1061,16 +1047,26 @@ const PlayAndEarn = () => {
                   </View>
                   <View style={styles.tournamentStat}>
                     <Text style={styles.tournamentStatLabel}>Your Rank</Text>
-                    <Text style={styles.tournamentRank}>#{tournament.rank}</Text>
+                    <Text style={styles.tournamentRank}>
+                      {tournament.isParticipant && tournament.userRank ? `#${tournament.userRank}` : '-'}
+                    </Text>
                   </View>
                   <View style={styles.tournamentStat}>
-                    <Text style={styles.tournamentStatLabel}>Ends In</Text>
-                    <Text style={styles.tournamentEnds}>{tournament.endsIn}</Text>
+                    <Text style={styles.tournamentStatLabel}>
+                      {tournament.status === 'active' ? 'Ends In' : 'Starts In'}
+                    </Text>
+                    <Text style={styles.tournamentEnds}>
+                      {tournament.endsIn || tournament.startsIn || '-'}
+                    </Text>
                   </View>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
-          ))}
+          )) : (
+            <View style={styles.emptySection}>
+              <Text style={styles.emptySectionText}>No active tournaments. Check back soon!</Text>
+            </View>
+          )}
         </View>
 
         {/* Mini Games Section */}
@@ -1081,7 +1077,7 @@ const PlayAndEarn = () => {
           <Text style={styles.sectionSubtitle}>Quick & fun</Text>
 
           <View style={styles.miniGamesGrid}>
-            {miniGames.map((game) => (
+            {miniGames.length > 0 ? miniGames.map((game) => (
               <TouchableOpacity
                 key={game.id}
                 style={styles.miniGameCard}
@@ -1089,10 +1085,18 @@ const PlayAndEarn = () => {
               >
                 <Text style={styles.miniGameIcon}>{game.icon}</Text>
                 <Text style={styles.miniGameTitle}>{game.title}</Text>
-                <Text style={styles.miniGamePlays}>{game.plays}</Text>
-                <Text style={styles.miniGameEarnings}>{game.earnings}</Text>
+                <Text style={styles.miniGamePlays}>
+                  {game.maxDaily > 0
+                    ? `${game.playsRemaining}/${game.maxDaily} plays`
+                    : 'Unlimited'}
+                </Text>
+                <Text style={styles.miniGameEarnings}>{game.reward}</Text>
               </TouchableOpacity>
-            ))}
+            )) : (
+              <View style={styles.emptySection}>
+                <Text style={styles.emptySectionText}>Loading games...</Text>
+              </View>
+            )}
           </View>
         </View>
 

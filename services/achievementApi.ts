@@ -256,11 +256,40 @@ class AchievementApiService {
 
   /**
    * Recalculate all achievements based on user statistics
+   * Backend endpoint: POST /achievements/recalculate
    */
   async recalculateAchievements(): Promise<ApiResponse<Achievement[]>> {
-    // This endpoint may not exist
-    console.warn('[ACHIEVEMENT API] recalculateAchievements endpoint may not exist');
-    return { success: true, data: [] };
+    try {
+      console.log('[ACHIEVEMENT API] Recalculating achievements...');
+      const response = await apiClient.post<any>('/achievements/recalculate', {});
+
+      if (response.success && response.data) {
+        const achievements: Achievement[] = (response.data || []).map((a: any) => ({
+          id: a._id || a.id,
+          userId: a.user || '',
+          type: a.type as AchievementType,
+          title: a.title || 'Achievement',
+          description: a.description || '',
+          icon: a.icon || '🏆',
+          color: a.color || '#F59E0B',
+          unlocked: a.unlocked || false,
+          progress: a.progress || 0,
+          unlockedDate: a.unlockedDate,
+          currentValue: a.currentValue,
+          targetValue: a.targetValue || 100,
+          createdAt: a.createdAt || new Date().toISOString(),
+          updatedAt: a.updatedAt || new Date().toISOString(),
+        }));
+
+        console.log(`[ACHIEVEMENT API] Recalculated ${achievements.length} achievements`);
+        return { success: true, data: achievements };
+      }
+
+      return { success: true, data: [] };
+    } catch (error: any) {
+      console.error('[ACHIEVEMENT API] Error recalculating achievements:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

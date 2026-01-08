@@ -15,6 +15,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/useToast';
 import ProductVariantModal, { VariantSelection } from '@/components/cart/ProductVariantModal';
 import productsService from '@/services/productsApi';
+import CoinIcon from '@/components/ui/CoinIcon';
 
 export interface BundleProduct extends ProductItem {
   bundleDiscount?: number; // Additional discount when bundled
@@ -619,7 +620,7 @@ function BundleProductCard({
 
         {/* Coin Earnings */}
         <View style={styles.coinEarningsRow}>
-          <Text style={styles.coinEmoji}>🪙</Text>
+          <CoinIcon size={12} />
           <Text style={styles.coinEarningsText}>
             Earn {Math.round(finalPrice * 0.05)} coins
           </Text>

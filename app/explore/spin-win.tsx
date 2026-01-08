@@ -11,11 +11,14 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import gamificationApi, { SpinWheelSegment } from '@/services/gamificationApi';
+import walletApi from '@/services/walletApi';
+import { useGamification } from '@/contexts/GamificationContext';
 
 const { width } = Dimensions.get('window');
 
@@ -31,7 +34,10 @@ const defaultPrizes: SpinWheelSegment[] = [
 
 export default function SpinWinPage() {
   const router = useRouter();
+  const { actions: gamificationActions } = useGamification();
   const spinAnim = useRef(new Animated.Value(0)).current;
+  const fetchingRef = useRef(false); // Prevent duplicate API calls
+  const hasFetchedRef = useRef(false); // Track if initial fetch happened
 
   // API state
   const [loading, setLoading] = useState(true);
@@ -43,9 +49,17 @@ export default function SpinWinPage() {
   const [spinsLeft, setSpinsLeft] = useState(3);
   const [totalWon, setTotalWon] = useState(0);
   const [currentRotation, setCurrentRotation] = useState(0);
+  const [walletBalance, setWalletBalance] = useState(0);
 
-  // Fetch spin wheel data and eligibility
+  // Fetch spin wheel data, eligibility, and wallet balance
   const fetchSpinData = useCallback(async (isRefresh = false) => {
+    // Prevent duplicate concurrent API calls
+    if (fetchingRef.current) return;
+    // Prevent re-fetching on mount if already fetched
+    if (!isRefresh && hasFetchedRef.current) return;
+
+    fetchingRef.current = true;
+
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -53,9 +67,10 @@ export default function SpinWinPage() {
         setLoading(true);
       }
 
-      const [wheelResponse, eligibilityResponse] = await Promise.all([
+      const [wheelResponse, eligibilityResponse, walletResponse] = await Promise.all([
         gamificationApi.getSpinWheelData(),
         gamificationApi.getSpinEligibility(),
+        walletApi.getBalance(),
       ]);
 
       if (wheelResponse.success && wheelResponse.data) {
@@ -69,11 +84,22 @@ export default function SpinWinPage() {
         setSpinsLeft(eligibilityResponse.data.spinsRemaining);
         setTotalWon(eligibilityResponse.data.totalCoinsEarned);
       }
+
+      // Set wallet balance
+      if (walletResponse.success && walletResponse.data) {
+        const balance = walletResponse.data.balance?.available ||
+                        walletResponse.data.balance?.total ||
+                        walletResponse.data.available ||
+                        walletResponse.data.coins || 0;
+        setWalletBalance(balance);
+      }
     } catch (error) {
       console.error('[SPIN WIN] Error fetching data:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      fetchingRef.current = false;
+      hasFetchedRef.current = true;
     }
   }, []);
 
@@ -97,7 +123,7 @@ export default function SpinWinPage() {
       const response = await gamificationApi.executeSpin();
 
       if (response.success && response.data) {
-        const { segmentId, rewardValue, spinsRemaining } = response.data;
+        const { segmentId, rewardValue, spinsRemaining, newBalance, coinsAdded } = response.data;
 
         // Find the prize segment
         const selectedPrize = prizes.find(p => p.id === segmentId) || prizes[0];
@@ -111,6 +137,10 @@ export default function SpinWinPage() {
 
         setCurrentRotation(newRotation);
 
+        // Store values for use after animation
+        const actualCoinsWon = coinsAdded || rewardValue || 0;
+        const updatedBalance = newBalance;
+
         // Animate the spin
         Animated.timing(spinAnim, {
           toValue: newRotation,
@@ -121,7 +151,13 @@ export default function SpinWinPage() {
           setSpinning(false);
           setWonPrize(selectedPrize);
           setSpinsLeft(spinsRemaining);
-          setTotalWon(prev => prev + rewardValue);
+          setTotalWon(prev => prev + actualCoinsWon);
+          // Use the newBalance from backend directly (coins already added by backend)
+          if (updatedBalance !== undefined && updatedBalance !== null) {
+            setWalletBalance(updatedBalance);
+          }
+          // Sync global GamificationContext to update coin balance across the app
+          gamificationActions.syncCoinsFromWallet();
         });
       } else {
         setSpinning(false);
@@ -141,6 +177,9 @@ export default function SpinWinPage() {
 
   return (
     <View style={styles.container}>
+      {/* Hide default expo-router header */}
+      <Stack.Screen options={{ headerShown: false }} />
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -150,10 +189,17 @@ export default function SpinWinPage() {
           <Ionicons name="flash" size={20} color="#F59E0B" />
           <Text style={styles.headerTitle}>Spin & Win</Text>
         </View>
-        <View style={styles.coinsBadge}>
-          <Ionicons name="cash" size={16} color="#F59E0B" />
-          <Text style={styles.coinsText}>₹{totalWon}</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.coinsBadge}
+          onPress={() => router.push('/wallet' as any)}
+        >
+          <Image
+            source={require('@/assets/images/rez-coin.png')}
+            style={styles.coinIcon}
+            resizeMode="contain"
+          />
+          <Text style={styles.coinsText}>{walletBalance.toLocaleString()}</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -365,6 +411,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+  },
+  coinIcon: {
+    width: 18,
+    height: 18,
   },
   coinsText: {
     fontSize: 14,

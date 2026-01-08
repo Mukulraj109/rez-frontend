@@ -28,6 +28,20 @@ export interface DailyLimits {
   };
 }
 
+export interface AvailableGame {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  path: string;
+  maxDaily: number;
+  reward: string;
+  playsRemaining: number;
+  playsUsed: number;
+  isAvailable: boolean;
+  todaysEarnings: number;
+}
+
 export interface GameStats {
   [gameType: string]: {
     totalPlayed: number;
@@ -128,6 +142,7 @@ class GameApi {
       score: number;
       perfectMatch: boolean;
       timeBonus: boolean;
+      newBalance: number; // Updated wallet balance after game
     }>('/games/memory-match/complete', { sessionId, score, timeSpent, moves });
   }
 
@@ -147,6 +162,7 @@ class GameApi {
       coinsCollected: number;
       coinsEarned: number;
       success: boolean;
+      newBalance: number;
     }>('/games/coin-hunt/complete', { sessionId, coinsCollected, score });
   }
 
@@ -169,6 +185,7 @@ class GameApi {
       coins: number;
       message: string;
       productName: string;
+      newBalance: number;
     }>('/games/guess-price/submit', { sessionId, guessedPrice });
   }
 
@@ -201,6 +218,56 @@ class GameApi {
       response.data = transformed;
     }
     return response as { data: DailyLimits };
+  }
+
+  // ======== AVAILABLE GAMES (for Play & Earn hub) ========
+  async getAvailableGames() {
+    try {
+      const response = await apiClient.get<any>('/games/available');
+
+      if (response.success && response.data) {
+        const data = response.data;
+        return {
+          success: true,
+          data: {
+            games: (data.games || []).map((game: any) => ({
+              id: game.id,
+              title: game.title,
+              description: game.description,
+              icon: game.icon,
+              path: game.path,
+              maxDaily: game.maxDaily,
+              reward: game.reward,
+              playsRemaining: game.playsRemaining,
+              playsUsed: game.playsUsed,
+              isAvailable: game.isAvailable,
+              todaysEarnings: game.todaysEarnings || 0,
+            })) as AvailableGame[],
+            total: data.total || data.games?.length || 0,
+            todaysEarnings: data.todaysEarnings || 0,
+          },
+        };
+      }
+
+      // Return default games if API fails (graceful degradation)
+      return {
+        success: true,
+        data: {
+          games: [
+            { id: 'spin-wheel', title: 'Spin & Win', description: 'Spin the wheel to win coins', icon: '🎰', path: '/explore/spin-win', maxDaily: 1, reward: 'Up to 1000 coins', playsRemaining: 1, playsUsed: 0, isAvailable: true, todaysEarnings: 0 },
+            { id: 'memory-match', title: 'Memory Match', description: 'Match pairs to earn coins', icon: '🧠', path: '/playandearn/memorymatch', maxDaily: 3, reward: 'Up to 170 coins', playsRemaining: 3, playsUsed: 0, isAvailable: true, todaysEarnings: 0 },
+            { id: 'coin-hunt', title: 'Coin Hunt', description: 'Collect coins before time runs out', icon: '🪙', path: '/playandearn/coinhunt', maxDaily: 3, reward: 'Up to 50 coins', playsRemaining: 3, playsUsed: 0, isAvailable: true, todaysEarnings: 0 },
+            { id: 'guess-price', title: 'Guess the Price', description: 'Guess product prices to win', icon: '🏷️', path: '/playandearn/guessprice', maxDaily: 5, reward: 'Up to 50 coins', playsRemaining: 5, playsUsed: 0, isAvailable: true, todaysEarnings: 0 },
+            { id: 'quiz', title: 'Daily Quiz', description: 'Test your knowledge', icon: '❓', path: '/playandearn/quiz', maxDaily: 3, reward: 'Up to 150 coins', playsRemaining: 3, playsUsed: 0, isAvailable: true, todaysEarnings: 0 },
+          ] as AvailableGame[],
+          total: 5,
+          todaysEarnings: 0,
+        },
+      };
+    } catch (error: any) {
+      console.error('[GAME API] Error fetching available games:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

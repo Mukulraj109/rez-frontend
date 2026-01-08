@@ -3,7 +3,7 @@
  * Exact match to Rez_v-2-main/src/components/home/PlayAndEarnSection.jsx
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,11 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import gameApi, { AvailableGame } from '@/services/gameApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -108,17 +110,33 @@ const QuickAction: React.FC<QuickActionProps> = ({ icon, label, onPress }) => (
 
 const PlayAndEarnSectionV2: React.FC = () => {
   const router = useRouter();
+  const [games, setGames] = useState<AvailableGame[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchGames = async () => {
+      try {
+        const response = await gameApi.getAvailableGames();
+        if (response.success && response.data?.games) {
+          // Get first 2 games for display
+          setGames(response.data.games.slice(0, 2));
+        }
+      } catch (error) {
+        console.error('[PlayAndEarnSection] Error fetching games:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGames();
+  }, []);
 
   const handleViewAll = () => {
     router.push('/playandearn');
   };
 
-  const handleCoinHunt = () => {
-    router.push('/coin-hunt');
-  };
-
-  const handleScratchCard = () => {
-    router.push('/scratch-card');
+  const handleGamePress = (game: AvailableGame) => {
+    router.push(game.path as any);
   };
 
   const handleBadges = () => {
@@ -137,6 +155,58 @@ const PlayAndEarnSectionV2: React.FC = () => {
     router.push('/playandearn');
   };
 
+  // Helper to get gradient colors based on game index
+  const getGameStyle = (index: number) => {
+    if (index % 2 === 0) {
+      return {
+        gradientColors: [COLORS.greenGradientStart, COLORS.greenGradientEnd],
+        borderColor: COLORS.greenBorder,
+        badgeColor: COLORS.green500,
+        rewardColor: COLORS.green600,
+        badge: 'PLAY',
+      };
+    }
+    return {
+      gradientColors: [COLORS.amberGradientStart, COLORS.amberGradientEnd],
+      borderColor: COLORS.amberBorder,
+      badgeColor: COLORS.amber500,
+      rewardColor: COLORS.amber600,
+      badge: 'DAILY',
+    };
+  };
+
+  // Default games to show if API hasn't loaded yet
+  const defaultGames: AvailableGame[] = [
+    {
+      id: 'spin-wheel',
+      title: 'Spin & Win',
+      description: 'Spin to win coins',
+      icon: '🎰',
+      path: '/explore/spin-win',
+      maxDaily: 1,
+      reward: 'Up to 1000 coins',
+      playsRemaining: 1,
+      playsUsed: 0,
+      isAvailable: true,
+      todaysEarnings: 0,
+    },
+    {
+      id: 'memory-match',
+      title: 'Memory Match',
+      description: 'Match pairs to earn',
+      icon: '🧠',
+      path: '/playandearn/memorymatch',
+      maxDaily: 3,
+      reward: 'Up to 170 coins',
+      playsRemaining: 3,
+      playsUsed: 0,
+      isAvailable: true,
+      todaysEarnings: 0,
+    },
+  ];
+
+  const displayGames = games.length > 0 ? games : defaultGames;
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -152,30 +222,30 @@ const PlayAndEarnSectionV2: React.FC = () => {
 
       {/* Game Cards Row */}
       <View style={styles.gameCardsRow}>
-        <GameCard
-          icon="🪙"
-          badge="PLAY"
-          badgeColor={COLORS.green500}
-          title="Coin Hunt"
-          subtitle="Catch falling coins"
-          reward="Earn up to 200 coins"
-          rewardColor={COLORS.green600}
-          gradientColors={[COLORS.greenGradientStart, COLORS.greenGradientEnd]}
-          borderColor={COLORS.greenBorder}
-          onPress={handleCoinHunt}
-        />
-        <GameCard
-          icon="🎫"
-          badge="DAILY"
-          badgeColor={COLORS.amber500}
-          title="Scratch Card"
-          subtitle="1 free card daily"
-          reward="Win 25-200 coins"
-          rewardColor={COLORS.amber600}
-          gradientColors={[COLORS.amberGradientStart, COLORS.amberGradientEnd]}
-          borderColor={COLORS.amberBorder}
-          onPress={handleScratchCard}
-        />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={COLORS.green500} />
+          </View>
+        ) : (
+          displayGames.map((game, index) => {
+            const style = getGameStyle(index);
+            return (
+              <GameCard
+                key={game.id}
+                icon={game.icon}
+                badge={style.badge}
+                badgeColor={style.badgeColor}
+                title={game.title}
+                subtitle={game.description}
+                reward={game.reward}
+                rewardColor={style.rewardColor}
+                gradientColors={style.gradientColors}
+                borderColor={style.borderColor}
+                onPress={() => handleGamePress(game)}
+              />
+            );
+          })
+        )}
       </View>
 
       {/* Quick Actions Row */}
@@ -219,6 +289,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    height: 140,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
   },
   gameCard: {
     flex: 1,

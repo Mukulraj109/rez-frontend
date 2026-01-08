@@ -232,6 +232,10 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
   const coinOperationQueue = useRef<Array<() => Promise<void>>>([]);
   const isProcessingCoins = useRef(false);
 
+  // CRITICAL: Prevent duplicate API calls on mount/re-render
+  const hasInitializedRef = useRef(false);
+  const isLoadingDataRef = useRef(false);
+
   // Helper Functions - Define before useEffects
   // Check cache validity
   const isCacheValid = useCallback(async (): Promise<boolean> => {
@@ -250,10 +254,10 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
   const saveToCache = useCallback(async () => {
     try {
       await AsyncStorage.multiSet([
-        [STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(state.achievements)],
-        [STORAGE_KEYS.COINS, JSON.stringify(state.coinBalance)],
-        [STORAGE_KEYS.CHALLENGES, JSON.stringify(state.challenges)],
-        [STORAGE_KEYS.STREAK, state.dailyStreak.toString()],
+        [STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(state.achievements || [])],
+        [STORAGE_KEYS.COINS, JSON.stringify(state.coinBalance || { total: 0 })],
+        [STORAGE_KEYS.CHALLENGES, JSON.stringify(state.challenges || [])],
+        [STORAGE_KEYS.STREAK, (state.dailyStreak ?? 0).toString()],
         [STORAGE_KEYS.LAST_LOGIN, state.lastLoginDate || ''],
         [STORAGE_KEYS.CACHE_TIME, Date.now().toString()],
       ]);
@@ -302,6 +306,17 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
   const syncCoinsFromWallet = useCallback(async () => {
     try {
       console.log('🔄 [GAMIFICATION] Syncing coins from wallet (source of truth)...');
+
+      // First, sync the wallet balance from CoinTransaction to fix any discrepancies
+      try {
+        const syncResponse = await walletApi.syncBalance();
+        if (syncResponse.success && syncResponse.data) {
+          console.log(`✅ [GAMIFICATION] Wallet synced: ${syncResponse.data.previousBalance} → ${syncResponse.data.newBalance}`);
+        }
+      } catch (syncError) {
+        // Don't fail the whole sync if the balance sync fails - just log it
+        console.warn('⚠️ [GAMIFICATION] Wallet sync endpoint failed, continuing with getBalance:', syncError);
+      }
 
       // Fetch wallet balance
       const walletResponse = await walletApi.getBalance();
@@ -613,12 +628,25 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
   // Load gamification data on mount and when auth changes
   useEffect(() => {
     if (authState.isAuthenticated) {
-      loadGamificationData();
-      updateDailyStreak();
+      // Prevent duplicate calls during rapid re-renders
+      if (isLoadingDataRef.current) return;
+      // Only initialize once per session
+      if (hasInitializedRef.current) return;
+
+      isLoadingDataRef.current = true;
+      hasInitializedRef.current = true;
+
+      Promise.all([
+        loadGamificationData(),
+        updateDailyStreak()
+      ]).finally(() => {
+        isLoadingDataRef.current = false;
+      });
     } else {
       dispatch({ type: 'CLEAR_GAMIFICATION' });
+      hasInitializedRef.current = false; // Reset on logout
     }
-  }, [authState.isAuthenticated, loadGamificationData, updateDailyStreak]);
+  }, [authState.isAuthenticated]); // Remove callback dependencies to prevent loop
 
   // Save data to cache periodically
   useEffect(() => {

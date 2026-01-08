@@ -125,9 +125,14 @@ const BadgesScreen: React.FC = () => {
     totalCoins: 0,
     completionPercent: 0,
   });
+  const fetchingRef = React.useRef(false); // Prevent duplicate API calls
 
   // Fetch achievements from API
   const fetchAchievements = useCallback(async (isRefresh = false) => {
+    // Prevent duplicate concurrent API calls
+    if (fetchingRef.current && !isRefresh) return;
+    fetchingRef.current = true;
+
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -136,9 +141,28 @@ const BadgesScreen: React.FC = () => {
       }
       setError(null);
 
+      // First recalculate achievements to get latest progress
+      try {
+        await achievementApi.recalculateAchievements();
+      } catch (recalcError) {
+        console.warn('Failed to recalculate achievements:', recalcError);
+        // Continue anyway - will just show potentially stale progress
+      }
+
       const response = await achievementApi.getAchievementProgress();
 
       if (response.success && response.data) {
+        // Coin rewards mapping based on achievement type (from backend ACHIEVEMENT_DEFINITIONS)
+        const coinRewardMap: Record<string, number> = {
+          'FIRST_ORDER': 50, 'ORDERS_10': 100, 'ORDERS_50': 500, 'FREQUENT_BUYER': 1000,
+          'SPENT_1000': 50, 'SPENT_5000': 200, 'BIG_SPENDER': 500,
+          'FIRST_REVIEW': 25, 'REVIEWS_25': 250,
+          'FIRST_VIDEO': 100, 'VIEWS_10000': 1000,
+          'FIRST_PROJECT': 50, 'TOP_EARNER': 500,
+          'FIRST_REFERRAL': 100, 'REFERRALS_10': 1000,
+          'EARLY_BIRD': 200, 'ACTIVITY_100': 500, 'SUPER_USER': 2000
+        };
+
         // Map API response to local interface
         const mapped: Achievement[] = response.data.achievements.map((a: ApiAchievement) => ({
           id: a.id,
@@ -146,7 +170,7 @@ const BadgesScreen: React.FC = () => {
           desc: a.description,
           icon: getIconFromType(a.type, a.icon),
           unlocked: a.unlocked,
-          coins: a.targetValue,
+          coins: coinRewardMap[a.type] || a.targetValue, // Use actual reward, fallback to targetValue
           category: getCategoryFromType(a.type),
           progress: a.unlocked ? 100 : a.progress,
         }));
@@ -167,6 +191,7 @@ const BadgesScreen: React.FC = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      fetchingRef.current = false;
     }
   }, []);
 
@@ -434,7 +459,11 @@ const BadgesScreen: React.FC = () => {
           </TouchableOpacity>
 
           {/* Daily Check-in CTA */}
-          <View style={styles.ctaCard}>
+          <TouchableOpacity
+            style={styles.ctaCard}
+            onPress={() => router.push('/explore/daily-checkin')}
+            activeOpacity={0.8}
+          >
             <LinearGradient
               colors={['rgba(245, 158, 11, 0.2)', 'rgba(234, 179, 8, 0.2)']}
               style={styles.ctaGradient}
@@ -446,18 +475,16 @@ const BadgesScreen: React.FC = () => {
                 <Text style={styles.ctaTitle}>Daily Check-in</Text>
                 <Text style={styles.ctaSubtitle}>Build streaks & unlock rewards</Text>
               </View>
-              <TouchableOpacity activeOpacity={0.8}>
-                <LinearGradient
-                  colors={[COLORS.amber500, '#EAB308']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.checkInButton}
-                >
-                  <Text style={styles.checkInText}>Check In</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+              <LinearGradient
+                colors={[COLORS.amber500, '#EAB308']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.checkInButton}
+              >
+                <Text style={styles.checkInText}>Check In</Text>
+              </LinearGradient>
             </LinearGradient>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={{ height: 100 }} />

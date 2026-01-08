@@ -76,6 +76,8 @@ export interface SpinResult {
   rewardValue: number;
   spinsRemaining: number;
   message: string;
+  newBalance?: number; // Updated wallet balance after spin
+  coinsAdded?: number; // Coins added from this spin
 }
 
 export interface GamificationStats {
@@ -136,6 +138,18 @@ export interface ReviewableItem {
   coins: number;
   hasReceipt?: boolean;
   brand?: string | null;
+}
+
+export interface BonusOpportunity {
+  id: string;
+  title: string;
+  description: string;
+  reward: string;
+  timeLeft: string;
+  icon: string;
+  type: 'challenge' | 'coin_drop' | 'campaign' | 'event';
+  path?: string;
+  urgent?: boolean;
 }
 
 // ============================================
@@ -347,12 +361,14 @@ class GamificationApiService {
           success: true,
           data: {
             success: true,
-            segmentId: data.segmentId || data.segment?.id || '1',
-            segmentLabel: data.segmentLabel || data.segment?.label || data.prize?.label || '',
-            rewardType: data.rewardType || data.type || 'coins',
-            rewardValue: data.rewardValue || data.value || data.amount || 0,
+            segmentId: data.segmentId || data.segment?.id || data.result?.segment?.id || '1',
+            segmentLabel: data.segmentLabel || data.segment?.label || data.result?.prize?.label || data.prize?.label || '',
+            rewardType: data.rewardType || data.result?.prize?.type || data.type || 'coins',
+            rewardValue: data.rewardValue || data.result?.prize?.value || data.value || data.amount || data.coinsAdded || 0,
             spinsRemaining: data.spinsRemaining ?? data.remaining ?? 0,
             message: data.message || `You won ${data.rewardValue || data.value}!`,
+            newBalance: data.newBalance, // Backend returns updated wallet balance
+            coinsAdded: data.coinsAdded || data.result?.prize?.value || 0, // Actual coins added
           },
         };
       }
@@ -669,6 +685,83 @@ class GamificationApiService {
       return response;
     } catch (error: any) {
       console.error('[GAMIFICATION API] Error fetching reviewable items:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ========================================
+  // BONUS OPPORTUNITIES (for Play & Earn)
+  // ========================================
+
+  /**
+   * Get time-limited bonus opportunities (challenges, coin drops, campaigns ending soon)
+   */
+  async getBonusOpportunities(): Promise<ApiResponse<{
+    opportunities: BonusOpportunity[];
+    total: number;
+  }>> {
+    try {
+      const response = await apiClient.get<any>('/gamification/bonus-opportunities');
+
+      if (response.success && response.data) {
+        const data = response.data;
+        return {
+          success: true,
+          data: {
+            opportunities: (data.opportunities || []).map((opp: any) => ({
+              id: opp.id || opp._id,
+              title: opp.title,
+              description: opp.description,
+              reward: opp.reward,
+              timeLeft: opp.timeLeft,
+              icon: opp.icon || '🎁',
+              type: opp.type || 'challenge',
+              path: opp.path,
+              urgent: opp.urgent ?? false,
+            })) as BonusOpportunity[],
+            total: data.total || data.opportunities?.length || 0,
+          },
+        };
+      }
+
+      // Return default opportunities if API fails (graceful degradation)
+      return {
+        success: true,
+        data: {
+          opportunities: [
+            { id: '1', title: 'Complete Your Profile', description: 'Fill in all details', reward: '50 coins', timeLeft: '2h left', icon: '👤', type: 'challenge' as const, path: '/profile/edit' },
+            { id: '2', title: 'First Purchase Bonus', description: 'Get extra cashback', reward: '2x cashback', timeLeft: '24h left', icon: '🛒', type: 'campaign' as const, path: '/products' },
+            { id: '3', title: 'Share & Earn', description: 'Share app with friends', reward: '100 coins', timeLeft: '3d left', icon: '📣', type: 'challenge' as const, path: '/share-and-earn' },
+          ],
+          total: 3,
+        },
+      };
+    } catch (error: any) {
+      console.error('[GAMIFICATION API] Error fetching bonus opportunities:', error);
+      return {
+        success: true,
+        data: {
+          opportunities: [],
+          total: 0,
+        },
+      };
+    }
+  }
+
+  /**
+   * Get play and earn hub data (comprehensive data for Play & Earn page)
+   */
+  async getPlayAndEarnData(): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.get<any>('/gamification/play-and-earn');
+
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[GAMIFICATION API] Error fetching play and earn data:', error);
       return { success: false, error: error.message };
     }
   }

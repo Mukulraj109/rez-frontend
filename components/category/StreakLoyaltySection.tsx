@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import userLoyaltyApi, { UserLoyalty } from '@/services/userLoyaltyApi';
 import { loyaltyData, LoyaltyData } from '@/data/categoryDummyData';
+import CoinIcon from '@/components/ui/CoinIcon';
 
 interface StreakLoyaltySectionProps {
   data?: LoyaltyData;
@@ -196,7 +197,7 @@ const StreakLoyaltySection: React.FC<StreakLoyaltySectionProps> = ({
                 </View>
               </View>
               <View style={styles.missionReward}>
-                <Text style={styles.coinSmall}>🪙</Text>
+                <CoinIcon size={14} />
                 <Text style={styles.rewardText}>{mission.reward}</Text>
               </View>
             </TouchableOpacity>
