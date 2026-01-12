@@ -6,6 +6,80 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus, LogBox, Platform } from 'react-native';
 import * as Router from 'expo-router';
 
+// Hide React DevTools overlay on web to prevent debug numbers
+if (__DEV__ && Platform.OS === 'web' && typeof document !== 'undefined') {
+  // Inject CSS to hide React DevTools overlay and layout inspector numbers
+  const style = document.createElement('style');
+  style.id = 'hide-inspector-overlay';
+  style.textContent = `
+    /* Hide React DevTools inspector overlay numbers */
+    [data-react-devtools-overlay],
+    [data-react-devtools-highlight],
+    .react-devtools-overlay,
+    .__react-devtools-overlay__ {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    /* Hide any element inspector overlays */
+    [data-inspector],
+    [data-layout-inspector] {
+      display: none !important;
+    }
+  `;
+  // Remove existing style if present
+  const existing = document.getElementById('hide-inspector-overlay');
+  if (existing) existing.remove();
+  document.head.appendChild(style);
+  
+  // Use MutationObserver to remove inspector overlay elements as they appear
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === 1) { // Element node
+          const element = node as HTMLElement;
+          const text = element.textContent || '';
+          // Check if this looks like inspector overlay numbers (e.g., "512/3063/306")
+          if (text.match(/^\d+\/\d+\/\d+$/) || text.match(/^\d+\/\d+$/)) {
+            const style = window.getComputedStyle(element);
+            // If it's positioned absolutely and has monospace font, it's likely an overlay
+            if (style.position === 'absolute' && style.fontFamily.includes('monospace')) {
+              element.style.display = 'none';
+              element.style.visibility = 'hidden';
+              element.style.opacity = '0';
+              element.style.pointerEvents = 'none';
+            }
+          }
+          // Also check for elements with specific inspector attributes
+          if (element.hasAttribute('data-react-devtools-overlay') ||
+              element.hasAttribute('data-inspector') ||
+              element.hasAttribute('data-layout-inspector') ||
+              element.classList.contains('react-devtools-overlay')) {
+            element.style.display = 'none';
+            element.style.visibility = 'hidden';
+          }
+        }
+      });
+    });
+  });
+  
+  // Start observing
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+  
+  // Also try to disable React DevTools programmatically
+  if (typeof window !== 'undefined') {
+    // @ts-ignore
+    if (window.__REACT_DEVTOOLS_GLOBAL_HOOK__) {
+      // @ts-ignore
+      window.__REACT_DEVTOOLS_GLOBAL_HOOK__.isDisabled = true;
+    }
+  }
+}
+
 // Warnings to suppress
 const SUPPRESSED_WARNINGS = [
   'Require cycle: node_modules/react-native-gesture-handler',

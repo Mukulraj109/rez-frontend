@@ -2,32 +2,66 @@
  * Home Services Hub Page
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, Dimensions, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import homeServicesApi, { HomeServiceCategory, HomeService, HomeServicesStats } from '@/services/homeServicesApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const COLORS = { white: '#FFFFFF', navy: '#0B2240', gray50: '#F9FAFB', gray100: '#F3F4F6', gray200: '#E5E7EB', gray600: '#6B7280', green500: '#22C55E', blue500: '#3B82F6', amber500: '#F59E0B' };
 
-const categories = [
-  { id: 'repair', title: 'Repair', icon: '🔧', color: '#3B82F6', count: '50+ services' },
-  { id: 'cleaning', title: 'Cleaning', icon: '🧹', color: '#22C55E', count: '30+ services' },
-  { id: 'painting', title: 'Painting', icon: '🎨', color: '#F97316', count: '20+ services' },
-  { id: 'carpentry', title: 'Carpentry', icon: '🪚', color: '#8B5CF6', count: '25+ services' },
-  { id: 'plumbing', title: 'Plumbing', icon: '🚿', color: '#06B6D4', count: '15+ services' },
-  { id: 'electrical', title: 'Electrical', icon: '⚡', color: '#EAB308', count: '20+ services' },
-];
-
-const featuredServices = [
-  { id: 1, name: 'AC Repair', type: 'Repair', price: '₹299', cashback: '25%', image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=400' },
-  { id: 2, name: 'Deep Cleaning', type: 'Cleaning', price: '₹999', cashback: '30%', image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400' },
-  { id: 3, name: 'Wall Painting', type: 'Painting', price: '₹15/sqft', cashback: '20%', image: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400' },
-];
-
 const HomeServicesPage: React.FC = () => {
   const router = useRouter();
+  const [categories, setCategories] = useState<HomeServiceCategory[]>([]);
+  const [featuredServices, setFeaturedServices] = useState<HomeService[]>([]);
+  const [stats, setStats] = useState<HomeServicesStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [categoriesRes, featuredRes, statsRes] = await Promise.all([
+          homeServicesApi.getCategories(),
+          homeServicesApi.getFeatured(3),
+          homeServicesApi.getStats()
+        ]);
+
+        if (categoriesRes.success && categoriesRes.data) {
+          setCategories(categoriesRes.data);
+        }
+        if (featuredRes.success && featuredRes.data) {
+          setFeaturedServices(featuredRes.data);
+        }
+        if (statsRes.success && statsRes.data) {
+          setStats(statsRes.data);
+        }
+      } catch (error) {
+        console.error('[HomeServicesPage] Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleServicePress = (service: HomeService) => {
+    const serviceId = service._id || service.id;
+    if (serviceId) {
+      router.push(`/product/${serviceId}` as any);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', flex: 1 }]}>
+        <ActivityIndicator size="large" color={COLORS.blue500} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -41,11 +75,20 @@ const HomeServicesPage: React.FC = () => {
           <TouchableOpacity style={styles.searchButton}><Ionicons name="search" size={24} color={COLORS.white} /></TouchableOpacity>
         </View>
         <View style={styles.statsRow}>
-          <View style={styles.statItem}><Text style={styles.statValue}>200+</Text><Text style={styles.statLabel}>Professionals</Text></View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{stats?.professionals || 200}+</Text>
+            <Text style={styles.statLabel}>Professionals</Text>
+          </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}><Text style={styles.statValue}>30%</Text><Text style={styles.statLabel}>Max Cashback</Text></View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{stats?.maxCashback || 30}%</Text>
+            <Text style={styles.statLabel}>Max Cashback</Text>
+          </View>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}><Text style={styles.statValue}>Same Day</Text><Text style={styles.statLabel}>Service</Text></View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>Same Day</Text>
+            <Text style={styles.statLabel}>Service</Text>
+          </View>
         </View>
       </LinearGradient>
 
@@ -66,17 +109,32 @@ const HomeServicesPage: React.FC = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Popular Services</Text><TouchableOpacity><Text style={styles.viewAllText}>View All</Text></TouchableOpacity></View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {featuredServices.map((service) => (
-              <TouchableOpacity key={service.id} style={styles.serviceCard} onPress={() => router.push(`/home-services/${service.id}` as any)} activeOpacity={0.9}>
-                <Image source={{ uri: service.image }} style={styles.serviceImage} />
-                <View style={styles.cashbackBadge}><Text style={styles.cashbackText}>{service.cashback}</Text></View>
-                <View style={styles.serviceInfo}>
-                  <Text style={styles.serviceName}>{service.name}</Text>
-                  <Text style={styles.serviceType}>{service.type}</Text>
-                  <Text style={styles.servicePrice}>From {service.price}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {featuredServices.map((service) => {
+              const serviceId = service._id || service.id;
+              const imageUrl = service.images?.[0] || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400';
+              const price = service.pricing?.selling || 0;
+              const cashback = service.cashback?.percentage || service.serviceCategory?.cashbackPercentage || 0;
+              const categoryName = service.serviceCategory?.name || 'Service';
+              
+              return (
+                <TouchableOpacity 
+                  key={serviceId} 
+                  style={styles.serviceCard} 
+                  onPress={() => handleServicePress(service)} 
+                  activeOpacity={0.9}
+                >
+                  <Image source={{ uri: imageUrl }} style={styles.serviceImage} />
+                  <View style={styles.cashbackBadge}>
+                    <Text style={styles.cashbackText}>{cashback}%</Text>
+                  </View>
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceName}>{service.name}</Text>
+                    <Text style={styles.serviceType}>{categoryName}</Text>
+                    <Text style={styles.servicePrice}>From ₹{price}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 

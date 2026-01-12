@@ -2,56 +2,131 @@
  * Home Services Category Page - Dynamic route
  */
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import homeServicesApi, { HomeService, HomeServicesByCategoryResponse } from '@/services/homeServicesApi';
 
-const COLORS = { white: '#FFFFFF', navy: '#0B2240', gray50: '#F9FAFB', gray100: '#F3F4F6', gray200: '#E5E7EB', gray600: '#6B7280', green500: '#22C55E', blue500: '#3B82F6', amber500: '#F59E0B' };
+const COLORS = { white: '#FFFFFF', navy: '#0B2240', gray50: '#F9FAFB', gray100: '#F3F4F6', gray200: '#E5E7EB', gray600: '#6B7280', green500: '#22C55E', blue500: '#3B82F6', amber500: '#F59E0B', red: '#EF4444' };
 
-const categoryData: Record<string, any> = {
-  repair: { title: 'Repair Services', icon: '🔧', gradientColors: ['#3B82F6', '#2563EB'], items: [
-    { id: 1, name: 'AC Repair', type: 'Appliance', rating: 4.7, price: '₹299', cashback: '25%', image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=400' },
-    { id: 2, name: 'Washing Machine', type: 'Appliance', rating: 4.6, price: '₹349', cashback: '20%', image: 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?w=400' },
-    { id: 3, name: 'Refrigerator', type: 'Appliance', rating: 4.5, price: '₹399', cashback: '22%', image: 'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?w=400' },
-  ]},
-  cleaning: { title: 'Cleaning Services', icon: '🧹', gradientColors: ['#22C55E', '#16A34A'], items: [
-    { id: 4, name: 'Deep Home Cleaning', type: 'Full House', rating: 4.8, price: '₹999', cashback: '30%', image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400' },
-    { id: 5, name: 'Sofa Cleaning', type: 'Furniture', rating: 4.6, price: '₹499', cashback: '25%', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400' },
-  ]},
-  painting: { title: 'Painting Services', icon: '🎨', gradientColors: ['#F97316', '#EA580C'], items: [
-    { id: 6, name: 'Interior Painting', type: 'Wall', rating: 4.7, price: '₹15/sqft', cashback: '20%', image: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400' },
-    { id: 7, name: 'Exterior Painting', type: 'Wall', rating: 4.5, price: '₹18/sqft', cashback: '18%', image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=400' },
-  ]},
-  carpentry: { title: 'Carpentry', icon: '🪚', gradientColors: ['#8B5CF6', '#7C3AED'], items: [
-    { id: 8, name: 'Furniture Repair', type: 'Repair', rating: 4.6, price: '₹399', cashback: '22%', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400' },
-    { id: 9, name: 'Custom Furniture', type: 'New', rating: 4.8, price: '₹2,999+', cashback: '15%', image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400' },
-  ]},
-  plumbing: { title: 'Plumbing', icon: '🚿', gradientColors: ['#06B6D4', '#0891B2'], items: [
-    { id: 10, name: 'Tap Repair', type: 'Repair', rating: 4.5, price: '₹199', cashback: '25%', image: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400' },
-    { id: 11, name: 'Pipe Fitting', type: 'Installation', rating: 4.6, price: '₹349', cashback: '20%', image: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?w=400' },
-  ]},
-  electrical: { title: 'Electrical', icon: '⚡', gradientColors: ['#EAB308', '#CA8A04'], items: [
-    { id: 12, name: 'Wiring', type: 'Installation', rating: 4.7, price: '₹499', cashback: '20%', image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=400' },
-    { id: 13, name: 'Fan Installation', type: 'Installation', rating: 4.5, price: '₹299', cashback: '25%', image: 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400' },
-  ]},
+// Fallback gradient colors for categories
+const categoryGradients: Record<string, string[]> = {
+  repair: ['#3B82F6', '#2563EB'],
+  cleaning: ['#22C55E', '#16A34A'],
+  painting: ['#F97316', '#EA580C'],
+  carpentry: ['#8B5CF6', '#7C3AED'],
+  plumbing: ['#06B6D4', '#0891B2'],
+  electrical: ['#EAB308', '#CA8A04'],
 };
 
 const HomeServicesCategoryPage: React.FC = () => {
   const router = useRouter();
   const { category } = useLocalSearchParams<{ category: string }>();
   const [selectedFilter, setSelectedFilter] = useState('all');
-  const data = categoryData[category || 'repair'] || categoryData['repair'];
+  const [services, setServices] = useState<HomeService[]>([]);
+  const [categoryInfo, setCategoryInfo] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      if (!category) return;
+      
+      try {
+        setIsLoading(true);
+        let sortBy: 'price_low' | 'price_high' | 'rating' | 'newest' | 'popular' = 'rating';
+        
+        if (selectedFilter === 'Best Price') {
+          sortBy = 'price_low';
+        } else if (selectedFilter === 'Top Rated') {
+          sortBy = 'rating';
+        } else if (selectedFilter === 'Today') {
+          // Filter for same-day services (would need backend support)
+          sortBy = 'rating';
+        }
+
+        const response = await homeServicesApi.getByCategory(category, {
+          page: currentPage,
+          limit: 20,
+          sortBy
+        });
+
+        if (response.success && response.data) {
+          if (currentPage === 1) {
+            setServices(response.data.services);
+          } else {
+            setServices(prev => [...prev, ...response.data.services]);
+          }
+          setCategoryInfo(response.data.category);
+          setTotalPages(response.data.pagination.pages);
+          setHasMore(response.data.pagination.page < response.data.pagination.pages);
+          setError(null);
+        } else {
+          setError(response.error || 'Failed to load services');
+        }
+      } catch (error) {
+        console.error('[HomeServicesCategoryPage] Error fetching services:', error);
+        setError('Failed to load services. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [category, selectedFilter, currentPage]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setServices([]);
+  }, [category, selectedFilter]);
+
+  const loadMore = () => {
+    if (hasMore && !isLoading) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const handleServicePress = (service: HomeService) => {
+    const serviceId = service._id || service.id;
+    if (serviceId) {
+      router.push(`/product/${serviceId}` as any);
+    }
+  };
+
+  const handleBookPress = (service: HomeService) => {
+    const serviceId = service._id || service.id;
+    const storeId = service.store?._id || service.store?.id;
+    if (serviceId && storeId) {
+      router.push(`/booking?storeId=${storeId}&productId=${serviceId}&bookingType=service` as any);
+    }
+  };
+
+  const gradientColors = categoryGradients[category || 'repair'] || categoryGradients['repair'];
+  const displayTitle = categoryInfo?.name || `${category?.charAt(0).toUpperCase()}${category?.slice(1)} Services`;
+  const displayIcon = categoryInfo?.icon || '🔧';
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', flex: 1 }]}>
+        <ActivityIndicator size="large" color={COLORS.blue500} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={data.gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
+      <LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color={COLORS.white} /></TouchableOpacity>
           <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>{data.icon} {data.title}</Text>
-            <Text style={styles.headerSubtitle}>{data.items.length} services</Text>
+            <Text style={styles.headerTitle}>{displayIcon} {displayTitle}</Text>
+            <Text style={styles.headerSubtitle}>{services.length} services</Text>
           </View>
           <TouchableOpacity style={styles.searchButton}><Ionicons name="search" size={24} color={COLORS.white} /></TouchableOpacity>
         </View>
@@ -67,26 +142,91 @@ const HomeServicesCategoryPage: React.FC = () => {
         </ScrollView>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.itemsList}>
-          {data.items.map((item: any) => (
-            <TouchableOpacity key={item.id} style={styles.itemCard} onPress={() => router.push(`/booking` as any)} activeOpacity={0.8}>
-              <Image source={{ uri: item.image }} style={styles.itemImage} />
-              <View style={styles.cashbackBadge}><Text style={styles.cashbackText}>{item.cashback}</Text></View>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <View style={styles.typeBadge}><Text style={styles.typeText}>{item.type}</Text></View>
-                <View style={styles.itemMeta}>
-                  <View style={styles.ratingContainer}><Ionicons name="star" size={14} color={COLORS.amber500} /><Text style={styles.ratingText}>{item.rating}</Text></View>
-                </View>
-                <View style={styles.itemFooter}>
-                  <Text style={styles.priceText}>From {item.price}</Text>
-                  <TouchableOpacity style={styles.bookButton}><Text style={styles.bookButtonText}>Book</Text></TouchableOpacity>
-                </View>
-              </View>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          const paddingToBottom = 20;
+          if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
+            loadMore();
+          }
+        }}
+        scrollEventThrottle={400}
+      >
+        {error && (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <Text style={{ color: COLORS.red, textAlign: 'center' }}>{error}</Text>
+            <TouchableOpacity 
+              style={{ marginTop: 10, padding: 10, backgroundColor: COLORS.blue500, borderRadius: 8 }}
+              onPress={() => {
+                setError(null);
+                setCurrentPage(1);
+                setServices([]);
+              }}
+            >
+              <Text style={{ color: COLORS.white }}>Retry</Text>
             </TouchableOpacity>
-          ))}
+          </View>
+        )}
+        <View style={styles.itemsList}>
+          {services.length === 0 && !isLoading ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: COLORS.gray600 }}>No services found in this category</Text>
+            </View>
+          ) : (
+            services.map((service) => {
+              const serviceId = service._id || service.id;
+              const imageUrl = service.images?.[0] || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400';
+              const price = service.pricing?.selling || 0;
+              const cashback = service.cashback?.percentage || service.serviceCategory?.cashbackPercentage || 0;
+              const rating = service.ratings?.average || 0;
+              
+              return (
+                <TouchableOpacity 
+                  key={serviceId} 
+                  style={styles.itemCard} 
+                  onPress={() => handleServicePress(service)} 
+                  activeOpacity={0.8}
+                >
+                  <Image source={{ uri: imageUrl }} style={styles.itemImage} />
+                  <View style={styles.cashbackBadge}>
+                    <Text style={styles.cashbackText}>{cashback}%</Text>
+                  </View>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName}>{service.name}</Text>
+                    <View style={styles.typeBadge}>
+                      <Text style={styles.typeText}>{service.serviceCategory?.name || 'Service'}</Text>
+                    </View>
+                    <View style={styles.itemMeta}>
+                      <View style={styles.ratingContainer}>
+                        <Ionicons name="star" size={14} color={COLORS.amber500} />
+                        <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.itemFooter}>
+                      <Text style={styles.priceText}>From ₹{price}</Text>
+                      <TouchableOpacity 
+                        style={styles.bookButton}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleBookPress(service);
+                        }}
+                      >
+                        <Text style={styles.bookButtonText}>Book</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
         </View>
+        {hasMore && (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={COLORS.blue500} />
+            <Text style={{ color: COLORS.gray600, marginTop: 10 }}>Loading more services...</Text>
+          </View>
+        )}
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>

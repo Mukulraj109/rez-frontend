@@ -3,16 +3,19 @@
  * Repair Services, Deep Clean, Painting, Carpentry, etc.
  */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import homeServicesApi, { HomeServiceCategory } from '@/services/homeServicesApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 10;
@@ -28,6 +31,27 @@ const COLORS = {
 
 const HomeServicesSection: React.FC = () => {
   const router = useRouter();
+  const [categories, setCategories] = useState<HomeServiceCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch categories from backend
+  const fetchCategories = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await homeServicesApi.getCategories();
+      if (response.success && response.data) {
+        setCategories(response.data);
+      }
+    } catch (error) {
+      console.error('[HomeServicesSection] Error fetching categories:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   const handleViewAll = () => {
     router.push('/home-services' as any);
@@ -36,6 +60,20 @@ const HomeServicesSection: React.FC = () => {
   const handlePress = (route: string) => {
     router.push(route as any);
   };
+
+  // Get category data for main cards
+  const repairCategory = categories.find(c => c.id === 'repair');
+  const cleaningCategory = categories.find(c => c.id === 'cleaning');
+  const paintingCategory = categories.find(c => c.id === 'painting');
+  const carpentryCategory = categories.find(c => c.id === 'carpentry');
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { paddingVertical: 20, alignItems: 'center' }]}>
+        <ActivityIndicator size="small" color={COLORS.green500} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -66,20 +104,22 @@ const HomeServicesSection: React.FC = () => {
           >
             <View style={styles.repairTop}>
               <View style={styles.repairIconBox}>
-                <Text style={styles.repairIcon}>🔧</Text>
+                <Text style={styles.repairIcon}>{repairCategory?.icon || '🔧'}</Text>
               </View>
               <View style={styles.verifiedBadge}>
                 <Text style={styles.verifiedText}>✓ VERIFIED</Text>
               </View>
             </View>
-            <Text style={styles.repairTitle}>Repair Services</Text>
+            <Text style={styles.repairTitle}>{repairCategory?.title || 'Repair Services'}</Text>
             <Text style={styles.repairSubtitle}>AC • Plumbing • Electrical</Text>
             <View style={styles.repairBadges}>
               <View style={styles.sameDayBadge}>
                 <Text style={styles.badgeText}>Same Day</Text>
               </View>
               <View style={styles.discountBadge}>
-                <Text style={styles.badgeText}>10% OFF</Text>
+                <Text style={styles.badgeText}>
+                  {repairCategory?.cashback ? `${repairCategory.cashback}% OFF` : '10% OFF'}
+                </Text>
               </View>
             </View>
           </LinearGradient>
@@ -98,7 +138,7 @@ const HomeServicesSection: React.FC = () => {
             style={styles.cleanGradient}
           >
             <View style={styles.cleanIconBox}>
-              <Text style={styles.cleanIcon}>🧹</Text>
+              <Text style={styles.cleanIcon}>{cleaningCategory?.icon || '🧹'}</Text>
             </View>
             <Text style={styles.cleanTitle}>Deep</Text>
             <Text style={styles.cleanTitle}>Clean</Text>
@@ -119,9 +159,9 @@ const HomeServicesSection: React.FC = () => {
           activeOpacity={0.9}
         >
           <View style={[styles.bottomIconBox, { backgroundColor: 'rgba(236, 72, 153, 0.1)' }]}>
-            <Text style={styles.bottomIcon}>🎨</Text>
+            <Text style={styles.bottomIcon}>{paintingCategory?.icon || '🎨'}</Text>
           </View>
-          <Text style={styles.bottomTitle}>Painting</Text>
+          <Text style={styles.bottomTitle}>{paintingCategory?.title || 'Painting'}</Text>
         </TouchableOpacity>
 
         {/* Carpentry */}
@@ -131,9 +171,9 @@ const HomeServicesSection: React.FC = () => {
           activeOpacity={0.9}
         >
           <View style={[styles.bottomIconBox, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-            <Text style={styles.bottomIcon}>🪚</Text>
+            <Text style={styles.bottomIcon}>{carpentryCategory?.icon || '🪚'}</Text>
           </View>
-          <Text style={styles.bottomTitle}>Carpentry</Text>
+          <Text style={styles.bottomTitle}>{carpentryCategory?.title || 'Carpentry'}</Text>
         </TouchableOpacity>
 
         {/* Today */}
