@@ -7,52 +7,14 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Share,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import reelApi from '../../../services/reelApi';
 
 const { width } = Dimensions.get('window');
-
-// Fallback data
-const fallbackUgcPosts = [
-  {
-    id: '1',
-    user: { name: 'Arjun Kumar', avatar: 'https://i.pravatar.cc/100?img=11', distance: '0.5 km away' },
-    store: 'Cafe Noir',
-    storeEmoji: '☕',
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
-    caption: 'Saved ₹90 at this café using ReZ. Amazing coffee and service!',
-    saved: 90,
-    helpful: 45,
-    comments: 12,
-    time: '2 hours ago',
-  },
-  {
-    id: '2',
-    user: { name: 'Neha Patel', avatar: 'https://i.pravatar.cc/100?img=5', distance: '1.2 km away' },
-    store: 'Fresh Groceries',
-    storeEmoji: '🛒',
-    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400',
-    caption: 'Monthly grocery shopping with 15% cashback. ReZ makes it so easy!',
-    saved: 340,
-    helpful: 78,
-    comments: 23,
-    time: '5 hours ago',
-  },
-  {
-    id: '3',
-    user: { name: 'Raj Sharma', avatar: 'https://i.pravatar.cc/100?img=12', distance: '0.8 km away' },
-    store: 'Nike Store',
-    storeEmoji: '👟',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400',
-    caption: 'Got these amazing sneakers with 20% cashback! Best deal ever!',
-    saved: 1400,
-    helpful: 156,
-    comments: 34,
-    time: '1 day ago',
-  },
-];
 
 const storeEmojis: Record<string, string> = {
   'food': '🍛',
@@ -102,7 +64,7 @@ const formatTimeAgo = (dateString?: string): string => {
 
 const UGCPostsFeed = () => {
   const router = useRouter();
-  const [ugcPosts, setUgcPosts] = useState<any[]>(fallbackUgcPosts);
+  const [ugcPosts, setUgcPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -112,19 +74,28 @@ const UGCPostsFeed = () => {
         if (response.success && response.data && response.data.length > 0) {
           const transformed = response.data.map((video: any, index: number) => ({
             id: video.id || video._id,
+            // Use real storeId from backend
+            storeId: video.storeId || video.store?.id || video.store?._id || null,
             user: {
-              name: video.creator?.username || video.creator?.name || `User ${index + 1}`,
-              avatar: video.creator?.avatar || video.creator?.profilePicture || `https://i.pravatar.cc/100?img=${10 + index}`,
+              name: video.creator?.name || video.creator?.username ||
+                    (video.creator?.profile ? `${video.creator.profile.firstName || ''} ${video.creator.profile.lastName || ''}`.trim() : null) ||
+                    `User ${index + 1}`,
+              avatar: video.creator?.avatar || video.creator?.profile?.avatar || `https://i.pravatar.cc/100?img=${10 + index}`,
               distance: `${(Math.random() * 2 + 0.3).toFixed(1)} km away`,
             },
-            store: video.store?.name || video.storeName || 'Local Store',
-            storeEmoji: getStoreEmoji(video.category, video.store?.name),
+            // Use real store name from backend
+            store: video.storeName || video.store?.name || 'Local Store',
+            storeEmoji: getStoreEmoji(video.category, video.storeName || video.store?.name),
             image: video.thumbnail || video.thumbnailUrl || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
             caption: video.description || video.caption || 'Great experience with ReZ cashback!',
             saved: video.amountSaved || Math.floor(Math.random() * 500) + 50,
-            helpful: video.likes || video.likesCount || Math.floor(Math.random() * 100) + 10,
-            comments: video.comments?.length || video.commentsCount || Math.floor(Math.random() * 30) + 5,
+            // Use real likes count from backend
+            helpful: video.likesCount || video.likes || 0,
+            // Use real comments count from backend
+            comments: video.commentsCount || video.comments?.length || 0,
             time: formatTimeAgo(video.createdAt),
+            // Use real isLiked status from backend
+            isLiked: video.isLiked || false,
           }));
           setUgcPosts(transformed);
         }
@@ -140,6 +111,112 @@ const UGCPostsFeed = () => {
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
+
+  // Handle like/helpful button
+  const handleLike = async (postId: string) => {
+    // Find the current post
+    const currentPost = ugcPosts.find(p => p.id === postId);
+    if (!currentPost) return;
+
+    const wasLiked = currentPost.isLiked;
+
+    // Optimistic update - immediately update UI
+    setUgcPosts(prev => prev.map(post => {
+      if (post.id === postId) {
+        return {
+          ...post,
+          isLiked: !wasLiked,
+          helpful: wasLiked ? Math.max(0, post.helpful - 1) : post.helpful + 1,
+        };
+      }
+      return post;
+    }));
+
+    // Call API to persist like
+    try {
+      const response = await reelApi.toggleLike(postId);
+
+      // Update with actual server response if available
+      if (response.success && response.data) {
+        setUgcPosts(prev => prev.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              isLiked: response.data.liked ?? response.data.isLiked ?? !wasLiked,
+              helpful: response.data.likesCount ?? response.data.totalLikes ?? post.helpful,
+            };
+          }
+          return post;
+        }));
+      }
+    } catch (error) {
+      // Revert on error
+      console.log('[UGC] Like API error, reverting...');
+      setUgcPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            isLiked: wasLiked,
+            helpful: wasLiked ? post.helpful + 1 : Math.max(0, post.helpful - 1),
+          };
+        }
+        return post;
+      }));
+    }
+  };
+
+  // Handle share button
+  const handleShare = async (post: any) => {
+    try {
+      const result = await Share.share({
+        message: `Check out this amazing experience at ${post.store}! They saved ₹${post.saved} with ReZ cashback. "${post.caption}" \n\nDownload ReZ to start saving too!`,
+        title: `${post.user.name} saved ₹${post.saved} at ${post.store}`,
+      });
+
+      if (result.action === Share.sharedAction) {
+        console.log('[UGC] Shared successfully');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Unable to share at this moment');
+    }
+  };
+
+  // Handle comment button - navigate to reel detail with comments
+  const handleComment = (postId: string) => {
+    navigateTo(`/explore/reel/${postId}?showComments=true`);
+  };
+
+  // Handle view store
+  const handleViewStore = (storeId: string | null, storeName: string) => {
+    if (storeId) {
+      navigateTo(`/MainStorePage?id=${storeId}`);
+    } else {
+      // Search for the store by name if no ID
+      navigateTo(`/explore/search?q=${encodeURIComponent(storeName)}`);
+    }
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>People Are Saving Here</Text>
+            <Text style={styles.sectionSubtitle}>Real experiences from your neighborhood</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#00C06A" />
+        </View>
+      </View>
+    );
+  }
+
+  // Empty state - don't render section if no data
+  if (ugcPosts.length === 0) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -172,7 +249,7 @@ const UGCPostsFeed = () => {
               </View>
               <TouchableOpacity
                 style={styles.viewStoreButton}
-                onPress={() => navigateTo(`/MainStorePage?id=${post.id}`)}
+                onPress={() => handleViewStore(post.storeId, post.store)}
               >
                 <Text style={styles.viewStoreText}>View Store</Text>
               </TouchableOpacity>
@@ -194,30 +271,57 @@ const UGCPostsFeed = () => {
               </View>
             </TouchableOpacity>
 
-            {/* Store Name */}
-            <View style={styles.storeRow}>
+            {/* Store Name - Tappable */}
+            <TouchableOpacity
+              style={styles.storeRow}
+              onPress={() => handleViewStore(post.storeId, post.store)}
+            >
               <Text style={styles.storeEmoji}>{post.storeEmoji}</Text>
               <Text style={styles.storeName}>{post.store}</Text>
-            </View>
+              <Ionicons name="chevron-forward" size={16} color="#00C06A" />
+            </TouchableOpacity>
 
             {/* Caption */}
             <Text style={styles.caption}>{post.caption}</Text>
 
             {/* Actions Row */}
             <View style={styles.actionsRow}>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="thumbs-up-outline" size={18} color="#6B7280" />
-                <Text style={styles.actionText}>{post.helpful}</Text>
-                <Text style={styles.actionLabel}>Helpful</Text>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleLike(post.id)}
+              >
+                <Ionicons
+                  name={post.isLiked ? "thumbs-up" : "thumbs-up-outline"}
+                  size={18}
+                  color={post.isLiked ? "#00C06A" : "#6B7280"}
+                />
+                <Text style={[
+                  styles.actionText,
+                  post.isLiked && styles.actionTextActive
+                ]}>
+                  {post.helpful}
+                </Text>
+                <Text style={[
+                  styles.actionLabel,
+                  post.isLiked && styles.actionLabelActive
+                ]}>
+                  Helpful
+                </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.actionButton}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleComment(post.id)}
+              >
                 <Ionicons name="chatbubble-outline" size={18} color="#6B7280" />
                 <Text style={styles.actionText}>{post.comments}</Text>
                 <Text style={styles.actionLabel}>Comment</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.actionButton}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleShare(post)}
+              >
                 <Ionicons name="share-outline" size={18} color="#6B7280" />
                 <Text style={styles.actionLabel}>Share</Text>
               </TouchableOpacity>
@@ -232,6 +336,11 @@ const UGCPostsFeed = () => {
 const styles = StyleSheet.create({
   container: {
     paddingTop: 24,
+  },
+  loadingContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -393,6 +502,12 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 13,
     color: '#6B7280',
+  },
+  actionTextActive: {
+    color: '#00C06A',
+  },
+  actionLabelActive: {
+    color: '#00C06A',
   },
 });
 

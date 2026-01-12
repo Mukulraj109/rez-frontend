@@ -33,7 +33,10 @@ const ExclusiveOffers = () => {
           <View style={styles.content}>
             <Text style={styles.title}>Exclusive Offers</Text>
             <Text style={styles.subtitle}>Unlock special deals and cashback rewards</Text>
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => navigateTo('/offers')}
+            >
               <Text style={styles.buttonText}>View All Offers</Text>
             </TouchableOpacity>
           </View>

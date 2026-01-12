@@ -31,7 +31,7 @@ const EarnCTA = () => {
       {/* Main CTA Card */}
       <TouchableOpacity
         style={styles.ctaCard}
-        onPress={() => navigateTo('/refer')}
+        onPress={() => navigateTo('/referral')}
       >
         <LinearGradient
           colors={['#00C06A', '#10B981']}

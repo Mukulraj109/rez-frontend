@@ -19,65 +19,6 @@ import exploreApi, { NearbyStore } from '@/services/exploreApi';
 
 const { width, height } = Dimensions.get('window');
 
-// Mock nearby stores data
-const nearbyStores = [
-  {
-    id: 1,
-    name: 'Paradise Biryani',
-    category: 'Food & Dining',
-    distance: '0.8 km',
-    cashback: '20%',
-    rating: 4.5,
-    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=200',
-    isOpen: true,
-    offer: 'Flat 20% Cashback',
-  },
-  {
-    id: 2,
-    name: 'Nike Store',
-    category: 'Fashion',
-    distance: '1.2 km',
-    cashback: '15%',
-    rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200',
-    isOpen: true,
-    offer: '15% + Bonus Coins',
-  },
-  {
-    id: 3,
-    name: 'Starbucks',
-    category: 'Cafe',
-    distance: '0.5 km',
-    cashback: '10%',
-    rating: 4.3,
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200',
-    isOpen: true,
-    offer: 'Buy 1 Get 1 Free',
-  },
-  {
-    id: 4,
-    name: 'Wellness Spa',
-    category: 'Beauty & Wellness',
-    distance: '2.1 km',
-    cashback: '25%',
-    rating: 4.7,
-    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=200',
-    isOpen: true,
-    offer: '25% Cashback',
-  },
-  {
-    id: 5,
-    name: 'Fresh Mart',
-    category: 'Grocery',
-    distance: '0.3 km',
-    cashback: '5%',
-    rating: 4.2,
-    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200',
-    isOpen: true,
-    offer: '5% on All Items',
-  },
-];
-
 const categories = [
   { id: 'all', label: 'All', icon: 'grid' },
   { id: 'food', label: 'Food', icon: 'restaurant' },
@@ -124,16 +65,6 @@ const ExploreMapPage = () => {
         setStores(response.data);
       } else {
         setError(response.error || 'Failed to fetch nearby stores');
-        // Use mock data as fallback
-        setStores(nearbyStores.map(s => ({
-          id: String(s.id),
-          name: s.name,
-          distance: s.distance,
-          isLive: s.isOpen,
-          status: s.isOpen ? 'Open' : 'Closed',
-          cashback: s.cashback,
-          location: { coordinates: [0, 0] as [number, number] },
-        })));
       }
     } catch (err: any) {
       console.error('[MAP PAGE] Error:', err);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,50 +6,103 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import exploreApi, { FeaturedComparison } from '@/services/exploreApi';
 
 const { width } = Dimensions.get('window');
 
-const compareProduct = {
-  name: 'Nike Air Max 90',
-  image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200',
-  optionsCount: 3,
-  options: [
-    {
-      id: 1,
-      platform: 'Store Nearby',
-      price: 6999,
-      delivery: 'Pickup',
-      cashback: '10% back',
-      isBest: false,
-    },
-    {
-      id: 2,
-      platform: 'ReZ Mall',
-      price: 7199,
-      delivery: '60 min',
-      cashback: '15% back',
-      isBest: true,
-    },
-    {
-      id: 3,
-      platform: 'Brand Website',
-      price: 7499,
-      delivery: '3 days',
-      cashback: 'No cashback',
-      isBest: false,
-    },
-  ],
-};
+interface CompareOption {
+  id: string;
+  platform: string;
+  price: number;
+  delivery: string;
+  cashback: string;
+  isBest: boolean;
+}
 
 const CompareDecide = () => {
   const router = useRouter();
+  const [comparison, setComparison] = useState<FeaturedComparison | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeaturedComparison();
+  }, []);
+
+  const fetchFeaturedComparison = async () => {
+    try {
+      const response = await exploreApi.getFeaturedComparison();
+      if (response.success && response.data) {
+        setComparison(response.data.comparison);
+      }
+    } catch (error) {
+      console.error('[CompareDecide] Error fetching comparison:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
+
+  // Build options from comparison stores
+  const buildOptions = (): CompareOption[] => {
+    if (!comparison || !comparison.stores) return [];
+
+    return comparison.stores.map((store, index) => ({
+      id: store.id,
+      platform: store.name,
+      price: 0, // Price would come from product in real implementation
+      delivery: 'Pickup',
+      cashback: store.cashbackRate ? `${store.cashbackRate}% back` : 'No cashback',
+      isBest: index === 0, // First store is best for now
+    }));
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Compare & Decide</Text>
+            <Text style={styles.sectionSubtitle}>Same product, best deal</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#00C06A" />
+        </View>
+      </View>
+    );
+  }
+
+  // Empty state - show placeholder comparison
+  if (!comparison || !comparison.stores || comparison.stores.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Compare & Decide</Text>
+            <Text style={styles.sectionSubtitle}>Same product, best deal</Text>
+          </View>
+          <TouchableOpacity onPress={() => navigateTo('/explore/compare')}>
+            <Text style={styles.compareMoreText}>Compare More</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="git-compare-outline" size={32} color="#9CA3AF" />
+          <Text style={styles.emptyText}>No comparisons available</Text>
+          <Text style={styles.emptySubtext}>Start comparing products to find the best deals</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const options = buildOptions();
 
   return (
     <View style={styles.container}>
@@ -59,7 +112,7 @@ const CompareDecide = () => {
           <Text style={styles.sectionTitle}>Compare & Decide</Text>
           <Text style={styles.sectionSubtitle}>Same product, best deal</Text>
         </View>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigateTo('/explore/compare')}>
           <Text style={styles.compareMoreText}>Compare More</Text>
         </TouchableOpacity>
       </View>
@@ -68,23 +121,25 @@ const CompareDecide = () => {
       <View style={styles.compareCard}>
         {/* Product Info */}
         <View style={styles.productRow}>
-          <Image source={{ uri: compareProduct.image }} style={styles.productImage} />
+          <View style={styles.productImagePlaceholder}>
+            <Ionicons name="layers-outline" size={32} color="#9CA3AF" />
+          </View>
           <View style={styles.productInfo}>
-            <Text style={styles.productName}>{compareProduct.name}</Text>
-            <Text style={styles.optionsCount}>{compareProduct.optionsCount} options available</Text>
+            <Text style={styles.productName}>{comparison.name}</Text>
+            <Text style={styles.optionsCount}>{comparison.stores.length} options available</Text>
           </View>
         </View>
 
         {/* Options Table */}
         <View style={styles.optionsTable}>
-          {compareProduct.options.map((option) => (
+          {options.map((option, index) => (
             <TouchableOpacity
               key={option.id}
               style={[
                 styles.optionRow,
                 option.isBest && styles.optionRowBest,
               ]}
-              onPress={() => navigateTo('/MainStorePage?id=1')}
+              onPress={() => navigateTo(`/MainStorePage?storeId=${option.id}`)}
             >
               {/* Platform Icon & Name */}
               <View style={styles.platformCell}>
@@ -92,15 +147,7 @@ const CompareDecide = () => {
                   styles.platformIcon,
                   option.isBest && styles.platformIconBest,
                 ]}>
-                  {option.platform === 'Store Nearby' && (
-                    <Ionicons name="storefront" size={16} color={option.isBest ? '#FFFFFF' : '#6B7280'} />
-                  )}
-                  {option.platform === 'ReZ Mall' && (
-                    <Ionicons name="cart" size={16} color={option.isBest ? '#FFFFFF' : '#6B7280'} />
-                  )}
-                  {option.platform === 'Brand Website' && (
-                    <Ionicons name="globe" size={16} color={option.isBest ? '#FFFFFF' : '#6B7280'} />
-                  )}
+                  <Ionicons name="storefront" size={16} color={option.isBest ? '#FFFFFF' : '#6B7280'} />
                 </View>
                 <View>
                   <Text style={[
@@ -112,14 +159,6 @@ const CompareDecide = () => {
                   <Text style={styles.deliveryText}>{option.delivery}</Text>
                 </View>
               </View>
-
-              {/* Price */}
-              <Text style={[
-                styles.priceText,
-                option.isBest && styles.priceTextBest,
-              ]}>
-                ₹{option.price.toLocaleString()}
-              </Text>
 
               {/* Cashback */}
               <View style={[
@@ -140,7 +179,10 @@ const CompareDecide = () => {
         </View>
 
         {/* View All Options Button */}
-        <TouchableOpacity style={styles.viewAllButton}>
+        <TouchableOpacity
+          style={styles.viewAllButton}
+          onPress={() => navigateTo('/explore/compare')}
+        >
           <Text style={styles.viewAllText}>View All Options</Text>
         </TouchableOpacity>
       </View>
@@ -151,6 +193,27 @@ const CompareDecide = () => {
 const styles = StyleSheet.create({
   container: {
     paddingTop: 24,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    marginHorizontal: 16,
+    paddingVertical: 40,
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  emptySubtext: {
+    fontSize: 12,
+    color: '#9CA3AF',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -190,11 +253,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  productImage: {
+  productImagePlaceholder: {
     width: 70,
     height: 70,
     borderRadius: 12,
     backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   productInfo: {
     marginLeft: 14,
@@ -255,16 +320,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     marginTop: 2,
-  },
-  priceText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#374151',
-    minWidth: 70,
-    textAlign: 'center',
-  },
-  priceTextBest: {
-    color: '#0B2240',
   },
   cashbackCell: {
     backgroundColor: '#E5E7EB',

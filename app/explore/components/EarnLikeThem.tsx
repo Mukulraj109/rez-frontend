@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import exploreApi, { ExploreStatsSummary } from '@/services/exploreApi';
 
 const { width } = Dimensions.get('window');
 
@@ -17,7 +19,7 @@ const steps = [
     id: 1,
     icon: 'storefront',
     title: 'Visit Store',
-    subtitle: 'Choose from 1000+ nearby stores',
+    subtitle: 'Choose from nearby stores',
     color: '#3B82F6',
     bgColor: '#EBF5FF',
   },
@@ -49,10 +51,51 @@ const steps = [
 
 const EarnLikeThem = () => {
   const router = useRouter();
+  const [stats, setStats] = useState<ExploreStatsSummary>({
+    partnerStores: 1000,
+    maxCashback: 25,
+    totalUsers: 50000,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStatsSummary();
+  }, []);
+
+  const fetchStatsSummary = async () => {
+    try {
+      const response = await exploreApi.getStatsSummary();
+      if (response.success && response.data) {
+        setStats(response.data);
+      }
+    } catch (error) {
+      console.error('[EarnLikeThem] Error fetching stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
+
+  const formatNumber = (num: number): string => {
+    if (num >= 1000) {
+      return `${Math.floor(num / 1000)}k+`;
+    }
+    return `${num}+`;
+  };
+
+  // Update steps subtitle with dynamic store count
+  const dynamicSteps = steps.map((step) => {
+    if (step.id === 1) {
+      return {
+        ...step,
+        subtitle: `Choose from ${formatNumber(stats.partnerStores)} nearby stores`,
+      };
+    }
+    return step;
+  });
 
   return (
     <View style={styles.container}>
@@ -66,7 +109,7 @@ const EarnLikeThem = () => {
 
         {/* Steps */}
         <View style={styles.stepsContainer}>
-          {steps.map((step) => (
+          {dynamicSteps.map((step) => (
             <View key={step.id} style={styles.stepRow}>
               <View style={styles.stepNumberContainer}>
                 <LinearGradient
@@ -90,12 +133,26 @@ const EarnLikeThem = () => {
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statValue}>1000+</Text>
-            <Text style={styles.statLabel}>Partner Stores</Text>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#0B2240" />
+            ) : (
+              <>
+                <Text style={styles.statValue}>{formatNumber(stats.partnerStores)}</Text>
+                <Text style={styles.statLabel}>Partner Stores</Text>
+              </>
+            )}
           </View>
           <View style={[styles.statBox, styles.statBoxHighlight]}>
-            <Text style={[styles.statValue, styles.statValueHighlight]}>Up to 25%</Text>
-            <Text style={[styles.statLabel, styles.statLabelHighlight]}>Cashback</Text>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={[styles.statValue, styles.statValueHighlight]}>
+                  Up to {stats.maxCashback}%
+                </Text>
+                <Text style={[styles.statLabel, styles.statLabelHighlight]}>Cashback</Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -110,8 +167,9 @@ const EarnLikeThem = () => {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.sparkle}>✨</Text>
-          <Text style={styles.footerText}>Join 50,000+ users who are earning while spending</Text>
+          <Text style={styles.footerText}>
+            Join {formatNumber(stats.totalUsers)} users who are earning while spending
+          </Text>
         </View>
       </LinearGradient>
     </View>
@@ -197,8 +255,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    minHeight: 70,
   },
   statBoxHighlight: {
     backgroundColor: '#00C06A',
@@ -236,13 +296,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   footer: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  sparkle: {
-    fontSize: 14,
   },
   footerText: {
     fontSize: 12,

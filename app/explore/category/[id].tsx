@@ -13,121 +13,47 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import exploreApi, { ExploreStore, Category } from '@/services/exploreApi';
 
 const { width } = Dimensions.get('window');
 
-// Category data mapping
-const categoryData: { [key: string]: any } = {
-  food: {
-    name: 'Food & Dining',
-    emoji: '🍔',
-    color: '#F97316',
-    stores: 234,
-    avgCashback: '12%',
-  },
-  fashion: {
-    name: 'Fashion',
-    emoji: '🛍️',
-    color: '#EC4899',
-    stores: 156,
-    avgCashback: '15%',
-  },
-  electronics: {
-    name: 'Electronics',
-    emoji: '📱',
-    color: '#3B82F6',
-    stores: 89,
-    avgCashback: '8%',
-  },
-  beauty: {
-    name: 'Beauty & Wellness',
-    emoji: '💄',
-    color: '#A855F7',
-    stores: 178,
-    avgCashback: '18%',
-  },
-  grocery: {
-    name: 'Grocery',
-    emoji: '🛒',
-    color: '#10B981',
-    stores: 312,
-    avgCashback: '5%',
-  },
-  fitness: {
-    name: 'Fitness',
-    emoji: '🏋️',
-    color: '#EF4444',
-    stores: 67,
-    avgCashback: '20%',
-  },
+// Map Ionicon names to emojis for category display
+const iconToEmojiMap: { [key: string]: string } = {
+  'restaurant-outline': '🍔', 'restaurant': '🍔', 'fast-food-outline': '🍔', 'fast-food': '🍔',
+  'shirt-outline': '👔', 'shirt': '👔', 'bag-outline': '👜', 'bag': '👜',
+  'phone-portrait-outline': '📱', 'phone-portrait': '📱', 'laptop-outline': '💻',
+  'color-palette-outline': '💄', 'sparkles-outline': '💄',
+  'cart-outline': '🛒', 'cart': '🛒', 'basket-outline': '🧺',
+  'barbell-outline': '🏋️', 'barbell': '🏋️', 'fitness-outline': '🏋️',
+  'home-outline': '🏠', 'home': '🏠',
+  'construct-outline': '🔧', 'construct': '🔧',
+  'snow-outline': '❄️', 'snow': '❄️',
+  'receipt-outline': '🧾', 'receipt': '🧾',
+  'book-outline': '📚', 'book': '📚',
+  'medical-outline': '🏥', 'medkit-outline': '💊',
+  'airplane-outline': '✈️', 'car-outline': '🚗',
+  'paw-outline': '🐾',
 };
 
-// Mock stores data
-const storesData = [
-  {
-    id: 1,
-    name: 'Paradise Biryani',
-    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
-    rating: 4.5,
-    reviews: 567,
-    distance: '0.8 km',
-    cashback: '20%',
-    offer: 'Flat 20% Cashback',
-    isOpen: true,
-    deliveryTime: '30 min',
-  },
-  {
-    id: 2,
-    name: 'Starbucks',
-    image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
-    rating: 4.3,
-    reviews: 345,
-    distance: '0.5 km',
-    cashback: '10%',
-    offer: 'Buy 1 Get 1 Free',
-    isOpen: true,
-    deliveryTime: '20 min',
-  },
-  {
-    id: 3,
-    name: 'Cafe Noir',
-    image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400',
-    rating: 4.6,
-    reviews: 234,
-    distance: '1.2 km',
-    cashback: '15%',
-    offer: '15% Cashback',
-    isOpen: true,
-    deliveryTime: '25 min',
-  },
-  {
-    id: 4,
-    name: 'Fresh Mart',
-    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400',
-    rating: 4.2,
-    reviews: 189,
-    distance: '0.3 km',
-    cashback: '5%',
-    offer: '5% on All Items',
-    isOpen: true,
-    deliveryTime: '40 min',
-  },
-  {
-    id: 5,
-    name: 'Pizza Palace',
-    image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400',
-    rating: 4.4,
-    reviews: 456,
-    distance: '1.5 km',
-    cashback: '12%',
-    offer: 'Flat ₹100 Off',
-    isOpen: true,
-    deliveryTime: '35 min',
-  },
-];
+// Get emoji from icon name or category name
+const getEmojiForCategory = (icon?: string, name?: string): string => {
+  if (icon && iconToEmojiMap[icon]) return iconToEmojiMap[icon];
+  const lowerName = (name || '').toLowerCase();
+  if (lowerName.includes('food') || lowerName.includes('dining') || lowerName.includes('restaurant')) return '🍔';
+  if (lowerName.includes('fashion') || lowerName.includes('cloth')) return '👜';
+  if (lowerName.includes('electronic') || lowerName.includes('mobile')) return '📱';
+  if (lowerName.includes('beauty') || lowerName.includes('salon')) return '💄';
+  if (lowerName.includes('grocery') || lowerName.includes('supermarket')) return '🛒';
+  if (lowerName.includes('fitness') || lowerName.includes('gym')) return '🏋️';
+  if (lowerName.includes('home') || lowerName.includes('delivery')) return '🏠';
+  if (lowerName.includes('service') || lowerName.includes('repair')) return '🔧';
+  if (lowerName.includes('ac') || lowerName.includes('cooling')) return '❄️';
+  if (lowerName.includes('bill') || lowerName.includes('payment')) return '🧾';
+  if (lowerName.includes('coach') || lowerName.includes('education')) return '📚';
+  return '🏷️';
+};
 
 const filterChips = [
   { id: 'all', label: 'All' },
@@ -148,9 +74,8 @@ const CategoryDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [stores, setStores] = useState<ExploreStore[]>([]);
   const [categoryInfo, setCategoryInfo] = useState<Category | null>(null);
-
-  // Get fallback category data
-  const fallbackCategory = categoryData[id as string] || categoryData.food;
+  const [maxCashback, setMaxCashback] = useState<string | null>(null);
+  const [offersCount, setOffersCount] = useState<number | null>(null);
 
   // Fetch category data and stores
   const fetchCategoryData = useCallback(async (isRefresh = false) => {
@@ -177,9 +102,20 @@ const CategoryDetailPage = () => {
       if (storesResponse.success && storesResponse.data) {
         let fetchedStores = storesResponse.data.stores || [];
 
+        // Calculate max cashback from stores
+        let maxCb = 0;
+        let offersLive = 0;
+        fetchedStores.forEach((store: any) => {
+          const cbValue = parseInt(store.cashback?.replace('%', '') || '0');
+          if (cbValue > maxCb) maxCb = cbValue;
+          if (store.offer) offersLive++;
+        });
+        if (maxCb > 0) setMaxCashback(`${maxCb}%`);
+        if (offersLive > 0) setOffersCount(offersLive);
+
         // Apply local filtering based on selected filter
         if (selectedFilter === 'topRated') {
-          fetchedStores = [...fetchedStores].sort((a, b) => b.rating - a.rating);
+          fetchedStores = [...fetchedStores].sort((a, b) => (b.rating || 0) - (a.rating || 0));
         } else if (selectedFilter === 'highCashback') {
           fetchedStores = [...fetchedStores].sort((a, b) => {
             const aRate = parseInt(a.cashback?.replace('%', '') || '0');
@@ -210,59 +146,64 @@ const CategoryDetailPage = () => {
     fetchCategoryData(true);
   }, [fetchCategoryData]);
 
-  // Get display category info (from API or fallback)
-  const category = {
-    name: categoryInfo?.name || fallbackCategory.name,
-    emoji: fallbackCategory.emoji, // Fallback always has emoji
-    color: fallbackCategory.color,
-    stores: categoryInfo?.storeCount || stores.length || fallbackCategory.stores,
-    avgCashback: fallbackCategory.avgCashback,
-  };
+  // Get display category info from API
+  const categoryName = categoryInfo?.name || (id as string)?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Category';
+  const categoryEmoji = getEmojiForCategory(categoryInfo?.icon, categoryInfo?.name);
 
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#0B2240" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-          <Text style={styles.headerTitle}>{category.name}</Text>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#0B2240" />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.categoryEmoji}>{categoryEmoji}</Text>
+            <Text style={styles.headerTitle}>{categoryName}</Text>
+          </View>
+          <TouchableOpacity style={styles.searchButton}>
+            <Ionicons name="search" size={22} color="#0B2240" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.searchButton}>
-          <Ionicons name="search" size={22} color="#0B2240" />
-        </TouchableOpacity>
-      </View>
 
-      {/* Category Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{category.stores}</Text>
-          <Text style={styles.statLabel}>Stores</Text>
+        {/* Category Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{categoryInfo?.storeCount || stores.length || 0}</Text>
+            <Text style={styles.statLabel}>Stores</Text>
+          </View>
+          {maxCashback && (
+            <>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: '#00C06A' }]}>
+                  Up to {maxCashback}
+                </Text>
+                <Text style={styles.statLabel}>Cashback</Text>
+              </View>
+            </>
+          )}
+          {offersCount && offersCount > 0 && (
+            <>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{offersCount}</Text>
+                <Text style={styles.statLabel}>Offers Live</Text>
+              </View>
+            </>
+          )}
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: '#00C06A' }]}>
-            Up to {category.avgCashback}
-          </Text>
-          <Text style={styles.statLabel}>Cashback</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>24</Text>
-          <Text style={styles.statLabel}>Offers Live</Text>
-        </View>
-      </View>
 
       {/* Filter Chips */}
       <ScrollView
@@ -334,24 +275,34 @@ const CategoryDetailPage = () => {
           <TouchableOpacity
             key={store.id}
             style={styles.storeCard}
-            onPress={() => navigateTo(`/MainStorePage?id=${store.id}`)}
+            onPress={() => navigateTo(`/MainStorePage?storeId=${store.id}`)}
           >
-            <Image source={{ uri: store.image }} style={styles.storeImage} />
+            {store.image ? (
+              <Image source={{ uri: store.image }} style={styles.storeImage} />
+            ) : (
+              <View style={[styles.storeImage, styles.storeImagePlaceholder]}>
+                <Text style={styles.storeInitial}>{store.name?.charAt(0) || 'S'}</Text>
+              </View>
+            )}
 
             <View style={styles.storeContent}>
               <View style={styles.storeHeader}>
                 <Text style={styles.storeName} numberOfLines={1}>{store.name}</Text>
-                <View style={styles.ratingBadge}>
-                  <Ionicons name="star" size={12} color="#F59E0B" />
-                  <Text style={styles.ratingText}>{store.rating}</Text>
-                </View>
+                {store.rating && (
+                  <View style={styles.ratingBadge}>
+                    <Ionicons name="star" size={12} color="#F59E0B" />
+                    <Text style={styles.ratingText}>{store.rating}</Text>
+                  </View>
+                )}
               </View>
 
-              <View style={styles.offerRow}>
-                <View style={styles.offerBadge}>
-                  <Text style={styles.offerText}>{store.offer || `${store.cashback} Cashback`}</Text>
+              {(store.offer || store.cashback) && (
+                <View style={styles.offerRow}>
+                  <View style={styles.offerBadge}>
+                    <Text style={styles.offerText}>{store.offer || `${store.cashback} Cashback`}</Text>
+                  </View>
                 </View>
-              </View>
+              )}
 
               <View style={styles.storeFooter}>
                 {store.distance && (
@@ -360,18 +311,25 @@ const CategoryDetailPage = () => {
                     <Text style={styles.infoText}>{store.distance}</Text>
                   </View>
                 )}
-                <View style={styles.infoItem}>
-                  <Ionicons name={store.isOpen ? 'checkmark-circle' : 'close-circle'} size={14} color={store.isOpen ? '#10B981' : '#EF4444'} />
-                  <Text style={styles.infoText}>{store.isOpen ? 'Open' : 'Closed'}</Text>
-                </View>
-                <View style={styles.infoItem}>
-                  <Ionicons name="chatbubble" size={14} color="#6B7280" />
-                  <Text style={styles.infoText}>{store.reviews}</Text>
-                </View>
+                {store.isOpen !== null && store.isOpen !== undefined && (
+                  <View style={styles.infoItem}>
+                    <Ionicons name={store.isOpen ? 'checkmark-circle' : 'close-circle'} size={14} color={store.isOpen ? '#10B981' : '#EF4444'} />
+                    <Text style={styles.infoText}>{store.isOpen ? 'Open' : 'Closed'}</Text>
+                  </View>
+                )}
+                {store.reviews && store.reviews > 0 && (
+                  <View style={styles.infoItem}>
+                    <Ionicons name="chatbubble" size={14} color="#6B7280" />
+                    <Text style={styles.infoText}>{store.reviews}</Text>
+                  </View>
+                )}
               </View>
             </View>
 
-            <TouchableOpacity style={styles.visitButton}>
+            <TouchableOpacity
+              style={styles.visitButton}
+              onPress={() => navigateTo(`/MainStorePage?storeId=${store.id}`)}
+            >
               <Text style={styles.visitText}>Visit</Text>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -393,7 +351,8 @@ const CategoryDetailPage = () => {
           <Text style={styles.mapButtonText}>Map View</Text>
         </LinearGradient>
       </TouchableOpacity>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 };
 
@@ -568,6 +527,16 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 12,
     backgroundColor: '#F3F4F6',
+  },
+  storeImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#00C06A',
+  },
+  storeInitial: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   storeContent: {
     flex: 1,

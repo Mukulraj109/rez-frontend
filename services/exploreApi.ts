@@ -65,6 +65,57 @@ export interface NearbyStore {
   };
 }
 
+export interface ExploreStats {
+  activeUsers: number;
+  earnedToday: number;
+  dealsLive: number;
+  peopleNearby: number;
+  peopleEarnedToday: number;
+}
+
+export interface VerifiedReview {
+  id: string;
+  user: string;
+  avatar?: string;
+  rating: number;
+  review: string;
+  store: string;
+  storeId?: string;
+  storeLogo?: string;
+  cashback: number;
+  verified: boolean;
+  time: string;
+}
+
+export interface FeaturedComparison {
+  id: string;
+  name: string;
+  stores: Array<{
+    id: string;
+    name: string;
+    logo?: string;
+    cashbackRate?: number;
+    ratings?: { average: number; count: number };
+  }>;
+}
+
+export interface CommunityActivity {
+  id: string;
+  type: string;
+  user?: { name: string; avatar?: string };
+  message: string;
+  store?: string;
+  amount?: number;
+  time: string;
+  isFriend: boolean;
+}
+
+export interface ExploreStatsSummary {
+  partnerStores: number;
+  maxCashback: number;
+  totalUsers: number;
+}
+
 // ============================================
 // EXPLORE API SERVICE
 // ============================================
@@ -84,21 +135,21 @@ class ExploreApiService {
       const response = await apiClient.get<any>('/stores', params);
 
       if (response.success && response.data) {
-        // Transform backend data to frontend format
+        // Transform backend data to frontend format - only use real data
         const stores = (response.data.stores || response.data || []).map((store: any) => ({
           id: store._id || store.id,
           name: store.name,
-          category: store.category?.name || store.deliveryCategories?.premium ? 'Premium' : 'General',
-          image: store.banner?.[0] || store.image || store.logo || 'https://via.placeholder.com/400',
-          rating: store.rating?.average || store.ratings?.average || 4.0,
-          reviews: store.rating?.count || store.ratings?.count || 0,
-          distance: store.distance ? `${store.distance.toFixed(1)} km` : undefined,
-          cashback: store.cashbackRate ? `${store.cashbackRate}%` : store.offers?.[0]?.discount ? `${store.offers[0].discount}%` : '10%',
-          offer: store.offers?.[0]?.title || `Up to ${store.cashbackRate || 10}% Cashback`,
-          isOpen: store.isOpen ?? store.operationalInfo?.isOpen ?? true,
-          activity: `${Math.floor(Math.random() * 20) + 5} people visited`,
-          badge: store.isFeatured ? 'Featured' : store.isTrending ? 'Trending' : undefined,
-          badgeColor: store.isFeatured ? '#F59E0B' : '#EF4444',
+          category: store.category?.name || (store.deliveryCategories?.premium ? 'Premium' : null),
+          image: store.banner?.[0] || store.image || store.logo || null,
+          rating: store.rating?.average || store.ratings?.average || null,
+          reviews: store.rating?.count || store.ratings?.count || null,
+          distance: store.distance ? `${store.distance.toFixed(1)} km` : null,
+          cashback: store.cashbackRate ? `${store.cashbackRate}%` : (store.offers?.[0]?.discount ? `${store.offers[0].discount}%` : null),
+          offer: store.offers?.[0]?.title || (store.cashbackRate ? `${store.cashbackRate}% Cashback` : null),
+          isOpen: store.isOpen ?? store.operationalInfo?.isOpen ?? null,
+          activity: store.activity || (store.visitCount ? `${store.visitCount} people visited` : null),
+          badge: store.isFeatured ? 'Featured' : (store.isTrending ? 'Trending' : null),
+          badgeColor: store.isFeatured ? '#F59E0B' : (store.isTrending ? '#EF4444' : null),
         }));
 
         return {
@@ -134,12 +185,12 @@ class ExploreApiService {
         const stores = (response.data.stores || response.data || []).map((store: any) => ({
           id: store._id || store.id,
           name: store.name,
-          category: store.category?.name || 'General',
-          image: store.banner?.[0] || store.image || store.logo,
-          rating: store.rating?.average || 4.0,
-          reviews: store.rating?.count || 0,
-          cashback: `${store.cashbackRate || 10}%`,
-          isOpen: store.isOpen ?? true,
+          category: store.category?.name || null,
+          image: store.banner?.[0] || store.image || store.logo || null,
+          rating: store.rating?.average || store.ratings?.average || null,
+          reviews: store.rating?.count || store.ratings?.count || null,
+          cashback: store.cashbackRate ? `${store.cashbackRate}%` : null,
+          isOpen: store.isOpen ?? store.operationalInfo?.isOpen ?? null,
         }));
 
         return {
@@ -167,8 +218,8 @@ class ExploreApiService {
 
       if (response.success && response.data) {
         const products = (response.data.products || response.data || []).map((product: any) => {
-          // Determine the offer text
-          let offer = 'Special Offer';
+          // Determine the offer text - only if real data exists
+          let offer: string | null = null;
           if (product.cashbackPercentage && product.cashbackPercentage > 0) {
             offer = `${product.cashbackPercentage}% Cashback`;
           } else if (product.cashback?.percentage && product.cashback.percentage > 0) {
@@ -182,16 +233,16 @@ class ExploreApiService {
           return {
             id: product._id || product.id,
             name: product.name,
-            store: product.store?.name || 'Unknown Store',
-            storeId: product.store?._id || product.store?.id || product.storeId,
-            image: product.image || product.images?.[0]?.url || product.images?.[0] || 'https://via.placeholder.com/400',
+            store: product.store?.name || null,
+            storeId: product.store?._id || product.store?.id || product.storeId || null,
+            image: product.image || product.images?.[0]?.url || product.images?.[0] || null,
             offer,
-            distance: product.store?.city || '1.0 km',
+            distance: product.distance ? `${product.distance} km` : null,
             price: product.price || product.pricing?.selling || product.pricing?.salePrice || 0,
-            originalPrice: product.originalPrice || product.pricing?.original || product.pricing?.basePrice || product.price || 0,
-            rating: product.rating || product.ratings?.average || 4.0,
-            reviews: product.reviewCount || product.ratings?.count || 0,
-            buyers: product.soldCount || Math.floor(Math.random() * 100) + 10,
+            originalPrice: product.originalPrice || product.pricing?.original || product.pricing?.basePrice || 0,
+            rating: product.rating || product.ratings?.average || null,
+            reviews: product.reviewCount || product.ratings?.count || null,
+            buyers: product.soldCount || null,
           };
         });
 
@@ -226,15 +277,15 @@ class ExploreApiService {
         const products = (response.data.products || response.data || []).map((product: any) => ({
           id: product._id || product.id,
           name: product.name,
-          store: product.store?.name || 'Unknown Store',
-          storeId: product.store?._id || product.storeId,
-          image: product.images?.[0]?.url || product.image,
-          offer: product.discount ? `${product.discount}% Off` : 'Trending',
+          store: product.store?.name || null,
+          storeId: product.store?._id || product.storeId || null,
+          image: product.images?.[0]?.url || product.image || null,
+          offer: product.discount ? `${product.discount}% Off` : (product.isTrending ? 'Trending' : null),
           price: product.pricing?.salePrice || product.price || 0,
           originalPrice: product.pricing?.basePrice || product.originalPrice || 0,
-          rating: product.ratings?.average || 4.0,
-          reviews: product.ratings?.count || 0,
-          buyers: product.soldCount || 0,
+          rating: product.ratings?.average || product.rating || null,
+          reviews: product.ratings?.count || product.reviewCount || null,
+          buyers: product.soldCount || null,
         }));
 
         return {
@@ -317,7 +368,9 @@ class ExploreApiService {
     page?: number;
     limit?: number;
     sortBy?: string;
-  }): Promise<ApiResponse<{ stores: ExploreStore[]; pagination: any }>> {
+    lat?: number;
+    lng?: number;
+  }): Promise<ApiResponse<{ stores: ExploreStore[]; pagination: any; category?: any }>> {
     try {
       const response = await apiClient.get<any>(`/stores/by-category-slug/${slug}`, params);
 
@@ -325,17 +378,26 @@ class ExploreApiService {
         const stores = (response.data.stores || response.data || []).map((store: any) => ({
           id: store._id || store.id,
           name: store.name,
-          category: store.category?.name || 'General',
-          image: store.banner?.[0] || store.image || store.logo,
-          rating: store.rating?.average || 4.0,
-          reviews: store.rating?.count || 0,
-          cashback: `${store.cashbackRate || 10}%`,
-          isOpen: store.isOpen ?? true,
+          category: store.category?.name || null,
+          image: store.banner?.[0] || store.image || store.logo || null,
+          rating: store.rating?.average || store.ratings?.average || null,
+          reviews: store.rating?.count || store.ratings?.count || null,
+          distance: store.distance ? `${store.distance} km` : null,
+          cashback: store.cashbackRate ? `${store.cashbackRate}%` : (store.offers?.cashback ? `${store.offers.cashback}%` : null),
+          offer: store.offers?.[0]?.title || (store.cashbackRate ? `${store.cashbackRate}% Cashback` : null),
+          isOpen: store.isOpen ?? store.operationalInfo?.isOpen ?? null,
+          deliveryTime: store.operationalInfo?.deliveryTime || store.deliveryTime || null,
+          badge: store.badge || (store.isTrending ? 'Trending' : (store.isFeatured ? 'Featured' : null)),
+          badgeColor: store.badgeColor || (store.isTrending ? '#EF4444' : (store.isFeatured ? '#F97316' : null)),
         }));
 
         return {
           success: true,
-          data: { stores, pagination: response.data.pagination },
+          data: {
+            stores,
+            pagination: response.data.pagination,
+            category: response.data.category,
+          },
         };
       }
 
@@ -356,25 +418,28 @@ class ExploreApiService {
     limit?: number;
   }): Promise<ApiResponse<NearbyStore[]>> {
     try {
-      const response = await apiClient.get<any>('/stores/nearby', {
+      // Backend accepts lat/lng or latitude/longitude
+      const queryParams: any = {
         lat: params.latitude,
         lng: params.longitude,
-        radius: params.radius || 5,
-        limit: params.limit || 20,
-      });
+      };
+      if (params.radius) queryParams.radius = params.radius;
+      if (params.limit) queryParams.limit = params.limit;
+
+      const response = await apiClient.get<any>('/stores/nearby', queryParams);
 
       if (response.success && response.data) {
         const stores = (response.data.stores || response.data || []).map((store: any) => ({
           id: store._id || store.id,
           name: store.name,
-          distance: store.distance ? `${store.distance.toFixed(1)} km` : 'Nearby',
-          isLive: store.isOpen ?? true,
-          status: store.isOpen ? 'Open' : 'Closed',
-          waitTime: store.waitTime || '5-10 min',
-          cashback: `${store.cashbackRate || 10}%`,
-          closingSoon: store.closingSoon,
+          distance: store.distance ? `${store.distance.toFixed(1)} km` : null,
+          isLive: store.isOpen ?? store.operationalInfo?.isOpen ?? null,
+          status: store.isOpen ? 'Open' : (store.isOpen === false ? 'Closed' : null),
+          waitTime: store.waitTime || store.operationalInfo?.waitTime || null,
+          cashback: store.cashbackRate ? `${store.cashbackRate}%` : null,
+          closingSoon: store.closingSoon || null,
           location: {
-            coordinates: store.location?.coordinates || [0, 0],
+            coordinates: store.location?.coordinates || null,
           },
         }));
 
@@ -395,9 +460,17 @@ class ExploreApiService {
     limit?: number;
     page?: number;
     days?: number;
+    category?: string;
   }): Promise<ApiResponse<{ stores: ExploreStore[]; pagination: any }>> {
     try {
-      const response = await apiClient.get<any>('/stores/trending', params);
+      // Only send allowed params: category, limit, page, days
+      const allowedParams = {
+        ...(params?.limit && { limit: params.limit }),
+        ...(params?.page && { page: params.page }),
+        ...(params?.days && { days: params.days }),
+        ...(params?.category && { category: params.category }),
+      };
+      const response = await apiClient.get<any>('/stores/trending', allowedParams);
 
       if (response.success && response.data) {
         const stores = (response.data.stores || response.data || []).map((store: any) => ({
@@ -405,12 +478,14 @@ class ExploreApiService {
           name: store.name,
           category: store.category?.name || 'General',
           image: store.banner?.[0] || store.image || store.logo,
-          rating: store.rating?.average || 4.0,
-          reviews: store.rating?.count || 0,
-          cashback: `${store.cashbackRate || 10}%`,
-          isOpen: store.isOpen ?? true,
-          badge: 'Trending',
-          badgeColor: '#EF4444',
+          rating: store.rating?.average || store.ratings?.average || null,
+          reviews: store.rating?.count || store.ratings?.count || null,
+          cashback: store.cashbackRate ? `${store.cashbackRate}% Cashback` : (store.offers?.cashback ? `${store.offers.cashback}% Cashback` : null),
+          distance: store.distance ? `${store.distance} km` : null,
+          isOpen: store.isOpen ?? store.operationalInfo?.isOpen ?? null,
+          badge: store.badge || (store.isTrending ? 'Trending' : (store.isFeatured ? 'Featured' : null)),
+          badgeColor: store.badgeColor || (store.isTrending ? '#EF4444' : (store.isFeatured ? '#F97316' : null)),
+          activity: store.activity || (store.visitCount ? `${store.visitCount} people visited` : null),
         }));
 
         return {
@@ -422,6 +497,45 @@ class ExploreApiService {
       return response;
     } catch (error: any) {
       console.error('[EXPLORE API] Error fetching trending stores:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get products with optional filters (for SmartPicks and general product listings)
+   */
+  async getProducts(params?: {
+    limit?: number;
+    page?: number;
+    category?: string;
+    sortBy?: string;
+  }): Promise<ApiResponse<HotProduct[]>> {
+    try {
+      const response = await apiClient.get<any>('/products', params);
+
+      if (response.success && response.data) {
+        const products = (response.data.products || response.data || []).map((product: any) => ({
+          id: product._id || product.id,
+          name: product.name,
+          store: product.store?.name || null,
+          storeId: product.store?._id || product.storeId || null,
+          image: product.image || product.images?.[0]?.url || product.images?.[0] || null,
+          offer: product.cashbackPercentage ? `${product.cashbackPercentage}% Cashback` : null,
+          distance: product.distance ? `${product.distance} km` : null,
+          price: product.price || product.pricing?.selling || 0,
+          originalPrice: product.originalPrice || product.pricing?.original || 0,
+          rating: product.rating || product.ratings?.average || null,
+          reviews: product.reviewCount || product.ratings?.count || null,
+          buyers: product.soldCount || null,
+          cashbackPercentage: product.cashbackPercentage || product.cashback?.percentage || null,
+        }));
+
+        return { success: true, data: products };
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[EXPLORE API] Error fetching products:', error);
       return { success: false, error: error.message };
     }
   }
@@ -449,6 +563,148 @@ class ExploreApiService {
       return response;
     } catch (error: any) {
       console.error('[EXPLORE API] Error fetching smart picks:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ============================================
+  // EXPLORE PAGE LIVE STATS
+  // ============================================
+
+  /**
+   * Get live stats for explore page (active users, earned today, deals live)
+   */
+  async getLiveStats(): Promise<ApiResponse<ExploreStats>> {
+    try {
+      const response = await apiClient.get<any>('/explore/live-stats');
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            activeUsers: response.data.activeUsers || 0,
+            earnedToday: response.data.earnedToday || 0,
+            dealsLive: response.data.dealsLive || 0,
+            peopleNearby: response.data.peopleNearby || 0,
+            peopleEarnedToday: response.data.peopleEarnedToday || 0,
+          },
+        };
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[EXPLORE API] Error fetching live stats:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get verified reviews for explore page
+   */
+  async getVerifiedReviews(params?: { limit?: number; page?: number }): Promise<ApiResponse<{ reviews: VerifiedReview[]; total?: number; hasMore?: boolean }>> {
+    try {
+      const response = await apiClient.get<any>('/explore/verified-reviews', params);
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            reviews: response.data.reviews || [],
+            total: response.data.total || response.data.reviews?.length || 0,
+            hasMore: response.data.hasMore || false,
+          },
+        };
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[EXPLORE API] Error fetching verified reviews:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get featured comparison for explore page
+   */
+  async getFeaturedComparison(): Promise<ApiResponse<{ comparison: FeaturedComparison | null }>> {
+    try {
+      const response = await apiClient.get<any>('/explore/featured-comparison');
+
+      if (response.success && response.data) {
+        const comp = response.data.comparison;
+        if (!comp) {
+          return { success: true, data: { comparison: null } };
+        }
+
+        return {
+          success: true,
+          data: {
+            comparison: {
+              id: comp._id || comp.id,
+              name: comp.name || 'Store Comparison',
+              stores: (comp.stores || []).map((store: any) => ({
+                id: store._id || store.id,
+                name: store.name,
+                logo: store.logo,
+                cashbackRate: store.cashbackRate,
+                ratings: store.ratings,
+              })),
+            },
+          },
+        };
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[EXPLORE API] Error fetching featured comparison:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get friends/community activity for explore page
+   */
+  async getCommunityActivity(params?: { limit?: number }): Promise<ApiResponse<{ activities: CommunityActivity[] }>> {
+    try {
+      const response = await apiClient.get<any>('/explore/friends-activity', params);
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            activities: response.data.activities || [],
+          },
+        };
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[EXPLORE API] Error fetching community activity:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get explore stats summary (partner stores count, max cashback, etc)
+   */
+  async getStatsSummary(): Promise<ApiResponse<ExploreStatsSummary>> {
+    try {
+      const response = await apiClient.get<any>('/explore/stats-summary');
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            partnerStores: response.data.partnerStores || 0,
+            maxCashback: response.data.maxCashback || 0,
+            totalUsers: response.data.totalUsers || 0,
+          },
+        };
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error('[EXPLORE API] Error fetching stats summary:', error);
       return { success: false, error: error.message };
     }
   }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,66 +6,142 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import gamificationApi, { GamificationStats } from '@/services/gamificationApi';
 
 const { width } = Dimensions.get('window');
 
-const playEarnActivities = [
-  {
-    id: 'checkin',
-    title: 'Daily Check-in',
-    description: 'Check in daily to earn rewards',
-    icon: 'checkmark-circle',
-    reward: '10 coins',
-    color: '#3B82F6',
-    gradient: ['#3B82F6', '#2563EB'],
-    path: '/playandearn',
-    streak: 5,
-  },
-  {
-    id: 'spin',
-    title: 'Spin & Win',
-    description: 'Spin the wheel for surprises',
-    icon: 'gift',
-    reward: 'Up to ₹500',
-    color: '#A855F7',
-    gradient: ['#A855F7', '#7C3AED'],
-    path: '/playandearn',
-    spinsLeft: 2,
-  },
-  {
-    id: 'quiz',
-    title: 'Daily Quiz',
-    description: 'Answer questions, win coins',
-    icon: 'help-circle',
-    reward: '25 coins',
-    color: '#F97316',
-    gradient: ['#F97316', '#EA580C'],
-    path: '/playandearn',
-    available: true,
-  },
-  {
-    id: 'review',
-    title: 'Review & Earn',
-    description: 'Share your experience',
-    icon: 'star',
-    reward: '50 coins',
-    color: '#10B981',
-    gradient: ['#10B981', '#059669'],
-    path: '/playandearn',
-    pending: 3,
-  },
-];
+interface PlayEarnActivity {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  reward: string;
+  color: string;
+  gradient: string[];
+  path: string;
+  streak?: number;
+  spinsLeft?: number;
+  available?: boolean;
+  pending?: number;
+}
 
 const PlayEarn = () => {
   const router = useRouter();
+  const [stats, setStats] = useState<GamificationStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Static activities with dynamic data overlay
+  const baseActivities: PlayEarnActivity[] = [
+    {
+      id: 'checkin',
+      title: 'Daily Check-in',
+      description: 'Check in daily to earn rewards',
+      icon: 'checkmark-circle',
+      reward: '10 coins',
+      color: '#3B82F6',
+      gradient: ['#3B82F6', '#2563EB'],
+      path: '/playandearn',
+    },
+    {
+      id: 'spin',
+      title: 'Spin & Win',
+      description: 'Spin the wheel for surprises',
+      icon: 'gift',
+      reward: 'Up to ₹500',
+      color: '#A855F7',
+      gradient: ['#A855F7', '#7C3AED'],
+      path: '/playandearn',
+    },
+    {
+      id: 'quiz',
+      title: 'Daily Quiz',
+      description: 'Answer questions, win coins',
+      icon: 'help-circle',
+      reward: '25 coins',
+      color: '#F97316',
+      gradient: ['#F97316', '#EA580C'],
+      path: '/playandearn',
+      available: true,
+    },
+    {
+      id: 'review',
+      title: 'Review & Earn',
+      description: 'Share your experience',
+      icon: 'star',
+      reward: '50 coins',
+      color: '#10B981',
+      gradient: ['#10B981', '#059669'],
+      path: '/playandearn',
+    },
+  ];
+
+  useEffect(() => {
+    fetchGamificationStats();
+  }, []);
+
+  const fetchGamificationStats = async () => {
+    try {
+      const response = await gamificationApi.getGamificationStats();
+      if (response.success && response.data) {
+        setStats(response.data);
+      }
+    } catch (error) {
+      console.error('[PlayEarn] Error fetching stats:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
+
+  // Build activities with dynamic data
+  const buildActivities = (): PlayEarnActivity[] => {
+    return baseActivities.map((activity) => {
+      if (activity.id === 'checkin' && stats?.streak) {
+        return {
+          ...activity,
+          streak: stats.streak.currentStreak,
+        };
+      }
+      if (activity.id === 'spin' && stats?.spinWheel) {
+        return {
+          ...activity,
+          spinsLeft: stats.spinWheel.spinsRemaining,
+        };
+      }
+      return activity;
+    });
+  };
+
+  const activities = buildActivities();
+  const coinsBalance = stats?.coins?.balance || 0;
+  const coinsEarnedToday = stats?.streak?.weeklyEarnings || 0;
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <View style={styles.titleRow}>
+              <Text style={styles.sectionTitle}>Play & Earn</Text>
+            </View>
+            <Text style={styles.sectionSubtitle}>Fun ways to earn more rewards</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#00C06A" />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -73,7 +149,6 @@ const PlayEarn = () => {
         <View>
           <View style={styles.titleRow}>
             <Text style={styles.sectionTitle}>Play & Earn</Text>
-            <Text style={styles.gameEmoji}>🎮</Text>
           </View>
           <Text style={styles.sectionSubtitle}>Fun ways to earn more rewards</Text>
         </View>
@@ -87,14 +162,14 @@ const PlayEarn = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.activitiesContainer}
       >
-        {playEarnActivities.map((activity) => (
+        {activities.map((activity) => (
           <TouchableOpacity
             key={activity.id}
             style={styles.activityCard}
             onPress={() => navigateTo(activity.path)}
           >
             <LinearGradient
-              colors={activity.gradient}
+              colors={activity.gradient as [string, string]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.cardGradient}
@@ -115,13 +190,13 @@ const PlayEarn = () => {
               </View>
 
               {/* Status Indicators */}
-              {activity.streak && (
+              {activity.streak !== undefined && activity.streak > 0 && (
                 <View style={styles.statusBadge}>
                   <Ionicons name="flame" size={12} color="#F97316" />
                   <Text style={styles.statusText}>{activity.streak} day streak!</Text>
                 </View>
               )}
-              {activity.spinsLeft && (
+              {activity.spinsLeft !== undefined && activity.spinsLeft > 0 && (
                 <View style={styles.statusBadge}>
                   <Ionicons name="refresh" size={12} color="#FFFFFF" />
                   <Text style={styles.statusText}>{activity.spinsLeft} spins left</Text>
@@ -133,7 +208,7 @@ const PlayEarn = () => {
                   <Text style={[styles.statusText, styles.availableText]}>Available now!</Text>
                 </View>
               )}
-              {activity.pending && (
+              {activity.pending !== undefined && activity.pending > 0 && (
                 <View style={styles.statusBadge}>
                   <Ionicons name="time" size={12} color="#FFFFFF" />
                   <Text style={styles.statusText}>{activity.pending} pending</Text>
@@ -155,12 +230,23 @@ const PlayEarn = () => {
         <View style={styles.coinsLeft}>
           <Text style={styles.coinsIcon}>🪙</Text>
           <View>
-            <Text style={styles.coinsEarned}>135 coins earned today</Text>
-            <Text style={styles.coinsTarget}>50 more to reach daily goal</Text>
+            <Text style={styles.coinsEarned}>
+              {coinsBalance > 0 ? `${coinsBalance} coins balance` : '0 coins earned'}
+            </Text>
+            <Text style={styles.coinsTarget}>
+              {coinsEarnedToday > 0
+                ? `${coinsEarnedToday} earned this week`
+                : 'Start earning coins today!'}
+            </Text>
           </View>
         </View>
         <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '73%' }]} />
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${Math.min((coinsBalance / 200) * 100, 100)}%` },
+            ]}
+          />
         </View>
       </View>
     </View>
@@ -170,6 +256,10 @@ const PlayEarn = () => {
 const styles = StyleSheet.create({
   container: {
     paddingTop: 20,
+  },
+  loadingContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -187,9 +277,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#0B2240',
-  },
-  gameEmoji: {
-    fontSize: 18,
   },
   sectionSubtitle: {
     fontSize: 12,

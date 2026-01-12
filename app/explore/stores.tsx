@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import exploreApi, { ExploreStore } from '@/services/exploreApi';
 
@@ -109,8 +109,10 @@ const ExploreStoresPage = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -232,9 +234,15 @@ const ExploreStoresPage = () => {
           <TouchableOpacity
             key={store.id}
             style={styles.storeCard}
-            onPress={() => navigateTo(`/MainStorePage?id=${store.id}`)}
+            onPress={() => navigateTo(`/MainStorePage?storeId=${store.id}`)}
           >
-            <Image source={{ uri: store.image }} style={styles.storeImage} />
+            {store.image ? (
+              <Image source={{ uri: store.image }} style={styles.storeImage} />
+            ) : (
+              <View style={[styles.storeImage, styles.storeImagePlaceholder]}>
+                <Text style={styles.storeInitial}>{store.name?.charAt(0) || 'S'}</Text>
+              </View>
+            )}
 
             {/* Badge */}
             {store.badge && (
@@ -249,33 +257,44 @@ const ExploreStoresPage = () => {
               <View style={styles.storeHeader}>
                 <View>
                   <Text style={styles.storeName}>{store.name}</Text>
-                  <Text style={styles.storeCategory}>{store.category}</Text>
+                  {store.category && <Text style={styles.storeCategory}>{store.category}</Text>}
                 </View>
-                <View style={styles.ratingContainer}>
-                  <Ionicons name="star" size={14} color="#F59E0B" />
-                  <Text style={styles.ratingText}>{store.rating}</Text>
-                </View>
+                {store.rating && (
+                  <View style={styles.ratingContainer}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.ratingText}>{store.rating}</Text>
+                  </View>
+                )}
               </View>
 
-              <View style={styles.offerContainer}>
-                <View style={styles.offerBadge}>
-                  <Ionicons name="pricetag" size={12} color="#00C06A" />
-                  <Text style={styles.offerText}>{store.offer}</Text>
+              {(store.offer || store.cashback) && (
+                <View style={styles.offerContainer}>
+                  <View style={styles.offerBadge}>
+                    <Ionicons name="pricetag" size={12} color="#00C06A" />
+                    <Text style={styles.offerText}>{store.offer || `${store.cashback} Cashback`}</Text>
+                  </View>
                 </View>
-              </View>
+              )}
 
               <View style={styles.storeFooter}>
                 <View style={styles.footerLeft}>
-                  <View style={styles.infoItem}>
-                    <Ionicons name="location" size={14} color="#6B7280" />
-                    <Text style={styles.infoText}>{store.distance}</Text>
-                  </View>
-                  <View style={styles.activityItem}>
-                    <View style={styles.activityDot} />
-                    <Text style={styles.activityText}>{store.activity}</Text>
-                  </View>
+                  {store.distance && (
+                    <View style={styles.infoItem}>
+                      <Ionicons name="location" size={14} color="#6B7280" />
+                      <Text style={styles.infoText}>{store.distance}</Text>
+                    </View>
+                  )}
+                  {store.activity && (
+                    <View style={styles.activityItem}>
+                      <View style={styles.activityDot} />
+                      <Text style={styles.activityText}>{store.activity}</Text>
+                    </View>
+                  )}
                 </View>
-                <TouchableOpacity style={styles.payButton}>
+                <TouchableOpacity
+                  style={styles.payButton}
+                  onPress={() => navigateTo(`/MainStorePage?storeId=${store.id}`)}
+                >
                   <Text style={styles.payButtonText}>Pay Now</Text>
                 </TouchableOpacity>
               </View>
@@ -299,7 +318,8 @@ const ExploreStoresPage = () => {
           <Text style={styles.floatingMapText}>Map View</Text>
         </LinearGradient>
       </TouchableOpacity>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 };
 
@@ -488,6 +508,16 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 120,
     backgroundColor: '#F3F4F6',
+  },
+  storeImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#00C06A',
+  },
+  storeInitial: {
+    fontSize: 40,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   storeBadge: {
     position: 'absolute',
