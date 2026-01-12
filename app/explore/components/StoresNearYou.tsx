@@ -14,89 +14,29 @@ import exploreApi from '../../../services/exploreApi';
 
 const { width } = Dimensions.get('window');
 
-// Fallback data
-const fallbackStores = [
-  {
-    id: '1',
-    name: 'Biryani Blues',
-    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=200',
-    tags: ['Halal'],
-    tagColors: ['#3B82F6'],
-    rating: 4.5,
-    distance: '1.2 km',
-    deliveryTime: '25-35 min',
-    cashback: '15%',
-    hasQuickDelivery: true,
-    isFavorite: true,
-  },
-  {
-    id: '2',
-    name: 'Green Bowl',
-    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200',
-    tags: ['Vegan'],
-    tagColors: ['#10B981'],
-    rating: 4.7,
-    distance: '0.8 km',
-    deliveryTime: '20-30 min',
-    cashback: '20%',
-    hasQuickDelivery: true,
-    isFavorite: true,
-  },
-  {
-    id: '3',
-    name: 'Fashion Hub',
-    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=200',
-    tags: [],
-    tagColors: [],
-    rating: 4.3,
-    distance: '2.5 km',
-    deliveryTime: 'Same Day',
-    cashback: '12%',
-    hasQuickDelivery: false,
-    isFavorite: false,
-  },
-  {
-    id: '4',
-    name: 'Tech Galaxy',
-    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=200',
-    tags: [],
-    tagColors: [],
-    rating: 4.6,
-    distance: '3.1 km',
-    deliveryTime: '1-2 days',
-    cashback: '8%',
-    hasQuickDelivery: false,
-    isFavorite: false,
-  },
-];
-
 const StoresNearYou = () => {
   const router = useRouter();
-  const [stores, setStores] = useState<any[]>(fallbackStores);
+  const [stores, setStores] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchNearbyStores = async () => {
       try {
-        const response = await exploreApi.getNearbyStores({ limit: 8 });
-        if (response.success && response.data && response.data.length > 0) {
-          const tagOptions = [
-            { tags: ['Halal'], tagColors: ['#3B82F6'] },
-            { tags: ['Vegan'], tagColors: ['#10B981'] },
-            { tags: ['Organic'], tagColors: ['#10B981'] },
-            { tags: [], tagColors: [] },
-          ];
-          const transformed = response.data.map((item: any, index: number) => ({
+        // Use trending stores as a fallback since getNearbyStores requires location
+        const response = await exploreApi.getTrendingStores({ limit: 8 });
+        if (response.success && response.data?.stores && response.data.stores.length > 0) {
+          const transformed = response.data.stores.map((item: any) => ({
             id: item.id || item._id,
             name: item.name || 'Store',
-            image: item.logo || item.images?.[0]?.url || 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=200',
-            rating: item.rating || 4.5,
-            distance: item.distance ? `${item.distance} km` : '1.0 km',
-            deliveryTime: item.deliveryTime || '25-35 min',
-            cashback: `${item.cashbackPercentage || 15}%`,
-            hasQuickDelivery: item.hasQuickDelivery || Math.random() > 0.5,
-            isFavorite: item.isFavorite || false,
-            ...tagOptions[index % tagOptions.length],
+            image: item.image || null,
+            tags: [],
+            tagColors: [],
+            rating: item.rating || null,
+            distance: item.distance || null,
+            deliveryTime: null,
+            cashback: item.cashback || null,
+            hasQuickDelivery: false,
+            isFavorite: false,
           }));
           setStores(transformed);
         }
@@ -112,6 +52,25 @@ const StoresNearYou = () => {
   const navigateTo = (path: string) => {
     router.push(path as any);
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Stores Near You</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#00C06A" />
+        </View>
+      </View>
+    );
+  }
+
+  // Empty state - don't render section if no data
+  if (stores.length === 0) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -203,6 +162,11 @@ const StoresNearYou = () => {
 const styles = StyleSheet.create({
   container: {
     paddingTop: 24,
+  },
+  loadingContainer: {
+    height: 150,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sectionHeader: {
     flexDirection: 'row',

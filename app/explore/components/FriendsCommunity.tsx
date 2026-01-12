@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,60 +7,58 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import exploreApi, { CommunityActivity } from '@/services/exploreApi';
 
 const { width } = Dimensions.get('window');
 
-const communityActivity = [
-  {
-    id: 1,
-    type: 'friend_saved',
-    user: { name: 'Arjun', avatar: 'https://i.pravatar.cc/100?img=11' },
-    message: 'saved ₹120 at',
-    store: 'Nike Store',
-    time: '5 min ago',
-    isFriend: true,
-  },
-  {
-    id: 2,
-    type: 'trending',
-    count: 23,
-    message: 'people near you redeemed this',
-    store: 'Starbucks',
-    offer: '20% off on coffee',
-    time: '2 hours ago',
-  },
-  {
-    id: 3,
-    type: 'friend_review',
-    user: { name: 'Sneha', avatar: 'https://i.pravatar.cc/100?img=5' },
-    message: 'reviewed',
-    store: 'Paradise Biryani',
-    rating: 5,
-    time: '1 hour ago',
-    isFriend: true,
-  },
-  {
-    id: 4,
-    type: 'popular',
-    message: 'Most saved this week',
-    store: 'Paradise Biryani',
-    saves: 156,
-    time: 'This week',
-  },
-];
-
-const friendsShopping = [
-  { id: 1, name: 'Arjun', avatar: 'https://i.pravatar.cc/100?img=11', store: 'Nike', isLive: true },
-  { id: 2, name: 'Sneha', avatar: 'https://i.pravatar.cc/100?img=5', store: 'Cafe', isLive: true },
-  { id: 3, name: 'Rahul', avatar: 'https://i.pravatar.cc/100?img=12', store: 'Pizza', isLive: false },
-  { id: 4, name: 'Priya', avatar: 'https://i.pravatar.cc/100?img=9', store: 'Salon', isLive: true },
-];
+interface FriendShopping {
+  id: string;
+  name: string;
+  avatar: string;
+  store: string;
+  isLive: boolean;
+}
 
 const FriendsCommunity = () => {
   const router = useRouter();
+  const [activities, setActivities] = useState<CommunityActivity[]>([]);
+  const [friendsShopping, setFriendsShopping] = useState<FriendShopping[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCommunityData();
+  }, []);
+
+  const fetchCommunityData = async () => {
+    try {
+      const response = await exploreApi.getCommunityActivity({ limit: 6 });
+      if (response.success && response.data) {
+        setActivities(response.data.activities);
+
+        // Extract friends from activities who have avatars
+        const friends: FriendShopping[] = response.data.activities
+          .filter((a: CommunityActivity) => a.user && a.user.avatar)
+          .slice(0, 4)
+          .map((a: CommunityActivity, index: number) => ({
+            id: a.id,
+            name: a.user?.name || 'User',
+            avatar: a.user?.avatar || `https://i.pravatar.cc/100?img=${index + 1}`,
+            store: a.store || 'Store',
+            isLive: true,
+          }));
+
+        setFriendsShopping(friends);
+      }
+    } catch (error) {
+      console.error('[FriendsCommunity] Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const navigateTo = (path: string) => {
     router.push(path as any);
@@ -68,10 +66,12 @@ const FriendsCommunity = () => {
 
   const renderActivityIcon = (type: string) => {
     switch (type) {
+      case 'order':
       case 'friend_saved':
         return <Ionicons name="wallet" size={16} color="#00C06A" />;
       case 'trending':
         return <Ionicons name="flame" size={16} color="#F97316" />;
+      case 'review':
       case 'friend_review':
         return <Ionicons name="star" size={16} color="#F59E0B" />;
       case 'popular':
@@ -81,39 +81,63 @@ const FriendsCommunity = () => {
     }
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Friends Shopping Now</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#00C06A" />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Friends Shopping Now */}
       <View style={styles.friendsSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Friends Shopping Now</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigateTo('/explore/friends')}>
             <Text style={styles.viewAllText}>See all</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.friendsContainer}
-        >
-          {friendsShopping.map((friend) => (
-            <TouchableOpacity key={friend.id} style={styles.friendBubble}>
-              <View style={styles.avatarContainer}>
-                <Image source={{ uri: friend.avatar }} style={styles.friendAvatar} />
-                {friend.isLive && <View style={styles.liveDot} />}
+        {friendsShopping.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.friendsContainer}
+          >
+            {friendsShopping.map((friend) => (
+              <TouchableOpacity key={friend.id} style={styles.friendBubble}>
+                <View style={styles.avatarContainer}>
+                  <Image source={{ uri: friend.avatar }} style={styles.friendAvatar} />
+                  {friend.isLive && <View style={styles.liveDot} />}
+                </View>
+                <Text style={styles.friendName}>{friend.name}</Text>
+                <Text style={styles.friendStore}>{friend.store}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.inviteBubble}>
+              <View style={styles.inviteIcon}>
+                <Ionicons name="person-add" size={20} color="#00C06A" />
               </View>
-              <Text style={styles.friendName}>{friend.name}</Text>
-              <Text style={styles.friendStore}>{friend.store}</Text>
+              <Text style={styles.inviteText}>Invite</Text>
             </TouchableOpacity>
-          ))}
-          <TouchableOpacity style={styles.inviteBubble}>
-            <View style={styles.inviteIcon}>
-              <Ionicons name="person-add" size={20} color="#00C06A" />
-            </View>
-            <Text style={styles.inviteText}>Invite</Text>
-          </TouchableOpacity>
-        </ScrollView>
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyFriendsContainer}>
+            <Text style={styles.emptyFriendsText}>Invite friends to see their activity</Text>
+            <TouchableOpacity style={styles.inviteButtonSmall}>
+              <Ionicons name="person-add" size={16} color="#00C06A" />
+              <Text style={styles.inviteButtonText}>Invite Friends</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Community Activity */}
@@ -126,43 +150,48 @@ const FriendsCommunity = () => {
           </View>
         </View>
 
-        <View style={styles.activityList}>
-          {communityActivity.map((activity) => (
-            <TouchableOpacity key={activity.id} style={styles.activityItem}>
-              <View style={styles.activityIconContainer}>
-                {activity.user ? (
-                  <Image source={{ uri: activity.user.avatar }} style={styles.activityAvatar} />
-                ) : (
-                  <View style={styles.activityIconBadge}>
-                    {renderActivityIcon(activity.type)}
-                  </View>
-                )}
-              </View>
+        {activities.length > 0 ? (
+          <View style={styles.activityList}>
+            {activities.slice(0, 4).map((activity) => (
+              <TouchableOpacity key={activity.id} style={styles.activityItem}>
+                <View style={styles.activityIconContainer}>
+                  {activity.user && activity.user.avatar ? (
+                    <Image source={{ uri: activity.user.avatar }} style={styles.activityAvatar} />
+                  ) : (
+                    <View style={styles.activityIconBadge}>
+                      {renderActivityIcon(activity.type)}
+                    </View>
+                  )}
+                </View>
 
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>
-                  {activity.user && (
-                    <Text style={styles.activityUserName}>{activity.user.name} </Text>
-                  )}
-                  {activity.count && <Text style={styles.activityHighlight}>{activity.count} </Text>}
-                  {activity.message}{' '}
-                  <Text style={styles.activityStore}>{activity.store}</Text>
-                  {activity.rating && (
-                    <Text style={styles.activityRating}> ⭐ {activity.rating}</Text>
-                  )}
-                  {activity.saves && (
-                    <Text style={styles.activitySaves}> • {activity.saves} saves</Text>
-                  )}
-                </Text>
-                <Text style={styles.activityTime}>{activity.time}</Text>
-              </View>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityText}>
+                    {activity.user && (
+                      <Text style={styles.activityUserName}>{activity.user.name} </Text>
+                    )}
+                    {activity.message}
+                    {activity.store && (
+                      <Text style={styles.activityStore}> {activity.store}</Text>
+                    )}
+                    {activity.amount && activity.amount > 0 && (
+                      <Text style={styles.activityAmount}> - ₹{activity.amount}</Text>
+                    )}
+                  </Text>
+                  <Text style={styles.activityTime}>{activity.time}</Text>
+                </View>
 
-              <TouchableOpacity style={styles.activityAction}>
-                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                <TouchableOpacity style={styles.activityAction}>
+                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
-        </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyActivityContainer}>
+            <Ionicons name="people-outline" size={32} color="#9CA3AF" />
+            <Text style={styles.emptyText}>No recent activity</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -171,6 +200,44 @@ const FriendsCommunity = () => {
 const styles = StyleSheet.create({
   container: {
     paddingTop: 20,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyFriendsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    alignItems: 'center',
+    gap: 12,
+  },
+  emptyFriendsText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  inviteButtonSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 20,
+  },
+  inviteButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#00C06A',
+  },
+  emptyActivityContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 40,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#9CA3AF',
   },
   friendsSection: {
     marginBottom: 20,
@@ -311,19 +378,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0B2240',
   },
-  activityHighlight: {
-    fontWeight: '700',
-    color: '#F97316',
-  },
   activityStore: {
     fontWeight: '600',
     color: '#00C06A',
   },
-  activityRating: {
-    color: '#F59E0B',
-  },
-  activitySaves: {
-    color: '#6B7280',
+  activityAmount: {
+    fontWeight: '600',
+    color: '#F97316',
   },
   activityTime: {
     fontSize: 11,
