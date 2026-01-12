@@ -2,11 +2,12 @@
  * MainCategoryPage Router
  * Routes to category-specific page components for better performance
  * Each category has its own optimized component
+ * Falls back to generic /category/[slug] for categories without dedicated pages
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
@@ -22,6 +23,7 @@ import HomeServicesCategoryPage from '@/components/category-pages/HomeServicesCa
 import TravelCategoryPage from '@/components/category-pages/TravelCategoryPage';
 import EntertainmentCategoryPage from '@/components/category-pages/EntertainmentCategoryPage';
 import FinancialCategoryPage from '@/components/category-pages/FinancialCategoryPage';
+import ElectronicsCategoryPage from '@/components/category-pages/ElectronicsCategoryPage';
 
 // Category slug to component mapping
 const CATEGORY_COMPONENTS: Record<string, React.ComponentType> = {
@@ -36,6 +38,7 @@ const CATEGORY_COMPONENTS: Record<string, React.ComponentType> = {
   'travel-experiences': TravelCategoryPage,
   'entertainment': EntertainmentCategoryPage,
   'financial-lifestyle': FinancialCategoryPage,
+  'electronics': ElectronicsCategoryPage,
 };
 
 export default function MainCategoryPage() {
@@ -50,30 +53,37 @@ export default function MainCategoryPage() {
     return <CategoryComponent />;
   }
 
-  // If category not found, show error page
+  // Fallback: Redirect to generic category page (which goes to StoreListPage)
+  // This handles categories that exist in the API but don't have dedicated pages yet
+  useEffect(() => {
+    if (slug && !CategoryComponent) {
+      // Redirect to /category/[slug] which handles the generic category flow
+      router.replace(`/category/${slug}` as any);
+    }
+  }, [slug, router]);
+
+  // Show loading while redirecting
   return (
-    <View style={styles.errorContainer}>
-      <View style={styles.errorContent}>
-        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-        <Text style={styles.errorTitle}>Category Not Found</Text>
-        <Text style={styles.errorText}>
-          The category "{slug}" does not exist or is not available.
-        </Text>
-        <TouchableOpacity
-          style={styles.backButtonContainer}
-          onPress={() => router.back()}
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-        >
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#00C06A" />
+      <Text style={styles.loadingText}>Loading category...</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#FAFAFA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6B7280',
+  },
   errorContainer: {
     flex: 1,
     backgroundColor: '#FAFAFA',

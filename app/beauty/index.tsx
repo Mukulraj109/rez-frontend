@@ -1,6 +1,6 @@
 /**
- * Beauty & Wellness Hub Page
- * Connected to /api/stores (beauty category)
+ * Beauty & Wellness Hub Page - Production Ready
+ * Main hub for all beauty services with real API data
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -15,11 +15,13 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import storesApi from '@/services/storesApi';
+import productsApi from '@/services/productsApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -31,34 +33,29 @@ const COLORS = {
   gray200: '#E5E7EB',
   gray600: '#6B7280',
   green500: '#22C55E',
+  primaryGreen: '#00C06A',
   pink500: '#EC4899',
   purple500: '#8B5CF6',
   amber500: '#F59E0B',
+  background: '#F5F5F5',
 };
 
 // Beauty categories
 const BEAUTY_CATEGORIES = [
-  { id: 'salon', title: 'Salon', icon: '💇‍♀️', color: '#EC4899', services: '500+ salons' },
-  { id: 'spa', title: 'Spa & Massage', icon: '💆‍♀️', color: '#8B5CF6', services: '200+ spas' },
-  { id: 'products', title: 'Products', icon: '💄', color: '#F43F5E', services: '10k+ products' },
-  { id: 'wellness', title: 'Wellness', icon: '🧘‍♀️', color: '#10B981', services: '100+ centers' },
-  { id: 'skincare', title: 'Skincare', icon: '✨', color: '#F59E0B', services: '5k+ products' },
-  { id: 'haircare', title: 'Hair Care', icon: '💇', color: '#3B82F6', services: '3k+ products' },
+  { id: 'salon', title: 'Salon', icon: '💇‍♀️', color: '#EC4899', route: '/beauty/salon' },
+  { id: 'spa', title: 'Spa & Massage', icon: '💆‍♀️', color: '#8B5CF6', route: '/beauty/spa' },
+  { id: 'products', title: 'Products', icon: '💄', color: '#F43F5E', route: '/beauty/products' },
+  { id: 'wellness', title: 'Wellness', icon: '🧘‍♀️', color: '#10B981', route: '/beauty/wellness' },
+  { id: 'skincare', title: 'Skincare', icon: '✨', color: '#F59E0B', route: '/beauty/skincare' },
+  { id: 'haircare', title: 'Hair Care', icon: '💇', color: '#3B82F6', route: '/beauty/haircare' },
 ];
 
-// Fallback salons
-const FALLBACK_SALONS = [
-  { id: '1', name: 'Lakme Salon', rating: 4.8, distance: '1.2 km', cashback: '25%', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400' },
-  { id: '2', name: 'Jawed Habib', rating: 4.6, distance: '2.0 km', cashback: '20%', image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400' },
-  { id: '3', name: 'Looks Salon', rating: 4.5, distance: '0.8 km', cashback: '30%', image: 'https://images.unsplash.com/photo-1633681926022-84c23e8cb2d6?w=400' },
-];
-
-// Top brands
+// Top brands with routes
 const TOP_BRANDS = [
-  { id: '1', name: 'Nykaa', logo: '💅', discount: 'Up to 40% off' },
-  { id: '2', name: 'Sephora', logo: '💄', discount: 'Buy 2 Get 1' },
-  { id: '3', name: 'MAC', logo: '💋', discount: '15% cashback' },
-  { id: '4', name: 'Forest Essentials', logo: '🌿', discount: '20% off' },
+  { id: '1', name: 'Nykaa', logo: '💅', discount: 'Up to 40% off', route: '/brand/nykaa' },
+  { id: '2', name: 'Sephora', logo: '💄', discount: 'Buy 2 Get 1', route: '/brand/sephora' },
+  { id: '3', name: 'MAC', logo: '💋', discount: '15% cashback', route: '/brand/mac' },
+  { id: '4', name: 'Forest Essentials', logo: '🌿', discount: '20% off', route: '/brand/forest essentials' },
 ];
 
 interface DisplaySalon {
@@ -68,45 +65,95 @@ interface DisplaySalon {
   distance: string;
   cashback: string;
   image: string;
+  isVerified: boolean;
+  category: string;
+}
+
+interface DisplayProduct {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice: number;
+  discount: number;
+  cashback: string;
+  image: string;
+  brand: string;
 }
 
 const BeautyPage: React.FC = () => {
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [featuredSalons, setFeaturedSalons] = useState<DisplaySalon[]>(FALLBACK_SALONS);
-  const [stats, setStats] = useState({ salons: 500, maxCashback: 30 });
+  const [featuredSalons, setFeaturedSalons] = useState<DisplaySalon[]>([]);
+  const [trendingProducts, setTrendingProducts] = useState<DisplayProduct[]>([]);
+  const [stats, setStats] = useState({ salons: 0, maxCashback: 30, products: 0 });
 
-  const transformStoreToSalon = (store: any): DisplaySalon => {
+  const transformStoreToSalon = (store: any): DisplaySalon => ({
+    id: store._id || store.id,
+    name: store.name,
+    rating: store.ratings?.average || 4.5,
+    distance: store.distance ? `${store.distance.toFixed(1)} km` : '1.0 km',
+    cashback: store.offers?.cashback?.percentage
+      ? `${store.offers.cashback.percentage}%`
+      : store.cashback?.maxPercentage
+        ? `${store.cashback.maxPercentage}%`
+        : '20%',
+    image: store.logo || store.banner || store.images?.[0] || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
+    isVerified: store.isVerified || store.verification?.isVerified || false,
+    category: store.category?.name || 'Salon',
+  });
+
+  const transformProduct = (product: any): DisplayProduct => {
+    const basePrice = product.pricing?.basePrice || product.price || 0;
+    const salePrice = product.pricing?.salePrice || basePrice;
+    const discount = basePrice > salePrice ? Math.round((1 - salePrice / basePrice) * 100) : 0;
+
     return {
-      id: store._id || store.id,
-      name: store.name,
-      rating: store.ratings?.average || 4.5,
-      distance: store.distance ? `${store.distance.toFixed(1)} km` : '1.0 km',
-      cashback: store.cashback?.maxPercentage ? `${store.cashback.maxPercentage}%` : '20%',
-      image: store.logo || store.banner || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400',
+      id: product._id || product.id,
+      name: product.name,
+      price: salePrice,
+      originalPrice: basePrice,
+      discount,
+      cashback: product.cashback?.percentage ? `${product.cashback.percentage}%` : '10%',
+      image: product.images?.[0]?.url || product.images?.[0] || product.image || 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400',
+      brand: product.brand?.name || 'Brand',
     };
   };
 
-  const fetchBeautyData = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
-      // Fetch stores with beauty/salon tags
-      const response = await storesApi.getStores({
-        tags: ['beauty', 'salon', 'spa'],
-        limit: 6,
-        isActive: true,
-      });
+      // Fetch stores and products in parallel
+      const [storesResponse, productsResponse] = await Promise.all([
+        storesApi.getStores({
+          tags: ['beauty', 'salon', 'spa'],
+          limit: 10,
+        }),
+        productsApi.getProducts({
+          tags: ['beauty', 'cosmetics', 'skincare'],
+          limit: 10,
+        }),
+      ]);
 
-      if (response.success && response.data?.stores && response.data.stores.length > 0) {
-        setFeaturedSalons(response.data.stores.slice(0, 3).map(transformStoreToSalon));
-        setStats({
-          salons: response.data.pagination?.total || 500,
-          maxCashback: 30,
-        });
+      // Process stores
+      if (storesResponse.success && storesResponse.data?.stores) {
+        setFeaturedSalons(storesResponse.data.stores.slice(0, 6).map(transformStoreToSalon));
+        setStats(prev => ({
+          ...prev,
+          salons: storesResponse.data?.pagination?.total || storesResponse.data?.stores?.length || 0,
+        }));
+      }
+
+      // Process products
+      if (productsResponse.success && productsResponse.data?.products) {
+        setTrendingProducts(productsResponse.data.products.slice(0, 8).map(transformProduct));
+        setStats(prev => ({
+          ...prev,
+          products: productsResponse.data?.pagination?.total || productsResponse.data?.products?.length || 0,
+        }));
       }
     } catch (error) {
-      console.error('Error fetching beauty data:', error);
-      // Keep fallback data
+      console.error('[BeautyPage] Error fetching data:', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -114,25 +161,35 @@ const BeautyPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchBeautyData();
-  }, [fetchBeautyData]);
+    fetchData();
+  }, [fetchData]);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    fetchBeautyData();
-  }, [fetchBeautyData]);
+    fetchData();
+  }, [fetchData]);
 
-  const handleCategoryPress = (categoryId: string) => {
-    router.push(`/beauty/${categoryId}` as any);
+  const handleCategoryPress = (route: string) => {
+    router.push(route as any);
   };
 
   const handleSalonPress = (salonId: string) => {
     router.push(`/MainStorePage?storeId=${salonId}` as any);
   };
 
+  const handleProductPress = (productId: string) => {
+    router.push(`/ProductPage?productId=${productId}` as any);
+  };
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}&category=beauty` as any);
+    }
+  };
+
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.pink500} />
         <Text style={styles.loadingText}>Loading beauty services...</Text>
       </View>
@@ -153,19 +210,35 @@ const BeautyPage: React.FC = () => {
             <Ionicons name="arrow-back" size={24} color={COLORS.white} />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Beauty & Wellness</Text>
+            <Text style={styles.headerTitle}>💄 Beauty & Wellness</Text>
             <Text style={styles.headerSubtitle}>Pamper yourself, earn rewards</Text>
           </View>
-          <TouchableOpacity style={styles.searchButton} onPress={() => router.push('/search' as any)}>
-            <Ionicons name="search" size={24} color={COLORS.white} />
-          </TouchableOpacity>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color={COLORS.gray600} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search salons, spas, products..."
+            placeholderTextColor={COLORS.gray600}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color={COLORS.gray600} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.salons}+</Text>
-            <Text style={styles.statLabel}>Salons</Text>
+            <Text style={styles.statValue}>{stats.salons || '500'}+</Text>
+            <Text style={styles.statLabel}>Salons & Spas</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -188,59 +261,108 @@ const BeautyPage: React.FC = () => {
       >
         {/* Categories */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Categories</Text>
+          <Text style={styles.sectionTitle}>Browse Categories</Text>
           <View style={styles.categoriesGrid}>
             {BEAUTY_CATEGORIES.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
                 style={styles.categoryCard}
-                onPress={() => handleCategoryPress(cat.id)}
+                onPress={() => handleCategoryPress(cat.route)}
                 activeOpacity={0.8}
               >
                 <View style={[styles.categoryIcon, { backgroundColor: `${cat.color}20` }]}>
                   <Text style={styles.categoryEmoji}>{cat.icon}</Text>
                 </View>
                 <Text style={styles.categoryTitle}>{cat.title}</Text>
-                <Text style={styles.categoryServices}>{cat.services}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {/* Featured Salons */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Featured Salons</Text>
-            <TouchableOpacity onPress={() => router.push('/beauty/salon' as any)}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {featuredSalons.map((salon) => (
-              <TouchableOpacity
-                key={salon.id}
-                style={styles.salonCard}
-                onPress={() => handleSalonPress(salon.id)}
-                activeOpacity={0.9}
-              >
-                <Image source={{ uri: salon.image }} style={styles.salonImage} />
-                <View style={styles.cashbackBadge}>
-                  <Text style={styles.cashbackText}>{salon.cashback}</Text>
-                </View>
-                <View style={styles.salonInfo}>
-                  <Text style={styles.salonName}>{salon.name}</Text>
-                  <View style={styles.salonMeta}>
-                    <View style={styles.ratingContainer}>
-                      <Ionicons name="star" size={14} color={COLORS.amber500} />
-                      <Text style={styles.ratingText}>{salon.rating}</Text>
-                    </View>
-                    <Text style={styles.distanceText}>{salon.distance}</Text>
-                  </View>
-                </View>
+        {featuredSalons.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Featured Salons & Spas</Text>
+              <TouchableOpacity onPress={() => router.push('/stores?category=beauty-wellness' as any)}>
+                <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+              {featuredSalons.map((salon) => (
+                <TouchableOpacity
+                  key={salon.id}
+                  style={styles.salonCard}
+                  onPress={() => handleSalonPress(salon.id)}
+                  activeOpacity={0.9}
+                >
+                  <Image source={{ uri: salon.image }} style={styles.salonImage} />
+                  {salon.isVerified && (
+                    <View style={styles.verifiedBadge}>
+                      <Ionicons name="shield-checkmark" size={10} color={COLORS.white} />
+                    </View>
+                  )}
+                  <View style={styles.cashbackBadge}>
+                    <Text style={styles.cashbackText}>{salon.cashback}</Text>
+                  </View>
+                  <View style={styles.salonInfo}>
+                    <Text style={styles.salonName} numberOfLines={1}>{salon.name}</Text>
+                    <Text style={styles.salonCategory} numberOfLines={1}>{salon.category}</Text>
+                    <View style={styles.salonMeta}>
+                      <View style={styles.ratingContainer}>
+                        <Ionicons name="star" size={12} color={COLORS.amber500} />
+                        <Text style={styles.ratingText}>{salon.rating.toFixed(1)}</Text>
+                      </View>
+                      <Text style={styles.distanceText}>{salon.distance}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Trending Products */}
+        {trendingProducts.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Trending Products</Text>
+              <TouchableOpacity onPress={() => router.push('/products?category=beauty-wellness' as any)}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+              {trendingProducts.map((product) => (
+                <TouchableOpacity
+                  key={product.id}
+                  style={styles.productCard}
+                  onPress={() => handleProductPress(product.id)}
+                  activeOpacity={0.9}
+                >
+                  <View style={styles.productImageContainer}>
+                    <Image source={{ uri: product.image }} style={styles.productImage} />
+                    {product.discount > 0 && (
+                      <View style={styles.discountBadge}>
+                        <Text style={styles.discountText}>{product.discount}% OFF</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productBrand}>{product.brand}</Text>
+                    <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.productPrice}>₹{product.price.toLocaleString()}</Text>
+                      {product.discount > 0 && (
+                        <Text style={styles.originalPrice}>₹{product.originalPrice.toLocaleString()}</Text>
+                      )}
+                    </View>
+                    <Text style={styles.productCashback}>{product.cashback} cashback</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Top Brands */}
         <View style={styles.section}>
@@ -251,7 +373,7 @@ const BeautyPage: React.FC = () => {
                 key={brand.id}
                 style={styles.brandCard}
                 activeOpacity={0.8}
-                onPress={() => router.push(`/brand/${brand.name.toLowerCase()}` as any)}
+                onPress={() => router.push(brand.route as any)}
               >
                 <Text style={styles.brandLogo}>{brand.logo}</Text>
                 <Text style={styles.brandName}>{brand.name}</Text>
@@ -270,15 +392,60 @@ const BeautyPage: React.FC = () => {
             style={styles.promoGradient}
           >
             <Text style={styles.promoEmoji}>💅</Text>
-            <Text style={styles.promoTitle}>Beauty Week Special</Text>
-            <Text style={styles.promoSubtitle}>Extra 15% cashback on all bookings</Text>
+            <View style={styles.promoContent}>
+              <Text style={styles.promoTitle}>Beauty Week Special</Text>
+              <Text style={styles.promoSubtitle}>Extra 15% cashback on all bookings</Text>
+            </View>
             <TouchableOpacity
               style={styles.promoButton}
               onPress={() => router.push('/offers' as any)}
             >
-              <Text style={styles.promoButtonText}>Book Now</Text>
+              <Text style={styles.promoButtonText}>View Offers</Text>
             </TouchableOpacity>
           </LinearGradient>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => router.push('/stores?category=beauty-wellness&filter=verified' as any)}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#E0F2FE' }]}>
+                <Ionicons name="shield-checkmark" size={24} color="#0284C7" />
+              </View>
+              <Text style={styles.quickActionLabel}>Verified{'\n'}Clinics</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => router.push('/stores?category=beauty-wellness&filter=nearby' as any)}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="location" size={24} color="#D97706" />
+              </View>
+              <Text style={styles.quickActionLabel}>Near{'\n'}Me</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => router.push('/offers?type=cashback' as any)}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
+                <Ionicons name="wallet" size={24} color="#059669" />
+              </View>
+              <Text style={styles.quickActionLabel}>Best{'\n'}Cashback</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => router.push('/stores?category=beauty-wellness&filter=try-buy' as any)}
+            >
+              <View style={[styles.quickActionIcon, { backgroundColor: '#FCE7F3' }]}>
+                <Ionicons name="flash" size={24} color="#DB2777" />
+              </View>
+              <Text style={styles.quickActionLabel}>60 Min{'\n'}Service</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={{ height: 100 }} />
@@ -290,11 +457,13 @@ const BeautyPage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.background,
   },
   loadingText: {
     marginTop: 12,
@@ -327,8 +496,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255,255,255,0.8)',
   },
-  searchButton: {
-    padding: 8,
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.navy,
   },
   statsRow: {
     flexDirection: 'row',
@@ -355,7 +537,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.3)',
   },
   section: {
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -383,7 +566,7 @@ const styles = StyleSheet.create({
     width: (SCREEN_WIDTH - 56) / 3,
     alignItems: 'center',
     padding: 12,
-    backgroundColor: COLORS.gray50,
+    backgroundColor: COLORS.white,
     borderRadius: 16,
   },
   categoryIcon: {
@@ -401,24 +584,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.navy,
-    marginBottom: 2,
+    textAlign: 'center',
   },
-  categoryServices: {
-    fontSize: 10,
-    color: COLORS.gray600,
+  horizontalList: {
+    paddingRight: 16,
+    gap: 12,
   },
   salonCard: {
     width: 200,
-    marginRight: 12,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
   },
   salonImage: {
     width: '100%',
     height: 120,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: COLORS.primaryGreen,
+    padding: 4,
+    borderRadius: 8,
   },
   cashbackBadge: {
     position: 'absolute',
@@ -441,7 +629,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.navy,
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  salonCategory: {
+    fontSize: 12,
+    color: COLORS.gray600,
+    marginBottom: 8,
   },
   salonMeta: {
     flexDirection: 'row',
@@ -462,6 +655,69 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.gray600,
   },
+  productCard: {
+    width: 150,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  productImageContainer: {
+    position: 'relative',
+  },
+  productImage: {
+    width: '100%',
+    height: 150,
+  },
+  discountBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  discountText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  productInfo: {
+    padding: 10,
+  },
+  productBrand: {
+    fontSize: 10,
+    color: COLORS.gray600,
+    marginBottom: 2,
+  },
+  productName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.navy,
+    marginBottom: 4,
+    minHeight: 32,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
+  productPrice: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.navy,
+  },
+  originalPrice: {
+    fontSize: 11,
+    color: COLORS.gray600,
+    textDecorationLine: 'line-through',
+  },
+  productCashback: {
+    fontSize: 10,
+    color: COLORS.primaryGreen,
+    fontWeight: '500',
+  },
   brandsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -470,7 +726,7 @@ const styles = StyleSheet.create({
   brandCard: {
     width: (SCREEN_WIDTH - 44) / 2,
     padding: 16,
-    backgroundColor: COLORS.gray50,
+    backgroundColor: COLORS.white,
     borderRadius: 16,
     alignItems: 'center',
   },
@@ -491,38 +747,63 @@ const styles = StyleSheet.create({
   },
   promoBanner: {
     marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   promoGradient: {
-    padding: 24,
-    borderRadius: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
   },
   promoEmoji: {
-    fontSize: 40,
-    marginBottom: 12,
+    fontSize: 36,
+    marginRight: 12,
+  },
+  promoContent: {
+    flex: 1,
   },
   promoTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.white,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   promoSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-    marginBottom: 16,
   },
   promoButton: {
     backgroundColor: COLORS.white,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
   promoButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    color: COLORS.pink500,
+    color: COLORS.purple500,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quickActionCard: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  quickActionIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  quickActionLabel: {
+    fontSize: 11,
+    color: COLORS.navy,
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });
 

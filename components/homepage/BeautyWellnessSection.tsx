@@ -1,18 +1,21 @@
 /**
- * Beauty & Wellness Section - Converted from V2
- * Salon & Spa cards with gradient backgrounds
+ * Beauty & Wellness Section - Production Ready
+ * Connected to API for real data with fallback
  */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import storesApi from '@/services/storesApi';
+import categoriesApi from '@/services/categoriesApi';
 
 const COLORS = {
   white: '#FFFFFF',
@@ -23,8 +26,116 @@ const COLORS = {
   pink500: '#EC4899',
 };
 
+// Card configurations with API tags
+const cardConfigs = [
+  {
+    id: 'salon',
+    title: 'Salon & Spa',
+    subtitle: 'Hair, nails, skin treatments',
+    icon: '💇‍♀️',
+    route: '/beauty/salon',
+    tags: ['salon', 'spa', 'beauty'],
+    gradientColors: ['#FDF2F8', '#FCE7F3', '#FBCFE8'] as const,
+    iconBgColor: 'rgba(236, 72, 153, 0.2)',
+    badgeColor: '#EC4899',
+    textColor: '#EC4899',
+    defaultDiscount: '30% OFF',
+    defaultCount: '350+ Partners',
+  },
+  {
+    id: 'products',
+    title: 'Beauty Products',
+    subtitle: 'Makeup, skincare, haircare',
+    icon: '💄',
+    route: '/beauty/products',
+    tags: ['cosmetics', 'makeup', 'skincare'],
+    gradientColors: ['#F5F3FF', '#EDE9FE', '#DDD6FE'] as const,
+    iconBgColor: 'rgba(139, 92, 246, 0.2)',
+    badgeColor: '#8B5CF6',
+    textColor: '#8B5CF6',
+    defaultDiscount: '25% OFF',
+    defaultCount: '500+ Brands',
+  },
+  {
+    id: 'wellness',
+    title: 'Wellness',
+    subtitle: 'Massage, therapy, relaxation',
+    icon: '🧘',
+    route: '/beauty/wellness',
+    tags: ['wellness', 'yoga', 'meditation'],
+    gradientColors: ['#ECFDF5', '#D1FAE5', '#A7F3D0'] as const,
+    iconBgColor: 'rgba(16, 185, 129, 0.2)',
+    badgeColor: '#10B981',
+    textColor: '#10B981',
+    defaultDiscount: '20% OFF',
+    defaultCount: '200+ Centers',
+  },
+];
+
+interface CardData {
+  id: string;
+  discount: string;
+  count: string;
+  maxCashback: number;
+}
+
 const BeautyWellnessSection: React.FC = () => {
   const router = useRouter();
+  const [cardData, setCardData] = useState<Record<string, CardData>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch real data from API
+  const fetchData = useCallback(async () => {
+    try {
+      const dataPromises = cardConfigs.map(async (config) => {
+        try {
+          const response = await storesApi.getStores({
+            tags: config.tags,
+            limit: 1,
+          });
+
+          if (response.success && response.data) {
+            const total = response.data.pagination?.total || 0;
+            // Calculate max cashback from stores
+            const maxCashback = response.data.stores?.reduce((max: number, store: any) => {
+              const cashback = store.offers?.cashback?.percentage || store.cashback?.maxPercentage || 0;
+              return Math.max(max, cashback);
+            }, 0) || 0;
+
+            return {
+              id: config.id,
+              discount: maxCashback > 0 ? `${maxCashback}% OFF` : config.defaultDiscount,
+              count: total > 0 ? `${total}+ ${config.id === 'products' ? 'Brands' : 'Partners'}` : config.defaultCount,
+              maxCashback,
+            };
+          }
+        } catch (err) {
+          console.error(`[BeautyWellnessSection] Error fetching ${config.id}:`, err);
+        }
+        return {
+          id: config.id,
+          discount: config.defaultDiscount,
+          count: config.defaultCount,
+          maxCashback: 0,
+        };
+      });
+
+      const results = await Promise.all(dataPromises);
+      const dataMap: Record<string, CardData> = {};
+      results.forEach((result) => {
+        dataMap[result.id] = result;
+      });
+      setCardData(dataMap);
+    } catch (err) {
+      console.error('[BeautyWellnessSection] Error fetching data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleViewAll = () => {
     router.push('/beauty' as any);
@@ -32,6 +143,13 @@ const BeautyWellnessSection: React.FC = () => {
 
   const handlePress = (route: string) => {
     router.push(route as any);
+  };
+
+  const getCardData = (configId: string) => {
+    return cardData[configId] || {
+      discount: cardConfigs.find(c => c.id === configId)?.defaultDiscount || '20% OFF',
+      count: cardConfigs.find(c => c.id === configId)?.defaultCount || '100+ Partners',
+    };
   };
 
   return (
@@ -53,77 +171,40 @@ const BeautyWellnessSection: React.FC = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Salon & Spa Card */}
-        <TouchableOpacity
-          style={styles.mainCard}
-          onPress={() => handlePress('/beauty/salon')}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={['#FDF2F8', '#FCE7F3', '#FBCFE8']}
-            style={styles.mainCardGradient}
-          >
-            <View style={styles.cardHeader}>
-              <View style={styles.iconBox}>
-                <Text style={styles.icon}>🦊</Text>
-              </View>
-              <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>30% OFF</Text>
-              </View>
-            </View>
-            <Text style={styles.cardTitle}>Salon & Spa</Text>
-            <Text style={styles.cardSubtitle}>Hair, nails, skin treatments</Text>
-            <Text style={styles.partnersText}>350+ Partners</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Beauty Products Card */}
-        <TouchableOpacity
-          style={styles.mainCard}
-          onPress={() => handlePress('/beauty/products')}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={['#F5F3FF', '#EDE9FE', '#DDD6FE']}
-            style={styles.mainCardGradient}
-          >
-            <View style={styles.cardHeader}>
-              <View style={styles.iconBoxPurple}>
-                <Text style={styles.icon}>💅</Text>
-              </View>
-              <View style={styles.discountBadgePurple}>
-                <Text style={styles.discountText}>25% OFF</Text>
-              </View>
-            </View>
-            <Text style={styles.cardTitle}>Beauty Products</Text>
-            <Text style={styles.cardSubtitle}>Makeup, skincare, haircare</Text>
-            <Text style={styles.partnersTextPurple}>500+ Brands</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Wellness Card */}
-        <TouchableOpacity
-          style={styles.mainCard}
-          onPress={() => handlePress('/beauty/wellness')}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={['#ECFDF5', '#D1FAE5', '#A7F3D0']}
-            style={styles.mainCardGradient}
-          >
-            <View style={styles.cardHeader}>
-              <View style={styles.iconBoxGreen}>
-                <Text style={styles.icon}>🧘</Text>
-              </View>
-              <View style={styles.discountBadgeGreen}>
-                <Text style={styles.discountText}>20% OFF</Text>
-              </View>
-            </View>
-            <Text style={styles.cardTitle}>Wellness</Text>
-            <Text style={styles.cardSubtitle}>Massage, therapy, relaxation</Text>
-            <Text style={styles.partnersTextGreen}>200+ Centers</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        {cardConfigs.map((config) => {
+          const data = getCardData(config.id);
+          return (
+            <TouchableOpacity
+              key={config.id}
+              style={styles.mainCard}
+              onPress={() => handlePress(config.route)}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={config.gradientColors}
+                style={styles.mainCardGradient}
+              >
+                <View style={styles.cardHeader}>
+                  <View style={[styles.iconBox, { backgroundColor: config.iconBgColor }]}>
+                    <Text style={styles.icon}>{config.icon}</Text>
+                  </View>
+                  <View style={[styles.discountBadge, { backgroundColor: config.badgeColor }]}>
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={COLORS.white} />
+                    ) : (
+                      <Text style={styles.discountText}>{data.discount}</Text>
+                    )}
+                  </View>
+                </View>
+                <Text style={styles.cardTitle}>{config.title}</Text>
+                <Text style={styles.cardSubtitle}>{config.subtitle}</Text>
+                <Text style={[styles.partnersText, { color: config.textColor }]}>
+                  {isLoading ? 'Loading...' : data.count}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -178,23 +259,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: 'rgba(236, 72, 153, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBoxPurple: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBoxGreen: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -202,22 +266,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   discountBadge: {
-    backgroundColor: COLORS.pink500,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-  },
-  discountBadgePurple: {
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  discountBadgeGreen: {
-    backgroundColor: '#10B981',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    minWidth: 60,
+    alignItems: 'center',
   },
   discountText: {
     fontSize: 11,
@@ -238,17 +291,6 @@ const styles = StyleSheet.create({
   partnersText: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.pink500,
-  },
-  partnersTextPurple: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8B5CF6',
-  },
-  partnersTextGreen: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#10B981',
   },
 });
 

@@ -353,7 +353,7 @@ export default function RootLayout() {
                                           <HomeTabProvider>
                                             <RewardPopupProvider>
                                           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                <Stack>
+                <Stack screenOptions={{ headerShown: false }}>
                   {/* App Entry Point */}
                   <Stack.Screen name="index" options={{ headerShown: false }} />
                   
@@ -520,6 +520,12 @@ export default function RootLayout() {
 
                   {/* Mall Module */}
                   <Stack.Screen name="mall" options={{ headerShown: false }} />
+
+                  {/* Events Module */}
+                  <Stack.Screen name="events" options={{ headerShown: false }} />
+
+                  {/* Explore Module (daily-checkin, etc.) */}
+                  <Stack.Screen name="explore" options={{ headerShown: false }} />
 
                   <Stack.Screen name="+not-found" />
                 </Stack>

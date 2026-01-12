@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import gameApi from '../../services/gameApi';
+import { useGamification } from '@/contexts/GamificationContext';
 
 const { width } = Dimensions.get('window');
 
@@ -27,12 +28,14 @@ interface Prize {
 
 const LuckyDraw = () => {
   const router = useRouter();
-  const [gameState, setGameState] = useState<'start' | 'spinning' | 'result'>('start');
+  const { actions: gamificationActions } = useGamification();
+  const [gameState, setGameState] = useState<'start' | 'spinning' | 'result' | 'error'>('start');
   const [spinning, setSpinning] = useState(false);
   const [prize, setPrize] = useState<Prize | null>(null);
   const [todayPlays, setTodayPlays] = useState(0);
   const [maxPlays, setMaxPlays] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const spinValue = useRef(new Animated.Value(0)).current;
 
   const prizes: Prize[] = [
@@ -69,6 +72,7 @@ const LuckyDraw = () => {
 
     setSpinning(true);
     setGameState('spinning');
+    setError(null);
 
     // Reset and start animation
     spinValue.setValue(0);
@@ -84,51 +88,40 @@ const LuckyDraw = () => {
       const response = await gameApi.spinWheel();
 
       // Wait for animation to complete
-      setTimeout(() => {
-        if (response.data?.result?.prize) {
+      setTimeout(async () => {
+        if (response.success && response.data?.result?.prize) {
           // Backend returns: { result: { won: true, prize: { type, value, description } } }
           const coinsWon = response.data.result.prize.value;
           // Find matching prize
           let wonPrize = prizes.find(p => p.value === coinsWon) || prizes[prizes.length - 1];
           setPrize({ ...wonPrize, value: coinsWon });
-        } else if (response.data) {
-          // Fallback to local logic if API fails
-          const random = Math.random() * 100;
-          let cumulative = 0;
-          let wonPrize = prizes[prizes.length - 1];
-          for (const p of prizes) {
-            cumulative += p.chance;
-            if (random <= cumulative) {
-              wonPrize = p;
-              break;
-            }
-          }
-          setPrize(wonPrize);
+          setSpinning(false);
+          setGameState('result');
+          setTodayPlays(todayPlays + 1);
+
+          // Sync coins from wallet to reflect the earned coins
+          await gamificationActions.syncCoinsFromWallet();
+        } else {
+          // API returned but no valid prize data
+          setSpinning(false);
+          setError(response.error || 'Failed to get spin result');
+          setGameState('error');
         }
-        setSpinning(false);
-        setGameState('result');
-        setTodayPlays(todayPlays + 1);
       }, 3000);
-    } catch (error) {
-      console.error('Error spinning wheel:', error);
-      // Fallback to local logic
+    } catch (err) {
+      console.error('Error spinning wheel:', err);
+      // Show error after animation completes
       setTimeout(() => {
-        const random = Math.random() * 100;
-        let cumulative = 0;
-        let wonPrize = prizes[prizes.length - 1];
-        for (const p of prizes) {
-          cumulative += p.chance;
-          if (random <= cumulative) {
-            wonPrize = p;
-            break;
-          }
-        }
-        setPrize(wonPrize);
         setSpinning(false);
-        setGameState('result');
-        setTodayPlays(todayPlays + 1);
+        setError('Unable to spin the wheel. Please try again.');
+        setGameState('error');
       }, 3000);
     }
+  };
+
+  const retryGame = () => {
+    setError(null);
+    setGameState('start');
   };
 
   const spinRotation = spinValue.interpolate({
@@ -213,6 +206,26 @@ const LuckyDraw = () => {
                 </View>
               </LinearGradient>
 
+              <TouchableOpacity
+                style={styles.backToEarnButton}
+                onPress={() => router.push('/playandearn' as any)}
+              >
+                <Text style={styles.backToEarnText}>Back to Earn</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Error State */}
+          {gameState === 'error' && (
+            <View style={styles.errorContainer}>
+              <View style={styles.errorIcon}>
+                <Ionicons name="alert-circle" size={48} color="#EF4444" />
+              </View>
+              <Text style={styles.errorTitle}>Spin Failed</Text>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={retryGame}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.backToEarnButton}
                 onPress={() => router.push('/playandearn' as any)}
@@ -493,6 +506,40 @@ const styles = StyleSheet.create({
   spinButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#FFF',
+  },
+  errorContainer: {
+    padding: 24,
+    alignItems: 'center',
+    gap: 16,
+  },
+  errorIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#EF4444',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    backgroundColor: '#F59E0B',
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#FFF',
   },
 });

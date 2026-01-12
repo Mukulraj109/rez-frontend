@@ -307,6 +307,32 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       tag: 'CASHBACK',
     },
   },
+
+  // 12. ELECTRONICS
+  'electronics': {
+    slug: 'electronics',
+    name: 'Electronics',
+    icon: 'phone-portrait-outline',
+    primaryColor: '#3B82F6',
+    gradientColors: ['#3B82F6', '#06B6D4', '#2563EB'],
+    keywords: ['electronics', 'mobile', 'phone', 'laptop', 'tv', 'gadget', 'computer', 'tablet', 'camera', 'headphone', 'smartwatch', 'speaker', 'appliance'],
+    subcategories: [
+      { slug: 'mobile-phones', name: 'Mobile Phones', icon: 'phone-portrait-outline' },
+      { slug: 'laptops', name: 'Laptops', icon: 'laptop-outline' },
+      { slug: 'televisions', name: 'Televisions', icon: 'tv-outline' },
+      { slug: 'cameras', name: 'Cameras', icon: 'camera-outline' },
+      { slug: 'audio-headphones', name: 'Audio & Headphones', icon: 'headset-outline' },
+      { slug: 'gaming', name: 'Gaming', icon: 'game-controller-outline' },
+      { slug: 'accessories', name: 'Accessories', icon: 'hardware-chip-outline' },
+      { slug: 'smartwatches', name: 'Smartwatches', icon: 'watch-outline' },
+    ],
+    banner: {
+      title: 'Tech Deals',
+      subtitle: 'Latest Gadgets',
+      discount: '25%',
+      tag: 'ELECTRONICS SALE',
+    },
+  },
 };
 
 /**

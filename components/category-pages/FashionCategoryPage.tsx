@@ -227,6 +227,7 @@ export default function FashionCategoryPage() {
     exclusiveOffers,
     aiPlaceholders,
     isLoading,
+    error,
     refetch,
   } = useCategoryPageData(slug);
 

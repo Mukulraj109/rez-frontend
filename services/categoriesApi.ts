@@ -211,4 +211,9 @@ function getCategoriesService(): CategoriesService {
   return new CategoriesService();
 }
 
-export default getCategoriesService();
+const categoriesService = getCategoriesService();
+
+// Named export for compatibility
+export { categoriesService as categoriesApi };
+
+export default categoriesService;

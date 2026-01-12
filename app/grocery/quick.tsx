@@ -1,0 +1,662 @@
+/**
+ * Quick Delivery Page
+ * Products and stores with fast delivery (10-30 min)
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  Platform,
+  Image,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { GroceryProductCard, GroceryStoreCard, GroceryHubSkeleton } from '@/components/grocery';
+import { productsApi } from '@/services/productsApi';
+import { storesApi } from '@/services/storesApi';
+import { cartApi } from '@/services/cartApi';
+
+const COLORS = {
+  white: '#FFFFFF',
+  navy: '#0B2240',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray400: '#9CA3AF',
+  gray600: '#6B7280',
+  green500: '#22C55E',
+  green600: '#16A34A',
+  amber500: '#F59E0B',
+  emerald500: '#10B981',
+};
+
+interface QuickStore {
+  id: string;
+  name: string;
+  logo: string;
+  deliveryTime: string;
+  cashback: number;
+  rating: number;
+  isOpen: boolean;
+}
+
+interface QuickProduct {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
+  originalPrice?: number;
+  cashback: number;
+  store: string;
+  deliveryTime: string;
+}
+
+const QuickDeliveryPage: React.FC = () => {
+  const router = useRouter();
+
+  // State
+  const [quickStores, setQuickStores] = useState<QuickStore[]>([]);
+  const [quickProducts, setQuickProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedStore, setSelectedStore] = useState<string | null>(null);
+
+  // Quick categories
+  const quickCategories = [
+    { key: 'all', label: 'All', icon: '⚡' },
+    { key: 'dairy', label: 'Dairy', icon: '🥛' },
+    { key: 'snacks', label: 'Snacks', icon: '🍪' },
+    { key: 'fruits', label: 'Fruits', icon: '🍎' },
+    { key: 'veggies', label: 'Veggies', icon: '🥕' },
+    { key: 'beverages', label: 'Drinks', icon: '🥤' },
+  ];
+
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Fetch quick delivery data
+  const fetchQuickData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const [storesRes, productsRes] = await Promise.all([
+        storesApi.getStores({ limit: 10 }),
+        productsApi.getProducts({
+          limit: 20,
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        }),
+      ]);
+
+      // Filter stores with fast delivery
+      if (storesRes.success && storesRes.data?.stores) {
+        const fastStores = storesRes.data.stores
+          .filter((store: any) => {
+            if (store.deliveryCategories?.fastDelivery) return true;
+            const deliveryTimeStr = store.operationalInfo?.deliveryTime || '';
+            const match = deliveryTimeStr.match(/(\d+)-(\d+)/);
+            if (match && parseInt(match[2], 10) <= 30) return true;
+            return false;
+          })
+          .map((store: any) => ({
+            id: store._id || store.id,
+            name: store.name || 'Store',
+            logo: store.logo || (Array.isArray(store.banner) ? store.banner[0] : store.banner) || 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=100',
+            deliveryTime: store.operationalInfo?.deliveryTime || '15-30 min',
+            cashback: store.offers?.cashback || store.maxCashback || 15,
+            rating: store.ratings?.average || store.rating?.average || 4.5,
+            isOpen: true,
+          }));
+
+        setQuickStores(fastStores.length > 0 ? fastStores : getFallbackQuickStores());
+      } else {
+        setQuickStores(getFallbackQuickStores());
+      }
+
+      // Get products - map to normalized format
+      if (productsRes.success && productsRes.data?.products) {
+        const mappedProducts = productsRes.data.products.map((product: any) => ({
+          ...product,
+          id: product._id || product.id,
+          image: Array.isArray(product.images)
+            ? (typeof product.images[0] === 'string' ? product.images[0] : product.images[0]?.url)
+            : product.image,
+          pricing: {
+            basePrice: product.pricing?.original || product.pricing?.basePrice || 0,
+            salePrice: product.pricing?.selling || product.pricing?.salePrice || product.pricing?.original || 0,
+          },
+          rating: {
+            average: product.ratings?.average || product.rating?.average || 4.0,
+            count: product.ratings?.count || product.rating?.count || 0,
+          },
+          cashback: {
+            percentage: product.cashback?.percentage || 5,
+          },
+        }));
+        setQuickProducts(mappedProducts);
+      } else {
+        setQuickProducts(getFallbackProducts());
+      }
+    } catch (err) {
+      console.error('Error fetching quick data:', err);
+      setQuickStores(getFallbackQuickStores());
+      setQuickProducts(getFallbackProducts());
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    fetchQuickData();
+  }, [fetchQuickData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchQuickData();
+  }, [fetchQuickData]);
+
+  // Handle add to cart
+  const handleAddToCart = async (product: any) => {
+    try {
+      const productId = product.id || product._id;
+      await cartApi.addToCart(productId, 1);
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+    }
+  };
+
+  // Filter products by selected store
+  const filteredProducts = selectedStore
+    ? quickProducts.filter(p => (p.store?.id || p.store?._id) === selectedStore)
+    : quickProducts;
+
+  if (loading) {
+    return <GroceryHubSkeleton />;
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <LinearGradient
+        colors={['#10B981', '#059669']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.header}
+      >
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <View style={styles.titleRow}>
+              <Ionicons name="flash" size={24} color="#FCD34D" />
+              <Text style={styles.headerTitle}>Quick Delivery</Text>
+            </View>
+            <Text style={styles.headerSubtitle}>Get groceries in 10-30 minutes</Text>
+          </View>
+        </View>
+
+        {/* Stats Banner */}
+        <View style={styles.statsBanner}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>10-30</Text>
+            <Text style={styles.statLabel}>Minutes</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{quickStores.length}+</Text>
+            <Text style={styles.statLabel}>Fast Stores</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>25%</Text>
+            <Text style={styles.statLabel}>Max Cashback</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Quick Store Pills */}
+      <View style={styles.storesPillsContainer}>
+        <Text style={styles.storesLabel}>Delivering now</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <TouchableOpacity
+            style={[styles.storePill, !selectedStore && styles.storePillActive]}
+            onPress={() => setSelectedStore(null)}
+          >
+            <Text style={[styles.storePillText, !selectedStore && styles.storePillTextActive]}>
+              All Stores
+            </Text>
+          </TouchableOpacity>
+          {quickStores.map((store) => (
+            <TouchableOpacity
+              key={store.id}
+              style={[
+                styles.storePill,
+                selectedStore === store.id && styles.storePillActive,
+              ]}
+              onPress={() => setSelectedStore(store.id === selectedStore ? null : store.id)}
+            >
+              <Image source={{ uri: store.logo }} style={styles.storePillLogo} />
+              <Text
+                style={[
+                  styles.storePillText,
+                  selectedStore === store.id && styles.storePillTextActive,
+                ]}
+              >
+                {store.name}
+              </Text>
+              <View style={styles.storePillDelivery}>
+                <Text style={styles.storePillDeliveryText}>{store.deliveryTime}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Category Filters */}
+      <View style={styles.categoriesContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {quickCategories.map((cat) => (
+            <TouchableOpacity
+              key={cat.key}
+              style={[
+                styles.categoryChip,
+                selectedCategory === cat.key && styles.categoryChipActive,
+              ]}
+              onPress={() => setSelectedCategory(cat.key)}
+            >
+              <Text style={styles.categoryIcon}>{cat.icon}</Text>
+              <Text
+                style={[
+                  styles.categoryText,
+                  selectedCategory === cat.key && styles.categoryTextActive,
+                ]}
+              >
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Products */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#10B981']}
+            tintColor="#10B981"
+          />
+        }
+      >
+        {/* Quick Stores Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Fast Delivery Stores</Text>
+            <TouchableOpacity onPress={() => router.push('/grocery/stores' as any)}>
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.storesScroll}
+          >
+            {quickStores.map((store) => (
+              <TouchableOpacity
+                key={store.id}
+                style={styles.quickStoreCard}
+                onPress={() => router.push(`/store/${store.id}` as any)}
+              >
+                <View style={styles.quickStoreBadge}>
+                  <Ionicons name="flash" size={10} color="#FCD34D" />
+                  <Text style={styles.quickStoreBadgeText}>{store.deliveryTime}</Text>
+                </View>
+                <Image source={{ uri: store.logo }} style={styles.quickStoreLogo} />
+                <Text style={styles.quickStoreName} numberOfLines={1}>{store.name}</Text>
+                <View style={styles.quickStoreMeta}>
+                  <Ionicons name="star" size={10} color={COLORS.amber500} />
+                  <Text style={styles.quickStoreRating}>{store.rating.toFixed(1)}</Text>
+                </View>
+                <Text style={styles.quickStoreCashback}>{store.cashback}% cashback</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Products Grid */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {selectedStore
+              ? `Products from ${quickStores.find(s => s.id === selectedStore)?.name || 'Store'}`
+              : 'Quick Delivery Products'}
+          </Text>
+          {filteredProducts.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="flash-outline" size={48} color={COLORS.gray400} />
+              <Text style={styles.emptyText}>No quick delivery products available</Text>
+            </View>
+          ) : (
+            <View style={styles.productsGrid}>
+              {filteredProducts.map((product) => (
+                <GroceryProductCard
+                  key={product.id || product._id}
+                  product={product}
+                  onAddToCart={handleAddToCart}
+                  showStore
+                />
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+    </View>
+  );
+};
+
+// Fallback data
+function getFallbackQuickStores(): QuickStore[] {
+  return [
+    { id: 'blinkit', name: 'Blinkit', logo: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=100', deliveryTime: '8-15 min', cashback: 20, rating: 4.6, isOpen: true },
+    { id: 'zepto', name: 'Zepto', logo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=100', deliveryTime: '10-20 min', cashback: 25, rating: 4.4, isOpen: true },
+    { id: 'instamart', name: 'Instamart', logo: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=100', deliveryTime: '15-25 min', cashback: 15, rating: 4.3, isOpen: true },
+    { id: 'bb-now', name: 'BB Now', logo: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=100', deliveryTime: '20-30 min', cashback: 15, rating: 4.5, isOpen: true },
+  ];
+}
+
+function getFallbackProducts(): any[] {
+  return [
+    {
+      id: 'quick-1',
+      name: 'Amul Milk 1L',
+      images: [{ url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200' }],
+      pricing: { basePrice: 68, salePrice: 65 },
+      cashback: { percentage: 10 },
+      rating: { average: 4.5, count: 120 },
+      unit: '1 L',
+      store: { id: 'blinkit', name: 'Blinkit' },
+    },
+    {
+      id: 'quick-2',
+      name: 'Bread',
+      images: [{ url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200' }],
+      pricing: { basePrice: 45 },
+      cashback: { percentage: 8 },
+      rating: { average: 4.3, count: 80 },
+      unit: '400 g',
+      store: { id: 'zepto', name: 'Zepto' },
+    },
+    {
+      id: 'quick-3',
+      name: 'Eggs (12 pcs)',
+      images: [{ url: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=200' }],
+      pricing: { basePrice: 90, salePrice: 85 },
+      cashback: { percentage: 5 },
+      rating: { average: 4.6, count: 200 },
+      unit: '12 pcs',
+      store: { id: 'blinkit', name: 'Blinkit' },
+    },
+    {
+      id: 'quick-4',
+      name: 'Curd 400g',
+      images: [{ url: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=200' }],
+      pricing: { basePrice: 45 },
+      cashback: { percentage: 8 },
+      rating: { average: 4.4, count: 150 },
+      unit: '400 g',
+      store: { id: 'zepto', name: 'Zepto' },
+    },
+  ];
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.gray50,
+  },
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 56 : 16,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitleContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  statsBanner: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginVertical: 4,
+  },
+  storesPillsContainer: {
+    backgroundColor: COLORS.white,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray200,
+  },
+  storesLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.gray600,
+    marginBottom: 8,
+  },
+  storePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray100,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    gap: 6,
+  },
+  storePillActive: {
+    backgroundColor: COLORS.emerald500,
+  },
+  storePillLogo: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  storePillText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.gray600,
+  },
+  storePillTextActive: {
+    color: COLORS.white,
+  },
+  storePillDelivery: {
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  storePillDeliveryText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.navy,
+  },
+  categoriesContainer: {
+    backgroundColor: COLORS.white,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray200,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.gray100,
+    marginRight: 8,
+    gap: 6,
+  },
+  categoryChipActive: {
+    backgroundColor: COLORS.emerald500,
+  },
+  categoryIcon: {
+    fontSize: 14,
+  },
+  categoryText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.gray600,
+  },
+  categoryTextActive: {
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  section: {
+    paddingTop: 20,
+    paddingHorizontal: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.navy,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.emerald500,
+  },
+  storesScroll: {
+    paddingRight: 16,
+  },
+  quickStoreCard: {
+    width: 100,
+    alignItems: 'center',
+    marginRight: 12,
+    position: 'relative',
+  },
+  quickStoreBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.emerald500,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    zIndex: 1,
+    gap: 2,
+  },
+  quickStoreBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  quickStoreLogo: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.white,
+    borderWidth: 2,
+    borderColor: COLORS.gray200,
+    marginBottom: 6,
+  },
+  quickStoreName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.navy,
+    textAlign: 'center',
+  },
+  quickStoreMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 2,
+  },
+  quickStoreRating: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.navy,
+  },
+  quickStoreCashback: {
+    fontSize: 10,
+    color: COLORS.green500,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  productsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    marginTop: 12,
+  },
+});
+
+export default QuickDeliveryPage;

@@ -28,6 +28,22 @@ export default function MallLayout() {
         },
       }}
     >
+      {/* Mall Index - Redirects to home with mall tab */}
+      <Stack.Screen
+        name="index"
+        options={{
+          headerShown: false,
+        }}
+      />
+
+      {/* Brand Index - Redirects to brands listing */}
+      <Stack.Screen
+        name="brand/index"
+        options={{
+          headerShown: false,
+        }}
+      />
+
       {/* Brand Detail Page - Header hidden, custom header in page */}
       <Stack.Screen
         name="brand/[id]"

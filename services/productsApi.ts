@@ -620,4 +620,7 @@ class ProductsService {
 // Create singleton instance
 const productsService = new ProductsService();
 
+// Named export for compatibility
+export { productsService as productsApi };
+
 export default productsService;

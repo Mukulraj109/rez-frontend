@@ -18,7 +18,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import gamificationApi, {
   CheckInReward,
   StreakData,
@@ -27,65 +28,14 @@ import gamificationApi, {
   ShareSubmission,
   StreakBonus,
 } from '@/services/gamificationApi';
+import { useGamification } from '@/contexts/GamificationContext';
 
 const { width } = Dimensions.get('window');
 
-// Default data (used as fallback)
-const defaultCheckInRewardsData: CheckInReward[] = [
-  { day: 1, coins: 10, claimed: false },
-  { day: 2, coins: 15, claimed: false },
-  { day: 3, coins: 20, claimed: false },
-  { day: 4, coins: 25, claimed: false, today: true },
-  { day: 5, coins: 30, claimed: false },
-  { day: 6, coins: 40, claimed: false },
-  { day: 7, coins: 100, claimed: false, bonus: true },
-];
-
-// Default promotional posters (fallback)
-const defaultPosters: PromotionalPoster[] = [
-  {
-    id: '1',
-    title: 'Mega Diwali Sale',
-    subtitle: 'Up to 70% off + Extra Cashback',
-    image: 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?w=500',
-    colors: ['#F97316', '#EF4444'],
-    shareBonus: 50,
-  },
-  {
-    id: '2',
-    title: 'Weekend Bonanza',
-    subtitle: '3X Coins on All Purchases',
-    image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=500',
-    colors: ['#A855F7', '#EC4899'],
-    shareBonus: 30,
-  },
-  {
-    id: '3',
-    title: 'New User Special',
-    subtitle: 'Get Rs.500 Welcome Bonus',
-    image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=500',
-    colors: ['#3B82F6', '#06B6D4'],
-    shareBonus: 100,
-  },
-  {
-    id: '4',
-    title: 'Flash Sale Today',
-    subtitle: 'Limited Time Mega Deals',
-    image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?w=500',
-    colors: ['#22C55E', '#14B8A6'],
-    shareBonus: 40,
-  },
-];
-
-// Default streak bonuses (fallback)
-const defaultStreakBonuses: StreakBonus[] = [
-  { days: 7, reward: 100, achieved: false },
-  { days: 30, reward: 500, achieved: false },
-  { days: 100, reward: 2000, achieved: false },
-];
-
 export default function DailyCheckInPage() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { actions: gamificationActions } = useGamification();
   const scrollViewRef = useRef<ScrollView>(null);
   const postersYPosition = useRef(0);
 
@@ -94,7 +44,7 @@ export default function DailyCheckInPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [checkInLoading, setCheckInLoading] = useState(false);
 
-  const [checkInRewards, setCheckInRewards] = useState<CheckInReward[]>(defaultCheckInRewardsData);
+  const [checkInRewards, setCheckInRewards] = useState<CheckInReward[]>([]);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [totalEarned, setTotalEarned] = useState(0);
@@ -102,15 +52,20 @@ export default function DailyCheckInPage() {
   const [showReward, setShowReward] = useState(false);
   const [selectedPoster, setSelectedPoster] = useState<PromotionalPoster | null>(null);
 
+  // Error states for API failures
+  const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [postersError, setPostersError] = useState<string | null>(null);
+  const [bonusesError, setBonusesError] = useState<string | null>(null);
+
   // Data fetched from API
-  const [promotionalPosters, setPromotionalPosters] = useState<PromotionalPoster[]>(defaultPosters);
+  const [promotionalPosters, setPromotionalPosters] = useState<PromotionalPoster[]>([]);
   const [affiliateStats, setAffiliateStats] = useState<AffiliateStats>({
     totalShares: 0,
     appDownloads: 0,
     purchases: 0,
     commissionEarned: 0,
   });
-  const [streakBonuses, setStreakBonuses] = useState<StreakBonus[]>(defaultStreakBonuses);
+  const [streakBonuses, setStreakBonuses] = useState<StreakBonus[]>([]);
 
   // Fetch all check-in page data from APIs
   const fetchCheckInData = useCallback(async (isRefresh = false) => {
@@ -120,6 +75,11 @@ export default function DailyCheckInPage() {
       } else {
         setLoading(true);
       }
+
+      // Clear previous errors
+      setCalendarError(null);
+      setPostersError(null);
+      setBonusesError(null);
 
       // Fetch all data in parallel for performance
       const [
@@ -150,6 +110,9 @@ export default function DailyCheckInPage() {
       // Update calendar
       if (calendarResponse.success && calendarResponse.data) {
         setCheckInRewards(calendarResponse.data);
+        setCalendarError(null);
+      } else {
+        setCalendarError(calendarResponse.error || 'Unable to load check-in calendar');
       }
 
       // Update affiliate stats
@@ -160,6 +123,9 @@ export default function DailyCheckInPage() {
       // Update promotional posters
       if (postersResponse.success && postersResponse.data) {
         setPromotionalPosters(postersResponse.data);
+        setPostersError(null);
+      } else if (!postersResponse.success) {
+        setPostersError(postersResponse.error || 'Unable to load promotional posters');
       }
 
       // Update submissions
@@ -170,9 +136,13 @@ export default function DailyCheckInPage() {
       // Update streak bonuses
       if (bonusesResponse.success && bonusesResponse.data) {
         setStreakBonuses(bonusesResponse.data);
+        setBonusesError(null);
+      } else {
+        setBonusesError(bonusesResponse.error || 'Unable to load streak bonuses');
       }
     } catch (error) {
       console.error('[DAILY CHECKIN] Error fetching data:', error);
+      setCalendarError('Network error. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -230,6 +200,9 @@ export default function DailyCheckInPage() {
           setCheckInRewards(prev => prev.map(r =>
             r.day === pendingCheckInReward.day ? { ...r, claimed: true, today: false } : r
           ));
+
+          // Sync coins to wallet to reflect the earned coins
+          await gamificationActions.syncCoinsFromWallet();
 
           setTimeout(() => {
             setShowReward(false);
@@ -344,8 +317,11 @@ export default function DailyCheckInPage() {
 
   return (
     <View style={styles.container}>
+      {/* Hide default expo-router header */}
+      <Stack.Screen options={{ headerShown: false }} />
+
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
@@ -372,7 +348,7 @@ export default function DailyCheckInPage() {
             <Text style={styles.statLabel}>Day streak</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.2)' }]}>
-            <Ionicons name="cash" size={20} color="#10B981" />
+            <Image source={require('@/assets/images/rez-coin.png')} style={{ width: 20, height: 20 }} resizeMode="contain" />
             <Text style={styles.statValue}>Rs.{totalEarned}</Text>
             <Text style={styles.statLabel}>Total earned</Text>
           </View>
@@ -433,6 +409,21 @@ export default function DailyCheckInPage() {
             <Ionicons name="calendar" size={16} color="#1F2937" />
             <Text style={styles.sectionTitle}>Daily Check-In Calendar</Text>
           </View>
+          {calendarError ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={32} color="#EF4444" />
+              <Text style={styles.errorText}>{calendarError}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => fetchCheckInData()}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : checkInRewards.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="calendar-outline" size={32} color="#9CA3AF" />
+              <Text style={styles.emptyText}>No check-in data available</Text>
+            </View>
+          ) : (
+          <>
           <View style={styles.calendarGrid}>
             {checkInRewards.filter(r => !r.bonus).map((reward) => (
               <View
@@ -445,10 +436,10 @@ export default function DailyCheckInPage() {
               >
                 <Text style={styles.calendarDayLabel}>Day {reward.day}</Text>
                 <View style={styles.calendarCoinContainer}>
-                  <Ionicons
-                    name="cash"
-                    size={12}
-                    color={reward.claimed ? '#10B981' : reward.today ? '#3B82F6' : '#F59E0B'}
+                  <Image
+                    source={require('@/assets/images/rez-coin.png')}
+                    style={{ width: 12, height: 12 }}
+                    resizeMode="contain"
                   />
                   <Text style={[
                     styles.calendarCoinText,
@@ -475,12 +466,14 @@ export default function DailyCheckInPage() {
             >
               <Text style={styles.calendarDayLabel}>Day {reward.day}</Text>
               <View style={styles.calendarCoinContainer}>
-                <Ionicons name="cash" size={14} color="#F59E0B" />
+                <Image source={require('@/assets/images/rez-coin.png')} style={{ width: 14, height: 14 }} resizeMode="contain" />
                 <Text style={styles.bonusCoinText}>Rs.{reward.coins}</Text>
               </View>
               <Text style={styles.bonusLabel}>BONUS!</Text>
             </View>
           ))}
+          </>
+          )}
         </View>
 
         {/* Check-In Button */}
@@ -561,7 +554,7 @@ export default function DailyCheckInPage() {
               colors={['rgba(245, 158, 11, 0.1)', 'rgba(249, 115, 22, 0.1)']}
               style={styles.affiliateCard}
             >
-              <Ionicons name="cash" size={20} color="#F59E0B" />
+              <Image source={require('@/assets/images/rez-coin.png')} style={{ width: 20, height: 20 }} resizeMode="contain" />
               <Text style={styles.affiliateValue}>Rs.{affiliateStats.commissionEarned}</Text>
               <Text style={styles.affiliateLabel}>Commission Earned</Text>
             </LinearGradient>
@@ -590,6 +583,21 @@ export default function DailyCheckInPage() {
               </View>
             )}
           </View>
+          {postersError ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={32} color="#EF4444" />
+              <Text style={styles.errorText}>{postersError}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => fetchCheckInData()}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : promotionalPosters.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="images-outline" size={32} color="#9CA3AF" />
+              <Text style={styles.emptyText}>No promotional posters available</Text>
+              <Text style={styles.emptySubtext}>Check back later for new campaigns!</Text>
+            </View>
+          ) : (
           <View style={[
             styles.postersGrid,
             checkInStarted && styles.postersGridHighlight,
@@ -623,6 +631,7 @@ export default function DailyCheckInPage() {
               </TouchableOpacity>
             ))}
           </View>
+          )}
         </View>
 
         {/* Submission History */}
@@ -691,6 +700,20 @@ export default function DailyCheckInPage() {
         {/* Streak Bonuses */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Streak Bonuses</Text>
+          {bonusesError ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={32} color="#EF4444" />
+              <Text style={styles.errorText}>{bonusesError}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => fetchCheckInData()}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : streakBonuses.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="trophy-outline" size={32} color="#9CA3AF" />
+              <Text style={styles.emptyText}>No streak bonuses available</Text>
+            </View>
+          ) : (
           <View style={styles.streakList}>
             {streakBonuses.map((bonus, index) => {
               // Dynamic colors based on index
@@ -732,6 +755,7 @@ export default function DailyCheckInPage() {
               );
             })}
           </View>
+          )}
         </View>
 
         {/* Tips */}
@@ -772,7 +796,7 @@ export default function DailyCheckInPage() {
             colors={['#10B981', '#14B8A6']}
             style={styles.rewardCard}
           >
-            <Ionicons name="cash" size={64} color="#FFFFFF" />
+            <Image source={require('@/assets/images/rez-coin.png')} style={{ width: 64, height: 64 }} resizeMode="contain" />
             <Text style={styles.rewardAmount}>+Rs.{pendingCheckInReward?.coins || todayReward?.coins}</Text>
             <Text style={styles.rewardText}>Check-in completed successfully!</Text>
             <Text style={styles.rewardSubtext}>Keep the streak going! Your post is under review for share bonus approval.</Text>
@@ -953,8 +977,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 50,
-    paddingBottom: 16,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
@@ -1689,5 +1712,53 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  errorContainer: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  retryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  emptyContainer: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  emptySubtext: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 4,
   },
 });

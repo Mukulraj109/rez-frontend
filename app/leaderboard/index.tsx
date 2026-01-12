@@ -214,7 +214,7 @@ export default function LeaderboardPage() {
           </ThemedText>
           <View style={styles.userStats}>
             <View style={styles.statItem}>
-              <Ionicons name="diamond" size={12} color="#F59E0B" />
+              <ThemedText style={styles.rupeeSymbol}>₹</ThemedText>
               <ThemedText style={styles.statText}>{entry.coins.toLocaleString()}</ThemedText>
             </View>
             <View style={styles.statItem}>
@@ -574,6 +574,11 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 12,
     color: '#6B7280',
+  },
+  rupeeSymbol: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#22C55E',
   },
   emptyState: {
     alignItems: 'center',

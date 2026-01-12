@@ -96,7 +96,8 @@ export default function ReferralDashboard() {
   };
 
   const handleViewLeaderboard = () => {
-    router.push('/referral/leaderboard' as any);
+    // Link to main leaderboard page with referral type
+    router.push('/leaderboard' as any);
   };
 
   if (loading) {

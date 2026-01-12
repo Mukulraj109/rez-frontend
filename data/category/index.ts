@@ -36,6 +36,9 @@ export * from './entertainmentCategoryData';
 // Financial Services
 export * from './financialCategoryData';
 
+// Electronics
+export * from './electronicsCategoryData';
+
 // Helper function to get data by category slug
 import { CategoryGridItem, UGCPost, AISuggestion, TrendingHashtag, ExclusiveOffer } from '@/types/categoryTypes';
 
@@ -50,6 +53,7 @@ import { homeServicesCategories, homeServicesUGCPosts, homeServicesAISuggestions
 import { travelCategories, travelUGCPosts, travelAISuggestions, travelTrendingHashtags, travelAIPlaceholders, travelExclusiveOffers } from './travelCategoryData';
 import { entertainmentCategories, entertainmentUGCPosts, entertainmentAISuggestions, entertainmentTrendingHashtags, entertainmentAIPlaceholders, entertainmentExclusiveOffers } from './entertainmentCategoryData';
 import { financialCategories, financialUGCPosts, financialAISuggestions, financialTrendingHashtags, financialAIPlaceholders, financialExclusiveOffers } from './financialCategoryData';
+import { electronicsCategories, electronicsUGCPosts, electronicsAISuggestions, electronicsTrendingHashtags, electronicsAIPlaceholders, electronicsExclusiveOffers } from './electronicsCategoryData';
 
 interface CategoryDataBundle {
   categories: CategoryGridItem[];
@@ -148,6 +152,14 @@ const categoryDataMap: Record<string, CategoryDataBundle> = {
     trendingHashtags: financialTrendingHashtags,
     aiPlaceholders: financialAIPlaceholders,
     exclusiveOffers: financialExclusiveOffers,
+  },
+  'electronics': {
+    categories: electronicsCategories,
+    ugcPosts: electronicsUGCPosts,
+    aiSuggestions: electronicsAISuggestions,
+    trendingHashtags: electronicsTrendingHashtags,
+    aiPlaceholders: electronicsAIPlaceholders,
+    exclusiveOffers: electronicsExclusiveOffers,
   },
 };
 

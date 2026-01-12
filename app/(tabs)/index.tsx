@@ -463,28 +463,20 @@ export default function HomeScreen() {
       if (response.success && response.data) {
         setUserStats(response.data);
 
-        // Calculate loyalty points based on the documentation:
-        // Shop: 1 point per ₹10 spent
-        // Review: 50 points per review
-        // Refer: 200 points per referral
-        // Video: 100 points per video
-
-        const stats = response.data;
-        const shopPoints = Math.floor((stats.orders?.totalSpent || 0) / 10); // 1 point per ₹10
-        const reviewPoints = 0; // Reviews not available in current API response
-        const referralPoints = (stats.user?.totalReferrals || 0) * 200; // 200 points per referral
-        const videoPoints = (stats.videos?.totalCreated || 0) * 100; // 100 points per video
-
-        const totalLoyaltyPoints = shopPoints + reviewPoints + referralPoints + videoPoints;
-
-        // NEW: Sync loyalty points with wallet
+        // Simply fetch and display wallet balance (coins are earned via games, achievements, daily check-in)
         try {
           const walletApi = (await import('@/services/walletApi')).default;
           const walletResponse = await walletApi.getBalance();
 
           if (walletResponse.success && walletResponse.data) {
             const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
+            console.log('[HOME DEBUG] walletResponse.data.coins:', walletResponse.data.coins);
+            console.log('[HOME DEBUG] rezCoin:', rezCoin);
             const actualWalletCoins = rezCoin?.amount || 0;
+
+            // Display the actual wallet balance (no calculation/sync - just show the real balance)
+            setUserPoints(actualWalletCoins);
+            setSyncStatus('success');
 
             // Calculate total savings from wallet statistics
             const walletStats = walletResponse.data.statistics;
@@ -494,54 +486,14 @@ export default function HomeScreen() {
               const totalSavings = cashback + refunds;
               setTotalSaved(totalSavings);
             }
-
-            // If loyalty points > wallet coins, sync the difference
-            if (totalLoyaltyPoints > actualWalletCoins) {
-              const difference = totalLoyaltyPoints - actualWalletCoins;
-
-              setSyncStatus('syncing');
-
-              const creditResponse = await walletApi.creditLoyaltyPoints({
-                amount: difference,
-                source: {
-                  type: 'loyalty_sync',
-                  description: 'Syncing loyalty points to wallet',
-                  metadata: {
-                    shopPoints,
-                    referralPoints,
-                    videoPoints,
-                    totalCalculated: totalLoyaltyPoints,
-                    previousWalletBalance: actualWalletCoins
-                  }
-                }
-              });
-
-              if (creditResponse.success && creditResponse.data) {
-
-                // Display the synced wallet coins
-                setUserPoints(creditResponse.data.balance.available);
-                setSyncStatus('success');
-              } else {
-                console.error('❌ [HOME] Failed to sync loyalty points:', creditResponse.error);
-                // Fallback to calculated loyalty points
-                setUserPoints(totalLoyaltyPoints);
-                setSyncStatus('error');
-              }
-            } else {
-              // Wallet has more or equal coins, use wallet balance
-
-              setUserPoints(actualWalletCoins);
-              setSyncStatus('success');
-            }
           } else {
-            console.warn('⚠️ [HOME] Could not get wallet balance, using calculated loyalty points');
-            setUserPoints(totalLoyaltyPoints);
+            console.warn('⚠️ [HOME] Could not get wallet balance');
+            setUserPoints(0);
             setTotalSaved(0);
           }
         } catch (walletError) {
-          console.error('❌ [HOME] Error syncing with wallet:', walletError);
-          // Fallback to calculated loyalty points
-          setUserPoints(totalLoyaltyPoints);
+          console.error('❌ [HOME] Error fetching wallet:', walletError);
+          setUserPoints(0);
           setTotalSaved(0);
         }
       } else {

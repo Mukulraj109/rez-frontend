@@ -21,24 +21,11 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import eventsApiService from '@/services/eventsApi';
 import { EventItem } from '@/types/homepage.types';
+import { EVENT_COLORS } from '@/constants/EventColors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const COLORS = {
-  white: '#FFFFFF',
-  navy: '#0B2240',
-  gray50: '#F9FAFB',
-  gray100: '#F3F4F6',
-  gray200: '#E5E7EB',
-  gray600: '#6B7280',
-  green500: '#22C55E',
-  emerald500: '#10B981',
-  amber500: '#F59E0B',
-  blue500: '#3B82F6',
-  purple500: '#8B5CF6',
-  pink500: '#EC4899',
-  red500: '#EF4444',
-};
+const COLORS = EVENT_COLORS;
 
 const EVENT_CATEGORIES = [
   { id: 'movies', title: 'Movies', icon: '🎬', color: '#EF4444', route: '/events/movies' },
@@ -47,67 +34,6 @@ const EVENT_CATEGORIES = [
   { id: 'workshops', title: 'Workshops', icon: '🎨', color: '#F59E0B', route: '/events/workshops' },
   { id: 'gaming', title: 'Gaming', icon: '🎮', color: '#3B82F6', route: '/events/gaming' },
   { id: 'sports', title: 'Sports', icon: '⚽', color: '#10B981', route: '/events/sports' },
-];
-
-// Fallback data
-const FALLBACK_FEATURED = [
-  {
-    id: '1',
-    title: 'Weekend Movie Marathon',
-    type: 'Movie',
-    date: 'Now Showing',
-    location: 'PVR Cinemas',
-    price: '₹299',
-    image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',
-    cashback: '20%',
-  },
-  {
-    id: '2',
-    title: 'Live Music Concert',
-    type: 'Concert',
-    date: 'Jan 15, 2025',
-    location: 'Arena Stadium',
-    price: '₹4,999',
-    image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
-    cashback: '15%',
-  },
-  {
-    id: '3',
-    title: 'Theme Park Day',
-    type: 'Park',
-    date: 'Open Daily',
-    location: 'Wonderla',
-    price: '₹1,499',
-    image: 'https://images.unsplash.com/photo-1513889961551-628c1e5e2ee9?w=400',
-    cashback: '25%',
-  },
-];
-
-const FALLBACK_UPCOMING = [
-  {
-    id: '4',
-    title: 'Art Workshop',
-    type: 'Workshop',
-    date: 'Dec 30',
-    price: '₹599',
-    image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=300',
-  },
-  {
-    id: '5',
-    title: 'Gaming Tournament',
-    type: 'Gaming',
-    date: 'Jan 5',
-    price: '₹199',
-    image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=300',
-  },
-  {
-    id: '6',
-    title: 'Cricket Match',
-    type: 'Sports',
-    date: 'Jan 10',
-    price: '₹999',
-    image: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=300',
-  },
 ];
 
 interface DisplayEvent {
@@ -119,44 +45,61 @@ interface DisplayEvent {
   price: string;
   image: string;
   cashback?: string;
+  rating?: number;
+  reviewCount?: number;
 }
 
 const EventsPage: React.FC = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [featuredEvents, setFeaturedEvents] = useState<DisplayEvent[]>(FALLBACK_FEATURED);
-  const [upcomingEvents, setUpcomingEvents] = useState<DisplayEvent[]>(FALLBACK_UPCOMING);
+  const [error, setError] = useState<string | null>(null);
+  const [featuredEvents, setFeaturedEvents] = useState<DisplayEvent[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<DisplayEvent[]>([]);
 
   const transformEventToDisplay = (event: EventItem): DisplayEvent => {
+    // Get cashback from backend (merchant-configured)
+    const cashbackValue = (event as any).cashback;
+    const cashbackText = cashbackValue && cashbackValue > 0 ? `${cashbackValue}%` : undefined;
+
     return {
       id: event.id,
       title: event.title,
       type: event.category || 'Event',
       date: event.date ? new Date(event.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'TBD',
-      location: typeof event.location === 'string' ? event.location : 'Venue',
+      location: typeof event.location === 'string' ? event.location : (event.location as any)?.name || 'Venue',
       price: event.price?.isFree ? 'Free' : `${event.price?.currency || '₹'}${event.price?.amount || 0}`,
       image: event.image || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',
-      cashback: '15%',
+      cashback: cashbackText,
+      rating: (event as any).rating,
+      reviewCount: (event as any).reviewCount,
     };
   };
 
   const fetchEvents = useCallback(async () => {
     try {
+      setError(null);
+
       // Fetch featured events
       const featured = await eventsApiService.getFeaturedEvents(6);
       if (featured && featured.length > 0) {
         setFeaturedEvents(featured.slice(0, 3).map(transformEventToDisplay));
+      } else {
+        setFeaturedEvents([]);
       }
 
       // Fetch upcoming events
       const upcoming = await eventsApiService.getEvents({ upcoming: true, todayAndFuture: true }, 6, 0);
       if (upcoming && upcoming.events && upcoming.events.length > 0) {
         setUpcomingEvents(upcoming.events.slice(0, 6).map(transformEventToDisplay));
+      } else {
+        setUpcomingEvents([]);
       }
-    } catch (error) {
-      console.error('Error fetching events:', error);
-      // Keep fallback data
+    } catch (err: any) {
+      console.error('Error fetching events:', err);
+      setError(err.message || 'Failed to load events. Please try again.');
+      setFeaturedEvents([]);
+      setUpcomingEvents([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -183,27 +126,77 @@ const EventsPage: React.FC = () => {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color={COLORS.green500} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Loading events...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (error && featuredEvents.length === 0 && upcomingEvents.length === 0) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={COLORS.primaryGradient as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.header}
+        >
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={COLORS.background} />
+            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Events & Experiences</Text>
+              <Text style={styles.headerSubtitle}>Book tickets, earn coins</Text>
+            </View>
+            <View style={{ width: 40 }} />
+          </View>
+        </LinearGradient>
+        <View style={styles.errorContainer}>
+          <View style={styles.errorIconContainer}>
+            <Ionicons name="alert-circle-outline" size={64} color={COLORS.error} />
+          </View>
+          <Text style={styles.errorTitle}>Unable to Load Events</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setIsLoading(true);
+              fetchEvents();
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="refresh-outline" size={20} color={COLORS.background} />
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.navy} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Events & Experiences</Text>
-          <Text style={styles.headerSubtitle}>Book tickets, earn coins</Text>
+      {/* Header with Green Gradient */}
+      <LinearGradient
+        colors={['#00C06A', '#00A05A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.header}
+      >
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>🎉 Events & Experiences</Text>
+            <Text style={styles.headerSubtitle}>Book tickets, earn coins</Text>
+          </View>
+          <TouchableOpacity style={styles.searchButton} onPress={() => router.push('/search' as any)}>
+            <Ionicons name="search" size={24} color={COLORS.white} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.searchButton} onPress={() => router.push('/search' as any)}>
-          <Ionicons name="search" size={24} color={COLORS.navy} />
-        </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -239,39 +232,46 @@ const EventsPage: React.FC = () => {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {featuredEvents.map((event) => (
-              <TouchableOpacity
-                key={event.id}
-                style={styles.featuredCard}
-                onPress={() => handleEventPress(event.id)}
-                activeOpacity={0.9}
-              >
-                <Image source={{ uri: event.image }} style={styles.featuredImage} />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.8)']}
-                  style={styles.featuredOverlay}
+          {featuredEvents.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {featuredEvents.map((event) => (
+                <TouchableOpacity
+                  key={event.id}
+                  style={styles.featuredCard}
+                  onPress={() => handleEventPress(event.id)}
+                  activeOpacity={0.9}
                 >
-                  {event.cashback && (
-                    <View style={styles.cashbackBadge}>
-                      <Text style={styles.cashbackText}>{event.cashback} Cashback</Text>
-                    </View>
-                  )}
-                  <Text style={styles.featuredTitle}>{event.title}</Text>
-                  <Text style={styles.featuredMeta}>{event.type} • {event.date}</Text>
-                  <View style={styles.featuredFooter}>
-                    {event.location && (
-                      <View style={styles.locationContainer}>
-                        <Ionicons name="location" size={14} color={COLORS.white} />
-                        <Text style={styles.locationText}>{event.location}</Text>
+                  <Image source={{ uri: event.image }} style={styles.featuredImage} />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.8)']}
+                    style={styles.featuredOverlay}
+                  >
+                    {event.cashback && (
+                      <View style={styles.cashbackBadge}>
+                        <Text style={styles.cashbackText}>{event.cashback} Cashback</Text>
                       </View>
                     )}
-                    <Text style={styles.priceText}>{event.price}</Text>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                    <Text style={styles.featuredTitle}>{event.title}</Text>
+                    <Text style={styles.featuredMeta}>{event.type} • {event.date}</Text>
+                    <View style={styles.featuredFooter}>
+                      {event.location && (
+                        <View style={styles.locationContainer}>
+                          <Ionicons name="location" size={14} color={COLORS.background} />
+                          <Text style={styles.locationText}>{event.location}</Text>
+                        </View>
+                      )}
+                      <Text style={styles.priceText}>{event.price}</Text>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptySection}>
+              <Ionicons name="calendar-outline" size={40} color={COLORS.textMuted} />
+              <Text style={styles.emptyText}>No featured events at the moment</Text>
+            </View>
+          )}
         </View>
 
         {/* Upcoming Events */}
@@ -282,27 +282,34 @@ const EventsPage: React.FC = () => {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          {upcomingEvents.map((event) => (
-            <TouchableOpacity
-              key={event.id}
-              style={styles.eventCard}
-              onPress={() => handleEventPress(event.id)}
-              activeOpacity={0.8}
-            >
-              <Image source={{ uri: event.image }} style={styles.eventImage} />
-              <View style={styles.eventInfo}>
-                <View style={styles.eventTypeBadge}>
-                  <Text style={styles.eventTypeText}>{event.type}</Text>
+          {upcomingEvents.length > 0 ? (
+            upcomingEvents.map((event) => (
+              <TouchableOpacity
+                key={event.id}
+                style={styles.eventCard}
+                onPress={() => handleEventPress(event.id)}
+                activeOpacity={0.8}
+              >
+                <Image source={{ uri: event.image }} style={styles.eventImage} />
+                <View style={styles.eventInfo}>
+                  <View style={styles.eventTypeBadge}>
+                    <Text style={styles.eventTypeText}>{event.type}</Text>
+                  </View>
+                  <Text style={styles.eventTitle}>{event.title}</Text>
+                  <Text style={styles.eventDate}>{event.date}</Text>
                 </View>
-                <Text style={styles.eventTitle}>{event.title}</Text>
-                <Text style={styles.eventDate}>{event.date}</Text>
-              </View>
-              <View style={styles.eventPriceContainer}>
-                <Text style={styles.eventPrice}>{event.price}</Text>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.gray600} />
-              </View>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.eventPriceContainer}>
+                  <Text style={styles.eventPrice}>{event.price}</Text>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.emptySection}>
+              <Ionicons name="ticket-outline" size={40} color={COLORS.textMuted} />
+              <Text style={styles.emptyText}>No upcoming events scheduled</Text>
+            </View>
+          )}
         </View>
 
         {/* Promo Banner */}
@@ -340,33 +347,39 @@ const styles = StyleSheet.create({
     color: COLORS.gray600,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'ios' ? 56 : 16,
-    paddingBottom: 16,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray200,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButton: {
     padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
   },
   headerTitleContainer: {
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 12,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: COLORS.navy,
+    color: COLORS.white,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: COLORS.gray600,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
   },
   searchButton: {
     padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
   },
   categoriesSection: {
     padding: 16,
@@ -555,6 +568,61 @@ const styles = StyleSheet.create({
   promoSubtitle: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+  },
+  // Error state styles
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.errorLight || '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 24,
+    gap: 8,
+  },
+  retryButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.background,
+  },
+  // Empty state styles
+  emptySection: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: COLORS.textMuted,
     textAlign: 'center',
   },
 });

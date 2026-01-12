@@ -17,69 +17,30 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import eventsApiService from '@/services/eventsApi';
 import { EventItem } from '@/types/homepage.types';
+import { EVENT_COLORS } from '@/constants/EventColors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const COLORS = {
-  white: '#FFFFFF',
-  navy: '#0B2240',
-  gray50: '#F9FAFB',
-  gray100: '#F3F4F6',
-  gray200: '#E5E7EB',
-  gray600: '#6B7280',
-  green500: '#22C55E',
-  emerald500: '#10B981',
-  amber500: '#F59E0B',
-  blue500: '#3B82F6',
-  purple500: '#8B5CF6',
-  red500: '#EF4444',
-};
+const COLORS = EVENT_COLORS;
 
 // Category configurations
-const CATEGORY_CONFIG: Record<string, { title: string; icon: string; gradientColors: string[] }> = {
-  movies: { title: 'Movies', icon: '🎬', gradientColors: ['#EF4444', '#DC2626'] },
-  concerts: { title: 'Concerts', icon: '🎵', gradientColors: ['#8B5CF6', '#7C3AED'] },
-  parks: { title: 'Theme Parks', icon: '🎢', gradientColors: ['#22C55E', '#16A34A'] },
-  workshops: { title: 'Workshops', icon: '🎨', gradientColors: ['#F59E0B', '#D97706'] },
-  gaming: { title: 'Gaming', icon: '🎮', gradientColors: ['#3B82F6', '#2563EB'] },
-  sports: { title: 'Sports Events', icon: '⚽', gradientColors: ['#10B981', '#059669'] },
-  entertainment: { title: 'Entertainment', icon: '🎭', gradientColors: ['#EC4899', '#DB2777'] },
-  arts: { title: 'Arts & Culture', icon: '🎨', gradientColors: ['#8B5CF6', '#7C3AED'] },
-  music: { title: 'Music', icon: '🎵', gradientColors: ['#F97316', '#EA580C'] },
+const CATEGORY_CONFIG: Record<string, { title: string; icon: string; gradientColors: readonly [string, string] }> = {
+  movies: { title: 'Movies', icon: '🎬', gradientColors: EVENT_COLORS.categoryGradients.movies },
+  concerts: { title: 'Concerts', icon: '🎵', gradientColors: EVENT_COLORS.categoryGradients.concerts },
+  parks: { title: 'Theme Parks', icon: '🎢', gradientColors: EVENT_COLORS.categoryGradients.parks },
+  workshops: { title: 'Workshops', icon: '🎨', gradientColors: EVENT_COLORS.categoryGradients.workshops },
+  gaming: { title: 'Gaming', icon: '🎮', gradientColors: EVENT_COLORS.categoryGradients.gaming },
+  sports: { title: 'Sports Events', icon: '⚽', gradientColors: EVENT_COLORS.categoryGradients.sports },
+  entertainment: { title: 'Entertainment', icon: '🎭', gradientColors: EVENT_COLORS.categoryGradients.entertainment },
+  arts: { title: 'Arts & Culture', icon: '🎨', gradientColors: EVENT_COLORS.categoryGradients.arts },
+  music: { title: 'Music', icon: '🎵', gradientColors: EVENT_COLORS.categoryGradients.music },
 };
 
-// Fallback events data
-const FALLBACK_EVENTS: Record<string, DisplayEvent[]> = {
-  movies: [
-    { id: '1', title: 'Avengers: Secret Wars', venue: 'PVR Cinemas', time: 'Multiple Shows', price: '₹299', rating: 4.8, image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400', cashback: '20%' },
-    { id: '2', title: 'Pushpa 3', venue: 'INOX', time: '10:30 AM, 2:30 PM', price: '₹249', rating: 4.5, image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400', cashback: '15%' },
-    { id: '3', title: 'Avatar 3', venue: 'Cinepolis', time: '6:00 PM, 9:30 PM', price: '₹399', rating: 4.9, image: 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=400', cashback: '25%' },
-  ],
-  concerts: [
-    { id: '4', title: 'Coldplay Live', venue: 'DY Patil Stadium', time: 'Jan 15, 7:00 PM', price: '₹4,999', rating: 4.9, image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400', cashback: '15%' },
-    { id: '5', title: 'Arijit Singh Concert', venue: 'MMRDA Grounds', time: 'Jan 20, 6:00 PM', price: '₹2,499', rating: 4.7, image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400', cashback: '20%' },
-  ],
-  parks: [
-    { id: '7', title: 'Imagica Theme Park', venue: 'Khopoli', time: 'Open Daily', price: '₹1,499', rating: 4.6, image: 'https://images.unsplash.com/photo-1513889961551-628c1e5e2ee9?w=400', cashback: '25%' },
-    { id: '8', title: 'EsselWorld', venue: 'Gorai', time: 'Open Daily', price: '₹999', rating: 4.4, image: 'https://images.unsplash.com/photo-1513106580091-1d82408b8cd6?w=400', cashback: '20%' },
-  ],
-  workshops: [
-    { id: '10', title: 'Pottery Workshop', venue: 'Art Studio', time: 'Sat, 10:00 AM', price: '₹599', rating: 4.7, image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=400', cashback: '30%' },
-    { id: '11', title: 'Photography Masterclass', venue: 'Creative Hub', time: 'Sun, 2:00 PM', price: '₹1,299', rating: 4.8, image: 'https://images.unsplash.com/photo-1452780212940-6f5c0d14d848?w=400', cashback: '25%' },
-  ],
-  gaming: [
-    { id: '13', title: 'BGMI Tournament', venue: 'Gaming Arena', time: 'Jan 5, 12:00 PM', price: '₹199', rating: 4.5, image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400', cashback: '35%' },
-    { id: '14', title: 'VR Experience', venue: 'VR Zone', time: 'Open Daily', price: '₹499', rating: 4.6, image: 'https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=400', cashback: '20%' },
-  ],
-  sports: [
-    { id: '16', title: 'IPL 2025 Match', venue: 'Wankhede Stadium', time: 'Mar 22, 7:30 PM', price: '₹999', rating: 4.9, image: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=400', cashback: '15%' },
-    { id: '17', title: 'ISL Football', venue: 'Salt Lake Stadium', time: 'Jan 10, 7:00 PM', price: '₹499', rating: 4.5, image: 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=400', cashback: '20%' },
-  ],
-};
+type DateFilter = 'all' | 'today' | 'thisWeek' | 'thisMonth';
 
 interface DisplayEvent {
   id: string;
@@ -88,55 +49,143 @@ interface DisplayEvent {
   time: string;
   price: string;
   rating: number;
+  reviewCount: number;
   image: string;
-  cashback: string;
+  cashback?: string;
+  date: string;
 }
+
+// Helper function to get date range based on filter
+const getDateRange = (filter: DateFilter): { startDate?: string; endDate?: string } => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  switch (filter) {
+    case 'today':
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return {
+        startDate: today.toISOString(),
+        endDate: tomorrow.toISOString(),
+      };
+    case 'thisWeek':
+      const endOfWeek = new Date(today);
+      endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
+      return {
+        startDate: today.toISOString(),
+        endDate: endOfWeek.toISOString(),
+      };
+    case 'thisMonth':
+      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      return {
+        startDate: today.toISOString(),
+        endDate: endOfMonth.toISOString(),
+      };
+    default:
+      return {};
+  }
+};
 
 const EventsCategoryPage: React.FC = () => {
   const router = useRouter();
   const { category } = useLocalSearchParams<{ category: string }>();
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState<DateFilter>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<DisplayEvent[]>([]);
   const [totalEvents, setTotalEvents] = useState(0);
 
   const categoryKey = category?.toLowerCase() || 'movies';
   const config = CATEGORY_CONFIG[categoryKey] || CATEGORY_CONFIG.movies;
-  const filters = ['all', 'Today', 'This Week', 'This Month'];
+  const filters: { id: DateFilter; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'today', label: 'Today' },
+    { id: 'thisWeek', label: 'This Week' },
+    { id: 'thisMonth', label: 'This Month' },
+  ];
 
   const transformEventToDisplay = (event: EventItem): DisplayEvent => {
+    // Get cashback from backend (merchant-configured)
+    const cashbackValue = (event as any).cashback;
+    const cashbackText = cashbackValue && cashbackValue > 0 ? `${cashbackValue}%` : undefined;
+
+    // Get location name
+    const locationName = typeof event.location === 'string'
+      ? event.location
+      : (event.location as any)?.name || 'Venue';
+
     return {
       id: event.id,
       title: event.title,
-      venue: typeof event.location === 'string' ? event.location : 'Venue',
-      time: event.time || (event.date ? new Date(event.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'TBD'),
+      venue: locationName,
+      time: event.time || 'TBD',
+      date: event.date ? new Date(event.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'TBD',
       price: event.price?.isFree ? 'Free' : `${event.price?.currency || '₹'}${event.price?.amount || 0}`,
-      rating: 4.5 + Math.random() * 0.5,
+      rating: (event as any).rating || 0,
+      reviewCount: (event as any).reviewCount || 0,
       image: event.image || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',
-      cashback: `${Math.floor(10 + Math.random() * 20)}%`,
+      cashback: cashbackText,
     };
   };
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (filter: DateFilter = 'all') => {
     try {
+      setError(null);
+      const dateRange = getDateRange(filter);
+
+      // Build filters object
+      const apiFilters: any = {};
+      if (dateRange.startDate) {
+        apiFilters.startDate = dateRange.startDate;
+      }
+      if (dateRange.endDate) {
+        apiFilters.endDate = dateRange.endDate;
+      }
+
       const result = await eventsApiService.getEventsByCategory(categoryKey, 20, 0);
 
       if (result && result.events && result.events.length > 0) {
-        setEvents(result.events.map(transformEventToDisplay));
-        setTotalEvents(result.total);
+        let filteredEvents = result.events;
+
+        // Apply date filter client-side if needed
+        if (filter !== 'all') {
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+          filteredEvents = result.events.filter((event: EventItem) => {
+            if (!event.date) return false;
+            const eventDate = new Date(event.date);
+
+            switch (filter) {
+              case 'today':
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                return eventDate >= today && eventDate < tomorrow;
+              case 'thisWeek':
+                const endOfWeek = new Date(today);
+                endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
+                return eventDate >= today && eventDate <= endOfWeek;
+              case 'thisMonth':
+                const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                return eventDate >= today && eventDate <= endOfMonth;
+              default:
+                return true;
+            }
+          });
+        }
+
+        setEvents(filteredEvents.map(transformEventToDisplay));
+        setTotalEvents(filteredEvents.length);
       } else {
-        // Use fallback data
-        const fallback = FALLBACK_EVENTS[categoryKey] || FALLBACK_EVENTS.movies;
-        setEvents(fallback);
-        setTotalEvents(fallback.length);
+        setEvents([]);
+        setTotalEvents(0);
       }
-    } catch (error) {
-      console.error('Error fetching category events:', error);
-      // Use fallback data
-      const fallback = FALLBACK_EVENTS[categoryKey] || FALLBACK_EVENTS.movies;
-      setEvents(fallback);
-      setTotalEvents(fallback.length);
+    } catch (err: any) {
+      console.error('Error fetching category events:', err);
+      setError(err.message || 'Failed to load events. Please try again.');
+      setEvents([]);
+      setTotalEvents(0);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -145,13 +194,19 @@ const EventsCategoryPage: React.FC = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    fetchEvents();
+    fetchEvents(selectedFilter);
+  }, [categoryKey]); // Only refetch when category changes
+
+  const handleFilterChange = useCallback((filter: DateFilter) => {
+    setSelectedFilter(filter);
+    setIsLoading(true);
+    fetchEvents(filter);
   }, [fetchEvents]);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    fetchEvents();
-  }, [fetchEvents]);
+    fetchEvents(selectedFilter);
+  }, [fetchEvents, selectedFilter]);
 
   const handleEventPress = (eventId: string) => {
     router.push(`/EventPage?id=${eventId}` as any);
@@ -160,31 +215,78 @@ const EventsCategoryPage: React.FC = () => {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color={COLORS.green500} />
+        <Stack.Screen options={{ headerShown: false }} />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Loading {config.title}...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (error && events.length === 0) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <LinearGradient
+          colors={config.gradientColors as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.header}
+        >
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={COLORS.background} />
+            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>{config.icon} {config.title}</Text>
+              <Text style={styles.headerSubtitle}>Events</Text>
+            </View>
+            <View style={{ width: 40 }} />
+          </View>
+        </LinearGradient>
+        <View style={styles.errorContainer}>
+          <View style={styles.errorIconContainer}>
+            <Ionicons name="alert-circle-outline" size={64} color={COLORS.error} />
+          </View>
+          <Text style={styles.errorTitle}>Unable to Load Events</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setIsLoading(true);
+              fetchEvents(selectedFilter);
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="refresh-outline" size={20} color={COLORS.background} />
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+
       {/* Header */}
       <LinearGradient
-        colors={config.gradientColors as any}
+        colors={config.gradientColors as unknown as string[]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.header}
       >
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+            <Ionicons name="arrow-back" size={24} color={COLORS.background} />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>{config.icon} {config.title}</Text>
             <Text style={styles.headerSubtitle}>{totalEvents} events available</Text>
           </View>
           <TouchableOpacity style={styles.searchButton} onPress={() => router.push('/search' as any)}>
-            <Ionicons name="search" size={24} color={COLORS.white} />
+            <Ionicons name="search" size={24} color={COLORS.background} />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -194,18 +296,18 @@ const EventsCategoryPage: React.FC = () => {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {filters.map((filter) => (
             <TouchableOpacity
-              key={filter}
-              onPress={() => setSelectedFilter(filter)}
+              key={filter.id}
+              onPress={() => handleFilterChange(filter.id)}
               style={[
                 styles.filterChip,
-                selectedFilter === filter && styles.filterChipActive
+                selectedFilter === filter.id && styles.filterChipActive
               ]}
             >
               <Text style={[
                 styles.filterChipText,
-                selectedFilter === filter && styles.filterChipTextActive
+                selectedFilter === filter.id && styles.filterChipTextActive
               ]}>
-                {filter === 'all' ? 'All' : filter}
+                {filter.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -215,7 +317,7 @@ const EventsCategoryPage: React.FC = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.green500]} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />
         }
       >
         {/* Events List */}
@@ -229,26 +331,37 @@ const EventsCategoryPage: React.FC = () => {
                 activeOpacity={0.8}
               >
                 <Image source={{ uri: event.image }} style={styles.eventImage} />
-                <View style={styles.cashbackBadge}>
-                  <Text style={styles.cashbackText}>{event.cashback}</Text>
-                </View>
+                {event.cashback && (
+                  <View style={styles.cashbackBadge}>
+                    <Text style={styles.cashbackText}>{event.cashback} Cashback</Text>
+                  </View>
+                )}
                 <View style={styles.eventInfo}>
                   <Text style={styles.eventTitle}>{event.title}</Text>
                   <View style={styles.eventMeta}>
                     <View style={styles.metaItem}>
-                      <Ionicons name="location-outline" size={14} color={COLORS.gray600} />
+                      <Ionicons name="location-outline" size={14} color={COLORS.textMuted} />
                       <Text style={styles.metaText}>{event.venue}</Text>
                     </View>
                     <View style={styles.metaItem}>
-                      <Ionicons name="time-outline" size={14} color={COLORS.gray600} />
-                      <Text style={styles.metaText}>{event.time}</Text>
+                      <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} />
+                      <Text style={styles.metaText}>{event.date} • {event.time}</Text>
                     </View>
                   </View>
                   <View style={styles.eventFooter}>
-                    <View style={styles.ratingContainer}>
-                      <Ionicons name="star" size={14} color={COLORS.amber500} />
-                      <Text style={styles.ratingText}>{event.rating.toFixed(1)}</Text>
-                    </View>
+                    {event.rating > 0 ? (
+                      <View style={styles.ratingContainer}>
+                        <Ionicons name="star" size={14} color={COLORS.star} />
+                        <Text style={styles.ratingText}>{event.rating.toFixed(1)}</Text>
+                        {event.reviewCount > 0 && (
+                          <Text style={styles.reviewCount}>({event.reviewCount})</Text>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={styles.ratingContainer}>
+                        <Text style={styles.noRatingText}>No reviews yet</Text>
+                      </View>
+                    )}
                     <Text style={styles.priceText}>{event.price}</Text>
                   </View>
                 </View>
@@ -258,7 +371,20 @@ const EventsCategoryPage: React.FC = () => {
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>{config.icon}</Text>
               <Text style={styles.emptyTitle}>No events found</Text>
-              <Text style={styles.emptySubtitle}>Check back later for upcoming {config.title.toLowerCase()}</Text>
+              <Text style={styles.emptySubtitle}>
+                {selectedFilter !== 'all'
+                  ? `No ${config.title.toLowerCase()} scheduled for ${filters.find(f => f.id === selectedFilter)?.label.toLowerCase()}`
+                  : `Check back later for upcoming ${config.title.toLowerCase()}`}
+              </Text>
+              {selectedFilter !== 'all' && (
+                <TouchableOpacity
+                  style={styles.clearFilterButton}
+                  onPress={() => handleFilterChange('all')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.clearFilterText}>Show all events</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -272,7 +398,7 @@ const EventsCategoryPage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -281,11 +407,13 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: COLORS.gray600,
+    color: COLORS.textMuted,
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 56 : 16,
     paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerTop: {
     flexDirection: 'row',
@@ -294,46 +422,51 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
   },
   headerTitleContainer: {
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 12,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.white,
+    color: COLORS.background,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
   },
   searchButton: {
     padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
   },
   filtersContainer: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray200,
+    borderBottomColor: COLORS.border,
   },
   filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: COLORS.gray100,
+    backgroundColor: COLORS.surface,
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: COLORS.navy,
+    backgroundColor: COLORS.text,
   },
   filterChipText: {
     fontSize: 14,
-    color: COLORS.gray600,
+    color: COLORS.textMuted,
   },
   filterChipTextActive: {
-    color: COLORS.white,
+    color: COLORS.background,
     fontWeight: '600',
   },
   eventsList: {
@@ -341,11 +474,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   eventCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.gray200,
+    borderColor: COLORS.border,
   },
   eventImage: {
     width: '100%',
@@ -355,7 +488,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: COLORS.green500,
+    backgroundColor: COLORS.cashback,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -363,7 +496,7 @@ const styles = StyleSheet.create({
   cashbackText: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.white,
+    color: COLORS.background,
   },
   eventInfo: {
     padding: 16,
@@ -371,7 +504,7 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.navy,
+    color: COLORS.text,
     marginBottom: 8,
   },
   eventMeta: {
@@ -385,7 +518,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 13,
-    color: COLORS.gray600,
+    color: COLORS.textMuted,
   },
   eventFooter: {
     flexDirection: 'row',
@@ -400,12 +533,21 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.navy,
+    color: COLORS.text,
+  },
+  reviewCount: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
+  noRatingText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontStyle: 'italic',
   },
   priceText: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.green500,
+    color: COLORS.primary,
   },
   emptyState: {
     alignItems: 'center',
@@ -418,13 +560,70 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.navy,
+    color: COLORS.text,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: COLORS.gray600,
+    color: COLORS.textMuted,
     textAlign: 'center',
+    paddingHorizontal: 32,
+    marginBottom: 16,
+  },
+  clearFilterButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+  },
+  clearFilterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.background,
+  },
+  // Error state styles
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.errorLight || '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 24,
+    gap: 8,
+  },
+  retryButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.background,
   },
 });
 

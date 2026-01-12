@@ -1159,4 +1159,7 @@ class CartService {
 // Create singleton instance
 const cartService = new CartService();
 
+// Named export for compatibility
+export { cartService as cartApi };
+
 export default cartService;

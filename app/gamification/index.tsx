@@ -266,7 +266,7 @@ export default function GamificationDashboard() {
         <View style={styles.content}>
           <TouchableOpacity
             style={styles.leaderboardCard}
-            onPress={() => router.push('/gamification/leaderboards' as any)}
+            onPress={() => router.push('/leaderboard' as any)}
           >
             <Ionicons name="trophy" size={24} color="#FFD700" />
             <Text style={styles.leaderboardTitle}>View Leaderboards</Text>

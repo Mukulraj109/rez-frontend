@@ -69,48 +69,43 @@ const SECTION_CONFIG: Record<string, { icon: string; color: string }> = {
   ott: { icon: '📺', color: '#EF4444' },
 };
 
-// Fallback categories
+// Fallback categories - using /MainCategory/ routes for consistency
 const FALLBACK_SECTIONS = [
   {
     section: 'Shopping',
     items: [
-      { id: 'electronics', title: 'Electronics', icon: '📱', color: '#3B82F6', route: '/category/electronics' },
-      { id: 'fashion', title: 'Fashion', icon: '👗', color: '#EC4899', route: '/category/fashion' },
-      { id: 'home', title: 'Home & Kitchen', icon: '🏠', color: '#8B5CF6', route: '/category/home' },
-      { id: 'beauty', title: 'Beauty', icon: '💄', color: '#F472B6', route: '/beauty' },
+      { id: 'electronics', title: 'Electronics', icon: '📱', color: '#3B82F6', route: '/MainCategory/electronics' },
+      { id: 'fashion', title: 'Fashion', icon: '👗', color: '#EC4899', route: '/MainCategory/fashion' },
+      { id: 'grocery', title: 'Grocery', icon: '🛒', color: '#10B981', route: '/MainCategory/grocery-essentials' },
+      { id: 'beauty', title: 'Beauty', icon: '💄', color: '#F472B6', route: '/MainCategory/beauty-wellness' },
     ],
   },
   {
     section: 'Food & Dining',
     items: [
-      { id: 'food', title: 'Food Delivery', icon: '🍕', color: '#F97316', route: '/category/food' },
-      { id: 'grocery', title: 'Grocery', icon: '🛒', color: '#22C55E', route: '/category/grocery' },
+      { id: 'food-dining', title: 'Food & Dining', icon: '🍕', color: '#F97316', route: '/MainCategory/food-dining' },
     ],
   },
   {
     section: 'Travel & Entertainment',
     items: [
-      { id: 'flights', title: 'Flights', icon: '✈️', color: '#0EA5E9', route: '/travel/flights' },
-      { id: 'hotels', title: 'Hotels', icon: '🏨', color: '#8B5CF6', route: '/travel/hotels' },
-      { id: 'movies', title: 'Movies', icon: '🎬', color: '#EF4444', route: '/events/movies' },
-      { id: 'events', title: 'Events', icon: '🎭', color: '#EC4899', route: '/events' },
+      { id: 'travel', title: 'Travel', icon: '✈️', color: '#0EA5E9', route: '/MainCategory/travel-experiences' },
+      { id: 'entertainment', title: 'Entertainment', icon: '🎭', color: '#EC4899', route: '/MainCategory/entertainment' },
     ],
   },
   {
     section: 'Services',
     items: [
-      { id: 'salon', title: 'Salon', icon: '💇', color: '#EC4899', route: '/beauty/salon' },
-      { id: 'fitness', title: 'Fitness', icon: '💪', color: '#F97316', route: '/fitness' },
-      { id: 'healthcare', title: 'Healthcare', icon: '🏥', color: '#EF4444', route: '/healthcare' },
+      { id: 'home-services', title: 'Home Services', icon: '🏠', color: '#F59E0B', route: '/MainCategory/home-services' },
+      { id: 'fitness', title: 'Fitness', icon: '💪', color: '#8B5CF6', route: '/MainCategory/fitness-sports' },
+      { id: 'healthcare', title: 'Healthcare', icon: '🏥', color: '#EF4444', route: '/MainCategory/healthcare' },
+      { id: 'education', title: 'Education', icon: '🎓', color: '#3B82F6', route: '/MainCategory/education-learning' },
     ],
   },
   {
     section: 'Financial Services',
     items: [
-      { id: 'bills', title: 'Bill Payment', icon: '📄', color: '#3B82F6', route: '/financial/bills' },
-      { id: 'recharge', title: 'Recharge', icon: '📱', color: '#22C55E', route: '/financial/recharge' },
-      { id: 'gold', title: 'Digital Gold', icon: '🪙', color: '#F59E0B', route: '/financial/gold' },
-      { id: 'insurance', title: 'Insurance', icon: '🛡️', color: '#8B5CF6', route: '/financial/insurance' },
+      { id: 'financial', title: 'Financial', icon: '💳', color: '#14B8A6', route: '/MainCategory/financial-lifestyle' },
     ],
   },
 ];
@@ -143,7 +138,7 @@ const CategoriesPage: React.FC = () => {
       title: cat.name,
       icon: cat.icon || config.icon,
       color: cat.metadata?.color || config.color,
-      route: `/category/${cat.slug}`,
+      route: `/MainCategory/${cat.slug}`,
     };
   };
 

@@ -71,6 +71,8 @@ export default function BrandDetailPage() {
   const fetchBrand = useCallback(async () => {
     if (!id) {
       console.log('[BrandDetail] No ID provided');
+      setError('No brand ID provided');
+      setIsLoading(false);
       return;
     }
 

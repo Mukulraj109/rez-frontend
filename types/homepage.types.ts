@@ -30,6 +30,11 @@ export interface EventItem extends HomepageSectionItem {
     maxCapacity: number;
     bookedCount: number;
   }>; // For offline events
+  // Rating and reviews
+  rating?: number; // Average rating (0-5)
+  reviewCount?: number; // Total number of reviews
+  // Cashback configuration
+  cashback?: number; // Cashback percentage (0-100)
 }
 
 // Store Section (for Trending Stores, New Stores, Top Stores)

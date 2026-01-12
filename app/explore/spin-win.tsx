@@ -22,16 +22,6 @@ import { useGamification } from '@/contexts/GamificationContext';
 
 const { width } = Dimensions.get('window');
 
-// Default prizes as fallback
-const defaultPrizes: SpinWheelSegment[] = [
-  { id: '1', label: '₹10', value: 10, color: '#10B981', type: 'coins', icon: 'cash', probability: 30 },
-  { id: '2', label: '₹25', value: 25, color: '#3B82F6', type: 'coins', icon: 'cash', probability: 25 },
-  { id: '3', label: '₹50', value: 50, color: '#8B5CF6', type: 'coins', icon: 'cash', probability: 20 },
-  { id: '4', label: '₹5', value: 5, color: '#F59E0B', type: 'coins', icon: 'cash', probability: 15 },
-  { id: '5', label: '₹100', value: 100, color: '#EC4899', type: 'coins', icon: 'cash', probability: 5 },
-  { id: '6', label: '₹15', value: 15, color: '#F97316', type: 'coins', icon: 'cash', probability: 5 },
-];
-
 export default function SpinWinPage() {
   const router = useRouter();
   const { actions: gamificationActions } = useGamification();
@@ -42,7 +32,8 @@ export default function SpinWinPage() {
   // API state
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [prizes, setPrizes] = useState<SpinWheelSegment[]>(defaultPrizes);
+  const [prizes, setPrizes] = useState<SpinWheelSegment[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const [spinning, setSpinning] = useState(false);
   const [wonPrize, setWonPrize] = useState<SpinWheelSegment | null>(null);
@@ -77,7 +68,12 @@ export default function SpinWinPage() {
         const segments = wheelResponse.data.segments;
         if (segments && segments.length > 0) {
           setPrizes(segments);
+          setError(null);
+        } else {
+          setError('Unable to load spin wheel prizes');
         }
+      } else {
+        setError(wheelResponse.error || 'Unable to load spin wheel data');
       }
 
       if (eligibilityResponse.success && eligibilityResponse.data) {
@@ -93,8 +89,9 @@ export default function SpinWinPage() {
                         walletResponse.data.coins || 0;
         setWalletBalance(balance);
       }
-    } catch (error) {
-      console.error('[SPIN WIN] Error fetching data:', error);
+    } catch (err) {
+      console.error('[SPIN WIN] Error fetching data:', err);
+      setError('Unable to load spin wheel. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -216,6 +213,18 @@ export default function SpinWinPage() {
           </View>
         )}
 
+        {/* Error State */}
+        {!loading && error && prizes.length === 0 && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color="#EF4444" />
+            <Text style={styles.errorTitle}>Unable to Load</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchSpinData(true)}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Stats */}
         <View style={styles.statsContainer}>
           <View style={[styles.statCard, { backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }]}>
@@ -251,7 +260,8 @@ export default function SpinWinPage() {
           </LinearGradient>
         </View>
 
-        {/* Spin Wheel */}
+        {/* Spin Wheel - only show when prizes are loaded */}
+        {prizes.length > 0 && (
         <View style={styles.wheelContainer}>
           <View style={styles.wheelOuter}>
             {/* Wheel */}
@@ -313,6 +323,7 @@ export default function SpinWinPage() {
           {/* Pointer */}
           <View style={styles.pointer} />
         </View>
+        )}
 
         {/* Result */}
         {wonPrize && (
@@ -329,6 +340,7 @@ export default function SpinWinPage() {
         )}
 
         {/* Prize Table */}
+        {prizes.length > 0 && (
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Prize Distribution</Text>
           {prizes.map((prize) => (
@@ -341,6 +353,7 @@ export default function SpinWinPage() {
             </View>
           ))}
         </View>
+        )}
 
         {/* How to Get More Spins */}
         <View style={styles.tipsContainer}>
@@ -652,5 +665,31 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     flex: 1,
     lineHeight: 20,
+  },
+  errorContainer: {
+    padding: 32,
+    alignItems: 'center',
+    gap: 16,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: '#F59E0B',
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

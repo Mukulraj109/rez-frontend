@@ -1,5 +1,39 @@
 import { EventItem } from '@/types/homepage.types';
 
+// Category mapping: Frontend display categories -> Backend API categories
+// Using direct category names as stored in database
+const CATEGORY_MAP: Record<string, string> = {
+  movies: 'movies',
+  concerts: 'concerts',
+  parks: 'parks',
+  workshops: 'workshops',
+  gaming: 'gaming',
+  sports: 'sports',
+  entertainment: 'entertainment',
+};
+
+// Reverse mapping for display purposes: Backend -> Frontend display name
+const REVERSE_CATEGORY_MAP: Record<string, string> = {
+  movies: 'movies',
+  concerts: 'concerts',
+  parks: 'parks',
+  workshops: 'workshops',
+  gaming: 'gaming',
+  sports: 'sports',
+  entertainment: 'entertainment',
+};
+
+// Helper function to map frontend category to backend category
+export const mapCategoryToBackend = (frontendCategory: string): string => {
+  const normalized = frontendCategory.toLowerCase();
+  return CATEGORY_MAP[normalized] || frontendCategory;
+};
+
+// Helper function to map backend category to frontend display
+export const mapCategoryToFrontend = (backendCategory: string): string => {
+  return REVERSE_CATEGORY_MAP[backendCategory] || backendCategory.toLowerCase();
+};
+
 export interface EventFilters {
   category?: string;
   location?: string;
@@ -210,15 +244,27 @@ class EventsApiService {
 
   /**
    * Get events by category
+   * Maps frontend display categories (movies, concerts, etc.) to backend categories (Entertainment, Music, etc.)
+   * Also sends the original category as a tag filter for more specific results
    */
   async getEventsByCategory(category: string, limit = 20, offset = 0): Promise<EventSearchResult> {
     try {
+      // Map frontend category to backend category
+      const backendCategory = mapCategoryToBackend(category);
+      const originalCategory = category.toLowerCase();
+      console.log(`📂 [eventsApi] Mapping category: ${category} -> ${backendCategory}, filtering by tag: ${originalCategory}`);
 
       const queryParams = new URLSearchParams();
       queryParams.append('limit', limit.toString());
       queryParams.append('offset', offset.toString());
 
-      const response = await fetch(`${this.baseUrl}/events/category/${encodeURIComponent(category)}?${queryParams}`, {
+      // Add the original category as a tag filter for more specific results
+      // This ensures "movies" shows only movies, not all Entertainment events
+      if (backendCategory !== originalCategory && CATEGORY_MAP[originalCategory]) {
+        queryParams.append('tags', originalCategory);
+      }
+
+      const response = await fetch(`${this.baseUrl}/events/category/${encodeURIComponent(backendCategory)}?${queryParams}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

@@ -233,13 +233,29 @@ class GamificationApiService {
       if (streakResponse.success && streakResponse.data) {
         const { currentStreak, hasCheckedInToday } = streakResponse.data;
 
-        // Build 7-day calendar
+        // Build 7-day calendar with weekly cycle support
         const calendar: CheckInReward[] = [];
         const baseCoins = [10, 15, 20, 25, 30, 40, 100]; // Day 1-7 rewards
 
+        // Calculate day position within the 7-day week cycle
+        // Streak 1 = Day 1, Streak 7 = Day 7, Streak 8 = Day 1 (new week), Streak 22 = Day 1, etc.
+        const dayInWeek = currentStreak === 0 ? 0 : ((currentStreak - 1) % 7) + 1;
+
+        // Handle new week: if dayInWeek is 7 and not checked in today, next check-in starts new week
+        const isNewWeekStart = dayInWeek === 7 && !hasCheckedInToday;
+
         for (let day = 1; day <= 7; day++) {
-          const isClaimed = day <= currentStreak && (day < 7 || hasCheckedInToday);
-          const isToday = day === currentStreak + 1 && !hasCheckedInToday;
+          let isClaimed: boolean;
+          let isToday: boolean;
+
+          if (isNewWeekStart) {
+            // New week - no days claimed yet, day 1 is today
+            isClaimed = false;
+            isToday = day === 1;
+          } else {
+            isClaimed = day <= dayInWeek;
+            isToday = !hasCheckedInToday && day === dayInWeek + 1;
+          }
 
           calendar.push({
             day,
@@ -253,18 +269,10 @@ class GamificationApiService {
         return { success: true, data: calendar };
       }
 
-      // Return default calendar if API fails
+      // Return error if streak data unavailable - no fallback data
       return {
-        success: true,
-        data: [
-          { day: 1, coins: 10, claimed: false },
-          { day: 2, coins: 15, claimed: false },
-          { day: 3, coins: 20, claimed: false },
-          { day: 4, coins: 25, claimed: false, today: true },
-          { day: 5, coins: 30, claimed: false },
-          { day: 6, coins: 40, claimed: false },
-          { day: 7, coins: 100, claimed: false, bonus: true },
-        ],
+        success: false,
+        error: streakResponse.error || 'Unable to load check-in calendar',
       };
     } catch (error: any) {
       console.error('[GAMIFICATION API] Error fetching calendar:', error);
@@ -296,22 +304,10 @@ class GamificationApiService {
         };
       }
 
-      // Return default wheel if API fails
+      // Return error if spin wheel data unavailable - no fallback data
       return {
-        success: true,
-        data: {
-          segments: [
-            { id: '1', label: '₹10', value: 10, color: '#10B981', type: 'coins', icon: 'cash', probability: 30 },
-            { id: '2', label: '₹25', value: 25, color: '#3B82F6', type: 'coins', icon: 'cash', probability: 25 },
-            { id: '3', label: '₹50', value: 50, color: '#8B5CF6', type: 'coins', icon: 'cash', probability: 20 },
-            { id: '4', label: '₹5', value: 5, color: '#F59E0B', type: 'coins', icon: 'cash', probability: 15 },
-            { id: '5', label: '₹100', value: 100, color: '#EC4899', type: 'coins', icon: 'cash', probability: 5 },
-            { id: '6', label: '₹15', value: 15, color: '#F97316', type: 'coins', icon: 'cash', probability: 5 },
-          ],
-          isActive: true,
-          rulesPerDay: { maxSpins: 3, spinResetHour: 0 },
-          cooldownMinutes: 0,
-        },
+        success: false,
+        error: response.error || 'Unable to load spin wheel data',
       };
     } catch (error: any) {
       console.error('[GAMIFICATION API] Error fetching spin wheel data:', error);
@@ -412,6 +408,95 @@ class GamificationApiService {
   }
 
   // ========================================
+  // LEADERBOARD ENDPOINTS
+  // ========================================
+
+  /**
+   * Get leaderboard data
+   * @param period - 'daily' | 'weekly' | 'monthly' | 'all-time'
+   * @param limit - Number of entries to return
+   */
+  async getLeaderboard(
+    period: 'daily' | 'weekly' | 'monthly' | 'all-time' = 'weekly',
+    limit: number = 50
+  ): Promise<ApiResponse<{
+    entries: Array<{
+      rank: number;
+      userId: string;
+      username: string;
+      fullName: string;
+      coins: number;
+      level: number;
+      tier: 'free' | 'plus' | 'premium' | 'elite';
+      achievements: number;
+      avatar?: string;
+      isCurrentUser: boolean;
+    }>;
+    userRank?: {
+      rank: number;
+      userId: string;
+      username: string;
+      fullName: string;
+      coins: number;
+      level: number;
+      tier: 'free' | 'plus' | 'premium' | 'elite';
+      achievements: number;
+      isCurrentUser: boolean;
+    };
+  }>> {
+    try {
+      const response = await apiClient.get<any>('/gamification/leaderboard', {
+        type: 'spending',
+        period,
+        limit,
+      });
+
+      if (response.success && response.data) {
+        const data = response.data;
+        const entries = (Array.isArray(data) ? data : data.entries || data.leaderboard || [])
+          .map((entry: any, index: number) => ({
+            rank: entry.rank || index + 1,
+            userId: entry.user?.id || entry.user?._id || entry.userId || entry._id || '',
+            username: entry.user?.name || entry.userName || entry.name || 'Anonymous',
+            fullName: entry.user?.name || entry.userName || entry.name || 'Anonymous',
+            coins: entry.value || entry.coins || entry.amount || 0,
+            level: entry.level || 1,
+            tier: (entry.tier || 'free') as 'free' | 'plus' | 'premium' | 'elite',
+            achievements: entry.achievements || 0,
+            avatar: entry.user?.avatar || entry.avatar,
+            isCurrentUser: entry.isCurrentUser || false,
+          }));
+
+        return {
+          success: true,
+          data: {
+            entries,
+            userRank: data.myRank ? {
+              rank: data.myRank.rank || 0,
+              userId: data.myRank.userId || '',
+              username: data.myRank.name || 'You',
+              fullName: data.myRank.name || 'You',
+              coins: data.myRank.value || data.myRank.coins || 0,
+              level: data.myRank.level || 1,
+              tier: (data.myRank.tier || 'free') as 'free' | 'plus' | 'premium' | 'elite',
+              achievements: data.myRank.achievements || 0,
+              isCurrentUser: true,
+            } : undefined,
+          },
+        };
+      }
+
+      return {
+        success: true,
+        data: { entries: [] },
+      };
+    } catch (error: any) {
+      console.error('[GAMIFICATION API] Error fetching leaderboard:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ========================================
   // GAMIFICATION STATS
   // ========================================
 
@@ -480,27 +565,14 @@ class GamificationApiService {
         };
       }
 
-      // Return zeros if API fails (graceful degradation)
+      // Return error if affiliate stats unavailable - no fallback data
       return {
-        success: true,
-        data: {
-          totalShares: 0,
-          appDownloads: 0,
-          purchases: 0,
-          commissionEarned: 0,
-        },
+        success: false,
+        error: response.error || 'Unable to load affiliate stats',
       };
     } catch (error: any) {
       console.error('[GAMIFICATION API] Error fetching affiliate stats:', error);
-      return {
-        success: true,
-        data: {
-          totalShares: 0,
-          appDownloads: 0,
-          purchases: 0,
-          commissionEarned: 0,
-        },
-      };
+      return { success: false, error: error.message };
     }
   }
 
@@ -527,15 +599,10 @@ class GamificationApiService {
         return { success: true, data: posters };
       }
 
-      // Return default posters if API fails
+      // Return empty array if no posters available - no fallback data
       return {
         success: true,
-        data: [
-          { id: '1', title: 'Mega Sale', subtitle: 'Up to 70% off + Extra Cashback', image: 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?w=500', colors: ['#F97316', '#EF4444'], shareBonus: 50 },
-          { id: '2', title: 'Weekend Bonanza', subtitle: '3X Coins on All Purchases', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=500', colors: ['#A855F7', '#EC4899'], shareBonus: 30 },
-          { id: '3', title: 'New User Special', subtitle: 'Get Rs.500 Welcome Bonus', image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=500', colors: ['#3B82F6', '#06B6D4'], shareBonus: 100 },
-          { id: '4', title: 'Flash Sale Today', subtitle: 'Limited Time Mega Deals', image: 'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?w=500', colors: ['#22C55E', '#14B8A6'], shareBonus: 40 },
-        ],
+        data: [],
       };
     } catch (error: any) {
       console.error('[GAMIFICATION API] Error fetching promotional posters:', error);
@@ -633,30 +700,17 @@ class GamificationApiService {
           achieved: b.achieved ?? false,
         }));
 
-        if (bonuses.length > 0) {
-          return { success: true, data: bonuses };
-        }
+        return { success: true, data: bonuses };
       }
 
-      // Return default bonuses if API fails or returns empty
+      // Return error if streak bonuses unavailable - no fallback data
       return {
-        success: true,
-        data: [
-          { days: 7, reward: 100, achieved: false },
-          { days: 30, reward: 500, achieved: false },
-          { days: 100, reward: 2000, achieved: false },
-        ],
+        success: false,
+        error: response.error || 'Unable to load streak bonuses',
       };
     } catch (error: any) {
       console.error('[GAMIFICATION API] Error fetching streak bonuses:', error);
-      return {
-        success: true,
-        data: [
-          { days: 7, reward: 100, achieved: false },
-          { days: 30, reward: 500, achieved: false },
-          { days: 100, reward: 2000, achieved: false },
-        ],
-      };
+      return { success: false, error: error.message };
     }
   }
 
@@ -724,20 +778,7 @@ class GamificationApiService {
         };
       }
 
-      // Return default opportunities if API fails (graceful degradation)
-      return {
-        success: true,
-        data: {
-          opportunities: [
-            { id: '1', title: 'Complete Your Profile', description: 'Fill in all details', reward: '50 coins', timeLeft: '2h left', icon: '👤', type: 'challenge' as const, path: '/profile/edit' },
-            { id: '2', title: 'First Purchase Bonus', description: 'Get extra cashback', reward: '2x cashback', timeLeft: '24h left', icon: '🛒', type: 'campaign' as const, path: '/products' },
-            { id: '3', title: 'Share & Earn', description: 'Share app with friends', reward: '100 coins', timeLeft: '3d left', icon: '📣', type: 'challenge' as const, path: '/share-and-earn' },
-          ],
-          total: 3,
-        },
-      };
-    } catch (error: any) {
-      console.error('[GAMIFICATION API] Error fetching bonus opportunities:', error);
+      // Return empty opportunities if API fails - no fallback data
       return {
         success: true,
         data: {
@@ -745,6 +786,9 @@ class GamificationApiService {
           total: 0,
         },
       };
+    } catch (error: any) {
+      console.error('[GAMIFICATION API] Error fetching bonus opportunities:', error);
+      return { success: false, error: error.message };
     }
   }
 
@@ -762,6 +806,135 @@ class GamificationApiService {
       return response;
     } catch (error: any) {
       console.error('[GAMIFICATION API] Error fetching play and earn data:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ========================================
+  // SPIN WHEEL CONVENIENCE METHOD
+  // ========================================
+
+  /**
+   * Execute spin wheel (alias for executeSpin)
+   * Used by SpinWheelGame component
+   */
+  async spinWheel(): Promise<ApiResponse<{
+    result: SpinResult;
+    coinsAdded: number;
+    newBalance: number;
+  }>> {
+    try {
+      const response = await this.executeSpin();
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            result: response.data,
+            coinsAdded: response.data.coinsAdded || response.data.rewardValue || 0,
+            newBalance: response.data.newBalance || 0,
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Spin failed',
+      };
+    } catch (error: any) {
+      console.error('[GAMIFICATION API] Error in spinWheel:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ========================================
+  // QUIZ GAME ENDPOINTS
+  // ========================================
+
+  /**
+   * Start a new quiz game
+   */
+  async startQuiz(
+    difficulty?: 'easy' | 'medium' | 'hard',
+    category?: string
+  ): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post<any>('/gamification/quiz/start', {
+        difficulty,
+        category,
+      });
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            id: response.data.quizId || response.data.id || response.data._id,
+            questions: (response.data.questions || []).map((q: any) => ({
+              id: q._id || q.id,
+              question: q.question,
+              options: q.options,
+              correctAnswer: q.correctAnswer,
+              timeLimit: q.timeLimit || 30,
+              coins: q.coins || 10,
+            })),
+            totalQuestions: response.data.totalQuestions || response.data.questions?.length || 0,
+            totalCoins: response.data.totalCoins || 0,
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Failed to start quiz',
+      };
+    } catch (error: any) {
+      console.error('[GAMIFICATION API] Error starting quiz:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Submit answer for a quiz question
+   */
+  async submitQuizAnswer(
+    quizId: string,
+    questionId: string,
+    answerIndex: number
+  ): Promise<ApiResponse<{
+    isCorrect: boolean;
+    coinsEarned: number;
+    currentScore: number;
+    nextQuestion: any | null;
+    gameCompleted: boolean;
+    totalCoins?: number;
+  }>> {
+    try {
+      const response = await apiClient.post<any>(`/gamification/quiz/${quizId}/answer`, {
+        questionId,
+        selectedAnswer: answerIndex,
+      });
+
+      if (response.success && response.data) {
+        const data = response.data;
+        return {
+          success: true,
+          data: {
+            isCorrect: data.isCorrect ?? data.correct ?? false,
+            coinsEarned: data.coinsEarned || data.coins || 0,
+            currentScore: data.currentScore || data.score || 0,
+            nextQuestion: data.nextQuestion || null,
+            gameCompleted: data.gameCompleted ?? data.completed ?? false,
+            totalCoins: data.totalCoins || 0,
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Failed to submit answer',
+      };
+    } catch (error: any) {
+      console.error('[GAMIFICATION API] Error submitting quiz answer:', error);
       return { success: false, error: error.message };
     }
   }

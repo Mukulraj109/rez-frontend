@@ -19,6 +19,16 @@ import walletApi from '@/services/walletApi';
 import { useAuth } from '@/contexts/AuthContext';
 import GameErrorBoundary from '@/components/common/GameErrorBoundary';
 
+// ReZ Design System Colors
+const COLORS = {
+  primary: '#00C06A',
+  primaryDark: '#00796B',
+  gold: '#FFC857',
+  navy: '#0B2240',
+  surface: '#F7FAFC',
+  cardBg: '#FFFFFF',
+};
+
 interface Game {
   id: string;
   title: string;
@@ -117,8 +127,7 @@ export default function GamesPage() {
     }
   }, [authState.isAuthenticated, authState.isLoading, authState.user]);
 
-  // ✅ VERIFIED: Sync with gamification context (which now uses wallet API)
-  // Gamification context fetches coins from wallet, so this is already correct
+  // Sync with gamification context (which now uses wallet API)
   useEffect(() => {
     if (gamificationState.coinBalance.total > 0) {
       setUserCoins(gamificationState.coinBalance.total);
@@ -130,7 +139,6 @@ export default function GamesPage() {
     try {
       setLoading(true);
 
-      // ✅ UPDATED: Use wallet API as single source of truth for coins
       if (authState.user) {
         try {
           console.log('🔄 [GAMES] Loading wallet balance (source of truth)...');
@@ -162,7 +170,11 @@ export default function GamesPage() {
           // Set games won from achievement progress
           if (gamificationState.achievementProgress) {
             const gamesPlayed = gamificationState.achievementProgress.gamesPlayed || 0;
-            const gamesWonCount = Math.floor(gamesPlayed * 0.6); // Estimate 60% win rate
+            // Use actual games won if available, otherwise estimate
+            const actualGamesWon = gamificationState.achievementProgress.gamesWon;
+            const gamesWonCount = actualGamesWon !== undefined
+              ? actualGamesWon
+              : Math.floor(gamesPlayed * 0.6);
             setGamesWon(gamesWonCount);
           }
         } catch (gamificationError) {
@@ -187,9 +199,9 @@ export default function GamesPage() {
     if (game.status === 'active') {
       router.push(game.route as any);
     } else if (game.status === 'coming_soon') {
-      alert('Coming Soon! This game will be available soon.');
+      router.push(game.route as any);
     } else if (game.status === 'locked') {
-      alert('This game is locked. Complete more challenges to unlock!');
+      Alert.alert('Game Locked', 'Complete more challenges to unlock this game!');
     }
   };
 
@@ -202,7 +214,7 @@ export default function GamesPage() {
         style={styles.gameCard}
         onPress={() => handleGamePress(game)}
         activeOpacity={0.8}
-        disabled={isDisabled && game.status === 'locked'}
+        disabled={game.status === 'locked'}
       >
         <LinearGradient
           colors={isDisabled ? ['#E5E7EB', '#D1D5DB'] : [game.color, adjustColor(game.color, -20)]}
@@ -229,7 +241,7 @@ export default function GamesPage() {
               <Text style={styles.gameDescription}>{game.description}</Text>
               {game.status === 'active' && (
                 <View style={styles.rewardContainer}>
-                  <Ionicons name="star" size={14} color="#FFD700" />
+                  <Ionicons name="star" size={14} color={COLORS.gold} />
                   <Text style={styles.rewardText}>Win up to {game.rewardCoins} coins</Text>
                 </View>
               )}
@@ -246,7 +258,7 @@ export default function GamesPage() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -264,7 +276,7 @@ export default function GamesPage() {
         options={{
           title: 'Games & Challenges',
           headerStyle: {
-            backgroundColor: '#8B5CF6',
+            backgroundColor: COLORS.primary,
           },
           headerTintColor: '#fff',
           headerTitleStyle: {
@@ -274,23 +286,46 @@ export default function GamesPage() {
       />
       <ScrollView
         style={styles.container}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#8B5CF6" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
+          />
         }
       >
-        {/* Header */}
-        <LinearGradient colors={['#8B5CF6', '#A855F7']} style={styles.header}>
+        {/* Premium Glassmorphism Header */}
+        <LinearGradient
+          colors={[COLORS.primary, COLORS.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          {/* Glass overlay */}
+          <View style={styles.glassOverlay} />
+
+          {/* Decorative elements */}
+          <View style={styles.decorCircle1} />
+          <View style={styles.decorCircle2} />
+          <View style={styles.decorCircle3} />
+
           <View style={styles.headerContent}>
-            <View>
+            <View style={styles.headerLeft}>
               <Text style={styles.headerTitle}>Games & Challenges</Text>
+              <View style={styles.titleUnderline} />
               <Text style={styles.headerSubtitle}>Play games, earn rewards!</Text>
             </View>
             <TouchableOpacity
               style={styles.coinsContainer}
               onPress={() => router.push('/WalletScreen' as any)}
               activeOpacity={0.7}
+              accessibilityLabel={`Total coins: ${userCoins}`}
+              accessibilityRole="button"
+              accessibilityHint="Tap to view your wallet"
             >
-              <Ionicons name="star" size={24} color="#FFD700" />
+              <Ionicons name="star" size={18} color={COLORS.gold} />
               <Text style={styles.coinsText}>{userCoins.toLocaleString()}</Text>
             </TouchableOpacity>
           </View>
@@ -298,7 +333,9 @@ export default function GamesPage() {
 
         {/* Info Banner */}
         <View style={styles.infoBanner}>
-          <Ionicons name="information-circle" size={24} color="#8B5CF6" />
+          <View style={styles.infoBannerIconContainer}>
+            <Ionicons name="information-circle" size={24} color={COLORS.primary} />
+          </View>
           <View style={styles.infoBannerText}>
             <Text style={styles.infoBannerTitle}>How it works</Text>
             <Text style={styles.infoBannerDescription}>
@@ -320,17 +357,23 @@ export default function GamesPage() {
           <ThemedText style={styles.sectionTitle}>Your Stats</ThemedText>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
-              <Ionicons name="trophy" size={32} color="#FFD700" />
+              <View style={styles.statIconContainer}>
+                <Ionicons name="trophy" size={28} color={COLORS.gold} />
+              </View>
               <Text style={styles.statValue}>{gamesWon}</Text>
               <Text style={styles.statLabel}>Games Won</Text>
             </View>
             <View style={styles.statCard}>
-              <Ionicons name="flame" size={32} color="#FF6B6B" />
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255, 107, 107, 0.1)' }]}>
+                <Ionicons name="flame" size={28} color="#FF6B6B" />
+              </View>
               <Text style={styles.statValue}>{dayStreak}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </View>
             <View style={styles.statCard}>
-              <Ionicons name="star" size={32} color="#FFD700" />
+              <View style={styles.statIconContainer}>
+                <Ionicons name="star" size={28} color={COLORS.gold} />
+              </View>
               <Text style={styles.statValue}>{userCoins.toLocaleString()}</Text>
               <Text style={styles.statLabel}>Total Coins</Text>
             </View>
@@ -345,7 +388,7 @@ export default function GamesPage() {
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#8B5CF6', '#7C3AED']}
+              colors={[COLORS.primary, COLORS.primaryDark]}
               style={styles.ctaGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -373,99 +416,217 @@ function adjustColor(color: string, amount: number): string {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.surface,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.surface,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 20 : 16,
-    paddingBottom: 24,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
+    paddingBottom: 28,
     paddingHorizontal: 20,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    position: 'relative',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.35,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        boxShadow: '0px 8px 32px rgba(0, 192, 106, 0.35)',
+      },
+    }),
+  },
+  glassOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  decorCircle1: {
+    position: 'absolute',
+    top: -40,
+    right: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  decorCircle2: {
+    position: 'absolute',
+    top: 60,
+    left: -30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 200, 87, 0.15)',
+  },
+  decorCircle3: {
+    position: 'absolute',
+    bottom: -20,
+    right: 60,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    zIndex: 2,
+  },
+  headerLeft: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: 'white',
-    marginBottom: 4,
+    letterSpacing: -0.3,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.1)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        textShadowColor: 'rgba(0, 0, 0, 0.1)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+    }),
+  },
+  titleUnderline: {
+    width: 40,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: COLORS.gold,
+    marginTop: 6,
+    marginBottom: 8,
+    opacity: 0.9,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
   },
   coinsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    ...Platform.select({
+      web: {
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+      },
+    }),
   },
   coinsText: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '700',
     color: 'white',
-    marginLeft: 6,
+    marginLeft: 8,
+    letterSpacing: 0.3,
   },
   infoBanner: {
     flexDirection: 'row',
-    backgroundColor: 'white',
+    backgroundColor: COLORS.cardBg,
     margin: 16,
     padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 4px 16px rgba(11, 34, 64, 0.08)',
+      },
+    }),
+  },
+  infoBannerIconContainer: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   infoBannerText: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
   },
   infoBannerTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: COLORS.navy,
     marginBottom: 4,
   },
   infoBannerDescription: {
     fontSize: 14,
-    color: '#666',
+    color: '#6B7280',
     lineHeight: 20,
   },
   gamesSection: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: COLORS.navy,
     marginBottom: 16,
   },
   gamesGrid: {
     gap: 12,
   },
   gameCard: {
-    marginBottom: 12,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0px 6px 20px rgba(11, 34, 64, 0.12)',
+      },
+    }),
   },
   gameGradient: {
-    padding: 20,
+    padding: 18,
   },
   gameContent: {
     flexDirection: 'row',
@@ -476,42 +637,43 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   gameIcon: {
-    fontSize: 48,
+    fontSize: 44,
   },
   comingSoonBadge: {
     position: 'absolute',
     top: -8,
     right: -8,
     backgroundColor: '#FF6B6B',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
   comingSoonText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: 'white',
+    letterSpacing: 0.5,
   },
   lockedBadge: {
     position: 'absolute',
     top: -8,
     right: -8,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderRadius: 12,
   },
   gameInfo: {
     flex: 1,
   },
   gameTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '700',
     color: 'white',
     marginBottom: 4,
   },
   gameDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 8,
   },
@@ -535,51 +697,80 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: COLORS.cardBg,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.08)',
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.navy,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 4px 16px rgba(11, 34, 64, 0.08)',
+      },
+    }),
+  },
+  statIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 200, 87, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 8,
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.navy,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 11,
+    color: '#6B7280',
     textAlign: 'center',
+    fontWeight: '500',
   },
   footer: {
     padding: 16,
-    paddingBottom: 80,
+    paddingBottom: 100,
   },
   ctaButton: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0px 6px 24px rgba(0, 192, 106, 0.35)',
+      },
+    }),
   },
   ctaGradient: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 24,
   },
   ctaText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: 'white',
     marginRight: 8,
   },

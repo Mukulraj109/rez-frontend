@@ -163,7 +163,7 @@ const PickedForYou: React.FC<PickedForYouProps> = ({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name="target" size={20} color="#EF4444" style={styles.headerIcon} />
+          <Ionicons name="ellipse-outline" size={20} color="#EF4444" style={styles.headerIcon} />
           <View>
             <Text style={styles.title}>Picked For You</Text>
             <Text style={styles.subtitleText}>{subtitle}</Text>

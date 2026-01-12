@@ -260,10 +260,12 @@ const MemoryMatch = () => {
         }
 
         if (walletResponse.success && walletResponse.data) {
-          const balance = walletResponse.data.balance?.available ||
+          // Get ReZ coin balance from coins array or balance object
+          const rezCoin = walletResponse.data.coins?.find((c: any) => c.type === 'rez');
+          const balance = rezCoin?.amount ||
+                          walletResponse.data.balance?.available ||
                           walletResponse.data.balance?.total ||
-                          walletResponse.data.available ||
-                          walletResponse.data.coins || 0;
+                          0;
           setWalletBalance(balance);
         }
       } catch (error) {

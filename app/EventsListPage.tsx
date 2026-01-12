@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -226,6 +226,9 @@ export default function EventsListPage() {
 
   return (
     <View style={styles.container}>
+      {/* Hide default navigation header */}
+      <Stack.Screen options={{ headerShown: false }} />
+
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <StatusBar barStyle="light-content" backgroundColor="#00C06A" />
 

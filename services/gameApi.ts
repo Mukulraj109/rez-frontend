@@ -249,20 +249,10 @@ class GameApi {
         };
       }
 
-      // Return default games if API fails (graceful degradation)
+      // Return error if games unavailable - no fallback data
       return {
-        success: true,
-        data: {
-          games: [
-            { id: 'spin-wheel', title: 'Spin & Win', description: 'Spin the wheel to win coins', icon: '🎰', path: '/explore/spin-win', maxDaily: 1, reward: 'Up to 1000 coins', playsRemaining: 1, playsUsed: 0, isAvailable: true, todaysEarnings: 0 },
-            { id: 'memory-match', title: 'Memory Match', description: 'Match pairs to earn coins', icon: '🧠', path: '/playandearn/memorymatch', maxDaily: 3, reward: 'Up to 170 coins', playsRemaining: 3, playsUsed: 0, isAvailable: true, todaysEarnings: 0 },
-            { id: 'coin-hunt', title: 'Coin Hunt', description: 'Collect coins before time runs out', icon: '🪙', path: '/playandearn/coinhunt', maxDaily: 3, reward: 'Up to 50 coins', playsRemaining: 3, playsUsed: 0, isAvailable: true, todaysEarnings: 0 },
-            { id: 'guess-price', title: 'Guess the Price', description: 'Guess product prices to win', icon: '🏷️', path: '/playandearn/guessprice', maxDaily: 5, reward: 'Up to 50 coins', playsRemaining: 5, playsUsed: 0, isAvailable: true, todaysEarnings: 0 },
-            { id: 'quiz', title: 'Daily Quiz', description: 'Test your knowledge', icon: '❓', path: '/playandearn/quiz', maxDaily: 3, reward: 'Up to 150 coins', playsRemaining: 3, playsUsed: 0, isAvailable: true, todaysEarnings: 0 },
-          ] as AvailableGame[],
-          total: 5,
-          todaysEarnings: 0,
-        },
+        success: false,
+        error: 'Unable to load available games',
       };
     } catch (error: any) {
       console.error('[GAME API] Error fetching available games:', error);

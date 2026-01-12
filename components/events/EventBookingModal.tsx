@@ -284,6 +284,19 @@ export default function EventBookingModal({
       specialRequirements: ''
     }
   });
+  const [formErrors, setFormErrors] = useState<{
+    name?: string;
+    email?: string;
+    phone?: string;
+    age?: string;
+    slot?: string;
+  }>({});
+  const [touched, setTouched] = useState<{
+    name?: boolean;
+    email?: boolean;
+    phone?: boolean;
+    age?: boolean;
+  }>({});
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(null);
   const [paymentBookingId, setPaymentBookingId] = useState<string | null>(null);
@@ -305,6 +318,69 @@ export default function EventBookingModal({
   const tintColor = useThemeColor({}, 'tint');
   const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#1F2937' }, 'background');
   const placeholderColor = useThemeColor({ light: '#9CA3AF', dark: '#6B7280' }, 'text');
+  const errorColor = '#EF4444';
+
+  // Validation functions
+  const validateName = (name: string): string | undefined => {
+    if (!name.trim()) return 'Name is required';
+    if (name.trim().length < 2) return 'Name must be at least 2 characters';
+    if (name.trim().length > 100) return 'Name must be less than 100 characters';
+    if (!/^[a-zA-Z\s'-]+$/.test(name.trim())) return 'Name can only contain letters, spaces, hyphens, and apostrophes';
+    return undefined;
+  };
+
+  const validateEmail = (email: string): string | undefined => {
+    if (!email.trim()) return 'Email is required';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) return 'Please enter a valid email address';
+    return undefined;
+  };
+
+  const validatePhone = (phone: string): string | undefined => {
+    if (!phone.trim()) return undefined; // Phone is optional
+    // Allow various phone formats: +91 1234567890, (123) 456-7890, 123-456-7890, 1234567890
+    const phoneRegex = /^[+]?[\d\s()-]{10,15}$/;
+    const digitsOnly = phone.replace(/\D/g, '');
+    if (digitsOnly.length < 10) return 'Phone number must have at least 10 digits';
+    if (digitsOnly.length > 15) return 'Phone number is too long';
+    if (!phoneRegex.test(phone.trim())) return 'Please enter a valid phone number';
+    return undefined;
+  };
+
+  const validateAge = (age: number | undefined): string | undefined => {
+    if (age === undefined || age === null) return undefined; // Age is optional
+    if (isNaN(age) || age < 1) return 'Please enter a valid age';
+    if (age > 120) return 'Please enter a valid age';
+    // Check if event has minimum age requirement (if applicable)
+    const minAge = (event as any)?.minAge;
+    if (minAge && age < minAge) return `You must be at least ${minAge} years old for this event`;
+    return undefined;
+  };
+
+  const validateField = (field: string, value: string | number | undefined) => {
+    let error: string | undefined;
+    switch (field) {
+      case 'name':
+        error = validateName(value as string);
+        break;
+      case 'email':
+        error = validateEmail(value as string);
+        break;
+      case 'phone':
+        error = validatePhone(value as string);
+        break;
+      case 'age':
+        error = validateAge(value as number | undefined);
+        break;
+    }
+    setFormErrors(prev => ({ ...prev, [field]: error }));
+    return error;
+  };
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    validateField(field, formData.attendeeInfo[field as keyof typeof formData.attendeeInfo] as string | number | undefined);
+  };
 
   useEffect(() => {
     if (visible && event) {
@@ -320,6 +396,8 @@ export default function EventBookingModal({
         slotId: initialSelectedSlot || undefined
       });
       setSelectedSlot(initialSelectedSlot || null);
+      setFormErrors({});
+      setTouched({});
       clearBookingState();
     }
   }, [visible, event, initialSelectedSlot, clearBookingState]);
@@ -332,6 +410,10 @@ export default function EventBookingModal({
         [field]: value
       }
     }));
+    // Validate on change if field has been touched
+    if (touched[field as keyof typeof touched]) {
+      validateField(field, value);
+    }
   };
 
   const handleSlotSelect = (slotId: string) => {
@@ -360,27 +442,41 @@ export default function EventBookingModal({
     console.log('📝 [BOOKING MODAL] Event:', event.id, event.title);
     console.log('📝 [BOOKING MODAL] Form data:', JSON.stringify(formData));
 
-    // Validate form
-    if (!formData.attendeeInfo.name.trim()) {
-      alertOk('Validation Error', 'Please enter your name');
-      return;
-    }
+    // Mark all fields as touched
+    setTouched({
+      name: true,
+      email: true,
+      phone: true,
+      age: true,
+    });
 
-    if (!formData.attendeeInfo.email.trim()) {
-      alertOk('Validation Error', 'Please enter your email');
-      return;
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.attendeeInfo.email)) {
-      alertOk('Validation Error', 'Please enter a valid email address');
-      return;
-    }
+    // Validate all fields
+    const nameError = validateName(formData.attendeeInfo.name);
+    const emailError = validateEmail(formData.attendeeInfo.email);
+    const phoneError = validatePhone(formData.attendeeInfo.phone || '');
+    const ageError = validateAge(formData.attendeeInfo.age);
+    let slotError: string | undefined;
 
     // For slot-based events, validate slot selection
     if (event.availableSlots && event.availableSlots.length > 0 && !selectedSlot) {
-      alertOk('Validation Error', 'Please select a time slot');
+      slotError = 'Please select a time slot';
+    }
+
+    // Update errors state
+    const errors = {
+      name: nameError,
+      email: emailError,
+      phone: phoneError,
+      age: ageError,
+      slot: slotError,
+    };
+    setFormErrors(errors);
+
+    // Check if form has errors
+    if (nameError || emailError || phoneError || ageError || slotError) {
+      // Show alert for the first error found
+      const firstError = nameError || emailError || phoneError || ageError || slotError;
+      alertOk('Validation Error', firstError || 'Please fix the errors in the form');
       return;
     }
 
@@ -559,9 +655,15 @@ export default function EventBookingModal({
   };
 
   const isFormValid = () => {
-    return formData.attendeeInfo.name.trim() && 
+    // Check required fields have values
+    const hasRequiredFields = formData.attendeeInfo.name.trim() &&
            formData.attendeeInfo.email.trim() &&
            (!event?.availableSlots || event.availableSlots.length === 0 || selectedSlot);
+
+    // Check for validation errors (only if fields are touched)
+    const hasNoErrors = !formErrors.name && !formErrors.email && !formErrors.phone && !formErrors.age;
+
+    return hasRequiredFields && hasNoErrors;
   };
 
   if (!event) return null;
@@ -673,64 +775,96 @@ export default function EventBookingModal({
             <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
               Attendee Information
             </ThemedText>
-            
+
             <View style={styles.formContainer}>
               <View style={styles.inputGroup}>
                 <ThemedText style={[styles.inputLabel, { color: textColor }]}>
                   Full Name *
                 </ThemedText>
                 <TextInput
-                  style={[styles.textInput, { backgroundColor: cardBackground, borderColor, color: textColor }]}
+                  style={[
+                    styles.textInput,
+                    { backgroundColor: cardBackground, borderColor: touched.name && formErrors.name ? errorColor : borderColor, color: textColor }
+                  ]}
                   placeholder="Enter your full name"
                   placeholderTextColor={placeholderColor}
                   value={formData.attendeeInfo.name}
                   onChangeText={(value) => handleInputChange('name', value)}
+                  onBlur={() => handleBlur('name')}
                 />
+                {touched.name && formErrors.name && (
+                  <ThemedText style={styles.errorText}>{formErrors.name}</ThemedText>
+                )}
               </View>
-              
+
               <View style={styles.inputGroup}>
                 <ThemedText style={[styles.inputLabel, { color: textColor }]}>
                   Email Address *
                 </ThemedText>
                 <TextInput
-                  style={[styles.textInput, { backgroundColor: cardBackground, borderColor, color: textColor }]}
+                  style={[
+                    styles.textInput,
+                    { backgroundColor: cardBackground, borderColor: touched.email && formErrors.email ? errorColor : borderColor, color: textColor }
+                  ]}
                   placeholder="Enter your email"
                   placeholderTextColor={placeholderColor}
                   value={formData.attendeeInfo.email}
                   onChangeText={(value) => handleInputChange('email', value)}
+                  onBlur={() => handleBlur('email')}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
+                {touched.email && formErrors.email && (
+                  <ThemedText style={styles.errorText}>{formErrors.email}</ThemedText>
+                )}
               </View>
-              
+
               <View style={styles.inputGroup}>
                 <ThemedText style={[styles.inputLabel, { color: textColor }]}>
                   Phone Number
                 </ThemedText>
                 <TextInput
-                  style={[styles.textInput, { backgroundColor: cardBackground, borderColor, color: textColor }]}
-                  placeholder="Enter your phone number"
+                  style={[
+                    styles.textInput,
+                    { backgroundColor: cardBackground, borderColor: touched.phone && formErrors.phone ? errorColor : borderColor, color: textColor }
+                  ]}
+                  placeholder="Enter your phone number (e.g., +91 9876543210)"
                   placeholderTextColor={placeholderColor}
                   value={formData.attendeeInfo.phone}
                   onChangeText={(value) => handleInputChange('phone', value)}
+                  onBlur={() => handleBlur('phone')}
                   keyboardType="phone-pad"
                 />
+                {touched.phone && formErrors.phone && (
+                  <ThemedText style={styles.errorText}>{formErrors.phone}</ThemedText>
+                )}
               </View>
-              
+
               <View style={styles.inputGroup}>
                 <ThemedText style={[styles.inputLabel, { color: textColor }]}>
                   Age
                 </ThemedText>
                 <TextInput
-                  style={[styles.textInput, { backgroundColor: cardBackground, borderColor, color: textColor }]}
+                  style={[
+                    styles.textInput,
+                    { backgroundColor: cardBackground, borderColor: touched.age && formErrors.age ? errorColor : borderColor, color: textColor }
+                  ]}
                   placeholder="Enter your age"
                   placeholderTextColor={placeholderColor}
                   value={formData.attendeeInfo.age?.toString() || ''}
-                  onChangeText={(value) => handleInputChange('age', parseInt(value) || '' as any)}
+                  onChangeText={(value) => {
+                    const numValue = value === '' ? undefined : parseInt(value);
+                    handleInputChange('age', numValue as any);
+                  }}
+                  onBlur={() => handleBlur('age')}
                   keyboardType="numeric"
+                  maxLength={3}
                 />
+                {touched.age && formErrors.age && (
+                  <ThemedText style={styles.errorText}>{formErrors.age}</ThemedText>
+                )}
               </View>
-              
+
               <View style={styles.inputGroup}>
                 <ThemedText style={[styles.inputLabel, { color: textColor }]}>
                   Special Requirements
@@ -1060,6 +1194,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     fontSize: 16,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 4,
+    fontWeight: '500',
   },
   textArea: {
     paddingHorizontal: 16,

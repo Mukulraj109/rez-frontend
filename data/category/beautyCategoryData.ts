@@ -131,6 +131,16 @@ export const beautyUGCPosts: UGCPost[] = [
   },
 ];
 
+// Mode Filters (Lifestyle & Preferences)
+export const beautyModeFilters = [
+  { id: 'organic', label: 'Organic', icon: '🌿', color: '#22C55E' },
+  { id: 'cruelty-free', label: 'Cruelty-Free', icon: '🐰', color: '#EC4899' },
+  { id: 'vegan', label: 'Vegan', icon: '🌱', color: '#10B981' },
+  { id: 'ayurvedic', label: 'Ayurvedic', icon: '🕉️', color: '#F59E0B' },
+  { id: 'luxury', label: 'Luxury', icon: '💎', color: '#8B5CF6' },
+  { id: 'budget', label: 'Budget Friendly', icon: '💰', color: '#3B82F6' },
+];
+
 export const beautyExclusiveOffers: ExclusiveOffer[] = [
   { id: 'bridal', title: 'Bridal Package', icon: '👰', discount: '25% Off', description: 'Complete bridal makeover', color: '#F43F5E' },
   { id: 'first', title: 'First Visit', icon: '🎁', discount: '40% Off', description: 'New customers only', color: '#00C06A' },
@@ -141,6 +151,7 @@ export const beautyExclusiveOffers: ExclusiveOffer[] = [
 // Bundled Export for Category Page
 export const beautyCategoryData = {
   categories: beautyCategories,
+  modeFilters: beautyModeFilters,
   trendingHashtags: beautyTrendingHashtags,
   aiSuggestions: beautyAISuggestions,
   aiFilterChips: beautyAIFilterChips,

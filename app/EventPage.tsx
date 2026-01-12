@@ -18,19 +18,22 @@ import {
 } from "react-native";
 import { showAlert, alertOk, confirmAlert } from "@/utils/alert";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect, Stack } from "expo-router";
 import Constants from "expo-constants";
 import { ThemedView } from "@/components/ThemedView";
 import { EventItem } from "@/types/homepage.types";
 import { Ionicons } from "@expo/vector-icons";
 import EventBookingModal from "@/components/events/EventBookingModal";
 import RelatedEventsSection from "@/components/events/RelatedEventsSection";
+import EventReviews from "@/components/events/EventReviews";
+import StarRating from "@/components/events/StarRating";
 import { useEventBooking } from "@/hooks/useEventBooking";
 import eventsApiService from "@/services/eventsApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { BUSINESS_CONFIG } from "@/config/env";
 import stripeApi from "@/services/stripeApi";
 import eventAnalytics from "@/services/eventAnalytics";
+import { getCategoryTheme, CategoryTheme, DEFAULT_THEME } from "@/constants/categoryThemes";
 // Conditional import for native Stripe service
 let stripeReactNativeService: any = null;
 if (Platform.OS !== 'web') {
@@ -94,6 +97,7 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
   const [isLoadingFavorite, setIsLoadingFavorite] = useState(false);
   const [relatedEvents, setRelatedEvents] = useState<EventItem[]>([]);
   const [isLoadingRelated, setIsLoadingRelated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Track page view time and scroll depth for analytics
   const pageViewStartTime = useRef<number>(Date.now());
@@ -108,7 +112,8 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
   const MAX_RETRIES = 3;
 
   // Extract specific params to avoid infinite loop from params object reference changes
-  const eventIdParam = params.eventId as string | undefined;
+  // Support both 'eventId' and 'id' parameters (navigation uses 'id')
+  const eventIdParam = (params.eventId || params.id) as string | undefined;
   const eventDataParam = params.eventData as string | undefined;
   const eventTypeParam = params.eventType as string | undefined;
 
@@ -299,17 +304,16 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
 
   const [isFavorited, setIsFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Note: error state is already declared at component level (retryCount area)
 
-  // Load initial favorite status - will be implemented after UserFavorites model is created
-  // For now, favorite status is managed through optimistic updates
-
-  const eventDetails: EventItem = useMemo(() => {
-    // Use real event data if available, otherwise fall back to dynamic or static data
+  // Event data - returns null if no real data available (no hardcoded fallback for production)
+  const eventDetails: EventItem | null = useMemo(() => {
+    // Priority 1: Real event data from backend API
     if (realEventData) {
       return realEventData;
     }
 
+    // Priority 2: Dynamic event data from navigation params
     if (isDynamic && eventData) {
       return {
         id: eventData.id,
@@ -329,30 +333,26 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
       };
     }
 
-    return (
-      initialEvent || {
-        id: eventId || "event-001",
-        type: "event",
-        title: "Art of Living - Happiness Program",
-        subtitle: "Free • Online",
-        description:
-          "Transform your life with ancient wisdom and modern techniques. Learn breathing exercises, meditation, and stress management.",
-        image:
-          "https://images.unsplash.com/photo-1511578314322-379afb476865?w=400&h=200&fit=crop",
-        price: { amount: 0, currency: "₹", isFree: true },
-        location: "Online",
-        date: "2025-08-25",
-        time: "7:00 PM",
-        category: "Wellness",
-        organizer: "Art of Living Foundation",
-        isOnline: true,
-        registrationRequired: true,
-      }
-    );
-  }, [initialEvent, eventId, isDynamic, eventData, realEventData]);
+    // Priority 3: Initial event prop (for direct component usage)
+    if (initialEvent) {
+      return initialEvent;
+    }
+
+    // No fallback data - return null for production
+    // This will trigger "Event Not Found" screen
+    return null;
+  }, [initialEvent, isDynamic, eventData, realEventData]);
+
+  // Get category theme based on event category
+  const categoryTheme: CategoryTheme = useMemo(() => {
+    return getCategoryTheme(eventDetails?.category);
+  }, [eventDetails?.category]);
 
   // Determine if event is truly offline (NOT an online event)
   const isOfflineEvent = useMemo(() => {
+    // If no event details, default to offline
+    if (!eventDetails) return true;
+
     // Primary check: use isOnline flag from event data
     // If isOnline is explicitly true, it's NOT an offline event
     if (eventDetails.isOnline === true) {
@@ -369,7 +369,7 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
 
     // Default: treat as offline event (venue-based)
     return true;
-  }, [eventDetails.isOnline, eventDetails.location]);
+  }, [eventDetails?.isOnline, eventDetails?.location]);
 
 
   // Get available slots for offline events - only use real data, no mock fallback
@@ -392,22 +392,17 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
       return eventData.availableSlots;
     }
 
-    // Only use mock data for demo/static events (no real data)
-    if (!realEventData && !eventData) {
-      return [
-        { id: "slot1", time: "10:00 AM", available: true, maxCapacity: 50, bookedCount: 12 },
-        { id: "slot2", time: "2:00 PM", available: true, maxCapacity: 50, bookedCount: 28 },
-        { id: "slot3", time: "6:00 PM", available: false, maxCapacity: 50, bookedCount: 50 },
-      ];
-    }
-
+    // No mock data for production - return empty array
+    // Events without slots will show direct booking without slot selection
     return [];
   }, [isOfflineEvent, eventData, realEventData]);
 
   const handleSharePress = useCallback(async () => {
+    if (!eventDetails) return;
+
     try {
       setIsLoading(true);
-      
+
       // Construct share URL - use app URL if available, otherwise use deep link
       const appUrl = BUSINESS_CONFIG.app.website || "https://rezapp.com";
       const shareUrl = Platform.OS === 'web' && typeof window !== 'undefined'
@@ -442,6 +437,8 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
   }, [eventDetails]);
 
   const handleFavoritePress = useCallback(async () => {
+    if (!eventDetails) return;
+
     if (!isAuthenticated || !user) {
       alertOk("Login Required", "Please login to favorite events");
       return;
@@ -479,10 +476,10 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
     } finally {
       setIsLoadingFavorite(false);
     }
-  }, [eventDetails.id, eventDetails.title, isFavorited, isAuthenticated, user]);
+  }, [eventDetails?.id, eventDetails?.title, isFavorited, isAuthenticated, user]);
 
   const handleOnlineBooking = useCallback(async () => {
-    if (!eventDetails.isOnline) return;
+    if (!eventDetails || !eventDetails.isOnline) return;
 
     // Check authentication
     if (!isAuthenticated || !user) {
@@ -498,7 +495,7 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
   }, [eventDetails, isAuthenticated, user]);
 
   const handleOfflineBooking = useCallback(async () => {
-    if (eventDetails.isOnline) return;
+    if (!eventDetails || eventDetails.isOnline) return;
 
     // Check if user needs to select a time slot (only if slots are defined)
     if (availableSlots.length > 0 && !selectedSlot) {
@@ -580,6 +577,54 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
     );
   }
 
+  // Event Not Found screen - when no event data is available after loading
+  if (!eventDetails && !isLoadingEvent) {
+    return (
+      <ThemedView style={styles.page}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
+        <SafeAreaView style={{ backgroundColor: "#000000" }} />
+        <View style={styles.notFoundContainer}>
+          <LinearGradient
+            colors={['#1F2937', '#111827']}
+            style={styles.notFoundGradient}
+          >
+            <View style={styles.notFoundContent}>
+              <View style={styles.notFoundIconContainer}>
+                <Ionicons name="calendar-outline" size={80} color="#6B7280" />
+                <View style={styles.notFoundIconBadge}>
+                  <Ionicons name="close" size={24} color="#EF4444" />
+                </View>
+              </View>
+              <Text style={styles.notFoundTitle}>Event Not Found</Text>
+              <Text style={styles.notFoundMessage}>
+                The event you're looking for doesn't exist or has been removed.
+              </Text>
+              <View style={styles.notFoundActions}>
+                <TouchableOpacity
+                  style={styles.notFoundBackButton}
+                  onPress={() => router.back()}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+                  <Text style={styles.notFoundBackText}>Go Back</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.notFoundExploreButton}
+                  onPress={() => router.push('/events/movies')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="compass-outline" size={20} color="#8B5CF6" />
+                  <Text style={styles.notFoundExploreText}>Explore Events</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      </ThemedView>
+    );
+  }
+
   // Error state component
   if (error && !realEventData && !eventData) {
     return (
@@ -640,6 +685,9 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
 
   return (
     <ThemedView style={styles.page}>
+      {/* Hide default navigation header */}
+      <Stack.Screen options={{ headerShown: false }} />
+
       {/* Non-translucent status bar to avoid overlay */}
       <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
 
@@ -698,7 +746,8 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
 
             {/* Event Info */}
             <View style={styles.heroContent}>
-              <View style={styles.categoryBadge}>
+              <View style={[styles.categoryBadge, { backgroundColor: categoryTheme.badgeBackground }]}>
+                <Ionicons name={categoryTheme.icon as any} size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
                 <Text style={styles.categoryText}>{eventDetails.category}</Text>
               </View>
 
@@ -728,14 +777,20 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
           </ImageBackground>
         ) : (
           <View style={[styles.heroBackground, styles.imagePlaceholder]}>
-            <Ionicons name="image-outline" size={64} color="#9CA3AF" />
-            <Text style={styles.imagePlaceholderText}>Image not available</Text>
             <LinearGradient
-              colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0.75)"]}
+              colors={categoryTheme.gradientColors}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            <Ionicons name={categoryTheme.icon as any} size={80} color="rgba(255,255,255,0.3)" />
+            <LinearGradient
+              colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.7)"]}
               style={styles.heroOverlay}
             >
               <View style={styles.heroContent}>
-                <View style={styles.categoryBadge}>
+                <View style={[styles.categoryBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                  <Ionicons name={categoryTheme.icon as any} size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
                   <Text style={styles.categoryText}>{eventDetails.category}</Text>
                 </View>
                 <Text style={styles.heroTitle}>{eventDetails.title}</Text>
@@ -776,20 +831,31 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
                 : `${eventDetails.price?.currency || '₹'}${eventDetails.price?.amount ?? 0}`}
             </Text>
           </View>
-          <View style={styles.eventTypeBadge}>
-            <Ionicons
-              name={eventDetails.isOnline ? "globe" : "location"}
-              size={14}
-              color={eventDetails.isOnline ? "#10B981" : "#F59E0B"}
-            />
-            <Text
-              style={[
-                styles.eventTypeText,
-                { color: eventDetails.isOnline ? "#10B981" : "#F59E0B" },
-              ]}
-            >
-              {eventDetails.isOnline ? "Online Event" : "Venue Event"}
-            </Text>
+          <View style={styles.priceCardRight}>
+            {/* Rating Display */}
+            {(realEventData?.rating ?? 0) > 0 && (
+              <View style={styles.ratingBadge}>
+                <StarRating rating={realEventData?.rating || 0} size={14} showEmpty={false} />
+                <Text style={styles.ratingText}>
+                  {(realEventData?.rating || 0).toFixed(1)} ({realEventData?.reviewCount || 0})
+                </Text>
+              </View>
+            )}
+            <View style={styles.eventTypeBadge}>
+              <Ionicons
+                name={eventDetails.isOnline ? "globe" : "location"}
+                size={14}
+                color={eventDetails.isOnline ? "#10B981" : "#F59E0B"}
+              />
+              <Text
+                style={[
+                  styles.eventTypeText,
+                  { color: eventDetails.isOnline ? "#10B981" : "#F59E0B" },
+                ]}
+              >
+                {eventDetails.isOnline ? "Online Event" : "Venue Event"}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -931,6 +997,14 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
             </View>
           </View>
         </View>
+
+        {/* Reviews Section */}
+        {eventDetails.id && (
+          <EventReviews
+            eventId={eventDetails.id}
+            eventTitle={eventDetails.title}
+          />
+        )}
       </Animated.ScrollView>
 
       {/* Fixed Action Button */}
@@ -941,12 +1015,12 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
           disabled={!!error}
           isOnline={eventDetails.isOnline}
           price={{
-            // ✅ FIX: Safely spread price with defaults
             amount: eventDetails.price?.amount ?? 0,
             currency: eventDetails.price?.currency || '₹',
             isFree: eventDetails.price?.isFree ?? false
           }}
           hasSelectedSlot={eventDetails.isOnline ? true : (availableSlots.length === 0 || !!selectedSlot)}
+          theme={categoryTheme}
         />
       </View>
 
@@ -993,7 +1067,7 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
   );
 }
 
-// Event Action Button Component
+// Event Action Button Component with Category Theme
 function EventActionButton({
   onPress,
   loading,
@@ -1001,6 +1075,7 @@ function EventActionButton({
   isOnline,
   price,
   hasSelectedSlot,
+  theme,
 }: {
   onPress: () => void;
   loading: boolean;
@@ -1008,11 +1083,12 @@ function EventActionButton({
   isOnline: boolean;
   price: { amount: number; currency: string; isFree: boolean };
   hasSelectedSlot: boolean;
+  theme: CategoryTheme;
 }) {
   const getButtonText = () => {
-    if (loading) return "Loading...";
+    if (loading) return "Processing...";
     if (isOnline) {
-      return price.isFree ? "Register Free" : "Book Now";
+      return price.isFree ? "Register Free" : `Book Now • ${price.currency}${price.amount}`;
     } else {
       if (!hasSelectedSlot) return "Select Time Slot";
       return `Book Now • ${price.isFree ? "Free" : `${price.currency}${price.amount}`}`;
@@ -1023,8 +1099,13 @@ function EventActionButton({
     if (loading) return "hourglass-outline";
     if (isOnline) return "globe-outline";
     if (!hasSelectedSlot) return "time-outline";
-    return "calendar-outline";
+    return "ticket-outline";
   };
+
+  // Use theme colors for the button gradient
+  const buttonColors: [string, string] = disabled || !hasSelectedSlot
+    ? ["#9CA3AF", "#6B7280"]
+    : theme.buttonGradient;
 
   return (
     <TouchableOpacity
@@ -1034,10 +1115,16 @@ function EventActionButton({
       activeOpacity={0.8}
     >
       <LinearGradient
-        colors={disabled || !hasSelectedSlot ? ["#9CA3AF", "#9CA3AF"] : ["#8B5CF6", "#7C3AED"]}
+        colors={buttonColors}
         style={actionStyles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
       >
-        <Ionicons name={getButtonIcon() as any} size={20} color="#FFFFFF" />
+        {loading ? (
+          <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+        ) : (
+          <Ionicons name={getButtonIcon() as any} size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+        )}
         <Text style={actionStyles.buttonText}>{getButtonText()}</Text>
       </LinearGradient>
     </TouchableOpacity>
@@ -1105,6 +1192,8 @@ const createStyles = (
     },
     categoryBadge: {
       alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
       backgroundColor: "rgba(139, 92, 246, 0.9)",
       paddingHorizontal: 12,
       paddingVertical: 6,
@@ -1185,6 +1274,24 @@ const createStyles = (
       fontSize: 24,
       fontWeight: "800",
       color: "#1F2937",
+    },
+    priceCardRight: {
+      alignItems: "flex-end",
+      gap: 8,
+    },
+    ratingBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: "#FFF9E6",
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 10,
+    },
+    ratingText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: "#92400E",
     },
     eventTypeBadge: {
       flexDirection: "row",
@@ -1432,6 +1539,84 @@ const createStyles = (
     errorCloseButton: {
       padding: 4,
       marginLeft: 8,
+    },
+
+    // Event Not Found styles
+    notFoundContainer: {
+      flex: 1,
+      backgroundColor: '#111827',
+    },
+    notFoundGradient: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    notFoundContent: {
+      alignItems: 'center',
+      paddingHorizontal: 40,
+    },
+    notFoundIconContainer: {
+      position: 'relative',
+      marginBottom: 24,
+    },
+    notFoundIconBadge: {
+      position: 'absolute',
+      bottom: -4,
+      right: -4,
+      backgroundColor: '#1F2937',
+      borderRadius: 14,
+      width: 28,
+      height: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    notFoundTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      marginBottom: 12,
+      textAlign: 'center',
+    },
+    notFoundMessage: {
+      fontSize: 16,
+      color: '#9CA3AF',
+      textAlign: 'center',
+      lineHeight: 24,
+      marginBottom: 32,
+    },
+    notFoundActions: {
+      flexDirection: 'row',
+      gap: 16,
+    },
+    notFoundBackButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#374151',
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderRadius: 12,
+      gap: 8,
+    },
+    notFoundBackText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    notFoundExploreButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(139, 92, 246, 0.15)',
+      borderWidth: 1,
+      borderColor: '#8B5CF6',
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderRadius: 12,
+      gap: 8,
+    },
+    notFoundExploreText: {
+      color: '#8B5CF6',
+      fontSize: 16,
+      fontWeight: '600',
     },
   });
 

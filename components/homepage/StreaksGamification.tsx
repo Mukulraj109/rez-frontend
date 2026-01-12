@@ -101,7 +101,7 @@ const StreaksGamification: React.FC<StreaksGamificationProps> = ({
         {/* Weekly Missions Header */}
         <View style={styles.missionsHeader}>
           <View style={styles.missionsHeaderLeft}>
-            <Ionicons name="target" size={16} color="#A855F7" />
+            <Ionicons name="ellipse-outline" size={16} color="#A855F7" />
             <Text style={styles.missionsTitle}>Weekly Missions</Text>
           </View>
           <TouchableOpacity

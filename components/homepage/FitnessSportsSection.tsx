@@ -1,9 +1,9 @@
 /**
- * Fitness & Sports Section - Converted from V2
+ * Fitness & Sports Section - Connected to real API
  * Gyms, Studios, Personal Trainers, Sports Store, Challenges
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import apiClient from '@/services/apiClient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 10;
@@ -24,8 +25,34 @@ const COLORS = {
   green500: '#22C55E',
 };
 
+interface FitnessStats {
+  maxCashback: number;
+  activeStudioCount: number;
+}
+
 const FitnessSportsSection: React.FC = () => {
   const router = useRouter();
+  const [stats, setStats] = useState<FitnessStats>({ maxCashback: 25, activeStudioCount: 0 });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Fetch gyms to get max cashback
+        const response = await apiClient.get('/stores/by-category-slug/gyms?limit=10');
+        const stores = (response.data as any)?.stores || [];
+
+        if (stores.length > 0) {
+          const maxCashback = Math.max(...stores.map((s: any) => s.offers?.cashback || 0));
+          setStats(prev => ({ ...prev, maxCashback: maxCashback || 25 }));
+        }
+      } catch (error) {
+        // Use default values on error
+        console.log('Using default fitness stats');
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   const handleViewAll = () => {
     router.push('/fitness' as any);
@@ -67,7 +94,7 @@ const FitnessSportsSection: React.FC = () => {
                 <Text style={styles.gymsIcon}>🏋️</Text>
               </View>
               <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>15% OFF</Text>
+                <Text style={styles.discountText}>{stats.maxCashback}% OFF</Text>
               </View>
             </View>
             <Text style={styles.gymsTitle}>GYMS</Text>
@@ -134,7 +161,7 @@ const FitnessSportsSection: React.FC = () => {
         {/* Challenges */}
         <TouchableOpacity
           style={styles.smallCard}
-          onPress={() => handlePress('/fitness/challenges')}
+          onPress={() => handlePress('/challenges')}
           activeOpacity={0.9}
         >
           <View style={styles.smallCardContent}>

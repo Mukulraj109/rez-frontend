@@ -110,7 +110,22 @@ const EventGridCard: React.FC<EventGridCardProps> = ({ event, onPress }) => {
           </ThemedText>
         </View>
 
-        {/* Price */}
+        {/* Rating Row */}
+        {event.rating && event.rating > 0 && (
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={11} color="#FFC857" />
+            <ThemedText style={styles.ratingText}>
+              {event.rating.toFixed(1)}
+            </ThemedText>
+            {event.reviewCount && event.reviewCount > 0 && (
+              <ThemedText style={styles.reviewCount}>
+                ({event.reviewCount})
+              </ThemedText>
+            )}
+          </View>
+        )}
+
+        {/* Price & Cashback */}
         <View style={styles.priceRow}>
           {isFree ? (
             <View style={styles.freeBadge}>
@@ -118,6 +133,13 @@ const EventGridCard: React.FC<EventGridCardProps> = ({ event, onPress }) => {
             </View>
           ) : (
             <ThemedText style={styles.priceText}>{priceDisplay}</ThemedText>
+          )}
+          {event.cashback && event.cashback > 0 && (
+            <View style={styles.cashbackBadge}>
+              <ThemedText style={styles.cashbackText}>
+                {event.cashback}% Cashback
+              </ThemedText>
+            </View>
           )}
         </View>
       </View>
@@ -215,9 +237,26 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
   },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  ratingText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  reviewCount: {
+    fontSize: 10,
+    color: '#9CA3AF',
+  },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
   },
   freeBadge: {
     backgroundColor: '#D1FAE5',
@@ -234,6 +273,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
+  },
+  cashbackBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  cashbackText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#16A34A',
   },
 });
 

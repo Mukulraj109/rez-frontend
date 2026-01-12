@@ -1,9 +1,9 @@
 /**
  * Fitness & Sports Hub Page
- * Converted from V2
+ * Connected to real API data
  */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,13 @@ import {
   Image,
   Platform,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import apiClient from '@/services/apiClient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -32,27 +35,142 @@ const COLORS = {
   amber500: '#F59E0B',
 };
 
-const categories = [
-  { id: 'gyms', title: 'Gyms', icon: '🏋️', color: '#F97316', count: '200+' },
-  { id: 'studios', title: 'Fitness Studios', icon: '🧘', color: '#8B5CF6', count: '150+' },
-  { id: 'trainers', title: 'Personal Trainers', icon: '💪', color: '#10B981', count: '500+' },
-  { id: 'store', title: 'Sports Store', icon: '🛒', color: '#3B82F6', count: '1000+ products' },
-  { id: 'challenges', title: 'Challenges', icon: '🏆', color: '#EAB308', count: '50+ active' },
-  { id: 'nutrition', title: 'Nutrition', icon: '🥗', color: '#22C55E', count: '100+ plans' },
-];
+// Static categories for navigation (icons and colors)
+const categoryConfig: Record<string, { icon: string; color: string }> = {
+  gyms: { icon: '🏋️', color: '#F97316' },
+  studios: { icon: '🧘', color: '#8B5CF6' },
+  trainers: { icon: '💪', color: '#10B981' },
+  store: { icon: '🛒', color: '#3B82F6' },
+  challenges: { icon: '🏆', color: '#EAB308' },
+  nutrition: { icon: '🥗', color: '#22C55E' },
+};
 
-const featuredGyms = [
-  { id: 1, name: 'Gold\'s Gym', rating: 4.8, distance: '1.5 km', cashback: '25%', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400' },
-  { id: 2, name: 'Cult.fit', rating: 4.7, distance: '0.8 km', cashback: '30%', image: 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=400' },
-  { id: 3, name: 'Anytime Fitness', rating: 4.6, distance: '2.0 km', cashback: '20%', image: 'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=400' },
-];
+interface Category {
+  _id: string;
+  name: string;
+  slug: string;
+  storeCount?: number;
+}
+
+interface FeaturedGym {
+  _id: string;
+  name: string;
+  slug: string;
+  ratings: { average: number };
+  location: { address: string; city: string };
+  offers: { cashback: number };
+  logo: string;
+  banner: string[];
+}
+
+interface Stats {
+  totalGyms: number;
+  maxCashback: number;
+  coinsMultiplier: string;
+}
 
 const FitnessPage: React.FC = () => {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [featuredGyms, setFeaturedGyms] = useState<FeaturedGym[]>([]);
+  const [stats, setStats] = useState<Stats>({ totalGyms: 0, maxCashback: 0, coinsMultiplier: '3X' });
 
-  const handleCategoryPress = (categoryId: string) => {
-    router.push(`/fitness/${categoryId}` as any);
+  const fetchData = useCallback(async () => {
+    try {
+      // Fetch subcategories and featured gyms in parallel
+      const [gymsRes, studiosRes, trainersRes, storesRes] = await Promise.all([
+        apiClient.get('/stores/by-category-slug/gyms?limit=5&sortBy=rating'),
+        apiClient.get('/stores/by-category-slug/studios?limit=5'),
+        apiClient.get('/stores/by-category-slug/trainers?limit=5'),
+        apiClient.get('/stores/by-category-slug/store?limit=5'),
+      ]);
+
+      // Extract data from responses
+      const gymsData = (gymsRes.data as any)?.stores || [];
+      const studiosData = (studiosRes.data as any)?.stores || [];
+      const trainersData = (trainersRes.data as any)?.stores || [];
+      const storesData = (storesRes.data as any)?.stores || [];
+
+      // Build categories with real counts
+      const builtCategories: Category[] = [
+        { _id: 'gyms', name: 'Gyms', slug: 'gyms', storeCount: (gymsRes.data as any)?.total || gymsData.length },
+        { _id: 'studios', name: 'Fitness Studios', slug: 'studios', storeCount: (studiosRes.data as any)?.total || studiosData.length },
+        { _id: 'trainers', name: 'Personal Trainers', slug: 'trainers', storeCount: (trainersRes.data as any)?.total || trainersData.length },
+        { _id: 'store', name: 'Sports Store', slug: 'store', storeCount: (storesRes.data as any)?.total || storesData.length },
+        { _id: 'challenges', name: 'Challenges', slug: 'challenges', storeCount: 50 },
+        { _id: 'nutrition', name: 'Nutrition', slug: 'nutrition', storeCount: 100 },
+      ];
+
+      setCategories(builtCategories);
+      setFeaturedGyms(gymsData.slice(0, 5));
+
+      // Calculate stats
+      const allStores = [...gymsData, ...studiosData, ...trainersData, ...storesData];
+      const maxCashback = Math.max(...allStores.map((s: any) => s.offers?.cashback || 0), 0);
+
+      setStats({
+        totalGyms: gymsData.length + studiosData.length,
+        maxCashback: maxCashback || 35,
+        coinsMultiplier: '3X',
+      });
+
+    } catch (error) {
+      console.error('Error fetching fitness data:', error);
+      // Set fallback data
+      setCategories([
+        { _id: 'gyms', name: 'Gyms', slug: 'gyms', storeCount: 0 },
+        { _id: 'studios', name: 'Fitness Studios', slug: 'studios', storeCount: 0 },
+        { _id: 'trainers', name: 'Personal Trainers', slug: 'trainers', storeCount: 0 },
+        { _id: 'store', name: 'Sports Store', slug: 'store', storeCount: 0 },
+        { _id: 'challenges', name: 'Challenges', slug: 'challenges', storeCount: 50 },
+        { _id: 'nutrition', name: 'Nutrition', slug: 'nutrition', storeCount: 100 },
+      ]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchData();
   };
+
+  const handleCategoryPress = (categorySlug: string) => {
+    if (categorySlug === 'challenges') {
+      router.push('/challenges' as any);
+    } else {
+      router.push(`/fitness/${categorySlug}` as any);
+    }
+  };
+
+  const handleGymPress = (gym: FeaturedGym) => {
+    router.push(`/store/${gym.slug || gym._id}` as any);
+  };
+
+  const getCategoryIcon = (slug: string) => categoryConfig[slug]?.icon || '🏋️';
+  const getCategoryColor = (slug: string) => categoryConfig[slug]?.color || '#F97316';
+
+  const formatCount = (count: number | undefined) => {
+    if (!count) return '0';
+    if (count >= 100) return `${Math.floor(count / 10) * 10}+`;
+    return String(count);
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.orange500} />
+        <Text style={styles.loadingText}>Loading fitness data...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -77,38 +195,47 @@ const FitnessPage: React.FC = () => {
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>200+</Text>
+            <Text style={styles.statValue}>{stats.totalGyms || '10'}+</Text>
             <Text style={styles.statLabel}>Gyms</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>30%</Text>
+            <Text style={styles.statValue}>{stats.maxCashback}%</Text>
             <Text style={styles.statLabel}>Max Cashback</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>3X</Text>
+            <Text style={styles.statValue}>{stats.coinsMultiplier}</Text>
             <Text style={styles.statLabel}>Coins</Text>
           </View>
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={COLORS.orange500}
+          />
+        }
+      >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Categories</Text>
           <View style={styles.categoriesGrid}>
             {categories.map((cat) => (
               <TouchableOpacity
-                key={cat.id}
+                key={cat._id}
                 style={styles.categoryCard}
-                onPress={() => handleCategoryPress(cat.id)}
+                onPress={() => handleCategoryPress(cat.slug)}
                 activeOpacity={0.8}
               >
-                <View style={[styles.categoryIcon, { backgroundColor: `${cat.color}20` }]}>
-                  <Text style={styles.categoryEmoji}>{cat.icon}</Text>
+                <View style={[styles.categoryIcon, { backgroundColor: `${getCategoryColor(cat.slug)}20` }]}>
+                  <Text style={styles.categoryEmoji}>{getCategoryIcon(cat.slug)}</Text>
                 </View>
-                <Text style={styles.categoryTitle}>{cat.title}</Text>
-                <Text style={styles.categoryCount}>{cat.count}</Text>
+                <Text style={styles.categoryTitle}>{cat.name}</Text>
+                <Text style={styles.categoryCount}>{formatCount(cat.storeCount)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -117,35 +244,46 @@ const FitnessPage: React.FC = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Featured Gyms</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => handleCategoryPress('gyms')}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {featuredGyms.map((gym) => (
-              <TouchableOpacity
-                key={gym.id}
-                style={styles.gymCard}
-                onPress={() => router.push(`/store/${gym.id}` as any)}
-                activeOpacity={0.9}
-              >
-                <Image source={{ uri: gym.image }} style={styles.gymImage} />
-                <View style={styles.cashbackBadge}>
-                  <Text style={styles.cashbackText}>{gym.cashback}</Text>
-                </View>
-                <View style={styles.gymInfo}>
-                  <Text style={styles.gymName}>{gym.name}</Text>
-                  <View style={styles.gymMeta}>
-                    <View style={styles.ratingContainer}>
-                      <Ionicons name="star" size={14} color={COLORS.amber500} />
-                      <Text style={styles.ratingText}>{gym.rating}</Text>
-                    </View>
-                    <Text style={styles.distanceText}>{gym.distance}</Text>
+
+          {featuredGyms.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {featuredGyms.map((gym) => (
+                <TouchableOpacity
+                  key={gym._id}
+                  style={styles.gymCard}
+                  onPress={() => handleGymPress(gym)}
+                  activeOpacity={0.9}
+                >
+                  <Image
+                    source={{ uri: gym.banner?.[0] || gym.logo || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400' }}
+                    style={styles.gymImage}
+                  />
+                  <View style={styles.cashbackBadge}>
+                    <Text style={styles.cashbackText}>{gym.offers?.cashback || 15}%</Text>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                  <View style={styles.gymInfo}>
+                    <Text style={styles.gymName} numberOfLines={1}>{gym.name}</Text>
+                    <View style={styles.gymMeta}>
+                      <View style={styles.ratingContainer}>
+                        <Ionicons name="star" size={14} color={COLORS.amber500} />
+                        <Text style={styles.ratingText}>{gym.ratings?.average?.toFixed(1) || '4.5'}</Text>
+                      </View>
+                      <Text style={styles.distanceText} numberOfLines={1}>{gym.location?.city || 'Bangalore'}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="fitness-outline" size={48} color={COLORS.gray200} />
+              <Text style={styles.emptyStateText}>No featured gyms yet</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.promoBanner}>
@@ -158,7 +296,10 @@ const FitnessPage: React.FC = () => {
             <Text style={styles.promoEmoji}>💪</Text>
             <Text style={styles.promoTitle}>New Year Fitness Challenge</Text>
             <Text style={styles.promoSubtitle}>Join now & win up to 10,000 coins</Text>
-            <TouchableOpacity style={styles.promoButton}>
+            <TouchableOpacity
+              style={styles.promoButton}
+              onPress={() => router.push('/challenges' as any)}
+            >
               <Text style={styles.promoButtonText}>Join Challenge</Text>
             </TouchableOpacity>
           </LinearGradient>
@@ -172,6 +313,8 @@ const FitnessPage: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.white },
+  loadingText: { marginTop: 12, fontSize: 14, color: COLORS.gray600 },
   header: { paddingTop: Platform.OS === 'ios' ? 56 : 16, paddingBottom: 20 },
   headerTop: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 16 },
   backButton: { padding: 8 },
@@ -203,7 +346,9 @@ const styles = StyleSheet.create({
   gymMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   ratingContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   ratingText: { fontSize: 13, fontWeight: '600', color: COLORS.navy },
-  distanceText: { fontSize: 12, color: COLORS.gray600 },
+  distanceText: { fontSize: 12, color: COLORS.gray600, maxWidth: 80 },
+  emptyState: { alignItems: 'center', justifyContent: 'center', padding: 32 },
+  emptyStateText: { marginTop: 8, fontSize: 14, color: COLORS.gray600 },
   promoBanner: { marginHorizontal: 16 },
   promoGradient: { padding: 24, borderRadius: 16, alignItems: 'center' },
   promoEmoji: { fontSize: 40, marginBottom: 12 },

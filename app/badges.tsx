@@ -419,7 +419,7 @@ const BadgesScreen: React.FC = () => {
           {/* Referral CTA */}
           <TouchableOpacity
             style={styles.ctaCard}
-            onPress={() => router.push('/refer')}
+            onPress={() => router.push('/referral')}
             activeOpacity={0.8}
           >
             <LinearGradient

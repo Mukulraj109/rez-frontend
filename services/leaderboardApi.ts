@@ -64,12 +64,13 @@ class LeaderboardApi {
         const myRank = response.data.myRank || null;
 
         // Map entries to ensure consistent structure
+        // Backend returns user.id (not user._id)
         const mappedEntries = entries.map((entry: any, index: number) => ({
           _id: entry._id || entry.id || `entry_${index}`,
           user: {
-            _id: entry.user?._id || entry.userId || '',
+            _id: entry.user?.id || entry.user?._id || entry.userId || '',
             name: entry.user?.name || entry.userName || entry.name || 'Anonymous',
-            avatar: entry.user?.avatar || entry.avatar,
+            avatar: entry.user?.avatar || entry.user?.profilePicture || entry.avatar,
           },
           rank: entry.rank || index + 1,
           value: entry.value || entry.amount || entry.score || 0,
@@ -98,10 +99,11 @@ class LeaderboardApi {
   /**
    * Get spending leaderboard
    * Maps frontend period values to backend format
+   * Backend unified routes expect: 'daily' | 'weekly' | 'monthly' | 'all-time'
    */
-  async getSpendingLeaderboard(period: 'week' | 'month' | 'all' = 'month', limit: number = 10): Promise<ApiResponse<LeaderboardEntry[]>> {
-    // Map frontend period to backend period
-    const backendPeriod = period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'all-time';
+  async getSpendingLeaderboard(period: 'daily' | 'weekly' | 'monthly' | 'all-time' = 'weekly', limit: number = 10): Promise<ApiResponse<LeaderboardEntry[]>> {
+    // Period is now passed directly - unified routes use these exact values
+    const backendPeriod = period;
 
     try {
       const response = await apiClient.get<any>(this.baseUrl, {
@@ -113,17 +115,32 @@ class LeaderboardApi {
       if (response.success && response.data) {
         const entries = Array.isArray(response.data) ? response.data : response.data.entries || response.data.leaderboard || [];
 
-        const mappedEntries = entries.map((entry: any, index: number) => ({
-          _id: entry._id || entry.id || `entry_${index}`,
-          user: {
-            _id: entry.user?._id || entry.userId || '',
-            name: entry.user?.name || entry.userName || entry.name || 'Anonymous',
-            avatar: entry.user?.avatar || entry.avatar,
-          },
-          rank: entry.rank || index + 1,
-          value: entry.value || entry.amount || entry.score || 0,
-          period: backendPeriod,
-        }));
+        const mappedEntries = entries.map((entry: any, index: number) => {
+          // Get the display name, falling back to email username if needed
+          let displayName = entry.user?.name || entry.userName || entry.name;
+          if (!displayName || displayName === 'Anonymous') {
+            // Try to extract name from email (part before @)
+            const email = entry.user?.email || entry.email;
+            if (email && email.includes('@')) {
+              displayName = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+            } else {
+              displayName = 'User';
+            }
+          }
+
+          return {
+            _id: entry._id || entry.id || `entry_${index}`,
+            user: {
+              // Backend returns user.id (not user._id)
+              _id: entry.user?.id || entry.user?._id || entry.userId || '',
+              name: displayName,
+              avatar: entry.user?.avatar || entry.user?.profilePicture || entry.avatar,
+            },
+            rank: entry.rank || index + 1,
+            value: entry.value || entry.amount || entry.score || 0,
+            period: backendPeriod,
+          };
+        });
 
         return { success: true, data: mappedEntries };
       }
@@ -137,9 +154,10 @@ class LeaderboardApi {
 
   /**
    * Get review leaderboard
+   * Backend unified routes expect: 'daily' | 'weekly' | 'monthly' | 'all-time'
    */
-  async getReviewLeaderboard(period: 'week' | 'month' | 'all' = 'month', limit: number = 10): Promise<ApiResponse<LeaderboardEntry[]>> {
-    const backendPeriod = period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'all-time';
+  async getReviewLeaderboard(period: 'daily' | 'weekly' | 'monthly' | 'all-time' = 'weekly', limit: number = 10): Promise<ApiResponse<LeaderboardEntry[]>> {
+    const backendPeriod = period;
 
     try {
       const response = await apiClient.get<any>(this.baseUrl, {
@@ -162,9 +180,10 @@ class LeaderboardApi {
 
   /**
    * Get referral leaderboard
+   * Backend unified routes expect: 'daily' | 'weekly' | 'monthly' | 'all-time'
    */
-  async getReferralLeaderboard(period: 'week' | 'month' | 'all' = 'month', limit: number = 10): Promise<ApiResponse<LeaderboardEntry[]>> {
-    const backendPeriod = period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'all-time';
+  async getReferralLeaderboard(period: 'daily' | 'weekly' | 'monthly' | 'all-time' = 'weekly', limit: number = 10): Promise<ApiResponse<LeaderboardEntry[]>> {
+    const backendPeriod = period;
 
     try {
       const response = await apiClient.get<any>(this.baseUrl, {
@@ -187,9 +206,10 @@ class LeaderboardApi {
 
   /**
    * Get cashback leaderboard
+   * Backend unified routes expect: 'daily' | 'weekly' | 'monthly' | 'all-time'
    */
-  async getCashbackLeaderboard(period: 'week' | 'month' | 'all' = 'month', limit: number = 10): Promise<ApiResponse<LeaderboardEntry[]>> {
-    const backendPeriod = period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'all-time';
+  async getCashbackLeaderboard(period: 'daily' | 'weekly' | 'monthly' | 'all-time' = 'weekly', limit: number = 10): Promise<ApiResponse<LeaderboardEntry[]>> {
+    const backendPeriod = period;
 
     try {
       const response = await apiClient.get<any>(this.baseUrl, {
@@ -245,10 +265,10 @@ class LeaderboardApi {
     try {
       // Fetch all leaderboards in parallel
       const [spending, reviews, referrals, cashback] = await Promise.all([
-        this.getSpendingLeaderboard('month', 5),
-        this.getReviewLeaderboard('month', 5),
-        this.getReferralLeaderboard('month', 5),
-        this.getCashbackLeaderboard('month', 5),
+        this.getSpendingLeaderboard('monthly', 5),
+        this.getReviewLeaderboard('monthly', 5),
+        this.getReferralLeaderboard('monthly', 5),
+        this.getCashbackLeaderboard('monthly', 5),
       ]);
 
       return {
@@ -270,7 +290,7 @@ class LeaderboardApi {
    * Get user's rank in all categories
    * Note: Backend doesn't have a /my-rank endpoint, uses gamification stats instead
    */
-  async getMyRank(period: 'week' | 'month' | 'all' = 'month'): Promise<ApiResponse<UserRank>> {
+  async getMyRank(period: 'daily' | 'weekly' | 'monthly' | 'all-time' = 'weekly'): Promise<ApiResponse<UserRank>> {
     try {
       // Try to get rank from gamification stats
       const statsResponse = await apiClient.get<any>('/gamification/stats');

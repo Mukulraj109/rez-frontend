@@ -175,7 +175,7 @@ const ShopByCategorySection: React.FC = () => {
   }, []);
 
   const handlePress = (slug: string) => {
-    router.push(`/categories/${slug}` as any);
+    router.push(`/MainCategory/${slug}` as any);
   };
 
   const handleViewAll = () => {

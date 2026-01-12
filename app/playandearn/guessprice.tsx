@@ -35,7 +35,7 @@ interface Feedback {
 const GuessPrice = () => {
   const router = useRouter();
   const { actions: gamificationActions } = useGamification();
-  const [gameState, setGameState] = useState<'start' | 'playing' | 'result'>('start');
+  const [gameState, setGameState] = useState<'start' | 'playing' | 'result' | 'error'>('start');
   const [currentProduct, setCurrentProduct] = useState(0);
   const [guess, setGuess] = useState('');
   const [score, setScore] = useState(0);
@@ -44,14 +44,10 @@ const GuessPrice = () => {
   const [maxPlays, setMaxPlays] = useState(5);
   const [loading, setLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [startingGame, setStartingGame] = useState(false);
 
-  const [products, setProducts] = useState<Product[]>([
-    { id: 1, name: 'iPhone 15 Pro', image: '📱', actualPrice: 134900, category: 'Electronics' },
-    { id: 2, name: 'Nike Air Max', image: '👟', actualPrice: 12995, category: 'Fashion' },
-    { id: 3, name: 'PS5 Console', image: '🎮', actualPrice: 49990, category: 'Gaming' },
-    { id: 4, name: 'Starbucks Latte', image: '☕', actualPrice: 320, category: 'Food' },
-    { id: 5, name: 'MacBook Air M2', image: '💻', actualPrice: 114900, category: 'Electronics' }
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   // Fetch daily limits on mount
   useEffect(() => {
@@ -75,9 +71,10 @@ const GuessPrice = () => {
   }, []);
 
   const startGame = async () => {
-    if (todayPlays >= maxPlays) return;
+    if (todayPlays >= maxPlays || startingGame) return;
 
-    setGameState('playing');
+    setStartingGame(true);
+    setError(null);
     setCurrentProduct(0);
     setScore(0);
     setGuess('');
@@ -86,28 +83,50 @@ const GuessPrice = () => {
     // Start session with backend
     try {
       const response = await gameApi.startGuessPrice();
-      if (response.data) {
+      if (response.success && response.data) {
         setSessionId(response.data.sessionId);
-        // If backend provides a product, use it
-        if (response.data.product) {
+        // Use products from backend
+        if (response.data.products && response.data.products.length > 0) {
+          const backendProducts = response.data.products.map((p: any, idx: number) => ({
+            id: idx + 1,
+            name: p.name,
+            image: p.image || '📦',
+            actualPrice: p.actualPrice || p.price,
+            category: p.category || 'General'
+          }));
+          setProducts(backendProducts);
+          setGameState('playing');
+        } else if (response.data.product) {
+          // Single product mode
           const backendProduct = response.data.product;
-          // Update first product with backend data
-          setProducts(prev => {
-            const updated = [...prev];
-            updated[0] = {
-              id: 1,
-              name: backendProduct.name,
-              image: backendProduct.image || '📱',
-              actualPrice: backendProduct.actualPrice,
-              category: backendProduct.category
-            };
-            return updated;
-          });
+          setProducts([{
+            id: 1,
+            name: backendProduct.name,
+            image: backendProduct.image || '📦',
+            actualPrice: backendProduct.actualPrice || backendProduct.price,
+            category: backendProduct.category || 'General'
+          }]);
+          setGameState('playing');
+        } else {
+          setError('No products available for the game');
+          setGameState('error');
         }
+      } else {
+        setError(response.error || 'Failed to start game');
+        setGameState('error');
       }
-    } catch (error) {
-      console.error('Error starting guess price session:', error);
+    } catch (err) {
+      console.error('Error starting guess price session:', err);
+      setError('Unable to start game. Please try again.');
+      setGameState('error');
+    } finally {
+      setStartingGame(false);
     }
+  };
+
+  const retryGame = () => {
+    setError(null);
+    setGameState('start');
   };
 
   const submitGuess = async () => {
@@ -242,16 +261,38 @@ const GuessPrice = () => {
               ))}
             </View>
 
-            <TouchableOpacity onPress={startGame} style={styles.startButtonContainer}>
-              <LinearGradient colors={['#10B981', '#14B8A6']} style={styles.startButton}>
-                <Text style={styles.startButtonText}>Start Game</Text>
+            <TouchableOpacity onPress={startGame} disabled={startingGame} style={styles.startButtonContainer}>
+              <LinearGradient colors={startingGame ? ['#4B5563', '#374151'] : ['#10B981', '#14B8A6']} style={styles.startButton}>
+                <Text style={styles.startButtonText}>{startingGame ? 'Loading...' : 'Start Game'}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
         )}
 
+        {/* Error Screen */}
+        {gameState === 'error' && (
+          <View style={styles.content}>
+            <View style={styles.errorContainer}>
+              <View style={styles.errorIcon}>
+                <Ionicons name="alert-circle" size={48} color="#EF4444" />
+              </View>
+              <Text style={styles.errorTitle}>Game Failed</Text>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={retryGame}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.backButton2}
+                onPress={() => router.push('/playandearn' as any)}
+              >
+                <Text style={styles.backButtonText}>Back to Earn</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Playing Screen */}
-        {gameState === 'playing' && (
+        {gameState === 'playing' && products.length > 0 && products[currentProduct] && (
           <View style={styles.content}>
             <Text style={styles.progressText}>
               Product {currentProduct + 1} of {products.length}
@@ -424,6 +465,14 @@ const styles = StyleSheet.create({
   actionButtonText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
   secondaryButton: { paddingVertical: 14, alignItems: 'center', borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)' },
   secondaryButtonText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
+  errorContainer: { padding: 24, alignItems: 'center', gap: 16 },
+  errorIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(239, 68, 68, 0.1)', justifyContent: 'center', alignItems: 'center' },
+  errorTitle: { fontSize: 24, fontWeight: 'bold', color: '#EF4444' },
+  errorText: { fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
+  retryButton: { paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12, backgroundColor: '#10B981' },
+  retryButtonText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
+  backButton2: { paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)' },
+  backButtonText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
 });
 
 export default GuessPrice;
