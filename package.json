@@ -27,11 +27,11 @@
     "serve:web": "npx serve dist"
   },
   "dependencies": {
-    "entities": "^2.2.0",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/poppins": "^0.4.1",
     "@expo/vector-icons": "^14.0.3",
     "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-community/datetimepicker": "8.0.1",
     "@react-native-community/netinfo": "11.3.1",
     "@react-native-community/slider": "4.5.2",
     "@react-native-masked-view/masked-view": "^0.3.2",
@@ -44,6 +44,7 @@
     "ajv": "^8.12.0",
     "axios": "^1.11.0",
     "css-in-js-utils": "^3.1.0",
+    "entities": "^2.2.0",
     "expo": "~51.0.0",
     "expo-av": "~14.0.7",
     "expo-blur": "~13.0.3",

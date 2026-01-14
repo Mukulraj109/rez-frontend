@@ -1,9 +1,9 @@
 /**
- * Experience Detail Page - Dynamic route for all experience types
- * Converted from V2: ExperienceDetail.jsx
+ * Experience Detail Page - Production Ready
+ * Fetches experience data and stores from backend API
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,12 @@ import {
   TouchableOpacity,
   Image,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { experiencesApi, StoreExperience } from '@/services/experiencesApi';
 
 const COLORS = {
   white: '#FFFFFF',
@@ -243,16 +245,114 @@ const ExperienceDetailPage: React.FC = () => {
   const router = useRouter();
   const { type } = useLocalSearchParams<{ type: string }>();
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [experience, setExperience] = useState<StoreExperience | null>(null);
+  const [stores, setStores] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [categories, setCategories] = useState<string[]>(['all']);
 
-  const experience = experienceData[type || 'sample-trial'] || experienceData['sample-trial'];
-  const filters = ['all', ...experience.categories];
+  useEffect(() => {
+    const fetchExperienceData = async () => {
+      if (!type) return;
+
+      try {
+        setIsLoading(true);
+        
+        // Fetch experience details
+        const expResponse = await experiencesApi.getExperienceById(type);
+        if (expResponse.success && expResponse.data) {
+          setExperience(expResponse.data);
+        } else {
+          // Fallback to hardcoded data
+          const fallbackExp = experienceData[type] || experienceData['sample-trial'];
+          setExperience({
+            _id: type,
+            slug: type,
+            title: fallbackExp.title,
+            subtitle: fallbackExp.subtitle,
+            icon: fallbackExp.icon,
+            description: fallbackExp.description,
+            gradientColors: fallbackExp.gradientColors,
+          } as any);
+        }
+
+        // Fetch stores for this experience
+        const storesResponse = await experiencesApi.getStoresByExperience(type, {
+          page: 1,
+          limit: 50,
+        });
+
+        if (storesResponse.success && storesResponse.data) {
+          const fetchedStores = storesResponse.data.stores || [];
+          setStores(fetchedStores);
+          
+          // Extract unique categories from stores
+          const uniqueCategories = Array.from(
+            new Set(fetchedStores.map((s: any) => s.category?.name || 'Other'))
+          );
+          setCategories(['all', ...uniqueCategories]);
+        } else {
+          // Fallback to hardcoded stores
+          const fallbackExp = experienceData[type] || experienceData['sample-trial'];
+          setStores(fallbackExp.stores as any);
+          setCategories(['all', ...fallbackExp.categories]);
+        }
+      } catch (error) {
+        console.error('❌ [ExperienceDetailPage] Error fetching data:', error);
+        // Use fallback data
+        const fallbackExp = experienceData[type] || experienceData['sample-trial'];
+        setExperience({
+          _id: type,
+          slug: type,
+          title: fallbackExp.title,
+          subtitle: fallbackExp.subtitle,
+          icon: fallbackExp.icon,
+          description: fallbackExp.description,
+          gradientColors: fallbackExp.gradientColors,
+        } as any);
+        setStores(fallbackExp.stores as any);
+        setCategories(['all', ...fallbackExp.categories]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchExperienceData();
+  }, [type]);
 
   const filteredStores = selectedFilter === 'all'
-    ? experience.stores
-    : experience.stores.filter(store => store.category === selectedFilter);
+    ? stores
+    : stores.filter((store: any) => {
+        const storeCategory = store.category?.name || store.category || 'Other';
+        return storeCategory === selectedFilter;
+      });
 
-  const handleStorePress = (storeId: number) => {
-    router.push(`/store/${storeId}` as any);
+  const handleStorePress = (store: any) => {
+    const storeId = store._id || store.id;
+    if (storeId) {
+      router.push(`/store/${storeId}` as any);
+    }
+  };
+
+  if (isLoading || !experience) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', flex: 1 }]}>
+        <ActivityIndicator size="large" color={COLORS.blue500} />
+      </View>
+    );
+  }
+
+  const displayExperience = {
+    title: experience.title,
+    subtitle: experience.subtitle || '',
+    icon: experience.icon || '🛍️',
+    gradientColors: experience.gradientColors || ['#3B82F6', '#06B6D4'],
+    description: experience.description || 'Explore curated stores and products',
+    benefits: [
+      'Exclusive deals and offers',
+      'Earn ReZ coins on every purchase',
+      'Cashback on all transactions',
+      'Verified stores only',
+    ],
   };
 
   return (
@@ -274,21 +374,21 @@ const ExperienceDetailPage: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Hero Section */}
         <LinearGradient
-          colors={experience.gradientColors}
+          colors={displayExperience.gradientColors as any}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroSection}
         >
           <View style={styles.heroIconContainer}>
-            <Text style={styles.heroIcon}>{experience.icon}</Text>
+            <Text style={styles.heroIcon}>{displayExperience.icon}</Text>
           </View>
-          <Text style={styles.heroTitle}>{experience.title}</Text>
-          <Text style={styles.heroDescription}>{experience.description}</Text>
+          <Text style={styles.heroTitle}>{displayExperience.title}</Text>
+          <Text style={styles.heroDescription}>{displayExperience.description}</Text>
 
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Ionicons name="storefront" size={20} color={COLORS.white} />
-              <Text style={styles.statValue}>{experience.stores.length}+</Text>
+              <Text style={styles.statValue}>{stores.length}+</Text>
               <Text style={styles.statLabel}>Stores</Text>
             </View>
             <View style={styles.statCard}>
@@ -306,7 +406,7 @@ const ExperienceDetailPage: React.FC = () => {
             <Text style={styles.sectionTitle}>Experience Benefits</Text>
           </View>
           <View style={styles.benefitsList}>
-            {experience.benefits.map((benefit, idx) => (
+            {displayExperience.benefits.map((benefit, idx) => (
               <View key={idx} style={styles.benefitItem}>
                 <View style={styles.benefitIcon}>
                   <Ionicons name="checkmark" size={16} color={COLORS.emerald500} />
@@ -327,7 +427,7 @@ const ExperienceDetailPage: React.FC = () => {
             </View>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
-            {filters.map((filter) => (
+            {categories.map((filter) => (
               <TouchableOpacity
                 key={filter}
                 onPress={() => setSelectedFilter(filter)}
@@ -349,55 +449,74 @@ const ExperienceDetailPage: React.FC = () => {
 
         {/* Stores List */}
         <View style={styles.storesSection}>
-          {filteredStores.map((store) => (
-            <TouchableOpacity
-              key={store.id}
-              style={styles.storeCard}
-              onPress={() => handleStorePress(store.id)}
-              activeOpacity={0.8}
-            >
-              <Image source={{ uri: store.image }} style={styles.storeImage} />
-              <View style={styles.storeInfo}>
-                <View style={styles.storeHeader}>
-                  <View style={styles.storeNameContainer}>
-                    <Text style={styles.storeName}>{store.name}</Text>
-                    <View style={styles.storeMetaRow}>
-                      <View style={styles.categoryBadge}>
-                        <Text style={styles.categoryBadgeText}>{store.category}</Text>
+          {filteredStores.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="storefront-outline" size={48} color={COLORS.gray400} />
+              <Text style={styles.emptyStateTitle}>No stores found</Text>
+              <Text style={styles.emptyStateText}>Try selecting a different category</Text>
+            </View>
+          ) : (
+            filteredStores.map((store: any, index: number) => {
+              const storeImage = store.images?.[0] || store.logo || store.image || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300';
+              const storeName = store.name || 'Store';
+              const storeCategory = store.category?.name || store.category || 'Other';
+              const storeRating = store.ratings?.average || store.rating || 0;
+              const storeDistance = store.location?.distance || store.distance || 'N/A';
+              const storeOffer = store.offers?.cashback 
+                ? `${store.offers.cashback}% cashback`
+                : store.offer || 'Special offers available';
+
+              return (
+                <TouchableOpacity
+                  key={store._id || store.id || index}
+                  style={styles.storeCard}
+                  onPress={() => handleStorePress(store)}
+                  activeOpacity={0.8}
+                >
+                  <Image source={{ uri: storeImage }} style={styles.storeImage} />
+                  <View style={styles.storeInfo}>
+                    <View style={styles.storeHeader}>
+                      <View style={styles.storeNameContainer}>
+                        <Text style={styles.storeName}>{storeName}</Text>
+                        <View style={styles.storeMetaRow}>
+                          <View style={styles.categoryBadge}>
+                            <Text style={styles.categoryBadgeText}>{storeCategory}</Text>
+                          </View>
+                          <View style={styles.ratingContainer}>
+                            <Ionicons name="star" size={14} color={COLORS.amber500} />
+                            <Text style={styles.ratingText}>{storeRating.toFixed(1)}</Text>
+                          </View>
+                        </View>
                       </View>
-                      <View style={styles.ratingContainer}>
-                        <Ionicons name="star" size={14} color={COLORS.amber500} />
-                        <Text style={styles.ratingText}>{store.rating}</Text>
+                      <TouchableOpacity style={styles.heartButton}>
+                        <Ionicons name="heart-outline" size={22} color={COLORS.gray400} />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.offerBanner}>
+                      <Ionicons name="pricetag" size={14} color={COLORS.emerald500} />
+                      <Text style={styles.offerText}>{storeOffer}</Text>
+                    </View>
+
+                    <View style={styles.storeFooter}>
+                      <View style={styles.distanceContainer}>
+                        <Ionicons name="location" size={14} color={COLORS.gray600} />
+                        <Text style={styles.distanceText}>{storeDistance}</Text>
                       </View>
+                      <View style={styles.coinsContainer}>
+                        <Ionicons name="logo-bitcoin" size={14} color={COLORS.emerald500} />
+                        <Text style={styles.coinsText}>Earn coins</Text>
+                      </View>
+                      <TouchableOpacity style={styles.visitButton}>
+                        <Text style={styles.visitButtonText}>Visit</Text>
+                        <Ionicons name="chevron-forward" size={14} color={COLORS.white} />
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  <TouchableOpacity style={styles.heartButton}>
-                    <Ionicons name="heart-outline" size={22} color={COLORS.gray400} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.offerBanner}>
-                  <Ionicons name="pricetag" size={14} color={COLORS.emerald500} />
-                  <Text style={styles.offerText}>{store.offer}</Text>
-                </View>
-
-                <View style={styles.storeFooter}>
-                  <View style={styles.distanceContainer}>
-                    <Ionicons name="location" size={14} color={COLORS.gray600} />
-                    <Text style={styles.distanceText}>{store.distance}</Text>
-                  </View>
-                  <View style={styles.coinsContainer}>
-                    <Ionicons name="logo-bitcoin" size={14} color={COLORS.emerald500} />
-                    <Text style={styles.coinsText}>Earn coins</Text>
-                  </View>
-                  <TouchableOpacity style={styles.visitButton}>
-                    <Text style={styles.visitButtonText}>Visit</Text>
-                    <Ionicons name="chevron-forward" size={14} color={COLORS.white} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+                </TouchableOpacity>
+              );
+            })
+          )}
         </View>
 
         {/* Rewards Banner */}
@@ -429,14 +548,6 @@ const ExperienceDetailPage: React.FC = () => {
           </LinearGradient>
         </View>
 
-        {/* Empty State */}
-        {filteredStores.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons name="storefront-outline" size={48} color={COLORS.gray400} />
-            <Text style={styles.emptyStateTitle}>No stores found</Text>
-            <Text style={styles.emptyStateText}>Try selecting a different category</Text>
-          </View>
-        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>

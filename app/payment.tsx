@@ -24,6 +24,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import paymentService, { PaymentMethod, PaymentResponse } from '@/services/paymentService';
 import PaymentValidator from '@/services/paymentValidation';
+import financialServicesApi, { FinancialService } from '@/services/financialServicesApi';
 
 const { width, height } = Dimensions.get('window');
 
@@ -33,13 +34,23 @@ export default function PaymentPage() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const amount = Number(params.amount) || 5000;
-  const currency = (params.currency as string) || 'RC';
+  const currency = (params.currency as string) || 'INR';
+  
+  // Financial service specific params
+  const paymentType = params.type as string;
+  const isFinancialService = paymentType === 'financial-service';
+  const serviceId = params.serviceId as string;
+  const serviceType = params.serviceType as string;
 
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<'methods' | 'details' | 'processing'>('methods');
+  
+  // Financial service state
+  const [financialService, setFinancialService] = useState<FinancialService | null>(null);
+  const [isLoadingService, setIsLoadingService] = useState(false);
   
   // Form states
   const [upiId, setUpiId] = useState('');
@@ -58,7 +69,28 @@ export default function PaymentPage() {
   useEffect(() => {
     loadPaymentMethods();
     animateEntrance();
-  }, []);
+    
+    // Load financial service details if applicable
+    if (isFinancialService && serviceId) {
+      loadFinancialService();
+    }
+  }, [isFinancialService, serviceId]);
+  
+  const loadFinancialService = async () => {
+    if (!serviceId) return;
+    
+    setIsLoadingService(true);
+    try {
+      const response = await financialServicesApi.getById(serviceId);
+      if (response.success && response.data) {
+        setFinancialService(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading financial service:', error);
+    } finally {
+      setIsLoadingService(false);
+    }
+  };
 
   useEffect(() => {
     if (currentStep === 'processing') {
@@ -137,13 +169,28 @@ export default function PaymentPage() {
       const response = await paymentService.processUPIPayment(amount, upiId);
       if (response.success && response.data) {
         setTimeout(() => {
+          const successMessage = isFinancialService
+            ? `Your ${serviceType === 'bills' ? 'bill payment' : 
+                     serviceType === 'recharge' ? 'recharge' :
+                     serviceType === 'ott' ? 'subscription' :
+                     serviceType === 'gold' ? 'gold purchase' :
+                     serviceType === 'insurance' ? 'insurance' : 'payment'} of ₹${amount.toLocaleString()} has been processed successfully.`
+            : `Your payment of ${currency} ${amount.toLocaleString()} has been processed successfully.`;
+          
           Alert.alert(
             'Payment Successful! 🎉',
-            `Your payment of ${currency} ${amount.toLocaleString()} has been processed successfully.`,
+            successMessage,
             [
               {
                 text: 'OK',
-                onPress: () => router.replace('/WalletScreen'),
+                onPress: () => {
+                  if (isFinancialService) {
+                    // Navigate to order confirmation or service success page
+                    router.replace('/financial' as any);
+                  } else {
+                    router.replace('/WalletScreen');
+                  }
+                },
               },
             ]
           );
@@ -185,13 +232,28 @@ export default function PaymentPage() {
       
       if (response.success && response.data) {
         setTimeout(() => {
+          const successMessage = isFinancialService
+            ? `Your ${serviceType === 'bills' ? 'bill payment' : 
+                     serviceType === 'recharge' ? 'recharge' :
+                     serviceType === 'ott' ? 'subscription' :
+                     serviceType === 'gold' ? 'gold purchase' :
+                     serviceType === 'insurance' ? 'insurance' : 'payment'} of ₹${amount.toLocaleString()} has been processed successfully.`
+            : `Your payment of ${currency} ${amount.toLocaleString()} has been processed successfully.`;
+          
           Alert.alert(
             'Payment Successful! 🎉',
-            `Your payment of ${currency} ${amount.toLocaleString()} has been processed successfully.`,
+            successMessage,
             [
               {
                 text: 'OK',
-                onPress: () => router.replace('/WalletScreen'),
+                onPress: () => {
+                  if (isFinancialService) {
+                    // Navigate to order confirmation or service success page
+                    router.replace('/financial' as any);
+                  } else {
+                    router.replace('/WalletScreen');
+                  }
+                },
               },
             ]
           );
@@ -215,13 +277,28 @@ export default function PaymentPage() {
       const response = await paymentService.processWalletPayment(amount, walletType);
       if (response.success && response.data) {
         setTimeout(() => {
+          const successMessage = isFinancialService
+            ? `Your ${serviceType === 'bills' ? 'bill payment' : 
+                     serviceType === 'recharge' ? 'recharge' :
+                     serviceType === 'ott' ? 'subscription' :
+                     serviceType === 'gold' ? 'gold purchase' :
+                     serviceType === 'insurance' ? 'insurance' : 'payment'} of ₹${amount.toLocaleString()} has been processed successfully.`
+            : `Your payment of ${currency} ${amount.toLocaleString()} has been processed successfully.`;
+          
           Alert.alert(
             'Payment Successful! 🎉',
-            `Your payment of ${currency} ${amount.toLocaleString()} has been processed successfully.`,
+            successMessage,
             [
               {
                 text: 'OK',
-                onPress: () => router.replace('/WalletScreen'),
+                onPress: () => {
+                  if (isFinancialService) {
+                    // Navigate to order confirmation or service success page
+                    router.replace('/financial' as any);
+                  } else {
+                    router.replace('/WalletScreen');
+                  }
+                },
               },
             ]
           );
@@ -702,10 +779,28 @@ export default function PaymentPage() {
           accessibilityLabel={`Amount to pay: ${currency} ${amount.toLocaleString()}`}
           accessibilityRole="text"
         >
+          {isFinancialService && financialService && (
+            <View style={styles.serviceInfo}>
+              <ThemedText style={styles.serviceName}>{financialService.name}</ThemedText>
+              <ThemedText style={styles.serviceType}>
+                {serviceType === 'bills' ? 'Bill Payment' :
+                 serviceType === 'recharge' ? 'Mobile Recharge' :
+                 serviceType === 'ott' ? 'OTT Subscription' :
+                 serviceType === 'gold' ? 'Digital Gold' :
+                 serviceType === 'insurance' ? 'Insurance' :
+                 'Financial Service'}
+              </ThemedText>
+            </View>
+          )}
           <ThemedText style={styles.amountLabel}>Amount to Pay</ThemedText>
           <ThemedText style={styles.amountValue}>
-            {currency} {amount.toLocaleString()}
+            ₹{amount.toLocaleString()}
           </ThemedText>
+          {isFinancialService && financialService?.cashback && (
+            <ThemedText style={styles.cashbackInfo}>
+              Get {financialService.cashback.percentage}% cashback
+            </ThemedText>
+          )}
         </View>
       </LinearGradient>
 
@@ -1031,5 +1126,30 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#6B7280',
+  },
+  serviceInfo: {
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  serviceName: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  serviceType: {
+    color: '#E0E7FF',
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  cashbackInfo: {
+    color: '#E0E7FF',
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '500',
   },
 });

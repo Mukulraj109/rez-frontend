@@ -96,13 +96,26 @@ const HomeServicesPage: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Categories</Text>
           <View style={styles.categoriesGrid}>
-            {categories.map((cat) => (
-              <TouchableOpacity key={cat.id} style={styles.categoryCard} onPress={() => router.push(`/home-services/${cat.id}` as any)} activeOpacity={0.8}>
-                <View style={[styles.categoryIcon, { backgroundColor: `${cat.color}20` }]}><Text style={styles.categoryEmoji}>{cat.icon}</Text></View>
-                <Text style={styles.categoryTitle}>{cat.title}</Text>
-                <Text style={styles.categoryCount}>{cat.count}</Text>
-              </TouchableOpacity>
-            ))}
+            {categories.map((cat) => {
+              const isIconUrl = cat.icon && (cat.icon.startsWith('http://') || cat.icon.startsWith('https://'));
+              return (
+                <TouchableOpacity key={cat.id} style={styles.categoryCard} onPress={() => router.push(`/home-services/${cat.id}` as any)} activeOpacity={0.8}>
+                  <View style={[styles.categoryIcon, { backgroundColor: `${cat.color}20` }]}>
+                    {isIconUrl ? (
+                      <Image 
+                        source={{ uri: cat.icon }} 
+                        style={{ width: 32, height: 32 }} 
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Text style={styles.categoryEmoji}>{cat.icon}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.categoryTitle}>{cat.title}</Text>
+                  <Text style={styles.categoryCount}>{cat.count}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 

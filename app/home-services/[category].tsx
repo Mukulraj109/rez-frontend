@@ -57,14 +57,19 @@ const HomeServicesCategoryPage: React.FC = () => {
         });
 
         if (response.success && response.data) {
+          const data = response.data;
           if (currentPage === 1) {
-            setServices(response.data.services);
+            setServices(data.services || []);
           } else {
-            setServices(prev => [...prev, ...response.data.services]);
+            setServices(prev => [...prev, ...(data.services || [])]);
           }
-          setCategoryInfo(response.data.category);
-          setTotalPages(response.data.pagination.pages);
-          setHasMore(response.data.pagination.page < response.data.pagination.pages);
+          if (data.category) {
+            setCategoryInfo(data.category);
+          }
+          if (data.pagination) {
+            setTotalPages(data.pagination.pages);
+            setHasMore(data.pagination.page < data.pagination.pages);
+          }
           setError(null);
         } else {
           setError(response.error || 'Failed to load services');
@@ -101,7 +106,7 @@ const HomeServicesCategoryPage: React.FC = () => {
 
   const handleBookPress = (service: HomeService) => {
     const serviceId = service._id || service.id;
-    const storeId = service.store?._id || service.store?.id;
+    const storeId = service.store?._id;
     if (serviceId && storeId) {
       router.push(`/booking?storeId=${storeId}&productId=${serviceId}&bookingType=service` as any);
     }
@@ -110,6 +115,9 @@ const HomeServicesCategoryPage: React.FC = () => {
   const gradientColors = categoryGradients[category || 'repair'] || categoryGradients['repair'];
   const displayTitle = categoryInfo?.name || `${category?.charAt(0).toUpperCase()}${category?.slice(1)} Services`;
   const displayIcon = categoryInfo?.icon || '🔧';
+  
+  // Check if icon is a URL or emoji
+  const isIconUrl = displayIcon && (displayIcon.startsWith('http://') || displayIcon.startsWith('https://'));
 
   if (isLoading) {
     return (
@@ -125,7 +133,14 @@ const HomeServicesCategoryPage: React.FC = () => {
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color={COLORS.white} /></TouchableOpacity>
           <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>{displayIcon} {displayTitle}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {isIconUrl ? (
+                <Image source={{ uri: displayIcon }} style={{ width: 24, height: 24 }} resizeMode="contain" />
+              ) : (
+                <Text style={styles.headerTitle}>{displayIcon} </Text>
+              )}
+              <Text style={styles.headerTitle}>{displayTitle}</Text>
+            </View>
             <Text style={styles.headerSubtitle}>{services.length} services</Text>
           </View>
           <TouchableOpacity style={styles.searchButton}><Ionicons name="search" size={24} color={COLORS.white} /></TouchableOpacity>

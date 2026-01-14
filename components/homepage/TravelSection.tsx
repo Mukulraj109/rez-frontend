@@ -3,16 +3,19 @@
  * Flights, Hotels, Trains, Bus, Cab, Packages
  */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import travelApi, { TravelServiceCategory } from '@/services/travelApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 10;
@@ -26,6 +29,27 @@ const COLORS = {
 
 const TravelSection: React.FC = () => {
   const router = useRouter();
+  const [categories, setCategories] = useState<TravelServiceCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch categories from backend
+  const fetchCategories = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await travelApi.getCategories();
+      if (response.success && response.data) {
+        setCategories(response.data);
+      }
+    } catch (error) {
+      console.error('[TravelSection] Error fetching categories:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   const handleViewAll = () => {
     router.push('/travel' as any);
@@ -34,6 +58,22 @@ const TravelSection: React.FC = () => {
   const handlePress = (route: string) => {
     router.push(route as any);
   };
+
+  // Get category data for main cards
+  const flightsCategory = categories.find(c => c.id === 'flights');
+  const hotelsCategory = categories.find(c => c.id === 'hotels');
+  const trainsCategory = categories.find(c => c.id === 'trains');
+  const busCategory = categories.find(c => c.id === 'bus');
+  const cabCategory = categories.find(c => c.id === 'cab');
+  const packagesCategory = categories.find(c => c.id === 'packages');
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { paddingVertical: 20, alignItems: 'center' }]}>
+        <ActivityIndicator size="small" color={COLORS.green500} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -64,7 +104,7 @@ const TravelSection: React.FC = () => {
           >
             <View style={styles.flightsTop}>
               <View style={styles.flightsIconBox}>
-                <Text style={styles.flightsIcon}>✈️</Text>
+                <Text style={styles.flightsIcon}>{flightsCategory?.icon || '✈️'}</Text>
               </View>
               <View style={styles.bestPriceBadge}>
                 <Text style={styles.bestPriceText}>BEST PRICE</Text>
@@ -77,7 +117,9 @@ const TravelSection: React.FC = () => {
                 <Text style={styles.badgeText}>Instant Booking</Text>
               </View>
               <View style={styles.discountBadge}>
-                <Text style={styles.badgeText}>5% OFF</Text>
+                <Text style={styles.badgeText}>
+                  {flightsCategory?.cashback ? `${flightsCategory.cashback}% OFF` : '5% OFF'}
+                </Text>
               </View>
             </View>
           </LinearGradient>
@@ -96,12 +138,14 @@ const TravelSection: React.FC = () => {
             style={styles.hotelsGradient}
           >
             <View style={styles.hotelsIconBox}>
-              <Text style={styles.hotelsIcon}>🏨</Text>
+              <Text style={styles.hotelsIcon}>{hotelsCategory?.icon || '🏨'}</Text>
             </View>
             <Text style={styles.hotelsTitle}>Hotels</Text>
             <Text style={styles.hotelsSubtitle}>Luxury to Budget</Text>
             <View style={styles.hotelDiscountBadge}>
-              <Text style={styles.hotelDiscountText}>50% OFF</Text>
+              <Text style={styles.hotelDiscountText}>
+                {hotelsCategory?.cashback ? `${hotelsCategory.cashback}% OFF` : '50% OFF'}
+              </Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
@@ -116,9 +160,9 @@ const TravelSection: React.FC = () => {
           activeOpacity={0.9}
         >
           <View style={[styles.bottomIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-            <Text style={styles.bottomIcon}>🚂</Text>
+            <Text style={styles.bottomIcon}>{trainsCategory?.icon || '🚂'}</Text>
           </View>
-          <Text style={styles.bottomTitle}>Trains</Text>
+          <Text style={styles.bottomTitle}>{trainsCategory?.title || 'Trains'}</Text>
         </TouchableOpacity>
 
         {/* Bus */}
@@ -128,9 +172,9 @@ const TravelSection: React.FC = () => {
           activeOpacity={0.9}
         >
           <View style={[styles.bottomIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-            <Text style={styles.bottomIcon}>🚌</Text>
+            <Text style={styles.bottomIcon}>{busCategory?.icon || '🚌'}</Text>
           </View>
-          <Text style={styles.bottomTitle}>Bus</Text>
+          <Text style={styles.bottomTitle}>{busCategory?.title || 'Bus'}</Text>
         </TouchableOpacity>
 
         {/* Cab */}
@@ -140,9 +184,9 @@ const TravelSection: React.FC = () => {
           activeOpacity={0.9}
         >
           <View style={[styles.bottomIconBox, { backgroundColor: 'rgba(234, 179, 8, 0.1)' }]}>
-            <Text style={styles.bottomIcon}>🚕</Text>
+            <Text style={styles.bottomIcon}>{cabCategory?.icon || '🚕'}</Text>
           </View>
-          <Text style={styles.bottomTitle}>Cab</Text>
+          <Text style={styles.bottomTitle}>{cabCategory?.title || 'Cab'}</Text>
         </TouchableOpacity>
 
         {/* Packages */}
@@ -152,9 +196,9 @@ const TravelSection: React.FC = () => {
           activeOpacity={0.9}
         >
           <View style={[styles.bottomIconBox, { backgroundColor: 'rgba(236, 72, 153, 0.1)' }]}>
-            <Text style={styles.bottomIcon}>🎒</Text>
+            <Text style={styles.bottomIcon}>{packagesCategory?.icon || '🎒'}</Text>
           </View>
-          <Text style={styles.bottomTitle}>Packages</Text>
+          <Text style={styles.bottomTitle}>{packagesCategory?.title || 'Packages'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -165,6 +209,12 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     marginBottom: 24,
+    // Web-specific: Prevent inspector overlay
+    ...(Platform.OS === 'web' && {
+      // @ts-ignore - Web-only CSS
+      position: 'relative',
+      isolation: 'isolate',
+    }),
   },
   header: {
     flexDirection: 'row',

@@ -27,6 +27,27 @@ if (__DEV__ && Platform.OS === 'web' && typeof document !== 'undefined') {
     [data-layout-inspector] {
       display: none !important;
     }
+    /* Hide any absolutely positioned elements with number patterns like 512/3063/306 */
+    div[style*="position: absolute"],
+    span[style*="position: absolute"],
+    div[style*="position: fixed"],
+    span[style*="position: fixed"] {
+      font-family: inherit !important;
+    }
+    /* Specifically target and hide inspector overlay numbers */
+    * {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    /* Allow text selection in input fields and text areas */
+    input, textarea, [contenteditable] {
+      -webkit-user-select: text !important;
+      -moz-user-select: text !important;
+      -ms-user-select: text !important;
+      user-select: text !important;
+    }
   `;
   // Remove existing style if present
   const existing = document.getElementById('hide-inspector-overlay');
@@ -44,11 +65,12 @@ if (__DEV__ && Platform.OS === 'web' && typeof document !== 'undefined') {
           if (text.match(/^\d+\/\d+\/\d+$/) || text.match(/^\d+\/\d+$/)) {
             const style = window.getComputedStyle(element);
             // If it's positioned absolutely and has monospace font, it's likely an overlay
-            if (style.position === 'absolute' && style.fontFamily.includes('monospace')) {
+            if (style.position === 'absolute' || style.position === 'fixed') {
               element.style.display = 'none';
               element.style.visibility = 'hidden';
               element.style.opacity = '0';
               element.style.pointerEvents = 'none';
+              element.remove(); // Actually remove it from DOM
             }
           }
           // Also check for elements with specific inspector attributes
@@ -58,17 +80,56 @@ if (__DEV__ && Platform.OS === 'web' && typeof document !== 'undefined') {
               element.classList.contains('react-devtools-overlay')) {
             element.style.display = 'none';
             element.style.visibility = 'hidden';
+            element.remove();
           }
+          // Check all children recursively for inspector overlays
+          const allChildren = element.querySelectorAll('*');
+          allChildren.forEach((child) => {
+            const childText = child.textContent || '';
+            if (childText.match(/^\d+\/\d+\/\d+$/) || childText.match(/^\d+\/\d+$/)) {
+              const childStyle = window.getComputedStyle(child);
+              if (childStyle.position === 'absolute' || childStyle.position === 'fixed') {
+                (child as HTMLElement).remove();
+              }
+            }
+          });
         }
       });
     });
   });
   
-  // Start observing
+  // Start observing immediately and also after a delay to catch late-rendered overlays
   observer.observe(document.body, {
     childList: true,
     subtree: true,
   });
+  
+  // Also check periodically for any missed overlays - more aggressive
+  const cleanupInterval = setInterval(() => {
+    const allElements = document.querySelectorAll('*');
+    allElements.forEach((el) => {
+      const text = el.textContent?.trim() || '';
+      // Match patterns like "512/3063/306" or "512/2954/29"
+      if (text.match(/^\d+\/\d+\/\d+$/) || text.match(/^\d+\/\d+$/)) {
+        const style = window.getComputedStyle(el);
+        // If positioned absolutely/fixed OR has monospace font, remove it
+        if (style.position === 'absolute' || 
+            style.position === 'fixed' || 
+            style.fontFamily.includes('monospace')) {
+          (el as HTMLElement).style.display = 'none';
+          (el as HTMLElement).style.visibility = 'hidden';
+          (el as HTMLElement).remove();
+        }
+      }
+    });
+  }, 50); // Check every 50ms for faster removal
+  
+  // Cleanup on page unload
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => {
+      clearInterval(cleanupInterval);
+    });
+  }
   
   // Also try to disable React DevTools programmatically
   if (typeof window !== 'undefined') {

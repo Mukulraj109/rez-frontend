@@ -3,16 +3,18 @@
  * Pay Bills, OTT Plans, Recharge, Gold, Insurance, Offers
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import financialServicesApi, { FinancialServiceCategory } from '@/services/financialServicesApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 10;
@@ -26,6 +28,26 @@ const COLORS = {
 
 const FinancialServicesSection: React.FC = () => {
   const router = useRouter();
+  const [categories, setCategories] = useState<FinancialServiceCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setIsLoading(true);
+      const response = await financialServicesApi.getCategories();
+      if (response.success && response.data) {
+        setCategories(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching financial service categories:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleViewAll = () => {
     router.push('/financial' as any);
@@ -34,6 +56,22 @@ const FinancialServicesSection: React.FC = () => {
   const handlePress = (route: string) => {
     router.push(route as any);
   };
+
+  // Get category data
+  const billsCategory = categories.find(c => c.slug === 'bills');
+  const ottCategory = categories.find(c => c.slug === 'ott');
+  const rechargeCategory = categories.find(c => c.slug === 'recharge');
+  const goldCategory = categories.find(c => c.slug === 'gold');
+  const insuranceCategory = categories.find(c => c.slug === 'insurance');
+  const offersCategory = categories.find(c => c.slug === 'offers');
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { paddingVertical: 20, alignItems: 'center' }]}>
+        <ActivityIndicator size="small" color={COLORS.green500} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -69,7 +107,9 @@ const FinancialServicesSection: React.FC = () => {
             <Text style={styles.billsSubtitle}>Electricity • Water • Gas</Text>
             <View style={styles.billsBadges}>
               <View style={styles.cashbackBadge}>
-                <Text style={styles.cashbackText}>3% Cashback</Text>
+                <Text style={styles.cashbackText}>
+                  {billsCategory?.cashbackPercentage || 3}% Cashback
+                </Text>
               </View>
               <Text style={styles.secureText}>SECURE</Text>
             </View>
@@ -94,7 +134,9 @@ const FinancialServicesSection: React.FC = () => {
             <Text style={styles.ottTitle}>OTT Plans</Text>
             <Text style={styles.ottSubtitle}>Netflix • Prime • Disney+</Text>
             <View style={styles.specialBadge}>
-              <Text style={styles.specialText}>Special Prices</Text>
+              <Text style={styles.specialText}>
+                {ottCategory?.cashbackPercentage || 10}% Cashback
+              </Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>

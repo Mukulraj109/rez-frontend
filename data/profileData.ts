@@ -94,7 +94,7 @@ export const profileMenuSections: ProfileMenuSection[] = [
         id: 'bookings',
         title: 'My Bookings',
         icon: 'calendar-outline',
-        route: '/BookingsPage',
+        route: '/my-bookings',
         isEnabled: true,
         showArrow: true,
       },

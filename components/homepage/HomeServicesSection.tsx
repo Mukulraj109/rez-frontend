@@ -3,7 +3,7 @@
  * Repair Services, Deep Clean, Painting, Carpentry, etc.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -61,6 +61,17 @@ const HomeServicesSection: React.FC = () => {
     router.push(route as any);
   };
 
+  // Handle special navigation for "Today" and "Verified" - these are filters, not categories
+  const handleTodayPress = () => {
+    // Navigate to home services page with "today" filter or show all services
+    router.push('/home-services' as any);
+  };
+
+  const handleVerifiedPress = () => {
+    // Navigate to home services page with "verified" filter or show all services
+    router.push('/home-services' as any);
+  };
+
   // Get category data for main cards
   const repairCategory = categories.find(c => c.id === 'repair');
   const cleaningCategory = categories.find(c => c.id === 'cleaning');
@@ -76,7 +87,7 @@ const HomeServicesSection: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="home-services-section">
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -95,12 +106,14 @@ const HomeServicesSection: React.FC = () => {
           style={styles.repairCard}
           onPress={() => handlePress('/home-services/repair')}
           activeOpacity={0.9}
+          testID="repair-card"
         >
           <LinearGradient
             colors={['#F97316', '#EA580C', '#DC2626']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.repairGradient}
+            testID="repair-gradient"
           >
             <View style={styles.repairTop}>
               <View style={styles.repairIconBox}>
@@ -130,12 +143,14 @@ const HomeServicesSection: React.FC = () => {
           style={styles.cleanCard}
           onPress={() => handlePress('/home-services/cleaning')}
           activeOpacity={0.9}
+          testID="clean-card"
         >
           <LinearGradient
             colors={['#3B82F6', '#2563EB', '#1D4ED8']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.cleanGradient}
+            testID="clean-gradient"
           >
             <View style={styles.cleanIconBox}>
               <Text style={styles.cleanIcon}>{cleaningCategory?.icon || '🧹'}</Text>
@@ -176,10 +191,10 @@ const HomeServicesSection: React.FC = () => {
           <Text style={styles.bottomTitle}>{carpentryCategory?.title || 'Carpentry'}</Text>
         </TouchableOpacity>
 
-        {/* Today */}
+        {/* Today - Navigate to main home services page */}
         <TouchableOpacity
           style={styles.bottomCard}
-          onPress={() => handlePress('/home-services/today')}
+          onPress={handleTodayPress}
           activeOpacity={0.9}
         >
           <View style={[styles.bottomIconBox, { backgroundColor: 'rgba(234, 179, 8, 0.1)' }]}>
@@ -188,10 +203,10 @@ const HomeServicesSection: React.FC = () => {
           <Text style={styles.bottomTitle}>Today</Text>
         </TouchableOpacity>
 
-        {/* Verified */}
+        {/* Verified - Navigate to main home services page */}
         <TouchableOpacity
           style={styles.bottomCard}
-          onPress={() => handlePress('/home-services/verified')}
+          onPress={handleVerifiedPress}
           activeOpacity={0.9}
         >
           <View style={[styles.bottomIconBox, { backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
@@ -208,6 +223,12 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     marginBottom: 24,
+    // Web-specific: Prevent inspector overlay
+    ...(Platform.OS === 'web' && {
+      // @ts-ignore - Web-only CSS
+      position: 'relative',
+      isolation: 'isolate',
+    }),
   },
   header: {
     flexDirection: 'row',

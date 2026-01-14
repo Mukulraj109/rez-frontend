@@ -19,7 +19,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import apiClient from '@/services/apiClient';
+import travelApi, { TravelService, TravelServiceCategory } from '@/services/travelApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -35,23 +35,6 @@ const COLORS = {
   amber500: '#F59E0B',
 };
 
-// Travel categories
-const TRAVEL_CATEGORIES = [
-  { id: 'flights', title: 'Flights', icon: '✈️', color: '#3B82F6', count: 'All airlines' },
-  { id: 'hotels', title: 'Hotels', icon: '🏨', color: '#EC4899', count: '50k+ hotels' },
-  { id: 'trains', title: 'Trains', icon: '🚂', color: '#22C55E', count: 'IRCTC' },
-  { id: 'bus', title: 'Bus', icon: '🚌', color: '#F97316', count: '2000+ operators' },
-  { id: 'cab', title: 'Cab', icon: '🚕', color: '#EAB308', count: 'Intercity' },
-  { id: 'packages', title: 'Packages', icon: '🎒', color: '#8B5CF6', count: '500+ tours' },
-];
-
-// Fallback deals
-const FALLBACK_DEALS = [
-  { id: '1', name: 'Goa Flight + Hotel', type: 'Package', price: '₹9,999', cashback: '20%', image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400' },
-  { id: '2', name: 'Mumbai-Delhi Flight', type: 'Flight', price: '₹2,499', cashback: '15%', image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400' },
-  { id: '3', name: 'Taj Hotel Agra', type: 'Hotel', price: '₹4,999/night', cashback: '25%', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400' },
-];
-
 interface DisplayDeal {
   id: string;
   name: string;
@@ -65,36 +48,43 @@ const TravelPage: React.FC = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [featuredDeals, setFeaturedDeals] = useState<DisplayDeal[]>(FALLBACK_DEALS);
+  const [featuredDeals, setFeaturedDeals] = useState<DisplayDeal[]>([]);
+  const [categories, setCategories] = useState<TravelServiceCategory[]>([]);
   const [stats, setStats] = useState({ hotels: 50000, maxCashback: 25 });
 
   const fetchTravelData = useCallback(async () => {
     try {
-      // Fetch travel services/deals from API
-      const response = await apiClient.get('/services', {
-        category: 'travel',
-        limit: 6,
-        isActive: true,
-      });
+      // Fetch categories
+      const categoriesResponse = await travelApi.getCategories();
+      if (categoriesResponse.success && categoriesResponse.data) {
+        setCategories(categoriesResponse.data);
+      }
 
-      if (response.success && response.data?.services && response.data.services.length > 0) {
-        const transformed = response.data.services.slice(0, 3).map((service: any) => ({
-          id: service._id || service.id,
+      // Fetch featured services
+      const featuredResponse = await travelApi.getFeatured(6);
+      if (featuredResponse.success && featuredResponse.data) {
+        const transformed = featuredResponse.data.slice(0, 3).map((service: TravelService) => ({
+          id: service._id || service.id || '',
           name: service.name,
-          type: service.type || 'Travel',
-          price: service.price ? `₹${service.price}` : '₹2,499',
-          cashback: service.cashback?.maxPercentage ? `${service.cashback.maxPercentage}%` : '15%',
-          image: service.image || 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400',
+          type: service.serviceCategory?.name || 'Travel',
+          price: service.pricing?.selling ? `₹${service.pricing.selling}` : '₹2,499',
+          cashback: service.cashback?.percentage ? `${service.cashback.percentage}%` : 
+                   service.serviceCategory?.cashbackPercentage ? `${service.serviceCategory.cashbackPercentage}%` : '15%',
+          image: service.images?.[0] || 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400',
         }));
         setFeaturedDeals(transformed);
+      }
+
+      // Fetch stats
+      const statsResponse = await travelApi.getStats();
+      if (statsResponse.success && statsResponse.data) {
         setStats({
-          hotels: response.data.pagination?.total || 50000,
-          maxCashback: 25,
+          hotels: statsResponse.data.hotels || 50000,
+          maxCashback: statsResponse.data.maxCashback || 25,
         });
       }
     } catch (error) {
       console.error('Error fetching travel data:', error);
-      // Keep fallback data
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -174,7 +164,7 @@ const TravelPage: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Book Travel</Text>
           <View style={styles.categoriesGrid}>
-            {TRAVEL_CATEGORIES.map((cat) => (
+            {categories.length > 0 ? categories.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
                 style={styles.categoryCard}
@@ -187,7 +177,30 @@ const TravelPage: React.FC = () => {
                 <Text style={styles.categoryTitle}>{cat.title}</Text>
                 <Text style={styles.categoryCount}>{cat.count}</Text>
               </TouchableOpacity>
-            ))}
+            )) : (
+              // Fallback categories while loading
+              [
+                { id: 'flights', title: 'Flights', icon: '✈️', color: '#3B82F6', count: 'All airlines' },
+                { id: 'hotels', title: 'Hotels', icon: '🏨', color: '#EC4899', count: '50k+ hotels' },
+                { id: 'trains', title: 'Trains', icon: '🚂', color: '#22C55E', count: 'IRCTC' },
+                { id: 'bus', title: 'Bus', icon: '🚌', color: '#F97316', count: '2000+ operators' },
+                { id: 'cab', title: 'Cab', icon: '🚕', color: '#EAB308', count: 'Intercity' },
+                { id: 'packages', title: 'Packages', icon: '🎒', color: '#8B5CF6', count: '500+ tours' },
+              ].map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={styles.categoryCard}
+                  onPress={() => handleCategoryPress(cat.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.categoryIcon, { backgroundColor: `${cat.color}20` }]}>
+                    <Text style={styles.categoryEmoji}>{cat.icon}</Text>
+                  </View>
+                  <Text style={styles.categoryTitle}>{cat.title}</Text>
+                  <Text style={styles.categoryCount}>{cat.count}</Text>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         </View>
 
@@ -199,7 +212,7 @@ const TravelPage: React.FC = () => {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {featuredDeals.map((deal) => (
+            {featuredDeals.length > 0 ? featuredDeals.map((deal) => (
               <TouchableOpacity
                 key={deal.id}
                 style={styles.dealCard}
@@ -216,7 +229,11 @@ const TravelPage: React.FC = () => {
                   <Text style={styles.dealPrice}>{deal.price}</Text>
                 </View>
               </TouchableOpacity>
-            ))}
+            )) : (
+              <View style={{ padding: 20 }}>
+                <Text style={{ color: COLORS.gray600 }}>No featured deals available</Text>
+              </View>
+            )}
           </ScrollView>
         </View>
 

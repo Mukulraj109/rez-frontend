@@ -2,76 +2,221 @@
  * Financial Category Page - Dynamic route
  */
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import financialServicesApi, { FinancialService, FinancialServiceCategory } from '@/services/financialServicesApi';
+import { useComprehensiveAnalytics } from '@/hooks/useComprehensiveAnalytics';
+import { ANALYTICS_EVENTS } from '@/services/analytics/events';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 const COLORS = { white: '#FFFFFF', navy: '#0B2240', gray50: '#F9FAFB', gray100: '#F3F4F6', gray200: '#E5E7EB', gray600: '#6B7280', green500: '#22C55E', purple500: '#8B5CF6', amber500: '#F59E0B' };
 
-const categoryData: Record<string, any> = {
-  bills: { title: 'Bill Payment', icon: '📄', gradientColors: ['#3B82F6', '#2563EB'], items: [
-    { id: 1, name: 'Electricity', type: 'Utility', cashback: '5%', image: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=400' },
-    { id: 2, name: 'Water Bill', type: 'Utility', cashback: '3%', image: 'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?w=400' },
-    { id: 3, name: 'Gas Bill', type: 'Utility', cashback: '4%', image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=400' },
-  ]},
-  ott: { title: 'OTT & DTH', icon: '📺', gradientColors: ['#EF4444', '#DC2626'], items: [
-    { id: 4, name: 'Netflix', type: 'OTT', cashback: '10%', image: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=400' },
-    { id: 5, name: 'Amazon Prime', type: 'OTT', cashback: '8%', image: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400' },
-    { id: 6, name: 'Tata Sky', type: 'DTH', cashback: '5%', image: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=400' },
-  ]},
-  recharge: { title: 'Mobile Recharge', icon: '📱', gradientColors: ['#22C55E', '#16A34A'], items: [
-    { id: 7, name: 'Jio Prepaid', type: 'Prepaid', cashback: '3%', image: 'https://images.unsplash.com/photo-1523206489230-c012c64b2b48?w=400' },
-    { id: 8, name: 'Airtel Prepaid', type: 'Prepaid', cashback: '3%', image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400' },
-    { id: 9, name: 'Vi Postpaid', type: 'Postpaid', cashback: '5%', image: 'https://images.unsplash.com/photo-1556656793-08538906a9f8?w=400' },
-  ]},
-  gold: { title: 'Digital Gold', icon: '🪙', gradientColors: ['#F59E0B', '#D97706'], items: [
-    { id: 10, name: 'Buy Gold', type: '24K Pure', cashback: '0.5%', image: 'https://images.unsplash.com/photo-1610375461246-83df859d849d?w=400' },
-    { id: 11, name: 'Gold SIP', type: 'Monthly', cashback: '1%', image: 'https://images.unsplash.com/photo-1624365168968-f283d506c6b6?w=400' },
-  ]},
-  insurance: { title: 'Insurance', icon: '🛡️', gradientColors: ['#8B5CF6', '#7C3AED'], items: [
-    { id: 12, name: 'Health Insurance', type: 'Medical', cashback: '10%', image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400' },
-    { id: 13, name: 'Life Insurance', type: 'Term', cashback: '12%', image: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=400' },
-    { id: 14, name: 'Car Insurance', type: 'Vehicle', cashback: '8%', image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400' },
-  ]},
-  loans: { title: 'Loans', icon: '💳', gradientColors: ['#EC4899', '#DB2777'], items: [
-    { id: 15, name: 'Personal Loan', type: 'Unsecured', cashback: '₹500', image: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=400' },
-    { id: 16, name: 'Home Loan', type: 'Secured', cashback: '₹2000', image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400' },
-  ]},
+// Fallback data
+const fallbackCategoryData: Record<string, any> = {
+  bills: { title: 'Bill Payment', icon: '📄', gradientColors: ['#3B82F6', '#2563EB'] },
+  ott: { title: 'OTT & DTH', icon: '📺', gradientColors: ['#EF4444', '#DC2626'] },
+  recharge: { title: 'Mobile Recharge', icon: '📱', gradientColors: ['#22C55E', '#16A34A'] },
+  gold: { title: 'Digital Gold', icon: '🪙', gradientColors: ['#F59E0B', '#D97706'] },
+  insurance: { title: 'Insurance', icon: '🛡️', gradientColors: ['#8B5CF6', '#7C3AED'] },
+  offers: { title: 'Offers', icon: '🎁', gradientColors: ['#EC4899', '#DB2777'] },
 };
 
 const FinancialCategoryPage: React.FC = () => {
   const router = useRouter();
   const { category } = useLocalSearchParams<{ category: string }>();
-  const data = categoryData[category || 'bills'] || categoryData['bills'];
+  const { trackEvent, trackScreen } = useComprehensiveAnalytics();
+  const { isOffline } = useNetworkStatus();
+  const startTimeRef = useRef<number>(Date.now());
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [services, setServices] = useState<FinancialService[]>([]);
+  const [categoryInfo, setCategoryInfo] = useState<FinancialServiceCategory | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<string>('All');
+
+  const categorySlug = category || 'bills';
+  const fallbackData = fallbackCategoryData[categorySlug] || fallbackCategoryData['bills'];
+
+  const fetchServices = useCallback(async () => {
+    if (isOffline) {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await financialServicesApi.getByCategory(categorySlug, {
+        page: 1,
+        limit: 50,
+        sortBy: selectedFilter === 'Top Rated' ? 'rating' : 
+                selectedFilter === 'Best Price' ? 'price_low' : 'rating',
+      });
+
+      if (response.success && response.data) {
+        setServices(response.data.services);
+        if (response.data.category) {
+          setCategoryInfo({
+            _id: response.data.category._id,
+            id: response.data.category.slug,
+            name: response.data.category.name,
+            slug: response.data.category.slug,
+            icon: response.data.category.icon,
+            iconType: response.data.category.iconType || 'emoji',
+            color: response.data.category.metadata?.color || fallbackData.gradientColors[0],
+            cashbackPercentage: response.data.category.cashbackPercentage,
+            maxCashback: response.data.category.maxCashback,
+            serviceCount: response.data.category.serviceCount || 0,
+            metadata: response.data.category.metadata,
+          });
+        }
+        trackEvent('financial_category_services_loaded', {
+          category: categorySlug,
+          count: response.data.services?.length || 0,
+          filter: selectedFilter,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching financial services:', error);
+      trackEvent('financial_category_error', {
+        category: categorySlug,
+        error: error.message || 'Unknown error',
+      });
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [categorySlug, selectedFilter, isOffline, trackEvent]);
+
+  useEffect(() => {
+    fetchServices();
+  }, [fetchServices]);
+
+  // Track screen view
+  useEffect(() => {
+    trackScreen('financial_category', {
+      category: categorySlug,
+    });
+
+    return () => {
+      const timeSpent = Date.now() - startTimeRef.current;
+      trackEvent('financial_category_time_spent', {
+        category: categorySlug,
+        time_spent_ms: timeSpent,
+        time_spent_seconds: Math.floor(timeSpent / 1000),
+      });
+    };
+  }, [categorySlug, trackScreen, trackEvent]);
+
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    fetchServices();
+  }, [fetchServices]);
+
+  const handleServicePress = (service: FinancialService) => {
+    const serviceId = service._id || service.id;
+    if (serviceId) {
+      trackEvent('financial_service_clicked', {
+        service_id: serviceId,
+        service_name: service.name,
+        category: categorySlug,
+        source: 'category_page',
+      });
+      router.push(`/financial/service/${serviceId}` as any);
+    }
+  };
+
+  const gradientColors = categoryInfo?.metadata?.color 
+    ? [categoryInfo.metadata.color, categoryInfo.metadata.color] 
+    : fallbackData.gradientColors;
+  const categoryTitle = categoryInfo?.name || fallbackData.title;
+  const categoryIcon = categoryInfo?.icon || fallbackData.icon;
+
+  if (isLoading && services.length === 0) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.purple500} />
+        <Text style={{ marginTop: 12, color: COLORS.gray600 }}>Loading services...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={data.gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
+      <LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color={COLORS.white} /></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+          </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>{data.icon} {data.title}</Text>
-            <Text style={styles.headerSubtitle}>{data.items.length} options</Text>
+            <Text style={styles.headerTitle}>{categoryIcon} {categoryTitle}</Text>
+            <Text style={styles.headerSubtitle}>{services.length} {services.length === 1 ? 'service' : 'services'}</Text>
           </View>
-          <TouchableOpacity style={styles.searchButton}><Ionicons name="search" size={24} color={COLORS.white} /></TouchableOpacity>
+          <TouchableOpacity style={styles.searchButton}>
+            <Ionicons name="search" size={24} color={COLORS.white} />
+          </TouchableOpacity>
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} colors={[COLORS.purple500]} />
+        }
+      >
         <View style={styles.itemsList}>
-          {data.items.map((item: any) => (
-            <TouchableOpacity key={item.id} style={styles.itemCard} onPress={() => router.push(`/bill-payment` as any)} activeOpacity={0.8}>
-              <Image source={{ uri: item.image }} style={styles.itemImage} />
-              <View style={styles.cashbackBadge}><Text style={styles.cashbackText}>{item.cashback}</Text></View>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <View style={styles.typeBadge}><Text style={styles.typeText}>{item.type}</Text></View>
-                <TouchableOpacity style={styles.payButton}><Text style={styles.payButtonText}>Pay Now</Text></TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))}
+          {services.length > 0 ? (
+            services.map((service) => {
+              const serviceId = service._id || service.id || '';
+              const cashback = service.cashback?.percentage 
+                ? `${service.cashback.percentage}%` 
+                : service.serviceCategory?.cashbackPercentage 
+                  ? `${service.serviceCategory.cashbackPercentage}%` 
+                  : '5%';
+              
+              return (
+                <TouchableOpacity 
+                  key={serviceId} 
+                  style={styles.itemCard} 
+                  onPress={() => handleServicePress(service)} 
+                  activeOpacity={0.8}
+                >
+                  <Image 
+                    source={{ uri: service.images?.[0] || 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=400' }} 
+                    style={styles.itemImage} 
+                  />
+                  <View style={styles.cashbackBadge}>
+                    <Text style={styles.cashbackText}>{cashback}</Text>
+                  </View>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName}>{service.name}</Text>
+                    <View style={styles.typeBadge}>
+                      <Text style={styles.typeText}>
+                        {service.serviceCategory?.name || service.shortDescription || 'Service'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.payButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleServicePress(service);
+                      }}
+                    >
+                      <Text style={styles.payButtonText}>View Details</Text>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: COLORS.gray600 }}>No services found</Text>
+            </View>
+          )}
         </View>
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -101,4 +246,20 @@ const styles = StyleSheet.create({
   payButtonText: { fontSize: 14, fontWeight: '700', color: COLORS.white },
 });
 
-export default FinancialCategoryPage;
+// Wrap with Error Boundary for production
+const FinancialCategoryPageWithErrorBoundary: React.FC = () => {
+  return (
+    <ErrorBoundary
+      fallback={
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Ionicons name="alert-circle" size={48} color={COLORS.purple500} />
+          <Text style={{ marginTop: 12, color: COLORS.gray600 }}>Something went wrong. Please try again.</Text>
+        </View>
+      }
+    >
+      <FinancialCategoryPage />
+    </ErrorBoundary>
+  );
+};
+
+export default FinancialCategoryPageWithErrorBoundary;

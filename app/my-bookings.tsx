@@ -16,7 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import bookingService from '@/services/bookingApi';
+import serviceBookingApi from '@/services/serviceBookingApi';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ServiceBooking {
@@ -66,14 +66,47 @@ const MyBookingsPage = () => {
         return;
       }
 
-      const response = await bookingService.getUserBookings({
-        status: activeTab,
-        sortBy: activeTab === 'upcoming' ? 'date_asc' : 'date_desc',
+      // Map 'upcoming'/'past' to appropriate query
+      // For upcoming: bookings with future dates and status 'pending' or 'confirmed'
+      // For past: bookings with past dates or status 'completed'/'cancelled'
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Use serviceBookingApi instead of bookingApi
+      const response = await serviceBookingApi.getUserBookings({
+        page: 1,
         limit: 20,
       });
 
-      if (response.success && response.data?.bookings) {
-        setBookings(response.data.bookings as unknown as ServiceBooking[]);
+      if (response.success && response.data) {
+        // Filter bookings based on activeTab
+        let filteredBookings = response.data as ServiceBooking[];
+        
+        if (activeTab === 'upcoming') {
+          // Upcoming: future bookings that are not cancelled or completed
+          filteredBookings = filteredBookings.filter(booking => {
+            const bookingDate = new Date(booking.bookingDate);
+            bookingDate.setHours(0, 0, 0, 0);
+            const isFuture = bookingDate >= today;
+            const isActive = booking.status !== 'completed' && booking.status !== 'cancelled' && booking.status !== 'no_show';
+            return isFuture && isActive;
+          });
+          // Sort by date ascending (earliest first)
+          filteredBookings.sort((a, b) => new Date(a.bookingDate).getTime() - new Date(b.bookingDate).getTime());
+        } else {
+          // Past: past bookings or completed/cancelled
+          filteredBookings = filteredBookings.filter(booking => {
+            const bookingDate = new Date(booking.bookingDate);
+            bookingDate.setHours(0, 0, 0, 0);
+            const isPast = bookingDate < today;
+            const isCompleted = booking.status === 'completed' || booking.status === 'cancelled' || booking.status === 'no_show';
+            return isPast || isCompleted;
+          });
+          // Sort by date descending (most recent first)
+          filteredBookings.sort((a, b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime());
+        }
+        
+        setBookings(filteredBookings);
       } else {
         setBookings([]);
         if (response.error) {
@@ -116,7 +149,7 @@ const MyBookingsPage = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await bookingService.cancelBooking(bookingId);
+              const response = await serviceBookingApi.cancelBooking(bookingId);
               if (response.success) {
                 Alert.alert('Success', 'Booking cancelled successfully');
                 fetchBookings();

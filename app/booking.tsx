@@ -94,7 +94,8 @@ export default function BookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null); // Display format: "9:00 AM"
+  const [selectedTime24h, setSelectedTime24h] = useState<string | null>(null); // 24-hour format: "09:00"
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -264,8 +265,13 @@ export default function BookingPage() {
     setAddingToCart(true);
 
     try {
+      if (!selectedTime24h) {
+        setErrorMessage('Please select a time slot');
+        return;
+      }
+      
       const duration = service.serviceDetails?.duration || 60;
-      const endTime = calculateEndTime(selectedTime, duration);
+      const endTime = calculateEndTime(selectedTime24h, duration);
 
       const response = await cartApi.addServiceToCart({
         productId: service._id,
@@ -273,7 +279,7 @@ export default function BookingPage() {
         serviceBookingDetails: {
           bookingDate: selectedDate.toISOString(),
           timeSlot: {
-            start: selectedTime,
+            start: selectedTime24h, // Use 24-hour format
             end: endTime,
           },
           duration: duration,
@@ -428,6 +434,7 @@ export default function BookingPage() {
                     onPress={() => {
                       setSelectedDate(date);
                       setSelectedTime(null);
+                      setSelectedTime24h(null);
                     }}
                     style={[
                       styles.dateCard,
@@ -465,7 +472,12 @@ export default function BookingPage() {
                 return (
                   <TouchableOpacity
                     key={slot.id}
-                    onPress={() => slot.available && setSelectedTime(slot.id)}
+                    onPress={() => {
+                      if (slot.available) {
+                        setSelectedTime(slot.time); // Display format
+                        setSelectedTime24h(slot.id); // 24-hour format for calculation
+                      }
+                    }}
                     disabled={!slot.available}
                     style={[
                       styles.timeSlot,
@@ -602,7 +614,7 @@ export default function BookingPage() {
                 <View style={styles.summaryRow}>
                   <ThemedText style={styles.summaryLabel}>Time</ThemedText>
                   <ThemedText style={styles.summaryValue}>
-                    {timeSlots.find(s => s.id === selectedTime)?.time}
+                    {selectedTime || timeSlots.find(s => s.id === selectedTime24h)?.time}
                   </ThemedText>
                 </View>
 

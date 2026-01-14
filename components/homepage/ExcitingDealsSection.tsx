@@ -161,8 +161,23 @@ const ExcitingDealsSection: React.FC = () => {
     router.push('/deal-store' as any);
   };
 
-  const handleDealPress = () => {
-    router.push('/deal-store' as any);
+  const handleDealPress = (deal: CampaignDeal, categoryId: string) => {
+    // Navigate based on deal type and available data
+    if (deal.storeId) {
+      // Navigate to store page if storeId is available
+      router.push(`/store/${deal.storeId}` as any);
+    } else if (deal.store) {
+      // Try to find store by name or navigate to deals page
+      router.push(`/deal-store?campaign=${categoryId}&deal=${deal.store}` as any);
+    } else {
+      // Default to deals page
+      router.push('/deal-store' as any);
+    }
+  };
+
+  const handleCategoryPress = (categoryId: string) => {
+    // Navigate to deals page filtered by category
+    router.push(`/deal-store?campaign=${categoryId}` as any);
   };
 
   const renderDealValue = (deal: CampaignDeal) => {
@@ -212,22 +227,27 @@ const ExcitingDealsSection: React.FC = () => {
         {dealCategories.map((category) => (
           <View key={category.id} style={styles.categoryWrapper}>
             {/* Category Header */}
-            <LinearGradient
-              colors={category.gradientColors as any}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.categoryHeader}
+            <TouchableOpacity
+              onPress={() => handleCategoryPress(category.id)}
+              activeOpacity={0.8}
             >
-              <View>
-                <Text style={styles.categoryTitle}>{category.title}</Text>
-                <Text style={styles.categorySubtitle}>{category.subtitle}</Text>
-              </View>
-              <View style={[styles.badge, { backgroundColor: category.badgeBg || COLORS.white }]}>
-                <Text style={[styles.badgeText, { color: category.badgeColor || COLORS.navy }]}>
-                  {category.badge}
-                </Text>
-              </View>
-            </LinearGradient>
+              <LinearGradient
+                colors={category.gradientColors as any}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.categoryHeader}
+              >
+                <View>
+                  <Text style={styles.categoryTitle}>{category.title}</Text>
+                  <Text style={styles.categorySubtitle}>{category.subtitle}</Text>
+                </View>
+                <View style={[styles.badge, { backgroundColor: category.badgeBg || COLORS.white }]}>
+                  <Text style={[styles.badgeText, { color: category.badgeColor || COLORS.navy }]}>
+                    {category.badge}
+                  </Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
 
             {/* Deals Horizontal Scroll */}
             <View style={styles.dealsContainer}>
@@ -240,7 +260,7 @@ const ExcitingDealsSection: React.FC = () => {
                   <TouchableOpacity
                     key={idx}
                     style={styles.dealCard}
-                    onPress={handleDealPress}
+                    onPress={() => handleDealPress(deal, category.id)}
                     activeOpacity={0.9}
                   >
                     <View style={styles.dealImageContainer}>

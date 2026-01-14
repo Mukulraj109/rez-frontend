@@ -3,7 +3,7 @@
  * Connected to /api/services (financial category)
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import apiClient from '@/services/apiClient';
+import financialServicesApi, { FinancialServiceCategory, FinancialService } from '@/services/financialServicesApi';
+import { useComprehensiveAnalytics } from '@/hooks/useComprehensiveAnalytics';
+import { ANALYTICS_EVENTS } from '@/services/analytics/events';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -35,14 +40,14 @@ const COLORS = {
   amber500: '#F59E0B',
 };
 
-// Financial service categories
-const FINANCIAL_CATEGORIES = [
+// Fallback categories (used if API fails)
+const FALLBACK_CATEGORIES = [
   { id: 'bills', title: 'Bill Payment', icon: '📄', color: '#3B82F6', count: 'All bills' },
   { id: 'ott', title: 'OTT & DTH', icon: '📺', color: '#EF4444', count: '50+ services' },
   { id: 'recharge', title: 'Recharge', icon: '📱', color: '#22C55E', count: 'All networks' },
   { id: 'gold', title: 'Digital Gold', icon: '🪙', color: '#F59E0B', count: 'Buy/Sell' },
   { id: 'insurance', title: 'Insurance', icon: '🛡️', color: '#8B5CF6', count: '100+ plans' },
-  { id: 'loans', title: 'Loans', icon: '💳', color: '#EC4899', count: 'Quick approval' },
+  { id: 'offers', title: 'Offers', icon: '🎁', color: '#EC4899', count: 'Special deals' },
 ];
 
 // Fallback services
@@ -62,46 +67,90 @@ interface DisplayService {
 
 const FinancialPage: React.FC = () => {
   const router = useRouter();
+  const { trackEvent, trackScreen } = useComprehensiveAnalytics();
+  const { isOffline } = useNetworkStatus();
+  const startTimeRef = useRef<number>(Date.now());
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [categories, setCategories] = useState<FinancialServiceCategory[]>([]);
   const [featuredServices, setFeaturedServices] = useState<DisplayService[]>(FALLBACK_SERVICES);
   const [stats, setStats] = useState({ billers: 100, maxCashback: 10 });
 
   const fetchFinancialData = useCallback(async () => {
-    try {
-      // Fetch services from API
-      const response = await apiClient.get('/services', {
-        category: 'financial',
-        limit: 6,
-        isActive: true,
-      });
+    if (isOffline) {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
 
-      if (response.success && response.data?.services && response.data.services.length > 0) {
-        const transformed = response.data.services.slice(0, 3).map((service: any) => ({
-          id: service._id || service.id,
-          name: service.name,
-          type: service.type || 'Service',
-          cashback: service.cashback?.maxPercentage ? `${service.cashback.maxPercentage}%` : '5%',
-          image: service.image || 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=400',
-        }));
-        setFeaturedServices(transformed);
-        setStats({
-          billers: response.data.pagination?.total || 100,
-          maxCashback: 10,
+    try {
+      // Fetch categories, featured services, and stats in parallel
+      const [categoriesRes, featuredRes, statsRes] = await Promise.all([
+        financialServicesApi.getCategories(),
+        financialServicesApi.getFeatured(6),
+        financialServicesApi.getStats(),
+      ]);
+
+      if (categoriesRes.success && categoriesRes.data) {
+        setCategories(categoriesRes.data);
+        trackEvent('financial_categories_loaded', {
+          count: categoriesRes.data.length,
         });
       }
-    } catch (error) {
+
+      if (featuredRes.success && featuredRes.data) {
+        const transformed = featuredRes.data.slice(0, 3).map((service: FinancialService) => ({
+          id: service._id || service.id || '',
+          name: service.name,
+          type: service.serviceCategory?.name || 'Service',
+          cashback: service.cashback?.percentage 
+            ? `${service.cashback.percentage}%` 
+            : service.serviceCategory?.cashbackPercentage 
+              ? `${service.serviceCategory.cashbackPercentage}%` 
+              : '5%',
+          image: service.images?.[0] || 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=400',
+        }));
+        setFeaturedServices(transformed);
+        trackEvent('financial_featured_loaded', {
+          count: transformed.length,
+        });
+      }
+
+      if (statsRes.success && statsRes.data) {
+        setStats({
+          billers: statsRes.data.totalBillers || 100,
+          maxCashback: statsRes.data.maxCashback || 10,
+        });
+      }
+    } catch (error: any) {
       console.error('Error fetching financial data:', error);
+      trackEvent('financial_data_error', {
+        error: error.message || 'Unknown error',
+      });
       // Keep fallback data
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [isOffline, trackEvent]);
 
   useEffect(() => {
     fetchFinancialData();
   }, [fetchFinancialData]);
+
+  // Track screen view
+  useEffect(() => {
+    trackScreen('financial_services_hub', {});
+
+    return () => {
+      const timeSpent = Date.now() - startTimeRef.current;
+      trackEvent('financial_hub_time_spent', {
+        time_spent_ms: timeSpent,
+        time_spent_seconds: Math.floor(timeSpent / 1000),
+      });
+    };
+  }, [trackScreen, trackEvent]);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -109,11 +158,18 @@ const FinancialPage: React.FC = () => {
   }, [fetchFinancialData]);
 
   const handleCategoryPress = (categoryId: string) => {
+    trackEvent('financial_category_clicked', {
+      category_id: categoryId,
+    });
     router.push(`/financial/${categoryId}` as any);
   };
 
   const handleServicePress = (serviceId: string) => {
-    router.push(`/bill-payment` as any);
+    trackEvent('financial_service_clicked', {
+      service_id: serviceId,
+      source: 'quick_pay',
+    });
+    router.push(`/financial/service/${serviceId}` as any);
   };
 
   if (isLoading) {
@@ -172,27 +228,32 @@ const FinancialPage: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Services</Text>
           <View style={styles.categoriesGrid}>
-            {FINANCIAL_CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                style={styles.categoryCard}
-                onPress={() => handleCategoryPress(cat.id)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.categoryIcon, { backgroundColor: `${cat.color}20` }]}>
-                  <Text style={styles.categoryEmoji}>{cat.icon}</Text>
-                </View>
-                <Text style={styles.categoryTitle}>{cat.title}</Text>
-                <Text style={styles.categoryCount}>{cat.count}</Text>
-              </TouchableOpacity>
-            ))}
+            {(categories.length > 0 ? categories : FALLBACK_CATEGORIES).map((cat) => {
+              const category = categories.find(c => c.slug === cat.id) || cat;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={styles.categoryCard}
+                  onPress={() => handleCategoryPress(cat.id)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.categoryIcon, { backgroundColor: `${category.color || cat.color}20` }]}>
+                    <Text style={styles.categoryEmoji}>{category.icon || cat.icon}</Text>
+                  </View>
+                  <Text style={styles.categoryTitle}>{category.name || cat.title}</Text>
+                  <Text style={styles.categoryCount}>
+                    {category.serviceCount ? `${category.serviceCount}+ services` : cat.count}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Quick Pay</Text>
-            <TouchableOpacity onPress={() => router.push('/bill-payment' as any)}>
+            <TouchableOpacity onPress={() => router.push('/financial/bills' as any)}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -439,4 +500,20 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FinancialPage;
+// Wrap with Error Boundary for production
+const FinancialPageWithErrorBoundary: React.FC = () => {
+  return (
+    <ErrorBoundary
+      fallback={
+        <View style={[styles.container, styles.loadingContainer]}>
+          <Ionicons name="alert-circle" size={48} color={COLORS.purple500} />
+          <Text style={styles.loadingText}>Something went wrong. Please try again.</Text>
+        </View>
+      }
+    >
+      <FinancialPage />
+    </ErrorBoundary>
+  );
+};
+
+export default FinancialPageWithErrorBoundary;

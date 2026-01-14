@@ -138,8 +138,8 @@ export default function ProfilePage() {
         router.push('/tracking');
         break;
       case 'bookings':
-        // Navigate to bookings page
-        router.push('/BookingsPage' as any);
+        // Navigate to service bookings page
+        router.push('/my-bookings' as any);
         break;
       case 'incomplete_transaction':
         // Navigate to incomplete transactions page

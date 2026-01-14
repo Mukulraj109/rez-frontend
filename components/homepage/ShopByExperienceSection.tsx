@@ -1,18 +1,21 @@
 /**
- * Shop by Experience Section - Converted from V2
+ * Shop by Experience Section - Production Ready
+ * Fetches experiences from backend API
  * Curated shopping experiences with 3x3 grid layout
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { experiencesApi, StoreExperience } from '@/services/experiencesApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 10;
@@ -28,95 +31,124 @@ const COLORS = {
   green200: '#BBF7D0',
 };
 
-interface Experience {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: string;
-  gradientColors: string[];
-  path: string;
-}
+// Fallback gradient colors for experience types
+const getGradientColors = (type: string): string[] => {
+  const gradients: Record<string, string[]> = {
+    'sample-trial': ['rgba(59, 130, 246, 0.2)', 'rgba(6, 182, 212, 0.1)'],
+    '60-min-delivery': ['rgba(249, 115, 22, 0.2)', 'rgba(239, 68, 68, 0.1)'],
+    'fastDelivery': ['rgba(249, 115, 22, 0.2)', 'rgba(239, 68, 68, 0.1)'],
+    'luxury': ['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.1)'],
+    'premium': ['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.1)'],
+    'organic': ['rgba(34, 197, 94, 0.2)', 'rgba(16, 185, 129, 0.1)'],
+    'men': ['rgba(107, 114, 128, 0.2)', 'rgba(100, 116, 139, 0.1)'],
+    'women': ['rgba(236, 72, 153, 0.2)', 'rgba(244, 63, 94, 0.1)'],
+    'children': ['rgba(234, 179, 8, 0.2)', 'rgba(245, 158, 11, 0.1)'],
+    'rental': ['rgba(99, 102, 241, 0.2)', 'rgba(59, 130, 246, 0.1)'],
+    'gifting': ['rgba(239, 68, 68, 0.2)', 'rgba(236, 72, 153, 0.1)'],
+    'budgetFriendly': ['rgba(249, 115, 22, 0.2)', 'rgba(239, 68, 68, 0.1)'],
+    'oneRupee': ['rgba(34, 197, 94, 0.2)', 'rgba(16, 185, 129, 0.1)'],
+  };
+  return gradients[type] || ['rgba(59, 130, 246, 0.2)', 'rgba(6, 182, 212, 0.1)'];
+};
 
-const experiences: Experience[] = [
+// Fallback experiences (used if API fails)
+const FALLBACK_EXPERIENCES = [
   {
-    id: 'sample-trial',
+    slug: 'sample-trial',
     title: 'Sample/Trial Store',
     subtitle: 'Try before you buy',
     icon: '🧪',
     gradientColors: ['rgba(59, 130, 246, 0.2)', 'rgba(6, 182, 212, 0.1)'],
-    path: '/experience/sample-trial',
   },
   {
-    id: '60-min-delivery',
+    slug: '60-min-delivery',
     title: '60 Min Delivery',
     subtitle: 'Ultra-fast delivery',
     icon: '⚡',
     gradientColors: ['rgba(249, 115, 22, 0.2)', 'rgba(239, 68, 68, 0.1)'],
-    path: '/experience/60-min-delivery',
   },
   {
-    id: 'luxury',
+    slug: 'luxury',
     title: 'Luxury Store',
     subtitle: 'Premium brands',
     icon: '💎',
     gradientColors: ['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.1)'],
-    path: '/experience/luxury',
   },
   {
-    id: 'organic',
+    slug: 'organic',
     title: 'Organic Store',
     subtitle: '100% natural',
     icon: '🌿',
     gradientColors: ['rgba(34, 197, 94, 0.2)', 'rgba(16, 185, 129, 0.1)'],
-    path: '/experience/organic',
   },
   {
-    id: 'men',
+    slug: 'men',
     title: 'Men Store',
     subtitle: 'For modern men',
     icon: '👔',
     gradientColors: ['rgba(107, 114, 128, 0.2)', 'rgba(100, 116, 139, 0.1)'],
-    path: '/experience/men',
   },
   {
-    id: 'women',
+    slug: 'women',
     title: 'Women Store',
     subtitle: 'Curated for her',
     icon: '👗',
     gradientColors: ['rgba(236, 72, 153, 0.2)', 'rgba(244, 63, 94, 0.1)'],
-    path: '/experience/women',
   },
   {
-    id: 'children',
+    slug: 'children',
     title: 'Children Store',
     subtitle: 'Kids essentials',
     icon: '🧸',
     gradientColors: ['rgba(234, 179, 8, 0.2)', 'rgba(245, 158, 11, 0.1)'],
-    path: '/experience/children',
   },
   {
-    id: 'rental',
+    slug: 'rental',
     title: 'Rental Store',
     subtitle: 'Rent not buy',
     icon: '🔄',
     gradientColors: ['rgba(99, 102, 241, 0.2)', 'rgba(59, 130, 246, 0.1)'],
-    path: '/experience/rental',
   },
   {
-    id: 'gifting',
+    slug: 'gifting',
     title: 'Gifting Store',
     subtitle: 'Perfect presents',
     icon: '🎁',
     gradientColors: ['rgba(239, 68, 68, 0.2)', 'rgba(236, 72, 153, 0.1)'],
-    path: '/experience/gifting',
   },
 ];
 
 const ShopByExperienceSection: React.FC = () => {
   const router = useRouter();
+  const [experiences, setExperiences] = useState<StoreExperience[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handlePress = (path: string) => {
-    router.push(path as any);
+  useEffect(() => {
+    const fetchExperiences = async () => {
+      try {
+        setIsLoading(true);
+        const response = await experiencesApi.getExperiences({ limit: 20 });
+
+        if (response.success && response.data && response.data.experiences.length > 0) {
+          setExperiences(response.data.experiences);
+        } else {
+          // Use fallback data if API fails
+          setExperiences(FALLBACK_EXPERIENCES as any);
+        }
+      } catch (error) {
+        console.error('❌ [ShopByExperienceSection] Error fetching experiences:', error);
+        // Use fallback data on error
+        setExperiences(FALLBACK_EXPERIENCES as any);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchExperiences();
+  }, []);
+
+  const handlePress = (slug: string) => {
+    router.push(`/experience/${slug}` as any);
   };
 
   return (
@@ -169,6 +201,11 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     marginBottom: 24,
+  },
+  loadingContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     marginBottom: 16,
