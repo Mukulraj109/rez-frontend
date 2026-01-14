@@ -6,6 +6,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 
 interface TrainDetails {
   id: string;
@@ -41,6 +42,8 @@ interface BookingData {
     email: string;
     phone: string;
   };
+  bookingId?: string;
+  bookingNumber?: string;
 }
 
 interface TrainBookingConfirmationProps {
@@ -54,7 +57,8 @@ const TrainBookingConfirmation: React.FC<TrainBookingConfirmationProps> = ({
   bookingData,
   onClose,
 }) => {
-  const bookingNumber = `TRN-${Date.now().toString().slice(-8)}`;
+  const router = useRouter();
+  const bookingNumber = bookingData.bookingNumber || 'N/A';
 
   return (
     <View style={styles.container}>
@@ -230,6 +234,15 @@ const TrainBookingConfirmation: React.FC<TrainBookingConfirmationProps> = ({
 
       {/* Action Buttons */}
       <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.viewBookingsButton}
+          onPress={() => {
+            onClose();
+            router.push('/my-bookings' as any);
+          }}
+        >
+          <Text style={styles.viewBookingsButtonText}>View Bookings</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={onClose}

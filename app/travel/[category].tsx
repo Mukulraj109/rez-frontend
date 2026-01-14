@@ -108,6 +108,10 @@ const TravelCategoryPage: React.FC = () => {
         router.push(`/train/${serviceId}` as any);
       } else if (category === 'cab') {
         router.push(`/cab/${serviceId}` as any);
+      } else if (category === 'bus') {
+        router.push(`/bus/${serviceId}` as any);
+      } else if (category === 'packages') {
+        router.push(`/package/${serviceId}` as any);
       } else {
         router.push(`/product/${serviceId}` as any);
       }
@@ -126,6 +130,10 @@ const TravelCategoryPage: React.FC = () => {
         router.push(`/train/${serviceId}` as any);
       } else if (category === 'cab') {
         router.push(`/cab/${serviceId}` as any);
+      } else if (category === 'bus') {
+        router.push(`/bus/${serviceId}` as any);
+      } else if (category === 'packages') {
+        router.push(`/package/${serviceId}` as any);
       } else {
         const storeId = service.store?._id;
         if (storeId) {

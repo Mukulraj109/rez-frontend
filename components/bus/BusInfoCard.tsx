@@ -1,5 +1,5 @@
 /**
- * Cab Info Card - Displays pickup/dropoff locations and key cab information
+ * Bus Info Card - Displays route, times, and key bus information
  */
 
 import React from 'react';
@@ -7,30 +7,31 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-interface CabDetails {
-  name: string;
-  route?: {
+interface BusDetails {
+  route: {
     from: string;
     to: string;
+    fromTerminal?: string;
+    toTerminal?: string;
   };
-  pickupTime?: string;
-  dropoffTime?: string;
+  departureTime?: string;
+  arrivalTime?: string;
   duration: number;
-  distance?: number;
-  cabType?: string;
+  busType?: string;
+  busNumber?: string;
   rating: number;
 }
 
-interface CabInfoCardProps {
-  cab: CabDetails;
+interface BusInfoCardProps {
+  bus: BusDetails;
 }
 
-const CabInfoCard: React.FC<CabInfoCardProps> = ({ cab }) => {
+const BusInfoCard: React.FC<BusInfoCardProps> = ({ bus }) => {
   const formatDuration = (minutes: number) => {
     // Validate input to prevent NaN
     const validMinutes = (typeof minutes === 'number' && !isNaN(minutes) && minutes > 0) 
       ? minutes 
-      : 60; // Default to 60 minutes if invalid
+      : 480; // Default to 8 hours if invalid
     const hours = Math.floor(validMinutes / 60);
     const mins = validMinutes % 60;
     return `${hours}h ${mins}m`;
@@ -39,7 +40,7 @@ const CabInfoCard: React.FC<CabInfoCardProps> = ({ cab }) => {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#EAB308', '#CA8A04']}
+        colors={['#F97316', '#EA580C']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
@@ -47,53 +48,54 @@ const CabInfoCard: React.FC<CabInfoCardProps> = ({ cab }) => {
         {/* Route */}
         <View style={styles.routeContainer}>
           <View style={styles.routeItem}>
-            <View style={styles.locationCode}>
-              <Ionicons name="location" size={20} color="#FFFFFF" />
-            </View>
-            <View style={styles.locationInfo}>
-              <Text style={styles.locationLabel}>Pickup</Text>
-              <Text style={styles.locationCity} numberOfLines={1}>
-                {cab.route?.from || 'Pickup Location'}
+            <View style={styles.terminalCode}>
+              <Text style={styles.terminalCodeText}>
+                {bus.route.from.substring(0, 3).toUpperCase()}
               </Text>
-              <Text style={styles.time}>{cab.pickupTime || '09:00'}</Text>
+            </View>
+            <View style={styles.terminalInfo}>
+              <Text style={styles.terminalCity}>{bus.route.from}</Text>
+              <Text style={styles.time}>{bus.departureTime || '08:00'}</Text>
             </View>
           </View>
 
-          <View style={styles.cabPath}>
-            <View style={styles.cabPathLine} />
-            <Ionicons name="car" size={24} color="#FFFFFF" />
-            <Text style={styles.duration}>{formatDuration(cab.duration)}</Text>
-            {cab.distance && typeof cab.distance === 'number' && !isNaN(cab.distance) && cab.distance > 0 && (
-              <Text style={styles.distance}>{Math.round(cab.distance)} km</Text>
-            )}
+          <View style={styles.busPath}>
+            <View style={styles.busPathLine} />
+            <Ionicons name="bus" size={24} color="#FFFFFF" />
+            <Text style={styles.duration}>{formatDuration(bus.duration)}</Text>
           </View>
 
           <View style={styles.routeItem}>
-            <View style={styles.locationCode}>
-              <Ionicons name="flag" size={20} color="#FFFFFF" />
-            </View>
-            <View style={styles.locationInfo}>
-              <Text style={styles.locationLabel}>Dropoff</Text>
-              <Text style={styles.locationCity} numberOfLines={1}>
-                {cab.route?.to || 'Dropoff Location'}
+            <View style={styles.terminalCode}>
+              <Text style={styles.terminalCodeText}>
+                {bus.route.to.substring(0, 3).toUpperCase()}
               </Text>
-              <Text style={styles.time}>{cab.dropoffTime || '11:00'}</Text>
+            </View>
+            <View style={styles.terminalInfo}>
+              <Text style={styles.terminalCity}>{bus.route.to}</Text>
+              <Text style={styles.time}>{bus.arrivalTime || '16:00'}</Text>
             </View>
           </View>
         </View>
 
-        {/* Cab Details */}
+        {/* Bus Details */}
         <View style={styles.detailsRow}>
-          {cab.cabType && (
+          {bus.busType && (
             <View style={styles.detailItem}>
-              <Ionicons name="car-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.detailText}>{cab.cabType}</Text>
+              <Ionicons name="bus-outline" size={16} color="#FFFFFF" />
+              <Text style={styles.detailText}>{bus.busType}</Text>
             </View>
           )}
-          {cab.rating > 0 && (
+          {bus.busNumber && (
+            <View style={styles.detailItem}>
+              <Ionicons name="ticket-outline" size={16} color="#FFFFFF" />
+              <Text style={styles.detailText}>{bus.busNumber}</Text>
+            </View>
+          )}
+          {bus.rating > 0 && (
             <View style={styles.detailItem}>
               <Ionicons name="star" size={16} color="#FFD700" />
-              <Text style={styles.detailText}>{cab.rating.toFixed(1)}</Text>
+              <Text style={styles.detailText}>{bus.rating.toFixed(1)}</Text>
             </View>
           )}
         </View>
@@ -124,12 +126,12 @@ const styles = StyleSheet.create({
   },
   routeItem: {
     flex: 1,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
-  locationCode: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+  terminalCode: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -137,36 +139,34 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  locationInfo: {
-    alignItems: 'flex-start',
+  terminalCodeText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 1,
   },
-  locationLabel: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+  terminalInfo: {
+    alignItems: 'center',
   },
-  locationCity: {
-    fontSize: 14,
+  terminalCity: {
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 6,
     letterSpacing: 0.3,
   },
   time: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-  cabPath: {
+  busPath: {
     alignItems: 'center',
     flex: 1,
     paddingHorizontal: 16,
   },
-  cabPathLine: {
+  busPathLine: {
     width: '100%',
     height: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
@@ -182,12 +182,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
-  },
-  distance: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 4,
-    fontWeight: '500',
   },
   detailsRow: {
     flexDirection: 'row',
@@ -209,4 +203,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CabInfoCard;
+export default BusInfoCard;

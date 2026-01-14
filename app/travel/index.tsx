@@ -39,6 +39,7 @@ interface DisplayDeal {
   id: string;
   name: string;
   type: string;
+  categorySlug?: string;
   price: string;
   cashback: string;
   image: string;
@@ -50,7 +51,7 @@ const TravelPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [featuredDeals, setFeaturedDeals] = useState<DisplayDeal[]>([]);
   const [categories, setCategories] = useState<TravelServiceCategory[]>([]);
-  const [stats, setStats] = useState({ hotels: 50000, maxCashback: 25 });
+  const [stats, setStats] = useState({ hotels: 0, maxCashback: 0, coinMultiplier: 2 });
 
   const fetchTravelData = useCallback(async () => {
     try {
@@ -63,13 +64,13 @@ const TravelPage: React.FC = () => {
       // Fetch featured services
       const featuredResponse = await travelApi.getFeatured(6);
       if (featuredResponse.success && featuredResponse.data) {
-        const transformed = featuredResponse.data.slice(0, 3).map((service: TravelService) => ({
+        const transformed = featuredResponse.data.slice(0, 6).map((service: TravelService) => ({
           id: service._id || service.id || '',
           name: service.name,
           type: service.serviceCategory?.name || 'Travel',
-          price: service.pricing?.selling ? `₹${service.pricing.selling}` : '₹2,499',
+          price: service.pricing?.selling ? `₹${service.pricing.selling.toLocaleString('en-IN')}` : 'Price on request',
           cashback: service.cashback?.percentage ? `${service.cashback.percentage}%` : 
-                   service.serviceCategory?.cashbackPercentage ? `${service.serviceCategory.cashbackPercentage}%` : '15%',
+                   service.serviceCategory?.cashbackPercentage ? `${service.serviceCategory.cashbackPercentage}%` : '0%',
           image: service.images?.[0] || 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400',
         }));
         setFeaturedDeals(transformed);
@@ -79,8 +80,9 @@ const TravelPage: React.FC = () => {
       const statsResponse = await travelApi.getStats();
       if (statsResponse.success && statsResponse.data) {
         setStats({
-          hotels: statsResponse.data.hotels || 50000,
-          maxCashback: statsResponse.data.maxCashback || 25,
+          hotels: statsResponse.data.hotels || 0,
+          maxCashback: statsResponse.data.maxCashback || 0,
+          coinMultiplier: statsResponse.data.coinMultiplier || 2,
         });
       }
     } catch (error) {
@@ -105,7 +107,30 @@ const TravelPage: React.FC = () => {
   };
 
   const handleDealPress = (dealId: string) => {
-    router.push(`/travel/${dealId}` as any);
+    // Find the deal to get its category
+    const deal = featuredDeals.find(d => d.id === dealId);
+    if (!deal) {
+      router.push(`/product/${dealId}` as any);
+      return;
+    }
+
+    // Route based on category slug (most reliable)
+    const categorySlug = deal.categorySlug || deal.type?.toLowerCase() || 'packages';
+    if (categorySlug === 'flights') {
+      router.push(`/flight/${dealId}` as any);
+    } else if (categorySlug === 'hotels') {
+      router.push(`/hotel/${dealId}` as any);
+    } else if (categorySlug === 'trains') {
+      router.push(`/train/${dealId}` as any);
+    } else if (categorySlug === 'bus') {
+      router.push(`/bus/${dealId}` as any);
+    } else if (categorySlug === 'cab') {
+      router.push(`/cab/${dealId}` as any);
+    } else if (categorySlug === 'packages') {
+      router.push(`/package/${dealId}` as any);
+    } else {
+      router.push(`/product/${dealId}` as any);
+    }
   };
 
   if (isLoading) {
@@ -139,17 +164,21 @@ const TravelPage: React.FC = () => {
         </View>
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{Math.floor(stats.hotels / 1000)}k+</Text>
+            <Text style={styles.statValue}>
+              {stats.hotels >= 1000 ? `${Math.floor(stats.hotels / 1000)}k+` : stats.hotels > 0 ? `${stats.hotels}+` : '0'}
+            </Text>
             <Text style={styles.statLabel}>Hotels</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.maxCashback}%</Text>
+            <Text style={styles.statValue}>
+              {stats.maxCashback > 0 ? `${stats.maxCashback}%` : '0%'}
+            </Text>
             <Text style={styles.statLabel}>Max Cashback</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>2X</Text>
+            <Text style={styles.statValue}>{stats.coinMultiplier}X</Text>
             <Text style={styles.statLabel}>Coins</Text>
           </View>
         </View>
@@ -178,27 +207,15 @@ const TravelPage: React.FC = () => {
                 <Text style={styles.categoryCount}>{cat.count}</Text>
               </TouchableOpacity>
             )) : (
-              // Fallback categories while loading
-              [
-                { id: 'flights', title: 'Flights', icon: '✈️', color: '#3B82F6', count: 'All airlines' },
-                { id: 'hotels', title: 'Hotels', icon: '🏨', color: '#EC4899', count: '50k+ hotels' },
-                { id: 'trains', title: 'Trains', icon: '🚂', color: '#22C55E', count: 'IRCTC' },
-                { id: 'bus', title: 'Bus', icon: '🚌', color: '#F97316', count: '2000+ operators' },
-                { id: 'cab', title: 'Cab', icon: '🚕', color: '#EAB308', count: 'Intercity' },
-                { id: 'packages', title: 'Packages', icon: '🎒', color: '#8B5CF6', count: '500+ tours' },
-              ].map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={styles.categoryCard}
-                  onPress={() => handleCategoryPress(cat.id)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.categoryIcon, { backgroundColor: `${cat.color}20` }]}>
-                    <Text style={styles.categoryEmoji}>{cat.icon}</Text>
+              // Show loading state for categories
+              Array.from({ length: 6 }).map((_, index) => (
+                <View key={index} style={[styles.categoryCard, { opacity: 0.5 }]}>
+                  <View style={[styles.categoryIcon, { backgroundColor: '#E5E7EB' }]}>
+                    <ActivityIndicator size="small" color={COLORS.cyan500} />
                   </View>
-                  <Text style={styles.categoryTitle}>{cat.title}</Text>
-                  <Text style={styles.categoryCount}>{cat.count}</Text>
-                </TouchableOpacity>
+                  <Text style={styles.categoryTitle}>Loading...</Text>
+                  <Text style={styles.categoryCount}>...</Text>
+                </View>
               ))
             )}
           </View>

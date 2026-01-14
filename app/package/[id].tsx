@@ -1,5 +1,5 @@
 /**
- * Cab Details Page - Dedicated page for cab bookings
+ * Package Details Page - Dedicated page for package bookings
  * Production-ready with complete booking flow
  */
 
@@ -25,33 +25,28 @@ import productsApi from '@/services/productsApi';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useProductReviews } from '@/hooks/useProductReviews';
 import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
-import CabBookingFlow from '../../components/cab/CabBookingFlow';
-import CabBookingConfirmation from '../../components/cab/CabBookingConfirmation';
-import RelatedCabsSection from '../../components/cab/RelatedCabsSection';
-import CabInfoCard from '../../components/cab/CabInfoCard';
-import CabAmenities from '../../components/cab/CabAmenities';
-import CabCancellationPolicy from '../../components/cab/CabCancellationPolicy';
+import PackageBookingFlow from '../../components/package/PackageBookingFlow';
+import PackageBookingConfirmation from '../../components/package/PackageBookingConfirmation';
+import RelatedPackagesSection from '../../components/package/RelatedPackagesSection';
+import PackageInfoCard from '../../components/package/PackageInfoCard';
+import PackageAmenities from '../../components/package/PackageAmenities';
+import PackageCancellationPolicy from '../../components/package/PackageCancellationPolicy';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-interface CabDetails {
+interface PackageDetails {
   id: string;
   name: string;
-  route?: {
-    from: string;
-    to: string;
+  destination?: string;
+  duration?: {
+    nights: number;
+    days: number;
   };
-  cabType?: string;
   price: number;
-  pricePerKm?: number;
   originalPrice?: number;
   discount?: number;
   images: string[];
   description: string;
-  duration: number; // in minutes
-  distance?: number; // in km
-  pickupTime?: string;
-  dropoffTime?: string;
   cashback: {
     percentage: number;
     amount: number;
@@ -64,55 +59,55 @@ interface CabDetails {
     logo?: string;
   };
   amenities: string[];
+  inclusions?: string[];
   cancellationPolicy: {
     freeCancellation: boolean;
-    cancellationDeadline: string;
+    cancellationDeadline: string; // days before travel
     refundPercentage: number;
   };
-  vehicleOptions: {
-    sedan: { price: number; available: boolean };
-    suv: { price: number; available: boolean };
-    premium: { price: number; available: boolean };
+  accommodationOptions: {
+    standard: { price: number; available: boolean; description?: string };
+    deluxe: { price: number; available: boolean; description?: string };
+    luxury: { price: number; available: boolean; description?: string };
   };
 }
 
 interface BookingData {
-  pickupDate: Date;
-  pickupTime: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  tripType: 'one-way' | 'round-trip';
-  passengers: {
+  travelDate: Date;
+  returnDate: Date;
+  travelers: {
     adults: number;
     children: number;
   };
-  vehicleType: 'sedan' | 'suv' | 'premium';
-  selectedExtras: {
-    driver?: boolean;
-    tollCharges?: boolean;
-    parking?: boolean;
-    waitingTime?: boolean;
+  accommodationType: 'standard' | 'deluxe' | 'luxury';
+  mealPlan: 'none' | 'breakfast' | 'halfBoard' | 'fullBoard';
+  selectedAddons: {
+    sightseeing?: boolean;
+    transfers?: boolean;
+    travelInsurance?: boolean;
+    guide?: boolean;
   };
   contactInfo: {
     name: string;
     email: string;
     phone: string;
   };
-  passengerDetails: Array<{
+  travelerDetails: Array<{
     firstName: string;
     lastName: string;
     age: number;
+    gender: 'male' | 'female' | 'other';
   }>;
   bookingId?: string;
   bookingNumber?: string;
 }
 
-export default function CabDetailsPage() {
+export default function PackageDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   
-  const [cab, setCab] = useState<CabDetails | null>(null);
+  const [packageData, setPackageData] = useState<PackageDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showBookingFlow, setShowBookingFlow] = useState(false);
@@ -137,11 +132,11 @@ export default function CabDetailsPage() {
 
   useEffect(() => {
     if (id) {
-      loadCabDetails();
+      loadPackageDetails();
     }
   }, [id]);
 
-  const loadCabDetails = async () => {
+  const loadPackageDetails = async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -149,64 +144,62 @@ export default function CabDetailsPage() {
       const response = await productsApi.getProductById(id as string);
 
       if (!response.success || !response.data) {
-        setError('Cab not found');
+        setError('Package not found');
         return;
       }
 
       const productData = response.data;
 
-      // Check if this is a cab service
-      const isCab = productData.serviceCategory?.slug === 'cab' || 
-                   productData.category?.slug === 'cab' ||
-                   productData.name?.toLowerCase().includes('cab') ||
-                   productData.name?.toLowerCase().includes('taxi');
+      // Check if this is a package service
+      const isPackage = productData.serviceCategory?.slug === 'packages' || 
+                       productData.category?.slug === 'packages' ||
+                       productData.name?.toLowerCase().includes('package') ||
+                       productData.name?.toLowerCase().includes('tour');
 
-      if (!isCab) {
+      if (!isPackage) {
         router.replace(`/product/${id}`);
         return;
       }
 
-      // Extract route from name if available
-      let from = 'Pickup Location';
-      let to = 'Dropoff Location';
-      const routePatterns = [
-        /(.+?)\s+to\s+(.+?)\s+cab/i,
-        /(.+?)\s*-\s*(.+?)\s+cab/i,
-        /(.+?)\s+→\s+(.+?)\s+cab/i,
+      // Extract destination and duration from name (e.g., "Goa 3N/4D Package")
+      let destination = 'Travel Destination';
+      let nights = 3;
+      let days = 4;
+      
+      const namePatterns = [
+        /(.+?)\s+(\d+)N\/(\d+)D/i,
+        /(.+?)\s+(\d+)\s+nights/i,
+        /(.+?)\s+package/i,
       ];
       
-      for (const pattern of routePatterns) {
+      for (const pattern of namePatterns) {
         const match = productData.name.match(pattern);
         if (match) {
-          from = match[1].trim();
-          to = match[2] ? match[2].trim() : 'Dropoff Location';
+          destination = match[1].trim();
+          if (match[2]) nights = parseInt(match[2]) || 3;
+          if (match[3]) days = parseInt(match[3]) || nights + 1;
           break;
         }
       }
 
-      // Calculate times based on duration - ensure valid number
-      const rawDuration = productData.serviceDetails?.duration;
-      const duration = (typeof rawDuration === 'number' && !isNaN(rawDuration) && rawDuration > 0) 
-        ? rawDuration 
-        : 60; // Default to 60 minutes if invalid
-      
-      const durationHours = Math.floor(duration / 60);
-      const durationMins = duration % 60;
-      const basePickupHour = 9;
-      const basePickupMin = 0;
-      const dropoffHour = (basePickupHour + durationHours + Math.floor((basePickupMin + durationMins) / 60)) % 24;
-      const dropoffMin = (basePickupMin + durationMins) % 60;
-      
-      const formatTime = (hours: number, mins: number) => {
-        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-      };
+      // If no match, try to extract destination from name
+      if (destination === 'Travel Destination') {
+        const destinations = ['Goa', 'Kerala', 'Rajasthan', 'Himachal', 'Manali', 'Shimla', 'Darjeeling'];
+        for (const dest of destinations) {
+          if (productData.name.toLowerCase().includes(dest.toLowerCase())) {
+            destination = dest;
+            break;
+          }
+        }
+      }
 
       // Get cashback
       const cashbackPercentage = (() => {
         if (productData.cashback?.percentage) return productData.cashback.percentage;
         if (productData.serviceCategory?.cashbackPercentage) return productData.serviceCategory.cashbackPercentage;
+        if (productData.category?.maxCashback) return productData.category.maxCashback;
         if (typeof productData.cashback === 'number') return productData.cashback;
-        return 20;
+        return 22;
       })();
 
       // Calculate price
@@ -216,54 +209,21 @@ export default function CabDetailsPage() {
         ? Math.round(((originalPrice - basePrice) / originalPrice) * 100)
         : productData.pricing?.discount || 0;
 
-      // Extract distance if price is per km - validate to prevent NaN
-      let pricePerKm: number | undefined = undefined;
-      let estimatedDistance: number | undefined = undefined;
-      
-      // Try to get pricePerKm from various sources
-      if (productData.price && typeof productData.price === 'number' && productData.price > 0) {
-        pricePerKm = productData.price;
-      } else if (basePrice > 0 && basePrice < 100) {
-        pricePerKm = basePrice;
-      }
-      
-      // Calculate distance only if we have valid values
-      if (pricePerKm && basePrice > 0 && pricePerKm > 0) {
-        const calculatedDistance = basePrice / pricePerKm;
-        if (!isNaN(calculatedDistance) && isFinite(calculatedDistance) && calculatedDistance > 0) {
-          estimatedDistance = Math.round(calculatedDistance);
-        }
-      }
-      
-      // If still no distance, try to get from serviceDetails
-      if (!estimatedDistance && productData.serviceDetails?.distance) {
-        const serviceDistance = productData.serviceDetails.distance;
-        if (typeof serviceDistance === 'number' && !isNaN(serviceDistance) && serviceDistance > 0) {
-          estimatedDistance = Math.round(serviceDistance);
-        }
-      }
-
-      // Transform to CabDetails
-      const cabDetails: CabDetails = {
+      // Transform to PackageDetails
+      const packageDetails: PackageDetails = {
         id: productData.id || productData._id,
         name: productData.name,
-        route: {
-          from,
-          to,
+        destination,
+        duration: {
+          nights,
+          days,
         },
-        cabType: (() => {
-          if (productData.name.toLowerCase().includes('outstation')) return 'Outstation';
-          if (productData.name.toLowerCase().includes('airport')) return 'Airport Transfer';
-          if (productData.name.toLowerCase().includes('city')) return 'City Ride';
-          return 'Intercity';
-        })(),
         price: basePrice,
-        pricePerKm: pricePerKm,
         originalPrice: originalPrice && originalPrice > basePrice ? originalPrice : undefined,
         discount: calculatedDiscount > 0 ? calculatedDiscount : undefined,
         images: (() => {
           if (!productData.images || !Array.isArray(productData.images)) {
-            return ['https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&h=600&fit=crop'];
+            return ['https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&h=600&fit=crop'];
           }
           
           const processedImages = productData.images
@@ -274,24 +234,9 @@ export default function CabDetailsPage() {
             })
             .filter((url: string | null): url is string => Boolean(url && typeof url === 'string' && url.length > 0));
           
-          // Validate images are cab-related
-          const validatedImages = processedImages.map(url => {
-            // Replace non-cab images
-            if ((url.toLowerCase().includes('bus') || url.toLowerCase().includes('train') || 
-                 url.toLowerCase().includes('airplane') || url.toLowerCase().includes('hotel')) &&
-                !url.toLowerCase().includes('cab') && !url.toLowerCase().includes('taxi') && !url.toLowerCase().includes('car')) {
-              return 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&h=600&fit=crop';
-            }
-            return url;
-          });
-          
-          return validatedImages.length > 0 ? validatedImages : ['https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&h=600&fit=crop'];
+          return processedImages.length > 0 ? processedImages : ['https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&h=600&fit=crop'];
         })(),
-        description: productData.description || productData.shortDescription || 'Comfortable cab service with professional drivers.',
-        duration: duration, // Use validated duration
-        distance: estimatedDistance, // Will be undefined if not calculated, which is fine
-        pickupTime: formatTime(basePickupHour, basePickupMin),
-        dropoffTime: formatTime(dropoffHour, dropoffMin),
+        description: productData.description || productData.shortDescription || 'Complete travel package with hotel, meals, and sightseeing.',
         cashback: {
           percentage: cashbackPercentage,
           amount: Math.round(basePrice * cashbackPercentage / 100),
@@ -300,14 +245,14 @@ export default function CabDetailsPage() {
         reviewCount: reviewSummary?.totalReviews || productData.ratings?.count || 0,
         store: {
           id: productData.store?.id || productData.store?._id,
-          name: productData.store?.name || 'CityRide Cabs',
+          name: productData.store?.name || 'Wanderlust Tours',
           logo: productData.store?.logo,
         },
         amenities: (() => {
           const tagAmenities: Record<string, string[]> = {
-            'premium': ['AC', 'GPS', 'Music', 'Wi-Fi', 'Charging Point', 'Professional Driver'],
-            'comfort': ['AC', 'GPS', 'Music', 'Professional Driver'],
-            'budget': ['AC', 'GPS', 'Professional Driver'],
+            'luxury': ['Hotel', 'Meals', 'Transport', 'Sightseeing', 'Guide', 'Wi-Fi', 'AC'],
+            'premium': ['Hotel', 'Meals', 'Transport', 'Sightseeing', 'Wi-Fi'],
+            'budget': ['Hotel', 'Breakfast', 'Transport', 'Sightseeing'],
           };
           
           const tags = productData.tags || [];
@@ -316,42 +261,46 @@ export default function CabDetailsPage() {
               return amenities;
             }
           }
-          return ['AC', 'GPS', 'Music', 'Professional Driver'];
+          
+          return ['Hotel', 'Meals', 'Transport', 'Sightseeing', 'Wi-Fi'];
         })(),
+        inclusions: ['Hotel Accommodation', 'Meals', 'Transport', 'Sightseeing', 'Entry Tickets'],
         cancellationPolicy: {
           freeCancellation: productData.specifications?.some((s: any) => 
             s.key?.toLowerCase().includes('cancellation') && s.value?.toLowerCase().includes('free')
           ) || true,
-          cancellationDeadline: '2',
-          refundPercentage: 90,
+          cancellationDeadline: '7',
+          refundPercentage: 80,
         },
-        vehicleOptions: {
-          sedan: { 
+        accommodationOptions: {
+          standard: { 
             price: basePrice, 
-            available: true 
+            available: true,
+            description: 'Comfortable standard accommodation',
           },
-          suv: { 
-            price: Math.round(basePrice * 1.5), 
-            available: true 
+          deluxe: { 
+            price: Math.round(basePrice * 1.3), 
+            available: true,
+            description: 'Premium deluxe accommodation',
           },
-          premium: { 
-            price: Math.round(basePrice * 2), 
-            available: true 
+          luxury: { 
+            price: Math.round(basePrice * 1.6), 
+            available: true,
+            description: 'Luxury accommodation with premium amenities',
           },
         },
       };
 
-      setCab(cabDetails);
+      setPackageData(packageDetails);
     } catch (error) {
-      console.error('Error loading cab details:', error);
-      setError('Failed to load cab details. Please try again.');
+      console.error('Error loading package details:', error);
+      setError('Failed to load package details. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleBookNow = () => {
-    // Animate button press
     Animated.sequence([
       Animated.timing(buttonScale, {
         toValue: 0.95,
@@ -379,13 +328,13 @@ export default function CabDetailsPage() {
   };
 
   const handleFavorite = async () => {
-    if (!cab) return;
+    if (!packageData) return;
     
     try {
-      if (isInWishlist(cab.id)) {
-        await removeFromWishlist(cab.id);
+      if (isInWishlist(packageData.id)) {
+        await removeFromWishlist(packageData.id);
       } else {
-        await addToWishlist(cab.id);
+        await addToWishlist(packageData.id);
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
@@ -397,8 +346,8 @@ export default function CabDetailsPage() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color="#EAB308" />
-            <Text style={styles.loadingText}>Loading cab details...</Text>
+            <ActivityIndicator size="large" color="#8B5CF6" />
+            <Text style={styles.loadingText}>Loading package details...</Text>
             <Text style={styles.loadingSubtext}>Please wait</Text>
           </View>
         </View>
@@ -406,13 +355,13 @@ export default function CabDetailsPage() {
     );
   }
 
-  if (error || !cab) {
+  if (error || !packageData) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-          <Text style={styles.errorText}>{error || 'Cab not found'}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadCabDetails}>
+          <Text style={styles.errorText}>{error || 'Package not found'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadPackageDetails}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -430,7 +379,7 @@ export default function CabDetailsPage() {
         {/* Header with Image */}
         <View style={styles.headerContainer}>
           {(() => {
-            const imageUrl = cab.images?.[selectedImageIndex] || cab.images?.[0];
+            const imageUrl = packageData.images?.[selectedImageIndex] || packageData.images?.[0];
             const hasValidImage = imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0;
             
             if (hasValidImage && !imageError) {
@@ -447,8 +396,8 @@ export default function CabDetailsPage() {
             
             return (
               <View style={[styles.headerImage, styles.placeholderImage]}>
-                <Ionicons name="car" size={64} color="#9CA3AF" />
-                <Text style={styles.placeholderText}>Cab Image</Text>
+                <Ionicons name="bag" size={64} color="#9CA3AF" />
+                <Text style={styles.placeholderText}>Package Image</Text>
               </View>
             );
           })()}
@@ -465,9 +414,9 @@ export default function CabDetailsPage() {
             <View style={styles.headerRightActions}>
               <TouchableOpacity style={styles.actionButton} onPress={handleFavorite}>
                 <Ionicons
-                  name={isInWishlist(cab.id) ? 'heart' : 'heart-outline'}
+                  name={isInWishlist(packageData.id) ? 'heart' : 'heart-outline'}
                   size={24}
-                  color={isInWishlist(cab.id) ? '#EF4444' : '#FFFFFF'}
+                  color={isInWishlist(packageData.id) ? '#EF4444' : '#FFFFFF'}
                 />
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionButton}>
@@ -476,10 +425,9 @@ export default function CabDetailsPage() {
             </View>
           </View>
 
-          {/* Image Indicators */}
-          {cab.images.length > 1 && (
+          {packageData.images.length > 1 && (
             <View style={styles.imageIndicators}>
-              {cab.images.map((_, index) => (
+              {packageData.images.map((_, index) => (
                 <View
                   key={index}
                   style={[
@@ -492,23 +440,23 @@ export default function CabDetailsPage() {
           )}
         </View>
 
-        {/* Cab Info Card */}
+        {/* Package Info Card */}
         <View style={styles.infoCardWrapper}>
-          <CabInfoCard cab={cab} />
+          <PackageInfoCard package={packageData} />
         </View>
 
         {/* Store/Provider Info */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="business" size={24} color="#EAB308" />
-            <Text style={styles.sectionTitle}>Service Provider</Text>
+            <Ionicons name="business" size={24} color="#8B5CF6" />
+            <Text style={styles.sectionTitle}>Tour Operator</Text>
           </View>
           <View style={styles.storeCard}>
-            {cab.store.logo && (
-              <Image source={{ uri: cab.store.logo }} style={styles.storeLogo} />
+            {packageData.store.logo && (
+              <Image source={{ uri: packageData.store.logo }} style={styles.storeLogo} />
             )}
             <View style={styles.storeInfo}>
-              <Text style={styles.storeName}>{cab.store.name}</Text>
+              <Text style={styles.storeName}>{packageData.store.name}</Text>
               <View style={styles.storeBadge}>
                 <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
                 <Text style={styles.storeBadgeText}>Verified</Text>
@@ -527,25 +475,23 @@ export default function CabDetailsPage() {
               <View>
                 <Text style={styles.priceLabel}>Price</Text>
                 <View style={styles.priceValueContainer}>
-                  <Text style={styles.priceValue}>
-                    {cab.pricePerKm ? `₹${cab.pricePerKm}/km` : `₹${cab.price.toLocaleString('en-IN')}`}
-                  </Text>
-                  {cab.originalPrice && cab.originalPrice > cab.price && (
-                    <Text style={styles.originalPrice}>₹{cab.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.priceValue}>₹{packageData.price.toLocaleString('en-IN')}</Text>
+                  {packageData.originalPrice && packageData.originalPrice > packageData.price && (
+                    <Text style={styles.originalPrice}>₹{packageData.originalPrice.toLocaleString('en-IN')}</Text>
                   )}
                 </View>
               </View>
               <View style={styles.cashbackBadge}>
                 <Ionicons name="cash" size={20} color="#FFFFFF" />
                 <Text style={styles.cashbackText}>
-                  {cab.cashback.percentage}% Cashback
+                  {packageData.cashback.percentage}% Cashback
                 </Text>
-                <Text style={styles.cashbackAmount}>₹{cab.cashback.amount}</Text>
+                <Text style={styles.cashbackAmount}>₹{packageData.cashback.amount}</Text>
               </View>
             </View>
-            {cab.discount && cab.discount > 0 && (
+            {packageData.discount && packageData.discount > 0 && (
               <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>{cab.discount}% OFF</Text>
+                <Text style={styles.discountText}>{packageData.discount}% OFF</Text>
               </View>
             )}
           </View>
@@ -554,41 +500,39 @@ export default function CabDetailsPage() {
         {/* Details Grid */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="information-circle" size={24} color="#EAB308" />
-            <Text style={styles.sectionTitle}>Trip Details</Text>
+            <Ionicons name="information-circle" size={24} color="#8B5CF6" />
+            <Text style={styles.sectionTitle}>Package Details</Text>
           </View>
           <View style={styles.detailsGrid}>
             <View style={styles.detailItem}>
               <View style={styles.detailIconContainer}>
-                <Ionicons name="time-outline" size={20} color="#EAB308" />
+                <Ionicons name="calendar-outline" size={20} color="#8B5CF6" />
               </View>
               <Text style={styles.detailLabel}>Duration</Text>
               <Text style={styles.detailValue}>
-                {Math.floor(cab.duration / 60)}h {cab.duration % 60}m
+                {packageData.duration?.nights || 3}N/{packageData.duration?.days || 4}D
               </Text>
             </View>
-            {cab.distance && (
-              <View style={styles.detailItem}>
-                <View style={styles.detailIconContainer}>
-                  <Ionicons name="location-outline" size={20} color="#EAB308" />
-                </View>
-                <Text style={styles.detailLabel}>Distance</Text>
-                <Text style={styles.detailValue}>{cab.distance} km</Text>
-              </View>
-            )}
             <View style={styles.detailItem}>
               <View style={styles.detailIconContainer}>
-                <Ionicons name="car-outline" size={20} color="#EAB308" />
+                <Ionicons name="location-outline" size={20} color="#8B5CF6" />
               </View>
-              <Text style={styles.detailLabel}>Cab Type</Text>
-              <Text style={styles.detailValue}>{cab.cabType || 'Intercity'}</Text>
+              <Text style={styles.detailLabel}>Destination</Text>
+              <Text style={styles.detailValue}>{packageData.destination || 'N/A'}</Text>
             </View>
             <View style={styles.detailItem}>
               <View style={styles.detailIconContainer}>
-                <Ionicons name="star" size={20} color="#EAB308" />
+                <Ionicons name="star" size={20} color="#8B5CF6" />
               </View>
               <Text style={styles.detailLabel}>Rating</Text>
-              <Text style={styles.detailValue}>{cab.rating.toFixed(1)}</Text>
+              <Text style={styles.detailValue}>{packageData.rating.toFixed(1)}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <View style={styles.detailIconContainer}>
+                <Ionicons name="people-outline" size={20} color="#8B5CF6" />
+              </View>
+              <Text style={styles.detailLabel}>Reviews</Text>
+              <Text style={styles.detailValue}>{packageData.reviewCount}</Text>
             </View>
           </View>
         </View>
@@ -596,28 +540,28 @@ export default function CabDetailsPage() {
         {/* Amenities */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="sparkles" size={24} color="#EAB308" />
-            <Text style={styles.sectionTitle}>Amenities</Text>
+            <Ionicons name="sparkles" size={24} color="#8B5CF6" />
+            <Text style={styles.sectionTitle}>Inclusions & Amenities</Text>
           </View>
-          <CabAmenities amenities={cab.amenities} />
+          <PackageAmenities amenities={packageData.amenities} inclusions={packageData.inclusions} />
         </View>
 
         {/* Description */}
         <View style={styles.section}>
-          <Text style={styles.descriptionTitle}>About This Service</Text>
-          <Text style={styles.description}>{cab.description}</Text>
+          <Text style={styles.descriptionTitle}>About This Package</Text>
+          <Text style={styles.description}>{packageData.description}</Text>
         </View>
 
         {/* Cancellation Policy */}
         <View style={styles.section}>
-          <CabCancellationPolicy policy={cab.cancellationPolicy} />
+          <PackageCancellationPolicy policy={packageData.cancellationPolicy} />
         </View>
 
         {/* Reviews */}
         <View style={styles.section}>
           <ProductReviewsSection
             productId={id as string}
-            productName={cab.name}
+            productName={packageData.name}
             reviews={reviews}
             summary={reviewSummary}
             isLoading={reviewsLoading}
@@ -625,9 +569,9 @@ export default function CabDetailsPage() {
           />
         </View>
 
-        {/* Related Cabs */}
+        {/* Related Packages */}
         <View style={styles.section}>
-          <RelatedCabsSection currentCabId={cab.id} />
+          <RelatedPackagesSection currentPackageId={packageData.id} />
         </View>
 
         {/* Bottom Spacing */}
@@ -636,28 +580,26 @@ export default function CabDetailsPage() {
 
       {/* Book Now Button */}
       <View style={styles.bookButtonContainer}>
-        {/* Price Info Card */}
         <View style={styles.priceInfoCard}>
           <View style={styles.priceInfoRow}>
             <View style={styles.priceInfoLeft}>
               <Text style={styles.priceInfoLabel}>Total Price</Text>
               <View style={styles.priceInfoValueContainer}>
                 <Text style={styles.priceInfoValue}>
-                  {cab.pricePerKm ? `₹${cab.pricePerKm}/km` : `₹${cab.price.toLocaleString('en-IN')}`}
+                  ₹{packageData.price.toLocaleString('en-IN')}
                 </Text>
-                {cab.originalPrice && cab.originalPrice > cab.price && (
-                  <Text style={styles.priceInfoOriginal}>₹{cab.originalPrice.toLocaleString('en-IN')}</Text>
+                {packageData.originalPrice && packageData.originalPrice > packageData.price && (
+                  <Text style={styles.priceInfoOriginal}>₹{packageData.originalPrice.toLocaleString('en-IN')}</Text>
                 )}
               </View>
             </View>
             <View style={styles.cashbackInfo}>
-              <Ionicons name="cash" size={18} color="#EAB308" />
-              <Text style={styles.cashbackInfoText}>{cab.cashback.percentage}% Cashback</Text>
+              <Ionicons name="cash" size={18} color="#8B5CF6" />
+              <Text style={styles.cashbackInfoText}>{packageData.cashback.percentage}% Cashback</Text>
             </View>
           </View>
         </View>
         
-        {/* Book Now Button */}
         <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <TouchableOpacity 
             style={styles.bookButton} 
@@ -665,7 +607,7 @@ export default function CabDetailsPage() {
             activeOpacity={0.9}
           >
             <LinearGradient
-              colors={['#EAB308', '#CA8A04', '#A16207']}
+              colors={['#8B5CF6', '#7C3AED', '#6D28D9']}
               style={styles.bookButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -691,9 +633,9 @@ export default function CabDetailsPage() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowBookingFlow(false)}
       >
-        {cab && (
-          <CabBookingFlow
-            cab={cab}
+        {packageData && (
+          <PackageBookingFlow
+            package={packageData}
             onComplete={handleBookingComplete}
             onClose={() => setShowBookingFlow(false)}
           />
@@ -710,9 +652,9 @@ export default function CabDetailsPage() {
           router.back();
         }}
       >
-        {bookingData && cab && (
-          <CabBookingConfirmation
-            cab={cab}
+        {bookingData && packageData && (
+          <PackageBookingConfirmation
+            package={packageData}
             bookingData={bookingData}
             onClose={() => {
               setShowConfirmation(false);
@@ -772,7 +714,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#EAB308',
+    backgroundColor: '#8B5CF6',
     borderRadius: 12,
   },
   retryButtonText: {
@@ -909,7 +851,7 @@ const styles = StyleSheet.create({
   viewStoreButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#EAB308',
+    backgroundColor: '#8B5CF6',
     borderRadius: 8,
   },
   viewStoreButtonText: {
@@ -940,7 +882,7 @@ const styles = StyleSheet.create({
   priceValue: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#EAB308',
+    color: '#8B5CF6',
   },
   originalPrice: {
     fontSize: 18,
@@ -948,7 +890,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   cashbackBadge: {
-    backgroundColor: '#EAB308',
+    backgroundColor: '#8B5CF6',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
@@ -995,7 +937,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F3E8FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -1084,22 +1026,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F3E8FF',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: '#E9D5FF',
   },
   cashbackInfoText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#92400E',
+    color: '#6B21A8',
   },
   bookButton: {
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#EAB308',
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

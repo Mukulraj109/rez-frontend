@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 
 interface FlightDetails {
   id: string;
@@ -36,6 +37,8 @@ interface BookingData {
     infants: number;
   };
   flightClass: 'economy' | 'business' | 'first';
+  bookingId?: string;
+  bookingNumber?: string;
 }
 
 interface FlightBookingConfirmationProps {
@@ -49,7 +52,8 @@ const FlightBookingConfirmation: React.FC<FlightBookingConfirmationProps> = ({
   bookingData,
   onClose,
 }) => {
-  const bookingNumber = `FLT-${Date.now().toString().slice(-8)}`;
+  const router = useRouter();
+  const bookingNumber = bookingData.bookingNumber || 'N/A';
 
   return (
     <View style={styles.container}>
@@ -174,7 +178,10 @@ const FlightBookingConfirmation: React.FC<FlightBookingConfirmationProps> = ({
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.secondaryButton}
-          onPress={onClose}
+          onPress={() => {
+            onClose();
+            router.push('/my-bookings' as any);
+          }}
         >
           <Text style={styles.secondaryButtonText}>View My Bookings</Text>
         </TouchableOpacity>

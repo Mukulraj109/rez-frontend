@@ -57,6 +57,8 @@ interface BookingData {
     lastName: string;
     email?: string;
   }>;
+  bookingId?: string;
+  bookingNumber?: string;
 }
 
 interface HotelBookingFlowProps {
@@ -215,8 +217,14 @@ const HotelBookingFlow: React.FC<HotelBookingFlowProps> = ({
         paymentMethod: 'online', // Default payment method
       });
 
-      if (response.success) {
-        onComplete(bookingData);
+      if (response.success && response.data) {
+        // Add booking ID and number from API response
+        const bookingResponse: BookingData = {
+          ...bookingData,
+          bookingId: response.data._id || response.data.id,
+          bookingNumber: response.data.bookingNumber,
+        };
+        onComplete(bookingResponse);
       } else {
         Alert.alert('Booking Failed', response.error || 'Please try again');
       }

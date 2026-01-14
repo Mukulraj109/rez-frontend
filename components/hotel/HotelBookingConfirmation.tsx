@@ -6,6 +6,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 
 interface HotelDetails {
   id: string;
@@ -38,6 +39,8 @@ interface BookingData {
     email: string;
     phone: string;
   };
+  bookingId?: string;
+  bookingNumber?: string;
 }
 
 interface HotelBookingConfirmationProps {
@@ -79,6 +82,17 @@ const HotelBookingConfirmation: React.FC<HotelBookingConfirmationProps> = ({
             Your hotel reservation has been confirmed
           </Text>
         </View>
+
+        {/* Booking Number */}
+        {bookingData.bookingNumber && (
+          <View style={styles.bookingNumberCard}>
+            <Text style={styles.bookingNumberLabel}>Booking Number</Text>
+            <Text style={styles.bookingNumber}>{bookingData.bookingNumber}</Text>
+            <Text style={styles.bookingNote}>
+              Please save this number for your records
+            </Text>
+          </View>
+        )}
 
         {/* Booking Details Card */}
         <View style={styles.detailsCard}>
@@ -233,6 +247,15 @@ const HotelBookingConfirmation: React.FC<HotelBookingConfirmationProps> = ({
       {/* Action Buttons */}
       <View style={styles.footer}>
         <TouchableOpacity
+          style={styles.viewBookingsButton}
+          onPress={() => {
+            onClose();
+            router.push('/my-bookings' as any);
+          }}
+        >
+          <Text style={styles.viewBookingsButtonText}>View Bookings</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={styles.primaryButton}
           onPress={onClose}
         >
@@ -371,12 +394,34 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  viewBookingsButton: {
+    flex: 1,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  viewBookingsButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#374151',
   },
   primaryButton: {
+    flex: 1,
+    marginLeft: 10,
     borderRadius: 12,
     overflow: 'hidden',
   },

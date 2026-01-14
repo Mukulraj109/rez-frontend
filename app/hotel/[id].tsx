@@ -104,6 +104,8 @@ interface BookingData {
     lastName: string;
     email?: string;
   }>;
+  bookingId?: string;
+  bookingNumber?: string;
 }
 
 export default function HotelDetailsPage() {

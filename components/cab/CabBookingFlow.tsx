@@ -25,6 +25,7 @@ interface CabDetails {
   name: string;
   price: number;
   pricePerKm?: number;
+  duration?: number; // in minutes
   vehicleOptions: {
     sedan: { price: number; available: boolean };
     suv: { price: number; available: boolean };
@@ -59,6 +60,8 @@ interface BookingData {
     lastName: string;
     age: number;
   }>;
+  bookingId?: string;
+  bookingNumber?: string;
 }
 
 interface CabBookingFlowProps {
@@ -190,11 +193,13 @@ const CabBookingFlow: React.FC<CabBookingFlowProps> = ({
         passengerDetails,
       };
 
-      // Calculate time slot
+      // Calculate time slot - use cab duration if available, otherwise default to 60 minutes
       const [hours, mins] = pickupTime.split(':').map(Number);
-      const duration = 60; // 1 hour default
-      const endHour = (hours + Math.floor(duration / 60)) % 24;
-      const endMin = (mins + (duration % 60)) % 60;
+      const tripDuration = (cab.duration && typeof cab.duration === 'number' && cab.duration > 0) 
+        ? cab.duration 
+        : 60; // Default to 60 minutes if not available
+      const endHour = (hours + Math.floor(tripDuration / 60)) % 24;
+      const endMin = (mins + (tripDuration % 60)) % 60;
       
       const formatTime = (h: number, m: number) => {
         return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
@@ -226,8 +231,14 @@ const CabBookingFlow: React.FC<CabBookingFlowProps> = ({
         paymentMethod: 'online',
       });
 
-      if (response.success) {
-        onComplete(bookingData);
+      if (response.success && response.data) {
+        // Add booking ID and number from API response
+        const bookingResponse: BookingData = {
+          ...bookingData,
+          bookingId: response.data._id || response.data.id,
+          bookingNumber: response.data.bookingNumber,
+        };
+        onComplete(bookingResponse);
       } else {
         Alert.alert('Booking Failed', response.error || 'Please try again');
       }

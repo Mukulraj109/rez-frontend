@@ -139,12 +139,65 @@ const ExcitingDealsSection: React.FC = () => {
         const response = await campaignsApi.getExcitingDeals(6);
 
         if (response.success && response.data && response.data.dealCategories.length > 0) {
-          // Merge API data with fallback styling
-          const mergedCategories = response.data.dealCategories.map((cat, index) => ({
-            ...FALLBACK_DEAL_CATEGORIES[index] || FALLBACK_DEAL_CATEGORIES[0],
-            ...cat,
-          }));
-          setDealCategories(mergedCategories);
+          // Use API data as source of truth
+          const apiCategories = response.data.dealCategories;
+          
+          // Remove duplicates by ID first (in case API returns duplicates)
+          const uniqueApiCategories = apiCategories.filter((cat, index, self) =>
+            index === self.findIndex((c) => c.id === cat.id)
+          );
+          
+          // Merge with fallback styling only for missing properties
+          const mergedCategories = uniqueApiCategories.map((cat) => {
+            // Find matching fallback by ID or title (handle variations like 'super-cashback' vs 'super-cashback-weekend')
+            const fallbackMatch = FALLBACK_DEAL_CATEGORIES.find(
+              (fb) => {
+                const catIdLower = cat.id?.toLowerCase() || '';
+                const fbIdLower = fb.id?.toLowerCase() || '';
+                const catTitleLower = cat.title?.toLowerCase() || '';
+                const fbTitleLower = fb.title?.toLowerCase() || '';
+                
+                return fb.id === cat.id || 
+                       catIdLower.includes(fbIdLower) ||
+                       fbIdLower.includes(catIdLower) ||
+                       catTitleLower === fbTitleLower;
+              }
+            );
+            
+            // Use API data as base, fill in missing styling from fallback
+            // Also ensure storeId is converted to string in all deals
+            return {
+              ...cat, // API data takes priority
+              gradientColors: cat.gradientColors || fallbackMatch?.gradientColors || ['rgba(16, 185, 129, 0.2)', 'rgba(20, 184, 166, 0.1)'],
+              badgeBg: cat.badgeBg || fallbackMatch?.badgeBg || COLORS.white,
+              badgeColor: cat.badgeColor || fallbackMatch?.badgeColor || COLORS.navy,
+              deals: cat.deals?.map((deal: CampaignDeal) => ({
+                ...deal,
+                storeId: deal.storeId 
+                  ? (typeof deal.storeId === 'string' ? deal.storeId : String(deal.storeId))
+                  : undefined,
+              })) || [],
+            };
+          });
+          
+          // Final duplicate removal by ID and title to catch any remaining duplicates
+          const finalCategories = mergedCategories.filter((cat, index, self) => {
+            const firstIndex = self.findIndex((c) => {
+              // Match by exact ID
+              if (c.id === cat.id) return true;
+              // Match by title if IDs are different but titles match (same campaign, different ID format)
+              if (c.title?.toLowerCase() === cat.title?.toLowerCase() && c.id && cat.id) {
+                return true;
+              }
+              return false;
+            });
+            // Only keep the first occurrence
+            return index === firstIndex;
+          });
+          
+          console.log('✅ [ExcitingDealsSection] Loaded', finalCategories.length, 'unique campaigns');
+          console.log('📋 Campaign IDs:', finalCategories.map(c => `${c.id} - ${c.title}`));
+          setDealCategories(finalCategories);
         }
       } catch (error) {
         console.error('❌ [ExcitingDealsSection] Error fetching deals:', error);
@@ -161,18 +214,10 @@ const ExcitingDealsSection: React.FC = () => {
     router.push('/deal-store' as any);
   };
 
-  const handleDealPress = (deal: CampaignDeal, categoryId: string) => {
-    // Navigate based on deal type and available data
-    if (deal.storeId) {
-      // Navigate to store page if storeId is available
-      router.push(`/store/${deal.storeId}` as any);
-    } else if (deal.store) {
-      // Try to find store by name or navigate to deals page
-      router.push(`/deal-store?campaign=${categoryId}&deal=${deal.store}` as any);
-    } else {
-      // Default to deals page
-      router.push('/deal-store' as any);
-    }
+  const handleDealPress = (deal: CampaignDeal, categoryId: string, dealIndex: number) => {
+    // Navigate to deal detail page
+    console.log('📍 [ExcitingDeals] Navigating to deal detail:', categoryId, dealIndex);
+    router.push(`/deals/${categoryId}/${dealIndex}` as any);
   };
 
   const handleCategoryPress = (categoryId: string) => {
@@ -224,7 +269,14 @@ const ExcitingDealsSection: React.FC = () => {
 
       {/* Deal Categories */}
       <View style={styles.categoriesContainer}>
-        {dealCategories.map((category) => (
+        {dealCategories.filter((cat, index, self) => {
+          // Remove duplicates by ID and title - keep only first occurrence
+          const firstIndex = self.findIndex((c) => 
+            c.id === cat.id || 
+            (c.title.toLowerCase() === cat.title.toLowerCase() && c.id)
+          );
+          return index === firstIndex;
+        }).map((category) => (
           <View key={category.id} style={styles.categoryWrapper}>
             {/* Category Header */}
             <TouchableOpacity
@@ -260,7 +312,7 @@ const ExcitingDealsSection: React.FC = () => {
                   <TouchableOpacity
                     key={idx}
                     style={styles.dealCard}
-                    onPress={() => handleDealPress(deal, category.id)}
+                    onPress={() => handleDealPress(deal, category.id, idx)}
                     activeOpacity={0.9}
                   >
                     <View style={styles.dealImageContainer}>

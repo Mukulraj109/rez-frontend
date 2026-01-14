@@ -104,6 +104,8 @@ interface BookingData {
     gender: 'male' | 'female' | 'other';
     berthPreference?: 'lower' | 'middle' | 'upper' | 'side-lower' | 'side-upper';
   }>;
+  bookingId?: string;
+  bookingNumber?: string;
 }
 
 export default function TrainDetailsPage() {

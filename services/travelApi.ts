@@ -90,6 +90,7 @@ export interface TravelServicesStats {
   hotels: number;
   maxCashback: number;
   serviceCount: number;
+  coinMultiplier?: number;
 }
 
 export interface TravelServicesQueryParams {

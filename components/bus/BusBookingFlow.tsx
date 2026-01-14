@@ -1,6 +1,6 @@
 /**
- * Train Booking Flow - Multi-step booking process
- * Steps: 1. Date & Passengers, 2. Class Selection, 3. Extras, 4. Contact & Passenger Details
+ * Bus Booking Flow - Multi-step booking process
+ * Steps: 1. Date & Passengers, 2. Seat/Class Selection, 3. Extras, 4. Contact & Passenger Details
  */
 
 import React, { useState } from 'react';
@@ -20,15 +20,16 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import serviceBookingApi from '@/services/serviceBookingApi';
 
-interface TrainDetails {
+interface BusDetails {
   id: string;
   name: string;
   price: number;
+  duration?: number;
   classOptions: {
+    seater: { price: number; available: boolean };
     sleeper: { price: number; available: boolean };
-    ac3: { price: number; available: boolean };
-    ac2: { price: number; available: boolean };
-    ac1: { price: number; available: boolean };
+    semiSleeper: { price: number; available: boolean };
+    ac: { price: number; available: boolean };
   };
 }
 
@@ -40,11 +41,11 @@ interface BookingData {
     adults: number;
     children: number;
   };
-  trainClass: 'sleeper' | 'ac3' | 'ac2' | 'ac1';
+  busClass: 'seater' | 'sleeper' | 'semiSleeper' | 'ac';
   selectedExtras: {
     meals?: boolean;
-    bedding?: boolean;
     insurance?: boolean;
+    cancellation?: boolean;
   };
   contactInfo: {
     name: string;
@@ -56,20 +57,20 @@ interface BookingData {
     lastName: string;
     age: number;
     gender: 'male' | 'female' | 'other';
-    berthPreference?: 'lower' | 'middle' | 'upper' | 'side-lower' | 'side-upper';
+    seatPreference?: 'window' | 'aisle' | 'no-preference';
   }>;
   bookingId?: string;
   bookingNumber?: string;
 }
 
-interface TrainBookingFlowProps {
-  train: TrainDetails;
+interface BusBookingFlowProps {
+  bus: BusDetails;
   onComplete: (data: BookingData) => void;
   onClose: () => void;
 }
 
-const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
-  train,
+const BusBookingFlow: React.FC<BusBookingFlowProps> = ({
+  bus,
   onComplete,
   onClose,
 }) => {
@@ -86,12 +87,12 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
   const [children, setChildren] = useState(0);
 
   // Step 2: Class Selection
-  const [trainClass, setTrainClass] = useState<'sleeper' | 'ac3' | 'ac2' | 'ac1'>('sleeper');
+  const [busClass, setBusClass] = useState<'seater' | 'sleeper' | 'semiSleeper' | 'ac'>('sleeper');
 
   // Step 3: Extras
   const [meals, setMeals] = useState(false);
-  const [bedding, setBedding] = useState(false);
   const [insurance, setInsurance] = useState(false);
+  const [cancellation, setCancellation] = useState(false);
 
   // Step 4: Contact & Passenger Details
   const [contactName, setContactName] = useState('');
@@ -102,11 +103,14 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
     lastName: string;
     age: number;
     gender: 'male' | 'female' | 'other';
-    berthPreference?: 'lower' | 'middle' | 'upper' | 'side-lower' | 'side-upper';
+    seatPreference?: 'window' | 'aisle' | 'no-preference';
   }>>([]);
 
+  const totalSteps = 4;
+  const totalPassengers = adults + children;
+
   const calculateTotalPrice = () => {
-    const basePrice = train.classOptions[trainClass].price;
+    const basePrice = bus.classOptions[busClass].price;
     const totalPassengers = adults + children;
     let total = basePrice * adults + (basePrice * 0.5 * children); // Children at 50% price
     
@@ -116,9 +120,9 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
     }
     
     // Add extras
-    if (meals) total += 200 * totalPassengers;
-    if (bedding) total += 150 * totalPassengers;
+    if (meals) total += 150 * totalPassengers;
     if (insurance) total += 100 * totalPassengers;
+    if (cancellation) total += 50 * totalPassengers;
     
     return total;
   };
@@ -141,6 +145,7 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
         lastName: '',
         age: 0,
         gender: 'male',
+        seatPreference: 'no-preference',
       })));
     } else if (currentStep === 4) {
       handleSubmit();
@@ -156,7 +161,6 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
   };
 
   const handleSubmit = async () => {
-    // Validation
     if (!contactName.trim() || !contactEmail.trim() || !contactPhone.trim()) {
       Alert.alert('Missing Information', 'Please fill in all contact details');
       return;
@@ -175,11 +179,11 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
         returnDate: tripType === 'round-trip' ? returnDate : undefined,
         tripType,
         passengers: { adults, children },
-        trainClass,
+        busClass,
         selectedExtras: {
           meals,
-          bedding,
           insurance,
+          cancellation,
         },
         contactInfo: {
           name: contactName,
@@ -189,46 +193,46 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
         passengerDetails,
       };
 
-      // Calculate time slot based on train departure time (default 08:00)
+      // Calculate time slot based on bus departure time (default 08:00)
       const departureHour = 8;
       const departureMin = 0;
-      const duration = 480; // 8 hours default
-      const arrivalHour = (departureHour + Math.floor(duration / 60)) % 24;
-      const arrivalMin = (departureMin + (duration % 60)) % 60;
+      const tripDuration = bus.duration || 480; // 8 hours default
+      const arrivalHour = (departureHour + Math.floor(tripDuration / 60)) % 24;
+      const arrivalMin = (departureMin + (tripDuration % 60)) % 60;
       
       const formatTime = (hours: number, mins: number) => {
         return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
       };
 
+      // Format booking date as YYYY-MM-DD
+      const bookingDateStr = travelDate.toISOString().split('T')[0];
+
       // Prepare customer notes with all booking details
       const customerNotes = JSON.stringify({
         tripType,
-        returnDate: bookingData.returnDate?.toISOString(),
+        returnDate: bookingData.returnDate?.toISOString().split('T')[0],
         passengers: {
           adults: bookingData.passengers.adults,
           children: bookingData.passengers.children,
         },
-        trainClass,
+        busClass,
         selectedExtras: bookingData.selectedExtras,
         passengerDetails: bookingData.passengerDetails,
         contactInfo: bookingData.contactInfo,
         totalPrice: calculateTotalPrice(),
       });
 
-      // Format booking date as YYYY-MM-DD
-      const bookingDateStr = travelDate.toISOString().split('T')[0];
-
       // Call booking API with correct format matching backend
       const response = await serviceBookingApi.createBooking({
-        serviceId: train.id,
-        bookingDate: bookingDateStr, // YYYY-MM-DD format
+        serviceId: bus.id,
+        bookingDate: bookingDateStr,
         timeSlot: {
           start: formatTime(departureHour, departureMin),
           end: formatTime(arrivalHour, arrivalMin),
         },
-        serviceType: 'online', // Trains are online bookings
-        customerNotes, // All additional info goes here
-        paymentMethod: 'online', // Default payment method
+        serviceType: 'online',
+        customerNotes,
+        paymentMethod: 'online',
       });
 
       if (response.success && response.data) {
@@ -243,7 +247,7 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
         Alert.alert('Booking Failed', response.error || 'Please try again');
       }
     } catch (error) {
-      console.error('[TrainBookingFlow] Booking error:', error);
+      console.error('[BusBookingFlow] Booking error:', error);
       Alert.alert('Error', 'Failed to complete booking. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -252,7 +256,7 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
 
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Select Date & Passengers</Text>
+      <Text style={styles.stepTitle}>Travel Date & Passengers</Text>
       
       {/* Trip Type */}
       <View style={styles.tripTypeContainer}>
@@ -260,7 +264,7 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
           style={[styles.tripTypeButton, tripType === 'one-way' && styles.tripTypeButtonActive]}
           onPress={() => setTripType('one-way')}
         >
-          <Ionicons name="arrow-forward" size={20} color={tripType === 'one-way' ? '#FFFFFF' : '#22C55E'} />
+          <Ionicons name="arrow-forward" size={20} color={tripType === 'one-way' ? '#FFFFFF' : '#F97316'} />
           <Text style={[styles.tripTypeText, tripType === 'one-way' && styles.tripTypeTextActive]}>
             One Way
           </Text>
@@ -269,7 +273,7 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
           style={[styles.tripTypeButton, tripType === 'round-trip' && styles.tripTypeButtonActive]}
           onPress={() => setTripType('round-trip')}
         >
-          <Ionicons name="swap-horizontal" size={20} color={tripType === 'round-trip' ? '#FFFFFF' : '#22C55E'} />
+          <Ionicons name="swap-horizontal" size={20} color={tripType === 'round-trip' ? '#FFFFFF' : '#F97316'} />
           <Text style={[styles.tripTypeText, tripType === 'round-trip' && styles.tripTypeTextActive]}>
             Round Trip
           </Text>
@@ -283,7 +287,7 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
           style={styles.dateButton}
           onPress={() => setShowTravelDatePicker(true)}
         >
-          <Ionicons name="calendar" size={20} color="#22C55E" />
+          <Ionicons name="calendar" size={20} color="#F97316" />
           <Text style={styles.dateText}>
             {travelDate.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
           </Text>
@@ -310,7 +314,7 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
             style={styles.dateButton}
             onPress={() => setShowReturnDatePicker(true)}
           >
-            <Ionicons name="calendar-outline" size={20} color="#22C55E" />
+            <Ionicons name="calendar" size={20} color="#F97316" />
             <Text style={styles.dateText}>
               {returnDate.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
             </Text>
@@ -320,7 +324,7 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
               value={returnDate}
               mode="date"
               display="default"
-              minimumDate={new Date(travelDate.getTime() + 24 * 60 * 60 * 1000)}
+              minimumDate={travelDate}
               onChange={(event, date) => {
                 setShowReturnDatePicker(Platform.OS === 'ios');
                 if (date) setReturnDate(date);
@@ -330,42 +334,41 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
         </View>
       )}
 
-      {/* Adults */}
+      {/* Passengers */}
       <View style={styles.counterSection}>
-        <Text style={styles.label}>Adults (12+ years)</Text>
+        <Text style={styles.label}>Adults</Text>
         <View style={styles.counter}>
           <TouchableOpacity
             style={styles.counterButton}
             onPress={() => setAdults(Math.max(1, adults - 1))}
           >
-            <Ionicons name="remove" size={20} color="#22C55E" />
+            <Ionicons name="remove" size={20} color="#F97316" />
           </TouchableOpacity>
           <Text style={styles.counterValue}>{adults}</Text>
           <TouchableOpacity
             style={styles.counterButton}
             onPress={() => setAdults(adults + 1)}
           >
-            <Ionicons name="add" size={20} color="#22C55E" />
+            <Ionicons name="add" size={20} color="#F97316" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Children */}
       <View style={styles.counterSection}>
-        <Text style={styles.label}>Children (5-11 years)</Text>
+        <Text style={styles.label}>Children (5-12 years)</Text>
         <View style={styles.counter}>
           <TouchableOpacity
             style={styles.counterButton}
             onPress={() => setChildren(Math.max(0, children - 1))}
           >
-            <Ionicons name="remove" size={20} color="#22C55E" />
+            <Ionicons name="remove" size={20} color="#F97316" />
           </TouchableOpacity>
           <Text style={styles.counterValue}>{children}</Text>
           <TouchableOpacity
             style={styles.counterButton}
             onPress={() => setChildren(children + 1)}
           >
-            <Ionicons name="add" size={20} color="#22C55E" />
+            <Ionicons name="add" size={20} color="#F97316" />
           </TouchableOpacity>
         </View>
       </View>
@@ -374,35 +377,53 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
 
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Select Class</Text>
+      <Text style={styles.stepTitle}>Select Bus Class</Text>
       
-      {(['sleeper', 'ac3', 'ac2', 'ac1'] as const).map((classType) => {
-        const classOption = train.classOptions[classType];
-        if (!classOption.available) return null;
+      {(['seater', 'sleeper', 'semiSleeper', 'ac'] as const).map((type) => {
+        const busClassOption = bus.classOptions[type];
+        if (!busClassOption.available) return null;
         
-        const isSelected = trainClass === classType;
-        const classNames = {
+        const isSelected = busClass === type;
+        const classNames: Record<string, string> = {
+          seater: 'Seater',
           sleeper: 'Sleeper',
-          ac3: 'AC 3 Tier',
-          ac2: 'AC 2 Tier',
-          ac1: 'AC 1 Tier',
+          semiSleeper: 'Semi Sleeper',
+          ac: 'AC Sleeper',
         };
 
         return (
           <TouchableOpacity
-            key={classType}
+            key={type}
             style={[styles.classCard, isSelected && styles.classCardSelected]}
-            onPress={() => setTrainClass(classType)}
+            onPress={() => setBusClass(type)}
           >
             <View style={styles.classCardHeader}>
-              <Text style={styles.className}>{classNames[classType]}</Text>
+              <View style={styles.classIcon}>
+                <Ionicons name="bus" size={28} color={isSelected ? '#FFFFFF' : '#F97316'} />
+              </View>
+              <View style={styles.classInfo}>
+                <Text style={[styles.classTypeName, isSelected && styles.classTypeNameSelected]}>
+                  {classNames[type]}
+                </Text>
+                <Text style={[styles.classDescription, isSelected && styles.classDescriptionSelected]}>
+                  {type === 'seater' && 'Comfortable seats'}
+                  {type === 'sleeper' && 'Full sleeper berths'}
+                  {type === 'semiSleeper' && 'Semi-sleeper seats'}
+                  {type === 'ac' && 'AC with sleeper berths'}
+                </Text>
+              </View>
               {isSelected && (
-                <Ionicons name="checkmark-circle" size={24} color="#22C55E" />
+                <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
               )}
             </View>
-            <Text style={styles.classPrice}>
-              ₹{classOption.price.toLocaleString('en-IN')} per person
-            </Text>
+            <View style={styles.classPrice}>
+              <Text style={[styles.classPriceLabel, isSelected && styles.classPriceLabelSelected]}>
+                Price
+              </Text>
+              <Text style={[styles.classPriceValue, isSelected && styles.classPriceValueSelected]}>
+                ₹{busClassOption.price.toLocaleString('en-IN')}
+              </Text>
+            </View>
           </TouchableOpacity>
         );
       })}
@@ -410,11 +431,10 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
   );
 
   const renderStep3 = () => {
-    const totalPassengers = adults + children;
     const extras = [
-      { key: 'meals', label: 'Meals', price: 200 * totalPassengers, selected: meals, onToggle: setMeals },
-      { key: 'bedding', label: 'Bedding', price: 150 * totalPassengers, selected: bedding, onToggle: setBedding },
-      { key: 'insurance', label: 'Travel Insurance', price: 100 * totalPassengers, selected: insurance, onToggle: setInsurance },
+      { key: 'meals', label: 'Meals', price: 150, selected: meals, onToggle: setMeals },
+      { key: 'insurance', label: 'Travel Insurance', price: 100, selected: insurance, onToggle: setInsurance },
+      { key: 'cancellation', label: 'Free Cancellation', price: 50, selected: cancellation, onToggle: setCancellation },
     ];
 
     return (
@@ -441,24 +461,24 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
         <View style={styles.priceSummary}>
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>
-              {trainClass.toUpperCase()} ({adults + children} {adults + children === 1 ? 'passenger' : 'passengers'})
+              {busClass.toUpperCase()} ({totalPassengers} {totalPassengers === 1 ? 'passenger' : 'passengers'})
             </Text>
             <Text style={styles.priceValue}>
-              ₹{(train.classOptions[trainClass].price * adults + train.classOptions[trainClass].price * 0.5 * children).toLocaleString('en-IN')}
+              ₹{(bus.classOptions[busClass].price * adults + bus.classOptions[busClass].price * 0.5 * children).toLocaleString('en-IN')}
             </Text>
           </View>
           {tripType === 'round-trip' && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Return Trip</Text>
               <Text style={styles.priceValue}>
-                ₹{(train.classOptions[trainClass].price * adults + train.classOptions[trainClass].price * 0.5 * children).toLocaleString('en-IN')}
+                ₹{(bus.classOptions[busClass].price * adults + bus.classOptions[busClass].price * 0.5 * children).toLocaleString('en-IN')}
               </Text>
             </View>
           )}
           {extras.filter(e => e.selected).map((extra) => (
             <View key={extra.key} style={styles.priceRow}>
               <Text style={styles.priceLabel}>{extra.label}</Text>
-              <Text style={styles.priceValue}>+ ₹{extra.price.toLocaleString('en-IN')}</Text>
+              <Text style={styles.priceValue}>+ ₹{(extra.price * totalPassengers).toLocaleString('en-IN')}</Text>
             </View>
           ))}
           <View style={[styles.priceRow, styles.priceTotal]}>
@@ -526,9 +546,9 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
                 setPassengerDetails(updated);
               }}
             />
-            <View style={styles.ageGenderRow}>
+            <View style={styles.rowInputs}>
               <TextInput
-                style={[styles.input, styles.ageInput]}
+                style={[styles.input, styles.halfInput]}
                 placeholder="Age"
                 value={passenger.age > 0 ? passenger.age.toString() : ''}
                 onChangeText={(text) => {
@@ -538,28 +558,27 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
                 }}
                 keyboardType="number-pad"
               />
-              <View style={styles.genderContainer}>
-                {(['male', 'female', 'other'] as const).map((gender) => (
-                  <TouchableOpacity
-                    key={gender}
-                    style={[
-                      styles.genderButton,
-                      passenger.gender === gender && styles.genderButtonSelected,
-                    ]}
-                    onPress={() => {
-                      const updated = [...passengerDetails];
-                      updated[index].gender = gender;
-                      setPassengerDetails(updated);
-                    }}
-                  >
-                    <Text style={[
-                      styles.genderText,
-                      passenger.gender === gender && styles.genderTextSelected,
-                    ]}>
-                      {gender.charAt(0).toUpperCase() + gender.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={[styles.input, styles.halfInput, styles.genderContainer]}>
+                <TouchableOpacity
+                  style={[styles.genderButton, passenger.gender === 'male' && styles.genderButtonActive]}
+                  onPress={() => {
+                    const updated = [...passengerDetails];
+                    updated[index].gender = 'male';
+                    setPassengerDetails(updated);
+                  }}
+                >
+                  <Text style={[styles.genderText, passenger.gender === 'male' && styles.genderTextActive]}>Male</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.genderButton, passenger.gender === 'female' && styles.genderButtonActive]}
+                  onPress={() => {
+                    const updated = [...passengerDetails];
+                    updated[index].gender = 'female';
+                    setPassengerDetails(updated);
+                  }}
+                >
+                  <Text style={[styles.genderText, passenger.gender === 'female' && styles.genderTextActive]}>Female</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -575,7 +594,7 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
         <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book Train</Text>
+        <Text style={styles.headerTitle}>Book Bus</Text>
         <TouchableOpacity onPress={onClose} style={styles.headerButton}>
           <Ionicons name="close" size={24} color="#111827" />
         </TouchableOpacity>
@@ -620,7 +639,7 @@ const TrainBookingFlow: React.FC<TrainBookingFlowProps> = ({
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <LinearGradient
-              colors={['#22C55E', '#16A34A']}
+              colors={['#F97316', '#EA580C']}
               style={styles.nextButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -651,7 +670,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   headerButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
@@ -661,8 +683,9 @@ const styles = StyleSheet.create({
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     padding: 16,
-    backgroundColor: '#F9FAFB',
+    gap: 8,
   },
   progressStep: {
     width: 32,
@@ -673,24 +696,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   progressStepActive: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#F97316',
   },
   progressStepText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: '700',
+    color: '#9CA3AF',
   },
   progressStepTextActive: {
     color: '#FFFFFF',
   },
   progressLine: {
-    flex: 1,
+    width: 40,
     height: 2,
     backgroundColor: '#E5E7EB',
-    marginHorizontal: 8,
   },
   progressLineActive: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#F97316',
   },
   content: {
     flex: 1,
@@ -700,7 +722,7 @@ const styles = StyleSheet.create({
   },
   stepTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#111827',
     marginBottom: 24,
   },
@@ -718,28 +740,29 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#22C55E',
+    borderColor: '#F97316',
     backgroundColor: '#FFFFFF',
   },
   tripTypeButtonActive: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#F97316',
+    borderColor: '#F97316',
   },
   tripTypeText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#22C55E',
+    color: '#F97316',
   },
   tripTypeTextActive: {
     color: '#FFFFFF',
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 12,
-  },
   dateSection: {
     marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
   },
   dateButton: {
     flexDirection: 'row',
@@ -753,8 +776,8 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#111827',
+    fontWeight: '500',
   },
   counterSection: {
     marginBottom: 20,
@@ -765,14 +788,13 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   counterButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#D1FAE5',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#F97316',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
   },
   counterValue: {
     fontSize: 20,
@@ -783,46 +805,86 @@ const styles = StyleSheet.create({
   },
   classCard: {
     padding: 20,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
     marginBottom: 16,
   },
   classCardSelected: {
-    borderColor: '#22C55E',
-    backgroundColor: '#D1FAE5',
+    borderColor: '#F97316',
+    backgroundColor: '#F97316',
   },
   classCardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 16,
+    marginBottom: 12,
   },
-  className: {
+  classIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  classInfo: {
+    flex: 1,
+  },
+  classTypeName: {
     fontSize: 18,
     fontWeight: '700',
     color: '#111827',
+    marginBottom: 4,
+  },
+  classTypeNameSelected: {
+    color: '#FFFFFF',
+  },
+  classDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  classDescriptionSelected: {
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   classPrice: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#22C55E',
-  },
-  extraCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  classPriceLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  classPriceLabelSelected: {
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  classPriceValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#F97316',
+  },
+  classPriceValueSelected: {
+    color: '#FFFFFF',
+  },
+  extraCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
     marginBottom: 12,
   },
   extraCardSelected: {
-    borderColor: '#22C55E',
-    backgroundColor: '#D1FAE5',
+    borderColor: '#F97316',
+    backgroundColor: '#FEF3C7',
   },
   extraInfo: {
     flex: 1,
@@ -835,32 +897,32 @@ const styles = StyleSheet.create({
   },
   extraPrice: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#F97316',
+    fontWeight: '600',
   },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#22C55E',
-    borderColor: '#22C55E',
+    backgroundColor: '#F97316',
+    borderColor: '#F97316',
   },
   priceSummary: {
     marginTop: 24,
     padding: 20,
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
   priceLabel: {
@@ -868,14 +930,14 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   priceValue: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#111827',
   },
   priceTotal: {
     marginTop: 12,
     paddingTop: 12,
-    borderTopWidth: 1,
+    borderTopWidth: 2,
     borderTopColor: '#E5E7EB',
   },
   totalLabel: {
@@ -884,9 +946,9 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   totalValue: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '800',
-    color: '#22C55E',
+    color: '#F97316',
   },
   section: {
     marginBottom: 24,
@@ -907,31 +969,20 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 12,
   },
-  passengerCard: {
-    padding: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 12,
-  },
-  passengerNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#22C55E',
-    marginBottom: 12,
-  },
-  ageGenderRow: {
+  rowInputs: {
     flexDirection: 'row',
     gap: 12,
   },
-  ageInput: {
+  halfInput: {
     flex: 1,
+    marginBottom: 0,
   },
   genderContainer: {
-    flex: 2,
     flexDirection: 'row',
+    padding: 0,
     gap: 8,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
   genderButton: {
     flex: 1,
@@ -942,17 +993,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
   },
-  genderButtonSelected: {
-    backgroundColor: '#22C55E',
-    borderColor: '#22C55E',
+  genderButtonActive: {
+    backgroundColor: '#F97316',
+    borderColor: '#F97316',
   },
   genderText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#6B7280',
   },
-  genderTextSelected: {
+  genderTextActive: {
     color: '#FFFFFF',
+  },
+  passengerCard: {
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  passengerNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F97316',
+    marginBottom: 12,
   },
   footer: {
     padding: 20,
@@ -971,10 +1034,10 @@ const styles = StyleSheet.create({
   footerPriceValue: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#22C55E',
+    color: '#F97316',
   },
   nextButton: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   nextButtonDisabled: {
@@ -982,16 +1045,16 @@ const styles = StyleSheet.create({
   },
   nextButtonGradient: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+    justifyContent: 'center',
+    paddingVertical: 18,
     gap: 8,
   },
   nextButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
   },
 });
 
-export default TrainBookingFlow;
+export default BusBookingFlow;

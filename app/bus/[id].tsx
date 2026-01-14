@@ -1,5 +1,5 @@
 /**
- * Cab Details Page - Dedicated page for cab bookings
+ * Bus Details Page - Dedicated page for bus bookings
  * Production-ready with complete booking flow
  */
 
@@ -25,33 +25,34 @@ import productsApi from '@/services/productsApi';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useProductReviews } from '@/hooks/useProductReviews';
 import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
-import CabBookingFlow from '../../components/cab/CabBookingFlow';
-import CabBookingConfirmation from '../../components/cab/CabBookingConfirmation';
-import RelatedCabsSection from '../../components/cab/RelatedCabsSection';
-import CabInfoCard from '../../components/cab/CabInfoCard';
-import CabAmenities from '../../components/cab/CabAmenities';
-import CabCancellationPolicy from '../../components/cab/CabCancellationPolicy';
+import BusBookingFlow from '../../components/bus/BusBookingFlow';
+import BusBookingConfirmation from '../../components/bus/BusBookingConfirmation';
+import RelatedBusesSection from '../../components/bus/RelatedBusesSection';
+import BusInfoCard from '../../components/bus/BusInfoCard';
+import BusAmenities from '../../components/bus/BusAmenities';
+import BusCancellationPolicy from '../../components/bus/BusCancellationPolicy';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-interface CabDetails {
+interface BusDetails {
   id: string;
   name: string;
   route?: {
     from: string;
     to: string;
+    fromTerminal?: string;
+    toTerminal?: string;
   };
-  cabType?: string;
+  busNumber?: string;
+  busType?: string;
   price: number;
-  pricePerKm?: number;
   originalPrice?: number;
   discount?: number;
   images: string[];
   description: string;
   duration: number; // in minutes
-  distance?: number; // in km
-  pickupTime?: string;
-  dropoffTime?: string;
+  departureTime?: string;
+  arrivalTime?: string;
   cashback: {
     percentage: number;
     amount: number;
@@ -66,32 +67,30 @@ interface CabDetails {
   amenities: string[];
   cancellationPolicy: {
     freeCancellation: boolean;
-    cancellationDeadline: string;
+    cancellationDeadline: string; // hours before departure
     refundPercentage: number;
   };
-  vehicleOptions: {
-    sedan: { price: number; available: boolean };
-    suv: { price: number; available: boolean };
-    premium: { price: number; available: boolean };
+  classOptions: {
+    seater: { price: number; available: boolean };
+    sleeper: { price: number; available: boolean };
+    semiSleeper: { price: number; available: boolean };
+    ac: { price: number; available: boolean };
   };
 }
 
 interface BookingData {
-  pickupDate: Date;
-  pickupTime: string;
-  pickupLocation: string;
-  dropoffLocation: string;
+  travelDate: Date;
+  returnDate?: Date;
   tripType: 'one-way' | 'round-trip';
   passengers: {
     adults: number;
     children: number;
   };
-  vehicleType: 'sedan' | 'suv' | 'premium';
+  busClass: 'seater' | 'sleeper' | 'semiSleeper' | 'ac';
   selectedExtras: {
-    driver?: boolean;
-    tollCharges?: boolean;
-    parking?: boolean;
-    waitingTime?: boolean;
+    meals?: boolean;
+    insurance?: boolean;
+    cancellation?: boolean;
   };
   contactInfo: {
     name: string;
@@ -102,17 +101,19 @@ interface BookingData {
     firstName: string;
     lastName: string;
     age: number;
+    gender: 'male' | 'female' | 'other';
+    seatPreference?: 'window' | 'aisle' | 'no-preference';
   }>;
   bookingId?: string;
   bookingNumber?: string;
 }
 
-export default function CabDetailsPage() {
+export default function BusDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   
-  const [cab, setCab] = useState<CabDetails | null>(null);
+  const [bus, setBus] = useState<BusDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showBookingFlow, setShowBookingFlow] = useState(false);
@@ -137,11 +138,11 @@ export default function CabDetailsPage() {
 
   useEffect(() => {
     if (id) {
-      loadCabDetails();
+      loadBusDetails();
     }
   }, [id]);
 
-  const loadCabDetails = async () => {
+  const loadBusDetails = async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -149,38 +150,49 @@ export default function CabDetailsPage() {
       const response = await productsApi.getProductById(id as string);
 
       if (!response.success || !response.data) {
-        setError('Cab not found');
+        setError('Bus not found');
         return;
       }
 
       const productData = response.data;
 
-      // Check if this is a cab service
-      const isCab = productData.serviceCategory?.slug === 'cab' || 
-                   productData.category?.slug === 'cab' ||
-                   productData.name?.toLowerCase().includes('cab') ||
-                   productData.name?.toLowerCase().includes('taxi');
+      // Check if this is a bus service
+      const isBus = productData.serviceCategory?.slug === 'bus' || 
+                   productData.category?.slug === 'bus' ||
+                   productData.name?.toLowerCase().includes('bus');
 
-      if (!isCab) {
+      if (!isBus) {
         router.replace(`/product/${id}`);
         return;
       }
 
       // Extract route from name if available
-      let from = 'Pickup Location';
-      let to = 'Dropoff Location';
+      let from = 'Origin';
+      let to = 'Destination';
       const routePatterns = [
-        /(.+?)\s+to\s+(.+?)\s+cab/i,
-        /(.+?)\s*-\s*(.+?)\s+cab/i,
-        /(.+?)\s+→\s+(.+?)\s+cab/i,
+        /(.+?)\s+to\s+(.+?)\s+bus/i,
+        /(.+?)\s*-\s*(.+?)\s+bus/i,
+        /(.+?)\s+→\s+(.+?)\s+bus/i,
+        /(.+?)\s+bus\s+to\s+(.+?)/i,
       ];
       
       for (const pattern of routePatterns) {
         const match = productData.name.match(pattern);
         if (match) {
           from = match[1].trim();
-          to = match[2] ? match[2].trim() : 'Dropoff Location';
+          to = match[2] ? match[2].trim() : 'Destination';
           break;
+        }
+      }
+
+      // If no route found, use defaults
+      if (from === 'Origin') {
+        if (productData.name.toLowerCase().includes('volvo')) {
+          from = 'Bangalore';
+          to = 'Mumbai';
+        } else if (productData.name.toLowerCase().includes('sleeper')) {
+          from = 'Delhi';
+          to = 'Jaipur';
         }
       }
 
@@ -188,82 +200,63 @@ export default function CabDetailsPage() {
       const rawDuration = productData.serviceDetails?.duration;
       const duration = (typeof rawDuration === 'number' && !isNaN(rawDuration) && rawDuration > 0) 
         ? rawDuration 
-        : 60; // Default to 60 minutes if invalid
+        : 480; // Default to 8 hours if invalid
       
       const durationHours = Math.floor(duration / 60);
       const durationMins = duration % 60;
-      const basePickupHour = 9;
-      const basePickupMin = 0;
-      const dropoffHour = (basePickupHour + durationHours + Math.floor((basePickupMin + durationMins) / 60)) % 24;
-      const dropoffMin = (basePickupMin + durationMins) % 60;
+      const baseDepartureHour = 8;
+      const baseDepartureMin = 0;
+      const arrivalHour = (baseDepartureHour + durationHours + Math.floor((baseDepartureMin + durationMins) / 60)) % 24;
+      const arrivalMin = (baseDepartureMin + durationMins) % 60;
       
       const formatTime = (hours: number, mins: number) => {
         return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
       };
 
-      // Get cashback
+      // Get cashback from multiple sources
       const cashbackPercentage = (() => {
         if (productData.cashback?.percentage) return productData.cashback.percentage;
         if (productData.serviceCategory?.cashbackPercentage) return productData.serviceCategory.cashbackPercentage;
+        if (productData.category?.maxCashback) return productData.category.maxCashback;
         if (typeof productData.cashback === 'number') return productData.cashback;
-        return 20;
+        return 15;
       })();
 
-      // Calculate price
+      // Calculate price properly
       const basePrice = productData.pricing?.selling || productData.pricing?.basePrice || productData.price?.current || 0;
       const originalPrice = productData.pricing?.original || productData.pricing?.basePrice || productData.price?.original;
       const calculatedDiscount = originalPrice && basePrice && originalPrice > basePrice
         ? Math.round(((originalPrice - basePrice) / originalPrice) * 100)
         : productData.pricing?.discount || 0;
 
-      // Extract distance if price is per km - validate to prevent NaN
-      let pricePerKm: number | undefined = undefined;
-      let estimatedDistance: number | undefined = undefined;
-      
-      // Try to get pricePerKm from various sources
-      if (productData.price && typeof productData.price === 'number' && productData.price > 0) {
-        pricePerKm = productData.price;
-      } else if (basePrice > 0 && basePrice < 100) {
-        pricePerKm = basePrice;
-      }
-      
-      // Calculate distance only if we have valid values
-      if (pricePerKm && basePrice > 0 && pricePerKm > 0) {
-        const calculatedDistance = basePrice / pricePerKm;
-        if (!isNaN(calculatedDistance) && isFinite(calculatedDistance) && calculatedDistance > 0) {
-          estimatedDistance = Math.round(calculatedDistance);
-        }
-      }
-      
-      // If still no distance, try to get from serviceDetails
-      if (!estimatedDistance && productData.serviceDetails?.distance) {
-        const serviceDistance = productData.serviceDetails.distance;
-        if (typeof serviceDistance === 'number' && !isNaN(serviceDistance) && serviceDistance > 0) {
-          estimatedDistance = Math.round(serviceDistance);
-        }
-      }
+      // Extract bus number from SKU or generate
+      const busNumber = productData.sku || productData.barcode || 
+        `${productData.name.substring(0, 3).toUpperCase()}${(productData.id || productData._id || '').toString().slice(-4)}`;
 
-      // Transform to CabDetails
-      const cabDetails: CabDetails = {
+      // Transform to BusDetails
+      const busDetails: BusDetails = {
         id: productData.id || productData._id,
         name: productData.name,
         route: {
           from,
           to,
+          fromTerminal: `${from} Bus Terminal`,
+          toTerminal: `${to} Bus Terminal`,
         },
-        cabType: (() => {
-          if (productData.name.toLowerCase().includes('outstation')) return 'Outstation';
-          if (productData.name.toLowerCase().includes('airport')) return 'Airport Transfer';
-          if (productData.name.toLowerCase().includes('city')) return 'City Ride';
-          return 'Intercity';
+        busNumber,
+        busType: (() => {
+          if (productData.name.toLowerCase().includes('volvo')) return 'Volvo AC Sleeper';
+          if (productData.name.toLowerCase().includes('sleeper')) return 'Sleeper';
+          if (productData.name.toLowerCase().includes('seater')) return 'Seater';
+          if (productData.name.toLowerCase().includes('ac')) return 'AC Bus';
+          return 'Sleeper';
         })(),
         price: basePrice,
-        pricePerKm: pricePerKm,
         originalPrice: originalPrice && originalPrice > basePrice ? originalPrice : undefined,
         discount: calculatedDiscount > 0 ? calculatedDiscount : undefined,
         images: (() => {
           if (!productData.images || !Array.isArray(productData.images)) {
-            return ['https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&h=600&fit=crop'];
+            return ['https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=600&fit=crop'];
           }
           
           const processedImages = productData.images
@@ -274,24 +267,22 @@ export default function CabDetailsPage() {
             })
             .filter((url: string | null): url is string => Boolean(url && typeof url === 'string' && url.length > 0));
           
-          // Validate images are cab-related
+          // Validate images are bus-related
           const validatedImages = processedImages.map(url => {
-            // Replace non-cab images
-            if ((url.toLowerCase().includes('bus') || url.toLowerCase().includes('train') || 
+            if ((url.toLowerCase().includes('train') || url.toLowerCase().includes('cab') || 
                  url.toLowerCase().includes('airplane') || url.toLowerCase().includes('hotel')) &&
-                !url.toLowerCase().includes('cab') && !url.toLowerCase().includes('taxi') && !url.toLowerCase().includes('car')) {
-              return 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&h=600&fit=crop';
+                !url.toLowerCase().includes('bus')) {
+              return 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=600&fit=crop';
             }
             return url;
           });
           
-          return validatedImages.length > 0 ? validatedImages : ['https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&h=600&fit=crop'];
+          return validatedImages.length > 0 ? validatedImages : ['https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=600&fit=crop'];
         })(),
-        description: productData.description || productData.shortDescription || 'Comfortable cab service with professional drivers.',
-        duration: duration, // Use validated duration
-        distance: estimatedDistance, // Will be undefined if not calculated, which is fine
-        pickupTime: formatTime(basePickupHour, basePickupMin),
-        dropoffTime: formatTime(dropoffHour, dropoffMin),
+        description: productData.description || productData.shortDescription || 'Comfortable bus journey with excellent service.',
+        duration: duration,
+        departureTime: formatTime(baseDepartureHour, baseDepartureMin),
+        arrivalTime: formatTime(arrivalHour, arrivalMin),
         cashback: {
           percentage: cashbackPercentage,
           amount: Math.round(basePrice * cashbackPercentage / 100),
@@ -300,14 +291,14 @@ export default function CabDetailsPage() {
         reviewCount: reviewSummary?.totalReviews || productData.ratings?.count || 0,
         store: {
           id: productData.store?.id || productData.store?._id,
-          name: productData.store?.name || 'CityRide Cabs',
+          name: productData.store?.name || 'BusConnect',
           logo: productData.store?.logo,
         },
         amenities: (() => {
           const tagAmenities: Record<string, string[]> = {
-            'premium': ['AC', 'GPS', 'Music', 'Wi-Fi', 'Charging Point', 'Professional Driver'],
-            'comfort': ['AC', 'GPS', 'Music', 'Professional Driver'],
-            'budget': ['AC', 'GPS', 'Professional Driver'],
+            'premium': ['AC', 'Wi-Fi', 'Reclining Seats', 'Charging Point', 'Entertainment', 'Meals'],
+            'sleeper': ['AC', 'Reclining Seats', 'Charging Point', 'Reading Light', 'Blankets'],
+            'seater': ['AC', 'Reclining Seats', 'Charging Point', 'Water'],
           };
           
           const tags = productData.tags || [];
@@ -316,35 +307,45 @@ export default function CabDetailsPage() {
               return amenities;
             }
           }
-          return ['AC', 'GPS', 'Music', 'Professional Driver'];
+          
+          // Default amenities based on bus type
+          if (productData.name.toLowerCase().includes('volvo') || 
+              productData.name.toLowerCase().includes('ac')) {
+            return ['AC', 'Wi-Fi', 'Reclining Seats', 'Charging Point', 'Entertainment'];
+          }
+          return ['AC', 'Reclining Seats', 'Charging Point', 'Water'];
         })(),
         cancellationPolicy: {
           freeCancellation: productData.specifications?.some((s: any) => 
             s.key?.toLowerCase().includes('cancellation') && s.value?.toLowerCase().includes('free')
           ) || true,
-          cancellationDeadline: '2',
-          refundPercentage: 90,
+          cancellationDeadline: '24',
+          refundPercentage: 80,
         },
-        vehicleOptions: {
-          sedan: { 
+        classOptions: {
+          seater: { 
             price: basePrice, 
             available: true 
           },
-          suv: { 
-            price: Math.round(basePrice * 1.5), 
+          sleeper: { 
+            price: Math.round(basePrice * 1.3), 
             available: true 
           },
-          premium: { 
-            price: Math.round(basePrice * 2), 
+          semiSleeper: { 
+            price: Math.round(basePrice * 1.2), 
+            available: true 
+          },
+          ac: { 
+            price: Math.round(basePrice * 1.5), 
             available: true 
           },
         },
       };
 
-      setCab(cabDetails);
+      setBus(busDetails);
     } catch (error) {
-      console.error('Error loading cab details:', error);
-      setError('Failed to load cab details. Please try again.');
+      console.error('Error loading bus details:', error);
+      setError('Failed to load bus details. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -379,13 +380,13 @@ export default function CabDetailsPage() {
   };
 
   const handleFavorite = async () => {
-    if (!cab) return;
+    if (!bus) return;
     
     try {
-      if (isInWishlist(cab.id)) {
-        await removeFromWishlist(cab.id);
+      if (isInWishlist(bus.id)) {
+        await removeFromWishlist(bus.id);
       } else {
-        await addToWishlist(cab.id);
+        await addToWishlist(bus.id);
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
@@ -397,8 +398,8 @@ export default function CabDetailsPage() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color="#EAB308" />
-            <Text style={styles.loadingText}>Loading cab details...</Text>
+            <ActivityIndicator size="large" color="#F97316" />
+            <Text style={styles.loadingText}>Loading bus details...</Text>
             <Text style={styles.loadingSubtext}>Please wait</Text>
           </View>
         </View>
@@ -406,13 +407,13 @@ export default function CabDetailsPage() {
     );
   }
 
-  if (error || !cab) {
+  if (error || !bus) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-          <Text style={styles.errorText}>{error || 'Cab not found'}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadCabDetails}>
+          <Text style={styles.errorText}>{error || 'Bus not found'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadBusDetails}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -430,7 +431,7 @@ export default function CabDetailsPage() {
         {/* Header with Image */}
         <View style={styles.headerContainer}>
           {(() => {
-            const imageUrl = cab.images?.[selectedImageIndex] || cab.images?.[0];
+            const imageUrl = bus.images?.[selectedImageIndex] || bus.images?.[0];
             const hasValidImage = imageUrl && typeof imageUrl === 'string' && imageUrl.length > 0;
             
             if (hasValidImage && !imageError) {
@@ -447,8 +448,8 @@ export default function CabDetailsPage() {
             
             return (
               <View style={[styles.headerImage, styles.placeholderImage]}>
-                <Ionicons name="car" size={64} color="#9CA3AF" />
-                <Text style={styles.placeholderText}>Cab Image</Text>
+                <Ionicons name="bus" size={64} color="#9CA3AF" />
+                <Text style={styles.placeholderText}>Bus Image</Text>
               </View>
             );
           })()}
@@ -465,9 +466,9 @@ export default function CabDetailsPage() {
             <View style={styles.headerRightActions}>
               <TouchableOpacity style={styles.actionButton} onPress={handleFavorite}>
                 <Ionicons
-                  name={isInWishlist(cab.id) ? 'heart' : 'heart-outline'}
+                  name={isInWishlist(bus.id) ? 'heart' : 'heart-outline'}
                   size={24}
-                  color={isInWishlist(cab.id) ? '#EF4444' : '#FFFFFF'}
+                  color={isInWishlist(bus.id) ? '#EF4444' : '#FFFFFF'}
                 />
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionButton}>
@@ -477,9 +478,9 @@ export default function CabDetailsPage() {
           </View>
 
           {/* Image Indicators */}
-          {cab.images.length > 1 && (
+          {bus.images.length > 1 && (
             <View style={styles.imageIndicators}>
-              {cab.images.map((_, index) => (
+              {bus.images.map((_, index) => (
                 <View
                   key={index}
                   style={[
@@ -492,23 +493,23 @@ export default function CabDetailsPage() {
           )}
         </View>
 
-        {/* Cab Info Card */}
+        {/* Bus Info Card */}
         <View style={styles.infoCardWrapper}>
-          <CabInfoCard cab={cab} />
+          <BusInfoCard bus={bus} />
         </View>
 
         {/* Store/Provider Info */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="business" size={24} color="#EAB308" />
+            <Ionicons name="business" size={24} color="#F97316" />
             <Text style={styles.sectionTitle}>Service Provider</Text>
           </View>
           <View style={styles.storeCard}>
-            {cab.store.logo && (
-              <Image source={{ uri: cab.store.logo }} style={styles.storeLogo} />
+            {bus.store.logo && (
+              <Image source={{ uri: bus.store.logo }} style={styles.storeLogo} />
             )}
             <View style={styles.storeInfo}>
-              <Text style={styles.storeName}>{cab.store.name}</Text>
+              <Text style={styles.storeName}>{bus.store.name}</Text>
               <View style={styles.storeBadge}>
                 <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
                 <Text style={styles.storeBadgeText}>Verified</Text>
@@ -527,25 +528,23 @@ export default function CabDetailsPage() {
               <View>
                 <Text style={styles.priceLabel}>Price</Text>
                 <View style={styles.priceValueContainer}>
-                  <Text style={styles.priceValue}>
-                    {cab.pricePerKm ? `₹${cab.pricePerKm}/km` : `₹${cab.price.toLocaleString('en-IN')}`}
-                  </Text>
-                  {cab.originalPrice && cab.originalPrice > cab.price && (
-                    <Text style={styles.originalPrice}>₹{cab.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.priceValue}>₹{bus.price.toLocaleString('en-IN')}</Text>
+                  {bus.originalPrice && bus.originalPrice > bus.price && (
+                    <Text style={styles.originalPrice}>₹{bus.originalPrice.toLocaleString('en-IN')}</Text>
                   )}
                 </View>
               </View>
               <View style={styles.cashbackBadge}>
                 <Ionicons name="cash" size={20} color="#FFFFFF" />
                 <Text style={styles.cashbackText}>
-                  {cab.cashback.percentage}% Cashback
+                  {bus.cashback.percentage}% Cashback
                 </Text>
-                <Text style={styles.cashbackAmount}>₹{cab.cashback.amount}</Text>
+                <Text style={styles.cashbackAmount}>₹{bus.cashback.amount}</Text>
               </View>
             </View>
-            {cab.discount && cab.discount > 0 && (
+            {bus.discount && bus.discount > 0 && (
               <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>{cab.discount}% OFF</Text>
+                <Text style={styles.discountText}>{bus.discount}% OFF</Text>
               </View>
             )}
           </View>
@@ -554,41 +553,39 @@ export default function CabDetailsPage() {
         {/* Details Grid */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="information-circle" size={24} color="#EAB308" />
+            <Ionicons name="information-circle" size={24} color="#F97316" />
             <Text style={styles.sectionTitle}>Trip Details</Text>
           </View>
           <View style={styles.detailsGrid}>
             <View style={styles.detailItem}>
               <View style={styles.detailIconContainer}>
-                <Ionicons name="time-outline" size={20} color="#EAB308" />
+                <Ionicons name="time-outline" size={20} color="#F97316" />
               </View>
               <Text style={styles.detailLabel}>Duration</Text>
               <Text style={styles.detailValue}>
-                {Math.floor(cab.duration / 60)}h {cab.duration % 60}m
+                {Math.floor(bus.duration / 60)}h {bus.duration % 60}m
               </Text>
             </View>
-            {cab.distance && (
-              <View style={styles.detailItem}>
-                <View style={styles.detailIconContainer}>
-                  <Ionicons name="location-outline" size={20} color="#EAB308" />
-                </View>
-                <Text style={styles.detailLabel}>Distance</Text>
-                <Text style={styles.detailValue}>{cab.distance} km</Text>
-              </View>
-            )}
             <View style={styles.detailItem}>
               <View style={styles.detailIconContainer}>
-                <Ionicons name="car-outline" size={20} color="#EAB308" />
+                <Ionicons name="bus-outline" size={20} color="#F97316" />
               </View>
-              <Text style={styles.detailLabel}>Cab Type</Text>
-              <Text style={styles.detailValue}>{cab.cabType || 'Intercity'}</Text>
+              <Text style={styles.detailLabel}>Bus Type</Text>
+              <Text style={styles.detailValue}>{bus.busType || 'Sleeper'}</Text>
             </View>
             <View style={styles.detailItem}>
               <View style={styles.detailIconContainer}>
-                <Ionicons name="star" size={20} color="#EAB308" />
+                <Ionicons name="ticket-outline" size={20} color="#F97316" />
+              </View>
+              <Text style={styles.detailLabel}>Bus Number</Text>
+              <Text style={styles.detailValue}>{bus.busNumber || 'N/A'}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <View style={styles.detailIconContainer}>
+                <Ionicons name="star" size={20} color="#F97316" />
               </View>
               <Text style={styles.detailLabel}>Rating</Text>
-              <Text style={styles.detailValue}>{cab.rating.toFixed(1)}</Text>
+              <Text style={styles.detailValue}>{bus.rating.toFixed(1)}</Text>
             </View>
           </View>
         </View>
@@ -596,28 +593,28 @@ export default function CabDetailsPage() {
         {/* Amenities */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="sparkles" size={24} color="#EAB308" />
+            <Ionicons name="sparkles" size={24} color="#F97316" />
             <Text style={styles.sectionTitle}>Amenities</Text>
           </View>
-          <CabAmenities amenities={cab.amenities} />
+          <BusAmenities amenities={bus.amenities} />
         </View>
 
         {/* Description */}
         <View style={styles.section}>
           <Text style={styles.descriptionTitle}>About This Service</Text>
-          <Text style={styles.description}>{cab.description}</Text>
+          <Text style={styles.description}>{bus.description}</Text>
         </View>
 
         {/* Cancellation Policy */}
         <View style={styles.section}>
-          <CabCancellationPolicy policy={cab.cancellationPolicy} />
+          <BusCancellationPolicy policy={bus.cancellationPolicy} />
         </View>
 
         {/* Reviews */}
         <View style={styles.section}>
           <ProductReviewsSection
             productId={id as string}
-            productName={cab.name}
+            productName={bus.name}
             reviews={reviews}
             summary={reviewSummary}
             isLoading={reviewsLoading}
@@ -625,9 +622,9 @@ export default function CabDetailsPage() {
           />
         </View>
 
-        {/* Related Cabs */}
+        {/* Related Buses */}
         <View style={styles.section}>
-          <RelatedCabsSection currentCabId={cab.id} />
+          <RelatedBusesSection currentBusId={bus.id} route={bus.route} />
         </View>
 
         {/* Bottom Spacing */}
@@ -643,16 +640,16 @@ export default function CabDetailsPage() {
               <Text style={styles.priceInfoLabel}>Total Price</Text>
               <View style={styles.priceInfoValueContainer}>
                 <Text style={styles.priceInfoValue}>
-                  {cab.pricePerKm ? `₹${cab.pricePerKm}/km` : `₹${cab.price.toLocaleString('en-IN')}`}
+                  ₹{bus.price.toLocaleString('en-IN')}
                 </Text>
-                {cab.originalPrice && cab.originalPrice > cab.price && (
-                  <Text style={styles.priceInfoOriginal}>₹{cab.originalPrice.toLocaleString('en-IN')}</Text>
+                {bus.originalPrice && bus.originalPrice > bus.price && (
+                  <Text style={styles.priceInfoOriginal}>₹{bus.originalPrice.toLocaleString('en-IN')}</Text>
                 )}
               </View>
             </View>
             <View style={styles.cashbackInfo}>
-              <Ionicons name="cash" size={18} color="#EAB308" />
-              <Text style={styles.cashbackInfoText}>{cab.cashback.percentage}% Cashback</Text>
+              <Ionicons name="cash" size={18} color="#F97316" />
+              <Text style={styles.cashbackInfoText}>{bus.cashback.percentage}% Cashback</Text>
             </View>
           </View>
         </View>
@@ -665,7 +662,7 @@ export default function CabDetailsPage() {
             activeOpacity={0.9}
           >
             <LinearGradient
-              colors={['#EAB308', '#CA8A04', '#A16207']}
+              colors={['#F97316', '#EA580C', '#C2410C']}
               style={styles.bookButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -691,9 +688,9 @@ export default function CabDetailsPage() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowBookingFlow(false)}
       >
-        {cab && (
-          <CabBookingFlow
-            cab={cab}
+        {bus && (
+          <BusBookingFlow
+            bus={bus}
             onComplete={handleBookingComplete}
             onClose={() => setShowBookingFlow(false)}
           />
@@ -710,9 +707,9 @@ export default function CabDetailsPage() {
           router.back();
         }}
       >
-        {bookingData && cab && (
-          <CabBookingConfirmation
-            cab={cab}
+        {bookingData && bus && (
+          <BusBookingConfirmation
+            bus={bus}
             bookingData={bookingData}
             onClose={() => {
               setShowConfirmation(false);
@@ -772,7 +769,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#EAB308',
+    backgroundColor: '#F97316',
     borderRadius: 12,
   },
   retryButtonText: {
@@ -909,7 +906,7 @@ const styles = StyleSheet.create({
   viewStoreButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#EAB308',
+    backgroundColor: '#F97316',
     borderRadius: 8,
   },
   viewStoreButtonText: {
@@ -940,7 +937,7 @@ const styles = StyleSheet.create({
   priceValue: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#EAB308',
+    color: '#F97316',
   },
   originalPrice: {
     fontSize: 18,
@@ -948,7 +945,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   cashbackBadge: {
-    backgroundColor: '#EAB308',
+    backgroundColor: '#F97316',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
@@ -1099,7 +1096,7 @@ const styles = StyleSheet.create({
   bookButton: {
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#EAB308',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

@@ -1,9 +1,9 @@
 /**
  * Deal Store Page - All deals in one place
- * Converted from V2: DealStore.jsx
+ * 100% production ready - Connected to /api/campaigns
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,13 @@ import {
   TouchableOpacity,
   Image,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { campaignsApi, DealCategory, CampaignDeal } from '@/services/campaignsApi';
+import CoinIcon from '@/components/ui/CoinIcon';
 
 const COLORS = {
   white: '#FFFFFF',
@@ -34,124 +37,81 @@ const COLORS = {
   cyan500: '#06B6D4',
 };
 
-interface Deal {
-  id: number;
-  store: string;
-  image: string;
-  cashback?: string;
-  coins?: string;
-  bonus?: string;
-  drop?: string;
-  endsIn?: string;
-  category: string;
-}
-
-interface DealCategory {
-  id: string;
-  title: string;
-  subtitle: string;
-  badge: string;
-  gradientColors: string[];
-  deals: Deal[];
-}
-
-const dealCategories: DealCategory[] = [
-  {
-    id: 'super-cashback',
-    title: 'Super Cashback Weekend',
-    subtitle: 'Up to 50% cashback',
-    badge: '50%',
-    gradientColors: ['rgba(16, 185, 129, 0.2)', 'rgba(20, 184, 166, 0.1)'],
-    deals: [
-      { id: 1, store: 'Electronics Hub', cashback: '40%', category: 'Electronics', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=300' },
-      { id: 2, store: 'Fashion Central', cashback: '50%', category: 'Fashion', image: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=300' },
-      { id: 3, store: 'Home Decor', cashback: '35%', category: 'Home', image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=300' },
-      { id: 4, store: 'Sports Zone', cashback: '45%', category: 'Sports', image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300' },
-    ],
-  },
-  {
-    id: 'triple-coin-day',
-    title: 'Triple Coin Day',
-    subtitle: '3X coins on all spends',
-    badge: '3X',
-    gradientColors: ['rgba(245, 158, 11, 0.2)', 'rgba(249, 115, 22, 0.1)'],
-    deals: [
-      { id: 5, store: 'Grocery Mart', coins: '3000', category: 'Grocery', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300' },
-      { id: 6, store: 'Beauty Palace', coins: '2500', category: 'Beauty', image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300' },
-      { id: 7, store: 'Fitness Zone', coins: '1800', category: 'Fitness', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300' },
-      { id: 8, store: 'Tech World', coins: '2200', category: 'Electronics', image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=300' },
-    ],
-  },
-  {
-    id: 'mega-bank-offers',
-    title: 'Mega Bank Offers',
-    subtitle: 'HDFC, ICICI, SBI, Axis',
-    badge: 'BANKS',
-    gradientColors: ['rgba(59, 130, 246, 0.2)', 'rgba(99, 102, 241, 0.1)'],
-    deals: [
-      { id: 9, store: 'HDFC Exclusive', cashback: '₹5000 off', category: 'Bank', image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=300' },
-      { id: 10, store: 'ICICI Bonanza', cashback: '₹3000 off', category: 'Bank', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=300' },
-      { id: 11, store: 'SBI Specials', cashback: '20% cashback', category: 'Bank', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300' },
-      { id: 12, store: 'Axis Rewards', cashback: '₹2500 off', category: 'Bank', image: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=300' },
-    ],
-  },
-  {
-    id: 'upload-bill-bonanza',
-    title: 'Upload Bill Bonanza',
-    subtitle: 'Extra ₹100 on every bill',
-    badge: '+₹100',
-    gradientColors: ['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.1)'],
-    deals: [
-      { id: 13, store: 'Any Restaurant', bonus: '+₹100 coins', category: 'Food', image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300' },
-      { id: 14, store: 'Any Salon', bonus: '+₹150 coins', category: 'Beauty', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300' },
-      { id: 15, store: 'Any Store', bonus: '+₹100 coins', category: 'Shopping', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300' },
-      { id: 16, store: 'Any Pharmacy', bonus: '+₹75 coins', category: 'Health', image: 'https://images.unsplash.com/photo-1585435557343-3b092031a831?w=300' },
-    ],
-  },
-  {
-    id: 'flash-coin-drops',
-    title: 'Flash Coin Drops',
-    subtitle: 'Limited time only',
-    badge: 'LIVE',
-    gradientColors: ['rgba(239, 68, 68, 0.2)', 'rgba(249, 115, 22, 0.1)'],
-    deals: [
-      { id: 17, store: 'Nike Store', drop: '500 coins', endsIn: '2h', category: 'Fashion', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300' },
-      { id: 18, store: 'Starbucks', drop: '300 coins', endsIn: '4h', category: 'Food', image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=300' },
-      { id: 19, store: 'Zara', drop: '400 coins', endsIn: '6h', category: 'Fashion', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=300' },
-      { id: 20, store: 'Apple Store', drop: '1000 coins', endsIn: '1h', category: 'Electronics', image: 'https://images.unsplash.com/photo-1491933382434-500287f9b54b?w=300' },
-    ],
-  },
-  {
-    id: 'new-user-bonanza',
-    title: 'New User Bonanza',
-    subtitle: 'First purchase rewards',
-    badge: 'NEW',
-    gradientColors: ['rgba(34, 197, 94, 0.2)', 'rgba(16, 185, 129, 0.1)'],
-    deals: [
-      { id: 21, store: 'First Order', bonus: '₹500 off', category: 'New User', image: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300' },
-      { id: 22, store: 'First Visit', bonus: '1000 coins', category: 'New User', image: 'https://images.unsplash.com/photo-1555529902-5261145633bf?w=300' },
-      { id: 23, store: 'Sign Up Bonus', bonus: '₹300 cashback', category: 'New User', image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=300' },
-      { id: 24, store: 'Welcome Gift', bonus: '₹200 voucher', category: 'New User', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=300' },
-    ],
-  },
-];
-
 const DealStorePage: React.FC = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [dealCategories, setDealCategories] = useState<DealCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const filteredCampaign = (params.campaign as string) || null;
+  const filteredDealName = (params.deal as string) || null;
 
   const categories = ['all', 'Cashback', 'Coins', 'Bank Offers', 'Flash Deals'];
 
-  const handleDealPress = (dealId: number) => {
-    router.push(`/offers/${dealId}` as any);
+  useEffect(() => {
+    fetchDeals();
+  }, []);
+
+  const fetchDeals = async () => {
+    try {
+      setIsLoading(true);
+      const response = await campaignsApi.getExcitingDeals(20); // Get more for deal store
+
+      if (response.success && response.data && response.data.dealCategories.length > 0) {
+        // Remove duplicates by ID and title
+        const uniqueCategories = response.data.dealCategories.filter((cat, index, self) => {
+          const firstIndex = self.findIndex((c) => {
+            // Match by exact ID
+            if (c.id === cat.id) return true;
+            // Match by title if IDs are different but titles match
+            if (c.title?.toLowerCase() === cat.title?.toLowerCase() && c.id && cat.id) {
+              return true;
+            }
+            return false;
+          });
+          return index === firstIndex;
+        });
+        
+        console.log('✅ [DealStore] Loaded', uniqueCategories.length, 'unique campaigns');
+        setDealCategories(uniqueCategories);
+      }
+    } catch (error) {
+      console.error('❌ [DealStore] Error fetching deals:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const renderDealValue = (deal: Deal) => {
+  const handleDealPress = (deal: CampaignDeal | undefined, categoryId: string, dealIndex: number) => {
+    // Safety check: ensure deal exists
+    if (!deal) {
+      console.warn('❌ [DealStore] handleDealPress called with undefined deal');
+      router.push(`/deals/${categoryId}` as any);
+      return;
+    }
+
+    // Navigate to deal detail page
+    console.log('📍 [DealStore] Navigating to deal detail:', categoryId, dealIndex);
+    router.push(`/deals/${categoryId}/${dealIndex}` as any);
+  };
+
+  const handleCategoryPress = (categoryId: string) => {
+    router.push(`/deals/${categoryId}` as any);
+  };
+
+  const renderDealValue = (deal: CampaignDeal | undefined) => {
+    if (!deal) return null;
+    
     if (deal.cashback) {
       return <Text style={styles.dealCashback}>{deal.cashback}</Text>;
     }
     if (deal.coins) {
-      return <Text style={styles.dealCoins}>🪙 {deal.coins}</Text>;
+      return (
+        <View style={styles.dealCoinsRow}>
+          <CoinIcon size={16} />
+          <Text style={styles.dealCoins}>{deal.coins}</Text>
+        </View>
+      );
     }
     if (deal.bonus) {
       return <Text style={styles.dealBonus}>{deal.bonus}</Text>;
@@ -161,6 +121,67 @@ const DealStorePage: React.FC = () => {
     }
     return null;
   };
+
+  // Filter deals based on selected category and query params
+  const filteredDealCategories = dealCategories
+    .filter((category) => {
+      // Filter by campaign if specified in URL
+      if (filteredCampaign) {
+        return category.id === filteredCampaign || 
+               category.id?.toLowerCase().includes(filteredCampaign.toLowerCase()) ||
+               filteredCampaign.toLowerCase().includes(category.id?.toLowerCase() || '');
+      }
+      // Filter by category tab
+      if (selectedCategory === 'all') return true;
+      if (selectedCategory === 'Cashback') {
+        return category.id === 'super-cashback-weekend' || 
+               category.id === 'super-cashback' ||
+               category.title?.toLowerCase().includes('cashback');
+      }
+      if (selectedCategory === 'Coins') {
+        return category.id === 'triple-coin-day' ||
+               category.title?.toLowerCase().includes('coin');
+      }
+      if (selectedCategory === 'Bank Offers') {
+        return category.id === 'mega-bank-offers' ||
+               category.title?.toLowerCase().includes('bank');
+      }
+      if (selectedCategory === 'Flash Deals') {
+        return category.id === 'flash-coin-drops' ||
+               category.title?.toLowerCase().includes('flash');
+      }
+      return true;
+    })
+    .map((category) => {
+      // If a specific deal name is provided, filter deals within the category
+      if (filteredDealName) {
+        const filteredDeals = category.deals.filter((deal) => {
+          const dealStoreName = deal.store?.toLowerCase() || '';
+          const searchName = filteredDealName.toLowerCase().replace(/\+/g, ' ');
+          return dealStoreName.includes(searchName) || searchName.includes(dealStoreName);
+        });
+        
+        // Only return category if it has matching deals
+        if (filteredDeals.length > 0) {
+          return {
+            ...category,
+            deals: filteredDeals,
+          };
+        }
+        return null;
+      }
+      return category;
+    })
+    .filter((cat) => cat !== null) as DealCategory[];
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={COLORS.green500} />
+        <Text style={styles.loadingText}>Loading deals...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -217,50 +238,94 @@ const DealStorePage: React.FC = () => {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Deal Categories */}
-        {dealCategories.map((category) => (
-          <View key={category.id} style={styles.categorySection}>
-            {/* Category Header */}
-            <LinearGradient
-              colors={category.gradientColors as any}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.categoryHeader}
-            >
-              <View>
-                <Text style={styles.categoryTitle}>{category.title}</Text>
-                <Text style={styles.categorySubtitle}>{category.subtitle}</Text>
-              </View>
-              <View style={styles.categoryBadge}>
-                <Text style={styles.categoryBadgeText}>{category.badge}</Text>
-              </View>
-            </LinearGradient>
-
-            {/* Deals Grid */}
-            <View style={styles.dealsGrid}>
-              {category.deals.map((deal) => (
-                <TouchableOpacity
-                  key={deal.id}
-                  style={styles.dealCard}
-                  onPress={() => handleDealPress(deal.id)}
-                  activeOpacity={0.8}
+        {filteredDealCategories.length > 0 ? (
+          filteredDealCategories.map((category) => (
+            <View key={category.id} style={styles.categorySection}>
+              {/* Category Header */}
+              <TouchableOpacity
+                onPress={() => router.push(`/deals/${category.id}` as any)}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={category.gradientColors as any}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.categoryHeader}
                 >
-                  <View style={styles.dealImageContainer}>
-                    <Image source={{ uri: deal.image }} style={styles.dealImage} />
-                    {deal.endsIn && (
-                      <View style={styles.timerBadge}>
-                        <Text style={styles.timerText}>{deal.endsIn} left</Text>
-                      </View>
-                    )}
+                  <View>
+                    <Text style={styles.categoryTitle}>{category.title}</Text>
+                    <Text style={styles.categorySubtitle}>{category.subtitle}</Text>
                   </View>
-                  <View style={styles.dealInfo}>
-                    <Text style={styles.dealStore} numberOfLines={1}>{deal.store}</Text>
-                    {renderDealValue(deal)}
+                  <View style={[styles.categoryBadge, { backgroundColor: category.badgeBg || COLORS.white }]}>
+                    <Text style={[styles.categoryBadgeText, { color: category.badgeColor || COLORS.navy }]}>
+                      {category.badge}
+                    </Text>
                   </View>
-                </TouchableOpacity>
-              ))}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Deals Grid */}
+              <View style={styles.dealsGrid}>
+                {category.deals && Array.isArray(category.deals) && category.deals.length > 0 ? (
+                  category.deals
+                    .filter((deal) => deal && deal.image) // Filter out invalid deals first
+                    .map((deal, idx) => {
+                      // Additional safety check
+                      if (!deal) return null;
+                      
+                      return (
+                        <TouchableOpacity
+                          key={`${category.id}-deal-${idx}-${deal.store || idx}`}
+                          style={styles.dealCard}
+                          onPress={() => {
+                            // Navigate to deal detail page using the current index
+                            console.log('📍 [DealStore] Navigating to deal detail:', category.id, idx);
+                            router.push(`/deals/${category.id}/${idx}` as any);
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <View style={styles.dealImageContainer}>
+                            <Image source={{ uri: deal.image }} style={styles.dealImage} />
+                            {deal.endsIn && (
+                              <View style={styles.timerBadge}>
+                                <Text style={styles.timerText}>{deal.endsIn} left</Text>
+                              </View>
+                            )}
+                          </View>
+                          <View style={styles.dealInfo}>
+                            <Text style={styles.dealStore} numberOfLines={1}>
+                              {deal.store || 'Store'}
+                            </Text>
+                            {renderDealValue(deal)}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })
+                ) : (
+                  <View style={styles.noDealsContainer}>
+                    <Text style={styles.noDealsText}>No deals available</Text>
+                  </View>
+                )}
+              </View>
             </View>
+          ))
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="search-outline" size={64} color={COLORS.gray600} />
+            <Text style={styles.emptyText}>No deals found</Text>
+            {filteredDealName && (
+              <Text style={styles.emptySubtext}>
+                No deals found for "{filteredDealName}"
+              </Text>
+            )}
+            <TouchableOpacity
+              style={styles.clearFilterButton}
+              onPress={() => router.push('/deal-store' as any)}
+            >
+              <Text style={styles.clearFilterText}>Clear Filter</Text>
+            </TouchableOpacity>
           </View>
-        ))}
+        )}
 
         {/* Bottom CTA */}
         <View style={styles.bottomCTA}>
@@ -444,6 +509,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.emerald500,
   },
+  dealCoinsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   dealCoins: {
     fontSize: 14,
     fontWeight: '700',
@@ -490,6 +560,55 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.purple500,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.gray600,
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 300,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.navy,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: COLORS.gray600,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  clearFilterButton: {
+    backgroundColor: COLORS.green500,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  clearFilterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  noDealsContainer: {
+    width: '100%',
+    padding: 20,
+    alignItems: 'center',
+  },
+  noDealsText: {
+    fontSize: 14,
+    color: COLORS.gray600,
   },
 });
 

@@ -112,6 +112,8 @@ interface BookingData {
     passportNumber?: string;
     nationality?: string;
   }>;
+  bookingId?: string;
+  bookingNumber?: string;
 }
 
 export default function FlightDetailsPage() {

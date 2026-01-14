@@ -1,5 +1,5 @@
 /**
- * Cab Booking Confirmation - Displays booking success and details
+ * Bus Booking Confirmation - Displays booking success and details
  */
 
 import React from 'react';
@@ -8,32 +8,34 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
-interface CabDetails {
+interface BusDetails {
   id: string;
   name: string;
-  route?: {
+  route: {
     from: string;
     to: string;
+    fromTerminal?: string;
+    toTerminal?: string;
   };
-  cabType?: string;
+  busNumber?: string;
+  busType?: string;
+  departureTime?: string;
+  arrivalTime?: string;
 }
 
 interface BookingData {
-  pickupDate: Date;
-  pickupTime: string;
-  pickupLocation: string;
-  dropoffLocation: string;
+  travelDate: Date;
+  returnDate?: Date;
   tripType: 'one-way' | 'round-trip';
   passengers: {
     adults: number;
     children: number;
   };
-  vehicleType: 'sedan' | 'suv' | 'premium';
+  busClass: 'seater' | 'sleeper' | 'semiSleeper' | 'ac';
   selectedExtras: {
-    driver?: boolean;
-    tollCharges?: boolean;
-    parking?: boolean;
-    waitingTime?: boolean;
+    meals?: boolean;
+    insurance?: boolean;
+    cancellation?: boolean;
   };
   contactInfo: {
     name: string;
@@ -44,23 +46,30 @@ interface BookingData {
   bookingNumber?: string;
 }
 
-interface CabBookingConfirmationProps {
-  cab: CabDetails;
+interface BusBookingConfirmationProps {
+  bus: BusDetails;
   bookingData: BookingData;
   onClose: () => void;
 }
 
-const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
-  cab,
+const BusBookingConfirmation: React.FC<BusBookingConfirmationProps> = ({
+  bus,
   bookingData,
   onClose,
 }) => {
   const router = useRouter();
-  const bookingNumber = bookingData.bookingNumber || `CAB-${Date.now().toString().slice(-8)}`;
+  const bookingNumber = bookingData.bookingNumber || `BUS-${Date.now().toString().slice(-8)}`;
   
   const handleViewBookings = () => {
     onClose();
     router.push('/my-bookings' as any);
+  };
+
+  const classNames: Record<string, string> = {
+    seater: 'Seater',
+    sleeper: 'Sleeper',
+    semiSleeper: 'Semi Sleeper',
+    ac: 'AC Sleeper',
   };
 
   return (
@@ -76,11 +85,11 @@ const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
         {/* Success Icon */}
         <View style={styles.successContainer}>
           <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={80} color="#EAB308" />
+            <Ionicons name="checkmark-circle" size={80} color="#F97316" />
           </View>
           <Text style={styles.successTitle}>Booking Confirmed!</Text>
           <Text style={styles.successSubtitle}>
-            Your cab booking has been confirmed
+            Your bus ticket has been confirmed
           </Text>
         </View>
 
@@ -96,46 +105,61 @@ const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
         {/* Booking Details Card */}
         <View style={styles.detailsCard}>
           <View style={styles.cardHeader}>
-            <Ionicons name="car" size={24} color="#EAB308" />
+            <Ionicons name="bus" size={24} color="#F97316" />
             <Text style={styles.cardTitle}>Booking Details</Text>
           </View>
 
-          {/* Cab Name */}
+          {/* Bus Name */}
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Service</Text>
-            <Text style={styles.detailValue}>{cab.name}</Text>
+            <Text style={styles.detailLabel}>Bus</Text>
+            <Text style={styles.detailValue}>{bus.name}</Text>
           </View>
 
           {/* Route */}
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Route</Text>
             <View>
-              <Text style={styles.detailValue}>{bookingData.pickupLocation}</Text>
-              <Text style={styles.detailSubtext}>to {bookingData.dropoffLocation}</Text>
+              <Text style={styles.detailValue}>{bus.route.from}</Text>
+              <Text style={styles.detailSubtext}>to {bus.route.to}</Text>
             </View>
           </View>
 
-          {/* Pickup Date & Time */}
+          {/* Travel Date & Time */}
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Pickup</Text>
+            <Text style={styles.detailLabel}>Travel Date</Text>
             <View>
               <Text style={styles.detailValue}>
-                {bookingData.pickupDate.toLocaleDateString('en-IN', {
+                {bookingData.travelDate.toLocaleDateString('en-IN', {
                   weekday: 'short',
                   year: 'numeric',
                   month: 'short',
                   day: 'numeric',
                 })}
               </Text>
-              <Text style={styles.detailSubtext}>Time: {bookingData.pickupTime}</Text>
+              <Text style={styles.detailSubtext}>Departure: {bus.departureTime || '08:00'}</Text>
             </View>
           </View>
 
-          {/* Vehicle Type */}
+          {/* Return Date (if round-trip) */}
+          {bookingData.returnDate && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Return Date</Text>
+              <Text style={styles.detailValue}>
+                {bookingData.returnDate.toLocaleDateString('en-IN', {
+                  weekday: 'short',
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </Text>
+            </View>
+          )}
+
+          {/* Bus Class */}
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Vehicle</Text>
+            <Text style={styles.detailLabel}>Class</Text>
             <Text style={styles.detailValue}>
-              {bookingData.vehicleType.charAt(0).toUpperCase() + bookingData.vehicleType.slice(1)}
+              {classNames[bookingData.busClass] || bookingData.busClass}
             </Text>
           </View>
 
@@ -161,14 +185,14 @@ const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Extras</Text>
               <View>
-                {bookingData.selectedExtras.tollCharges && (
-                  <Text style={styles.detailValue}>• Toll Charges</Text>
+                {bookingData.selectedExtras.meals && (
+                  <Text style={styles.detailValue}>• Meals</Text>
                 )}
-                {bookingData.selectedExtras.parking && (
-                  <Text style={styles.detailValue}>• Parking</Text>
+                {bookingData.selectedExtras.insurance && (
+                  <Text style={styles.detailValue}>• Travel Insurance</Text>
                 )}
-                {bookingData.selectedExtras.waitingTime && (
-                  <Text style={styles.detailValue}>• Waiting Time</Text>
+                {bookingData.selectedExtras.cancellation && (
+                  <Text style={styles.detailValue}>• Free Cancellation</Text>
                 )}
               </View>
             </View>
@@ -178,7 +202,7 @@ const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
         {/* Contact Information */}
         <View style={styles.detailsCard}>
           <View style={styles.cardHeader}>
-            <Ionicons name="person" size={24} color="#EAB308" />
+            <Ionicons name="person" size={24} color="#F97316" />
             <Text style={styles.cardTitle}>Contact Information</Text>
           </View>
 
@@ -200,13 +224,14 @@ const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
 
         {/* Important Info */}
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={24} color="#EAB308" />
+          <Ionicons name="information-circle" size={24} color="#F97316" />
           <View style={styles.infoContent}>
             <Text style={styles.infoTitle}>Important Information</Text>
             <Text style={styles.infoText}>
-              • Driver will contact you 30 minutes before pickup{'\n'}
-              • Please be ready at the pickup location on time{'\n'}
-              • Keep your booking number handy for reference
+              • Arrive at the bus terminal 30 minutes before departure{'\n'}
+              • Keep your booking number handy for boarding{'\n'}
+              • Valid ID proof required for all passengers{'\n'}
+              • Cancellation policies apply as per terms
             </Text>
           </View>
         </View>
@@ -223,7 +248,7 @@ const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
           </TouchableOpacity>
           <TouchableOpacity style={[styles.footerButton, styles.doneButton]} onPress={onClose}>
             <LinearGradient
-              colors={['#EAB308', '#CA8A04']}
+              colors={['#F97316', '#EA580C']}
               style={styles.doneButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -283,18 +308,18 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#EAB308',
+    borderColor: '#F97316',
   },
   bookingNumberLabel: {
     fontSize: 14,
-    color: '#CA8A04',
+    color: '#EA580C',
     fontWeight: '600',
     marginBottom: 8,
   },
   bookingNumber: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#CA8A04',
+    color: '#EA580C',
     letterSpacing: 2,
     marginBottom: 8,
   },
@@ -365,7 +390,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#CA8A04',
+    color: '#EA580C',
     marginBottom: 8,
   },
   infoText: {
@@ -415,4 +440,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CabBookingConfirmation;
+export default BusBookingConfirmation;

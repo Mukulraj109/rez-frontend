@@ -1,5 +1,5 @@
 /**
- * Cab Booking Confirmation - Displays booking success and details
+ * Package Booking Confirmation - Displays booking success and details
  */
 
 import React from 'react';
@@ -8,32 +8,30 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
-interface CabDetails {
+interface PackageDetails {
   id: string;
   name: string;
-  route?: {
-    from: string;
-    to: string;
+  destination?: string;
+  duration?: {
+    nights: number;
+    days: number;
   };
-  cabType?: string;
 }
 
 interface BookingData {
-  pickupDate: Date;
-  pickupTime: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-  tripType: 'one-way' | 'round-trip';
-  passengers: {
+  travelDate: Date;
+  returnDate: Date;
+  travelers: {
     adults: number;
     children: number;
   };
-  vehicleType: 'sedan' | 'suv' | 'premium';
-  selectedExtras: {
-    driver?: boolean;
-    tollCharges?: boolean;
-    parking?: boolean;
-    waitingTime?: boolean;
+  accommodationType: 'standard' | 'deluxe' | 'luxury';
+  mealPlan: 'none' | 'breakfast' | 'halfBoard' | 'fullBoard';
+  selectedAddons: {
+    sightseeing?: boolean;
+    transfers?: boolean;
+    travelInsurance?: boolean;
+    guide?: boolean;
   };
   contactInfo: {
     name: string;
@@ -44,28 +42,46 @@ interface BookingData {
   bookingNumber?: string;
 }
 
-interface CabBookingConfirmationProps {
-  cab: CabDetails;
+interface PackageBookingConfirmationProps {
+  package: PackageDetails;
   bookingData: BookingData;
   onClose: () => void;
 }
 
-const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
-  cab,
+const PackageBookingConfirmation: React.FC<PackageBookingConfirmationProps> = ({
+  package: pkg,
   bookingData,
   onClose,
 }) => {
   const router = useRouter();
-  const bookingNumber = bookingData.bookingNumber || `CAB-${Date.now().toString().slice(-8)}`;
+  const bookingNumber = bookingData.bookingNumber || `PKG-${Date.now().toString().slice(-8)}`;
   
   const handleViewBookings = () => {
     onClose();
     router.push('/my-bookings' as any);
   };
 
+  const accommodationNames: Record<string, string> = {
+    standard: 'Standard',
+    deluxe: 'Deluxe',
+    luxury: 'Luxury',
+  };
+
+  const mealPlanNames: Record<string, string> = {
+    none: 'No Meals',
+    breakfast: 'Breakfast Only',
+    halfBoard: 'Half Board',
+    fullBoard: 'Full Board',
+  };
+
+  const calculateNights = () => {
+    const diffTime = bookingData.returnDate.getTime() - bookingData.travelDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : pkg.duration?.nights || 3;
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
           <Ionicons name="close" size={24} color="#111827" />
@@ -73,18 +89,16 @@ const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Success Icon */}
         <View style={styles.successContainer}>
           <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={80} color="#EAB308" />
+            <Ionicons name="checkmark-circle" size={80} color="#8B5CF6" />
           </View>
           <Text style={styles.successTitle}>Booking Confirmed!</Text>
           <Text style={styles.successSubtitle}>
-            Your cab booking has been confirmed
+            Your travel package has been confirmed
           </Text>
         </View>
 
-        {/* Booking Number */}
         <View style={styles.bookingNumberCard}>
           <Text style={styles.bookingNumberLabel}>Booking Number</Text>
           <Text style={styles.bookingNumber}>{bookingNumber}</Text>
@@ -93,92 +107,101 @@ const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
           </Text>
         </View>
 
-        {/* Booking Details Card */}
         <View style={styles.detailsCard}>
           <View style={styles.cardHeader}>
-            <Ionicons name="car" size={24} color="#EAB308" />
-            <Text style={styles.cardTitle}>Booking Details</Text>
+            <Ionicons name="bag" size={24} color="#8B5CF6" />
+            <Text style={styles.cardTitle}>Package Details</Text>
           </View>
 
-          {/* Cab Name */}
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Service</Text>
-            <Text style={styles.detailValue}>{cab.name}</Text>
+            <Text style={styles.detailLabel}>Package</Text>
+            <Text style={styles.detailValue}>{pkg.name}</Text>
           </View>
 
-          {/* Route */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Route</Text>
-            <View>
-              <Text style={styles.detailValue}>{bookingData.pickupLocation}</Text>
-              <Text style={styles.detailSubtext}>to {bookingData.dropoffLocation}</Text>
-            </View>
-          </View>
-
-          {/* Pickup Date & Time */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Pickup</Text>
-            <View>
-              <Text style={styles.detailValue}>
-                {bookingData.pickupDate.toLocaleDateString('en-IN', {
-                  weekday: 'short',
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                })}
-              </Text>
-              <Text style={styles.detailSubtext}>Time: {bookingData.pickupTime}</Text>
-            </View>
-          </View>
-
-          {/* Vehicle Type */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Vehicle</Text>
-            <Text style={styles.detailValue}>
-              {bookingData.vehicleType.charAt(0).toUpperCase() + bookingData.vehicleType.slice(1)}
-            </Text>
-          </View>
-
-          {/* Passengers */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Passengers</Text>
-            <Text style={styles.detailValue}>
-              {bookingData.passengers.adults} Adult{bookingData.passengers.adults !== 1 ? 's' : ''}
-              {bookingData.passengers.children > 0 && `, ${bookingData.passengers.children} Child${bookingData.passengers.children !== 1 ? 'ren' : ''}`}
-            </Text>
-          </View>
-
-          {/* Trip Type */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Trip Type</Text>
-            <Text style={styles.detailValue}>
-              {bookingData.tripType === 'one-way' ? 'One Way' : 'Round Trip'}
-            </Text>
-          </View>
-
-          {/* Extras */}
-          {Object.values(bookingData.selectedExtras).some(v => v) && (
+          {pkg.destination && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Extras</Text>
+              <Text style={styles.detailLabel}>Destination</Text>
+              <Text style={styles.detailValue}>{pkg.destination}</Text>
+            </View>
+          )}
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Travel Date</Text>
+            <Text style={styles.detailValue}>
+              {bookingData.travelDate.toLocaleDateString('en-IN', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Return Date</Text>
+            <Text style={styles.detailValue}>
+              {bookingData.returnDate.toLocaleDateString('en-IN', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Duration</Text>
+            <Text style={styles.detailValue}>
+              {calculateNights()} Night{calculateNights() !== 1 ? 's' : ''} / {calculateNights() + 1} Day{calculateNights() !== 0 ? 's' : ''}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Travelers</Text>
+            <Text style={styles.detailValue}>
+              {bookingData.travelers.adults} Adult{bookingData.travelers.adults !== 1 ? 's' : ''}
+              {bookingData.travelers.children > 0 && `, ${bookingData.travelers.children} Child${bookingData.travelers.children !== 1 ? 'ren' : ''}`}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Accommodation</Text>
+            <Text style={styles.detailValue}>
+              {accommodationNames[bookingData.accommodationType]}
+            </Text>
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Meal Plan</Text>
+            <Text style={styles.detailValue}>
+              {mealPlanNames[bookingData.mealPlan]}
+            </Text>
+          </View>
+
+          {Object.values(bookingData.selectedAddons).some(v => v) && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Add-ons</Text>
               <View>
-                {bookingData.selectedExtras.tollCharges && (
-                  <Text style={styles.detailValue}>• Toll Charges</Text>
+                {bookingData.selectedAddons.sightseeing && (
+                  <Text style={styles.detailValue}>• Sightseeing Tours</Text>
                 )}
-                {bookingData.selectedExtras.parking && (
-                  <Text style={styles.detailValue}>• Parking</Text>
+                {bookingData.selectedAddons.transfers && (
+                  <Text style={styles.detailValue}>• Airport Transfers</Text>
                 )}
-                {bookingData.selectedExtras.waitingTime && (
-                  <Text style={styles.detailValue}>• Waiting Time</Text>
+                {bookingData.selectedAddons.travelInsurance && (
+                  <Text style={styles.detailValue}>• Travel Insurance</Text>
+                )}
+                {bookingData.selectedAddons.guide && (
+                  <Text style={styles.detailValue}>• Professional Guide</Text>
                 )}
               </View>
             </View>
           )}
         </View>
 
-        {/* Contact Information */}
         <View style={styles.detailsCard}>
           <View style={styles.cardHeader}>
-            <Ionicons name="person" size={24} color="#EAB308" />
+            <Ionicons name="person" size={24} color="#8B5CF6" />
             <Text style={styles.cardTitle}>Contact Information</Text>
           </View>
 
@@ -198,21 +221,21 @@ const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
           </View>
         </View>
 
-        {/* Important Info */}
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={24} color="#EAB308" />
+          <Ionicons name="information-circle" size={24} color="#8B5CF6" />
           <View style={styles.infoContent}>
             <Text style={styles.infoTitle}>Important Information</Text>
             <Text style={styles.infoText}>
-              • Driver will contact you 30 minutes before pickup{'\n'}
-              • Please be ready at the pickup location on time{'\n'}
-              • Keep your booking number handy for reference
+              • Confirmation voucher will be sent to your email{'\n'}
+              • Arrive at the meeting point 30 minutes before departure{'\n'}
+              • Keep your booking number handy{'\n'}
+              • Valid ID proof required for all travelers{'\n'}
+              • Cancellation policies apply as per terms
             </Text>
           </View>
         </View>
       </ScrollView>
 
-      {/* Action Buttons */}
       <View style={styles.footer}>
         <View style={styles.footerButtons}>
           <TouchableOpacity 
@@ -223,7 +246,7 @@ const CabBookingConfirmation: React.FC<CabBookingConfirmationProps> = ({
           </TouchableOpacity>
           <TouchableOpacity style={[styles.footerButton, styles.doneButton]} onPress={onClose}>
             <LinearGradient
-              colors={['#EAB308', '#CA8A04']}
+              colors={['#8B5CF6', '#7C3AED']}
               style={styles.doneButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -279,28 +302,28 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 24,
     padding: 24,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F3E8FF',
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#EAB308',
+    borderColor: '#8B5CF6',
   },
   bookingNumberLabel: {
     fontSize: 14,
-    color: '#CA8A04',
+    color: '#7C3AED',
     fontWeight: '600',
     marginBottom: 8,
   },
   bookingNumber: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#CA8A04',
+    color: '#7C3AED',
     letterSpacing: 2,
     marginBottom: 8,
   },
   bookingNote: {
     fontSize: 12,
-    color: '#92400E',
+    color: '#6B21A8',
   },
   detailsCard: {
     marginHorizontal: 20,
@@ -344,17 +367,11 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
-  detailSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'right',
-    marginTop: 4,
-  },
   infoCard: {
     marginHorizontal: 20,
     marginBottom: 24,
     padding: 20,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F3E8FF',
     borderRadius: 16,
     flexDirection: 'row',
     gap: 12,
@@ -365,12 +382,12 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#CA8A04',
+    color: '#7C3AED',
     marginBottom: 8,
   },
   infoText: {
     fontSize: 14,
-    color: '#92400E',
+    color: '#6B21A8',
     lineHeight: 20,
   },
   footer: {
@@ -415,4 +432,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CabBookingConfirmation;
+export default PackageBookingConfirmation;
