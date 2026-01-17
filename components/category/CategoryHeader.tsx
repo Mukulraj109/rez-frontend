@@ -26,6 +26,11 @@ interface CategoryHeaderProps {
   searchQuery: string;
   onFilterPress?: () => void;
   showFilterBadge?: boolean;
+  stats?: {
+    productCount: number;
+    storeCount: number;
+    maxCashback?: number;
+  };
 }
 
 export default function CategoryHeader({
@@ -35,6 +40,7 @@ export default function CategoryHeader({
   searchQuery,
   onFilterPress,
   showFilterBadge = false,
+  stats,
 }: CategoryHeaderProps) {
   const router = useRouter();
   const { user, isModalVisible, showModal, hideModal } = useProfile();
@@ -43,9 +49,9 @@ export default function CategoryHeader({
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [userPoints, setUserPoints] = useState(0);
   const { width, height } = Dimensions.get('window');
-  
-  const statusBarHeight = Platform.OS === 'ios' 
-    ? (height >= 812 ? 44 : 20) 
+
+  const statusBarHeight = Platform.OS === 'ios'
+    ? (height >= 812 ? 44 : 20)
     : StatusBar.currentHeight ?? 24;
 
   // Load wallet balance on mount
@@ -59,7 +65,7 @@ export default function CategoryHeader({
     try {
       const walletApi = (await import('@/services/walletApi')).default;
       const response = await walletApi.getBalance();
-      
+
       if (response.success && response.data) {
         // Get rez coin balance (same as FashionHeader)
         const rezCoin = response.data.coins.find((c: any) => c.type === 'rez');
@@ -177,10 +183,10 @@ export default function CategoryHeader({
             isSearchFocused && styles.searchInputContainerFocused
           ]}>
             {/* Search Icon */}
-            <Ionicons 
-              name="search" 
-              size={20} 
-              color="#6B7280" 
+            <Ionicons
+              name="search"
+              size={20}
+              color="#6B7280"
               style={styles.searchIcon}
             />
 
@@ -210,10 +216,10 @@ export default function CategoryHeader({
                 accessibilityLabel="Clear search"
                 accessibilityRole="button"
               >
-                <Ionicons 
-                  name="close-circle" 
-                  size={18} 
-                  color="#9CA3AF" 
+                <Ionicons
+                  name="close-circle"
+                  size={18}
+                  color="#9CA3AF"
                 />
               </TouchableOpacity>
             )}
@@ -242,7 +248,7 @@ export default function CategoryHeader({
       {/* Category Description (if no search) */}
       {!category.headerConfig.showSearch && category.shortDescription && (
         <View style={styles.descriptionContainer}>
-          <ThemedText 
+          <ThemedText
             style={[styles.description, { color: category.headerConfig.textColor }]}
             numberOfLines={2}
           >
@@ -251,18 +257,50 @@ export default function CategoryHeader({
         </View>
       )}
 
+      {/* Stats Row */}
+      {stats && (
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <ThemedText style={[styles.statValue, { color: category.headerConfig.textColor }]}>
+              {stats.productCount}+
+            </ThemedText>
+            <ThemedText style={[styles.statLabel, { color: category.headerConfig.textColor }]}>
+              Products
+            </ThemedText>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: category.headerConfig.textColor, opacity: 0.3 }]} />
+          <View style={styles.statItem}>
+            <ThemedText style={[styles.statValue, { color: category.headerConfig.textColor }]}>
+              {stats.maxCashback || 25}%
+            </ThemedText>
+            <ThemedText style={[styles.statLabel, { color: category.headerConfig.textColor }]}>
+              Max Cashback
+            </ThemedText>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: category.headerConfig.textColor, opacity: 0.3 }]} />
+          <View style={styles.statItem}>
+            <ThemedText style={[styles.statValue, { color: category.headerConfig.textColor }]}>
+              {stats.storeCount}+
+            </ThemedText>
+            <ThemedText style={[styles.statLabel, { color: category.headerConfig.textColor }]}>
+              Brands
+            </ThemedText>
+          </View>
+        </View>
+      )}
+
       {/* Profile Menu Modal */}
       {user && (
-        <ProfileMenuModal 
-          visible={isModalVisible} 
-          onClose={hideModal} 
-          user={user} 
-          menuSections={profileMenuSections} 
-          onMenuItemPress={handleMenuItemPress} 
+        <ProfileMenuModal
+          visible={isModalVisible}
+          onClose={hideModal}
+          user={user}
+          menuSections={profileMenuSections}
+          onMenuItemPress={handleMenuItemPress}
         />
       )}
     </LinearGradient>
-);
+  );
 }
 
 const styles = StyleSheet.create({
@@ -435,5 +473,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.9,
     lineHeight: 20,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 11,
+    opacity: 0.8,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
   },
 });

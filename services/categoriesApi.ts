@@ -79,7 +79,7 @@ class CategoriesService {
   // Get all categories with optional filters
   async getCategories(params: CategoryQuery = {}): Promise<ApiResponse<Category[]>> {
     const query = new URLSearchParams();
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         if (Array.isArray(value)) {
@@ -134,7 +134,7 @@ class CategoriesService {
     params.append('search', query);
     params.append('isActive', 'true');
     if (type) params.append('type', type);
-    
+
     return apiClient.get(`${this.baseUrl}?${params.toString()}`);
   }
 
@@ -195,6 +195,21 @@ class CategoriesService {
         message: error?.message || 'Failed to fetch category data',
       };
     }
+  }
+
+  // Get category loyalty stats
+  async getCategoryLoyaltyStats(slug: string): Promise<ApiResponse<{ ordersCount: number; brandsCount: number }>> {
+    return apiClient.get(`${this.baseUrl}/${slug}/loyalty-stats`);
+  }
+
+  // Get recent orders for social proof ticker
+  async getRecentOrders(slug: string, limit: number = 5): Promise<ApiResponse<{ orders: { id: string; userName: string; storeName: string; timeAgo: string }[] }>> {
+    return apiClient.get(`${this.baseUrl}/${slug}/recent-orders?limit=${limit}`);
+  }
+
+  // Get AI suggestions for a category
+  async getCategoryAISuggestions(slug: string): Promise<ApiResponse<{ suggestions: { id: string; title: string; icon: string; link: string }[]; placeholders: string[] }>> {
+    return apiClient.get(`${this.baseUrl}/${slug}/ai-suggestions`);
   }
 }
 

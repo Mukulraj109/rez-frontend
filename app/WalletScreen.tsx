@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { CoinInfoCard } from '../components/CoinInfoCard';
-import  RechargeWalletCard from "../components/RechargeWalletCard";
+import RechargeWalletCard from "../components/RechargeWalletCard";
 import ProfileCompletionCard from "@/components/ProfileCompletionCard";
 import ScratchCardOffer from "@/components/ScratchCardOffer";
 import scratchImage from "@/assets/images/scratch-offer.png";
@@ -25,6 +25,7 @@ import { useRouter } from 'expo-router';
 import { WalletBalanceCard } from '../components/WalletBalanceCard';
 import { CoinBalance, WalletScreenProps } from '@/types/wallet';
 import { useWallet } from '@/hooks/useWallet';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
 import { useProfile } from '@/hooks/useProfile';
 import { useReferral } from '@/hooks/useReferral';
@@ -39,12 +40,14 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   onNavigateBack,
   onCoinPress,
 }) => {
+  const { state: { user } } = useAuth();
+  const currentUserId = user?.id || userId;
   const router = useRouter();
   const { goBack } = useSafeNavigation();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
 
   const { walletState, refreshWallet, retryLastOperation, clearError } = useWallet({
-    userId,
+    userId: currentUserId,
     autoFetch: true,
     refreshInterval: 5 * 60 * 1000,
   });
@@ -79,6 +82,14 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   useEffect(() => {
     trackWalletViewed();
   }, [trackWalletViewed]);
+
+  useEffect(() => {
+    if (walletState.data) {
+      console.log('💰 [WalletScreen] Loaded wallet data for user:', currentUserId);
+      console.log('💰 [WalletScreen] Balance:', walletState.data.totalBalance);
+      console.log('💰 [WalletScreen] Coins:', JSON.stringify(walletState.data.coins, null, 2));
+    }
+  }, [walletState.data, currentUserId]);
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -126,7 +137,7 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   const handleTopupSubmit = useCallback((amount: number) => {
 
     trackTopupInitiated(amount);
-    
+
     // Force navigation to new payment page
     router.replace({
       pathname: '/payment',
@@ -261,257 +272,257 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
   return (
     <WalletErrorBoundary>
       <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#00796B" />
-      <LinearGradient colors={['#00796B', '#00C06A'] as const} style={styles.headerBg}>
-        <View style={styles.headerContainer}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBackPress}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            accessibilityHint="Double tap to return to previous screen"
-          >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Wallet</Text>
-          <View style={styles.headerRight} />
-        </View>
-      </LinearGradient>
-
-      <View style={styles.amountCard}>
-        <Text style={styles.currency}>{formattedTotalBalance}</Text>
-        <Text style={styles.subtitle}>Total Wallet Balance</Text>
-      </View>
-
-      {/* Wallet Quick Actions */}
-      <WalletQuickActions style={styles.quickActionsContainer} />
-
-      <ScrollView
-        style={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={walletState.isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor="#00796B"
-            colors={['#00796B']}
-            progressBackgroundColor="#FFFFFF"
-          />
-        }
-      >
-        {walletData.coins.map((coin) => (
-          <WalletBalanceCard key={coin.id} coin={coin} onPress={handleCoinPress} showChevron />
-        ))}
-
-        {/* View Transactions Button */}
-        <View style={styles.transactionButtonContainer}>
-          <TouchableOpacity
-            style={styles.viewTransactionsButton}
-            onPress={() => {
-              trackTransactionViewed();
-              router.push('/transactions');
-            }}
-            activeOpacity={0.7}
-            accessibilityLabel="View transactions"
-            accessibilityRole="button"
-            accessibilityHint="Double tap to check your complete transaction history"
-          >
-            <LinearGradient
-              colors={['#00C06A', '#00796B'] as const}
-              style={styles.transactionButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+        <StatusBar barStyle="light-content" backgroundColor="#00796B" />
+        <LinearGradient colors={['#00796B', '#00C06A'] as const} style={styles.headerBg}>
+          <View style={styles.headerContainer}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBackPress}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to return to previous screen"
             >
-              <View style={styles.transactionButtonContent}>
-                <View style={styles.transactionIconContainer}>
-                  <Ionicons name="receipt-outline" size={24} color="white" />
-                </View>
-                <View style={styles.transactionTextContainer}>
-                  <Text style={styles.transactionButtonTitle}>View Transactions</Text>
-                  <Text style={styles.transactionButtonSubtitle}>
-                    Check your complete transaction history
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="rgba(255, 255, 255, 0.8)" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-
-         {/* Partner Earnings Breakdown */}
-        <EarningsBreakdown
-          compact={true}
-          onViewDetails={() => router.push('/(tabs)')}
-        />
-
-        <RechargeWalletCard
-  cashbackText="Upto 10% cashback on wallet recharge"
-  amountOptions={[120, 500, 1000, 5000, 10000]}
-  onAmountSelect={handleAmountSelect}
-  onSubmit={handleTopupSubmit}
-  isLoading={topupLoading}
-  currency="RC"
-/>
-
-        {/* Only Image Coin Info Cards */}
-        <CoinInfoCard 
-          image={require('../assets/images/wallet1.png')} 
-          onPress={() => {}}
-        />
-        <CoinInfoCard 
-          image={require('../assets/images/wallet2.png')} 
-          onPress={() => {}}
-        />
-        <CoinInfoCard 
-          image={require('../assets/images/wallet3.png')} 
-          onPress={() => {}}
-        />
-
-         <View
-          accessibilityLabel={`Profile completion: ${completionStatus?.completionPercentage || 0} percent`}
-          accessibilityRole="none"
-        >
-          <ProfileCompletionCard
-            name={profile?.name || 'User'}
-            completionPercentage={completionStatus?.completionPercentage || 0}
-            onCompleteProfile={() => {
-              router.push('/profile/edit');
-            }}
-            onViewDetails={() => {
-              router.push('/profile');
-            }}
-            isLoading={profileLoading}
-          />
-        </View>
-      <View
-        accessibilityLabel="Scratch card offer available"
-        accessibilityRole="none"
-      >
-        <ScratchCardOffer
-          imageSource={scratchImage}
-          onPress={() => router.push('/scratch-card')}
-          isActive={true}
-        />
-      </View>
-       <ProfileOptionsList 
-         options={[
-           {
-             id: "2",
-             icon: "receipt-outline",
-             title: "Order History",
-             subtitle: "View order details",
-           },
-           {
-             id: "3",
-             icon: "heart-outline",
-             title: "Wishlist",
-             subtitle: "All your Favorites",
-           },
-           {
-             id: "4",
-             icon: "location-outline",
-             title: "Saved address",
-             subtitle: "Edit, add, delete your address",
-           },
-           {
-             id: "5",
-             icon: "resize-outline",
-             title: "Ring Sizer",
-             subtitle: "Check your ring size",
-           },
-         ]}
-         onOptionPress={(option) => {
-
-           // Handle navigation based on option
-           switch (option.id) {
-             case "2": // Order History
-               router.push('/order-history');
-               break;
-             case "3": // Wishlist
-               router.push('/wishlist');
-               break;
-             case "4": // Saved Address
-               router.push('/account/addresses');
-               break;
-             case "5": // Ring Sizer
-               router.push('/ring-sizer');
-               break;
-             default:
-
-           }
-         }}
-         isLoading={false}
-       />
-        <ReferAndEarnCard 
-         data={{
-           title: referralData?.title || "Refer and Earn",
-           subtitle: referralData?.subtitle || "Invite your friends and get free jewellery",
-           inviteButtonText: referralData?.inviteButtonText || "Invite",
-           inviteLink: referralData?.inviteLink || "",
-         }}
-         onInvite={(link) => {
-           // In a real app, this would open the share dialog
-
-         }}
-         isLoading={referralLoading}
-       />
-        <View style={{ height: 24 }} />
-      </ScrollView>
-
-      {/* Topup Confirmation Modal */}
-      <Modal
-        visible={showTopupConfirm}
-        transparent
-        animationType="fade"
-        onRequestClose={handleTopupCancel}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="diamond" size={48} color="#00C06A" />
-              <Text style={styles.modalTitle}>Confirm Topup</Text>
-            </View>
-
-            <View style={styles.modalBody}>
-              <Text style={styles.modalText}>
-                You are about to add
-              </Text>
-              <Text style={styles.modalAmount}>
-                {selectedTopupAmount} RC
-              </Text>
-              <Text style={styles.modalText}>
-                to your wallet
-              </Text>
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={handleTopupCancel}
-                accessibilityLabel="Cancel top-up"
-                accessibilityRole="button"
-                accessibilityHint="Double tap to cancel this top-up"
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleTopupConfirm}
-                accessibilityLabel={`Confirm top-up of ${selectedTopupAmount} RC`}
-                accessibilityRole="button"
-                accessibilityHint="Double tap to confirm and add money to wallet"
-              >
-                <Text style={styles.confirmButtonText}>Confirm</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalNote}>
-              Note: This is a test topup. In production, you'll be directed to a payment gateway.
-            </Text>
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Wallet</Text>
+            <View style={styles.headerRight} />
           </View>
+        </LinearGradient>
+
+        <View style={styles.amountCard}>
+          <Text style={styles.currency}>{formattedTotalBalance}</Text>
+          <Text style={styles.subtitle}>Total Wallet Balance</Text>
         </View>
-      </Modal>
+
+        {/* Wallet Quick Actions */}
+        <WalletQuickActions style={styles.quickActionsContainer} />
+
+        <ScrollView
+          style={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={walletState.isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor="#00796B"
+              colors={['#00796B']}
+              progressBackgroundColor="#FFFFFF"
+            />
+          }
+        >
+          {walletData.coins.map((coin) => (
+            <WalletBalanceCard key={coin.id} coin={coin} onPress={handleCoinPress} showChevron />
+          ))}
+
+          {/* View Transactions Button */}
+          <View style={styles.transactionButtonContainer}>
+            <TouchableOpacity
+              style={styles.viewTransactionsButton}
+              onPress={() => {
+                trackTransactionViewed();
+                router.push('/transactions');
+              }}
+              activeOpacity={0.7}
+              accessibilityLabel="View transactions"
+              accessibilityRole="button"
+              accessibilityHint="Double tap to check your complete transaction history"
+            >
+              <LinearGradient
+                colors={['#00C06A', '#00796B'] as const}
+                style={styles.transactionButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <View style={styles.transactionButtonContent}>
+                  <View style={styles.transactionIconContainer}>
+                    <Ionicons name="receipt-outline" size={24} color="white" />
+                  </View>
+                  <View style={styles.transactionTextContainer}>
+                    <Text style={styles.transactionButtonTitle}>View Transactions</Text>
+                    <Text style={styles.transactionButtonSubtitle}>
+                      Check your complete transaction history
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="rgba(255, 255, 255, 0.8)" />
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* Partner Earnings Breakdown */}
+          <EarningsBreakdown
+            compact={true}
+            onViewDetails={() => router.push('/(tabs)')}
+          />
+
+          <RechargeWalletCard
+            cashbackText="Upto 10% cashback on wallet recharge"
+            amountOptions={[120, 500, 1000, 5000, 10000]}
+            onAmountSelect={handleAmountSelect}
+            onSubmit={handleTopupSubmit}
+            isLoading={topupLoading}
+            currency="RC"
+          />
+
+          {/* Only Image Coin Info Cards */}
+          <CoinInfoCard
+            image={require('../assets/images/wallet1.png')}
+            onPress={() => { }}
+          />
+          <CoinInfoCard
+            image={require('../assets/images/wallet2.png')}
+            onPress={() => { }}
+          />
+          <CoinInfoCard
+            image={require('../assets/images/wallet3.png')}
+            onPress={() => { }}
+          />
+
+          <View
+            accessibilityLabel={`Profile completion: ${completionStatus?.completionPercentage || 0} percent`}
+            accessibilityRole="none"
+          >
+            <ProfileCompletionCard
+              name={profile?.name || 'User'}
+              completionPercentage={completionStatus?.completionPercentage || 0}
+              onCompleteProfile={() => {
+                router.push('/profile/edit');
+              }}
+              onViewDetails={() => {
+                router.push('/profile');
+              }}
+              isLoading={profileLoading}
+            />
+          </View>
+          <View
+            accessibilityLabel="Scratch card offer available"
+            accessibilityRole="none"
+          >
+            <ScratchCardOffer
+              imageSource={scratchImage}
+              onPress={() => router.push('/scratch-card')}
+              isActive={true}
+            />
+          </View>
+          <ProfileOptionsList
+            options={[
+              {
+                id: "2",
+                icon: "receipt-outline",
+                title: "Order History",
+                subtitle: "View order details",
+              },
+              {
+                id: "3",
+                icon: "heart-outline",
+                title: "Wishlist",
+                subtitle: "All your Favorites",
+              },
+              {
+                id: "4",
+                icon: "location-outline",
+                title: "Saved address",
+                subtitle: "Edit, add, delete your address",
+              },
+              {
+                id: "5",
+                icon: "resize-outline",
+                title: "Ring Sizer",
+                subtitle: "Check your ring size",
+              },
+            ]}
+            onOptionPress={(option) => {
+
+              // Handle navigation based on option
+              switch (option.id) {
+                case "2": // Order History
+                  router.push('/order-history');
+                  break;
+                case "3": // Wishlist
+                  router.push('/wishlist');
+                  break;
+                case "4": // Saved Address
+                  router.push('/account/addresses');
+                  break;
+                case "5": // Ring Sizer
+                  router.push('/ring-sizer');
+                  break;
+                default:
+
+              }
+            }}
+            isLoading={false}
+          />
+          <ReferAndEarnCard
+            data={{
+              title: referralData?.title || "Refer and Earn",
+              subtitle: referralData?.subtitle || "Invite your friends and get free jewellery",
+              inviteButtonText: referralData?.inviteButtonText || "Invite",
+              inviteLink: referralData?.inviteLink || "",
+            }}
+            onInvite={(link) => {
+              // In a real app, this would open the share dialog
+
+            }}
+            isLoading={referralLoading}
+          />
+          <View style={{ height: 24 }} />
+        </ScrollView>
+
+        {/* Topup Confirmation Modal */}
+        <Modal
+          visible={showTopupConfirm}
+          transparent
+          animationType="fade"
+          onRequestClose={handleTopupCancel}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Ionicons name="diamond" size={48} color="#00C06A" />
+                <Text style={styles.modalTitle}>Confirm Topup</Text>
+              </View>
+
+              <View style={styles.modalBody}>
+                <Text style={styles.modalText}>
+                  You are about to add
+                </Text>
+                <Text style={styles.modalAmount}>
+                  {selectedTopupAmount} RC
+                </Text>
+                <Text style={styles.modalText}>
+                  to your wallet
+                </Text>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={handleTopupCancel}
+                  accessibilityLabel="Cancel top-up"
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to cancel this top-up"
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.confirmButton]}
+                  onPress={handleTopupConfirm}
+                  accessibilityLabel={`Confirm top-up of ${selectedTopupAmount} RC`}
+                  accessibilityRole="button"
+                  accessibilityHint="Double tap to confirm and add money to wallet"
+                >
+                  <Text style={styles.confirmButtonText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalNote}>
+                Note: This is a test topup. In production, you'll be directed to a payment gateway.
+              </Text>
+            </View>
+          </View>
+        </Modal>
 
       </View>
     </WalletErrorBoundary>
@@ -592,7 +603,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
       marginTop: 12,
     },
     retryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-    
+
     // Transaction Button Styles
     transactionButtonContainer: {
       marginHorizontal: 16,
@@ -645,7 +656,7 @@ const createStyles = (screenData: { width: number; height: number }) => {
       fontWeight: '500',
       lineHeight: 18,
     },
-    
+
     container: {
       flex: 1,
       backgroundColor: "#f8f8f8",

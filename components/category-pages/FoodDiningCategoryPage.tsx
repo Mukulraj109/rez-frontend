@@ -31,6 +31,8 @@ import EmptyState from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
 // Fallback dummy data for cuisine filters
 import { foodCategoryData } from '@/data/category';
+// API for loyalty stats and recent orders
+import { categoriesApi } from '@/services/categoriesApi';
 
 // Rez Brand Colors
 const COLORS = {
@@ -163,6 +165,11 @@ export default function FoodDiningCategoryPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
+  // Real data states for loyalty hub and ticker
+  const [loyaltyStats, setLoyaltyStats] = useState<{ ordersCount: number; brandsCount: number }>({ ordersCount: 0, brandsCount: 0 });
+  const [recentOrders, setRecentOrders] = useState<{ userName: string; storeName: string; timeAgo: string }[]>([]);
+  const [tickerIndex, setTickerIndex] = useState(0);
+
   const placeholders = [
     'Search biryani, pizza, burgers...',
     'Find restaurants near you...',
@@ -175,6 +182,37 @@ export default function FoodDiningCategoryPage() {
     }, 3000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch loyalty stats and recent orders
+  useEffect(() => {
+    const fetchLoyaltyData = async () => {
+      try {
+        const [statsRes, ordersRes] = await Promise.all([
+          categoriesApi.getCategoryLoyaltyStats(slug),
+          categoriesApi.getRecentOrders(slug, 5)
+        ]);
+        if (statsRes.success && statsRes.data) {
+          setLoyaltyStats(statsRes.data);
+        }
+        if (ordersRes.success && ordersRes.data?.orders) {
+          setRecentOrders(ordersRes.data.orders);
+        }
+      } catch (err) {
+        console.log('Loyalty data fetch error:', err);
+      }
+    };
+    fetchLoyaltyData();
+  }, [slug]);
+
+  // Cycle through recent orders for ticker
+  useEffect(() => {
+    if (recentOrders.length > 1) {
+      const timer = setInterval(() => {
+        setTickerIndex((prev) => (prev + 1) % recentOrders.length);
+      }, 4000);
+      return () => clearInterval(timer);
+    }
+  }, [recentOrders.length]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -222,291 +260,302 @@ export default function FoodDiningCategoryPage() {
 
   return (
     <ErrorBoundary onError={(err) => console.error('[FoodDiningPage] Error:', err)}>
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={[categoryConfig.primaryColor]}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[categoryConfig.primaryColor]}
+          />
+        }
+      >
+        <CategoryHeader
+          categoryName={categoryConfig.name}
+          primaryColor={categoryConfig.primaryColor}
+          banner={categoryConfig.banner}
+          gradientColors={categoryConfig.gradientColors}
         />
-      }
-    >
-      <CategoryHeader
-        categoryName={categoryConfig.name}
-        primaryColor={categoryConfig.primaryColor}
-        banner={categoryConfig.banner}
-        gradientColors={categoryConfig.gradientColors}
-      />
 
-      {/* Social Proof Strip */}
-      <View style={styles.socialProofStrip}>
-        <View style={styles.socialProofContent}>
-          <Text style={styles.socialProofEmoji}>👤</Text>
-          <Text style={styles.socialProofText}>
-            <Text style={styles.socialProofUser}>Rahul</Text> just ordered from{' '}
-            <Text style={styles.socialProofRestaurant}>Dominos</Text>
-          </Text>
-          <Text style={styles.socialProofTime}>2m ago</Text>
-        </View>
-      </View>
-
-      {/* Loyalty Hub CTA */}
-      <View style={styles.loyaltyHub}>
-        <LinearGradient
-          colors={['rgba(0, 192, 106, 0.2)', 'rgba(0, 137, 107, 0.2)', 'rgba(251, 191, 36, 0.2)']}
-          style={styles.loyaltyHubGradient}
-        >
-          <View style={styles.loyaltyHubHeader}>
-            <View style={styles.loyaltyHubIcon}>
-              <Ionicons name="trophy" size={24} color={COLORS.primaryGreen} />
-            </View>
-            <View style={styles.loyaltyHubText}>
-              <Text style={styles.loyaltyHubTitle}>Food Loyalty Hub</Text>
-              <Text style={styles.loyaltyHubSubtitle}>Track streaks, unlock rewards</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </View>
-          <View style={styles.loyaltyHubStats}>
-            <View style={styles.loyaltyHubStat}>
-              <Text style={styles.loyaltyHubStatLabel}>Total Visits</Text>
-              <Text style={styles.loyaltyHubStatValue}>42</Text>
-            </View>
-            <View style={styles.loyaltyHubStat}>
-              <Text style={styles.loyaltyHubStatLabel}>Active Brands</Text>
-              <Text style={[styles.loyaltyHubStatValue, { color: COLORS.primaryGold }]}>7</Text>
-            </View>
-            <View style={styles.loyaltyHubStat}>
-              <Text style={styles.loyaltyHubStatLabel}>Next Reward</Text>
-              <Ionicons name="gift" size={20} color={COLORS.primaryGreen} />
-            </View>
-          </View>
-        </LinearGradient>
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
-          {FOOD_TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              onPress={() => setActiveTab(tab.id)}
-              style={[
-                styles.tab,
-                activeTab === tab.id && styles.tabActive,
-              ]}
-            >
-              <Ionicons
-                name={tab.icon as any}
-                size={18}
-                color={activeTab === tab.id ? COLORS.white : COLORS.textSecondary}
-              />
-              <Text style={[
-                styles.tabLabel,
-                activeTab === tab.id && styles.tabLabelActive,
-              ]}>
-                {tab.label}
+        {/* Social Proof Strip */}
+        {recentOrders.length > 0 && (
+          <View style={styles.socialProofStrip}>
+            <View style={styles.socialProofContent}>
+              <Text style={styles.socialProofEmoji}>👤</Text>
+              <Text style={styles.socialProofText}>
+                <Text style={styles.socialProofUser}>{recentOrders[tickerIndex]?.userName || 'Someone'}</Text> just ordered from{' '}
+                <Text style={styles.socialProofRestaurant}>{recentOrders[tickerIndex]?.storeName || 'a restaurant'}</Text>
               </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <QuickActionBar categorySlug={slug} />
-
-      {/* Enhanced AI Suggestions Section */}
-      <EnhancedAISuggestionsSection
-        categorySlug={slug}
-        categoryName={categoryConfig.name}
-        placeholders={aiPlaceholders}
-        onSearch={handleAISearch}
-      />
-
-      {/* Browse Category Grid */}
-      <BrowseCategoryGrid
-        categories={subcategories}
-        title="Browse by Cuisine"
-        onCategoryPress={handleCategoryPress}
-      />
-
-      {/* Delivery Tab Content */}
-      {activeTab === 'delivery' && (
-        <View style={styles.tabContent}>
-          {/* Cuisine Filters */}
-          <View style={styles.cuisineContainer}>
-            <Text style={styles.cuisineTitle}>What are you craving?</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cuisineFilters}>
-              {foodCategoryData.cuisineFilters.map((cuisine) => (
-                <TouchableOpacity
-                  key={cuisine.id}
-                  onPress={() => setActiveCuisine(cuisine.id)}
-                  style={[
-                    styles.cuisineChip,
-                    activeCuisine === cuisine.id && styles.cuisineChipActive,
-                  ]}
-                >
-                  <Text style={styles.cuisineIcon}>{cuisine.icon}</Text>
-                  <Text style={[
-                    styles.cuisineLabel,
-                    activeCuisine === cuisine.id && styles.cuisineLabelActive,
-                  ]}>
-                    {cuisine.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+              <Text style={styles.socialProofTime}>{recentOrders[tickerIndex]?.timeAgo || 'recently'}</Text>
+            </View>
           </View>
+        )}
 
-          {/* 60-Min Delivery */}
-          {fastDeliveryStores.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="flash-outline" size={20} color={COLORS.primaryGold} />
-                <Text style={styles.sectionTitle}>60-Min Delivery</Text>
-                <TouchableOpacity onPress={() => router.push(`/stores?category=${slug}&filter=fast-delivery`)}>
-                  <Text style={styles.sectionSeeAll}>View All</Text>
-                </TouchableOpacity>
+        {/* Loyalty Hub CTA */}
+        <TouchableOpacity
+          style={styles.loyaltyHub}
+          onPress={() => router.push('/my-visits' as any)}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['rgba(0, 192, 106, 0.2)', 'rgba(0, 137, 107, 0.2)', 'rgba(251, 191, 36, 0.2)']}
+            style={styles.loyaltyHubGradient}
+          >
+            <View style={styles.loyaltyHubHeader}>
+              <View style={styles.loyaltyHubIcon}>
+                <Ionicons name="trophy" size={24} color={COLORS.primaryGreen} />
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.restaurantsList}>
-                {fastDeliveryStores.slice(0, 5).map((store) => (
-                  <RestaurantCard key={store._id || store.id} restaurant={store} variant="compact" />
+              <View style={styles.loyaltyHubText}>
+                <Text style={styles.loyaltyHubTitle}>Food Loyalty Hub</Text>
+                <Text style={styles.loyaltyHubSubtitle}>Track streaks, unlock rewards</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+            </View>
+            <View style={styles.loyaltyHubStats}>
+              <View style={styles.loyaltyHubStat}>
+                <Text style={styles.loyaltyHubStatLabel}>Total Visits</Text>
+                <Text style={styles.loyaltyHubStatValue}>{loyaltyStats.ordersCount}</Text>
+              </View>
+              <View style={styles.loyaltyHubStat}>
+                <Text style={styles.loyaltyHubStatLabel}>Active Brands</Text>
+                <Text style={[styles.loyaltyHubStatValue, { color: COLORS.primaryGold }]}>{loyaltyStats.brandsCount}</Text>
+              </View>
+              <View style={styles.loyaltyHubStat}>
+                <Text style={styles.loyaltyHubStatLabel}>Next Reward</Text>
+                <Ionicons name="gift" size={20} color={COLORS.primaryGreen} />
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Tabs */}
+        <View style={styles.tabsContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+            {FOOD_TABS.map((tab) => (
+              <TouchableOpacity
+                key={tab.id}
+                onPress={() => setActiveTab(tab.id)}
+                style={[
+                  styles.tab,
+                  activeTab === tab.id && styles.tabActive,
+                ]}
+              >
+                <Ionicons
+                  name={tab.icon as any}
+                  size={18}
+                  color={activeTab === tab.id ? COLORS.white : COLORS.textSecondary}
+                />
+                <Text style={[
+                  styles.tabLabel,
+                  activeTab === tab.id && styles.tabLabelActive,
+                ]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <QuickActionBar categorySlug={slug} />
+
+        {/* Enhanced AI Suggestions Section */}
+        <EnhancedAISuggestionsSection
+          categorySlug={slug}
+          categoryName={categoryConfig.name}
+          placeholders={aiPlaceholders}
+          onSearch={handleAISearch}
+        />
+
+        {/* Browse Category Grid */}
+        <BrowseCategoryGrid
+          categories={subcategories}
+          title="Browse by Cuisine"
+          onCategoryPress={handleCategoryPress}
+        />
+
+        {/* Delivery Tab Content */}
+        {activeTab === 'delivery' && (
+          <View style={styles.tabContent}>
+            {/* Cuisine Filters */}
+            <View style={styles.cuisineContainer}>
+              <Text style={styles.cuisineTitle}>What are you craving?</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cuisineFilters}>
+                {foodCategoryData.cuisineFilters.map((cuisine) => (
+                  <TouchableOpacity
+                    key={cuisine.id}
+                    onPress={() => setActiveCuisine(cuisine.id)}
+                    style={[
+                      styles.cuisineChip,
+                      activeCuisine === cuisine.id && styles.cuisineChipActive,
+                    ]}
+                  >
+                    <Text style={styles.cuisineIcon}>{cuisine.icon}</Text>
+                    <Text style={[
+                      styles.cuisineLabel,
+                      activeCuisine === cuisine.id && styles.cuisineLabelActive,
+                    ]}>
+                      {cuisine.label}
+                    </Text>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
-          )}
 
-          {/* Top Rated */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionEmoji}>🔥</Text>
-              <Text style={styles.sectionTitle}>Top Rated Near You</Text>
-              <TouchableOpacity onPress={() => router.push(`/stores?category=${slug}&filter=top-rated`)}>
-                <Text style={styles.sectionSeeAll}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.restaurantsGrid}>
-              {topRatedStores.slice(0, 4).map((store) => (
-                <RestaurantCard key={store._id || store.id} restaurant={store} />
-              ))}
-            </View>
-          </View>
-
-          {/* All Restaurants */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="restaurant-outline" size={20} color={COLORS.textSecondary} />
-              <Text style={styles.sectionTitle}>All Restaurants</Text>
-              <Text style={styles.sectionCount}>{filteredStores.length} places</Text>
-            </View>
-            <View style={styles.restaurantsGrid}>
-              {filteredStores.map((store) => (
-                <RestaurantCard key={store._id || store.id} restaurant={store} />
-              ))}
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Dine-In Tab Content */}
-      {activeTab === 'dineIn' && (
-        <View style={styles.tabContent}>
-          <View style={styles.bookTableBanner}>
-            <LinearGradient
-              colors={['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.2)']}
-              style={styles.bookTableGradient}
-            >
-              <Text style={styles.bookTableTitle}>Book a Table</Text>
-              <Text style={styles.bookTableSubtitle}>
-                Reserve now, pay at restaurant & earn cashback
-              </Text>
-              <View style={styles.bookTableBonus}>
-                <Ionicons name="star" size={16} color={COLORS.primaryGold} />
-                <Text style={styles.bookTableBonusText}>Bonus coins on check-in!</Text>
+            {/* 60-Min Delivery */}
+            {fastDeliveryStores.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="flash-outline" size={20} color={COLORS.primaryGold} />
+                  <Text style={styles.sectionTitle}>60-Min Delivery</Text>
+                  <TouchableOpacity onPress={() => router.push(`/stores?category=${slug}&filter=fast-delivery`)}>
+                    <Text style={styles.sectionSeeAll}>View All</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.restaurantsList}>
+                  {fastDeliveryStores.slice(0, 5).map((store) => (
+                    <RestaurantCard key={store._id || store.id} restaurant={store} variant="compact" />
+                  ))}
+                </ScrollView>
               </View>
-            </LinearGradient>
-          </View>
+            )}
 
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Dine-In Nearby</Text>
-              <Text style={styles.sectionCount}>{filteredStores.length} places</Text>
+            {/* Top Rated */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionEmoji}>🔥</Text>
+                <Text style={styles.sectionTitle}>Top Rated Near You</Text>
+                <TouchableOpacity onPress={() => router.push(`/stores?category=${slug}&filter=top-rated`)}>
+                  <Text style={styles.sectionSeeAll}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.restaurantsGrid}>
+                {topRatedStores.slice(0, 4).map((store) => (
+                  <RestaurantCard key={store._id || store.id} restaurant={store} />
+                ))}
+              </View>
             </View>
-            <View style={styles.restaurantsGrid}>
-              {filteredStores.map((store) => (
-                <RestaurantCard key={store._id || store.id} restaurant={store} />
-              ))}
+
+            {/* All Restaurants */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="restaurant-outline" size={20} color={COLORS.textSecondary} />
+                <Text style={styles.sectionTitle}>All Restaurants</Text>
+                <Text style={styles.sectionCount}>{filteredStores.length} places</Text>
+              </View>
+              <View style={styles.restaurantsGrid}>
+                {filteredStores.map((store) => (
+                  <RestaurantCard key={store._id || store.id} restaurant={store} />
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Dine-In Tab Content */}
+        {activeTab === 'dineIn' && (
+          <View style={styles.tabContent}>
+            <View style={styles.bookTableBanner}>
+              <LinearGradient
+                colors={['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.2)']}
+                style={styles.bookTableGradient}
+              >
+                <Text style={styles.bookTableTitle}>Book a Table</Text>
+                <Text style={styles.bookTableSubtitle}>
+                  Reserve now, pay at restaurant & earn cashback
+                </Text>
+                <View style={styles.bookTableBonus}>
+                  <Ionicons name="star" size={16} color={COLORS.primaryGold} />
+                  <Text style={styles.bookTableBonusText}>Bonus coins on check-in!</Text>
+                </View>
+              </LinearGradient>
+            </View>
+
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Dine-In Nearby</Text>
+                <Text style={styles.sectionCount}>{filteredStores.length} places</Text>
+              </View>
+              <View style={styles.restaurantsGrid}>
+                {filteredStores.map((store) => (
+                  <RestaurantCard key={store._id || store.id} restaurant={store} />
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Offers Tab Content */}
+        {activeTab === 'offers' && (
+          <View style={styles.tabContent}>
+            <OffersSection categorySlug={slug} />
+          </View>
+        )}
+
+        {/* Experiences Tab Content */}
+        {activeTab === 'experiences' && (
+          <View style={styles.tabContent}>
+            <ExperiencesSection categorySlug={slug} />
+          </View>
+        )}
+
+        {/* Value Proposition */}
+        <View style={styles.valueProp}>
+          <Text style={styles.valuePropTitle}>
+            Eat out or order in — ReZ makes every meal rewarding.
+          </Text>
+          <View style={styles.valuePropGrid}>
+            <View style={styles.valuePropItem}>
+              <Text style={styles.valuePropIcon}>💰</Text>
+              <Text style={styles.valuePropText}>Cashback on every order</Text>
+            </View>
+            <View style={styles.valuePropItem}>
+              <Text style={styles.valuePropIcon}>🪙</Text>
+              <Text style={styles.valuePropText}>Earn coins to reuse</Text>
+            </View>
+            <View style={styles.valuePropItem}>
+              <Text style={styles.valuePropIcon}>📱</Text>
+              <Text style={styles.valuePropText}>Pay at restaurant</Text>
+            </View>
+            <View style={styles.valuePropItem}>
+              <Text style={styles.valuePropIcon}>🎁</Text>
+              <Text style={styles.valuePropText}>Loyalty rewards</Text>
             </View>
           </View>
         </View>
-      )}
 
-      {/* Offers Tab Content */}
-      {activeTab === 'offers' && (
-        <View style={styles.tabContent}>
-          <OffersSection categorySlug={slug} />
-        </View>
-      )}
-
-      {/* Experiences Tab Content */}
-      {activeTab === 'experiences' && (
-        <View style={styles.tabContent}>
-          <ExperiencesSection categorySlug={slug} />
-        </View>
-      )}
-
-      {/* Value Proposition */}
-      <View style={styles.valueProp}>
-        <Text style={styles.valuePropTitle}>
-          Eat out or order in — ReZ makes every meal rewarding.
-        </Text>
-        <View style={styles.valuePropGrid}>
-          <View style={styles.valuePropItem}>
-            <Text style={styles.valuePropIcon}>💰</Text>
-            <Text style={styles.valuePropText}>Cashback on every order</Text>
+        {/* Savings Summary */}
+        <View style={styles.savingsSummary}>
+          <View style={styles.savingsContent}>
+            <Text style={styles.savingsLabel}>Total saved on food this month</Text>
+            <Text style={styles.savingsAmount}>₹{savingsThisMonth.toLocaleString()}</Text>
           </View>
-          <View style={styles.valuePropItem}>
-            <Text style={styles.valuePropIcon}>🪙</Text>
-            <Text style={styles.valuePropText}>Earn coins to reuse</Text>
-          </View>
-          <View style={styles.valuePropItem}>
-            <Text style={styles.valuePropIcon}>📱</Text>
-            <Text style={styles.valuePropText}>Pay at restaurant</Text>
-          </View>
-          <View style={styles.valuePropItem}>
-            <Text style={styles.valuePropIcon}>🎁</Text>
-            <Text style={styles.valuePropText}>Loyalty rewards</Text>
-          </View>
+          {/* Loyalty Hub CTA */}
+          <TouchableOpacity
+            style={styles.loyaltyHub}
+            onPress={() => router.push('/my-visits' as any)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.savingsButtonText}>View Details</Text>
+          </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Savings Summary */}
-      <View style={styles.savingsSummary}>
-        <View style={styles.savingsContent}>
-          <Text style={styles.savingsLabel}>Total saved on food this month</Text>
-          <Text style={styles.savingsAmount}>₹{savingsThisMonth.toLocaleString()}</Text>
-        </View>
-        <TouchableOpacity style={styles.savingsButton} onPress={() => router.push('/wallet')}>
-          <Text style={styles.savingsButtonText}>View Details</Text>
-        </TouchableOpacity>
-      </View>
+        <StreakLoyaltySection />
 
-      <StreakLoyaltySection />
+        {/* Enhanced UGC Social Proof Section */}
+        <EnhancedUGCSocialProofSection
+          categorySlug={slug}
+          categoryName={categoryConfig.name}
+          posts={ugcPosts}
+          title="Real Foodies, Real Reviews"
+          subtitle="See what others are eating - Get inspired!"
+          onPostPress={(post) => router.push(`/ugc/${post.id}` as any)}
+          onSharePress={() => router.push('/share' as any)}
+        />
 
-      {/* Enhanced UGC Social Proof Section */}
-      <EnhancedUGCSocialProofSection
-        categorySlug={slug}
-        categoryName={categoryConfig.name}
-        posts={ugcPosts}
-        title="Real Foodies, Real Reviews"
-        subtitle="See what others are eating - Get inspired!"
-        onPostPress={(post) => router.push(`/ugc/${post.id}` as any)}
-        onSharePress={() => router.push('/share' as any)}
-      />
-
-      <FooterTrustSection />
-    </ScrollView>
+        <FooterTrustSection />
+      </ScrollView>
     </ErrorBoundary>
   );
 }

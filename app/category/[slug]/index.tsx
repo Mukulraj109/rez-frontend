@@ -24,6 +24,15 @@ import { CategoryItem, CategoryCarouselItem } from '@/types/category.types';
 import { handleCarouselAction } from '@/utils/carouselUtils';
 import { showToast } from '@/components/common/ToastManager';
 
+// New Components
+import ShopByVibeSection from '@/components/category/ShopByVibeSection';
+import ShopByOccasionSection from '@/components/category/ShopByOccasionSection';
+import TopBrandsSection from '@/components/category/TopBrandsSection';
+import TrendingHashtagsSection from '@/components/category/TrendingHashtagsSection';
+import TrendingProductsSection from '@/components/category/TrendingProductsSection';
+import LoyaltyHubSection from '../../../components/category/LoyaltyHubSection';
+import { categoriesApi } from '@/services/categoriesApi';
+
 export default function CategoryPage() {
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -32,6 +41,7 @@ export default function CategoryPage() {
   const { actions: cartActions } = useCart();
   const [refreshing, setRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [loyaltyStats, setLoyaltyStats] = useState({ ordersCount: 0, brandsCount: 0 });
 
   // Load category data when component mounts or slug changes
   useEffect(() => {
@@ -45,6 +55,12 @@ export default function CategoryPage() {
 
     try {
       await actions.loadCategory(slug);
+
+      // Load user loyalty stats
+      const statsRes = await categoriesApi.getCategoryLoyaltyStats(slug);
+      if (statsRes.success && statsRes.data) {
+        setLoyaltyStats(statsRes.data);
+      }
     } catch (error) {
       console.error('Failed to load category:', error);
       Alert.alert(
@@ -58,28 +74,8 @@ export default function CategoryPage() {
     }
   };
 
-  // Redirect to StoreListPage after category is loaded
-  useEffect(() => {
-    if (state.currentCategory && !state.loading) {
-      const category = state.currentCategory;
 
-      // Build subcategories param (from childCategories if available)
-      const subcategoriesParam = (category as any).childCategories
-        ? JSON.stringify((category as any).childCategories)
-        : '[]';
-
-      // Redirect to StoreListPage with category params
-      router.replace({
-        pathname: '/StoreListPage',
-        params: {
-          category: (category as any)._id || (category as any).id,
-          categorySlug: slug,
-          title: category.name,
-          subcategories: subcategoriesParam,
-        },
-      } as any);
-    }
-  }, [state.currentCategory, state.loading, router, slug]);
+  // Redirect logic removed - displaying rich category page instead
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -171,11 +167,11 @@ export default function CategoryPage() {
 
     } catch (error) {
       console.error('❌ [CATEGORY] Failed to add to cart via CartContext:', error);
-      
+
       // Fallback: Try using cart API directly
       try {
         const cartApi = (await import('@/services/cartApi')).default;
-        
+
         const cartResponse = await cartApi.addToCart({
           productId: item.id,
           quantity: 1
@@ -219,18 +215,18 @@ export default function CategoryPage() {
     try {
       // Handle carousel action with backend-ready analytics and logging
       const actionResult = await handleCarouselAction(
-        carouselItem, 
+        carouselItem,
         slug || ''
         // TODO: Get user ID from auth context
         // authContext.user?.id
       );
-      
+
       if (actionResult.success && carouselItem.action) {
         switch (carouselItem.action.type) {
           case 'filter':
-            const newFilters = { 
-              ...state.filters, 
-              [carouselItem.action.target]: carouselItem.action.params?.[carouselItem.action.target] 
+            const newFilters = {
+              ...state.filters,
+              [carouselItem.action.target]: carouselItem.action.params?.[carouselItem.action.target]
             };
             actions.updateFilters(newFilters);
             break;
@@ -298,6 +294,11 @@ export default function CategoryPage() {
           searchQuery={state.searchQuery}
           onFilterPress={() => setShowFilters(!showFilters)}
           showFilterBadge={Object.keys(state.filters).length > 0}
+          stats={{
+            productCount: (category as any).productCount || 2000,
+            storeCount: (category as any).storeCount || 50,
+            maxCashback: (category as any).maxCashback || 25
+          }}
         />
 
         <ScrollView
@@ -312,6 +313,9 @@ export default function CategoryPage() {
             />
           }
         >
+          {/* Loyalty Hub */}
+          <LoyaltyHubSection stats={loyaltyStats} categoryName={category.name} />
+
           {/* Banners */}
           {category.banners && category.banners.length > 0 && (
             <View style={styles.bannersContainer}>
@@ -344,6 +348,20 @@ export default function CategoryPage() {
               title={`Featured ${category.name}`}
             />
           )}
+
+          {/* New Rich Sections */}
+          <ShopByVibeSection categorySlug={slug || ''} />
+
+          <TopBrandsSection categorySlug={slug || ''} />
+
+          <ShopByOccasionSection categorySlug={slug || ''} />
+
+          {/* Filtered Content Title */}
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>
+              Recommended for You
+            </ThemedText>
+          </View>
 
           {/* Filters */}
           {showFilters && category.filters && category.filters.length > 0 && (

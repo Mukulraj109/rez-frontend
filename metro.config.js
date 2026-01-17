@@ -9,8 +9,8 @@ const config = getDefaultConfig(__dirname);
 
 // Limit parallel workers - reduces memory significantly
 // Default uses all CPU cores which consumes too much memory
-// Use 50% of available cores for better balance
-config.maxWorkers = Math.max(1, Math.floor(require('os').cpus().length * 0.5));
+// Use strict limit of 2 workers for stability
+config.maxWorkers = 2;
 
 // Transformer optimizations
 config.transformer = {

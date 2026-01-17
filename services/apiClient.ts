@@ -416,7 +416,7 @@ class ApiClient {
     try {
       const response = await fetch(`${this.baseURL.replace('/api', '')}/health`);
       const data = await response.json();
-      
+
       return {
         success: response.ok,
         data,

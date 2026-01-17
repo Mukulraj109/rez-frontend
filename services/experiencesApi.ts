@@ -23,6 +23,7 @@ export interface StoreExperience {
   sortOrder: number;
   isActive: boolean;
   isFeatured: boolean;
+  benefits?: string[];
 }
 
 // Homepage Experience format
@@ -161,6 +162,30 @@ class ExperiencesService {
         success: false,
         error: error?.message || 'Failed to fetch stores',
         message: error?.message || 'Failed to fetch stores',
+      };
+    }
+  }
+
+  /**
+   * Get unique finds
+   */
+  async getUniqueFinds(limit: number = 10, experience?: string): Promise<ApiResponse<any[]>> {
+    try {
+      console.log('🏪 [EXPERIENCES API] Fetching unique finds...');
+      const response = await apiClient.get<any[]>('/experiences/unique-finds', {
+        limit,
+        ...(experience && { experience }),
+      });
+      if (response.success && response.data) {
+        console.log(`✅ [EXPERIENCES API] Got ${response.data.length} unique items`);
+      }
+      return response;
+    } catch (error: any) {
+      console.error('❌ [EXPERIENCES API] Error fetching unique finds:', error);
+      return {
+        success: false,
+        error: error?.message || 'Failed to fetch unique finds',
+        message: error?.message || 'Failed to fetch unique finds',
       };
     }
   }
