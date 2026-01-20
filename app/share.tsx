@@ -15,10 +15,14 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
+import { Share } from 'react-native';
 
 const COLORS = {
   primaryGreen: '#00C06A',
@@ -36,14 +40,86 @@ export default function SharePage() {
   const [caption, setCaption] = useState('');
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [rating, setRating] = useState(0);
+  const [isSharing, setIsSharing] = useState(false);
 
-  const handleShare = () => {
-    // TODO: Implement actual sharing logic
-    router.back();
+  const handleAddImage = async () => {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant access to your photos to add images');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 5 - selectedImages.length,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets.map(asset => asset.uri);
+        setSelectedImages(prev => [...prev, ...newImages].slice(0, 5));
+      }
+    } catch (error: any) {
+      console.error('Error picking images:', error);
+      Alert.alert('Error', 'Failed to pick images. Please try again.');
+    }
   };
 
-  const handleAddImage = () => {
-    // TODO: Implement image picker
+  const handleRemoveImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleShare = async () => {
+    if (!caption.trim() && selectedImages.length === 0) {
+      Alert.alert('Required', 'Please add a caption or at least one image');
+      return;
+    }
+
+    setIsSharing(true);
+    try {
+      const shareText = `Check out my experience!${rating > 0 ? `\nRating: ${rating}/5` : ''}\n\n${caption || 'Great experience!'}`;
+      
+      if (Platform.OS === 'web') {
+        // On web, use Web Share API if available
+        if (navigator.share) {
+          await navigator.share({
+            title: 'My Experience',
+            text: shareText,
+          });
+        } else {
+          // Fallback: copy to clipboard
+          await navigator.clipboard.writeText(shareText);
+          Alert.alert('Copied!', 'Content copied to clipboard');
+        }
+      } else {
+        // On native platforms, use React Native Share API
+        const result = await Share.share({
+          message: shareText,
+          title: 'My Experience',
+        });
+        
+        if (result.action === Share.sharedAction) {
+          Alert.alert('Success', 'Your experience has been shared!');
+        }
+      }
+      
+      // Navigate back after successful share
+      setTimeout(() => {
+        router.back();
+      }, 500);
+    } catch (error: any) {
+      console.error('Error sharing:', error);
+      // User cancelled or error occurred - don't show error for cancellation
+      if (error.message !== 'User did not share' && !error.message.includes('cancel')) {
+        Alert.alert('Error', 'Failed to share. Please try again.');
+      }
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   return (
@@ -56,8 +132,16 @@ export default function SharePage() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Share Your Experience</Text>
-        <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-          <Text style={styles.shareButtonText}>Share</Text>
+        <TouchableOpacity 
+          onPress={handleShare} 
+          style={[styles.shareButton, isSharing && styles.shareButtonDisabled]}
+          disabled={isSharing}
+        >
+          {isSharing ? (
+            <ActivityIndicator size="small" color={COLORS.white} />
+          ) : (
+            <Text style={styles.shareButtonText}>Share</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -206,6 +290,9 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: '600',
     fontSize: 14,
+  },
+  shareButtonDisabled: {
+    opacity: 0.6,
   },
   content: {
     flex: 1,

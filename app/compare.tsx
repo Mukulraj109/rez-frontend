@@ -1,9 +1,10 @@
 /**
  * Product/Store Comparison Page
  * Allows users to compare products or stores side by side
+ * Now integrated with backend API for persistence
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,9 +15,14 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
+import productComparisonApi from '@/services/productComparisonApi';
+import { ComparisonProduct } from '@/services/productComparisonApi';
 
 const COLORS = {
   primaryGreen: '#00C06A',
@@ -28,44 +34,244 @@ const COLORS = {
   border: '#E5E7EB',
 };
 
-// Sample comparison items
-const SAMPLE_ITEMS = [
-  {
-    id: '1',
-    name: 'Nike Air Max 270',
-    image: 'https://via.placeholder.com/150',
-    price: 12999,
-    cashback: 15,
-    rating: 4.5,
-    features: ['Breathable mesh', 'Air cushioning', 'Lightweight'],
-  },
-  {
-    id: '2',
-    name: 'Adidas Ultraboost',
-    image: 'https://via.placeholder.com/150',
-    price: 14999,
-    cashback: 12,
-    rating: 4.7,
-    features: ['Boost technology', 'Primeknit upper', 'Continental rubber'],
-  },
-];
+interface CompareItem {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
+  cashback: number;
+  rating: number;
+  features: string[];
+  productId: string;
+}
+
+// Transform API product to CompareItem format
+const transformProductToCompareItem = (product: ComparisonProduct): CompareItem => {
+  const productId = product._id || product.id || '';
+  const firstImage = product.images?.[0] || 'https://via.placeholder.com/300x300?text=No+Image';
+  const price = product.pricing?.selling || product.pricing?.original || 0;
+  const cashback = product.cashback?.percentage || 0;
+  const rating = product.ratings?.average || 0;
+  
+  // Extract features from description or specifications if available
+  const features: string[] = [];
+  if (product.description) {
+    // Simple feature extraction - split by sentences or bullet points
+    const sentences = product.description.split(/[.!?]/).filter(s => s.trim().length > 10);
+    features.push(...sentences.slice(0, 3).map(s => s.trim()));
+  }
+  if (features.length === 0) {
+    features.push('High quality product', 'Verified seller', 'Fast delivery');
+  }
+
+  return {
+    id: productId,
+    name: product.name,
+    image: firstImage,
+    price,
+    cashback,
+    rating,
+    features,
+    productId,
+  };
+};
 
 export default function ComparePage() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [compareItems, setCompareItems] = useState(SAMPLE_ITEMS);
+  const { state: authState } = useAuth();
+  const [compareItems, setCompareItems] = useState<CompareItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentComparisonId, setCurrentComparisonId] = useState<string | null>(null);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [isRemovingProduct, setIsRemovingProduct] = useState<string | null>(null);
+  const [comparisonsLoaded, setComparisonsLoaded] = useState(false);
+
+  const loadComparisons = useCallback(async () => {
+    if (!authState.isAuthenticated) return;
+
+    try {
+      setIsLoading(true);
+      const response = await productComparisonApi.getUserComparisons({ page: 1, limit: 1 });
+      
+      if (response.success && response.data?.comparisons && response.data.comparisons.length > 0) {
+        // Load the most recent comparison
+        const comparison = response.data.comparisons[0];
+        setCurrentComparisonId(comparison._id || comparison.id || null);
+        
+        const items = comparison.products.map(transformProductToCompareItem);
+        setCompareItems(items);
+      } else {
+        // No comparisons yet - start fresh
+        setCompareItems([]);
+        setCurrentComparisonId(null);
+      }
+    } catch (error) {
+      console.error('[COMPARE] Error loading comparisons:', error);
+      setCompareItems([]);
+      Alert.alert('Error', 'Failed to load comparisons. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setComparisonsLoaded(true);
+    }
+  }, [authState.isAuthenticated]);
+
+  // Load user's comparisons on mount
+  useEffect(() => {
+    if (authState.isAuthenticated) {
+      loadComparisons();
+    } else {
+      setIsLoading(false);
+      setComparisonsLoaded(true);
+    }
+  }, [authState.isAuthenticated, loadComparisons]);
+
+  const handleAddProductFromParams = useCallback(async (productId: string) => {
+    if (!authState.isAuthenticated) {
+      Alert.alert('Login Required', 'Please login to compare products');
+      router.push('/login');
+      return;
+    }
+
+    setIsAddingProduct(true);
+    try {
+      if (currentComparisonId) {
+        // Check if comparison is full (by checking current items length)
+        if (compareItems.length >= 5) {
+          Alert.alert('Limit Reached', 'You can compare up to 5 products at once');
+          setIsAddingProduct(false);
+          return;
+        }
+
+        // Add to existing comparison
+        const response = await productComparisonApi.addProductToComparison(currentComparisonId, productId);
+        if (response.success && response.data?.comparison) {
+          const items = response.data.comparison.products.map(transformProductToCompareItem);
+          setCompareItems(items);
+          Alert.alert('Success', 'Product added to comparison');
+        } else {
+          Alert.alert('Error', response.error || 'Failed to add product to comparison');
+        }
+      } else {
+        // Create new comparison (need at least 2 products, so navigate to search for now)
+        router.push('/search?mode=compare');
+      }
+    } catch (error: any) {
+      console.error('[COMPARE] Error adding product:', error);
+      Alert.alert('Error', error.message || 'Failed to add product to comparison');
+    } finally {
+      setIsAddingProduct(false);
+    }
+  }, [authState.isAuthenticated, currentComparisonId, compareItems.length, router]);
+
+  // Check if productId is passed from search (when adding product to compare)
+  // Wait for comparisons to load first to avoid race condition
+  useEffect(() => {
+    if (comparisonsLoaded && params.productId && typeof params.productId === 'string') {
+      handleAddProductFromParams(params.productId);
+    }
+  }, [params.productId, comparisonsLoaded, handleAddProductFromParams]);
 
   const handleAddItem = () => {
+    if (compareItems.length >= 5) {
+      Alert.alert('Limit Reached', 'You can compare up to 5 products at once');
+      return;
+    }
     router.push('/search?mode=compare');
   };
 
-  const handleRemoveItem = (id: string) => {
-    setCompareItems(compareItems.filter((item) => item.id !== id));
+  const handleDeleteComparison = useCallback(async () => {
+    if (!authState.isAuthenticated || !currentComparisonId) {
+      return;
+    }
+
+    try {
+      const response = await productComparisonApi.deleteComparison(currentComparisonId);
+      if (response.success) {
+        setCompareItems([]);
+        setCurrentComparisonId(null);
+        Alert.alert('Success', 'Comparison deleted');
+      } else {
+        Alert.alert('Error', response.error || 'Failed to delete comparison');
+      }
+    } catch (error: any) {
+      console.error('[COMPARE] Error deleting comparison:', error);
+      Alert.alert('Error', error.message || 'Failed to delete comparison');
+    }
+  }, [authState.isAuthenticated, currentComparisonId]);
+
+  const handleRemoveItem = useCallback(async (id: string) => {
+    if (!authState.isAuthenticated || !currentComparisonId) {
+      // If not authenticated, just remove from local state
+      setCompareItems(compareItems.filter((item) => item.id !== id));
+      return;
+    }
+
+    // Check if this would leave only 1 product (backend requires minimum 2)
+    if (compareItems.length <= 2) {
+      Alert.alert(
+        'Cannot Remove',
+        'A comparison must have at least 2 products. Delete the comparison instead.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Delete Comparison', 
+            style: 'destructive',
+            onPress: handleDeleteComparison
+          }
+        ]
+      );
+      return;
+    }
+
+    setIsRemovingProduct(id);
+    try {
+      const response = await productComparisonApi.removeProductFromComparison(currentComparisonId, id);
+      if (response.success && response.data?.comparison) {
+        const items = response.data.comparison.products.map(transformProductToCompareItem);
+        setCompareItems(items);
+        
+        // If comparison is empty now, clear it
+        if (items.length === 0) {
+          setCurrentComparisonId(null);
+        }
+        Alert.alert('Success', 'Product removed from comparison');
+      } else {
+        // Handle backend error properly
+        Alert.alert('Error', response.error || 'Failed to remove product. Comparison must have at least 2 products.');
+        // Don't update local state - keep sync with backend
+      }
+    } catch (error: any) {
+      console.error('[COMPARE] Error removing product:', error);
+      Alert.alert('Error', error.message || 'Failed to remove product from comparison');
+      // Don't update local state on error - keep sync with backend
+    } finally {
+      setIsRemovingProduct(null);
+    }
+  }, [authState.isAuthenticated, currentComparisonId, compareItems.length, handleDeleteComparison]);
+
+  const handleBuy = (item: CompareItem) => {
+    router.push(`/ProductPage?productId=${item.productId}` as any);
   };
 
-  const handleBuy = (item: any) => {
-    router.push(`/ProductPage?productId=${item.id}`);
-  };
+  // Loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Compare Products</Text>
+          <View style={styles.backButton} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primaryGreen} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -108,19 +314,38 @@ export default function ComparePage() {
                       <TouchableOpacity
                         style={styles.removeButton}
                         onPress={() => handleRemoveItem(item.id)}
+                        disabled={isRemovingProduct === item.id}
                       >
-                        <Ionicons name="close-circle" size={24} color="#EF4444" />
+                        {isRemovingProduct === item.id ? (
+                          <ActivityIndicator size="small" color="#EF4444" />
+                        ) : (
+                          <Ionicons name="close-circle" size={24} color="#EF4444" />
+                        )}
                       </TouchableOpacity>
-                      <Image source={{ uri: item.image }} style={styles.productImage} />
+                      <Image 
+                        source={{ uri: item.image || 'https://via.placeholder.com/300x300?text=No+Image' }} 
+                        style={styles.productImage}
+                        onError={() => {}}
+                      />
                       <Text style={styles.productName} numberOfLines={2}>
                         {item.name}
                       </Text>
                     </View>
                   ))}
-                  {compareItems.length < 3 && (
-                    <TouchableOpacity style={styles.addProductCell} onPress={handleAddItem}>
-                      <Ionicons name="add-circle-outline" size={40} color={COLORS.textSecondary} />
-                      <Text style={styles.addProductText}>Add Product</Text>
+                  {compareItems.length < 5 && (
+                    <TouchableOpacity 
+                      style={styles.addProductCell} 
+                      onPress={handleAddItem}
+                      disabled={isAddingProduct}
+                    >
+                      {isAddingProduct ? (
+                        <ActivityIndicator size="small" color={COLORS.primaryGreen} />
+                      ) : (
+                        <>
+                          <Ionicons name="add-circle-outline" size={40} color={COLORS.textSecondary} />
+                          <Text style={styles.addProductText}>Add Product</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
                   )}
                 </View>
@@ -135,7 +360,7 @@ export default function ComparePage() {
                       <Text style={styles.priceText}>₹{item.price.toLocaleString()}</Text>
                     </View>
                   ))}
-                  {compareItems.length < 3 && <View style={styles.valueCell} />}
+                  {compareItems.length < 5 && <View style={styles.valueCell} />}
                 </View>
 
                 {/* Cashback Row */}
@@ -151,7 +376,7 @@ export default function ComparePage() {
                       </Text>
                     </View>
                   ))}
-                  {compareItems.length < 3 && <View style={styles.valueCell} />}
+                  {compareItems.length < 5 && <View style={styles.valueCell} />}
                 </View>
 
                 {/* Rating Row */}
@@ -163,11 +388,11 @@ export default function ComparePage() {
                     <View key={item.id} style={styles.valueCell}>
                       <View style={styles.ratingContainer}>
                         <Ionicons name="star" size={16} color={COLORS.primaryGold} />
-                        <Text style={styles.ratingText}>{item.rating}</Text>
+                        <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
                       </View>
                     </View>
                   ))}
-                  {compareItems.length < 3 && <View style={styles.valueCell} />}
+                  {compareItems.length < 5 && <View style={styles.valueCell} />}
                 </View>
 
                 {/* Features Row */}
@@ -185,7 +410,7 @@ export default function ComparePage() {
                       ))}
                     </View>
                   ))}
-                  {compareItems.length < 3 && <View style={styles.valueCell} />}
+                  {compareItems.length < 5 && <View style={styles.valueCell} />}
                 </View>
 
                 {/* Buy Button Row */}
@@ -201,7 +426,7 @@ export default function ComparePage() {
                       </TouchableOpacity>
                     </View>
                   ))}
-                  {compareItems.length < 3 && <View style={styles.valueCell} />}
+                  {compareItems.length < 5 && <View style={styles.valueCell} />}
                 </View>
               </View>
             </ScrollView>
@@ -242,6 +467,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
+    width: 32,
   },
   headerTitle: {
     fontSize: 18,
@@ -250,6 +476,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyState: {
     alignItems: 'center',
@@ -320,6 +551,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 8,
     marginBottom: 8,
+    backgroundColor: COLORS.border,
   },
   productName: {
     fontSize: 13,

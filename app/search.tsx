@@ -640,7 +640,12 @@ export default function SearchPage() {
                 <SellerComparisonCard
                   key={`${seller.storeId}-${index}`}
                   seller={seller}
+                  productId={productGroup.productId}
                   onPress={handleSellerPress}
+                  onCompare={(seller) => {
+                    // Navigate to compare page with product ID
+                    router.push(`/compare?productId=${productGroup.productId}`);
+                  }}
                   onFavorite={(seller) => {
                     // TODO: Implement favorite functionality
                     console.log('Favorite seller:', seller);

@@ -5,11 +5,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { categoriesApi } from '@/api/categoriesApi';
+import { categoriesApi } from '@/services/categoriesApi';
 
 interface Offer {
   _id: string;
@@ -51,16 +51,17 @@ export default function OffersSection({ categorySlug, categoryId }: OffersSectio
   const [bankOffers, setBankOffers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchOffers();
-  }, [categorySlug, categoryId]);
-
   const fetchOffers = async () => {
     try {
       setIsLoading(true);
-      // Fetch bank offers (always available)
-      const bankOffersResponse = await categoriesApi.getBankOffers();
-      setBankOffers(bankOffersResponse.slice(0, 4));
+      // For now, use dummy bank offers data since getBankOffers doesn't exist
+      // TODO: Implement proper bank offers API endpoint
+      setBankOffers([
+        { _id: '1', bank: 'HDFC Bank', discount: 'Up to 20% Off', icon: '🏦', gradient: ['#3B82F6', '#1D4ED8'] },
+        { _id: '2', bank: 'SBI Card', discount: '15% Cashback', icon: '💳', gradient: ['#10B981', '#059669'] },
+        { _id: '3', bank: 'ICICI Bank', discount: 'Up to 25% Off', icon: '🏦', gradient: ['#8B5CF6', '#7C3AED'] },
+        { _id: '4', bank: 'Axis Bank', discount: '10% Cashback', icon: '💳', gradient: ['#EC4899', '#DB2777'] },
+      ]);
 
       // If we have categoryId, fetch category-specific offers
       // For now, we'll use bank offers as the main offers source
@@ -72,9 +73,13 @@ export default function OffersSection({ categorySlug, categoryId }: OffersSectio
     }
   };
 
+  useEffect(() => {
+    fetchOffers();
+  }, [categorySlug, categoryId]);
+
   const handleOfferPress = (offer: any) => {
     if (offer.store?._id) {
-      router.push(`/StorePage?storeId=${offer.store._id}`);
+      router.push(`/MainStorePage?storeId=${offer.store._id}` as any);
     }
   };
 

@@ -2,7 +2,8 @@ import React, { createContext, useContext, useReducer, useEffect, ReactNode, use
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import achievementApi, { Achievement, AchievementProgress } from '@/services/achievementApi';
 import pointsApi, { PointsBalance, PointTransaction } from '@/services/pointsApi';
-import gamificationAPI from '@/services/gamificationApi';
+
+import challengesApi from '@/services/challengesApi';
 import walletApi from '@/services/walletApi';
 import coinSyncService from '@/services/coinSyncService';
 import { useAuth } from './AuthContext';
@@ -410,19 +411,20 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
       // Fetch active challenges
       if (state.featureFlags.ENABLE_CHALLENGES) {
         try {
-          const challengesResponse = await gamificationAPI.getChallenges();
+          // Use challengesApi instead of gamificationAPI
+          const challengesResponse = await challengesApi.getMyProgress();
           if (challengesResponse.success && challengesResponse.data) {
-            // Map backend challenges to context challenges
-            const mappedChallenges: Challenge[] = challengesResponse.data.map((ch) => ({
-              id: ch.id,
-              title: ch.title,
-              description: ch.description,
-              type: ch.type as 'daily' | 'weekly' | 'monthly' | 'special',
-              progress: ch.progress.current,
-              target: ch.progress.target,
-              reward: ch.rewards.coins,
-              expiresAt: ch.endDate.toString(),
-              completed: ch.status === 'completed',
+            // Map backend challenge progress to context challenges
+            const mappedChallenges: Challenge[] = challengesResponse.data.map((cp) => ({
+              id: cp.challenge._id,
+              title: cp.challenge.title,
+              description: cp.challenge.description,
+              type: cp.challenge.type,
+              progress: cp.progress,
+              target: cp.target,
+              reward: cp.challenge.rewards.coins,
+              expiresAt: cp.challenge.endDate,
+              completed: cp.completed,
             }));
             dispatch({ type: 'CHALLENGES_LOADED', payload: mappedChallenges });
           }
@@ -457,7 +459,7 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
             achievement.unlocked &&
             !state.achievements.find((a) => a.id === achievement.id && a.unlocked)
         );
-        
+
         // Dispatch each newly unlocked achievement
         newlyUnlocked.forEach((achievement) => {
           dispatch({ type: 'ACHIEVEMENT_UNLOCKED', payload: achievement });

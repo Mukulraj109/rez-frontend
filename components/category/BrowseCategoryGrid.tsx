@@ -25,14 +25,18 @@ interface CategoryIconProps {
 }
 
 const CategoryIcon: React.FC<CategoryIconProps> = ({ category, onPress }) => {
+  // Default fallback values if icon/color are missing
+  const icon = category.icon || '🍽️';
+  const color = category.color || '#6B7280';
+  
   return (
     <TouchableOpacity
       style={styles.categoryItem}
       onPress={() => onPress(category)}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconContainer, { backgroundColor: `${category.color}20` }]}>
-        <Text style={styles.iconEmoji}>{category.icon}</Text>
+      <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
+        <Text style={styles.iconEmoji}>{icon}</Text>
         {category.cashback && category.cashback > 0 && (
           <View style={styles.cashbackBadge}>
             <Text style={styles.cashbackText}>{category.cashback}%</Text>
@@ -64,6 +68,11 @@ const BrowseCategoryGrid: React.FC<BrowseCategoryGridProps> = ({
       router.push(`/category/${category.id}`);
     }
   };
+
+  // Don't render if no categories
+  if (!categories || categories.length === 0) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>

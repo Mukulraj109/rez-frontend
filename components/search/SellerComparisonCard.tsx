@@ -9,12 +9,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SellerOption } from '@/types/search.types';
+import { router } from 'expo-router';
 
 interface SellerComparisonCardProps {
   seller: SellerOption;
   onPress: (seller: SellerOption) => void;
   onFavorite?: (seller: SellerOption) => void;
   onShare?: (seller: SellerOption) => void;
+  onCompare?: (seller: SellerOption) => void;
+  productId?: string;
 }
 
 export default function SellerComparisonCard({
@@ -22,6 +25,8 @@ export default function SellerComparisonCard({
   onPress,
   onFavorite,
   onShare,
+  onCompare,
+  productId,
 }: SellerComparisonCardProps) {
   const formatPrice = (price: number) => {
     return `₹${price.toLocaleString('en-IN')}`;
@@ -76,6 +81,15 @@ export default function SellerComparisonCard({
         return 'storefront';
       default:
         return 'car';
+    }
+  };
+
+  const handleCompare = (e: any) => {
+    e.stopPropagation();
+    if (onCompare) {
+      onCompare(seller);
+    } else if (productId || seller.productId) {
+      router.push(`/compare?productId=${productId || seller.productId}`);
     }
   };
 
@@ -198,6 +212,15 @@ export default function SellerComparisonCard({
           <Text style={styles.viewDealText}>View Deal</Text>
         </TouchableOpacity>
         <View style={styles.iconButtons}>
+          {(productId || seller.productId) && (
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleCompare}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="git-compare-outline" size={20} color="#00C06A" />
+            </TouchableOpacity>
+          )}
           {onFavorite && (
             <TouchableOpacity
               style={styles.iconButton}

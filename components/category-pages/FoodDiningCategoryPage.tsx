@@ -5,7 +5,7 @@
  * Restaurant cards, 60-min delivery, loyalty hub, pay at restaurant
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ScrollView, View, Text, StyleSheet, RefreshControl, TouchableOpacity, TextInput, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,19 +55,46 @@ const FOOD_TABS = [
 const RestaurantCard = ({ restaurant, variant = 'default' }: { restaurant: any; variant?: 'default' | 'compact' }) => {
   const router = useRouter();
   const isCompact = variant === 'compact';
+  const [imageError, setImageError] = useState(false);
+
+  // Get image URI from restaurant data
+  const getImageUri = (): string | undefined => {
+    // Handle banner array (banner is string[] in Store model)
+    if (restaurant.banner) {
+      if (Array.isArray(restaurant.banner) && restaurant.banner.length > 0) {
+        return restaurant.banner[0];
+      }
+      if (typeof restaurant.banner === 'string') {
+        return restaurant.banner;
+      }
+    }
+    
+    // Fallback to logo, then image
+    return restaurant.logo || restaurant.image || undefined;
+  };
+
+  const imageUri = getImageUri();
 
   return (
     <TouchableOpacity
       style={[styles.restaurantCard, isCompact && styles.restaurantCardCompact]}
-      onPress={() => router.push(`/StorePage?storeId=${restaurant._id || restaurant.id}`)}
+      onPress={() => router.push(`/MainStorePage?storeId=${restaurant._id || restaurant.id}` as any)}
       activeOpacity={0.8}
     >
       <View style={[styles.restaurantImageContainer, isCompact && styles.restaurantImageContainerCompact]}>
-        <Image
-          source={{ uri: restaurant.banner || restaurant.logo || restaurant.image || 'https://via.placeholder.com/300' }}
-          style={styles.restaurantImage}
-          resizeMode="cover"
-        />
+        {imageUri && !imageError ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.restaurantImage}
+            resizeMode="cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <View style={[styles.restaurantImage, styles.restaurantImagePlaceholder]}>
+            <Ionicons name="restaurant" size={40} color={COLORS.textSecondary} />
+            <Text style={styles.restaurantImagePlaceholderText}>{restaurant.name}</Text>
+          </View>
+        )}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.7)']}
           style={styles.restaurantImageGradient}
@@ -220,10 +247,45 @@ export default function FoodDiningCategoryPage() {
     setRefreshing(false);
   };
 
-  // Filter stores - use stores from hook
-  const filteredStores = stores.filter((store: any) => {
-    return true; // Simplified filter for now
-  });
+  // Filter stores by active cuisine
+  const filteredStores = useMemo(() => {
+    if (activeCuisine === 'all') {
+      return stores;
+    }
+    
+    // Map cuisine IDs to tag patterns for filtering
+    const cuisineTagMap: Record<string, string[]> = {
+      'indian': ['indian', 'north indian', 'south indian', 'biryani', 'curry'],
+      'chinese': ['chinese', 'szechuan', 'cantonese'],
+      'italian': ['italian', 'pizza', 'pasta'],
+      'thai': ['thai'],
+      'mexican': ['mexican', 'tex-mex'],
+      'south-indian': ['south indian', 'dosa', 'idli', 'vada'],
+      'north-indian': ['north indian', 'punjabi', 'mughlai'],
+      'continental': ['continental', 'european'],
+      'japanese': ['japanese', 'sushi'],
+    };
+    
+    const cuisineTags = cuisineTagMap[activeCuisine] || [activeCuisine];
+    
+    return stores.filter((store: any) => {
+      // Check if store has tags matching the cuisine
+      if (store.tags && Array.isArray(store.tags)) {
+        const storeTags = store.tags.map((tag: string) => tag.toLowerCase());
+        return cuisineTags.some(cuisineTag => 
+          storeTags.some((storeTag: string) => storeTag.includes(cuisineTag.toLowerCase()))
+        );
+      }
+      
+      // Fallback: check category name or store name
+      const categoryName = store.category?.name?.toLowerCase() || '';
+      const storeName = store.name?.toLowerCase() || '';
+      return cuisineTags.some(cuisineTag => 
+        categoryName.includes(cuisineTag.toLowerCase()) || 
+        storeName.includes(cuisineTag.toLowerCase())
+      );
+    });
+  }, [stores, activeCuisine]);
 
   const fastDeliveryStores = filteredStores.filter((s: any) => s.is60Min);
   const topRatedStores = filteredStores.filter((s: any) => (s.rating || 0) >= 4.5);
@@ -285,7 +347,8 @@ export default function FoodDiningCategoryPage() {
             <View style={styles.socialProofContent}>
               <Text style={styles.socialProofEmoji}>👤</Text>
               <Text style={styles.socialProofText}>
-                <Text style={styles.socialProofUser}>{recentOrders[tickerIndex]?.userName || 'Someone'}</Text> just ordered from{' '}
+                <Text style={styles.socialProofUser}>{recentOrders[tickerIndex]?.userName || 'Someone'}</Text>
+                <Text> just ordered from </Text>
                 <Text style={styles.socialProofRestaurant}>{recentOrders[tickerIndex]?.storeName || 'a restaurant'}</Text>
               </Text>
               <Text style={styles.socialProofTime}>{recentOrders[tickerIndex]?.timeAgo || 'recently'}</Text>
@@ -409,7 +472,7 @@ export default function FoodDiningCategoryPage() {
                 <View style={styles.sectionHeader}>
                   <Ionicons name="flash-outline" size={20} color={COLORS.primaryGold} />
                   <Text style={styles.sectionTitle}>60-Min Delivery</Text>
-                  <TouchableOpacity onPress={() => router.push(`/stores?category=${slug}&filter=fast-delivery`)}>
+                  <TouchableOpacity onPress={() => router.push(`/stores?category=${slug}&filter=try-buy` as any)}>
                     <Text style={styles.sectionSeeAll}>View All</Text>
                   </TouchableOpacity>
                 </View>
@@ -784,6 +847,19 @@ const styles = StyleSheet.create({
   restaurantImage: {
     width: '100%',
     height: '100%',
+  },
+  restaurantImagePlaceholder: {
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  restaurantImagePlaceholderText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+    textAlign: 'center',
+    paddingHorizontal: 8,
   },
   restaurantImageGradient: {
     position: 'absolute',

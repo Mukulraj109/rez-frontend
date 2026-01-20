@@ -193,16 +193,51 @@ export const useCategoryPageData = (slug: string): UseCategoryPageDataResult => 
 
         // Extract subcategories from childCategories
         if (categoryData.childCategories && Array.isArray(categoryData.childCategories)) {
-          const subs = categoryData.childCategories.map((child: any) => ({
-            id: child._id || child.id,
-            name: child.name,
-            slug: child.slug,
-            icon: child.icon,
-            color: child.metadata?.color,
-            cashback: child.maxCashback,
-            itemCount: child.productCount || child.storeCount,
-            image: child.image,
-          }));
+          // Map cuisine names to icons and colors for fallback
+          const cuisineIconMap: Record<string, { icon: string; color: string }> = {
+            'pizza': { icon: '🍕', color: '#EF4444' },
+            'biryani': { icon: '🍗', color: '#D946EF' },
+            'burgers': { icon: '🍔', color: '#F97316' },
+            'chinese': { icon: '🥡', color: '#3B82F6' },
+            'desserts': { icon: '🍦', color: '#10B981' },
+            'healthy': { icon: '🥗', color: '#22C55E' },
+            'indian': { icon: '🍛', color: '#F59E0B' },
+            'italian': { icon: '🍝', color: '#EF4444' },
+            'thai': { icon: '🍜', color: '#EC4899' },
+            'mexican': { icon: '🌮', color: '#F97316' },
+            'south indian': { icon: '🥘', color: '#8B5CF6' },
+            'north indian': { icon: '🍛', color: '#F59E0B' },
+            'continental': { icon: '🥩', color: '#6366F1' },
+            'japanese': { icon: '🍣', color: '#3B82F6' },
+          };
+          
+          const subs = categoryData.childCategories.map((child: any) => {
+            const nameLower = (child.name || '').toLowerCase();
+            const slugLower = (child.slug || '').toLowerCase();
+            
+            // Find matching cuisine icon/color
+            let fallbackIcon = '🍽️';
+            let fallbackColor = '#6B7280';
+            
+            for (const [key, value] of Object.entries(cuisineIconMap)) {
+              if (nameLower.includes(key) || slugLower.includes(key)) {
+                fallbackIcon = value.icon;
+                fallbackColor = value.color;
+                break;
+              }
+            }
+            
+            return {
+              id: child._id || child.id,
+              name: child.name,
+              slug: child.slug,
+              icon: child.icon || fallbackIcon,
+              color: child.metadata?.color || fallbackColor,
+              cashback: child.maxCashback,
+              itemCount: child.productCount || child.storeCount,
+              image: child.image,
+            };
+          });
           setSubcategories(subs);
           console.log(`[CATEGORY PAGE] Got ${subs.length} subcategories from API`);
         }

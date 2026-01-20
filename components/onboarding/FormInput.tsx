@@ -69,7 +69,7 @@ export default function FormInput({
         style={[
           styles.inputContainer,
           isFocused && styles.inputFocused,
-          error && styles.inputError
+          !!error && styles.inputError
         ]}
         accessible={false}
       >
@@ -118,7 +118,7 @@ export default function FormInput({
           {...props}
         />
       </View>
-      {error && (
+      {!!error && (
         <View
           accessible={true}
           accessibilityRole="alert"

@@ -97,7 +97,9 @@ const StreakLoyaltySection: React.FC<StreakLoyaltySectionProps> = ({
     if (onMissionPress) {
       onMissionPress(missionId);
     } else {
-      router.push(`/missions/${missionId}` as any);
+      // Navigate to missions list page - mission detail requires both id and progressId
+      // which we don't have in the loyalty context, so redirect to missions list
+      router.push('/missions' as any);
     }
   };
 

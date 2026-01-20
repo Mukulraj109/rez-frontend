@@ -92,20 +92,33 @@ const QuickActionBar: React.FC<QuickActionBarProps> = ({
           router.push('/offers' as any);
           break;
         case 'cashback':
-          router.push('/cashback' as any);
+          router.push('/account/cashback' as any);
           break;
-        case 'saved':
-          router.push('/wishlist' as any);
+        case 'exclusive':
+          router.push('/prive-offers' as any);
+          break;
+        case '60min':
+          // Navigate to stores with 60-min filter
+          router.push(`/stores?category=${categorySlug || 'food-dining'}&filter=try-buy` as any);
           break;
         case 'compare':
           router.push('/compare' as any);
+          break;
+        case 'play':
+          router.push('/(tabs)/play' as any);
+          break;
+        case 'reviews':
+          router.push('/explore/reviews' as any);
+          break;
+        case 'saved':
+          router.push('/wishlist' as any);
           break;
         default:
           // Handle other actions
           break;
       }
     }
-  }, [router, onActionPress]);
+  }, [router, onActionPress, categorySlug]);
 
   return (
     <View style={styles.container}>

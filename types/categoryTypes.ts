@@ -232,7 +232,7 @@ export interface CategoryPageData {
 export interface BrowseCategoryGridProps {
   categories: CategoryGridItem[];
   title?: string;
-  onCategoryPress: (category: CategoryGridItem) => void;
+  onCategoryPress?: (category: CategoryGridItem) => void;
 }
 
 export interface EnhancedAISuggestionsSectionProps {

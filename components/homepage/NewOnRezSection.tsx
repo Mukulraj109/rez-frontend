@@ -66,7 +66,7 @@ const AutoPlayVideo: React.FC<{ uri: string; poster?: string; style?: any }> = (
               video.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;';
 
               el.appendChild(video);
-              video.play().catch(() => {});
+              video.play().catch(() => { });
             }
           });
         } catch (e) {
@@ -655,7 +655,8 @@ const NewOnRezSection: React.FC = () => {
         )}
 
         {/* Small Cards Column (Right) - with waterfall animation */}
-        {smallStores.length > 0 && (
+        {/* {smallStores.length > 0 && ( */}
+        {false && smallStores.length > 0 && (
           <View style={styles.smallCardsColumn}>
             {/* Incoming New Card - slides in from right */}
             {incomingStore && isAnimating && (
