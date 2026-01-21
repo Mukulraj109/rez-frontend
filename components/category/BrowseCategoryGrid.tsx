@@ -22,20 +22,21 @@ const COLORS = {
 interface CategoryIconProps {
   category: CategoryGridItem;
   onPress: (category: CategoryGridItem) => void;
+  countLabel?: string;
 }
 
-const CategoryIcon: React.FC<CategoryIconProps> = ({ category, onPress }) => {
+const CategoryIcon: React.FC<CategoryIconProps> = ({ category, onPress, countLabel = 'items' }) => {
   // Default fallback values if icon/color are missing
   const icon = category.icon || '🍽️';
   const color = category.color || '#6B7280';
-  
+
   return (
     <TouchableOpacity
       style={styles.categoryItem}
       onPress={() => onPress(category)}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
+      <View style={[styles.iconContainer, { backgroundColor: `${color}15` }]}>
         <Text style={styles.iconEmoji}>{icon}</Text>
         {category.cashback && category.cashback > 0 && (
           <View style={styles.cashbackBadge}>
@@ -46,8 +47,8 @@ const CategoryIcon: React.FC<CategoryIconProps> = ({ category, onPress }) => {
       <Text style={styles.categoryName} numberOfLines={2}>
         {category.name}
       </Text>
-      {category.itemCount !== undefined && (
-        <Text style={styles.itemCount}>{category.itemCount}+ items</Text>
+      {category.itemCount !== undefined && category.itemCount > 0 && (
+        <Text style={styles.itemCount}>{category.itemCount}+ {countLabel}</Text>
       )}
     </TouchableOpacity>
   );
@@ -57,6 +58,7 @@ const BrowseCategoryGrid: React.FC<BrowseCategoryGridProps> = ({
   categories,
   title = 'Browse Categories',
   onCategoryPress,
+  itemCountLabel = 'items',
 }) => {
   const router = useRouter();
 
@@ -91,6 +93,7 @@ const BrowseCategoryGrid: React.FC<BrowseCategoryGridProps> = ({
             key={category.id}
             category={category}
             onPress={handleCategoryPress}
+            countLabel={itemCountLabel}
           />
         ))}
       </View>

@@ -198,7 +198,7 @@ class StoresService {
       if (response.success && response.data) {
         // Extract store from nested structure (API returns { store: {...}, products: [...], productsCount: ... })
         const storeData = (response.data as any).store || response.data;
-        
+
         if (!storeData) {
           return {
             success: false,
@@ -226,7 +226,7 @@ class StoresService {
         try {
           // Convert to unified Store format
           const unifiedStore = toStore(storeData);
-          
+
           // Debug: Log after conversion
           console.log('🔄 [STORES API] After toStore conversion:', {
             hasDescription: !!unifiedStore.description,
@@ -267,7 +267,7 @@ class StoresService {
               createdAt: storeData.createdAt,
               updatedAt: storeData.updatedAt,
             };
-            
+
             // Debug: Log final store data
             console.log('✅ [STORES API] Final store data with preserved fields:', {
               hasBanner: !!finalStoreData.banner,
@@ -277,7 +277,7 @@ class StoresService {
               logo: finalStoreData.logo,
               image: finalStoreData.image,
             });
-            
+
             return {
               ...response,
               data: finalStoreData as any, // Cast to Store for backwards compatibility
@@ -499,6 +499,21 @@ class StoresService {
     });
   }
 
+  // Get cuisine counts for Browse by Cuisine section
+  async getCuisineCounts(): Promise<ApiResponse<{ cuisines: any[]; total: number }>> {
+    return apiClient.get('/stores/cuisine-counts');
+  }
+
+  // Get top cashback stores
+  async getTopCashbackStores(params?: any): Promise<ApiResponse<any>> {
+    return apiClient.get('/stores/top-cashback', params);
+  }
+
+  // Get BNPL stores
+  async getBNPLStores(params?: any): Promise<ApiResponse<any>> {
+    return apiClient.get('/stores/bnpl', params);
+  }
+
   // Get store categories
   async getStoreCategories(): Promise<ApiResponse<Array<{
     id: string;
@@ -612,18 +627,18 @@ class StoresService {
     console.log('🌐 [storesApi] Fetching store reviews');
     console.log('  📌 Store ID:', storeId);
     console.log('  🔍 Query Params:', JSON.stringify(query, null, 2));
-    
+
     const response = await apiClient.get(`/stores/${storeId}/reviews`, query);
-    
+
     console.log('🌐 [storesApi] API Response Received:');
     console.log('  ✅ Success:', response.success);
     console.log('  📦 Full Response:', JSON.stringify(response, null, 2));
-    
+
     if (response.success && response.data) {
       console.log('  📝 Reviews Count:', response.data.reviews?.length || 0);
       console.log('  📊 Summary:', JSON.stringify(response.data.summary, null, 2));
       console.log('  📄 Pagination:', JSON.stringify(response.data.pagination, null, 2));
-      
+
       // Log each review's user data
       if (response.data.reviews && response.data.reviews.length > 0) {
         response.data.reviews.forEach((review: any, index: number) => {
@@ -636,7 +651,7 @@ class StoresService {
         });
       }
     }
-    
+
     return response;
   }
 
@@ -750,6 +765,36 @@ class StoresService {
     return apiClient.get(`/stores/${storeId}/followers/count`);
   }
 
+  // Get user's store visits history
+  async getUserVisitHistory(
+    page: number = 1,
+    limit: number = 20,
+    status?: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+  ): Promise<ApiResponse<{
+    visits: Array<{
+      id: string;
+      store: {
+        id: string;
+        name: string;
+        logo?: string;
+        address: any;
+      };
+      visitDate: string;
+      visitType: string;
+      status: string;
+      queueNumber?: string;
+      isQueue: boolean;
+    }>;
+    pagination: {
+      total: number;
+      page: number;
+      pages: number;
+      limit: number;
+    };
+  }>> {
+    return apiClient.get('/store-visits/user', { page, limit, status });
+  }
+
   // ===== FRONTEND HOMEPAGE INTEGRATION METHODS =====
 
   /**
@@ -776,7 +821,7 @@ class StoresService {
           // Handle banner field - can be array or string
           let imageField: string | string[] = '';
           const bannerData = store.banner;
-          
+
           if (bannerData) {
             // If banner is an array, use the first image for the image field
             // but also preserve the banner array for the StoreCard component
@@ -788,7 +833,7 @@ class StoresService {
           } else if (store.image) {
             imageField = store.image;
           }
-          
+
           return {
             ...store,
             // Ensure ID is set (handle both _id and id)

@@ -97,7 +97,7 @@ export default function SearchPage() {
   // Store function and location in refs to avoid dependency issues
   const performGroupedSearchRef = useRef(actions.performGroupedSearch);
   const userLocationRef = useRef<{ latitude: number; longitude: number } | undefined>(undefined);
-  
+
   // Update refs (using useLayoutEffect to avoid render issues)
   useLayoutEffect(() => {
     performGroupedSearchRef.current = actions.performGroupedSearch;
@@ -113,6 +113,8 @@ export default function SearchPage() {
     if (initialQuery && initialQuery.trim().length >= 2 && !hasSearchedInitial.current) {
       hasSearchedInitial.current = true;
       lastSearchedQuery.current = initialQuery;
+      // IMPORTANT: Sync the input field with the URL query parameter
+      actions.handleSearchChange(initialQuery);
       performGroupedSearchRef.current(initialQuery, userLocationRef.current);
       setViewMode('results');
     }
@@ -163,7 +165,7 @@ export default function SearchPage() {
 
   const handleCategoryPress = async (category: SearchCategory) => {
     await actions.handleCategoryPress(category);
-    
+
     // Navigate to category page to show all products in this category
     router.push({
       pathname: '/category/[slug]' as any,
@@ -262,15 +264,15 @@ export default function SearchPage() {
           default:
             // Best value: considers price, cashback, rating, and distance
             // Lower score = better value
-            const scoreA = 
-              (a.price.current * 0.4) - 
-              (a.cashback.amount * 0.3) - 
-              (a.rating * 100 * 0.2) + 
+            const scoreA =
+              (a.price.current * 0.4) -
+              (a.cashback.amount * 0.3) -
+              (a.rating * 100 * 0.2) +
               ((a.distance || 999) * 0.1);
-            const scoreB = 
-              (b.price.current * 0.4) - 
-              (b.cashback.amount * 0.3) - 
-              (b.rating * 100 * 0.2) + 
+            const scoreB =
+              (b.price.current * 0.4) -
+              (b.cashback.amount * 0.3) -
+              (b.rating * 100 * 0.2) +
               ((b.distance || 999) * 0.1);
             return scoreA - scoreB;
         }
@@ -379,11 +381,11 @@ export default function SearchPage() {
                   styles.searchInput,
                   Platform.OS === 'web'
                     ? ({
-                        outlineWidth: 0,
-                        outlineColor: 'transparent',
-                        outlineStyle: 'none',
-                        WebkitTapHighlightColor: 'transparent',
-                      } as any)
+                      outlineWidth: 0,
+                      outlineColor: 'transparent',
+                      outlineStyle: 'none',
+                      WebkitTapHighlightColor: 'transparent',
+                    } as any)
                     : undefined,
                 ]}
                 placeholder="Search for a service, store or category"
@@ -434,10 +436,10 @@ export default function SearchPage() {
             accessibilityState={{ selected: Object.keys(searchState.activeFilters).length > 0 }}
           >
             <View style={styles.filterIconContainer}>
-              <Ionicons 
-                name="options-outline" 
-                size={18} 
-                color={Object.keys(searchState.activeFilters).length > 0 ? '#FFC857' : 'white'} 
+              <Ionicons
+                name="options-outline"
+                size={18}
+                color={Object.keys(searchState.activeFilters).length > 0 ? '#FFC857' : 'white'}
               />
             </View>
             {Object.keys(searchState.activeFilters).length > 0 && (
@@ -876,7 +878,7 @@ export default function SearchPage() {
         currentFilters={currentFilters}
       />
     </SafeAreaView>
-);
+  );
 }
 
 const styles = StyleSheet.create({

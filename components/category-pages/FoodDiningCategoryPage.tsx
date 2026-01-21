@@ -5,8 +5,8 @@
  * Restaurant cards, 60-min delivery, loyalty hub, pay at restaurant
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { ScrollView, View, Text, StyleSheet, RefreshControl, TouchableOpacity, TextInput, Image } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { ScrollView, View, Text, StyleSheet, RefreshControl, TouchableOpacity, TextInput, Image, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +22,7 @@ import EnhancedAISuggestionsSection from '@/components/category/EnhancedAISugges
 import EnhancedUGCSocialProofSection from '@/components/category/EnhancedUGCSocialProofSection';
 import OffersSection from '@/components/category/OffersSection';
 import ExperiencesSection from '@/components/category/ExperiencesSection';
+import OrderAgainSection from '@/components/category/OrderAgainSection';
 // API Hook for real data
 import { useCategoryPageData } from '@/hooks/useCategoryPageData';
 import { useWallet } from '@/hooks/useWallet';
@@ -33,6 +34,8 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { foodCategoryData } from '@/data/category';
 // API for loyalty stats and recent orders
 import { categoriesApi } from '@/services/categoriesApi';
+import ordersApi, { Order } from '@/services/ordersApi';
+import { storesApi } from '@/services/storesApi'; // Import storesApi specifically
 
 // Rez Brand Colors
 const COLORS = {
@@ -51,8 +54,8 @@ const FOOD_TABS = [
   { id: 'experiences', label: 'Experiences', icon: 'sparkles-outline' },
 ];
 
-// Restaurant Card Component
-const RestaurantCard = ({ restaurant, variant = 'default' }: { restaurant: any; variant?: 'default' | 'compact' }) => {
+// Restaurant Card Component - Enhanced with all features
+const RestaurantCard = ({ restaurant, variant = 'default', userVisitCount = 0 }: { restaurant: any; variant?: 'default' | 'compact'; userVisitCount?: number }) => {
   const router = useRouter();
   const isCompact = variant === 'compact';
   const [imageError, setImageError] = useState(false);
@@ -68,12 +71,39 @@ const RestaurantCard = ({ restaurant, variant = 'default' }: { restaurant: any; 
         return restaurant.banner;
       }
     }
-    
+
     // Fallback to logo, then image
     return restaurant.logo || restaurant.image || undefined;
   };
 
   const imageUri = getImageUri();
+
+  // Get cuisine tags for display (first 3 tags)
+  const getCuisineTags = (): string => {
+    if (restaurant.tags && Array.isArray(restaurant.tags) && restaurant.tags.length > 0) {
+      // Filter out dietary tags for cuisine display
+      const cuisineTags = restaurant.tags.filter((tag: string) =>
+        !['halal', 'pure-veg', 'veg', 'non-veg', 'jain'].includes(tag.toLowerCase())
+      );
+      return cuisineTags.slice(0, 3).map((t: string) => t.charAt(0).toUpperCase() + t.slice(1)).join(' • ') || restaurant.category?.name || 'Restaurant';
+    }
+    return restaurant.category?.name || 'Restaurant';
+  };
+
+  // Check dietary tags
+  const isHalal = restaurant.tags?.some((t: string) => t.toLowerCase() === 'halal');
+  const isPureVeg = restaurant.tags?.some((t: string) => ['pure-veg', 'veg', 'vegetarian'].includes(t.toLowerCase()));
+
+  // Calculate coins earned (based on cashback percentage or reward rules)
+  const coinsEarned = restaurant.rewardRules?.baseCashbackPercent
+    ? Math.round(restaurant.rewardRules.baseCashbackPercent * 10)
+    : Math.round((restaurant.offers?.cashback || 10) * 4.5);
+
+  // Review bonus coins
+  const reviewBonus = restaurant.rewardRules?.reviewBonusCoins || 20;
+
+  // Visit milestone (first milestone or default)
+  const visitMilestone = restaurant.rewardRules?.visitMilestoneRewards?.[0]?.visits || 5;
 
   return (
     <TouchableOpacity
@@ -100,7 +130,7 @@ const RestaurantCard = ({ restaurant, variant = 'default' }: { restaurant: any; 
           style={styles.restaurantImageGradient}
         />
 
-        {/* Badges */}
+        {/* Badges Row */}
         <View style={styles.restaurantBadges}>
           {restaurant.deliveryCategories?.fastDelivery && (
             <View style={styles.badge60Min}>
@@ -108,14 +138,24 @@ const RestaurantCard = ({ restaurant, variant = 'default' }: { restaurant: any; 
               <Text style={styles.badge60MinText}>60 min</Text>
             </View>
           )}
+          {isHalal && (
+            <View style={styles.badgeHalal}>
+              <Text style={styles.badgeHalalText}>Halal</Text>
+            </View>
+          )}
+          {isPureVeg && (
+            <View style={styles.badgePureVeg}>
+              <Text style={styles.badgePureVegText}>Pure Veg</Text>
+            </View>
+          )}
           {restaurant.offers?.cashback && (
-            <View style={styles.badgeCashback}>
-              <Text style={styles.badgeCashbackText}>{restaurant.offers.cashback}% cashback</Text>
+            <View style={styles.badgeCashbackPurple}>
+              <Text style={styles.badgeCashbackPurpleText}>{restaurant.offers.cashback}% cashback</Text>
             </View>
           )}
         </View>
 
-        {/* Rating */}
+        {/* Rating Badge */}
         <View style={styles.restaurantRating}>
           <Ionicons name="star" size={12} color={COLORS.primaryGold} />
           <Text style={styles.restaurantRatingText}>
@@ -128,43 +168,62 @@ const RestaurantCard = ({ restaurant, variant = 'default' }: { restaurant: any; 
       </View>
 
       <View style={styles.restaurantContent}>
-        <View style={styles.restaurantHeader}>
-          <View style={styles.restaurantInfo}>
-            <Text style={styles.restaurantName} numberOfLines={1}>{restaurant.name}</Text>
-            <Text style={styles.restaurantCuisine} numberOfLines={1}>
-              {restaurant.category?.name || 'Restaurant'}
-            </Text>
-          </View>
-          {restaurant.isFeatured && (
-            <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
-          )}
-        </View>
+        {/* Name and Cuisine */}
+        <Text style={styles.restaurantName} numberOfLines={1}>{restaurant.name}</Text>
+        <Text style={styles.restaurantCuisine} numberOfLines={1}>
+          {getCuisineTags()}
+        </Text>
 
+        {/* Meta Info Row: Distance, Time, Price */}
         <View style={styles.restaurantMeta}>
           <View style={styles.restaurantMetaItem}>
             <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
             <Text style={styles.restaurantMetaText}>
-              {restaurant.location?.city || 'Nearby'}
+              {restaurant.distance ? `${restaurant.distance} km` : restaurant.location?.city || 'Nearby'}
             </Text>
           </View>
           <View style={styles.restaurantMetaItem}>
             <Ionicons name="time-outline" size={12} color={COLORS.textSecondary} />
             <Text style={styles.restaurantMetaText}>
-              {restaurant.operationalInfo?.deliveryTime || '30-45 min'}
+              {restaurant.operationalInfo?.deliveryTime || '30-35 min'}
             </Text>
           </View>
+          {restaurant.priceForTwo && (
+            <Text style={styles.restaurantPriceForTwo}>
+              ₹{restaurant.priceForTwo} for two
+            </Text>
+          )}
         </View>
 
-        <View style={styles.restaurantCoins}>
-          <Ionicons name="star" size={14} color={COLORS.primaryGold} />
-          <Text style={styles.restaurantCoinsText}>
-            Earn {Math.floor((restaurant.offers?.cashback || 10) * 0.1)} coins
+        {/* Coins and Review Bonus Row */}
+        <View style={styles.restaurantRewardsRow}>
+          <View style={styles.restaurantCoins}>
+            <Ionicons name="star" size={14} color={COLORS.primaryGold} />
+            <Text style={styles.restaurantCoinsText}>
+              Earn ₹{coinsEarned} coins
+            </Text>
+          </View>
+          <Text style={styles.reviewBonusText}>
+            +₹{reviewBonus} for review
           </Text>
+        </View>
+
+        {/* Visit Progress Row */}
+        <View style={styles.visitProgressRow}>
+          <Text style={styles.visitProgressText}>
+            {userVisitCount}/{visitMilestone} visits
+          </Text>
+          {userVisitCount < visitMilestone && (
+            <TouchableOpacity onPress={() => router.push('/my-visits' as any)}>
+              <Text style={styles.unlockRewardText}>Unlock reward</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </TouchableOpacity>
   );
 };
+
 
 export default function FoodDiningCategoryPage() {
   const router = useRouter();
@@ -186,6 +245,31 @@ export default function FoodDiningCategoryPage() {
   const { walletState } = useWallet({ autoFetch: true });
   const savingsThisMonth = walletState.data?.savingsInsights?.thisMonth || 0;
 
+  // User visits map (storeId -> count)
+  const [visitCounts, setVisitCounts] = useState<Record<string, number>>({});
+
+  // Fetch user visits to calculate progress
+  useEffect(() => {
+    const fetchVisits = async () => {
+      try {
+        const response = await storesApi.getUserVisitHistory(1, 100); // Fetch last 100 visits
+        if (response.success && response.data?.visits) {
+          const counts: Record<string, number> = {};
+          response.data.visits.forEach(visit => {
+            const storeId = visit.store.id;
+            counts[storeId] = (counts[storeId] || 0) + 1;
+          });
+          setVisitCounts(counts);
+          console.log('✅ [FOOD DINING] Loaded visit counts:', counts);
+        }
+      } catch (error) {
+        console.error('❌ [FOOD DINING] Error fetching user visits:', error);
+      }
+    };
+
+    fetchVisits();
+  }, []);
+
   const [activeTab, setActiveTab] = useState('delivery');
   const [activeCuisine, setActiveCuisine] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -195,6 +279,7 @@ export default function FoodDiningCategoryPage() {
   // Real data states for loyalty hub and ticker
   const [loyaltyStats, setLoyaltyStats] = useState<{ ordersCount: number; brandsCount: number }>({ ordersCount: 0, brandsCount: 0 });
   const [recentOrders, setRecentOrders] = useState<{ userName: string; storeName: string; timeAgo: string }[]>([]);
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
   const [tickerIndex, setTickerIndex] = useState(0);
 
   const placeholders = [
@@ -231,15 +316,47 @@ export default function FoodDiningCategoryPage() {
     fetchLoyaltyData();
   }, [slug]);
 
-  // Cycle through recent orders for ticker
+  // Fetch user's personal orders for Order Again section
+  useEffect(() => {
+    const fetchMyOrders = async () => {
+      try {
+        const res = await ordersApi.getOrders({ limit: 10, sort: 'newest' });
+        if (res.success && res.data?.orders) {
+          setMyOrders(res.data.orders);
+        }
+      } catch (err) {
+        console.log('Error fetching my orders:', err);
+      }
+    };
+    fetchMyOrders();
+  }, []);
+
+  // Animation ref for ticker fade effect
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Cycle through recent orders for ticker with fade animation
   useEffect(() => {
     if (recentOrders.length > 1) {
       const timer = setInterval(() => {
-        setTickerIndex((prev) => (prev + 1) % recentOrders.length);
+        // Fade out
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          // Update index
+          setTickerIndex((prev) => (prev + 1) % recentOrders.length);
+          // Fade in
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }).start();
+        });
       }, 4000);
       return () => clearInterval(timer);
     }
-  }, [recentOrders.length]);
+  }, [recentOrders.length, fadeAnim]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -252,7 +369,7 @@ export default function FoodDiningCategoryPage() {
     if (activeCuisine === 'all') {
       return stores;
     }
-    
+
     // Map cuisine IDs to tag patterns for filtering
     const cuisineTagMap: Record<string, string[]> = {
       'indian': ['indian', 'north indian', 'south indian', 'biryani', 'curry'],
@@ -264,24 +381,31 @@ export default function FoodDiningCategoryPage() {
       'north-indian': ['north indian', 'punjabi', 'mughlai'],
       'continental': ['continental', 'european'],
       'japanese': ['japanese', 'sushi'],
+      'thali': ['thali', 'meals', 'platter'],
+      'ice-cream': ['ice cream', 'ice-cream', 'dessert', 'desert'],
+      'street-food': ['street food', 'chaat', 'snack'],
+      'biryani': ['biryani', 'kebab'],
+      'healthy': ['healthy', 'salad', 'diet'],
+      'cafe': ['cafe', 'coffee', 'bakery'],
+      'desserts': ['dessert', 'sweet', 'cake'],
     };
-    
+
     const cuisineTags = cuisineTagMap[activeCuisine] || [activeCuisine];
-    
+
     return stores.filter((store: any) => {
       // Check if store has tags matching the cuisine
       if (store.tags && Array.isArray(store.tags)) {
         const storeTags = store.tags.map((tag: string) => tag.toLowerCase());
-        return cuisineTags.some(cuisineTag => 
+        return cuisineTags.some(cuisineTag =>
           storeTags.some((storeTag: string) => storeTag.includes(cuisineTag.toLowerCase()))
         );
       }
-      
+
       // Fallback: check category name or store name
       const categoryName = store.category?.name?.toLowerCase() || '';
       const storeName = store.name?.toLowerCase() || '';
-      return cuisineTags.some(cuisineTag => 
-        categoryName.includes(cuisineTag.toLowerCase()) || 
+      return cuisineTags.some(cuisineTag =>
+        categoryName.includes(cuisineTag.toLowerCase()) ||
         storeName.includes(cuisineTag.toLowerCase())
       );
     });
@@ -290,9 +414,11 @@ export default function FoodDiningCategoryPage() {
   const fastDeliveryStores = filteredStores.filter((s: any) => s.is60Min);
   const topRatedStores = filteredStores.filter((s: any) => (s.rating || 0) >= 4.5);
 
-  // Handle category press - navigate to subcategory page with stores + products
+  // Handle category press - navigate to search with cuisine tag for better results
   const handleCategoryPress = (category: any) => {
-    router.push(`/category/${slug}/subcategory/${category.slug || category.id}` as any);
+    // Use search with cuisine tag to find matching stores
+    const cuisineTag = category.slug || category.id;
+    router.push(`/search?q=${encodeURIComponent(cuisineTag)}&category=${slug}` as any);
   };
 
   // Handle AI search
@@ -341,10 +467,10 @@ export default function FoodDiningCategoryPage() {
           gradientColors={categoryConfig.gradientColors}
         />
 
-        {/* Social Proof Strip */}
+        {/* Social Proof Strip - with fade animation */}
         {recentOrders.length > 0 && (
           <View style={styles.socialProofStrip}>
-            <View style={styles.socialProofContent}>
+            <Animated.View style={[styles.socialProofContent, { opacity: fadeAnim }]}>
               <Text style={styles.socialProofEmoji}>👤</Text>
               <Text style={styles.socialProofText}>
                 <Text style={styles.socialProofUser}>{recentOrders[tickerIndex]?.userName || 'Someone'}</Text>
@@ -352,7 +478,7 @@ export default function FoodDiningCategoryPage() {
                 <Text style={styles.socialProofRestaurant}>{recentOrders[tickerIndex]?.storeName || 'a restaurant'}</Text>
               </Text>
               <Text style={styles.socialProofTime}>{recentOrders[tickerIndex]?.timeAgo || 'recently'}</Text>
-            </View>
+            </Animated.View>
           </View>
         )}
 
@@ -434,8 +560,9 @@ export default function FoodDiningCategoryPage() {
         {/* Browse Category Grid */}
         <BrowseCategoryGrid
           categories={subcategories}
-          title="Browse by Cuisine"
+          title="What are you craving?"
           onCategoryPress={handleCategoryPress}
+          itemCountLabel="places"
         />
 
         {/* Delivery Tab Content */}
@@ -466,6 +593,11 @@ export default function FoodDiningCategoryPage() {
               </ScrollView>
             </View>
 
+            {/* Order Again Section */}
+            {myOrders.length > 0 && (
+              <OrderAgainSection orders={myOrders} />
+            )}
+
             {/* 60-Min Delivery */}
             {fastDeliveryStores.length > 0 && (
               <View style={styles.section}>
@@ -478,7 +610,12 @@ export default function FoodDiningCategoryPage() {
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.restaurantsList}>
                   {fastDeliveryStores.slice(0, 5).map((store) => (
-                    <RestaurantCard key={store._id || store.id} restaurant={store} variant="compact" />
+                    <RestaurantCard
+                      key={store.id}
+                      restaurant={store}
+                      variant="compact"
+                      userVisitCount={visitCounts[store.id] || 0}
+                    />
                   ))}
                 </ScrollView>
               </View>
@@ -495,7 +632,11 @@ export default function FoodDiningCategoryPage() {
               </View>
               <View style={styles.restaurantsGrid}>
                 {topRatedStores.slice(0, 4).map((store) => (
-                  <RestaurantCard key={store._id || store.id} restaurant={store} />
+                  <RestaurantCard
+                    key={store.id}
+                    restaurant={store}
+                    userVisitCount={visitCounts[store.id] || 0}
+                  />
                 ))}
               </View>
             </View>
@@ -509,7 +650,11 @@ export default function FoodDiningCategoryPage() {
               </View>
               <View style={styles.restaurantsGrid}>
                 {filteredStores.map((store) => (
-                  <RestaurantCard key={store._id || store.id} restaurant={store} />
+                  <RestaurantCard
+                    key={store.id}
+                    restaurant={store}
+                    userVisitCount={visitCounts[store.id] || 0}
+                  />
                 ))}
               </View>
             </View>
@@ -542,7 +687,7 @@ export default function FoodDiningCategoryPage() {
               </View>
               <View style={styles.restaurantsGrid}>
                 {filteredStores.map((store) => (
-                  <RestaurantCard key={store._id || store.id} restaurant={store} />
+                  <RestaurantCard key={store.id} restaurant={store} />
                 ))}
               </View>
             </View>
@@ -962,14 +1107,81 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
   },
   restaurantCoinsText: {
     fontSize: 12,
     fontWeight: '500',
     color: COLORS.primaryGold,
+  },
+  // New badge styles
+  badgeHalal: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#0D9488',
+  },
+  badgeHalalText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  badgePureVeg: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#22C55E',
+  },
+  badgePureVegText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  badgeCashbackPurple: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#8B5CF6',
+  },
+  badgeCashbackPurpleText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  // Price for two
+  restaurantPriceForTwo: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginLeft: 4,
+  },
+  // Rewards row
+  restaurantRewardsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  reviewBonusText: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+  },
+  // Visit progress row
+  visitProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  visitProgressText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  unlockRewardText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.primaryGreen,
   },
   bookTableBanner: {
     marginHorizontal: 16,

@@ -29,7 +29,8 @@ export const foodCategories: CategoryGridItem[] = [
   { id: 'pizza', name: 'Pizza & Italian', icon: '🍕', color: '#EF4444', cashback: 16, itemCount: 145 },
   { id: 'chinese', name: 'Chinese & Asian', icon: '🥡', color: '#3B82F6', cashback: 14, itemCount: 198 },
   { id: 'healthy', name: 'Healthy Food', icon: '🥗', color: '#22C55E', cashback: 20, itemCount: 87 },
-  { id: 'beverages', name: 'Beverages', icon: '☕', color: '#78350F', cashback: 12, itemCount: 134 },
+  { id: 'thali', name: 'Thali Meals', icon: '🍱', color: '#F59E0B', cashback: 18, itemCount: 112 },
+  { id: 'cafe', name: 'Cafe & Coffee', icon: '☕', color: '#78350F', cashback: 12, itemCount: 134 },
 ];
 
 // ============================================
@@ -46,7 +47,14 @@ export const foodCuisineFilters = [
   { id: 'south-indian', label: 'South Indian', icon: '🥘' },
   { id: 'north-indian', label: 'North Indian', icon: '🍛' },
   { id: 'continental', label: 'Continental', icon: '🥩' },
+
   { id: 'japanese', label: 'Japanese', icon: '🍣' },
+  { id: 'thali', label: 'Thali', icon: '🍱' },
+  { id: 'biryani', label: 'Biryani', icon: '🍗' },
+  { id: 'street-food', label: 'Street Food', icon: '🌮' },
+  { id: 'ice-cream', label: 'Ice Cream', icon: '🍦' },
+  { id: 'healthy', label: 'Healthy', icon: '🥗' },
+  { id: 'cafe', label: 'Cafe', icon: '☕' },
 ];
 
 // ============================================

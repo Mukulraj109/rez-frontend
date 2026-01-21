@@ -193,6 +193,20 @@ export const useCategoryPageData = (slug: string): UseCategoryPageDataResult => 
 
         // Extract subcategories from childCategories
         if (categoryData.childCategories && Array.isArray(categoryData.childCategories)) {
+          // Fetch real counts for food-dining
+          let cuisineCounts: any[] = [];
+          if (slug === 'food-dining') {
+            try {
+              const countResponse = await storesApi.getCuisineCounts();
+              if (countResponse.success && countResponse.data?.cuisines) {
+                cuisineCounts = countResponse.data.cuisines;
+                console.log(`[CATEGORY PAGE] Got ${cuisineCounts.length} cuisine counts to merge`);
+              }
+            } catch (e) {
+              console.error('[CATEGORY PAGE] Failed to fetch cuisine counts:', e);
+            }
+          }
+
           // Map cuisine names to icons and colors for fallback
           const cuisineIconMap: Record<string, { icon: string; color: string }> = {
             'pizza': { icon: '🍕', color: '#EF4444' },
@@ -209,16 +223,23 @@ export const useCategoryPageData = (slug: string): UseCategoryPageDataResult => 
             'north indian': { icon: '🍛', color: '#F59E0B' },
             'continental': { icon: '🥩', color: '#6366F1' },
             'japanese': { icon: '🍣', color: '#3B82F6' },
+            'street': { icon: '🌮', color: '#F59E0B' },
+            'chaat': { icon: '🥘', color: '#F59E0B' },
+            'cafe': { icon: '☕', color: '#78350F' },
+            'thali': { icon: '🍱', color: '#F59E0B' },
+            'ice-cream': { icon: '🍦', color: '#EC4899' },
+            'healthy-food': { icon: '🥗', color: '#22C55E' },
           };
-          
+
           const subs = categoryData.childCategories.map((child: any) => {
             const nameLower = (child.name || '').toLowerCase();
             const slugLower = (child.slug || '').toLowerCase();
-            
+
             // Find matching cuisine icon/color
             let fallbackIcon = '🍽️';
             let fallbackColor = '#6B7280';
-            
+            let matchedCount = 0;
+
             for (const [key, value] of Object.entries(cuisineIconMap)) {
               if (nameLower.includes(key) || slugLower.includes(key)) {
                 fallbackIcon = value.icon;
@@ -226,15 +247,29 @@ export const useCategoryPageData = (slug: string): UseCategoryPageDataResult => 
                 break;
               }
             }
-            
+
+            // Find matching real count if available
+            if (cuisineCounts.length > 0) {
+              const matchedCuisine = cuisineCounts.find(c =>
+                nameLower.includes(c.id) || slugLower.includes(c.id) ||
+                c.id.includes(slugLower) || c.name.toLowerCase() === nameLower
+              );
+              if (matchedCuisine) {
+                matchedCount = matchedCuisine.count;
+              }
+            }
+
+            // Use real count if we found one (and it's greater than 0), otherwise fall back to DB count
+            const finalCount = matchedCount > 0 ? matchedCount : (child.productCount || child.storeCount);
+
             return {
               id: child._id || child.id,
               name: child.name,
               slug: child.slug,
-              icon: child.icon || fallbackIcon,
+              icon: child.icon || fallbackIcon || '🍽️',
               color: child.metadata?.color || fallbackColor,
               cashback: child.maxCashback,
-              itemCount: child.productCount || child.storeCount,
+              itemCount: finalCount,
               image: child.image,
             };
           });
@@ -277,19 +312,33 @@ export const useCategoryPageData = (slug: string): UseCategoryPageDataResult => 
       if (response.success && response.data) {
         const storesData = Array.isArray(response.data) ? response.data : [];
         const formattedStores = storesData.map((store: any) => ({
+          // Basic fields
           id: store._id || store.id,
+          _id: store._id || store.id, // Some components use _id
           name: store.name,
           slug: store.slug,
           logo: store.logo,
+          banner: store.banner,
           rating: store.ratings?.average || store.rating || 4.5,
+          ratings: store.ratings, // Full ratings object with count
           cashback: store.offers?.cashback || store.cashback,
           distance: store.distance || '2.0 km',
-          is60Min: store.operationalInfo?.deliveryTime ? parseInt(store.operationalInfo.deliveryTime) <= 60 : true,
-          hasPickup: true,
+          is60Min: store.deliveryCategories?.fastDelivery || (store.operationalInfo?.deliveryTime ? parseInt(store.operationalInfo.deliveryTime) <= 60 : true),
+          hasPickup: store.hasStorePickup || true,
           categories: store.category ? [store.category.name] : [],
+          category: store.category, // Full category object
+          // Enhanced card fields
+          tags: store.tags || [],
+          rewardRules: store.rewardRules,
+          priceForTwo: store.priceForTwo,
+          offers: store.offers,
+          operationalInfo: store.operationalInfo,
+          deliveryCategories: store.deliveryCategories,
+          location: store.location,
+          isFeatured: store.isFeatured,
         }));
         setStores(formattedStores);
-        console.log(`[CATEGORY PAGE] Got ${formattedStores.length} stores`);
+        console.log(`[CATEGORY PAGE] Got ${formattedStores.length} stores with enhanced fields`);
       }
     } catch (err: any) {
       console.error(`[CATEGORY PAGE] Error fetching stores:`, err);

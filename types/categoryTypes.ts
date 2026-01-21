@@ -233,6 +233,7 @@ export interface BrowseCategoryGridProps {
   categories: CategoryGridItem[];
   title?: string;
   onCategoryPress?: (category: CategoryGridItem) => void;
+  itemCountLabel?: string;
 }
 
 export interface EnhancedAISuggestionsSectionProps {

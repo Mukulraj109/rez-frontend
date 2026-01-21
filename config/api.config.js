@@ -38,21 +38,21 @@ const API_CONFIG = {
 
   // Endpoints configuration
   ENDPOINTS: {
-    // Authentication
+    // Authentication (backend serves at /api/user/auth)
     AUTH: {
-      SEND_OTP: '/auth/send-otp',
-      VERIFY_OTP: '/auth/verify-otp',
-      REFRESH_TOKEN: '/auth/refresh',
-      LOGOUT: '/auth/logout'
+      SEND_OTP: '/user/auth/send-otp',
+      VERIFY_OTP: '/user/auth/verify-otp',
+      REFRESH_TOKEN: '/user/auth/refresh',
+      LOGOUT: '/user/auth/logout'
     },
 
-    // User
+    // User (backend serves at /api/user/profile and /api/addresses)
     USER: {
-      PROFILE: '/users/profile',
-      UPDATE_PROFILE: '/users/profile',
-      DELETE_ACCOUNT: '/users/delete',
-      ADDRESSES: '/users/addresses',
-      PREFERENCES: '/users/preferences'
+      PROFILE: '/user/profile',
+      UPDATE_PROFILE: '/user/profile',
+      DELETE_ACCOUNT: '/user/profile/delete',
+      ADDRESSES: '/addresses',
+      PREFERENCES: '/user-settings'
     },
 
     // Products
@@ -92,12 +92,12 @@ const API_CONFIG = {
       REORDER: '/orders/:id/reorder'
     },
 
-    // Payments
+    // Payments (backend serves at /api/payment)
     PAYMENTS: {
-      INITIATE: '/payments/initiate',
-      VERIFY: '/payments/verify',
-      METHODS: '/payments/methods',
-      REFUND: '/payments/refund'
+      INITIATE: '/payment/initiate',
+      VERIFY: '/payment/verify',
+      METHODS: '/payment-methods',
+      REFUND: '/payment/refund'
     },
 
     // Stores
@@ -200,12 +200,12 @@ const API_CONFIG = {
       CASHBACK: '/bills/cashback'
     },
 
-    // Referrals
+    // Referrals (backend serves at /api/referral)
     REFERRALS: {
-      INFO: '/referrals/info',
-      STATS: '/referrals/stats',
-      INVITE: '/referrals/invite',
-      REWARDS: '/referrals/rewards'
+      INFO: '/referral/info',
+      STATS: '/referral/stats',
+      INVITE: '/referral/invite',
+      REWARDS: '/referral/rewards'
     }
   },
 

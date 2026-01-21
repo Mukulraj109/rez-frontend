@@ -27,7 +27,7 @@ interface QuickActionBarProps {
 const ACTION_ICONS: Record<string, string> = {
   offers: 'pricetag',
   cashback: 'wallet',
-  exclusive: 'diamond',
+  exclusive: 'star',
   '60min': 'flash',
   compare: 'git-compare',
   play: 'game-controller',
