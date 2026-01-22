@@ -15,18 +15,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import gamificationAPI from '@/services/gamificationApi';
 import type { SpinWheelSegment, SpinWheelResult } from '@/types/gamification.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 const WHEEL_SIZE = width * 0.85;
 
-// Default wheel segments (8 segments)
+// Default wheel segments (8 segments) - Note: labels with currency will be dynamic
 const DEFAULT_SEGMENTS: SpinWheelSegment[] = [
   { id: '1', label: '10 Coins', value: 10, color: '#EF4444', type: 'coins' },
   { id: '2', label: '5% Off', value: 5, color: '#F59E0B', type: 'discount' },
   { id: '3', label: '50 Coins', value: 50, color: '#10B981', type: 'coins' },
-  { id: '4', label: '₹10 Cashback', value: 10, color: '#3B82F6', type: 'cashback' },
+  { id: '4', label: '10 Cashback', value: 10, color: '#3B82F6', type: 'cashback' },
   { id: '5', label: '100 Coins', value: 100, color: '#8B5CF6', type: 'coins' },
-  { id: '6', label: '₹25 Voucher', value: 25, color: '#EC4899', type: 'voucher' },
+  { id: '6', label: '25 Voucher', value: 25, color: '#EC4899', type: 'voucher' },
   { id: '7', label: '25 Coins', value: 25, color: '#14B8A6', type: 'coins' },
   { id: '8', label: 'Better Luck', value: 0, color: '#6B7280', type: 'nothing' },
 ];
@@ -37,6 +38,8 @@ interface SpinWheelProps {
 }
 
 export default function SpinWheel({ segments = DEFAULT_SEGMENTS, onSpinComplete }: SpinWheelProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isSpinning, setIsSpinning] = useState(false);
   const [canSpin, setCanSpin] = useState(true);
   const [nextSpinTime, setNextSpinTime] = useState<string | null>(null);
@@ -118,6 +121,13 @@ export default function SpinWheel({ segments = DEFAULT_SEGMENTS, onSpinComplete 
 
     return segments.map((segment, index) => {
       const rotation = index * segmentAngle;
+      // Format label with currency symbol for cashback and voucher types
+      let displayLabel = segment.label;
+      if (segment.type === 'cashback') {
+        displayLabel = `${currencySymbol}${segment.value} Cashback`;
+      } else if (segment.type === 'voucher') {
+        displayLabel = `${currencySymbol}${segment.value} Voucher`;
+      }
 
       return (
         <View
@@ -134,7 +144,7 @@ export default function SpinWheel({ segments = DEFAULT_SEGMENTS, onSpinComplete 
             style={styles.segmentGradient}
           >
             <View style={styles.segmentContent}>
-              <ThemedText style={styles.segmentText}>{segment.label}</ThemedText>
+              <ThemedText style={styles.segmentText}>{displayLabel}</ThemedText>
             </View>
           </LinearGradient>
         </View>

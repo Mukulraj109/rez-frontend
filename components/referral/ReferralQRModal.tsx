@@ -19,6 +19,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import ViewShot from 'react-native-view-shot';
 import { ThemedText } from '@/components/ThemedText';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ReferralQRModalProps {
   visible: boolean;
@@ -40,6 +41,9 @@ export default function ReferralQRModal({
   referralLink,
   onClose,
 }: ReferralQRModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [isDownloading, setIsDownloading] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(300)).current;
@@ -120,7 +124,7 @@ export default function ReferralQRModal({
   // Platform-specific share handlers
   const handleWhatsAppShare = async () => {
     try {
-      const message = `🎉 Join me on REZ and get ₹30 off your first order!\n\nUse my code: ${referralCode}\n\n✨ Shop from top brands\n💰 Earn rewards\n\n${referralLink}`;
+      const message = `🎉 Join me on REZ and get ${currencySymbol}30 off your first order!\n\nUse my code: ${referralCode}\n\n✨ Shop from top brands\n💰 Earn rewards\n\n${referralLink}`;
       const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
 
       const canOpen = await Linking.canOpenURL(whatsappUrl);
@@ -137,7 +141,7 @@ export default function ReferralQRModal({
 
   const handleTelegramShare = async () => {
     try {
-      const message = `🚀 Check out REZ!\n\nUse code ${referralCode} for ₹30 off.\n\n${referralLink}`;
+      const message = `🚀 Check out REZ!\n\nUse code ${referralCode} for ${currencySymbol}30 off.\n\n${referralLink}`;
       const telegramUrl = `tg://msg?text=${encodeURIComponent(message)}`;
 
       const canOpen = await Linking.canOpenURL(telegramUrl);
@@ -154,8 +158,8 @@ export default function ReferralQRModal({
 
   const handleEmailShare = async () => {
     try {
-      const subject = 'Get ₹30 off on REZ - My referral gift!';
-      const body = `Hi!\n\nI've been using REZ to shop from local stores. Use my code ${referralCode} for ₹30 off!\n\n${referralLink}`;
+      const subject = `Get ${currencySymbol}30 off on REZ - My referral gift!`;
+      const body = `Hi!\n\nI've been using REZ to shop from local stores. Use my code ${referralCode} for ${currencySymbol}30 off!\n\n${referralLink}`;
       const emailUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
       await Linking.openURL(emailUrl);
@@ -167,7 +171,7 @@ export default function ReferralQRModal({
 
   const handleSMSShare = async () => {
     try {
-      const message = `Hey! Join REZ and get ₹30 off. Code: ${referralCode}\n${referralLink}`;
+      const message = `Hey! Join REZ and get ${currencySymbol}30 off. Code: ${referralCode}\n${referralLink}`;
       const smsUrl = Platform.OS === 'ios'
         ? `sms:&body=${encodeURIComponent(message)}`
         : `sms:?body=${encodeURIComponent(message)}`;
@@ -215,7 +219,7 @@ export default function ReferralQRModal({
 
   const handleTwitterShare = async () => {
     try {
-      const tweetText = `Join me on REZ and get ₹30 off! Use code: ${referralCode}`;
+      const tweetText = `Join me on REZ and get ${currencySymbol}30 off! Use code: ${referralCode}`;
       const twitterUrl = `twitter://post?message=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(referralLink)}`;
 
       const canOpen = await Linking.canOpenURL(twitterUrl);
@@ -406,7 +410,7 @@ export default function ReferralQRModal({
               <View style={styles.infoRow}>
                 <Ionicons name="information-circle" size={20} color="#8B5CF6" />
                 <ThemedText style={styles.infoText}>
-                  Your friends get ₹30 off and you earn ₹50 when they complete their first order
+                  Your friends get {currencySymbol}30 off and you earn {currencySymbol}50 when they complete their first order
                 </ThemedText>
               </View>
             </View>

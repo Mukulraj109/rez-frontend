@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -93,6 +94,8 @@ const GroceryProductCard: React.FC<GroceryProductCardProps> = ({
   showStore = false,
 }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [quantity, setQuantity] = useState(0);
 
   // Normalize product data - handle both API formats
@@ -145,9 +148,9 @@ const GroceryProductCard: React.FC<GroceryProductCardProps> = ({
           <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
           {product.unit && <Text style={styles.unit}>{product.unit}</Text>}
           <View style={styles.priceRow}>
-            <Text style={styles.price}>₹{displayPrice}</Text>
+            <Text style={styles.price}>{currencySymbol}{displayPrice}</Text>
             {originalPrice && (
-              <Text style={styles.originalPrice}>₹{originalPrice}</Text>
+              <Text style={styles.originalPrice}>{currencySymbol}{originalPrice}</Text>
             )}
           </View>
           {cashbackPercent > 0 && (
@@ -197,7 +200,7 @@ const GroceryProductCard: React.FC<GroceryProductCardProps> = ({
         <View style={styles.compactContent}>
           <Text style={styles.compactName} numberOfLines={2}>{product.name}</Text>
           {product.unit && <Text style={styles.compactUnit}>{product.unit}</Text>}
-          <Text style={styles.compactPrice}>₹{displayPrice}</Text>
+          <Text style={styles.compactPrice}>{currencySymbol}{displayPrice}</Text>
         </View>
         <TouchableOpacity
           style={styles.addButtonCompact}
@@ -257,9 +260,9 @@ const GroceryProductCard: React.FC<GroceryProductCardProps> = ({
 
         {/* Price */}
         <View style={styles.priceRow}>
-          <Text style={styles.price}>₹{displayPrice}</Text>
+          <Text style={styles.price}>{currencySymbol}{displayPrice}</Text>
           {originalPrice && (
-            <Text style={styles.originalPrice}>₹{originalPrice}</Text>
+            <Text style={styles.originalPrice}>{currencySymbol}{originalPrice}</Text>
           )}
         </View>
 

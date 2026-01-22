@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SearchResult } from '@/types/search.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ProductResultCardProps {
   product: SearchResult;
@@ -21,9 +22,12 @@ export default function ProductResultCard({
   onPress,
   onAddToCart,
 }: ProductResultCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const formatPrice = (price?: number) => {
     if (!price) return 'N/A';
-    return `₹${price.toLocaleString('en-IN')}`;
+    return `${currencySymbol}${price.toLocaleString('en-IN')}`;
   };
 
   const calculateDiscount = () => {

@@ -14,6 +14,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { triggerImpact } from '@/utils/haptics';
+import { useRegion } from '@/contexts/RegionContext';
 
 type TabId = 'description' | 'specs' | 'reviews' | 'lockinfo';
 
@@ -153,9 +154,11 @@ export const ProductTabbedSection: React.FC<ProductTabbedSectionProps> = ({
   reviewCount = 156,
   lockDetails,
   onViewAllReviews,
-  currency = '₹',
+  currency,
   style,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = currency || getCurrencySymbol();
   const [activeTab, setActiveTab] = useState<TabId>('description');
 
   // Use default data if not provided
@@ -332,7 +335,7 @@ export const ProductTabbedSection: React.FC<ProductTabbedSectionProps> = ({
                   {review.cashbackEarned && (
                     <View style={styles.cashbackBadge}>
                       <Text style={styles.cashbackText}>
-                        Earned {currency}{review.cashbackEarned} cashback
+                        Earned {currencySymbol}{review.cashbackEarned} cashback
                       </Text>
                     </View>
                   )}
@@ -362,7 +365,7 @@ export const ProductTabbedSection: React.FC<ProductTabbedSectionProps> = ({
                     <View style={styles.lockInfoRow}>
                       <Text style={styles.lockInfoLabel}>Lock Fee Paid</Text>
                       <Text style={styles.lockInfoValue}>
-                        {currency}{lockDetails.lockFee}
+                        {currencySymbol}{lockDetails.lockFee}
                       </Text>
                     </View>
                   )}

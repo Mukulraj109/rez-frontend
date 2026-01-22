@@ -17,6 +17,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/ThemedText';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Premium Glass Design Tokens - Green & Gold Theme
 const GLASS = {
@@ -83,6 +84,8 @@ interface AboutModalProps {
 }
 
 export default function AboutModal({ visible, onClose, storeData }: AboutModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const slideAnim = useRef(new Animated.Value(screenData.height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -392,19 +395,19 @@ export default function AboutModal({ visible, onClose, storeData }: AboutModalPr
                 {store.deliveryInfo.minimumOrder !== undefined && (
                   <View style={styles.deliveryRow}>
                     <Ionicons name="cash-outline" size={18} color={COLORS.primary} />
-                    <ThemedText style={styles.deliveryText}>Minimum Order: ₹{store.deliveryInfo.minimumOrder}</ThemedText>
+                    <ThemedText style={styles.deliveryText}>Minimum Order: {currencySymbol}{store.deliveryInfo.minimumOrder}</ThemedText>
                   </View>
                 )}
                 {store.deliveryInfo.deliveryFee !== undefined && (
                   <View style={styles.deliveryRow}>
                     <Ionicons name="bicycle-outline" size={18} color={COLORS.primary} />
-                    <ThemedText style={styles.deliveryText}>Delivery Fee: ₹{store.deliveryInfo.deliveryFee}</ThemedText>
+                    <ThemedText style={styles.deliveryText}>Delivery Fee: {currencySymbol}{store.deliveryInfo.deliveryFee}</ThemedText>
                   </View>
                 )}
                 {store.deliveryInfo.freeDeliveryAbove !== undefined && (
                   <View style={styles.deliveryRow}>
                     <Ionicons name="gift-outline" size={18} color={COLORS.success} />
-                    <ThemedText style={styles.deliveryText}>Free Delivery Above: ₹{store.deliveryInfo.freeDeliveryAbove}</ThemedText>
+                    <ThemedText style={styles.deliveryText}>Free Delivery Above: {currencySymbol}{store.deliveryInfo.freeDeliveryAbove}</ThemedText>
                   </View>
                 )}
               </View>

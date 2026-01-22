@@ -9,6 +9,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '@/constants/DesignTokens';
 import { ExternalWallet } from '@/types/storePayment.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface WalletPaymentOptionProps {
   wallet: ExternalWallet;
@@ -23,6 +24,9 @@ export const WalletPaymentOption: React.FC<WalletPaymentOptionProps> = ({
   onSelect,
   disabled = false,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   return (
     <TouchableOpacity
       style={[
@@ -53,7 +57,7 @@ export const WalletPaymentOption: React.FC<WalletPaymentOptionProps> = ({
 
       {wallet.balance !== undefined && wallet.isLinked && (
         <Text style={[styles.balance, { color: wallet.color }]}>
-          ₹{wallet.balance}
+          {currencySymbol}{wallet.balance}
         </Text>
       )}
 

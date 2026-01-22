@@ -470,8 +470,6 @@ export default function HomeScreen() {
 
           if (walletResponse.success && walletResponse.data) {
             const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
-            console.log('[HOME DEBUG] walletResponse.data.coins:', walletResponse.data.coins);
-            console.log('[HOME DEBUG] rezCoin:', rezCoin);
             const actualWalletCoins = rezCoin?.amount || 0;
 
             // Display the actual wallet balance (no calculation/sync - just show the real balance)

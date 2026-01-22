@@ -19,6 +19,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { GiftCardBrand } from '../../../types/cash-store.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface BuyCouponSectionProps {
   brands: GiftCardBrand[];
@@ -32,6 +33,9 @@ const GiftCardCard: React.FC<{
   index: number;
   onPress: () => void;
 }> = memo(({ brand, index, onPress }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -152,7 +156,7 @@ const GiftCardCard: React.FC<{
 
           {/* Denominations Preview */}
           <Text style={styles.denominationsText}>
-            ₹{minDenom.toLocaleString()} - ₹{maxDenom.toLocaleString()}
+            {currencySymbol}{minDenom.toLocaleString()} - {currencySymbol}{maxDenom.toLocaleString()}
           </Text>
 
           {/* Cashback Highlight */}
@@ -170,7 +174,7 @@ const GiftCardCard: React.FC<{
           {potentialSavings > 0 && (
             <View style={styles.savingsRow}>
               <Ionicons name="wallet-outline" size={12} color="#059669" />
-              <Text style={styles.savingsText}>Save up to ₹{potentialSavings.toLocaleString()}</Text>
+              <Text style={styles.savingsText}>Save up to {currencySymbol}{potentialSavings.toLocaleString()}</Text>
             </View>
           )}
 

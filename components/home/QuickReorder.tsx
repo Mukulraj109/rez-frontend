@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useFrequentlyOrdered } from '@/hooks/useReorder';
 import { router } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface QuickReorderProps {
   limit?: number;
@@ -20,6 +21,8 @@ interface QuickReorderProps {
 }
 
 export default function QuickReorder({ limit = 5, onViewAll }: QuickReorderProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const { items, loading, error, refresh } = useFrequentlyOrdered(limit);
 
   useEffect(() => {
@@ -65,7 +68,7 @@ export default function QuickReorder({ limit = 5, onViewAll }: QuickReorderProps
           <Text style={styles.orderCount}>
             Ordered {item.orderCount}x
           </Text>
-          <Text style={styles.price}>₹{item.currentPrice}</Text>
+          <Text style={styles.price}>{currencySymbol}{item.currentPrice}</Text>
         </View>
 
         {item.isAvailable ? (

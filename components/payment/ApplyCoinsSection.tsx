@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '@/constants/DesignTokens';
 import { AppliedCoins } from '@/types/storePayment.types';
 import CoinToggleRow from './CoinToggleRow';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ApplyCoinsSectionProps {
   appliedCoins: AppliedCoins;
@@ -30,6 +31,8 @@ export const ApplyCoinsSection: React.FC<ApplyCoinsSectionProps> = ({
   onCoinAmountChange,
   onAutoOptimize,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const maxCoinsAllowed = Math.floor((billAmount * maxCoinRedemptionPercent) / 100);
   const totalAvailable = 
     appliedCoins.rezCoins.available + 
@@ -79,7 +82,7 @@ export const ApplyCoinsSection: React.FC<ApplyCoinsSectionProps> = ({
       </View>
 
       <Text style={styles.subtitle}>
-        Use up to {maxCoinRedemptionPercent}% of your bill (₹{maxCoinsAllowed}) with coins
+        Use up to {maxCoinRedemptionPercent}% of your bill ({currencySymbol}{maxCoinsAllowed}) with coins
       </Text>
 
       {totalAvailable === 0 ? (
@@ -146,7 +149,7 @@ export const ApplyCoinsSection: React.FC<ApplyCoinsSectionProps> = ({
         <View style={styles.appliedBanner}>
           <Ionicons name="checkmark-circle" size={18} color={COLORS.success[600]} />
           <Text style={styles.appliedText}>
-            Coins Applied: <Text style={styles.appliedAmount}>₹{appliedCoins.totalApplied}</Text>
+            Coins Applied: <Text style={styles.appliedAmount}>{currencySymbol}{appliedCoins.totalApplied}</Text>
           </Text>
         </View>
       )}

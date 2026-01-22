@@ -15,19 +15,23 @@ import { useRecommendations } from '@/hooks/useHomepage';
 import { RecommendationItem } from '@/types/homepage.types';
 import { useHomepageNavigation } from '@/hooks/useHomepage';
 import { SectionSkeleton } from '@/components/homepage/skeletons';
+import { useRegion } from '@/contexts/RegionContext';
+import { formatPrice as formatPriceUtil } from '@/utils/priceFormatter';
 
 interface PickedForYouProps {
   onViewAllPress?: () => void;
   limit?: number;
 }
 
-const PickedForYou: React.FC<PickedForYouProps> = ({ 
+const PickedForYou: React.FC<PickedForYouProps> = ({
   onViewAllPress,
-  limit = 2 
+  limit = 2
 }) => {
   const router = useRouter();
   const { section, loading, error } = useRecommendations();
   const { handleItemPress } = useHomepageNavigation();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // Extract products from section, limit to specified number
   const products = useMemo(() => {
@@ -86,15 +90,17 @@ const PickedForYou: React.FC<PickedForYouProps> = ({
     return Math.round(score * 100);
   };
 
-  // Format price from price object
-  const formatPrice = (price: RecommendationItem['price']): string => {
+  // Format price from price object - uses region currency
+  const formatPrice = (price: RecommendationItem['price'], currency?: string): string => {
+    const curr = currency || 'INR';
     if (typeof price === 'number') {
-      return `₹${price.toLocaleString('en-IN')}`;
+      return formatPriceUtil(price, curr, false) || `${currencySymbol}${price}`;
     }
     if (price?.current) {
-      return `₹${price.current.toLocaleString('en-IN')}`;
+      const priceCurrency = price.currency || curr;
+      return formatPriceUtil(price.current, priceCurrency, false) || `${currencySymbol}${price.current}`;
     }
-    return '₹0';
+    return `${currencySymbol}0`;
   };
 
   // Calculate savings percentage

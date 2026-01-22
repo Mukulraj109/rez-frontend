@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import CategoryHeader from '@/components/CategoryHeader';
 import { getCategoryConfig } from '@/config/categoryConfig';
+import { useRegion } from '@/contexts/RegionContext';
 import QuickActionBar from '@/components/category/QuickActionBar';
 import StreakLoyaltySection from '@/components/category/StreakLoyaltySection';
 import FooterTrustSection from '@/components/category/FooterTrustSection';
@@ -52,7 +53,7 @@ const COLORS = {
 };
 
 // Product Card Component
-const ProductCard = ({ product, variant = 'default' }: { product: any; variant?: 'default' | 'compact' }) => {
+const ProductCard = ({ product, variant = 'default', currencySymbol }: { product: any; variant?: 'default' | 'compact'; currencySymbol: string }) => {
   const router = useRouter();
   const [liked, setLiked] = useState(false);
   const isCompact = variant === 'compact';
@@ -86,10 +87,10 @@ const ProductCard = ({ product, variant = 'default' }: { product: any; variant?:
           {product.name}
         </Text>
         <View style={styles.productPriceCompact}>
-          <Text style={styles.productPriceTextCompact}>₹{product.price?.toLocaleString() || '0'}</Text>
+          <Text style={styles.productPriceTextCompact}>{currencySymbol}{product.price?.toLocaleString() || '0'}</Text>
           {originalPrice > product.price && (
             <Text style={styles.productOriginalPriceCompact}>
-              ₹{originalPrice.toLocaleString()}
+              {currencySymbol}{originalPrice.toLocaleString()}
             </Text>
           )}
         </View>
@@ -149,10 +150,10 @@ const ProductCard = ({ product, variant = 'default' }: { product: any; variant?:
             </Text>
           </View>
           <View style={styles.productPrice}>
-            <Text style={styles.productPriceText}>₹{product.price?.toLocaleString() || '0'}</Text>
+            <Text style={styles.productPriceText}>{currencySymbol}{product.price?.toLocaleString() || '0'}</Text>
             {originalPrice > product.price && (
               <Text style={styles.productOriginalPrice}>
-                ₹{originalPrice.toLocaleString()}
+                {currencySymbol}{originalPrice.toLocaleString()}
               </Text>
             )}
           </View>
@@ -212,6 +213,8 @@ const ExclusiveOfferCard = ({ offer }: { offer: any }) => {
 
 export default function FashionCategoryPage() {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const slug = 'fashion';
   const categoryConfig = getCategoryConfig(slug);
 
@@ -491,7 +494,7 @@ export default function FashionCategoryPage() {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.productsList}>
             {products.slice(0, 10).map((product) => (
-              <ProductCard key={product.id} product={product} variant="compact" />
+              <ProductCard key={product.id} product={product} variant="compact" currencySymbol={currencySymbol} />
             ))}
           </ScrollView>
         </View>
@@ -540,7 +543,7 @@ export default function FashionCategoryPage() {
                 <Text style={styles.bankOfferText}>{offer.offer}</Text>
               </View>
               <View style={styles.bankOfferRight}>
-                <Text style={styles.bankOfferMax}>Up to ₹{offer.maxDiscount}</Text>
+                <Text style={styles.bankOfferMax}>Up to {currencySymbol}{offer.maxDiscount}</Text>
                 <Text style={styles.bankOfferCard}>{offer.cardType}</Text>
               </View>
             </View>

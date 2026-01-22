@@ -17,7 +17,7 @@ import {
 import { withDeduplication, createRequestKey } from '@/utils/requestDeduplicator';
 import { withRetry, createErrorResponse, logApiRequest, logApiResponse } from '@/utils/apiUtils';
 import { validateProductArray, validateStoreArray } from '@/utils/responseValidators';
-import { ApiResponse } from './apiClient';
+import apiClient, { ApiResponse } from './apiClient';
 import cacheService from './cacheService';
 
 // API Configuration
@@ -40,13 +40,17 @@ const ENDPOINTS = {
 } as const;
 
 // HTTP Client with timeout and error handling
-class ApiClient {
+class HomepageHttpClient {
   private static async request<T>(
-    url: string, 
+    url: string,
     options: RequestInit = {}
   ): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+    // Get current region from main apiClient for region filtering
+    const currentRegion = apiClient.getRegion();
+    console.log('🌍 [HomepageHttpClient] Sending request with region:', currentRegion, 'to URL:', url);
 
     try {
       const response = await fetch(url, {
@@ -55,6 +59,7 @@ class ApiClient {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-Rez-Region': currentRegion, // Include region header for filtering
           // TODO: Add authentication headers when available
           // 'Authorization': `Bearer ${getAuthToken()}`,
           ...options.headers,
@@ -302,7 +307,7 @@ export class HomepageApiService {
       logApiRequest('GET', url);
 
       const response = await withRetry(
-        () => ApiClient.get<HomepageApiResponse>(url),
+        () => HomepageHttpClient.get<HomepageApiResponse>(url),
         { maxRetries: 2 }
       );
 
@@ -398,7 +403,7 @@ export class HomepageApiService {
       logApiRequest('GET', url, { batch: true });
 
       const response = await withRetry(
-        () => ApiClient.get<HomepageBatchResponse>(url),
+        () => HomepageHttpClient.get<HomepageBatchResponse>(url),
         { maxRetries: 2 }
       );
 
@@ -609,7 +614,7 @@ export class HomepageApiService {
       logApiRequest('GET', url, { sectionId, filters, pagination, sort });
 
       const response = await withRetry(
-        () => ApiClient.get<SectionApiResponse>(url),
+        () => HomepageHttpClient.get<SectionApiResponse>(url),
         { maxRetries: 2 }
       );
 
@@ -717,7 +722,7 @@ export class HomepageApiService {
       logApiRequest('POST', ENDPOINTS.ANALYTICS, payload);
 
       // Note: Analytics failures shouldn't block the app, so we don't use retry here
-      const response = await ApiClient.post<{ message: string }>(ENDPOINTS.ANALYTICS, payload);
+      const response = await HomepageHttpClient.post<{ message: string }>(ENDPOINTS.ANALYTICS, payload);
 
       logApiResponse('POST', ENDPOINTS.ANALYTICS, response, Date.now() - startTime);
 
@@ -859,7 +864,7 @@ export class HomepageApiService {
       logApiRequest('PUT', ENDPOINTS.USER_PREFERENCES, { userId, preferenceCount: preferences.length });
 
       const response = await withRetry(
-        () => ApiClient.put<{ message: string }>(ENDPOINTS.USER_PREFERENCES, payload),
+        () => HomepageHttpClient.put<{ message: string }>(ENDPOINTS.USER_PREFERENCES, payload),
         { maxRetries: 2 }
       );
 

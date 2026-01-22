@@ -25,6 +25,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import productsApi from '@/services/productsApi';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useProductReviews } from '@/hooks/useProductReviews';
+import { useRegion } from '@/contexts/RegionContext';
 import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
 import FlightBookingFlow from '../../components/flight/FlightBookingFlow';
 import FlightBookingConfirmation from '../../components/flight/FlightBookingConfirmation';
@@ -120,7 +121,9 @@ export default function FlightDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [flight, setFlight] = useState<FlightDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -584,9 +587,9 @@ export default function FlightDetailsPage() {
               <Text style={styles.priceLabel}>Starting from</Text>
               <View style={styles.priceContainer}>
                 {flight.originalPrice && flight.originalPrice > flight.price && (
-                  <Text style={styles.originalPrice}>₹{flight.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.originalPrice}>{currencySymbol}{flight.originalPrice.toLocaleString('en-IN')}</Text>
                 )}
-                <Text style={styles.price}>₹{flight.price.toLocaleString('en-IN')}</Text>
+                <Text style={styles.price}>{currencySymbol}{flight.price.toLocaleString('en-IN')}</Text>
               </View>
               {flight.discount && flight.discount > 0 && (
                 <View style={styles.discountTag}>
@@ -603,7 +606,7 @@ export default function FlightDetailsPage() {
                   {flight.cashback.percentage}% Cashback
                 </Text>
                 <Text style={styles.cashbackAmount}>
-                  Earn ₹{flight.cashback.amount.toLocaleString('en-IN')}
+                  Earn {currencySymbol}{flight.cashback.amount.toLocaleString('en-IN')}
                 </Text>
               </View>
             </View>

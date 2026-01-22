@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ACCOUNT_COLORS } from '@/types/account.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface TopupModalProps {
   visible: boolean;
@@ -34,6 +35,8 @@ export default function TopupModal({
   onSuccess,
   currentBalance,
 }: TopupModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [customAmount, setCustomAmount] = useState('');
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -65,18 +68,18 @@ export default function TopupModal({
     }
 
     if (amount < 10) {
-      Alert.alert('Minimum Amount', 'Minimum topup amount is ₹10');
+      Alert.alert('Minimum Amount', `Minimum topup amount is ${currencySymbol}10`);
       return;
     }
 
     if (amount > 100000) {
-      Alert.alert('Maximum Amount', 'Maximum topup amount is ₹1,00,000');
+      Alert.alert('Maximum Amount', `Maximum topup amount is ${currencySymbol}1,00,000`);
       return;
     }
 
     Alert.alert(
       'Confirm Topup',
-      `Add ₹${amount.toLocaleString()} to your RezPay wallet?`,
+      `Add ${currencySymbol}${amount.toLocaleString()} to your RezPay wallet?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -109,7 +112,7 @@ export default function TopupModal({
 
       Alert.alert(
         'Topup Successful!',
-        `₹${amount.toLocaleString()} has been added to your wallet`,
+        `${currencySymbol}${amount.toLocaleString()} has been added to your wallet`,
         [{ text: 'OK' }]
       );
     } catch (error) {
@@ -164,7 +167,7 @@ export default function TopupModal({
               </TouchableOpacity>
             </View>
             <ThemedText style={styles.currentBalanceText}>
-              Current Balance: ₹{currentBalance.toLocaleString()}
+              Current Balance: {currencySymbol}{currentBalance.toLocaleString()}
             </ThemedText>
           </LinearGradient>
 
@@ -200,7 +203,7 @@ export default function TopupModal({
                         selectedAmount === amount && styles.quickAmountTextSelected,
                       ]}
                     >
-                      ₹{amount.toLocaleString()}
+                      {currencySymbol}{amount.toLocaleString()}
                     </ThemedText>
                   </TouchableOpacity>
                 ))}
@@ -211,7 +214,7 @@ export default function TopupModal({
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Or Enter Amount</ThemedText>
               <View style={styles.customAmountContainer}>
-                <ThemedText style={styles.currencySymbol}>₹</ThemedText>
+                <ThemedText style={styles.currencySymbol}>{currencySymbol}</ThemedText>
                 <TextInput
                   style={styles.customAmountInput}
                   value={customAmount}
@@ -227,7 +230,7 @@ export default function TopupModal({
                 />
               </View>
               <ThemedText style={styles.helperText}>
-                Minimum: ₹10 • Maximum: ₹1,00,000
+                Minimum: {currencySymbol}10 • Maximum: {currencySymbol}1,00,000
               </ThemedText>
             </View>
 
@@ -237,14 +240,14 @@ export default function TopupModal({
                 <View style={styles.summaryRow}>
                   <ThemedText style={styles.summaryLabel}>Amount to Add</ThemedText>
                   <ThemedText style={styles.summaryAmount}>
-                    ₹{getFinalAmount().toLocaleString()}
+                    {currencySymbol}{getFinalAmount().toLocaleString()}
                   </ThemedText>
                 </View>
                 <View style={styles.summaryDivider} />
                 <View style={styles.summaryRow}>
                   <ThemedText style={styles.summaryLabel}>New Balance</ThemedText>
                   <ThemedText style={styles.summaryNewBalance}>
-                    ₹{(currentBalance + getFinalAmount()).toLocaleString()}
+                    {currencySymbol}{(currentBalance + getFinalAmount()).toLocaleString()}
                   </ThemedText>
                 </View>
               </View>

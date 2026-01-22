@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRegion } from '@/contexts/RegionContext';
 
 /**
  * AddToCartModal Component
@@ -39,6 +40,8 @@ export const AddToCartModal: React.FC<AddToCartModalProps> = ({
   price,
   variantDetails,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [scaleAnim] = React.useState(new Animated.Value(0));
 
   React.useEffect(() => {
@@ -112,7 +115,7 @@ export const AddToCartModal: React.FC<AddToCartModalProps> = ({
 
               <View style={styles.priceRow}>
                 <ThemedText style={styles.quantityText}>Qty: {quantity}</ThemedText>
-                <ThemedText style={styles.priceText}>₹{totalPrice.toLocaleString()}</ThemedText>
+                <ThemedText style={styles.priceText}>{currencySymbol}{totalPrice.toLocaleString()}</ThemedText>
               </View>
             </View>
           </View>

@@ -23,6 +23,7 @@ import { useCategoryPageData } from '@/hooks/useCategoryPageData';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import EmptyState from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { useRegion } from '@/contexts/RegionContext';
 
 const COLORS = {
   primaryGreen: '#00C06A',
@@ -44,6 +45,8 @@ export default function HomeServicesCategoryPage() {
   const router = useRouter();
   const slug = 'home-services';
   const categoryConfig = getCategoryConfig(slug);
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const { subcategories, stores, ugcPosts, aiPlaceholders, isLoading, error, refetch } = useCategoryPageData(slug);
   const [activeFilters, setActiveFilters] = useState<string[]>(['near-me']);
@@ -219,7 +222,7 @@ export default function HomeServicesCategoryPage() {
           {['Monthly', 'Quarterly', 'Yearly'].map((plan, index) => (
             <TouchableOpacity key={index} style={styles.planCard} onPress={() => router.push(`/search?q=${encodeURIComponent(plan + ' maintenance plan')}&category=${slug}`)}>
               <Text style={styles.planName}>{plan} Plan</Text>
-              <Text style={styles.planPrice}>₹{['999', '2499', '8999'][index]}</Text>
+              <Text style={styles.planPrice}>{currencySymbol}{['999', '2499', '8999'][index]}</Text>
               <Text style={styles.planDiscount}>Save up to 20%</Text>
             </TouchableOpacity>
           ))}

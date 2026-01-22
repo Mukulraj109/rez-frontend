@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import CategoryHeader from '@/components/CategoryHeader';
 import { getCategoryConfig } from '@/config/categoryConfig';
+import { useRegion } from '@/contexts/RegionContext';
 import QuickActionBar from '@/components/category/QuickActionBar';
 import StreakLoyaltySection from '@/components/category/StreakLoyaltySection';
 import FooterTrustSection from '@/components/category/FooterTrustSection';
@@ -42,6 +43,8 @@ const TRAVEL_TABS = [
 
 export default function TravelCategoryPage() {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const slug = 'travel-experiences';
   const categoryConfig = getCategoryConfig(slug);
 
@@ -149,7 +152,7 @@ export default function TravelCategoryPage() {
             {['Delhi → Mumbai', 'Bangalore → Goa', 'Mumbai → Dubai'].map((deal, index) => (
               <TouchableOpacity key={index} style={styles.dealCard} onPress={() => router.push(`/search?q=${encodeURIComponent(deal)}&category=${slug}`)}>
                 <Text style={styles.dealRoute}>{deal}</Text>
-                <Text style={styles.dealPrice}>From ₹{['4999', '3999', '12999'][index]}</Text>
+                <Text style={styles.dealPrice}>From {currencySymbol}{['4999', '3999', '12999'][index]}</Text>
                 <Text style={styles.dealCashback}>10% cashback</Text>
               </TouchableOpacity>
             ))}
@@ -176,7 +179,7 @@ export default function TravelCategoryPage() {
                     <Ionicons name="star" size={12} color={COLORS.primaryGold} />
                     <Text style={styles.hotelRating}>{hotel.rating?.toFixed(1) || '4.5'}</Text>
                   </View>
-                  <Text style={styles.hotelPrice}>₹1999/night</Text>
+                  <Text style={styles.hotelPrice}>{currencySymbol}1999/night</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -196,7 +199,7 @@ export default function TravelCategoryPage() {
               <LinearGradient colors={[['#DBEAFE', '#93C5FD'], ['#D1FAE5', '#6EE7B7'], ['#FEF3C7', '#FCD34D'], ['#FCE7F3', '#F9A8D4'], ['#EDE9FE', '#C4B5FD']][index]} style={styles.destinationGradient}>
                 <Text style={styles.destinationEmoji}>{['🏖️', '🏔️', '🌴', '🏰', '🕌'][index]}</Text>
                 <Text style={styles.destinationName}>{destination}</Text>
-                <Text style={styles.destinationPrice}>From ₹{['9999', '7999', '11999', '6999', '8999'][index]}</Text>
+                <Text style={styles.destinationPrice}>From {currencySymbol}{['9999', '7999', '11999', '6999', '8999'][index]}</Text>
               </LinearGradient>
             </TouchableOpacity>
           ))}

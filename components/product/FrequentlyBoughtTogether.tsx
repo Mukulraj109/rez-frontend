@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { useRelatedProducts, RelatedProduct } from '@/hooks/useRelatedProducts';
+import { useRegion } from '@/contexts/RegionContext';
 
 /**
  * FrequentlyBoughtTogether Component
@@ -35,6 +36,8 @@ export const FrequentlyBoughtTogether: React.FC<FrequentlyBoughtTogetherProps> =
   onAddToCart,
   limit = 3,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   // Track selected products (current product is always selected)
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set([productId]));
 
@@ -139,7 +142,7 @@ export const FrequentlyBoughtTogether: React.FC<FrequentlyBoughtTogetherProps> =
         {totalSavings > 0 && (
           <View style={styles.savingsBadge}>
             <ThemedText style={styles.savingsText}>
-              Save ₹{totalSavings.toLocaleString()}
+              Save {currencySymbol}{totalSavings.toLocaleString()}
             </ThemedText>
           </View>
         )}
@@ -193,7 +196,7 @@ export const FrequentlyBoughtTogether: React.FC<FrequentlyBoughtTogetherProps> =
                 <ThemedText style={styles.productName} numberOfLines={2}>
                   {product.name}
                 </ThemedText>
-                <ThemedText style={styles.productPrice}>₹{product.price.toLocaleString()}</ThemedText>
+                <ThemedText style={styles.productPrice}>{currencySymbol}{product.price.toLocaleString()}</ThemedText>
               </View>
 
               {/* Current Product Badge */}
@@ -213,7 +216,7 @@ export const FrequentlyBoughtTogether: React.FC<FrequentlyBoughtTogetherProps> =
           <ThemedText style={styles.totalLabel}>
             Total ({selectedCount} item{selectedCount > 1 ? 's' : ''}):
           </ThemedText>
-          <ThemedText style={styles.totalPrice}>₹{getTotalPrice().toLocaleString()}</ThemedText>
+          <ThemedText style={styles.totalPrice}>{currencySymbol}{getTotalPrice().toLocaleString()}</ThemedText>
         </View>
 
         <TouchableOpacity

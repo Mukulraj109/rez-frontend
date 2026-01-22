@@ -12,14 +12,17 @@ import { ThemedText } from '@/components/ThemedText';
 import { DealCardProps } from '@/types/deals';
 import { calculateDealDiscount } from '@/utils/deal-validation';
 import FastImage from '@/components/common/FastImage';
+import { useRegion } from '@/contexts/RegionContext';
 
-export default function DealCard({ 
-  deal, 
-  onAdd, 
-  onRemove, 
-  isAdded, 
-  onMoreDetails 
+export default function DealCard({
+  deal,
+  onAdd,
+  onRemove,
+  isAdded,
+  onMoreDetails
 }: DealCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [billPreview] = useState<number>(deal.minimumBill);
   const [showPreview, setShowPreview] = useState(false);
@@ -262,7 +265,7 @@ export default function DealCard({
           )}
 
           <ThemedText style={styles.minimumBill}>
-            Minimum bill ₹{deal.minimumBill.toLocaleString()}
+            Minimum bill {currencySymbol}{deal.minimumBill.toLocaleString()}
           </ThemedText>
 
           {/* Deal Category Badge */}
@@ -332,15 +335,15 @@ export default function DealCard({
             <ThemedText style={styles.previewTitle}>Savings Preview</ThemedText>
             <View style={styles.previewRow}>
               <ThemedText style={styles.previewLabel}>Bill Amount:</ThemedText>
-              <ThemedText style={styles.previewValue}>₹{billPreview.toLocaleString()}</ThemedText>
+              <ThemedText style={styles.previewValue}>{currencySymbol}{billPreview.toLocaleString()}</ThemedText>
             </View>
             <View style={styles.previewRow}>
               <ThemedText style={styles.previewLabel}>You Save:</ThemedText>
-              <ThemedText style={styles.previewSavings}>₹{savingsAmount.toLocaleString()}</ThemedText>
+              <ThemedText style={styles.previewSavings}>{currencySymbol}{savingsAmount.toLocaleString()}</ThemedText>
             </View>
             <View style={[styles.previewRow, styles.previewFinal]}>
               <ThemedText style={styles.previewLabel}>Final Amount:</ThemedText>
-              <ThemedText style={styles.previewFinalAmount}>₹{finalAmount.toLocaleString()}</ThemedText>
+              <ThemedText style={styles.previewFinalAmount}>{currencySymbol}{finalAmount.toLocaleString()}</ThemedText>
             </View>
           </View>
         </Animated.View>

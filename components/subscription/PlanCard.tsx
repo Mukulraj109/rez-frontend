@@ -18,6 +18,7 @@ import {
   SUBSCRIPTION_BORDER_RADIUS,
   SUBSCRIPTION_SHADOW,
 } from '@/styles/subscriptionStyles';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface PlanCardProps {
   tier: SubscriptionTier;
@@ -50,6 +51,8 @@ export default function PlanCard({
   isLoading = false,
   disabled = false,
 }: PlanCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const tierColor = TIER_COLORS[tier];
   const tierGradient = TIER_GRADIENTS[tier];
   const displayPrice = billingCycle === 'monthly' ? price : Math.floor(yearlyPrice / 12);
@@ -125,14 +128,14 @@ export default function PlanCard({
 
       <View style={styles.planBody}>
         <View style={styles.priceContainer}>
-          <ThemedText style={styles.currency}>₹</ThemedText>
+          <ThemedText style={styles.currency}>{currencySymbol}</ThemedText>
           <ThemedText style={styles.price}>{displayPrice}</ThemedText>
           <ThemedText style={styles.period}>/month</ThemedText>
         </View>
 
         {billingCycle === 'yearly' && yearlyPrice > 0 && (
           <ThemedText style={styles.yearlyNote}>
-            Billed annually at ₹{yearlyPrice} (Save {savingsPercentage}%)
+            Billed annually at {currencySymbol}{yearlyPrice} (Save {savingsPercentage}%)
           </ThemedText>
         )}
 

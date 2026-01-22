@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import storeVouchersApi, { StoreVoucher } from '@/services/storeVouchersApi';
 import VoucherCardSkeleton from '@/components/skeletons/VoucherCardSkeleton';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface VouchersSectionProps {
   storeId: string;
@@ -23,6 +24,8 @@ interface VouchersSectionProps {
 }
 
 const VouchersSection: React.FC<VouchersSectionProps> = ({ storeId, storeName }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const router = useRouter();
   const [vouchers, setVouchers] = useState<StoreVoucher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +90,7 @@ const VouchersSection: React.FC<VouchersSectionProps> = ({ storeId, storeName })
     if (voucher.discountType === 'percentage') {
       return `${voucher.discountValue}% OFF`;
     } else {
-      return `₹${voucher.discountValue} OFF`;
+      return `${currencySymbol}${voucher.discountValue} OFF`;
     }
   };
 
@@ -168,8 +171,8 @@ const VouchersSection: React.FC<VouchersSectionProps> = ({ storeId, storeName })
             <View style={styles.termsContainer}>
               <Ionicons name="information-circle-outline" size={14} color="#6B7280" />
               <Text style={styles.termsText} numberOfLines={2}>
-                Min. bill ₹{voucher.minBillAmount}
-                {voucher.maxDiscountAmount && ` • Max ₹${voucher.maxDiscountAmount}`}
+                Min. bill {currencySymbol}{voucher.minBillAmount}
+                {voucher.maxDiscountAmount && ` • Max ${currencySymbol}${voucher.maxDiscountAmount}`}
               </Text>
             </View>
 
@@ -237,7 +240,7 @@ const getMockVouchers = (storeId: string): StoreVoucher[] => [
     _id: 'voucher-2',
     code: 'FIRST500',
     store: { _id: storeId, name: 'Store' },
-    name: 'Flat ₹500 off on first visit',
+    name: 'Flat 500 off on first visit',
     description: 'First time customer discount',
     type: 'first_purchase',
     discountType: 'fixed',

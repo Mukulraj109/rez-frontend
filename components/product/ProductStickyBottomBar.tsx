@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LOCK_FEE_PERCENTAGES } from './DurationChips';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ProductStickyBottomBarProps {
   /** Current product price */
@@ -41,12 +42,14 @@ interface ProductStickyBottomBarProps {
 export const ProductStickyBottomBar: React.FC<ProductStickyBottomBarProps> = ({
   price,
   originalPrice,
-  currency = '₹',
+  currency,
   isLocked = false,
   onLockPress,
   onAddToCart,
   visible = true,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = currency || getCurrencySymbol();
   const insets = useSafeAreaInsets();
 
   // Calculate lock fee (using default 4hr = 10%)
@@ -63,16 +66,16 @@ export const ProductStickyBottomBar: React.FC<ProductStickyBottomBarProps> = ({
       <View style={styles.priceSection}>
         <View style={styles.priceRow}>
           <Text style={styles.currentPrice}>
-            {currency}{price.toLocaleString('en-IN')}
+            {currencySymbol}{price.toLocaleString('en-IN')}
           </Text>
           {originalPrice && originalPrice > price && (
             <Text style={styles.originalPrice}>
-              {currency}{originalPrice.toLocaleString('en-IN')}
+              {currencySymbol}{originalPrice.toLocaleString('en-IN')}
             </Text>
           )}
         </View>
         <Text style={styles.lockFeeText}>
-          Lock for just {currency}{lockFee.toLocaleString('en-IN')}
+          Lock for just {currencySymbol}{lockFee.toLocaleString('en-IN')}
         </Text>
       </View>
 

@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import socialProofApi from '@/services/socialProofApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -56,6 +57,8 @@ interface CityWideStats {
 }
 
 const SocialProofSection: React.FC = () => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [activities, setActivities] = useState<NearbyActivity[]>([]);
   const [storeAggregates, setStoreAggregates] = useState<StoreAggregate[]>([]);
   const [cityWideStats, setCityWideStats] = useState<CityWideStats | null>(null);
@@ -233,7 +236,7 @@ const SocialProofSection: React.FC = () => {
                 <Text style={styles.highlightCity}>{cityWideStats!.city}</Text>
               </Text>
               <Text style={styles.cityWideSavings}>
-                Total: ₹{cityWideStats!.totalSavingsToday.toLocaleString()} saved
+                Total: {currencySymbol}{cityWideStats!.totalSavingsToday.toLocaleString()} saved
               </Text>
             </View>
           </View>
@@ -269,7 +272,7 @@ const SocialProofSection: React.FC = () => {
                 <Text style={styles.nameText}>{currentActivity?.firstName}</Text>
                 {' saved '}
                 <Text style={styles.savingsText}>
-                  ₹{currentActivity?.savings}
+                  {currencySymbol}{currentActivity?.savings}
                 </Text>
                 {' at '}
                 <Text style={styles.storeText}>{currentActivity?.storeName}</Text>

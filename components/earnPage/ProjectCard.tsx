@@ -4,12 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ProjectCardProps } from '@/types/earnPage.types';
 import { EARN_COLORS } from '@/constants/EarnPageColors';
+import { useRegion } from '@/contexts/RegionContext';
 
-export default function ProjectCard({ 
-  project, 
-  onPress, 
-  onStart 
+export default function ProjectCard({
+  project,
+  onPress,
+  onStart
 }: ProjectCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'available':
@@ -71,7 +75,7 @@ export default function ProjectCard({
           
           <View style={styles.paymentContainer}>
             <ThemedText style={styles.payment}>
-              ₹{project.payment}
+              {currencySymbol}{project.payment}
             </ThemedText>
             <Ionicons name="arrow-forward" size={16} color={EARN_COLORS.primary} />
           </View>

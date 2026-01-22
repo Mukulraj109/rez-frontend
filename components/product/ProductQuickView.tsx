@@ -21,6 +21,7 @@ import { useWishlist } from '@/contexts/WishlistContext';
 import { useToast } from '@/hooks/useToast';
 import productsApi from '@/services/productsApi';
 import { VariantSelection } from '@/components/cart/ProductVariantModal';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -54,6 +55,8 @@ export default function ProductQuickView({
   onViewFullDetails,
   onAddToCart,
 }: ProductQuickViewProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [product, setProduct] = useState<ProductDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,7 +216,7 @@ export default function ProductQuickView({
     if (!product) return;
 
     try {
-      const message = `Check out ${product.name} from ${product.brand}!\nPrice: ₹${product.price.current.toLocaleString('en-IN')}`;
+      const message = `Check out ${product.name} from ${product.brand}!\nPrice: ${currencySymbol}${product.price.current.toLocaleString('en-IN')}`;
 
       await Share.share({
         message,
@@ -465,12 +468,12 @@ export default function ProductQuickView({
             {/* Price */}
             <View style={styles.priceSection}>
               <Text style={styles.currentPrice}>
-                ₹{product.price.current.toLocaleString('en-IN')}
+                {currencySymbol}{product.price.current.toLocaleString('en-IN')}
               </Text>
               {product.price.original && product.price.original > product.price.current && (
                 <>
                   <Text style={styles.originalPrice}>
-                    ₹{product.price.original.toLocaleString('en-IN')}
+                    {currencySymbol}{product.price.original.toLocaleString('en-IN')}
                   </Text>
                   <View style={styles.discountBadge}>
                     <Text style={styles.discountText}>

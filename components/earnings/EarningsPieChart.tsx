@@ -5,6 +5,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { EarningsBreakdown } from '@/services/earningsCalculationService';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface EarningsPieChartProps {
   breakdown: EarningsBreakdown;
@@ -22,6 +23,8 @@ const EarningsPieChart: React.FC<EarningsPieChartProps> = ({
   breakdown,
   size = 200,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const radius = size / 2;
   const strokeWidth = 30;
   const innerRadius = radius - strokeWidth / 2;
@@ -124,7 +127,7 @@ const EarningsPieChart: React.FC<EarningsPieChartProps> = ({
         {/* Center label */}
         <View style={styles.centerLabel}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>₹{breakdown.total.toFixed(2)}</Text>
+          <Text style={styles.totalValue}>{currencySymbol}{breakdown.total.toFixed(2)}</Text>
         </View>
       </View>
 

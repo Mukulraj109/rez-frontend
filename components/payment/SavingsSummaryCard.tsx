@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '@/constants/DesignTokens';
 import { SavingsSummary } from '@/types/storePayment.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface SavingsSummaryCardProps {
   savings: SavingsSummary;
@@ -20,6 +21,9 @@ export const SavingsSummaryCard: React.FC<SavingsSummaryCardProps> = ({
   savings,
   showCelebration = true,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   if (savings.totalSaved === 0) {
     return null;
   }
@@ -52,7 +56,7 @@ export const SavingsSummaryCard: React.FC<SavingsSummaryCardProps> = ({
 
       <View style={styles.totalContainer}>
         <Text style={styles.totalLabel}>Total Saved</Text>
-        <Text style={styles.totalAmount}>₹{savings.totalSaved}</Text>
+        <Text style={styles.totalAmount}>{currencySymbol}{savings.totalSaved}</Text>
       </View>
 
       {savingsBreakdown.length > 0 && (
@@ -63,7 +67,7 @@ export const SavingsSummaryCard: React.FC<SavingsSummaryCardProps> = ({
                 <Ionicons name={item.icon as any} size={14} color={item.color} />
               </View>
               <Text style={styles.breakdownLabel}>{item.label}</Text>
-              <Text style={styles.breakdownValue}>₹{item.value}</Text>
+              <Text style={styles.breakdownValue}>{currencySymbol}{item.value}</Text>
             </View>
           ))}
         </View>

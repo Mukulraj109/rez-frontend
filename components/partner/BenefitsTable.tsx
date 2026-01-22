@@ -9,6 +9,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { PartnerLevel, PartnerBenefit } from '@/types/partner.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface BenefitsTableProps {
   levels: PartnerLevel[];
@@ -16,11 +17,13 @@ interface BenefitsTableProps {
   onUpgradePress?: (targetLevel: PartnerLevel) => void;
 }
 
-export default function BenefitsTable({ 
-  levels, 
+export default function BenefitsTable({
+  levels,
   currentLevel = 1,
-  onUpgradePress 
+  onUpgradePress
 }: BenefitsTableProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   // Define benefit types with clear, accurate names
   const allBenefitTypes = [
     { 
@@ -66,11 +69,11 @@ export default function BenefitsTable({
         if (benefits.freeDeliveryThreshold === 0) {
           return 'Always Free';
         } else {
-          return `Above ₹${benefits.freeDeliveryThreshold}`;
+          return `Above ${currencySymbol}${benefits.freeDeliveryThreshold}`;
         }
       case 'transactionBonus':
         if (benefits.transactionBonus) {
-          return `₹${benefits.transactionBonus.reward}`;
+          return `${currencySymbol}${benefits.transactionBonus.reward}`;
         }
         return '-';
       default:

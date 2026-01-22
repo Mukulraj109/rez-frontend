@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ProductCardProps } from '@/types/product-selector.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/150x150?text=No+Image';
 
@@ -25,6 +26,8 @@ export default function ProductCard({
   showRating = true,
   compactMode = false,
 }: ProductCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const imageUrl = product.images?.[0] || PLACEHOLDER_IMAGE;
   const hasDiscount = product.salePrice && product.salePrice < product.basePrice;
   const displayPrice = product.salePrice || product.basePrice;
@@ -164,11 +167,11 @@ export default function ProductCard({
                 (disabled || isOutOfStock) && styles.textDisabled,
               ]}
             >
-              ₹{displayPrice.toLocaleString('en-IN')}
+              {currencySymbol}{displayPrice.toLocaleString('en-IN')}
             </Text>
             {hasDiscount && (
               <Text style={styles.originalPrice}>
-                ₹{product.basePrice.toLocaleString('en-IN')}
+                {currencySymbol}{product.basePrice.toLocaleString('en-IN')}
               </Text>
             )}
           </View>

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useStripe, useElements, CardNumberElement, CardExpiryElement, CardCvcElement } from '@stripe/react-stripe-js';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface StripeCardFormProps {
   clientSecret: string;
@@ -38,6 +39,8 @@ export default function StripeCardForm({
 }: StripeCardFormProps) {
   const stripe = useStripe();
   const elements = useElements();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isProcessing, setIsProcessing] = useState(false);
   const [cardError, setCardError] = useState<string>('');
   const [cardNumberComplete, setCardNumberComplete] = useState(false);
@@ -125,7 +128,7 @@ export default function StripeCardForm({
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Enter Card Details</Text>
-          <Text style={styles.subtitle}>Amount: ₹{amount}</Text>
+          <Text style={styles.subtitle}>Amount: {currencySymbol}{amount}</Text>
         </View>
         <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
           <Ionicons name="close" size={24} color="#6B7280" />
@@ -228,7 +231,7 @@ export default function StripeCardForm({
           {isProcessing ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.payButtonText}>Pay ₹{amount}</Text>
+            <Text style={styles.payButtonText}>Pay {currencySymbol}{amount}</Text>
           )}
         </TouchableOpacity>
       </View>

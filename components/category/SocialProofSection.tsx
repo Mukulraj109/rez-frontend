@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import socialProofApi, { CategorySocialProofStats } from '@/services/socialProofApi';
 import { socialProofStats, SocialProofStats } from '@/data/categoryDummyData';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface SocialProofSectionProps {
   stats?: SocialProofStats;
@@ -34,6 +35,8 @@ const SocialProofSection: React.FC<SocialProofSectionProps> = ({
   categorySlug,
   categoryName = 'this category',
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [apiStats, setApiStats] = useState<SocialProofStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -104,7 +107,7 @@ const SocialProofSection: React.FC<SocialProofSectionProps> = ({
           {' '}people shopped {categoryName} today
         </Text>
         <Text style={styles.earningsText}>
-          Earned <Text style={styles.earningsHighlight}>₹{(displayStats.totalEarned / 1000).toFixed(0)}K+</Text> in cashback this month
+          Earned <Text style={styles.earningsHighlight}>{currencySymbol}{(displayStats.totalEarned / 1000).toFixed(0)}K+</Text> in cashback this month
         </Text>
       </View>
 

@@ -12,6 +12,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { loadStripe } from '@stripe/stripe-js';
 import * as authStorage from '@/utils/authStorage';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface StripePaymentModalProps {
   visible: boolean;
@@ -34,6 +35,8 @@ export default function StripePaymentModal({
   onClose,
   onError,
 }: StripePaymentModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [loading, setLoading] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [stripeLoaded, setStripeLoaded] = useState(false);
@@ -189,7 +192,7 @@ export default function StripePaymentModal({
                   </View>
                   <View style={[styles.planRow, styles.totalRow]}>
                     <ThemedText style={styles.totalLabel}>Total:</ThemedText>
-                    <ThemedText style={styles.totalValue}>₹{amount}</ThemedText>
+                    <ThemedText style={styles.totalValue}>{currencySymbol}{amount}</ThemedText>
                   </View>
                 </View>
 
@@ -232,7 +235,7 @@ export default function StripePaymentModal({
                     <>
                       <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
                       <ThemedText style={styles.payButtonText}>
-                        Pay ₹{amount} Securely
+                        Pay {currencySymbol}{amount} Securely
                       </ThemedText>
                     </>
                   )}

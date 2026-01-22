@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import travelApi, { TravelService, TravelServiceCategory } from '@/services/travelApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -47,6 +48,8 @@ interface DisplayDeal {
 
 const TravelPage: React.FC = () => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [featuredDeals, setFeaturedDeals] = useState<DisplayDeal[]>([]);
@@ -68,7 +71,7 @@ const TravelPage: React.FC = () => {
           id: service._id || service.id || '',
           name: service.name,
           type: service.serviceCategory?.name || 'Travel',
-          price: service.pricing?.selling ? `₹${service.pricing.selling.toLocaleString('en-IN')}` : 'Price on request',
+          price: service.pricing?.selling ? `${currencySymbol}${service.pricing.selling.toLocaleString('en-IN')}` : 'Price on request',
           cashback: service.cashback?.percentage ? `${service.cashback.percentage}%` : 
                    service.serviceCategory?.cashbackPercentage ? `${service.serviceCategory.cashbackPercentage}%` : '0%',
           image: service.images?.[0] || 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400',

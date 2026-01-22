@@ -50,6 +50,8 @@ import { useSearchPage } from '@/hooks/useSearchPage';
 import useDebouncedSearch from '@/hooks/useDebouncedSearch';
 import { useCurrentLocation } from '@/hooks/useLocation';
 import type { FilterState } from '@/components/search/FilterModal';
+import { formatPrice } from '@/utils/priceFormatter';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -62,6 +64,10 @@ export default function SearchPage() {
 
   // Get user location for distance calculation
   const { currentLocation } = useCurrentLocation();
+
+  // Get currency symbol for price display
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // Use debounced search hook
   const { value: searchQuery, debouncedValue: debouncedQuery, isDebouncing, setValue: setSearchQuery } = useDebouncedSearch(initialQuery, { delay: 300, minLength: 2 });
@@ -325,7 +331,7 @@ export default function SearchPage() {
     if (filters.priceRange.min > 0 || filters.priceRange.max < 100000) {
       activeFilters.price = [{
         id: 'price-range',
-        label: `₹${filters.priceRange.min} - ₹${filters.priceRange.max}`,
+        label: `${currencySymbol}${filters.priceRange.min} - ${currencySymbol}${filters.priceRange.max}`,
         value: `${filters.priceRange.min}-${filters.priceRange.max}`,
       }];
     }

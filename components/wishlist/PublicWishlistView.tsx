@@ -25,6 +25,7 @@ import wishlistSharingService, {
   PublicWishlist,
   GiftReservation,
 } from '@/services/wishlistSharingApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -38,6 +39,8 @@ export default function PublicWishlistView({
   onBack,
 }: PublicWishlistViewProps) {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [wishlist, setWishlist] = useState<PublicWishlist | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -285,11 +288,11 @@ export default function PublicWishlistView({
           {wishlist?.isPublic && (
             <View style={styles.itemPriceRow}>
               <ThemedText style={styles.itemPrice}>
-                ₹{item.price.toLocaleString()}
+                {currencySymbol}{item.price.toLocaleString()}
               </ThemedText>
               {item.originalPrice && (
                 <ThemedText style={styles.itemOriginalPrice}>
-                  ₹{item.originalPrice.toLocaleString()}
+                  {currencySymbol}{item.originalPrice.toLocaleString()}
                 </ThemedText>
               )}
               {item.discount && (

@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { PROFILE_COLORS } from '@/types/profile.types';
 import { Message } from '@/types/messaging.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface MessageBubbleProps {
   message: Message;
@@ -25,6 +26,9 @@ export default function MessageBubble({
   onLongPress,
   onImagePress,
 }: MessageBubbleProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('en-US', {
@@ -108,7 +112,7 @@ export default function MessageBubble({
             Order #{message.orderReference.orderNumber}
           </ThemedText>
           <ThemedText style={styles.orderReferenceStatus}>
-            {message.orderReference.status} • ₹{message.orderReference.total.toLocaleString()}
+            {message.orderReference.status} • {currencySymbol}{message.orderReference.total.toLocaleString()}
           </ThemedText>
         </View>
       </View>

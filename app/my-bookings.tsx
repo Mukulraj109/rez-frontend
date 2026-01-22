@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import serviceBookingApi from '@/services/serviceBookingApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ServiceBooking {
   id: string;
@@ -48,6 +49,8 @@ interface ServiceBooking {
 
 const MyBookingsPage = () => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const { state: authState } = useAuth();
   const [bookings, setBookings] = useState<ServiceBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -272,7 +275,7 @@ const MyBookingsPage = () => {
           <View style={styles.priceContainer}>
             <Text style={styles.priceLabel}>Total</Text>
             <Text style={styles.priceValue}>
-              ₹{(item.pricing?.total || item.pricing?.basePrice || 0).toLocaleString()}
+              {currencySymbol}{(item.pricing?.total || item.pricing?.basePrice || 0).toLocaleString()}
             </Text>
           </View>
 

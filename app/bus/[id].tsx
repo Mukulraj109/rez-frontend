@@ -24,6 +24,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import productsApi from '@/services/productsApi';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useProductReviews } from '@/hooks/useProductReviews';
+import { useRegion } from '@/contexts/RegionContext';
 import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
 import BusBookingFlow from '../../components/bus/BusBookingFlow';
 import BusBookingConfirmation from '../../components/bus/BusBookingConfirmation';
@@ -112,7 +113,9 @@ export default function BusDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [bus, setBus] = useState<BusDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -528,9 +531,9 @@ export default function BusDetailsPage() {
               <View>
                 <Text style={styles.priceLabel}>Price</Text>
                 <View style={styles.priceValueContainer}>
-                  <Text style={styles.priceValue}>₹{bus.price.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.priceValue}>{currencySymbol}{bus.price.toLocaleString('en-IN')}</Text>
                   {bus.originalPrice && bus.originalPrice > bus.price && (
-                    <Text style={styles.originalPrice}>₹{bus.originalPrice.toLocaleString('en-IN')}</Text>
+                    <Text style={styles.originalPrice}>{currencySymbol}{bus.originalPrice.toLocaleString('en-IN')}</Text>
                   )}
                 </View>
               </View>
@@ -539,7 +542,7 @@ export default function BusDetailsPage() {
                 <Text style={styles.cashbackText}>
                   {bus.cashback.percentage}% Cashback
                 </Text>
-                <Text style={styles.cashbackAmount}>₹{bus.cashback.amount}</Text>
+                <Text style={styles.cashbackAmount}>{currencySymbol}{bus.cashback.amount}</Text>
               </View>
             </View>
             {bus.discount && bus.discount > 0 && (
@@ -640,10 +643,10 @@ export default function BusDetailsPage() {
               <Text style={styles.priceInfoLabel}>Total Price</Text>
               <View style={styles.priceInfoValueContainer}>
                 <Text style={styles.priceInfoValue}>
-                  ₹{bus.price.toLocaleString('en-IN')}
+                  {currencySymbol}{bus.price.toLocaleString('en-IN')}
                 </Text>
                 {bus.originalPrice && bus.originalPrice > bus.price && (
-                  <Text style={styles.priceInfoOriginal}>₹{bus.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.priceInfoOriginal}>{currencySymbol}{bus.originalPrice.toLocaleString('en-IN')}</Text>
                 )}
               </View>
             </View>

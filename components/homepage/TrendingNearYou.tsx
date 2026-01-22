@@ -13,6 +13,7 @@ import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { storesApi } from '@/services/storesApi';
+import { useCurrentRegion } from '@/contexts/RegionContext';
 
 // Web Video Component - renders native HTML5 video on web platform
 const WebVideoPlayer: React.FC<{ uri: string; poster?: string }> = ({ uri, poster }) => {
@@ -277,6 +278,7 @@ const TrendingNearYou: React.FC<TrendingNearYouProps> = ({
   onStorePress,
 }) => {
   const router = useRouter();
+  const currentRegion = useCurrentRegion(); // Refetch when region changes
   const [stores, setStores] = useState<TrendingStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -310,7 +312,7 @@ const TrendingNearYou: React.FC<TrendingNearYouProps> = ({
 
   useEffect(() => {
     fetchTrendingStores();
-  }, [fetchTrendingStores]);
+  }, [fetchTrendingStores, currentRegion]); // Refetch when region changes
 
   const handleStorePress = (storeId: string) => {
     if (onStorePress) {

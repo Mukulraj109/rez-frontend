@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ProductItem } from '@/types/homepage.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 export interface VariantSelection {
   variantId?: string;
@@ -55,6 +56,9 @@ export default function ProductVariantModal({
   loading = false,
   variants = [],
 }: ProductVariantModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [selectedSize, setSelectedSize] = useState<string | undefined>();
   const [selectedColor, setSelectedColor] = useState<string | undefined>();
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
@@ -309,11 +313,11 @@ export default function ProductVariantModal({
                 <Text style={styles.productBrand}>{product.brand}</Text>
                 <View style={styles.priceRow}>
                   <Text style={styles.currentPrice}>
-                    ₹{selectedVariant?.price || productPrice}
+                    {currencySymbol}{selectedVariant?.price || productPrice}
                   </Text>
                   {productOriginalPrice && productOriginalPrice > productPrice && (
                     <>
-                      <Text style={styles.originalPrice}>₹{productOriginalPrice}</Text>
+                      <Text style={styles.originalPrice}>{currencySymbol}{productOriginalPrice}</Text>
                       <View style={styles.discountBadge}>
                         <Text style={styles.discountText}>
                           {priceObj?.discount || Math.round(((productOriginalPrice - productPrice) / productOriginalPrice) * 100)}% OFF

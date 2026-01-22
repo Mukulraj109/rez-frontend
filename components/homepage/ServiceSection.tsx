@@ -30,6 +30,7 @@ import {
   SERVICE_SECTION_CONFIG,
   SERVICE_COLORS,
 } from '@/config/serviceSectionConfig';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Animated components
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -77,10 +78,12 @@ const StoreListItem = memo(({
   store,
   index,
   onPress,
+  currencySymbol,
 }: {
   store: ServiceSectionStore;
   index: number;
   onPress: () => void;
+  currencySymbol: string;
 }) => {
   const scale = useSharedValue(1);
 
@@ -158,7 +161,7 @@ const StoreListItem = memo(({
 
           {/* Pricing Row */}
           <View style={styles.pricingRow}>
-            <Text style={styles.currencySymbol}>₹</Text>
+            <Text style={styles.currencySymbol}>{currencySymbol}</Text>
             <Text style={styles.currentPrice}>{estimatedValue || 'Free'}</Text>
             {originalPrice > 0 && store.earnAmount > 0 && (
               <Text style={styles.originalPrice}>{originalPrice}</Text>
@@ -189,6 +192,8 @@ const StoreListItem = memo(({
 // Main Component
 function ServiceSection() {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const {
     activeSubcategory,
     stores,
@@ -284,6 +289,7 @@ function ServiceSection() {
             store={store}
             index={index}
             onPress={() => handleStorePress(store)}
+            currencySymbol={currencySymbol}
           />
         ))}
       </View>

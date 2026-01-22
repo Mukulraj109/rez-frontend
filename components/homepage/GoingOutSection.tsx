@@ -30,6 +30,7 @@ import {
   GOING_OUT_SECTION_CONFIG,
   GOING_OUT_COLORS,
 } from '@/config/goingOutSectionConfig';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Animated components
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -82,6 +83,8 @@ const StoreListItem = memo(({
   index: number;
   onPress: () => void;
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -158,7 +161,7 @@ const StoreListItem = memo(({
 
           {/* Pricing Row */}
           <View style={styles.pricingRow}>
-            <Text style={styles.currencySymbol}>₹</Text>
+            <Text style={styles.currencySymbol}>{currencySymbol}</Text>
             <Text style={styles.currentPrice}>{estimatedValue || 'Free'}</Text>
             {originalPrice > 0 && store.earnAmount > 0 && (
               <Text style={styles.originalPrice}>{originalPrice}</Text>

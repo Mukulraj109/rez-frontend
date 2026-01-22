@@ -9,6 +9,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import partnerApi from '@/services/partnerApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface EarningsBreakdownProps {
   onViewDetails?: () => void;
@@ -44,6 +45,8 @@ export default function EarningsBreakdown({
   onViewDetails,
   compact = false
 }: EarningsBreakdownProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
   const [isExpanded, setIsExpanded] = useState(!compact);
   const [loading, setLoading] = useState(true);
@@ -160,7 +163,7 @@ export default function EarningsBreakdown({
           </View>
         </View>
         <View style={styles.headerRight}>
-          <Text style={styles.totalAmount}>₹{(earnings?.total || 0).toLocaleString('en-IN')}</Text>
+          <Text style={styles.totalAmount}>{currencySymbol}{(earnings?.total || 0).toLocaleString('en-IN')}</Text>
           {compact && (
             <Ionicons
               name={isExpanded ? 'chevron-up' : 'chevron-down'}
@@ -177,12 +180,12 @@ export default function EarningsBreakdown({
           {/* Quick Stats */}
           <View style={styles.quickStats}>
             <View style={styles.statCard}>
-              <Text style={styles.statValue}>₹{(earnings?.thisMonth || 0).toLocaleString('en-IN')}</Text>
+              <Text style={styles.statValue}>{currencySymbol}{(earnings?.thisMonth || 0).toLocaleString('en-IN')}</Text>
               <Text style={styles.statLabel}>This Month</Text>
             </View>
             <View style={[styles.statCard, styles.statCardPending]}>
               <Text style={[styles.statValue, { color: COLORS.warning }]}>
-                ₹{(earnings?.pending || 0).toLocaleString('en-IN')}
+                {currencySymbol}{(earnings?.pending || 0).toLocaleString('en-IN')}
               </Text>
               <Text style={styles.statLabel}>Pending</Text>
             </View>
@@ -200,7 +203,7 @@ export default function EarningsBreakdown({
                   <Text style={styles.breakdownLabel}>{item.label}</Text>
                 </View>
                 <Text style={styles.breakdownValue}>
-                  ₹{item.value.toLocaleString('en-IN')}
+                  {currencySymbol}{item.value.toLocaleString('en-IN')}
                 </Text>
               </View>
             ))}

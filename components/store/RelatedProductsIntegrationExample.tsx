@@ -18,6 +18,7 @@ import {
 import { RelatedProducts } from '@/components/store';
 import { ProductItem } from '@/types/homepage.types';
 import { useRouter } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 /**
  * Example 1: Basic Integration in MainStorePage
@@ -64,6 +65,8 @@ export function MainStorePageExample() {
 export function ProductDetailPageExample() {
   const [currentProduct, setCurrentProduct] = useState<ProductItem | null>(null);
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const handleRelatedProductPress = (product: ProductItem) => {
     // Update current product and scroll to top
@@ -84,7 +87,7 @@ export function ProductDetailPageExample() {
         {/* Product Info */}
         <View style={styles.productInfo}>
           <Text style={styles.productName}>Product Name</Text>
-          <Text style={styles.productPrice}>₹999</Text>
+          <Text style={styles.productPrice}>{currencySymbol}999</Text>
           <Text style={styles.productDescription}>Description...</Text>
         </View>
 

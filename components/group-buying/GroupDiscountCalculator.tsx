@@ -6,12 +6,15 @@ import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { GroupBuyingGroup } from '@/types/groupBuying.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface GroupDiscountCalculatorProps {
   group: GroupBuyingGroup;
 }
 
 export default function GroupDiscountCalculator({ group }: GroupDiscountCalculatorProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const currentMembers = group.currentMemberCount;
   const basePrice = group.product.basePrice;
   const currentPrice = group.currentTier.pricePerUnit;
@@ -40,11 +43,11 @@ export default function GroupDiscountCalculator({ group }: GroupDiscountCalculat
           <Ionicons name="trending-down" size={24} color="white" />
           <Text style={styles.savingsTitle}>Current Savings</Text>
         </View>
-        <Text style={styles.savingsAmount}>₹{savingsPerUnit.toFixed(2)}</Text>
+        <Text style={styles.savingsAmount}>{currencySymbol}{savingsPerUnit.toFixed(2)}</Text>
         <Text style={styles.savingsSubtext}>per unit ({savingsPercentage}% off)</Text>
         <View style={styles.totalSavings}>
           <Text style={styles.totalSavingsText}>
-            Total group savings: ₹{totalSavings.toFixed(2)}
+            Total group savings: {currencySymbol}{totalSavings.toFixed(2)}
           </Text>
         </View>
       </LinearGradient>
@@ -88,7 +91,7 @@ export default function GroupDiscountCalculator({ group }: GroupDiscountCalculat
                   {tier.minMembers}+ members
                 </Text>
                 <Text style={[styles.tierDiscount, isActive && styles.tierDiscountActive]}>
-                  {tier.discountPercentage}% OFF - ₹{tier.pricePerUnit.toFixed(2)}
+                  {tier.discountPercentage}% OFF - {currencySymbol}{tier.pricePerUnit.toFixed(2)}
                 </Text>
               </View>
               {isActive && (

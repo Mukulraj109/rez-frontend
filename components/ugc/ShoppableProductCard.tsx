@@ -17,6 +17,7 @@ import { ProductItem } from '@/types/homepage.types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { normalizeProductPrice, normalizeProductRating } from '@/utils/productDataNormalizer';
 import { formatPrice } from '@/utils/priceFormatter';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ShoppableProductCardProps {
   product: any; // Can be ProductItem or backend product structure
@@ -39,6 +40,8 @@ export default function ShoppableProductCard({
   showAddButton = true,
   width = 160,
 }: ShoppableProductCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isAdding, setIsAdding] = useState(false);
   const [scaleAnim] = useState(new Animated.Value(1));
 
@@ -65,7 +68,7 @@ export default function ShoppableProductCard({
     price: normalizedPrice.current,
     originalPrice: normalizedPrice.original,
     discount: normalizedPrice.discount,
-    currency: product.price?.currency || product.pricing?.currency || '₹',
+    currency: product.price?.currency || product.pricing?.currency || currencySymbol,
     rating: normalizedRating.value,
     ratingCount: normalizedRating.count,
     storeName: product.store?.name || product.brand,

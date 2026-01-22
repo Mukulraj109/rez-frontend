@@ -18,6 +18,7 @@ import { ThemedView } from '@/components/ThemedView';
 import gamificationAPI from '@/services/gamificationApi';
 import { useGamification } from '@/contexts/GamificationContext';
 import type { ScratchCardPrize } from '@/types/gamification.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.85;
@@ -34,6 +35,8 @@ export default function ScratchCardGame({
   onCoinsEarned,
   onError,
 }: ScratchCardGameProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isScratched, setIsScratched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [canCreate, setCanCreate] = useState(false);
@@ -237,8 +240,8 @@ export default function ScratchCardGame({
                 <ThemedText style={styles.prizeValueText}>
                   {prize.type === 'coin' && `${prize.value} Coins`}
                   {prize.type === 'discount' && `${prize.value}% OFF`}
-                  {prize.type === 'cashback' && `₹${prize.value} Cashback`}
-                  {prize.type === 'voucher' && `₹${prize.value} Voucher`}
+                  {prize.type === 'cashback' && `${currencySymbol}${prize.value} Cashback`}
+                  {prize.type === 'voucher' && `${currencySymbol}${prize.value} Voucher`}
                 </ThemedText>
               </View>
             )}

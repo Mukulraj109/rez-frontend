@@ -23,6 +23,7 @@ import { useCategoryPageData } from '@/hooks/useCategoryPageData';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import EmptyState from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { useRegion } from '@/contexts/RegionContext';
 
 const COLORS = {
   primaryGreen: '#00C06A',
@@ -37,6 +38,8 @@ export default function FitnessCategoryPage() {
   const router = useRouter();
   const slug = 'fitness-sports';
   const categoryConfig = getCategoryConfig(slug);
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const { subcategories, stores, products, ugcPosts, aiPlaceholders, isLoading, error, refetch } = useCategoryPageData(slug);
   const [refreshing, setRefreshing] = useState(false);
@@ -174,7 +177,7 @@ export default function FitnessCategoryPage() {
               <TouchableOpacity key={product.id} style={styles.productCard} onPress={() => router.push(`/ProductPage?productId=${product.id}` as any)}>
                 <Image source={{ uri: product.image || 'https://via.placeholder.com/150' }} style={styles.productImage} resizeMode="cover" />
                 <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-                <Text style={styles.productPrice}>₹{product.price?.toLocaleString() || '0'}</Text>
+                <Text style={styles.productPrice}>{currencySymbol}{product.price?.toLocaleString() || '0'}</Text>
                 <Text style={styles.productCashback}>{product.cashback || 10}% cashback</Text>
               </TouchableOpacity>
             ))}

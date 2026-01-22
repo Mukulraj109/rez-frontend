@@ -18,6 +18,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface CashbackSummaryHeaderCardProps {
   total: number;
@@ -35,6 +36,9 @@ const CashbackSummaryHeaderCard: React.FC<CashbackSummaryHeaderCardProps> = ({
   isLoading = false,
 }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -79,7 +83,7 @@ const CashbackSummaryHeaderCard: React.FC<CashbackSummaryHeaderCardProps> = ({
   };
 
   const formatAmount = (amount: number): string => {
-    return `₹${amount.toLocaleString('en-IN')}`;
+    return `${currencySymbol}${amount.toLocaleString('en-IN')}`;
   };
 
   if (isLoading) {

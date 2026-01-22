@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { triggerImpact } from '@/utils/haptics';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface StoreInfo {
   name: string;
@@ -47,11 +48,13 @@ export const CompletePurchaseSection: React.FC<CompletePurchaseSectionProps> = (
   storeInfo,
   deliveryFee = 49,
   productId,
-  currency = '₹',
+  currency,
   onVisitStore,
   onBuyOnline,
   style,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = currency || getCurrencySymbol();
   const router = useRouter();
 
   const handleVisitStore = () => {
@@ -156,7 +159,7 @@ export const CompletePurchaseSection: React.FC<CompletePurchaseSectionProps> = (
         {/* Delivery Fee */}
         <View style={styles.deliveryFeeRow}>
           <Text style={styles.deliveryFeeLabel}>Delivery Fee</Text>
-          <Text style={styles.deliveryFeeValue}>{currency}{deliveryFee}</Text>
+          <Text style={styles.deliveryFeeValue}>{currencySymbol}{deliveryFee}</Text>
         </View>
         <Text style={styles.deliveryHint}>
           Returned as ReZ Coins after sharing

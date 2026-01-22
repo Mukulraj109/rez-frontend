@@ -12,6 +12,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { triggerImpact } from '@/utils/haptics';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Lock duration options
 export type LockDuration = 2 | 4 | 8;
@@ -55,9 +56,11 @@ export const DurationChips: React.FC<DurationChipsProps> = ({
   selectedDuration,
   onSelectDuration,
   productPrice,
-  currency = '₹',
+  currency,
   style,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = currency || getCurrencySymbol();
   const handleSelect = (duration: LockDuration) => {
     triggerImpact('Light');
     onSelectDuration(duration);
@@ -123,7 +126,7 @@ export const DurationChips: React.FC<DurationChipsProps> = ({
           Lock Price ({LOCK_FEE_PERCENTAGES[selectedDuration]}%)
         </Text>
         <Text style={styles.feeAmount}>
-          {currency}{calculateLockFee(productPrice, selectedDuration).toLocaleString('en-IN')}
+          {currencySymbol}{calculateLockFee(productPrice, selectedDuration).toLocaleString('en-IN')}
         </Text>
       </View>
     </View>

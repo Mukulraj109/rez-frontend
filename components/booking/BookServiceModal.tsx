@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -60,6 +61,9 @@ const BookServiceModal: React.FC<BookServiceModalProps> = ({
   onConfirm,
   loading = false,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
@@ -287,7 +291,7 @@ const BookServiceModal: React.FC<BookServiceModalProps> = ({
             </View>
             <View style={styles.serviceDetailItem}>
               <Ionicons name="cash-outline" size={16} color="#666" />
-              <Text style={styles.serviceDetailText}>₹{service.price}</Text>
+              <Text style={styles.serviceDetailText}>{currencySymbol}{service.price}</Text>
             </View>
           </View>
         </View>
@@ -506,7 +510,7 @@ const BookServiceModal: React.FC<BookServiceModalProps> = ({
             </View>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Price:</Text>
-              <Text style={styles.summaryValuePrice}>₹{service.price}</Text>
+              <Text style={styles.summaryValuePrice}>{currencySymbol}{service.price}</Text>
             </View>
           </View>
 

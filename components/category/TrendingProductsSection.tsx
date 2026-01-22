@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getProductsForCategory, DummyProduct } from '@/data/categoryDummyData';
 import CoinIcon from '@/components/ui/CoinIcon';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface TrendingProductsSectionProps {
   categorySlug: string;
@@ -35,6 +36,8 @@ const ProductCard = memo(({
   product: DummyProduct;
   onPress: () => void;
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const discountPercent = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
 
   return (
@@ -88,8 +91,8 @@ const ProductCard = memo(({
 
         {/* Price */}
         <View style={styles.priceRow}>
-          <Text style={styles.price}>₹{product.price.toLocaleString()}</Text>
-          <Text style={styles.originalPrice}>₹{product.originalPrice.toLocaleString()}</Text>
+          <Text style={styles.price}>{currencySymbol}{product.price.toLocaleString()}</Text>
+          <Text style={styles.originalPrice}>{currencySymbol}{product.originalPrice.toLocaleString()}</Text>
         </View>
 
         {/* Cashback */}

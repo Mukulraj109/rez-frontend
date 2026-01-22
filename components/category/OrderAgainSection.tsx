@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Order } from '../../services/ordersApi';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Use same colors as FoodDiningCategoryPage
 const COLORS = {
@@ -41,6 +42,8 @@ const getTimeAgo = (dateString: string) => {
 
 export default function OrderAgainSection({ orders, limit = 10 }: OrderAgainSectionProps) {
     const router = useRouter();
+    const { getCurrencySymbol } = useRegion();
+    const currencySymbol = getCurrencySymbol();
 
     // Process orders to get unique items/stores to order again
     const orderItems = useMemo(() => {
@@ -127,7 +130,7 @@ export default function OrderAgainSection({ orders, limit = 10 }: OrderAgainSect
 
                             {item.savings > 0 && (
                                 <Text style={styles.savings}>
-                                    Saved ₹{item.savings} total
+                                    Saved {currencySymbol}{item.savings} total
                                 </Text>
                             )}
                         </View>

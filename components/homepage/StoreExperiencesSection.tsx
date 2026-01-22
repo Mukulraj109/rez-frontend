@@ -13,9 +13,10 @@ import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { StoreExperienceCard, StoreExperienceCardProps } from './cards/StoreExperienceCard';
 import { experiencesApi } from '@/services/experiencesApi';
+import { useRegion } from '@/contexts/RegionContext';
 
-// Fallback store experience configurations
-const FALLBACK_STORE_EXPERIENCES: StoreExperienceCardProps[] = [
+// Fallback store experience configurations generator
+const getFallbackStoreExperiences = (currencySymbol: string): StoreExperienceCardProps[] => [
   {
     title: '60-Minute Delivery',
     subtitle: 'Fashion, beauty, grocery & essentials',
@@ -26,8 +27,8 @@ const FALLBACK_STORE_EXPERIENCES: StoreExperienceCardProps[] = [
     buttonTextColor: '#1D4ED8',
   },
   {
-    title: '₹1 Store',
-    subtitle: '₹1 products + delivery cashback on sharing',
+    title: `${currencySymbol}1 Store`,
+    subtitle: `${currencySymbol}1 products + delivery cashback on sharing`,
     icon: '🏷️',
     buttonText: 'Explore Deals',
     gradientColors: ['#F97316', '#EA580C'] as const,
@@ -71,8 +72,11 @@ interface StoreExperiencesSectionProps {
 const StoreExperiencesSection: React.FC<StoreExperiencesSectionProps> = memo(({
   showTitle = true,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+  const fallbackExperiences = getFallbackStoreExperiences(currencySymbol);
   const [isLoading, setIsLoading] = useState(true);
-  const [experiences, setExperiences] = useState<StoreExperienceCardProps[]>(FALLBACK_STORE_EXPERIENCES);
+  const [experiences, setExperiences] = useState<StoreExperienceCardProps[]>(fallbackExperiences);
 
   useEffect(() => {
     const fetchExperiences = async () => {
@@ -84,7 +88,7 @@ const StoreExperiencesSection: React.FC<StoreExperiencesSectionProps> = memo(({
           // Transform API data to component format
           const transformedExperiences = response.data.experiences.map((exp, index) => {
             const styles = EXPERIENCE_STYLES[exp.type] || EXPERIENCE_STYLES.fastDelivery;
-            const fallback = FALLBACK_STORE_EXPERIENCES[index] || FALLBACK_STORE_EXPERIENCES[0];
+            const fallback = fallbackExperiences[index] || fallbackExperiences[0];
 
             return {
               title: exp.title,

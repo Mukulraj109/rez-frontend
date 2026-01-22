@@ -24,6 +24,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import productsApi from '@/services/productsApi';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useProductReviews } from '@/hooks/useProductReviews';
+import { useRegion } from '@/contexts/RegionContext';
 import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
 import PackageBookingFlow from '../../components/package/PackageBookingFlow';
 import PackageBookingConfirmation from '../../components/package/PackageBookingConfirmation';
@@ -106,7 +107,9 @@ export default function PackageDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [packageData, setPackageData] = useState<PackageDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -475,9 +478,9 @@ export default function PackageDetailsPage() {
               <View>
                 <Text style={styles.priceLabel}>Price</Text>
                 <View style={styles.priceValueContainer}>
-                  <Text style={styles.priceValue}>₹{packageData.price.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.priceValue}>{currencySymbol}{packageData.price.toLocaleString('en-IN')}</Text>
                   {packageData.originalPrice && packageData.originalPrice > packageData.price && (
-                    <Text style={styles.originalPrice}>₹{packageData.originalPrice.toLocaleString('en-IN')}</Text>
+                    <Text style={styles.originalPrice}>{currencySymbol}{packageData.originalPrice.toLocaleString('en-IN')}</Text>
                   )}
                 </View>
               </View>
@@ -486,7 +489,7 @@ export default function PackageDetailsPage() {
                 <Text style={styles.cashbackText}>
                   {packageData.cashback.percentage}% Cashback
                 </Text>
-                <Text style={styles.cashbackAmount}>₹{packageData.cashback.amount}</Text>
+                <Text style={styles.cashbackAmount}>{currencySymbol}{packageData.cashback.amount}</Text>
               </View>
             </View>
             {packageData.discount && packageData.discount > 0 && (
@@ -586,10 +589,10 @@ export default function PackageDetailsPage() {
               <Text style={styles.priceInfoLabel}>Total Price</Text>
               <View style={styles.priceInfoValueContainer}>
                 <Text style={styles.priceInfoValue}>
-                  ₹{packageData.price.toLocaleString('en-IN')}
+                  {currencySymbol}{packageData.price.toLocaleString('en-IN')}
                 </Text>
                 {packageData.originalPrice && packageData.originalPrice > packageData.price && (
-                  <Text style={styles.priceInfoOriginal}>₹{packageData.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.priceInfoOriginal}>{currencySymbol}{packageData.originalPrice.toLocaleString('en-IN')}</Text>
                 )}
               </View>
             </View>

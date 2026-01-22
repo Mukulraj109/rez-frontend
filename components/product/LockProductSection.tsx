@@ -32,6 +32,7 @@ import DurationChips, {
   LOCK_FEE_PERCENTAGES,
   calculateLockFee,
 } from './DurationChips';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface LockProductSectionProps {
   /** Product ID */
@@ -71,10 +72,12 @@ export const LockProductSection: React.FC<LockProductSectionProps> = ({
   productPrice,
   quantity,
   variant,
-  currency = '₹',
+  currency,
   onLockSuccess,
   style,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = currency || getCurrencySymbol();
   const { state: authState } = useAuth();
   const { walletState, refreshWallet } = useWallet({
     userId: authState?.user?.id || '',
@@ -98,7 +101,7 @@ export const LockProductSection: React.FC<LockProductSectionProps> = ({
 
   const handleLock = useCallback(async () => {
     if (!hasEnoughBalance) {
-      setError(`Insufficient wallet balance. You need ${currency}${lockFee} but have ${currency}${walletBalance}`);
+      setError(`Insufficient wallet balance. You need ${currencySymbol}${lockFee} but have ${currencySymbol}${walletBalance}`);
       return;
     }
 
@@ -194,7 +197,7 @@ export const LockProductSection: React.FC<LockProductSectionProps> = ({
             selectedDuration={selectedDuration}
             onSelectDuration={setSelectedDuration}
             productPrice={totalPrice}
-            currency={currency}
+            currency={currencySymbol}
             style={styles.durationChips}
           />
 
@@ -220,7 +223,7 @@ export const LockProductSection: React.FC<LockProductSectionProps> = ({
                 <>
                   <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
                   <Text style={styles.lockButtonText}>
-                    Lock Product for {currency}{lockFee.toLocaleString('en-IN')}
+                    Lock Product for {currencySymbol}{lockFee.toLocaleString('en-IN')}
                   </Text>
                 </>
               )}
@@ -232,7 +235,7 @@ export const LockProductSection: React.FC<LockProductSectionProps> = ({
             <View style={styles.warningCard}>
               <Ionicons name="wallet-outline" size={18} color="#F59E0B" />
               <Text style={styles.warningText}>
-                Add {currency}{(lockFee - walletBalance).toFixed(0)} to your wallet to lock
+                Add {currencySymbol}{(lockFee - walletBalance).toFixed(0)} to your wallet to lock
               </Text>
             </View>
           )}

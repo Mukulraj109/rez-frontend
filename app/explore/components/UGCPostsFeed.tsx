@@ -151,7 +151,6 @@ const UGCPostsFeed = () => {
       }
     } catch (error) {
       // Revert on error
-      console.log('[UGC] Like API error, reverting...');
       setUgcPosts(prev => prev.map(post => {
         if (post.id === postId) {
           return {
@@ -174,7 +173,6 @@ const UGCPostsFeed = () => {
       });
 
       if (result.action === Share.sharedAction) {
-        console.log('[UGC] Shared successfully');
       }
     } catch (error: any) {
       Alert.alert('Error', 'Unable to share at this moment');

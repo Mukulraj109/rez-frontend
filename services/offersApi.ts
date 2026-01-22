@@ -21,6 +21,7 @@ import {
 import { Offer, OfferCategory } from '@/types/offers.types';
 import { offersPageData } from '@/data/offersData';
 import { withRetry, createErrorResponse, logApiRequest, logApiResponse } from '@/utils/apiUtils';
+import mainApiClient from './apiClient';
 
 // API Configuration
 const API_CONFIG: ApiConfig = {
@@ -303,8 +304,8 @@ function validateOfferId(offerId: string): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
-// HTTP Client
-class ApiClient {
+// HTTP Client with region support
+class OffersHttpClient {
   private baseUrl: string;
   private timeout: number;
 
@@ -314,11 +315,14 @@ class ApiClient {
   }
 
   private async request<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
+    // Get current region from main apiClient for region filtering
+    const currentRegion = mainApiClient.getRegion();
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.timeout);
@@ -328,6 +332,7 @@ class ApiClient {
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
+          'X-Rez-Region': currentRegion, // Include region header for filtering
           ...options.headers,
         },
       });
@@ -404,7 +409,7 @@ class ApiClient {
 }
 
 // API Client instance
-const apiClient = new ApiClient(API_CONFIG);
+const offersApiClient = new OffersHttpClient(API_CONFIG);
 
 // Mock API implementation (for development)
 class MockOffersApi implements OffersApiEndpoints {
@@ -1176,4 +1181,4 @@ export const offersApi = USE_REAL_API ? realOffersApi : new MockOffersApi();
 export { API_CONFIG, offersCache, categoriesCache, userCache };
 
 // Export for real API implementation
-export { ApiClient };
+export { OffersHttpClient };

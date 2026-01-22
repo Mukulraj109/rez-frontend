@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import MenuPreOrderModal from './MenuPreOrderModal';
 import type { MenuItem } from './MenuItemCard';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -74,6 +75,9 @@ const RestaurantBookingModal: React.FC<RestaurantBookingModalProps> = ({
   onConfirm,
   loading = false,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [currentStep, setCurrentStep] = useState(1);
   const [partySize, setPartySize] = useState(2);
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -642,14 +646,14 @@ const RestaurantBookingModal: React.FC<RestaurantBookingModalProps> = ({
                       </View>
                       <Text style={styles.menuItemQuantity}>Qty: {item.quantity}</Text>
                     </View>
-                    <Text style={styles.menuItemPrice}>₹{item.price * item.quantity}</Text>
+                    <Text style={styles.menuItemPrice}>{currencySymbol}{item.price * item.quantity}</Text>
                   </View>
                 ))}
               </ScrollView>
 
               <View style={styles.menuTotalRow}>
                 <Text style={styles.menuTotalLabel}>Total Amount</Text>
-                <Text style={styles.menuTotalAmount}>₹{totalMenuAmount}</Text>
+                <Text style={styles.menuTotalAmount}>{currencySymbol}{totalMenuAmount}</Text>
               </View>
 
               <TouchableOpacity

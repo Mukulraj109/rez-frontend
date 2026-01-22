@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import discountsApi, { Discount } from '@/services/discountsApi';
 import { useCart } from '@/contexts/CartContext';
 import { triggerImpact } from '@/utils/haptics';
+import { useRegion } from '@/contexts/RegionContext';
 import {
   Colors,
   Spacing,
@@ -37,6 +38,8 @@ export default function CardOffersSection({
   onOfferApplied,
   compact = false,
 }: CardOffersSectionProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const router = useRouter();
   const { state: cartState } = useCart();
   const [cardOffers, setCardOffers] = useState<Discount[]>([]);
@@ -137,7 +140,7 @@ export default function CardOffersSection({
   if (appliedOffer) {
     const discountAmount = appliedOffer.type === 'percentage'
       ? `${appliedOffer.value}%`
-      : `₹${appliedOffer.value}`;
+      : `${currencySymbol}${appliedOffer.value}`;
 
     return (
       <View style={styles.container}>
@@ -180,7 +183,7 @@ export default function CardOffersSection({
 
   const discountAmount = bestOffer.type === 'percentage'
     ? `${bestOffer.value}%`
-    : `₹${bestOffer.value}`;
+    : `${currencySymbol}${bestOffer.value}`;
 
   const bankNames = bestOffer.bankNames && bestOffer.bankNames.length > 0
     ? bestOffer.bankNames.join(', ')
@@ -273,7 +276,7 @@ export default function CardOffersSection({
               <View style={styles.offerInfo}>
                 <Ionicons name="cash-outline" size={14} color={Colors.gray[600]} />
                 <ThemedText style={styles.offerInfoText}>
-                  Min: ₹{bestOffer.minOrderValue.toLocaleString()}
+                  Min: {currencySymbol}{bestOffer.minOrderValue.toLocaleString()}
                 </ThemedText>
               </View>
             </View>

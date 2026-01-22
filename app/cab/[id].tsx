@@ -24,6 +24,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import productsApi from '@/services/productsApi';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useProductReviews } from '@/hooks/useProductReviews';
+import { useRegion } from '@/contexts/RegionContext';
 import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
 import CabBookingFlow from '../../components/cab/CabBookingFlow';
 import CabBookingConfirmation from '../../components/cab/CabBookingConfirmation';
@@ -111,7 +112,9 @@ export default function CabDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [cab, setCab] = useState<CabDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -528,10 +531,10 @@ export default function CabDetailsPage() {
                 <Text style={styles.priceLabel}>Price</Text>
                 <View style={styles.priceValueContainer}>
                   <Text style={styles.priceValue}>
-                    {cab.pricePerKm ? `₹${cab.pricePerKm}/km` : `₹${cab.price.toLocaleString('en-IN')}`}
+                    {cab.pricePerKm ? `${currencySymbol}${cab.pricePerKm}/km` : `${currencySymbol}${cab.price.toLocaleString('en-IN')}`}
                   </Text>
                   {cab.originalPrice && cab.originalPrice > cab.price && (
-                    <Text style={styles.originalPrice}>₹{cab.originalPrice.toLocaleString('en-IN')}</Text>
+                    <Text style={styles.originalPrice}>{currencySymbol}{cab.originalPrice.toLocaleString('en-IN')}</Text>
                   )}
                 </View>
               </View>
@@ -540,7 +543,7 @@ export default function CabDetailsPage() {
                 <Text style={styles.cashbackText}>
                   {cab.cashback.percentage}% Cashback
                 </Text>
-                <Text style={styles.cashbackAmount}>₹{cab.cashback.amount}</Text>
+                <Text style={styles.cashbackAmount}>{currencySymbol}{cab.cashback.amount}</Text>
               </View>
             </View>
             {cab.discount && cab.discount > 0 && (
@@ -643,10 +646,10 @@ export default function CabDetailsPage() {
               <Text style={styles.priceInfoLabel}>Total Price</Text>
               <View style={styles.priceInfoValueContainer}>
                 <Text style={styles.priceInfoValue}>
-                  {cab.pricePerKm ? `₹${cab.pricePerKm}/km` : `₹${cab.price.toLocaleString('en-IN')}`}
+                  {cab.pricePerKm ? `${currencySymbol}${cab.pricePerKm}/km` : `${currencySymbol}${cab.price.toLocaleString('en-IN')}`}
                 </Text>
                 {cab.originalPrice && cab.originalPrice > cab.price && (
-                  <Text style={styles.priceInfoOriginal}>₹{cab.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.priceInfoOriginal}>{currencySymbol}{cab.originalPrice.toLocaleString('en-IN')}</Text>
                 )}
               </View>
             </View>

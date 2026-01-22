@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { GroupBuyingGroup } from '@/types/groupBuying.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +24,8 @@ interface GroupCardProps {
 }
 
 export default function GroupCard({ group, onPress, showJoinButton = false }: GroupCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const spotsLeft = group.maxMembers - group.currentMemberCount;
   const progress = (group.currentMemberCount / group.maxMembers) * 100;
   const isAlmostFull = spotsLeft <= 2;
@@ -73,16 +76,16 @@ export default function GroupCard({ group, onPress, showJoinButton = false }: Gr
         <View style={styles.priceRow}>
           <View>
             <Text style={styles.currentPrice}>
-              ₹{group.currentTier.pricePerUnit.toFixed(2)}
+              {currencySymbol}{group.currentTier.pricePerUnit.toFixed(2)}
             </Text>
             <Text style={styles.originalPrice}>
-              ₹{group.product.basePrice.toFixed(2)}
+              {currencySymbol}{group.product.basePrice.toFixed(2)}
             </Text>
           </View>
           <View style={styles.savingsContainer}>
             <Text style={styles.savingsLabel}>You Save</Text>
             <Text style={styles.savingsAmount}>
-              ₹{(group.product.basePrice - group.currentTier.pricePerUnit).toFixed(2)}
+              {currencySymbol}{(group.product.basePrice - group.currentTier.pricePerUnit).toFixed(2)}
             </Text>
           </View>
         </View>

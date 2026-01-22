@@ -23,6 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "@/components/ThemedText";
 import { useFocusEffect } from "@react-navigation/native";
+import { useRegion } from "@/contexts/RegionContext";
 import { ThemedView } from "@/components/ThemedView";
 import {
   MainStoreHeader,
@@ -200,6 +201,8 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
   const { state: gamificationState } = useGamification();
   const isAuthenticated = authState?.isAuthenticated && !!authState?.user;
   const userCoins = gamificationState?.coinBalance?.total || 0;
+  const { getCurrencySymbol, currency: regionCurrency } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [screenData, setScreenData] = useState(Dimensions.get("window"));
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -824,7 +827,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         title: "Little Big Comfort Tee",
         description:
           "Little Big Comfort Tee offers a perfect blend of relaxed fit and soft fabric for all-day comfort and effortless style.",
-        price: "₹2,199",
+        price: `${currencySymbol}2,199`,
         location: "BTM",
         distance: "0.7 Km",
         isOpen: true,
@@ -839,7 +842,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
         category: "Fashion",
       };
     },
-    [initialProduct, productId, isDynamic, storeData]
+    [initialProduct, productId, isDynamic, storeData, currencySymbol]
   );
 
   // Fetch user visits data (after productData is defined)
@@ -1302,7 +1305,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
                   type: 'cashback' as const,
                   value: cashbackPercent,
                   title: `Get ${cashbackPercent}% Cashback on all orders`,
-                  description: storeOffers?.maxCashback ? `Max cashback ₹${storeOffers.maxCashback}` : undefined,
+                  description: storeOffers?.maxCashback ? `Max cashback ${currencySymbol}${storeOffers.maxCashback}` : undefined,
                   minOrderAmount: storeOffers?.minOrderAmount,
                   validTill: undefined,
                   coinsToEarn: Math.round((storeOffers?.maxCashback || 100) * 0.05), // 5% of max cashback as coins
@@ -1316,7 +1319,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
                   id: 'first-order',
                   type: 'flat' as const,
                   value: discount,
-                  title: `Flat ₹${discount} off on first order`,
+                  title: `Flat ${currencySymbol}${discount} off on first order`,
                   code: 'FIRST' + discount,
                   validTill: undefined,
                   coinsToEarn: Math.round(discount * 0.05), // 5% of discount as coins
@@ -1343,7 +1346,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
                   type: 'cashback' as const,
                   value: 15,
                   title: 'Extra 15% Cashback with UPI',
-                  description: 'Max cashback ₹150',
+                  description: `Max cashback ${currencySymbol}150`,
                   validTill: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Valid for 30 days
                   coinsToEarn: Math.round(150 * 0.05), // 5% of max cashback
                 });
@@ -1487,7 +1490,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
                           description: productData.description,
                           price: {
                             current: parsePrice(productData.price, { fallback: 1000 }),
-                            currency: 'INR',
+                            currency: regionCurrency,
                             discount: 0,
                           },
                           category: productData.category,

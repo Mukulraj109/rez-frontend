@@ -4,6 +4,7 @@ import FlowScreenLayout from '../../shared/FlowScreenLayout';
 import ActionBtn from '../../shared/ActionBtn';
 import { NavigationAction, BackAction } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface Props {
     onNavigate: NavigationAction;
@@ -11,6 +12,8 @@ interface Props {
 }
 
 const UseNextTimeScreen: React.FC<Props> = ({ onNavigate, onBack }) => {
+    const { getCurrencySymbol } = useRegion();
+    const currencySymbol = getCurrencySymbol();
     return (
         <FlowScreenLayout
             title="Use rewards next time"
@@ -25,7 +28,7 @@ const UseNextTimeScreen: React.FC<Props> = ({ onNavigate, onBack }) => {
 
                 <View style={styles.row}>
                     <Text style={styles.label}>Bill Amount</Text>
-                    <Text style={styles.value}>₹500</Text>
+                    <Text style={styles.value}>{currencySymbol}500</Text>
                 </View>
 
                 <View style={[styles.row, styles.discountRow]}>
@@ -33,14 +36,14 @@ const UseNextTimeScreen: React.FC<Props> = ({ onNavigate, onBack }) => {
                         <Ionicons name="checkmark-circle" size={16} color="#059669" />
                         <Text style={styles.discountText}>Use 100 ReZ Coins</Text>
                     </View>
-                    <Text style={styles.discountValue}>- ₹100</Text>
+                    <Text style={styles.discountValue}>- {currencySymbol}100</Text>
                 </View>
 
                 <View style={styles.divider} />
 
                 <View style={styles.row}>
                     <Text style={styles.totalLabel}>You Pay</Text>
-                    <Text style={styles.totalValue}>₹400</Text>
+                    <Text style={styles.totalValue}>{currencySymbol}400</Text>
                 </View>
             </View>
         </FlowScreenLayout>

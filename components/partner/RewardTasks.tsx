@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { RewardTask } from '@/types/partner.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface RewardTasksProps {
   tasks: RewardTask[];
@@ -17,11 +18,13 @@ interface RewardTasksProps {
   onClaimReward?: (taskId: string) => void;
 }
 
-export default function RewardTasks({ 
-  tasks, 
+export default function RewardTasks({
+  tasks,
   onCompleteTask,
-  onClaimReward 
+  onClaimReward
 }: RewardTasksProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const getTaskIcon = (type: RewardTask['type']) => {
     switch (type) {
       case 'review':
@@ -208,7 +211,7 @@ export default function RewardTasks({
                 styles.rewardValue,
                 isCompleted && styles.completedRewardValue
               ]}>
-                {typeof task.reward.value === 'number' ? `₹${task.reward.value}` : task.reward.value}
+                {typeof task.reward.value === 'number' ? `${currencySymbol}${task.reward.value}` : task.reward.value}
               </Text>
             </View>
           </View>

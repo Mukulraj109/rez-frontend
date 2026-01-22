@@ -17,6 +17,7 @@ import {
   SUBSCRIPTION_BORDER_RADIUS,
   SUBSCRIPTION_SHADOW,
 } from '@/styles/subscriptionStyles';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ROICalculatorProps {
   subscriptionCost: number;
@@ -29,8 +30,10 @@ export default function ROICalculator({
   subscriptionCost,
   totalSavings,
   showDetails = true,
-  currency = '₹',
+  currency,
 }: ROICalculatorProps) {
+  const { getCurrencySymbol } = useRegion();
+  const effectiveCurrency = currency ?? getCurrencySymbol();
   const [expanded, setExpanded] = useState(false);
   const [animatedHeight] = useState(new Animated.Value(expanded ? 200 : 0));
 
@@ -74,7 +77,7 @@ export default function ROICalculator({
             <View style={styles.roiMetric}>
               <ThemedText style={styles.metricLabel}>Subscription Cost</ThemedText>
               <ThemedText style={styles.metricValue}>
-                {currency}{subscriptionCost}
+                {effectiveCurrency}{subscriptionCost}
               </ThemedText>
             </View>
 
@@ -83,7 +86,7 @@ export default function ROICalculator({
             <View style={styles.roiMetric}>
               <ThemedText style={styles.metricLabel}>Total Savings</ThemedText>
               <ThemedText style={[styles.metricValue, { color: SUBSCRIPTION_COLORS.success }]}>
-                {currency}{totalSavings}
+                {effectiveCurrency}{totalSavings}
               </ThemedText>
             </View>
           </View>
@@ -130,7 +133,7 @@ export default function ROICalculator({
                   },
                 ]}
               >
-                Net Savings: {currency}{netSavings}
+                Net Savings: {effectiveCurrency}{netSavings}
               </ThemedText>
               <ThemedText
                 style={[
@@ -176,7 +179,7 @@ export default function ROICalculator({
               <View style={styles.detailContent}>
                 <ThemedText style={styles.detailLabel}>Monthly Average Savings</ThemedText>
                 <ThemedText style={styles.detailValue}>
-                  {currency}{Math.round(totalSavings / 12)}
+                  {effectiveCurrency}{Math.round(totalSavings / 12)}
                 </ThemedText>
               </View>
             </View>
@@ -192,7 +195,7 @@ export default function ROICalculator({
               <View style={styles.detailContent}>
                 <ThemedText style={styles.detailLabel}>Annual Subscription Cost</ThemedText>
                 <ThemedText style={styles.detailValue}>
-                  {currency}{subscriptionCost * 12}
+                  {effectiveCurrency}{subscriptionCost * 12}
                 </ThemedText>
               </View>
             </View>

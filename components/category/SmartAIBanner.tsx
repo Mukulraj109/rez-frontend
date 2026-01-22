@@ -16,6 +16,7 @@ import {
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface SmartAIBannerProps {
   categorySlug: string;
@@ -23,20 +24,20 @@ interface SmartAIBannerProps {
   onSearch?: (query: string) => void;
 }
 
-const AI_SUGGESTIONS: Record<string, string[]> = {
+const getAISuggestions = (currencySymbol: string): Record<string, string[]> => ({
   'food-dining': [
-    'Find me a romantic dinner spot under ₹2,000',
+    `Find me a romantic dinner spot under ${currencySymbol}2,000`,
     'Best biryani places with 60-min delivery',
     'Healthy lunch options near me',
   ],
   'fashion': [
-    'Find me a wedding outfit under ₹10,000',
+    `Find me a wedding outfit under ${currencySymbol}10,000`,
     'Trendy streetwear for college',
     'Formal shoes matching navy suit',
   ],
   'beauty-wellness': [
     'Best facial for glowing skin',
-    'Organic skincare routine under ₹3,000',
+    `Organic skincare routine under ${currencySymbol}3,000`,
     'Bridal makeup packages near me',
   ],
   'healthcare': [
@@ -45,12 +46,12 @@ const AI_SUGGESTIONS: Record<string, string[]> = {
     'Health checkup packages nearby',
   ],
   'grocery-essentials': [
-    'Organic vegetables under ₹500',
+    `Organic vegetables under ${currencySymbol}500`,
     'Best deals on monthly grocery',
     'Fresh fruits with home delivery',
   ],
   'fitness-sports': [
-    'Running shoes under ₹5,000',
+    `Running shoes under ${currencySymbol}5,000`,
     'Gym equipment for home workout',
     'Yoga accessories near me',
   ],
@@ -65,7 +66,7 @@ const AI_SUGGESTIONS: Record<string, string[]> = {
     'Best plumbers with quick service',
   ],
   'travel-experiences': [
-    'Weekend getaway under ₹10,000',
+    `Weekend getaway under ${currencySymbol}10,000`,
     'Beach destinations near me',
     'Adventure trips with best deals',
   ],
@@ -84,23 +85,23 @@ const AI_SUGGESTIONS: Record<string, string[]> = {
     'Compare prices across stores',
     'Show trending products with cashback',
   ],
-};
+});
 
 // Category-specific placeholders
-const PLACEHOLDER_TEXT: Record<string, string> = {
-  'food-dining': 'E.g., Biryani places under ₹500...',
-  'fashion': 'E.g., Wedding outfit under ₹10,000...',
+const getPlaceholderText = (currencySymbol: string): Record<string, string> => ({
+  'food-dining': `E.g., Biryani places under ${currencySymbol}500...`,
+  'fashion': `E.g., Wedding outfit under ${currencySymbol}10,000...`,
   'beauty-wellness': 'E.g., Facial spa near me...',
   'healthcare': 'E.g., Vitamins for immunity...',
   'grocery-essentials': 'E.g., Organic vegetables...',
-  'fitness-sports': 'E.g., Running shoes under ₹5,000...',
+  'fitness-sports': `E.g., Running shoes under ${currencySymbol}5,000...`,
   'education-learning': 'E.g., Coding courses for beginners...',
   'home-services': 'E.g., AC repair near me...',
-  'travel-experiences': 'E.g., Weekend getaway under ₹10K...',
+  'travel-experiences': `E.g., Weekend getaway under ${currencySymbol}10K...`,
   'entertainment': 'E.g., Movie tickets with cashback...',
   'financial-lifestyle': 'E.g., Best credit card rewards...',
   default: 'E.g., Find the best deals today...',
-};
+});
 
 const SmartAIBanner: React.FC<SmartAIBannerProps> = ({
   categorySlug,
@@ -108,7 +109,11 @@ const SmartAIBanner: React.FC<SmartAIBannerProps> = ({
   onSearch,
 }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [query, setQuery] = useState('');
+  const AI_SUGGESTIONS = getAISuggestions(currencySymbol);
+  const PLACEHOLDER_TEXT = getPlaceholderText(currencySymbol);
   const suggestions = AI_SUGGESTIONS[categorySlug] || AI_SUGGESTIONS.default;
   const placeholder = PLACEHOLDER_TEXT[categorySlug] || PLACEHOLDER_TEXT.default;
 

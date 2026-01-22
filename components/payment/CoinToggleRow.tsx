@@ -14,6 +14,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, Switch } from 'react-n
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '@/constants/DesignTokens';
 import CrossPlatformSlider from '@/components/common/CrossPlatformSlider';
+import { useRegion } from '@/contexts/RegionContext';
 
 export type CoinType = 'rez' | 'promo' | 'branded';
 
@@ -70,6 +71,8 @@ export const CoinToggleRow: React.FC<CoinToggleRowProps> = ({
   onToggle,
   onAmountChange,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const defaultStyle = COIN_STYLES[type];
   // Use custom color if provided (for branded coins)
   const style = {
@@ -77,7 +80,7 @@ export const CoinToggleRow: React.FC<CoinToggleRowProps> = ({
     color: customColor || defaultStyle.color,
     bgColor: customColor ? `${customColor}15` : defaultStyle.bgColor, // 15% opacity
   };
-  
+
   const [showSlider, setShowSlider] = useState(enabled && available > 0);
 
   const handleToggle = (value: boolean) => {
@@ -143,7 +146,7 @@ export const CoinToggleRow: React.FC<CoinToggleRowProps> = ({
               </View>
             )}
           </View>
-          <Text style={styles.balance}>Balance: ₹{available}</Text>
+          <Text style={styles.balance}>Balance: {currencySymbol}{available}</Text>
           {getSubtitle() && (
             <Text style={styles.subtitle}>{getSubtitle()}</Text>
           )}
@@ -152,7 +155,7 @@ export const CoinToggleRow: React.FC<CoinToggleRowProps> = ({
         <View style={styles.toggleContainer}>
           {enabled && using > 0 && (
             <Text style={[styles.usingAmount, { color: style.color }]}>
-              -₹{using}
+              -{currencySymbol}{using}
             </Text>
           )}
           <Switch
@@ -169,11 +172,11 @@ export const CoinToggleRow: React.FC<CoinToggleRowProps> = ({
       {showSlider && maxUsable > 0 && (
         <View style={styles.sliderContainer}>
           <View style={styles.sliderValueRow}>
-            <Text style={styles.sliderMinValue}>₹0</Text>
+            <Text style={styles.sliderMinValue}>{currencySymbol}0</Text>
             <Text style={[styles.sliderCurrentValue, { color: style.color }]}>
-              ₹{using}
+              {currencySymbol}{using}
             </Text>
-            <Text style={styles.sliderMaxValue}>₹{maxUsable}</Text>
+            <Text style={styles.sliderMaxValue}>{currencySymbol}{maxUsable}</Text>
           </View>
 
           <CrossPlatformSlider

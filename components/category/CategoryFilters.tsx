@@ -12,6 +12,7 @@ import Slider from '@/components/common/CrossPlatformSlider';
 
 import { ThemedText } from '@/components/ThemedText';
 import { CategoryFilter } from '@/types/category.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface CategoryFiltersProps {
   filters: CategoryFilter[];
@@ -26,6 +27,8 @@ export default function CategoryFilters({
   onFilterChange,
   onReset,
 }: CategoryFiltersProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [expandedFilters, setExpandedFilters] = useState<Set<string>>(new Set());
 
   const toggleFilterExpansion = (filterId: string) => {
@@ -198,13 +201,13 @@ export default function CategoryFilters({
           style={styles.filterHeader}
           onPress={() => toggleFilterExpansion(filter.id)}
           accessibilityRole="button"
-          accessibilityLabel={`${filter.name} filter. Range: ₹${activeValue.min} to ₹${activeValue.max}`}
+          accessibilityLabel={`${filter.name} filter. Range: ${currencySymbol}${activeValue.min} to ${currencySymbol}${activeValue.max}`}
           accessibilityHint={expandedFilters.has(filter.id) ? 'Double tap to collapse' : 'Double tap to expand'}
           accessibilityState={{ expanded: expandedFilters.has(filter.id) }}
         >
           <ThemedText style={styles.filterTitle}>{filter.name}</ThemedText>
           <ThemedText style={styles.rangeValue}>
-            ₹{activeValue.min} - ₹{activeValue.max}
+            {currencySymbol}{activeValue.min} - {currencySymbol}{activeValue.max}
           </ThemedText>
           <Ionicons
             name={expandedFilters.has(filter.id) ? 'chevron-up' : 'chevron-down'}
@@ -218,10 +221,10 @@ export default function CategoryFilters({
             <View style={styles.rangeContainer}>
               <View style={styles.rangeLabels}>
                 <ThemedText style={styles.rangeLabel}>
-                  Min: ₹{activeValue.min}
+                  Min: {currencySymbol}{activeValue.min}
                 </ThemedText>
                 <ThemedText style={styles.rangeLabel}>
-                  Max: ₹{activeValue.max}
+                  Max: {currencySymbol}{activeValue.max}
                 </ThemedText>
               </View>
               

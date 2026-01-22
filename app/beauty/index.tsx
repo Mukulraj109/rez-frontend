@@ -22,6 +22,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import storesApi from '@/services/storesApi';
 import productsApi from '@/services/productsApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -82,6 +83,8 @@ interface DisplayProduct {
 
 const BeautyPage: React.FC = () => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -351,9 +354,9 @@ const BeautyPage: React.FC = () => {
                     <Text style={styles.productBrand}>{product.brand}</Text>
                     <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
                     <View style={styles.priceRow}>
-                      <Text style={styles.productPrice}>₹{product.price.toLocaleString()}</Text>
+                      <Text style={styles.productPrice}>{currencySymbol}{product.price.toLocaleString()}</Text>
                       {product.discount > 0 && (
-                        <Text style={styles.originalPrice}>₹{product.originalPrice.toLocaleString()}</Text>
+                        <Text style={styles.originalPrice}>{currencySymbol}{product.originalPrice.toLocaleString()}</Text>
                       )}
                     </View>
                     <Text style={styles.productCashback}>{product.cashback} cashback</Text>

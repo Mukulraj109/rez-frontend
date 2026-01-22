@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import logger from '@/utils/logger';
+import { useRegion } from '@/contexts/RegionContext';
 
 /**
  * DeliveryInformation Component
@@ -55,6 +56,8 @@ export const DeliveryInformation: React.FC<DeliveryInformationProps> = ({
   productPrice,
   onPinCodeChange,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [pinCode, setPinCode] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [deliveryEstimate, setDeliveryEstimate] = useState<DeliveryEstimate | null>(null);
@@ -261,11 +264,11 @@ export const DeliveryInformation: React.FC<DeliveryInformationProps> = ({
               ) : (
                 <View style={styles.costRow}>
                   <ThemedText style={styles.estimateValue}>
-                    ₹{deliveryEstimate.shippingCost}
+                    {currencySymbol}{deliveryEstimate.shippingCost}
                   </ThemedText>
                   {deliveryEstimate.freeDeliveryThreshold && (
                     <ThemedText style={styles.thresholdText}>
-                      • Free above ₹{deliveryEstimate.freeDeliveryThreshold}
+                      • Free above {currencySymbol}{deliveryEstimate.freeDeliveryThreshold}
                     </ThemedText>
                   )}
                 </View>
@@ -318,7 +321,7 @@ export const DeliveryInformation: React.FC<DeliveryInformationProps> = ({
                           <ThemedText style={styles.freeBadgeText}>FREE</ThemedText>
                         </View>
                       ) : (
-                        <ThemedText style={styles.optionCost}>₹{option.cost}</ThemedText>
+                        <ThemedText style={styles.optionCost}>{currencySymbol}{option.cost}</ThemedText>
                       )}
                     </View>
                     <ThemedText style={styles.optionDescription}>

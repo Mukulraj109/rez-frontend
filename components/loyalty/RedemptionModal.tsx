@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/ThemedText';
 import { RewardItem, RedemptionResponse } from '@/types/loyaltyRedemption.types';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface RedemptionModalProps {
   visible: boolean;
@@ -38,6 +39,8 @@ export default function RedemptionModal({
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'confirm' | 'success'>('confirm');
   const [redemptionData, setRedemptionData] = useState<RedemptionResponse | null>(null);
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   if (!reward) return null;
 
@@ -84,7 +87,7 @@ export default function RedemptionModal({
         <View style={styles.detailRow}>
           <ThemedText style={styles.detailLabel}>Reward Value</ThemedText>
           <ThemedText style={styles.detailValue}>
-            {reward.type === 'percentageDiscount' ? `${reward.value}%` : `₹${reward.value}`}
+            {reward.type === 'percentageDiscount' ? `${reward.value}%` : `${currencySymbol}${reward.value}`}
           </ThemedText>
         </View>
 

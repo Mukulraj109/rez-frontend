@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import MenuItemCard, { MenuItem } from './MenuItemCard';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface RestaurantInfo {
   id: string;
@@ -322,6 +323,9 @@ const MenuPreOrderModal: React.FC<MenuPreOrderModalProps> = ({
   onAddItems,
   initialItems = [],
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
@@ -479,7 +483,7 @@ const MenuPreOrderModal: React.FC<MenuPreOrderModalProps> = ({
               <View style={styles.totalContainer}>
                 <View>
                   <Text style={styles.itemCount}>{totalItems} items</Text>
-                  <Text style={styles.totalAmount}>₹{totalAmount}</Text>
+                  <Text style={styles.totalAmount}>{currencySymbol}{totalAmount}</Text>
                 </View>
 
                 <TouchableOpacity

@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ProductRecommendation } from '@/services/recommendationApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface SimilarProductsProps {
   similarProducts: ProductRecommendation[];
@@ -91,6 +92,9 @@ interface ProductCardProps {
 }
 
 function ProductCard({ recommendation, onPress }: ProductCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   // Handle both nested (recommendation.product) and flat (recommendation) structures
   const product = recommendation.product || recommendation;
   const { reasons, similarity } = recommendation;
@@ -209,9 +213,9 @@ function ProductCard({ recommendation, onPress }: ProductCardProps) {
         )}
 
         <View style={styles.priceRow}>
-          <Text style={styles.price}>₹{price}</Text>
+          <Text style={styles.price}>{currencySymbol}{price}</Text>
           {originalPrice && originalPrice > price && (
-            <Text style={styles.originalPrice}>₹{originalPrice}</Text>
+            <Text style={styles.originalPrice}>{currencySymbol}{originalPrice}</Text>
           )}
         </View>
 
@@ -235,7 +239,7 @@ function ProductCard({ recommendation, onPress }: ProductCardProps) {
           </View>
           <View style={styles.rewardItem}>
             <Ionicons name="card-outline" size={12} color="#F59E0B" />
-            <Text style={styles.cashbackText}>₹{cashbackAmount}</Text>
+            <Text style={styles.cashbackText}>{currencySymbol}{cashbackAmount}</Text>
           </View>
         </View>
       </View>

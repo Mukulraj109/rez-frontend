@@ -16,10 +16,13 @@ import { Alert } from 'react-native';
 import { useCart } from '@/contexts/CartContext';
 import { useSocket } from '@/contexts/SocketContext';
 import { formatPrice } from '@/utils/priceFormatter';
+import { useRegion } from '@/contexts/RegionContext';
 
 export function CartSocketIntegration() {
   const { state: cartState, actions: cartActions } = useCart();
   const { onStockUpdate, onOutOfStock, onPriceUpdate } = useSocket();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   useEffect(() => {
 
@@ -103,7 +106,7 @@ export function CartSocketIntegration() {
       if (priceChange === 0) return; // No change, don't notify
 
       const absChange = Math.abs(priceChange);
-      const formattedChange = formatPrice(absChange, 'INR') || `₹${absChange.toFixed(2)}`;
+      const formattedChange = formatPrice(absChange, 'INR') || `${currencySymbol}${absChange.toFixed(2)}`;
       const priceChangeText = priceChange > 0
         ? `increased by ${formattedChange}`
         : `decreased by ${formattedChange}`;

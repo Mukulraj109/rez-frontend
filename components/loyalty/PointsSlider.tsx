@@ -8,6 +8,7 @@ import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@/components/common/CrossPlatformSlider';
 import { ThemedText } from '@/components/ThemedText';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface PointsSliderProps {
   availablePoints: number;
@@ -22,6 +23,8 @@ export default function PointsSlider({
   pointValue,
   onValueChange,
 }: PointsSliderProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const maxUsablePoints = Math.min(availablePoints, maxPointsForOrder);
   const [selectedPoints, setSelectedPoints] = useState(0);
   const discount = selectedPoints * pointValue;
@@ -72,7 +75,7 @@ export default function PointsSlider({
         </View>
 
         <View style={styles.selectedDiscount}>
-          <ThemedText style={styles.discountValue}>₹{discount.toFixed(2)}</ThemedText>
+          <ThemedText style={styles.discountValue}>{currencySymbol}{discount.toFixed(2)}</ThemedText>
           <ThemedText style={styles.discountLabel}>discount</ThemedText>
         </View>
       </View>

@@ -25,6 +25,7 @@ import { ThemedView } from '@/components/ThemedView';
 import paymentService, { PaymentMethod, PaymentResponse } from '@/services/paymentService';
 import PaymentValidator from '@/services/paymentValidation';
 import financialServicesApi, { FinancialService } from '@/services/financialServicesApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,6 +33,8 @@ interface PaymentPageProps {}
 
 export default function PaymentPage() {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const params = useLocalSearchParams();
   const amount = Number(params.amount) || 5000;
   const currency = (params.currency as string) || 'INR';
@@ -174,7 +177,7 @@ export default function PaymentPage() {
                      serviceType === 'recharge' ? 'recharge' :
                      serviceType === 'ott' ? 'subscription' :
                      serviceType === 'gold' ? 'gold purchase' :
-                     serviceType === 'insurance' ? 'insurance' : 'payment'} of ₹${amount.toLocaleString()} has been processed successfully.`
+                     serviceType === 'insurance' ? 'insurance' : 'payment'} of ${currencySymbol}${amount.toLocaleString()} has been processed successfully.`
             : `Your payment of ${currency} ${amount.toLocaleString()} has been processed successfully.`;
           
           Alert.alert(
@@ -237,7 +240,7 @@ export default function PaymentPage() {
                      serviceType === 'recharge' ? 'recharge' :
                      serviceType === 'ott' ? 'subscription' :
                      serviceType === 'gold' ? 'gold purchase' :
-                     serviceType === 'insurance' ? 'insurance' : 'payment'} of ₹${amount.toLocaleString()} has been processed successfully.`
+                     serviceType === 'insurance' ? 'insurance' : 'payment'} of ${currencySymbol}${amount.toLocaleString()} has been processed successfully.`
             : `Your payment of ${currency} ${amount.toLocaleString()} has been processed successfully.`;
           
           Alert.alert(
@@ -282,7 +285,7 @@ export default function PaymentPage() {
                      serviceType === 'recharge' ? 'recharge' :
                      serviceType === 'ott' ? 'subscription' :
                      serviceType === 'gold' ? 'gold purchase' :
-                     serviceType === 'insurance' ? 'insurance' : 'payment'} of ₹${amount.toLocaleString()} has been processed successfully.`
+                     serviceType === 'insurance' ? 'insurance' : 'payment'} of ${currencySymbol}${amount.toLocaleString()} has been processed successfully.`
             : `Your payment of ${currency} ${amount.toLocaleString()} has been processed successfully.`;
           
           Alert.alert(
@@ -794,7 +797,7 @@ export default function PaymentPage() {
           )}
           <ThemedText style={styles.amountLabel}>Amount to Pay</ThemedText>
           <ThemedText style={styles.amountValue}>
-            ₹{amount.toLocaleString()}
+            {currencySymbol}{amount.toLocaleString()}
           </ThemedText>
           {isFinancialService && financialService?.cashback && (
             <ThemedText style={styles.cashbackInfo}>

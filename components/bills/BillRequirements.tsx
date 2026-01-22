@@ -4,8 +4,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 export default function BillRequirements() {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const requirements = [
     {
       icon: 'image-outline',
@@ -28,7 +32,7 @@ export default function BillRequirements() {
     {
       icon: 'cash-outline',
       title: 'Amount Range',
-      description: 'Minimum ₹50, Maximum ₹1,00,000 per bill',
+      description: `Minimum ${currencySymbol}50, Maximum ${currencySymbol}1,00,000 per bill`,
       color: '#9C27B0',
     },
     {

@@ -20,6 +20,7 @@ import {
   PaymentStoreCardProps,
   SEARCH_ANIMATIONS,
 } from '@/types/paymentStoreSearch.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -90,6 +91,8 @@ export const PaymentStoreCard: React.FC<PaymentStoreCardProps> = ({
   variant = 'full',
   showCTA = true,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const scale = useSharedValue(1);
 
   const handlePressIn = useCallback(() => {
@@ -320,7 +323,7 @@ export const PaymentStoreCard: React.FC<PaymentStoreCardProps> = ({
             </Text>
             {store.operationalInfo?.freeDeliveryAbove && (
               <Text style={styles.freeDeliveryText}>
-                Free delivery above ₹{store.operationalInfo.freeDeliveryAbove}
+                Free delivery above {currencySymbol}{store.operationalInfo.freeDeliveryAbove}
               </Text>
             )}
           </View>

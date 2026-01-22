@@ -19,6 +19,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RecentlyViewedItem } from '@/types/recentlyViewed.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface RecentlyViewedSectionProps {
   items: RecentlyViewedItem[];
@@ -35,9 +36,11 @@ const IMAGE_HEIGHT = 140;
 const RecentlyViewedCard = memo(({
   item,
   onPress,
+  currencySymbol,
 }: {
   item: RecentlyViewedItem;
   onPress: () => void;
+  currencySymbol: string;
 }) => {
   const formattedRating = item.rating.value > 0 ? item.rating.value.toFixed(1) : '0.0';
   const hasCashback = item.cashbackPercentage && item.cashbackPercentage > 0;
@@ -110,11 +113,11 @@ const RecentlyViewedCard = memo(({
         {item.type === 'product' && item.price && item.price.current > 0 ? (
           <View style={styles.priceRow}>
             <Text style={styles.currentPrice}>
-              ₹{item.price.current.toLocaleString('en-IN')}
+              {currencySymbol}{item.price.current.toLocaleString('en-IN')}
             </Text>
             {item.price.original && item.price.original > item.price.current && (
               <Text style={styles.originalPrice}>
-                ₹{item.price.original.toLocaleString('en-IN')}
+                {currencySymbol}{item.price.original.toLocaleString('en-IN')}
               </Text>
             )}
           </View>
@@ -144,6 +147,8 @@ const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
   maxItems = 10,
 }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // Handle item press - navigate to appropriate detail page
   const handleItemPress = useCallback((item: RecentlyViewedItem) => {
@@ -205,6 +210,7 @@ const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
               key={`${item.type}-${item.id}`}
               item={item}
               onPress={() => handleItemPress(item)}
+              currencySymbol={currencySymbol}
             />
           ))}
         </ScrollView>

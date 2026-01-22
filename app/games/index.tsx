@@ -119,7 +119,6 @@ export default function GamesPage() {
       loadUserData();
     } else if (!authState.isLoading && !authState.isAuthenticated) {
       // Only redirect if auth check is complete and user is not authenticated
-      console.log('[GAMES] User not authenticated, redirecting to sign-in...');
       router.replace({
         pathname: '/sign-in',
         params: { returnTo: '/games' },
@@ -149,7 +148,6 @@ export default function GamesPage() {
             const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
             const actualWalletCoins = rezCoin?.amount || 0;
             setUserCoins(actualWalletCoins);
-            console.log(`✅ [GAMES] Wallet balance loaded: ${actualWalletCoins}`);
           } else {
             // Fallback: sync gamification context from wallet
             console.warn('⚠️ [GAMES] Wallet API failed, syncing from gamification context...');

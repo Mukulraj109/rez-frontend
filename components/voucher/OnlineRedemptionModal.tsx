@@ -18,6 +18,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { ThemedText } from '@/components/ThemedText';
 import logger from '@/utils/logger';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -64,6 +65,8 @@ export const OnlineRedemptionModal: React.FC<OnlineRedemptionModalProps> = ({
   onClose,
   onMarkAsUsed,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [copySuccess, setCopySuccess] = useState(false);
   const [marking, setMarking] = useState(false);
 
@@ -163,7 +166,7 @@ export const OnlineRedemptionModal: React.FC<OnlineRedemptionModalProps> = ({
 
     Alert.alert(
       'Confirm Redemption',
-      `Have you successfully redeemed this ₹${voucher.denomination} voucher?\n\nThis action cannot be undone.`,
+      `Have you successfully redeemed this ${currencySymbol}${voucher.denomination} voucher?\n\nThis action cannot be undone.`,
       [
         { text: 'Not Yet', style: 'cancel' },
         {
@@ -267,7 +270,7 @@ export const OnlineRedemptionModal: React.FC<OnlineRedemptionModalProps> = ({
               </LinearGradient>
               <ThemedText style={styles.brandName}>{voucher.brand.name}</ThemedText>
               <ThemedText style={styles.denominationText}>
-                ₹{voucher.denomination}
+                {currencySymbol}{voucher.denomination}
               </ThemedText>
             </View>
 

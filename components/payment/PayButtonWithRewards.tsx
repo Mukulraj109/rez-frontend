@@ -10,6 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '@/constants/DesignTokens';
 import { RewardsPreview } from '@/types/storePayment.types';
+import { useRegion } from '@/contexts/RegionContext';
+
 
 interface PayButtonWithRewardsProps {
   amountToPay: number;
@@ -26,6 +28,8 @@ export const PayButtonWithRewards: React.FC<PayButtonWithRewardsProps> = ({
   disabled = false,
   onPress,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const isFreePayment = amountToPay === 0;
   const hasRewards = rewardsPreview && (rewardsPreview.cashback > 0 || rewardsPreview.coinsToEarn > 0);
 
@@ -38,7 +42,7 @@ export const PayButtonWithRewards: React.FC<PayButtonWithRewardsProps> = ({
           <Text style={styles.rewardsText}>
             You'll earn{' '}
             {rewardsPreview.cashback > 0 && (
-              <Text style={styles.rewardsHighlight}>₹{rewardsPreview.cashback} cashback</Text>
+              <Text style={styles.rewardsHighlight}>{currencySymbol}{rewardsPreview.cashback} cashback</Text>
             )}
             {rewardsPreview.cashback > 0 && rewardsPreview.coinsToEarn > 0 && ' + '}
             {rewardsPreview.coinsToEarn > 0 && (
@@ -53,7 +57,7 @@ export const PayButtonWithRewards: React.FC<PayButtonWithRewardsProps> = ({
       <View style={styles.buttonRow}>
         <View style={styles.amountInfo}>
           <Text style={styles.amountLabel}>Total</Text>
-          <Text style={styles.amountValue}>₹{amountToPay.toFixed(0)}</Text>
+          <Text style={styles.amountValue}>{currencySymbol}{amountToPay.toFixed(0)}</Text>
         </View>
 
         <TouchableOpacity
@@ -79,7 +83,7 @@ export const PayButtonWithRewards: React.FC<PayButtonWithRewardsProps> = ({
             ) : (
               <>
                 <Text style={styles.buttonText}>
-                  {isFreePayment ? 'Confirm Payment' : `Pay ₹${amountToPay.toFixed(0)}`}
+                  {isFreePayment ? 'Confirm Payment' : `Pay ${currencySymbol}${amountToPay.toFixed(0)}`}
                 </Text>
                 {!isFreePayment && hasRewards && (
                   <View style={styles.earnBadge}>

@@ -8,12 +8,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import homeServicesApi, { HomeServiceCategory, HomeService, HomeServicesStats } from '@/services/homeServicesApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const COLORS = { white: '#FFFFFF', navy: '#0B2240', gray50: '#F9FAFB', gray100: '#F3F4F6', gray200: '#E5E7EB', gray600: '#6B7280', green500: '#22C55E', blue500: '#3B82F6', amber500: '#F59E0B' };
 
 const HomeServicesPage: React.FC = () => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [categories, setCategories] = useState<HomeServiceCategory[]>([]);
   const [featuredServices, setFeaturedServices] = useState<HomeService[]>([]);
   const [stats, setStats] = useState<HomeServicesStats | null>(null);
@@ -143,7 +146,7 @@ const HomeServicesPage: React.FC = () => {
                   <View style={styles.serviceInfo}>
                     <Text style={styles.serviceName}>{service.name}</Text>
                     <Text style={styles.serviceType}>{categoryName}</Text>
-                    <Text style={styles.servicePrice}>From ₹{price}</Text>
+                    <Text style={styles.servicePrice}>From {currencySymbol}{price}</Text>
                   </View>
                 </TouchableOpacity>
               );

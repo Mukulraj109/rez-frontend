@@ -249,7 +249,6 @@ export default function DailyCheckInPage() {
       setShowSubmitModal(true);
       setSelectedPoster(null);
     } catch (error) {
-      console.log('Share error:', error);
     }
   };
 

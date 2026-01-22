@@ -23,6 +23,7 @@ import DealDetailsModal from '@/components/DealDetailsModal';
 import DealList from '@/components/DealList';
 import realOffersApi from '@/services/realOffersApi';
 import DealsListSkeleton from '@/components/skeletons/DealsListSkeleton';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Premium Glass Design Tokens - Green & Gold Theme
 const GLASS = {
@@ -50,6 +51,8 @@ const COLORS = {
 };
 
 export default function WalkInDealsModal({ visible, onClose, deals = [], storeId }: DealModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -161,10 +164,10 @@ export default function WalkInDealsModal({ visible, onClose, deals = [], storeId
           // Build terms array from restrictions and other fields
           const terms: string[] = [];
           if (deal.restrictions?.minOrderValue) {
-            terms.push(`Minimum order: ₹${deal.restrictions.minOrderValue}`);
+            terms.push(`Minimum order: ${currencySymbol}${deal.restrictions.minOrderValue}`);
           }
           if (deal.restrictions?.maxDiscountAmount) {
-            terms.push(`Max discount: ₹${deal.restrictions.maxDiscountAmount}`);
+            terms.push(`Max discount: ${currencySymbol}${deal.restrictions.maxDiscountAmount}`);
           }
           if (deal.restrictions?.usageLimitPerUser) {
             terms.push(`Limit: ${deal.restrictions.usageLimitPerUser} per user`);

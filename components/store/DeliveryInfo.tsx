@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface DeliveryDetails {
   estimatedTime?: string;
@@ -39,6 +40,8 @@ const DeliveryInfo: React.FC<DeliveryInfoProps> = ({
   deliveryInfo,
   storeType = 'product',
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [showAllAreas, setShowAllAreas] = useState(false);
   const [showDeliveryDate, setShowDeliveryDate] = useState(false);
 
@@ -182,7 +185,7 @@ const DeliveryInfo: React.FC<DeliveryInfoProps> = ({
               <Text style={styles.expressDeliveryDetails}>
                 Get it in {deliveryInfo.expressDelivery.time} for{' '}
                 {deliveryInfo.expressDelivery.extraCharge
-                  ? `₹${deliveryInfo.expressDelivery.extraCharge} extra`
+                  ? `${currencySymbol}${deliveryInfo.expressDelivery.extraCharge} extra`
                   : 'free'}
               </Text>
             </View>
@@ -199,7 +202,7 @@ const DeliveryInfo: React.FC<DeliveryInfoProps> = ({
             <Text style={styles.infoValue}>
               {deliveryInfo.deliveryFee === 0
                 ? 'FREE'
-                : `₹${deliveryInfo.deliveryFee}`}
+                : `${currencySymbol}${deliveryInfo.deliveryFee}`}
             </Text>
           </View>
 
@@ -207,7 +210,7 @@ const DeliveryInfo: React.FC<DeliveryInfoProps> = ({
             <View style={styles.freeDeliveryBanner}>
               <Ionicons name="gift-outline" size={16} color="#10B981" />
               <Text style={styles.freeDeliveryText}>
-                Free delivery on orders above ₹{deliveryInfo.freeDeliveryAbove}
+                Free delivery on orders above {currencySymbol}{deliveryInfo.freeDeliveryAbove}
               </Text>
             </View>
           )}

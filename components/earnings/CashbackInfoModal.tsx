@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import EarnSocialData from '@/data/earnSocialData';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -37,6 +38,9 @@ export default function CashbackInfoModal({
   onUpload,
   orderInfo,
 }: CashbackInfoModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   if (!orderInfo) return null;
 
   const cashbackPercent = 5;
@@ -118,10 +122,10 @@ export default function CashbackInfoModal({
           <View style={styles.earningsCard}>
             <ThemedText style={styles.earningsLabel}>Estimated Cashback</ThemedText>
             <ThemedText style={styles.earningsAmount}>
-              ₹{estimatedCashback.toFixed(2)}
+              {currencySymbol}{estimatedCashback.toFixed(2)}
             </ThemedText>
             <ThemedText style={styles.earningsNote}>
-              Based on order total of ₹{orderInfo.totalAmount.toFixed(2)}
+              Based on order total of {currencySymbol}{orderInfo.totalAmount.toFixed(2)}
             </ThemedText>
           </View>
 

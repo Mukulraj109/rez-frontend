@@ -16,6 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { MallOffer, OfferBadge } from '../../../types/mall.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface MallOfferCardProps {
   offer: MallOffer;
@@ -41,6 +42,8 @@ const MallOfferCard: React.FC<MallOfferCardProps> = ({
   onPress,
   width = 280,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   // Calculate days remaining
   const validUntil = new Date(offer.validUntil);
   const now = new Date();
@@ -54,7 +57,7 @@ const MallOfferCard: React.FC<MallOfferCardProps> = ({
   // Value display
   const valueDisplay = offer.valueType === 'percentage'
     ? `${offer.value}% off`
-    : `₹${offer.value} off`;
+    : `${currencySymbol}${offer.value} off`;
 
   return (
     <TouchableOpacity

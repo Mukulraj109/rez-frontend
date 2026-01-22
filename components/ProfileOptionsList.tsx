@@ -3,15 +3,16 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ProfileOption, ProfileOptionsListProps } from "@/types/profile";
+import { useRegion } from "@/contexts/RegionContext";
 
 // Dummy data (Replace with backend data later)
-const defaultOptionsData: ProfileOption[] = [
+const getDefaultOptionsData = (currencySymbol: string): ProfileOption[] => [
   {
     id: "1",
     icon: "wallet-outline",
     title: "Wallet",
     subtitle: "Complete milestones and tasks for the exciting rewards",
-    rightLabel: "₹2,075",
+    rightLabel: `${currencySymbol}2,075`,
     badgeColor: "#38C172",
   },
   {
@@ -41,10 +42,14 @@ const defaultOptionsData: ProfileOption[] = [
 ];
 
 const ProfileOptionsList: React.FC<ProfileOptionsListProps> = ({
-  options = defaultOptionsData,
+  options,
   onOptionPress,
   isLoading = false
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+  const defaultOptionsData = getDefaultOptionsData(currencySymbol);
+  const optionsToRender = options || defaultOptionsData;
   const renderItem = ({ item }: { item: ProfileOption }) => (
     <TouchableOpacity 
       style={[styles.itemContainer, item.disabled && styles.disabledItem]} 
@@ -95,7 +100,7 @@ const ProfileOptionsList: React.FC<ProfileOptionsListProps> = ({
   return (
     <View style={styles.container}>
       <FlatList
-        data={options}
+        data={optionsToRender}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         scrollEnabled={false}

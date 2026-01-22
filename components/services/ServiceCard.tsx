@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
@@ -42,6 +43,9 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   onBookPress,
   onPress,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const formatDuration = (minutes: number): string => {
     if (minutes < 60) {
       return `${minutes} mins`;
@@ -171,7 +175,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
         <View style={styles.bottomRow}>
           <View style={styles.priceContainer}>
             <Text style={styles.priceLabel}>Starting from</Text>
-            <Text style={styles.price}>₹{service.price.toLocaleString()}</Text>
+            <Text style={styles.price}>{currencySymbol}{service.price.toLocaleString()}</Text>
           </View>
 
           <TouchableOpacity

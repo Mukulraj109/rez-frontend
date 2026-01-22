@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { PriceSectionProps } from '@/types/cart';
+import { useRegion } from '@/contexts/RegionContext';
 
 export default function PriceSection({
   totalPrice,
@@ -14,6 +15,8 @@ export default function PriceSection({
   const { width } = Dimensions.get('window');
   const isSmallScreen = width < 360;
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const { getCurrencySymbol, formatPrice } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const handleBuyNowPress = () => {
     Animated.sequence([
@@ -52,7 +55,7 @@ export default function PriceSection({
             styles.totalPrice,
             { fontSize: isSmallScreen ? 20 : 22 }
           ]}>
-            ₹{formattedPrice}
+            {currencySymbol}{formattedPrice}
           </ThemedText>
           {itemCount > 0 && (
             <ThemedText style={[
@@ -74,7 +77,7 @@ export default function PriceSection({
             disabled={loading || totalPrice === 0}
             activeOpacity={0.9}
             style={styles.buyNowButton}
-            accessibilityLabel={loading ? "Processing order" : `Proceed to checkout with ${itemCount} item${itemCount !== 1 ? 's' : ''} for ₹${formattedPrice}`}
+            accessibilityLabel={loading ? "Processing order" : `Proceed to checkout with ${itemCount} item${itemCount !== 1 ? 's' : ''} for ${currencySymbol}${formattedPrice}`}
             accessibilityRole="button"
             accessibilityHint="Double tap to proceed to checkout and complete your purchase"
             accessibilityState={{ disabled: loading || totalPrice === 0, busy: loading }}

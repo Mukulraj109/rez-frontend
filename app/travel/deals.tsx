@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import travelApi, { TravelService } from '@/services/travelApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const COLORS = {
   white: '#FFFFFF',
@@ -33,6 +34,8 @@ const COLORS = {
 
 const HotDealsPage: React.FC = () => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deals, setDeals] = useState<TravelService[]>([]);
@@ -153,7 +156,7 @@ const HotDealsPage: React.FC = () => {
                       <Text style={styles.dealCategory}>{deal.serviceCategory?.name || 'Travel'}</Text>
                     </View>
                     <Text style={styles.dealPrice}>
-                      {price > 0 ? `From ₹${price.toLocaleString('en-IN')}` : 'Price on request'}
+                      {price > 0 ? `From ${currencySymbol}${price.toLocaleString('en-IN')}` : 'Price on request'}
                     </Text>
                   </View>
                 </TouchableOpacity>

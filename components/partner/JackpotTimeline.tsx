@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { JackpotMilestone } from '@/types/partner.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface JackpotTimelineProps {
   milestones: JackpotMilestone[];
@@ -19,11 +20,13 @@ interface JackpotTimelineProps {
 
 const { width } = Dimensions.get('window');
 
-export default function JackpotTimeline({ 
-  milestones, 
+export default function JackpotTimeline({
+  milestones,
   currentSpent = 0, // Fixed: Don't hardcode to 18500, use actual value from props
-  onMilestonePress 
+  onMilestonePress
 }: JackpotTimelineProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   // Normalize milestone data (backend sends spendAmount, frontend expects amount)
   const normalizedMilestones = milestones.map(m => ({
     ...m,
@@ -77,7 +80,7 @@ export default function JackpotTimeline({
               isActive && styles.activeMilestoneAmount,
               isNext && styles.nextMilestoneAmount
             ]}>
-              ₹{milestone.amount / 1000}K
+              {currencySymbol}{milestone.amount / 1000}K
             </Text>
             <Text style={[
               styles.milestoneTitle,
@@ -131,10 +134,10 @@ export default function JackpotTimeline({
       {/* Current Progress */}
       <View style={styles.progressContainer}>
         <Text style={styles.progressText}>
-          Current Shopping: <Text style={styles.progressAmount}>₹{currentSpent.toLocaleString()}</Text>
+          Current Shopping: <Text style={styles.progressAmount}>{currencySymbol}{currentSpent.toLocaleString()}</Text>
         </Text>
         <Text style={styles.progressSubtext}>
-          Shop for ₹{((sortedMilestones.find(m => currentSpent < m.amount)?.amount || maxAmount) - currentSpent).toLocaleString()} & More to win our jackpot
+          Shop for {currencySymbol}{((sortedMilestones.find(m => currentSpent < m.amount)?.amount || maxAmount) - currentSpent).toLocaleString()} & More to win our jackpot
         </Text>
       </View>
 

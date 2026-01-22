@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import * as Clipboard from 'expo-clipboard';
+import { useRegion } from '@/contexts/RegionContext';
 
 /**
  * ProductShareModal Component
@@ -58,6 +59,8 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
   referralCode,
   onShareComplete,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isCopied, setIsCopied] = useState(false);
 
   // Generate share URL with referral code
@@ -68,7 +71,7 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
 
   // Generate share message
   const generateShareMessage = (): string => {
-    return `Check out this amazing product!\n\n${productName}\n₹${productPrice.toLocaleString()}\n\n${generateShareUrl()}`;
+    return `Check out this amazing product!\n\n${productName}\n${currencySymbol}${productPrice.toLocaleString()}\n\n${generateShareUrl()}`;
   };
 
   /**
@@ -289,7 +292,7 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
               <ThemedText style={styles.productName} numberOfLines={2}>
                 {productName}
               </ThemedText>
-              <ThemedText style={styles.productPrice}>₹{productPrice.toLocaleString()}</ThemedText>
+              <ThemedText style={styles.productPrice}>{currencySymbol}{productPrice.toLocaleString()}</ThemedText>
             </View>
           </View>
 

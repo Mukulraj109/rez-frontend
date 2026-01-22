@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
 import { useRelatedProducts, RelatedProduct } from '@/hooks/useRelatedProducts';
+import { useRegion } from '@/contexts/RegionContext';
 
 /**
  * RelatedProductsSection Component
@@ -143,6 +144,8 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, isFirst, isLast }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   // Safely parse rating and price as numbers
   const rating = typeof product.rating === 'number' ? product.rating : parseFloat(product.rating as any) || 0;
   const price = typeof product.price === 'number' ? product.price : parseFloat(product.price as any) || 0;
@@ -213,10 +216,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, isFirst, is
 
         {/* Price */}
         <View style={styles.priceRow}>
-          <ThemedText style={styles.price}>₹{price.toLocaleString()}</ThemedText>
+          <ThemedText style={styles.price}>{currencySymbol}{price.toLocaleString()}</ThemedText>
           {originalPrice > 0 && (
             <ThemedText style={styles.originalPrice}>
-              ₹{originalPrice.toLocaleString()}
+              {currencySymbol}{originalPrice.toLocaleString()}
             </ThemedText>
           )}
         </View>

@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { EventItem } from '@/types/homepage.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_WIDTH = (screenWidth - 48) / 2; // 16px padding on each side + 16px gap
@@ -26,6 +27,9 @@ interface EventGridCardProps {
 }
 
 const EventGridCard: React.FC<EventGridCardProps> = ({ event, onPress }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const handlePress = useCallback(() => {
     onPress(event);
   }, [event, onPress]);
@@ -48,7 +52,7 @@ const EventGridCard: React.FC<EventGridCardProps> = ({ event, onPress }) => {
     if (event.price?.isFree) {
       return 'Free';
     }
-    return `${event.price?.currency || '₹'}${event.price?.amount || 0}`;
+    return `${event.price?.currency || currencySymbol}${event.price?.amount || 0}`;
   }, [event.price]);
 
   const isFree = event.price?.isFree;

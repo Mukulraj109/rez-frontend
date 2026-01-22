@@ -15,9 +15,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 const CashStoreFooterCTA: React.FC = () => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const handleStartShopping = () => {
     router.replace('/(tabs)');
@@ -54,7 +57,7 @@ const CashStoreFooterCTA: React.FC = () => {
           {/* Stats Row */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>₹2Cr+</Text>
+              <Text style={styles.statValue}>{currencySymbol}2Cr+</Text>
               <Text style={styles.statLabel}>Cashback Given</Text>
             </View>
             <View style={styles.statDivider} />

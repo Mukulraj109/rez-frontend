@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/useToast';
 import ProductVariantModal, { VariantSelection } from '@/components/cart/ProductVariantModal';
 import productsService from '@/services/productsApi';
 import CoinIcon from '@/components/ui/CoinIcon';
+import { useRegion } from '@/contexts/RegionContext';
 
 export interface BundleProduct extends ProductItem {
   bundleDiscount?: number; // Additional discount when bundled
@@ -33,6 +34,8 @@ export default function FrequentlyBoughtTogether({
   storeId,
   onBundleAdded,
 }: FrequentlyBoughtTogetherProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [bundleProducts, setBundleProducts] = useState<BundleProduct[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -486,9 +489,9 @@ export default function FrequentlyBoughtTogether({
           </Text>
           <View style={styles.priceColumn}>
             {originalTotal > total && (
-              <Text style={styles.originalPrice}>₹{originalTotal.toFixed(0)}</Text>
+              <Text style={styles.originalPrice}>{currencySymbol}{originalTotal.toFixed(0)}</Text>
             )}
-            <Text style={styles.totalPrice}>₹{total.toFixed(0)}</Text>
+            <Text style={styles.totalPrice}>{currencySymbol}{total.toFixed(0)}</Text>
           </View>
         </View>
 
@@ -496,7 +499,7 @@ export default function FrequentlyBoughtTogether({
           <View style={styles.savingsRow}>
             <Ionicons name="pricetag" size={14} color="#10B981" />
             <Text style={styles.savingsAmount}>
-              You save ₹{savings.toFixed(0)} ({savingsPercent}% off)
+              You save {currencySymbol}{savings.toFixed(0)} ({savingsPercent}% off)
             </Text>
           </View>
         )}
@@ -559,6 +562,8 @@ function BundleProductCard({
   isCurrentProduct = false,
   bundleDiscount,
 }: BundleProductCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const finalPrice = bundleDiscount
     ? product.price.current * (1 - bundleDiscount / 100)
     : product.price.current;
@@ -600,9 +605,9 @@ function BundleProductCard({
 
         {/* Price */}
         <View style={styles.priceInfo}>
-          <Text style={styles.productPrice}>₹{finalPrice.toFixed(0)}</Text>
+          <Text style={styles.productPrice}>{currencySymbol}{finalPrice.toFixed(0)}</Text>
           {bundleDiscount && bundleDiscount > 0 && (
-            <Text style={styles.productOriginalPrice}>₹{product.price.current.toFixed(0)}</Text>
+            <Text style={styles.productOriginalPrice}>{currencySymbol}{product.price.current.toFixed(0)}</Text>
           )}
         </View>
 

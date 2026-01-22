@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface DeliveryInfo {
   estimatedDate: string;
@@ -14,6 +15,8 @@ interface DeliveryEstimatorProps {
 }
 
 export default function DeliveryEstimator({ productId, onCheckDelivery }: DeliveryEstimatorProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [pincode, setPincode] = useState('');
   const [loading, setLoading] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo | null>(null);
@@ -98,7 +101,7 @@ export default function DeliveryEstimator({ productId, onCheckDelivery }: Delive
             {deliveryInfo.isFree ? (
               <Text style={styles.freeDelivery}>FREE Delivery</Text>
             ) : (
-              `₹${deliveryInfo.charge} delivery charge`
+              `${currencySymbol}${deliveryInfo.charge} delivery charge`
             )}
           </Text>
           <Text style={styles.message}>{deliveryInfo.message}</Text>

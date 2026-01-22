@@ -19,6 +19,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { ThemedText } from '@/components/ThemedText';
 import referralService from '@/services/referralApi';
 import type { ShareTemplate } from '@/types/referral.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ShareModalProps {
   visible: boolean;
@@ -32,43 +33,43 @@ interface ShareModalProps {
   onClose: () => void;
 }
 
-const SHARE_PLATFORMS: ShareTemplate[] = [
+const getSharePlatforms = (currencySymbol: string): ShareTemplate[] => [
   {
     type: 'whatsapp',
     icon: 'logo-whatsapp',
     color: '#25D366',
-    message: '🎉 Join me on REZ and get ₹30 off your first order! Use my code: {CODE}\n\n✨ Shop from top brands\n💰 Earn rewards\n\n{LINK}',
+    message: `🎉 Join me on REZ and get ${currencySymbol}30 off your first order! Use my code: {CODE}\n\n✨ Shop from top brands\n💰 Earn rewards\n\n{LINK}`,
   },
   {
     type: 'facebook',
     icon: 'logo-facebook',
     color: '#1877f2',
-    message: 'Just discovered REZ - amazing deals! 🛍️\n\nUse my code {CODE} for ₹30 off!\n\n{LINK}',
+    message: `Just discovered REZ - amazing deals! 🛍️\n\nUse my code {CODE} for ${currencySymbol}30 off!\n\n{LINK}`,
   },
   {
     type: 'instagram',
     icon: 'logo-instagram',
     color: '#E4405F',
-    message: '💎 Shop smarter with REZ!\n\nCode: {CODE}\nGet ₹30 off!\n\n{LINK}',
+    message: `💎 Shop smarter with REZ!\n\nCode: {CODE}\nGet ${currencySymbol}30 off!\n\n{LINK}`,
   },
   {
     type: 'telegram',
     icon: 'paper-plane',
     color: '#0088cc',
-    message: '🚀 Check out REZ!\n\nUse code {CODE} for ₹30 off.\n\n{LINK}',
+    message: `🚀 Check out REZ!\n\nUse code {CODE} for ${currencySymbol}30 off.\n\n{LINK}`,
   },
   {
     type: 'sms',
     icon: 'chatbox',
     color: '#10b981',
-    message: 'Hey! Join REZ and get ₹30 off. Code: {CODE}\n{LINK}',
+    message: `Hey! Join REZ and get ${currencySymbol}30 off. Code: {CODE}\n{LINK}`,
   },
   {
     type: 'email',
     icon: 'mail',
     color: '#6366f1',
-    subject: 'Get ₹30 off on REZ - My referral gift!',
-    message: 'Hi!\n\nI\'ve been using REZ to shop from local stores. Use my code {CODE} for ₹30 off!\n\n{LINK}',
+    subject: `Get ${currencySymbol}30 off on REZ - My referral gift!`,
+    message: `Hi!\n\nI've been using REZ to shop from local stores. Use my code {CODE} for ${currencySymbol}30 off!\n\n{LINK}`,
   },
 ];
 
@@ -79,6 +80,9 @@ export default function ShareModal({
   currentTierProgress,
   onClose,
 }: ShareModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+  const SHARE_PLATFORMS = getSharePlatforms(currencySymbol);
   const [isCopied, setIsCopied] = useState(false);
 
   // Handle copy code

@@ -8,6 +8,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '@/constants/DesignTokens';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface OrderSummaryCardProps {
   billAmount: number;
@@ -24,6 +25,8 @@ export const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({
   coinsApplied = 0,
   showSmartSavingsHint = true,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const orderTotal = billAmount + taxesAndFees;
   const totalSavings = discountAmount + coinsApplied;
   const amountToPay = Math.max(0, orderTotal - totalSavings);
@@ -34,13 +37,13 @@ export const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({
 
       <View style={styles.row}>
         <Text style={styles.label}>Bill Amount</Text>
-        <Text style={styles.value}>₹{billAmount.toFixed(2)}</Text>
+        <Text style={styles.value}>{currencySymbol}{billAmount.toFixed(2)}</Text>
       </View>
 
       {taxesAndFees > 0 && (
         <View style={styles.row}>
           <Text style={styles.label}>Taxes & Fees</Text>
-          <Text style={styles.value}>₹{taxesAndFees.toFixed(2)}</Text>
+          <Text style={styles.value}>{currencySymbol}{taxesAndFees.toFixed(2)}</Text>
         </View>
       )}
 
@@ -48,7 +51,7 @@ export const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({
 
       <View style={styles.row}>
         <Text style={styles.totalLabel}>Order Total</Text>
-        <Text style={styles.totalValue}>₹{orderTotal.toFixed(2)}</Text>
+        <Text style={styles.totalValue}>{currencySymbol}{orderTotal.toFixed(2)}</Text>
       </View>
 
       {showSmartSavingsHint && totalSavings === 0 && (
@@ -64,7 +67,7 @@ export const OrderSummaryCard: React.FC<OrderSummaryCardProps> = ({
         <View style={styles.savingsBanner}>
           <Ionicons name="checkmark-circle" size={16} color={COLORS.success[500]} />
           <Text style={styles.savingsText}>
-            You're saving ₹{totalSavings.toFixed(2)} on this order!
+            You're saving {currencySymbol}{totalSavings.toFixed(2)} on this order!
           </Text>
         </View>
       )}

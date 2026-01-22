@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import storesApi from '@/services/storesApi';
 import productsApi from '@/services/productsApi';
 import cartApi from '@/services/cartApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -80,6 +81,8 @@ export default function BookingPage() {
   // URL params: storeId (required), bookingType ('table' | 'service'), productId (for service)
   const { storeId, bookingType: bookingTypeParam, productId } = useLocalSearchParams();
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -390,7 +393,7 @@ export default function BookingPage() {
                   <ThemedText style={styles.storeName}>{service.name}</ThemedText>
                   <ThemedText style={styles.storeCategory}>{store.name}</ThemedText>
                   <View style={styles.servicePriceRow}>
-                    <ThemedText style={styles.servicePrice}>₹{service.price.toLocaleString()}</ThemedText>
+                    <ThemedText style={styles.servicePrice}>{currencySymbol}{service.price.toLocaleString()}</ThemedText>
                     {service.serviceDetails?.duration && (
                       <ThemedText style={styles.serviceDuration}>
                         • {service.serviceDetails.duration} min
@@ -642,7 +645,7 @@ export default function BookingPage() {
                 {isServiceBooking && service && (
                   <View style={[styles.summaryRow, styles.summaryRowTotal]}>
                     <ThemedText style={styles.summaryLabelTotal}>Total</ThemedText>
-                    <ThemedText style={styles.summaryValueTotal}>₹{service.price.toLocaleString()}</ThemedText>
+                    <ThemedText style={styles.summaryValueTotal}>{currencySymbol}{service.price.toLocaleString()}</ThemedText>
                   </View>
                 )}
               </View>
@@ -683,7 +686,7 @@ export default function BookingPage() {
                   <>
                     <Ionicons name="cart" size={20} color={COLORS.white} />
                     <ThemedText style={styles.bookButtonText}>
-                      Add to Cart{service ? ` - ₹${service.price.toLocaleString()}` : ''}
+                      Add to Cart{service ? ` - ${currencySymbol}${service.price.toLocaleString()}` : ''}
                     </ThemedText>
                   </>
                 )}
@@ -861,7 +864,7 @@ export default function BookingPage() {
                 <View style={[styles.successDetailRow, { borderBottomWidth: 0 }]}>
                   <ThemedText style={styles.successLabel}>Price</ThemedText>
                   <ThemedText style={[styles.successValue, { color: COLORS.primary, fontWeight: '700' }]}>
-                    ₹{service.price.toLocaleString()}
+                    {currencySymbol}{service.price.toLocaleString()}
                   </ThemedText>
                 </View>
               </View>

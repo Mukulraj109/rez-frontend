@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/ThemedText';
 import { Deal } from '@/types/deals';
 import { calculateDealDiscount } from '@/utils/deal-validation';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Premium Glass Design Tokens - Green & Gold Theme
 const GLASS = {
@@ -53,6 +54,8 @@ interface DealDetailsModalProps {
 }
 
 export default function DealDetailsModal({ visible, onClose, deal }: DealDetailsModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const slideAnim = useRef(new Animated.Value(screenData.height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -287,7 +290,7 @@ export default function DealDetailsModal({ visible, onClose, deal }: DealDetails
                 </View>
                 <View style={styles.detailContent}>
                   <ThemedText style={styles.detailLabel}>Minimum Bill</ThemedText>
-                  <ThemedText style={styles.detailValue}>₹{deal.minimumBill.toLocaleString()}</ThemedText>
+                  <ThemedText style={styles.detailValue}>{currencySymbol}{deal.minimumBill.toLocaleString()}</ThemedText>
                 </View>
               </View>
 
@@ -298,7 +301,7 @@ export default function DealDetailsModal({ visible, onClose, deal }: DealDetails
                   </View>
                   <View style={styles.detailContent}>
                     <ThemedText style={styles.detailLabel}>Maximum Discount</ThemedText>
-                    <ThemedText style={styles.detailValue}>₹{deal.maxDiscount.toLocaleString()}</ThemedText>
+                    <ThemedText style={styles.detailValue}>{currencySymbol}{deal.maxDiscount.toLocaleString()}</ThemedText>
                   </View>
                 </View>
               )}
@@ -363,17 +366,17 @@ export default function DealDetailsModal({ visible, onClose, deal }: DealDetails
               <View key={index} style={styles.savingsExample}>
                 <View style={styles.savingsRow}>
                   <ThemedText style={styles.savingsLabel}>Bill Amount:</ThemedText>
-                  <ThemedText style={styles.savingsValue}>₹{example.billAmount.toLocaleString()}</ThemedText>
+                  <ThemedText style={styles.savingsValue}>{currencySymbol}{example.billAmount.toLocaleString()}</ThemedText>
                 </View>
                 <View style={styles.savingsRow}>
                   <ThemedText style={styles.savingsLabel}>You Save:</ThemedText>
                   <View style={styles.savingsDiscountBadge}>
-                    <ThemedText style={styles.savingsDiscount}>₹{example.discountAmount.toLocaleString()}</ThemedText>
+                    <ThemedText style={styles.savingsDiscount}>{currencySymbol}{example.discountAmount.toLocaleString()}</ThemedText>
                   </View>
                 </View>
                 <View style={[styles.savingsRow, styles.savingsFinal]}>
                   <ThemedText style={styles.savingsLabel}>Pay Only:</ThemedText>
-                  <ThemedText style={styles.savingsFinalAmount}>₹{example.finalAmount.toLocaleString()}</ThemedText>
+                  <ThemedText style={styles.savingsFinalAmount}>{currencySymbol}{example.finalAmount.toLocaleString()}</ThemedText>
                 </View>
               </View>
             ))}
@@ -453,7 +456,7 @@ export default function DealDetailsModal({ visible, onClose, deal }: DealDetails
                 >
                   <ThemedText style={styles.stepNumberText}>2</ThemedText>
                 </LinearGradient>
-                <ThemedText style={styles.stepText}>Shop for items worth ₹{deal.minimumBill.toLocaleString()} or more</ThemedText>
+                <ThemedText style={styles.stepText}>Shop for items worth {currencySymbol}{deal.minimumBill.toLocaleString()} or more</ThemedText>
               </View>
               <View style={styles.stepConnector} />
               <View style={styles.stepRow}>

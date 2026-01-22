@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GroceryHubSkeleton, GroceryStoreCard } from '@/components/grocery';
 import { categoriesApi } from '@/services/categoriesApi';
 import { storesApi } from '@/services/storesApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -92,6 +93,8 @@ interface Stats {
 
 const GroceryPage: React.FC = () => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // State
   const [categories, setCategories] = useState<Category[]>(defaultCategories);
@@ -420,8 +423,8 @@ const GroceryPage: React.FC = () => {
             style={styles.promoGradient}
           >
             <Text style={styles.promoEmoji}>🛒</Text>
-            <Text style={styles.promoTitle}>First Order? Get ₹100 Off</Text>
-            <Text style={styles.promoSubtitle}>+ Free delivery on orders above ₹199</Text>
+            <Text style={styles.promoTitle}>First Order? Get {currencySymbol}100 Off</Text>
+            <Text style={styles.promoSubtitle}>+ Free delivery on orders above {currencySymbol}199</Text>
             <TouchableOpacity
               style={styles.promoButton}
               onPress={() => router.push('/grocery/deals' as any)}

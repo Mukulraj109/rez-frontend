@@ -18,6 +18,7 @@ import { ReorderValidation } from '@/services/reorderApi';
 import { router } from 'expo-router';
 import { useCart } from '@/contexts/CartContext';
 import { showToast } from '@/components/common/ToastManager';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ReorderModalProps {
   visible: boolean;
@@ -46,6 +47,8 @@ export default function ReorderModal({
   } = useReorder();
 
   const { refreshCart } = useCart();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(true);
 
@@ -213,7 +216,7 @@ export default function ReorderModal({
             <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
 
             <View style={styles.priceRow}>
-              <Text style={styles.currentPrice}>₹{item.currentPrice.toFixed(2)}</Text>
+              <Text style={styles.currentPrice}>{currencySymbol}{item.currentPrice.toFixed(2)}</Text>
               {hasPriceChange && (
                 <View style={[
                   styles.priceBadge,
@@ -326,7 +329,7 @@ export default function ReorderModal({
                 <View style={styles.totalSection}>
                   <Text style={styles.totalLabel}>Total ({selectedItems.size} items)</Text>
                   <Text style={styles.totalAmount}>
-                    ₹{validation.items
+                    {currencySymbol}{validation.items
                       .filter(i => selectedItems.has(i.productId))
                       .reduce((sum, i) => sum + (i.currentPrice * i.quantity), 0)
                       .toFixed(2)}
@@ -336,7 +339,7 @@ export default function ReorderModal({
                       styles.totalDiff,
                       { color: validation.totalDifference > 0 ? '#dc2626' : '#16a34a' }
                     ]}>
-                      {validation.totalDifference > 0 ? '+' : ''}₹{validation.totalDifference.toFixed(2)} from original
+                      {validation.totalDifference > 0 ? '+' : ''}{currencySymbol}{validation.totalDifference.toFixed(2)} from original
                     </Text>
                   )}
                 </View>

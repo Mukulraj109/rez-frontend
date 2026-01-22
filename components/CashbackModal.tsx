@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface CashbackModalProps {
   visible: boolean;
@@ -26,7 +27,9 @@ export default function CashbackModal({
   onClose,
   cashbackAmount = 219.9,
 }: CashbackModalProps) {
-  
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
   const coin1Anim = useRef(new Animated.Value(0)).current;
@@ -118,7 +121,7 @@ export default function CashbackModal({
           colors={['#FFD93D', '#FCA311']}
           style={styles.coinGradient}
         >
-          <Text style={styles.coinText}>₹</Text>
+          <Text style={styles.coinText}>{currencySymbol}</Text>
         </LinearGradient>
       </Animated.View>
     );
@@ -204,7 +207,7 @@ export default function CashbackModal({
               {renderGiftBox()}
             </View>
 
-            <Text style={styles.amount}>₹{cashbackAmount.toFixed(2)}</Text>
+            <Text style={styles.amount}>{currencySymbol}{cashbackAmount.toFixed(2)}</Text>
           </View>
         </Animated.View>
       </Animated.View>

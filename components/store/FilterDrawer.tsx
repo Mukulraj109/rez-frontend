@@ -13,6 +13,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -55,6 +56,8 @@ export default function FilterDrawer({
   categories,
   priceRange,
 }: FilterDrawerProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [filters, setFilters] = useState<ProductFilters>(currentFilters);
   const [expandedSections, setExpandedSections] = useState({
     categories: true,
@@ -297,7 +300,7 @@ export default function FilterDrawer({
                       <View style={styles.priceInputWrapper}>
                         <Text style={styles.priceInputLabel}>Min Price</Text>
                         <View style={styles.priceInput}>
-                          <Text style={styles.currencySymbol}>₹</Text>
+                          <Text style={styles.currencySymbolText}>{currencySymbol}</Text>
                           <TextInput
                             style={styles.priceInputField}
                             value={filters.minPrice?.toString() || ''}
@@ -319,7 +322,7 @@ export default function FilterDrawer({
                       <View style={styles.priceInputWrapper}>
                         <Text style={styles.priceInputLabel}>Max Price</Text>
                         <View style={styles.priceInput}>
-                          <Text style={styles.currencySymbol}>₹</Text>
+                          <Text style={styles.currencySymbolText}>{currencySymbol}</Text>
                           <TextInput
                             style={styles.priceInputField}
                             value={filters.maxPrice?.toString() || ''}
@@ -337,7 +340,7 @@ export default function FilterDrawer({
 
                     <View style={styles.priceRangeDisplay}>
                       <Text style={styles.priceRangeText}>
-                        ₹{filters.minPrice || priceRange.min} - ₹{filters.maxPrice || priceRange.max}
+                        {currencySymbol}{filters.minPrice || priceRange.min} - {currencySymbol}{filters.maxPrice || priceRange.max}
                       </Text>
                     </View>
                   </View>
@@ -677,7 +680,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 14,
   },
-  currencySymbol: {
+  currencySymbolText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#7C3AED',

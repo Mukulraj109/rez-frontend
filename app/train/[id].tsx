@@ -23,6 +23,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import productsApi from '@/services/productsApi';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useProductReviews } from '@/hooks/useProductReviews';
+import { useRegion } from '@/contexts/RegionContext';
 import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
 import TrainBookingFlow from '../../components/train/TrainBookingFlow';
 import TrainBookingConfirmation from '../../components/train/TrainBookingConfirmation';
@@ -112,7 +113,9 @@ export default function TrainDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [train, setTrain] = useState<TrainDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -595,9 +598,9 @@ export default function TrainDetailsPage() {
               <Text style={styles.priceLabel}>Starting from</Text>
               <View style={styles.priceContainer}>
                 {train.originalPrice && train.originalPrice > train.price && (
-                  <Text style={styles.originalPrice}>₹{train.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.originalPrice}>{currencySymbol}{train.originalPrice.toLocaleString('en-IN')}</Text>
                 )}
-                <Text style={styles.price}>₹{train.price.toLocaleString('en-IN')}</Text>
+                <Text style={styles.price}>{currencySymbol}{train.price.toLocaleString('en-IN')}</Text>
               </View>
               {train.discount && train.discount > 0 && (
                 <View style={styles.discountTag}>
@@ -614,7 +617,7 @@ export default function TrainDetailsPage() {
                   {train.cashback.percentage}% Cashback
                 </Text>
                 <Text style={styles.cashbackAmount}>
-                  Earn ₹{train.cashback.amount.toLocaleString('en-IN')}
+                  Earn {currencySymbol}{train.cashback.amount.toLocaleString('en-IN')}
                 </Text>
               </View>
             </View>

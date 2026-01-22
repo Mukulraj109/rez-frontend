@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Activity, Comment } from '../../services/activityFeedApi';
 import * as activityFeedApi from '../../services/activityFeedApi';
 import FollowButton from '../social/FollowButton';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ActivityCardProps {
   activity: Activity;
@@ -23,6 +24,8 @@ interface ActivityCardProps {
 }
 
 const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onLike, onComment, currentUserId }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
@@ -162,7 +165,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onLike, onComment
 
         {activity.feedContent.amount && (
           <View style={styles.amountBadge}>
-            <Text style={styles.amountText}>+₹{activity.feedContent.amount}</Text>
+            <Text style={styles.amountText}>+{currencySymbol}{activity.feedContent.amount}</Text>
           </View>
         )}
       </View>

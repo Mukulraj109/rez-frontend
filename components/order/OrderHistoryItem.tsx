@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Order, OrderStatus } from '@/types/order';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface OrderHistoryItemProps {
   order: Order;
@@ -18,6 +19,9 @@ interface OrderHistoryItemProps {
 }
 
 const OrderHistoryItem: React.FC<OrderHistoryItemProps> = ({ order, onPress }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   // Safety checks for order data
   if (!order) {
     return null;
@@ -27,7 +31,7 @@ const OrderHistoryItem: React.FC<OrderHistoryItemProps> = ({ order, onPress }) =
     orderNumber: order.orderNumber || 'N/A',
     createdAt: order.createdAt || new Date().toISOString(),
     status: order.status || 'pending',
-    currency: order.currency || '₹',
+    currency: order.currency || currencySymbol,
     total: order.total || 0,
     items: order.items || []
   };

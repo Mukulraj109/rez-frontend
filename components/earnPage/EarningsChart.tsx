@@ -3,6 +3,7 @@ import { View, StyleSheet, Dimensions } from 'react-native';
 import Svg, { Rect, Text as SvgText, G } from 'react-native-svg';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface EarningsChartProps {
   breakdown: {
@@ -20,7 +21,9 @@ const CHART_HEIGHT = 120;
 const BAR_WIDTH = (CHART_WIDTH - 60) / 4; // 4 bars with spacing
 const MAX_BAR_HEIGHT = 100;
 
-export default function EarningsChart({ breakdown, currency = '₹' }: EarningsChartProps) {
+export default function EarningsChart({ breakdown, currency }: EarningsChartProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = currency || getCurrencySymbol();
   const data = useMemo(() => {
     const values = [
       { label: 'Projects', value: breakdown.projects, color: '#8B5CF6' },
@@ -72,7 +75,7 @@ export default function EarningsChart({ breakdown, currency = '₹' }: EarningsC
                       fill="#1F2937"
                       textAnchor="middle"
                     >
-                      {currency}{item.value}
+                      {currencySymbol}{item.value}
                     </SvgText>
                   )}
                   {/* Category Label */}
@@ -98,7 +101,7 @@ export default function EarningsChart({ breakdown, currency = '₹' }: EarningsC
           <View key={item.label} style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: item.color }]} />
             <ThemedText style={styles.legendText}>
-              {item.label}: {currency}{item.value}
+              {item.label}: {currencySymbol}{item.value}
             </ThemedText>
           </View>
         ))}

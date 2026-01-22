@@ -14,6 +14,7 @@ import FlowScreenLayout from '../../shared/FlowScreenLayout';
 import ActionBtn from '../../shared/ActionBtn';
 import { NavigationAction, BackAction } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface Props {
     onNavigate: NavigationAction;
@@ -48,6 +49,8 @@ const coins = [
 ];
 
 const WalletOverviewScreen: React.FC<Props> = ({ onNavigate, onBack }) => {
+    const { getCurrencySymbol } = useRegion();
+    const currencySymbol = getCurrencySymbol();
     const walletScale = useSharedValue(0);
 
     useEffect(() => {
@@ -85,7 +88,7 @@ const WalletOverviewScreen: React.FC<Props> = ({ onNavigate, onBack }) => {
                             <Text style={styles.walletLabel}>TOTAL BALANCE</Text>
                         </View>
                         <Text style={styles.walletAmount}>450 Coins</Text>
-                        <Text style={styles.walletValue}>Worth ~₹450</Text>
+                        <Text style={styles.walletValue}>Worth ~{currencySymbol}450</Text>
                         <View style={styles.walletChip}>
                             <Ionicons name="trending-up" size={14} color="#10B981" />
                             <Text style={styles.chipText}>+85 this month</Text>
@@ -130,7 +133,7 @@ const WalletOverviewScreen: React.FC<Props> = ({ onNavigate, onBack }) => {
                 >
                     <Ionicons name="information-circle" size={20} color="#3B82F6" />
                     <Text style={styles.infoText}>
-                        1 ReZ Coin = ₹1. Use them anywhere in the ReZ network!
+                        1 ReZ Coin = {currencySymbol}1. Use them anywhere in the ReZ network!
                     </Text>
                 </Animated.View>
             </View>

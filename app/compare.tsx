@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import productComparisonApi from '@/services/productComparisonApi';
 import { ComparisonProduct } from '@/services/productComparisonApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const COLORS = {
   primaryGreen: '#00C06A',
@@ -80,6 +81,8 @@ export default function ComparePage() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { state: authState } = useAuth();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [compareItems, setCompareItems] = useState<CompareItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentComparisonId, setCurrentComparisonId] = useState<string | null>(null);
@@ -357,7 +360,7 @@ export default function ComparePage() {
                   </View>
                   {compareItems.map((item) => (
                     <View key={item.id} style={styles.valueCell}>
-                      <Text style={styles.priceText}>₹{item.price.toLocaleString()}</Text>
+                      <Text style={styles.priceText}>{currencySymbol}{item.price.toLocaleString()}</Text>
                     </View>
                   ))}
                   {compareItems.length < 5 && <View style={styles.valueCell} />}
@@ -372,7 +375,7 @@ export default function ComparePage() {
                     <View key={item.id} style={styles.valueCell}>
                       <Text style={styles.cashbackText}>{item.cashback}%</Text>
                       <Text style={styles.cashbackAmount}>
-                        Save ₹{Math.round(item.price * item.cashback / 100)}
+                        Save {currencySymbol}{Math.round(item.price * item.cashback / 100)}
                       </Text>
                     </View>
                   ))}

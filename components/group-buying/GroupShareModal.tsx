@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { GroupBuyingGroup } from '@/types/groupBuying.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface GroupShareModalProps {
   visible: boolean;
@@ -26,6 +27,9 @@ export default function GroupShareModal({
   group,
   onClose,
 }: GroupShareModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   if (!group) return null;
 
   const shareUrl = `rezapp://group-buy/join?code=${group.code}`;
@@ -34,7 +38,7 @@ export default function GroupShareModal({
   const shareMessage = `🎉 Join my group buying deal!
 
 📦 ${group.product.name}
-💰 Save ${group.currentTier.discountPercentage}% - Get it for just ₹${group.currentTier.pricePerUnit}!
+💰 Save ${group.currentTier.discountPercentage}% - Get it for just ${currencySymbol}${group.currentTier.pricePerUnit}!
 👥 Only ${spotsLeft} spots left!
 
 Use code: ${group.code}

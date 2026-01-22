@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import type { SpinWheelResult } from '@/types/gamification.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface CelebrationModalProps {
   visible: boolean;
@@ -30,6 +31,8 @@ export default function CelebrationModal({
   newBalance,
   onClose,
 }: CelebrationModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -108,7 +111,7 @@ export default function CelebrationModal({
     } else if (result.prize?.type === 'discount') {
       return `${result.prize.value}% Discount`;
     } else if (result.prize?.type === 'voucher') {
-      return `₹${result.prize.value} Voucher`;
+      return `${currencySymbol}${result.prize.value} Voucher`;
     }
     return result.segment.label;
   };

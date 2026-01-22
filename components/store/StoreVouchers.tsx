@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import storeVouchersApi, { StoreVoucher } from '@/services/storeVouchersApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface StoreVouchersProps {
   storeId: string;
@@ -25,6 +26,8 @@ const StoreVouchers: React.FC<StoreVouchersProps> = ({
   storeName,
   onVoucherClaim,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [vouchers, setVouchers] = useState<StoreVoucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -90,7 +93,7 @@ const StoreVouchers: React.FC<StoreVouchersProps> = ({
     if (voucher.discountType === 'percentage') {
       return `${voucher.discountValue}% OFF`;
     }
-    return `₹${voucher.discountValue} OFF`;
+    return `${currencySymbol}${voucher.discountValue} OFF`;
   };
 
   const formatExpiry = (date: string) => {
@@ -176,7 +179,7 @@ const StoreVouchers: React.FC<StoreVouchersProps> = ({
                   <View style={styles.minPurchaseContainer}>
                     <Ionicons name="cart-outline" size={14} color="#6B7280" />
                     <Text style={styles.minPurchaseText}>
-                      Min purchase: ₹{voucher.minBillAmount}
+                      Min purchase: {currencySymbol}{voucher.minBillAmount}
                     </Text>
                   </View>
                 )}

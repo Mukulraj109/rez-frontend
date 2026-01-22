@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import storesApi from '@/services/storesApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const HORIZONTAL_PADDING = 2;
 
@@ -26,6 +27,8 @@ interface PlatformStats {
 
 function HeroBanner({ totalSaved = 0, onScanPayPress, onViewWalletPress }: HeroBannerProps) {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const isNewUser = totalSaved === 0;
 
   const [stats, setStats] = useState<PlatformStats>({
@@ -107,7 +110,7 @@ function HeroBanner({ totalSaved = 0, onScanPayPress, onViewWalletPress }: HeroB
             <Text style={styles.mainTitle} numberOfLines={2}>
               {isNewUser
                 ? 'Save money on everything you buy'
-                : `You've saved ₹${formatSavings(totalSaved)} with ReZ`}
+                : `You've saved ${currencySymbol}${formatSavings(totalSaved)} with ReZ`}
             </Text>
             <Text style={styles.subtitle}>
               {isNewUser ? 'Online & in-store with ReZ' : "That's smarter spending"}

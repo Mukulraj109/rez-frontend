@@ -23,18 +23,12 @@ const HotRightNow = () => {
   useEffect(() => {
     const fetchHotDeals = async () => {
       try {
-        console.log('[HOT RIGHT NOW] Fetching hot deals from API...');
         const response = await exploreApi.getHotDeals({ limit: 6 });
-        console.log('[HOT RIGHT NOW] API Response:', response);
 
         const products = response.data?.products || response.data || [];
-        console.log('[HOT RIGHT NOW] Products extracted:', products.length);
 
         if (response.success && Array.isArray(products) && products.length > 0) {
-          console.log('[HOT RIGHT NOW] Setting', products.length, 'products');
           setHotDeals(products);
-        } else {
-          console.log('[HOT RIGHT NOW] No products received from API');
         }
       } catch (error) {
         console.error('[HOT RIGHT NOW] API Error:', error);

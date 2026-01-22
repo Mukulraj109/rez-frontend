@@ -15,6 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface CashbackSummaryCardProps {
   total: number;
@@ -32,13 +33,15 @@ const CashbackSummaryCard: React.FC<CashbackSummaryCardProps> = ({
   isLoading = false,
 }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const handlePress = () => {
     router.push('/account/cashback' as any);
   };
 
   const formatAmount = (amount: number): string => {
-    return `₹${amount.toLocaleString('en-IN')}`;
+    return `${currencySymbol}${amount.toLocaleString('en-IN')}`;
   };
 
   if (isLoading) {

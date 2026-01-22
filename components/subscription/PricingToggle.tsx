@@ -5,6 +5,7 @@ import React, { useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface PricingToggleProps {
   billingCycle: 'monthly' | 'yearly';
@@ -21,6 +22,8 @@ export default function PricingToggle({
   yearlyPrice,
   yearlySavings,
 }: PricingToggleProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const savings = useMemo(() => {
     if (!yearlySavings) {
       const monthlyTotal = monthlyPrice * 12;
@@ -72,7 +75,7 @@ export default function PricingToggle({
             ]}
             accessible={false}
           >
-            ₹{monthlyMonthlyPrice}
+            {currencySymbol}{monthlyMonthlyPrice}
           </ThemedText>
         </TouchableOpacity>
 
@@ -115,7 +118,7 @@ export default function PricingToggle({
             ]}
             accessible={false}
           >
-            ₹{yearlyMonthlyPrice}/mo
+            {currencySymbol}{yearlyMonthlyPrice}/mo
           </ThemedText>
         </TouchableOpacity>
       </View>
@@ -131,7 +134,7 @@ export default function PricingToggle({
           <View style={styles.savingsRow}>
             <View style={styles.savingsColumn}>
               <ThemedText style={styles.savingsLabel}>Total Annual Cost</ThemedText>
-              <ThemedText style={styles.savingsValue}>₹{yearlyPrice}</ThemedText>
+              <ThemedText style={styles.savingsValue}>{currencySymbol}{yearlyPrice}</ThemedText>
             </View>
             <View style={styles.savingsDivider} accessible={false} />
             <View style={styles.savingsColumn}>
@@ -139,7 +142,7 @@ export default function PricingToggle({
               <View style={styles.savingsValueRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#10B981" />
                 <ThemedText style={styles.savingsAmountValue}>
-                  ₹{monthlyPrice * 12 - yearlyPrice}
+                  {currencySymbol}{monthlyPrice * 12 - yearlyPrice}
                 </ThemedText>
               </View>
             </View>
@@ -161,7 +164,7 @@ export default function PricingToggle({
         <View style={styles.roiContent}>
           <View style={styles.roiItem}>
             <ThemedText style={styles.roiItemLabel}>Based on average usage</ThemedText>
-            <ThemedText style={styles.roiItemValue}>+₹2,400/year</ThemedText>
+            <ThemedText style={styles.roiItemValue}>+{currencySymbol}2,400/year</ThemedText>
           </View>
         </View>
       </View>

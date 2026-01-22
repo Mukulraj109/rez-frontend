@@ -19,6 +19,7 @@ import {
   SHADOWS,
   PRODUCT_GRID
 } from '@/constants/search-constants';
+import { useRegion } from '@/contexts/RegionContext';
 
 const ProductCard: React.FC<ProductCardProps> = memo(({
   product,
@@ -27,6 +28,8 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
   showStore = false,
   size = 'medium',
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [imageError, setImageError] = useState(false);
   const screenWidth = Dimensions.get('window').width;
 
@@ -132,11 +135,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
           <View style={styles.priceContainer}>
             <View style={styles.priceRow}>
               <ThemedText style={styles.currentPrice}>
-                ₹{product.price.toLocaleString('en-IN')}
+                {currencySymbol}{product.price.toLocaleString('en-IN')}
               </ThemedText>
               {product.originalPrice && product.originalPrice > product.price && (
                 <ThemedText style={styles.originalPrice}>
-                  ₹{product.originalPrice.toLocaleString('en-IN')}
+                  {currencySymbol}{product.originalPrice.toLocaleString('en-IN')}
                 </ThemedText>
               )}
             </View>

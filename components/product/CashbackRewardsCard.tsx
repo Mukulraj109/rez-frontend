@@ -8,6 +8,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRegion } from '@/contexts/RegionContext';
 
 /**
  * CashbackRewardsCard Component
@@ -70,6 +71,8 @@ export const CashbackRewardsCard: React.FC<CashbackRewardsCardProps> = ({
   specialOffers = [],
   showDetails = true,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Default cashback offer
@@ -77,7 +80,7 @@ export const CashbackRewardsCard: React.FC<CashbackRewardsCardProps> = ({
     type: 'percentage',
     value: 5,
     maxCashback: 200,
-    description: 'Get 5% cashback up to ₹200',
+    description: `Get 5% cashback up to ${currencySymbol}200`,
   };
 
   // Default reward points
@@ -170,7 +173,7 @@ export const CashbackRewardsCard: React.FC<CashbackRewardsCardProps> = ({
             <View style={styles.cashbackInfo}>
               <ThemedText style={styles.cashbackLabel}>Total Cashback & Rewards</ThemedText>
               <ThemedText style={styles.cashbackAmount}>
-                ₹{cashbackAmount.toFixed(0)}
+                {currencySymbol}{cashbackAmount.toFixed(0)}
               </ThemedText>
               <ThemedText style={styles.cashbackDescription}>
                 + {totalPoints.toLocaleString()} reward points
@@ -212,18 +215,18 @@ export const CashbackRewardsCard: React.FC<CashbackRewardsCardProps> = ({
                   ? `${cashback.value}% Cashback`
                   : 'Flat Cashback'}
               </ThemedText>
-              <ThemedText style={styles.breakdownValue}>₹{cashbackAmount.toFixed(0)}</ThemedText>
+              <ThemedText style={styles.breakdownValue}>{currencySymbol}{cashbackAmount.toFixed(0)}</ThemedText>
             </View>
 
             {cashback.maxCashback && cashback.type === 'percentage' && (
               <ThemedText style={styles.breakdownNote}>
-                *Maximum cashback: ₹{cashback.maxCashback}
+                *Maximum cashback: {currencySymbol}{cashback.maxCashback}
               </ThemedText>
             )}
 
             {cashback.minPurchase && (
               <ThemedText style={styles.breakdownNote}>
-                *Minimum purchase: ₹{cashback.minPurchase}
+                *Minimum purchase: {currencySymbol}{cashback.minPurchase}
               </ThemedText>
             )}
           </View>
@@ -237,7 +240,7 @@ export const CashbackRewardsCard: React.FC<CashbackRewardsCardProps> = ({
 
             <View style={styles.breakdownItem}>
               <ThemedText style={styles.breakdownLabel}>
-                Base Points ({rewards.basePoints}x on ₹{productPrice})
+                Base Points ({rewards.basePoints}x on {currencySymbol}{productPrice})
               </ThemedText>
               <ThemedText style={styles.breakdownValue}>
                 {Math.floor(productPrice * rewards.basePoints)}
@@ -297,7 +300,7 @@ export const CashbackRewardsCard: React.FC<CashbackRewardsCardProps> = ({
                       <ThemedText style={styles.paymentOfferText}>{payment.offer}</ThemedText>
                     </View>
                     <ThemedText style={styles.paymentValue}>
-                      ₹{payment.cashbackValue.toFixed(0)}
+                      {currencySymbol}{payment.cashbackValue.toFixed(0)}
                     </ThemedText>
                   </View>
                 ))}

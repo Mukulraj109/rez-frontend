@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PRIVE_COLORS, PRIVE_SPACING, PRIVE_RADIUS } from './priveTheme';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface HowItWorksStep {
   id: string;
@@ -25,7 +26,7 @@ interface HowItWorksStep {
   route?: string;
 }
 
-const STEPS: HowItWorksStep[] = [
+const getSteps = (currencySymbol: string): HowItWorksStep[] => [
   {
     id: 'earn',
     icon: '↑',
@@ -55,7 +56,7 @@ const STEPS: HowItWorksStep[] = [
     iconBgColor: PRIVE_COLORS.transparent.gold15,
     title: 'Pay with Coins',
     description: 'Use ReZ, Branded, or Privé coins at checkout',
-    badge: 'Save ₹₹',
+    badge: `Save ${currencySymbol}${currencySymbol}`,
     badgeColor: PRIVE_COLORS.gold.primary,
     route: '/prive/redeem',
   },
@@ -69,13 +70,16 @@ const COIN_TYPES = [
 
 export const PriveHowItWorks: React.FC = () => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+  const steps = getSteps(currencySymbol);
 
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>HOW REZ PRIVE WORKS</Text>
 
       <View style={styles.howItWorksCard}>
-        {STEPS.map((step, index) => (
+        {steps.map((step, index) => (
           <React.Fragment key={step.id}>
             <TouchableOpacity
               style={styles.step}
@@ -93,7 +97,7 @@ export const PriveHowItWorks: React.FC = () => {
                 <Text style={[styles.stepBadgeText, { color: step.badgeColor }]}>{step.badge}</Text>
               </View>
             </TouchableOpacity>
-            {index < STEPS.length - 1 && <View style={styles.stepDivider} />}
+            {index < steps.length - 1 && <View style={styles.stepDivider} />}
           </React.Fragment>
         ))}
       </View>

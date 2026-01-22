@@ -7,6 +7,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIn
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import travelApi from '@/services/travelApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface RelatedCabsSectionProps {
   currentCabId: string;
@@ -14,6 +15,8 @@ interface RelatedCabsSectionProps {
 
 const RelatedCabsSection: React.FC<RelatedCabsSectionProps> = ({ currentCabId }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [relatedCabs, setRelatedCabs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -107,7 +110,7 @@ const RelatedCabsSection: React.FC<RelatedCabsSectionProps> = ({ currentCabId })
                 </View>
                 <View style={styles.priceRow}>
                   <Text style={styles.price}>
-                    {cab.price && cab.price < 100 ? `₹${price}/km` : `₹${price.toLocaleString('en-IN')}`}
+                    {cab.price && cab.price < 100 ? `${currencySymbol}${price}/km` : `${currencySymbol}${price.toLocaleString('en-IN')}`}
                   </Text>
                   {cashback > 0 && (
                     <View style={styles.cashbackBadge}>

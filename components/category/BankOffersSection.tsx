@@ -17,6 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import bankOffersApi, { BankOffer } from '@/services/bankOffersApi';
 import { bankOffersData } from '@/data/categoryDummyData';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface BankOffersSectionProps {
   categorySlug?: string;
@@ -29,9 +30,11 @@ const CARD_WIDTH = 240;
 const BankOfferCard = memo(({
   offer,
   onPress,
+  currencySymbol,
 }: {
   offer: BankOffer;
   onPress: () => void;
+  currencySymbol: string;
 }) => (
   <TouchableOpacity
     style={styles.offerCard}
@@ -53,9 +56,9 @@ const BankOfferCard = memo(({
     <View style={styles.offerDetails}>
       <Text style={styles.offerText}>{offer.offer}</Text>
       <View style={styles.termsRow}>
-        <Text style={styles.termsText}>Max ₹{offer.maxDiscount}</Text>
+        <Text style={styles.termsText}>Max {currencySymbol}{offer.maxDiscount}</Text>
         <Text style={styles.dotSeparator}>•</Text>
-        <Text style={styles.termsText}>Min ₹{offer.minOrder}</Text>
+        <Text style={styles.termsText}>Min {currencySymbol}{offer.minOrder}</Text>
       </View>
     </View>
 
@@ -73,6 +76,8 @@ const BankOffersSection: React.FC<BankOffersSectionProps> = ({
   onOfferPress,
 }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [apiOffers, setApiOffers] = useState<BankOffer[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -160,6 +165,7 @@ const BankOffersSection: React.FC<BankOffersSectionProps> = ({
             key={offer._id || (offer as any).id}
             offer={offer}
             onPress={() => handlePress(offer)}
+            currencySymbol={currencySymbol}
           />
         ))}
       </ScrollView>

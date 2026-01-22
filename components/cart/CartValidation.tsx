@@ -22,6 +22,7 @@ import {
   VALIDATION_ISSUE_ICONS,
   VALIDATION_ISSUE_COLORS,
 } from '@/types/validation.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -34,6 +35,8 @@ export default function CartValidation({
   onRemoveInvalidItems,
   onRefresh,
 }: CartValidationModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isRemoving, setIsRemoving] = useState(false);
 
   const hasErrors = validationResult?.issues.some(issue => issue.severity === 'error') ?? false;
@@ -109,18 +112,18 @@ export default function CartValidation({
             {issue.type === 'price_change' && issue.currentPrice && issue.previousPrice && (
               <View style={styles.priceChangeContainer}>
                 <ThemedText style={styles.priceOld}>
-                  ₹{issue.previousPrice}
+                  {currencySymbol}{issue.previousPrice}
                 </ThemedText>
                 <Ionicons name="arrow-forward" size={14} color="#6B7280" />
                 <ThemedText style={styles.priceNew}>
-                  ₹{issue.currentPrice}
+                  {currencySymbol}{issue.currentPrice}
                 </ThemedText>
                 <ThemedText style={[
                   styles.priceChangeBadge,
                   issue.currentPrice > issue.previousPrice ? styles.priceIncrease : styles.priceDecrease
                 ]}>
                   {issue.currentPrice > issue.previousPrice ? '+' : ''}
-                  ₹{Math.abs(issue.currentPrice - issue.previousPrice)}
+                  {currencySymbol}{Math.abs(issue.currentPrice - issue.previousPrice)}
                 </ThemedText>
               </View>
             )}

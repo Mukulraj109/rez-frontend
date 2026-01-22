@@ -19,6 +19,7 @@ import { useDiscoverContent } from '@/hooks/useDiscoverContent';
 import { realVideosApi } from '@/services/realVideosApi';
 import DiscoverAndShopHeader from './DiscoverAndShopHeader';
 import DiscoverAndShopTabBar from './DiscoverAndShopTabBar';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -59,6 +60,8 @@ export default function DiscoverAndShopSection({
   onCategoryPress,
 }: DiscoverAndShopSectionProps) {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [activeTab, setActiveTab] = useState<DiscoverTabType>(initialTab);
   const [refreshing, setRefreshing] = useState(false);
   // Track liked and bookmarked states for optimistic UI updates
@@ -150,14 +153,14 @@ export default function DiscoverAndShopSection({
       if (product.price && product.salePrice) {
         const savings = product.price - product.salePrice;
         if (savings > 0) {
-          return `Saved ₹${Math.floor(savings).toLocaleString()}!`;
+          return `Saved ${currencySymbol}${Math.floor(savings).toLocaleString()}!`;
         }
       }
       // Check for cashback
       if (product.cashbackPercent && product.salePrice) {
         const cashback = Math.floor((product.salePrice * product.cashbackPercent) / 100);
         if (cashback > 0) {
-          return `Saved ₹${cashback.toLocaleString()}!`;
+          return `Saved ${currencySymbol}${cashback.toLocaleString()}!`;
         }
       }
       // Check if there's a discount percentage

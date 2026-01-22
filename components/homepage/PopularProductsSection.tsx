@@ -13,6 +13,8 @@ import { ThemedView } from '@/components/ThemedView';
 import { useRouter } from 'expo-router';
 import { productApi, HomepageProduct } from '@/services/productApi';
 import { Ionicons } from '@expo/vector-icons';
+import { useCurrentRegion, useRegion } from '@/contexts/RegionContext';
+import { formatPrice } from '@/utils/priceFormatter';
 
 interface PopularProductsSectionProps {
   title?: string;
@@ -24,6 +26,7 @@ function PopularProductsSection({
   limit = 3,
 }: PopularProductsSectionProps) {
   const router = useRouter();
+  const currentRegion = useCurrentRegion(); // Refetch when region changes
   const [products, setProducts] = useState<HomepageProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +54,7 @@ function PopularProductsSection({
 
   useEffect(() => {
     fetchPopularProducts();
-  }, [fetchPopularProducts]);
+  }, [fetchPopularProducts, currentRegion]); // Refetch when region changes
 
   const handleProductPress = (product: HomepageProduct) => {
     router.push(`/ProductPage?cardId=${product._id || product.id}&cardType=product`);
@@ -71,11 +74,15 @@ function PopularProductsSection({
     return price > 0 ? Math.max(1, Math.round((price * 5) / 100)) : 0;
   };
 
+  // Get currency symbol from region
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   // Format delivery fee
   const formatDeliveryFee = (fee: number | undefined) => {
     if (fee === undefined || fee === null) return 'Free delivery';
     if (fee === 0) return 'Free delivery';
-    return `₹${fee.toFixed(2)} delivery fee`;
+    return `${currencySymbol}${fee.toFixed(2)} delivery fee`;
   };
 
   const renderProduct = useCallback(({ item }: { item: HomepageProduct }) => {

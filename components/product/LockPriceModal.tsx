@@ -22,6 +22,7 @@ import {
   Shadows,
   BorderRadius,
 } from '@/constants/DesignSystem';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -55,6 +56,8 @@ export default function LockPriceModal({
   variant,
   onLockSuccess,
 }: LockPriceModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const backgroundColor = useThemeColor({}, 'background');
   const { state: authState } = useAuth();
   const { walletState, refreshWallet } = useWallet({
@@ -112,7 +115,7 @@ export default function LockPriceModal({
   // Execute the lock operation
   const executeLock = useCallback(async () => {
     if (!hasEnoughBalance) {
-      setError(`Insufficient wallet balance. You need ₹${lockFee} but have ₹${walletBalance}`);
+      setError(`Insufficient wallet balance. You need ${currencySymbol}${lockFee} but have ${currencySymbol}${walletBalance}`);
       return;
     }
 
@@ -190,11 +193,11 @@ export default function LockPriceModal({
               </ThemedText>
               <View style={styles.productPriceRow}>
                 <ThemedText style={styles.productPriceLabel}>Current Price:</ThemedText>
-                <ThemedText style={styles.productPrice}>₹{totalPrice.toLocaleString()}</ThemedText>
+                <ThemedText style={styles.productPrice}>{currencySymbol}{totalPrice.toLocaleString()}</ThemedText>
               </View>
               {quantity > 1 && (
                 <ThemedText style={styles.quantityNote}>
-                  Qty: {quantity} × ₹{productPrice.toLocaleString()}
+                  Qty: {quantity} × {currencySymbol}{productPrice.toLocaleString()}
                 </ThemedText>
               )}
             </View>
@@ -218,7 +221,7 @@ export default function LockPriceModal({
                       <ThemedText style={styles.lockDurationValue}>3 Hours</ThemedText>
                     </View>
                     <ThemedText style={styles.lockDurationFeeText}>
-                      {LOCK_PERCENTAGE}% lock fee = <ThemedText style={styles.lockDurationFeeAmount}>₹{lockFee}</ThemedText>
+                      {LOCK_PERCENTAGE}% lock fee = <ThemedText style={styles.lockDurationFeeAmount}>{currencySymbol}{lockFee}</ThemedText>
                     </ThemedText>
                   </View>
                   <ThemedText style={styles.lockDurationNote}>
@@ -237,7 +240,7 @@ export default function LockPriceModal({
                         styles.walletBalance,
                         hasEnoughBalance ? styles.balanceSufficient : styles.balanceInsufficient,
                       ]}>
-                        ₹{walletBalance.toFixed(0)}
+                        {currencySymbol}{walletBalance.toFixed(0)}
                       </ThemedText>
                     </View>
                     {hasEnoughBalance ? (
@@ -252,7 +255,7 @@ export default function LockPriceModal({
                 <View style={styles.summarySection}>
                   <View style={styles.summaryRow}>
                     <ThemedText style={styles.summaryLabel}>Lock Fee ({LOCK_PERCENTAGE}%)</ThemedText>
-                    <ThemedText style={styles.summaryValue}>₹{lockFee}</ThemedText>
+                    <ThemedText style={styles.summaryValue}>{currencySymbol}{lockFee}</ThemedText>
                   </View>
                   <View style={styles.summaryNote}>
                     <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
@@ -275,7 +278,7 @@ export default function LockPriceModal({
                   <View style={styles.warningContainer}>
                     <Ionicons name="wallet-outline" size={20} color="#F59E0B" />
                     <ThemedText style={styles.warningText}>
-                      Add ₹{(lockFee - walletBalance).toFixed(0)} to your wallet to lock this price
+                      Add {currencySymbol}{(lockFee - walletBalance).toFixed(0)} to your wallet to lock this price
                     </ThemedText>
                   </View>
                 )}
@@ -307,7 +310,7 @@ export default function LockPriceModal({
                     <>
                       <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
                       <ThemedText style={styles.lockButtonText}>
-                        {hasEnoughBalance ? `Lock for ₹${lockFee}` : 'Insufficient Balance'}
+                        {hasEnoughBalance ? `Lock for ${currencySymbol}${lockFee}` : 'Insufficient Balance'}
                       </ThemedText>
                     </>
                   )}

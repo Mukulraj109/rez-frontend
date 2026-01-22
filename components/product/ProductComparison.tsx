@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, Pressable } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { SPACING, TYPOGRAPHY, COLORS, BORDER_RADIUS } from '@/constants/DesignTokens';
 import Button from '@/components/ui/Button';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface Product {
   id: string;
@@ -42,6 +43,9 @@ export default function ProductComparison({
   onAddToCart,
   onViewProduct,
 }: ProductComparisonProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   if (products.length === 0) {
     return (
       <View style={styles.emptyState}>
@@ -101,10 +105,10 @@ export default function ProductComparison({
               </View>
 
               <View style={styles.priceRow}>
-                <Text style={styles.price}>₹{product.price.toLocaleString()}</Text>
+                <Text style={styles.price}>{currencySymbol}{product.price.toLocaleString()}</Text>
                 {product.originalPrice && (
                   <Text style={styles.originalPrice}>
-                    ₹{product.originalPrice.toLocaleString()}
+                    {currencySymbol}{product.originalPrice.toLocaleString()}
                   </Text>
                 )}
               </View>
@@ -122,10 +126,10 @@ export default function ProductComparison({
         <ComparisonRow label="Price" backgroundColor={COLORS.background.secondary}>
           {products.map((product) => (
             <View key={product.id} style={styles.valueCell}>
-              <Text style={styles.priceValue}>₹{product.price.toLocaleString()}</Text>
+              <Text style={styles.priceValue}>{currencySymbol}{product.price.toLocaleString()}</Text>
               {product.originalPrice && (
                 <Text style={styles.savings}>
-                  Save ₹{(product.originalPrice - product.price).toLocaleString()}
+                  Save {currencySymbol}{(product.originalPrice - product.price).toLocaleString()}
                 </Text>
               )}
             </View>
@@ -140,7 +144,7 @@ export default function ProductComparison({
                 {product.cashback ? (
                   <View style={styles.cashbackBadge}>
                     <Ionicons name="cash-outline" size={14} color={COLORS.success[700]} />
-                    <Text style={styles.cashbackText}>₹{product.cashback}</Text>
+                    <Text style={styles.cashbackText}>{currencySymbol}{product.cashback}</Text>
                   </View>
                 ) : (
                   <Text style={styles.valueMissing}>-</Text>

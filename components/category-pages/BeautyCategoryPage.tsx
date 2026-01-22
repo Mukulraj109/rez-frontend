@@ -27,6 +27,7 @@ import EmptyState from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
 // Fallback dummy data for mode filters
 import { beautyCategoryData } from '@/data/category';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Rez Brand Colors
 const COLORS = {
@@ -42,6 +43,8 @@ export default function BeautyCategoryPage() {
   const router = useRouter();
   const slug = 'beauty-wellness';
   const categoryConfig = getCategoryConfig(slug);
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // Use the new hook for real data with fallback
   const {
@@ -225,7 +228,7 @@ export default function BeautyCategoryPage() {
                 <Text style={styles.productNameCompact} numberOfLines={2}>
                   {product.name}
                 </Text>
-                <Text style={styles.productPriceCompact}>₹{product.price?.toLocaleString() || '0'}</Text>
+                <Text style={styles.productPriceCompact}>{currencySymbol}{product.price?.toLocaleString() || '0'}</Text>
                 <Text style={styles.productCashbackCompact}>
                   {product.cashback || 10}% cashback
                 </Text>

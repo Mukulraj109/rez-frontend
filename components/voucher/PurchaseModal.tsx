@@ -18,6 +18,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { useVoucherPurchase } from '@/hooks/useVoucherPurchase';
 import walletApi from '@/services/walletApi';
 import logger from '@/utils/logger';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -63,6 +64,8 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
 }) => {
   const router = useRouter();
   const { purchaseVoucher, purchasing } = useVoucherPurchase();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const [selectedDenomination, setSelectedDenomination] = useState<number | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
@@ -146,7 +149,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
 
     // Check if sufficient balance
     if (walletBalance < selectedDenomination) {
-      const message = `Insufficient Balance\n\nYou need ₹${selectedDenomination - walletBalance} more to purchase this voucher.\n\nCurrent balance: ₹${walletBalance}`;
+      const message = `Insufficient Balance\n\nYou need ${currencySymbol}${selectedDenomination - walletBalance} more to purchase this voucher.\n\nCurrent balance: ${currencySymbol}${walletBalance}`;
 
       // Use window.alert for web compatibility
       if (typeof window !== 'undefined') {
@@ -293,7 +296,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                   <ActivityIndicator size="small" color="#9333EA" />
                 ) : (
                   <ThemedText style={styles.walletBalance}>
-                    ₹{walletBalance.toLocaleString()}
+                    {currencySymbol}{walletBalance.toLocaleString()}
                   </ThemedText>
                 )}
               </View>
@@ -332,7 +335,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                           !canAfford && styles.denominationAmountDisabled,
                         ]}
                       >
-                        ₹{amount}
+                        {currencySymbol}{amount}
                       </ThemedText>
 
                       {!canAfford && (
@@ -352,7 +355,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                 <View style={styles.summaryRow}>
                   <ThemedText style={styles.summaryLabel}>Selected Amount</ThemedText>
                   <ThemedText style={styles.summaryValue}>
-                    ₹{selectedDenomination.toLocaleString()}
+                    {currencySymbol}{selectedDenomination.toLocaleString()}
                   </ThemedText>
                 </View>
                 <View style={styles.summaryRow}>
@@ -364,7 +367,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                 <View style={styles.summaryRow}>
                   <ThemedText style={styles.summaryLabel}>Balance After</ThemedText>
                   <ThemedText style={styles.summaryValue}>
-                    ₹{(walletBalance - selectedDenomination).toLocaleString()}
+                    {currencySymbol}{(walletBalance - selectedDenomination).toLocaleString()}
                   </ThemedText>
                 </View>
               </View>
@@ -428,7 +431,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
             <Ionicons name="checkmark-circle-outline" size={64} color="#9333EA" />
             <ThemedText style={styles.confirmTitle}>Confirm Purchase</ThemedText>
             <ThemedText style={styles.confirmMessage}>
-              Purchase ₹{selectedDenomination} {brand?.name} voucher for {selectedDenomination} coins?
+              Purchase {currencySymbol}{selectedDenomination} {brand?.name} voucher for {selectedDenomination} coins?
             </ThemedText>
             <View style={styles.confirmButtons}>
               <TouchableOpacity
@@ -462,7 +465,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
             </View>
             <ThemedText style={styles.successTitle}>Purchase Successful!</ThemedText>
             <ThemedText style={styles.successMessage}>
-              You've successfully purchased a ₹{purchasedAmount} {brand?.name} voucher!
+              You've successfully purchased a {currencySymbol}{purchasedAmount} {brand?.name} voucher!
             </ThemedText>
             <ThemedText style={styles.successSubMessage}>
               Your wallet balance has been updated. You can now view and use your voucher.

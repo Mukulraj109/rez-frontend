@@ -5,29 +5,33 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { EarningsStats } from '@/services/earningsCalculationService';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface EarningsStatsCardProps {
   stats: EarningsStats;
 }
 
 const EarningsStatsCard: React.FC<EarningsStatsCardProps> = ({ stats }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const statItems = [
     {
       icon: 'trending-up',
       label: 'Daily Avg',
-      value: `₹${stats.dailyAverage.toFixed(2)}`,
+      value: `${currencySymbol}${stats.dailyAverage.toFixed(2)}`,
       color: '#10B981',
     },
     {
       icon: 'calendar',
       label: 'Weekly Avg',
-      value: `₹${stats.weeklyAverage.toFixed(2)}`,
+      value: `${currencySymbol}${stats.weeklyAverage.toFixed(2)}`,
       color: '#3B82F6',
     },
     {
       icon: 'calendar-outline',
       label: 'Monthly Avg',
-      value: `₹${stats.monthlyAverage.toFixed(2)}`,
+      value: `${currencySymbol}${stats.monthlyAverage.toFixed(2)}`,
       color: '#8B5CF6',
     },
     {

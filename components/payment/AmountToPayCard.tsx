@@ -9,6 +9,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '@/constants/DesignTokens';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface AmountToPayCardProps {
   originalAmount: number;
@@ -23,6 +24,8 @@ export const AmountToPayCard: React.FC<AmountToPayCardProps> = ({
   coinsApplied,
   showOptimizedBadge = true,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const hasSavings = originalAmount > amountToPay;
 
   return (
@@ -39,9 +42,9 @@ export const AmountToPayCard: React.FC<AmountToPayCardProps> = ({
 
       <View style={styles.amountRow}>
         {hasSavings && (
-          <Text style={styles.originalAmount}>₹{originalAmount.toFixed(0)}</Text>
+          <Text style={styles.originalAmount}>{currencySymbol}{originalAmount.toFixed(0)}</Text>
         )}
-        <Text style={styles.finalAmount}>₹{amountToPay.toFixed(0)}</Text>
+        <Text style={styles.finalAmount}>{currencySymbol}{amountToPay.toFixed(0)}</Text>
       </View>
 
       {hasSavings && (
@@ -58,7 +61,7 @@ export const AmountToPayCard: React.FC<AmountToPayCardProps> = ({
           <View style={styles.breakdownItem}>
             <Ionicons name="diamond" size={14} color={COLORS.primary[500]} />
             <Text style={styles.breakdownLabel}>Coins Used</Text>
-            <Text style={styles.breakdownValue}>-₹{coinsApplied}</Text>
+            <Text style={styles.breakdownValue}>-{currencySymbol}{coinsApplied}</Text>
           </View>
         </View>
       )}

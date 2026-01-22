@@ -30,6 +30,13 @@ interface RequestOptions {
   deduplicate?: boolean; // Enable/disable deduplication per-request
 }
 
+// Region getter - will be set by RegionContext
+let getRegionFn: (() => string) | null = null;
+
+export function setRegionGetter(fn: (() => string) | null) {
+  getRegionFn = fn;
+}
+
 class ApiClient {
   private baseURL: string;
   private defaultHeaders: Record<string, string>;
@@ -42,6 +49,8 @@ class ApiClient {
   private maintenanceCallback: (() => void) | null = null;
   private appUpdateCallback: ((minVersion: string) => void) | null = null;
   private currentAppVersion: string = '1.0.0';
+  // Region
+  private currentRegion: string = 'bangalore';
 
   constructor() {
     // Use environment variable or fallback to user backend localhost
@@ -50,6 +59,17 @@ class ApiClient {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
+  }
+
+  // Set current region for API requests
+  setRegion(region: string) {
+    this.currentRegion = region;
+    this.defaultHeaders['X-Rez-Region'] = region;
+  }
+
+  // Get current region
+  getRegion(): string {
+    return this.currentRegion;
   }
 
   // Set authentication token
@@ -143,7 +163,14 @@ class ApiClient {
     } = options;
 
     const url = `${this.baseURL}${endpoint}`;
-    const requestHeaders = { ...this.defaultHeaders, ...headers };
+
+    // Get current region dynamically (in case it changed since constructor)
+    const currentRegion = getRegionFn ? getRegionFn() : this.currentRegion;
+    const requestHeaders = {
+      ...this.defaultHeaders,
+      'X-Rez-Region': currentRegion,
+      ...headers
+    };
 
     try {
       const controller = new AbortController();

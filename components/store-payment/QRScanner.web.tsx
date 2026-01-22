@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import jsQR from 'jsqr';
 import { QRCodeData } from '@/types/storePayment.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SCANNER_SIZE = Math.min(SCREEN_WIDTH * 0.7, 280);
@@ -48,6 +49,8 @@ interface QRScannerProps {
 }
 
 export default function QRScanner({ onScan, onClose }: QRScannerProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [manualCode, setManualCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -304,7 +307,7 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
           </View>
           <Text style={styles.promoText}>5% ReZ Coins on every payment</Text>
         </View>
-        <Text style={styles.promoSubtext}>On payments of ₹25 and above</Text>
+        <Text style={styles.promoSubtext}>On payments of {currencySymbol}25 and above</Text>
       </View>
 
       {/* Scanner Area */}

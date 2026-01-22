@@ -5,6 +5,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SearchResultsSummary as SearchResultsSummaryType } from '@/types/search.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface SearchResultsSummaryProps {
   query: string;
@@ -12,8 +13,11 @@ interface SearchResultsSummaryProps {
 }
 
 export default function SearchResultsSummary({ query, summary }: SearchResultsSummaryProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const formatPrice = (price: number) => {
-    return `₹${price.toLocaleString('en-IN')}`;
+    return `${currencySymbol}${price.toLocaleString('en-IN')}`;
   };
 
   return (

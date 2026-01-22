@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import FastImage from '@/components/common/FastImage';
+import { useRegion } from '@/contexts/RegionContext';
 
 export interface PopularStoreCardProps {
   store: {
@@ -50,6 +51,9 @@ const arePropsEqual = (prevProps: PopularStoreCardProps, nextProps: PopularStore
 };
 
 function PopularStoreCard({ store, onPress, width = 170 }: PopularStoreCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   // Get the logo URL (prioritize logo, then first banner, then image)
   const logoUrl = useMemo(() => {
     if (store.logo) {
@@ -155,7 +159,7 @@ function PopularStoreCard({ store, onPress, width = 170 }: PopularStoreCardProps
 
           {/* Reward Amount */}
           <ThemedText style={styles.rewardText}>
-            ₹{rewardAmount}
+            {currencySymbol}{rewardAmount}
           </ThemedText>
         </View>
       </ThemedView>

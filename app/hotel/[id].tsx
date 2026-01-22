@@ -23,6 +23,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import productsApi from '@/services/productsApi';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useProductReviews } from '@/hooks/useProductReviews';
+import { useRegion } from '@/contexts/RegionContext';
 import ProductReviewsSection from '@/components/reviews/ProductReviewsSection';
 import HotelBookingFlow from '../../components/hotel/HotelBookingFlow';
 import HotelBookingConfirmation from '../../components/hotel/HotelBookingConfirmation';
@@ -112,7 +113,9 @@ export default function HotelDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [hotel, setHotel] = useState<HotelDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -535,9 +538,9 @@ export default function HotelDetailsPage() {
               <Text style={styles.priceLabel}>Starting from</Text>
               <View style={styles.priceContainer}>
                 {hotel.originalPrice && hotel.originalPrice > hotel.price && (
-                  <Text style={styles.originalPrice}>₹{hotel.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.originalPrice}>{currencySymbol}{hotel.originalPrice.toLocaleString('en-IN')}</Text>
                 )}
-                <Text style={styles.price}>₹{hotel.price.toLocaleString('en-IN')}</Text>
+                <Text style={styles.price}>{currencySymbol}{hotel.price.toLocaleString('en-IN')}</Text>
               </View>
               <Text style={styles.pricePerNight}>per night</Text>
               {hotel.discount && hotel.discount > 0 && (
@@ -555,7 +558,7 @@ export default function HotelDetailsPage() {
                   {hotel.cashback.percentage}% Cashback
                 </Text>
                 <Text style={styles.cashbackAmount}>
-                  Earn ₹{hotel.cashback.amount.toLocaleString('en-IN')}
+                  Earn {currencySymbol}{hotel.cashback.amount.toLocaleString('en-IN')}
                 </Text>
               </View>
             </View>

@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { BillingTransaction } from '@/services/subscriptionApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface Props {
   transactions: BillingTransaction[];
@@ -25,6 +26,9 @@ export default function BillingHistoryList({
   onViewInvoice,
   loading = false,
 }: Props) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -69,7 +73,7 @@ export default function BillingHistoryList({
   };
 
   const formatAmount = (amount: number) => {
-    return `₹${amount.toFixed(2)}`;
+    return `${currencySymbol}${amount.toFixed(2)}`;
   };
 
   const renderTransaction = (transaction: BillingTransaction) => {

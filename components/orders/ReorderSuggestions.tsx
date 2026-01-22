@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useReorderSuggestions } from '@/hooks/useReorder';
 import { router } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ReorderSuggestionsProps {
   onAddToCart?: (productId: string, quantity: number) => void;
@@ -20,6 +21,8 @@ interface ReorderSuggestionsProps {
 
 export default function ReorderSuggestions({ onAddToCart }: ReorderSuggestionsProps) {
   const { suggestions, loading, error, refresh } = useReorderSuggestions();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   useEffect(() => {
     refresh();
@@ -110,7 +113,7 @@ export default function ReorderSuggestions({ onAddToCart }: ReorderSuggestionsPr
           </Text>
 
           <View style={styles.bottomRow}>
-            <Text style={styles.price}>₹{item.currentPrice.toFixed(2)}</Text>
+            <Text style={styles.price}>{currencySymbol}{item.currentPrice.toFixed(2)}</Text>
 
             {item.isAvailable ? (
               <TouchableOpacity

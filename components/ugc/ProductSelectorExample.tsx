@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import ProductSelector from './ProductSelector';
 import { ProductSelectorProduct } from '@/types/product-selector.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 /**
  * Example 1: Basic Video Upload with Product Tagging
@@ -121,6 +122,8 @@ export function ReviewFormExample() {
  * Example 3: Shopping List Creator
  */
 export function ShoppingListExample() {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [showSelector, setShowSelector] = useState(false);
   const [listProducts, setListProducts] = useState<ProductSelectorProduct[]>([]);
 
@@ -136,7 +139,7 @@ export function ShoppingListExample() {
       <View style={styles.listHeader}>
         <View>
           <Text style={styles.listCount}>{listProducts.length} Items</Text>
-          <Text style={styles.listValue}>Total: ₹{totalValue.toLocaleString('en-IN')}</Text>
+          <Text style={styles.listValue}>Total: {currencySymbol}{totalValue.toLocaleString('en-IN')}</Text>
         </View>
         <TouchableOpacity
           style={styles.addButton}
@@ -155,7 +158,7 @@ export function ShoppingListExample() {
               <View style={styles.listItemInfo}>
                 <Text style={styles.listItemName}>{product.name}</Text>
                 <Text style={styles.listItemPrice}>
-                  ₹{(product.salePrice || product.basePrice).toLocaleString('en-IN')}
+                  {currencySymbol}{(product.salePrice || product.basePrice).toLocaleString('en-IN')}
                 </Text>
               </View>
             </View>
@@ -182,6 +185,8 @@ export function ShoppingListExample() {
  * Example 4: Product Comparison Tool
  */
 export function ProductComparisonExample() {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [showSelector, setShowSelector] = useState(false);
   const [compareProducts, setCompareProducts] = useState<ProductSelectorProduct[]>([]);
 
@@ -210,7 +215,7 @@ export function ProductComparisonExample() {
                 {product.name}
               </Text>
               <Text style={styles.compareCardPrice}>
-                ₹{(product.salePrice || product.basePrice).toLocaleString('en-IN')}
+                {currencySymbol}{(product.salePrice || product.basePrice).toLocaleString('en-IN')}
               </Text>
               {product.rating && (
                 <Text style={styles.compareCardRating}>
@@ -240,6 +245,8 @@ export function ProductComparisonExample() {
  * Example 5: UGC Content Creation (Main Use Case)
  */
 export function UGCContentCreationExample() {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [showSelector, setShowSelector] = useState(false);
   const [taggedProducts, setTaggedProducts] = useState<ProductSelectorProduct[]>([]);
   const [videoTitle, setVideoTitle] = useState('');
@@ -323,7 +330,7 @@ export function UGCContentCreationExample() {
                       {product.name}
                     </Text>
                     <Text style={styles.taggedProductMeta}>
-                      {product.store.name} • ₹
+                      {product.store.name} • {currencySymbol}
                       {(product.salePrice || product.basePrice).toLocaleString('en-IN')}
                     </Text>
                   </View>

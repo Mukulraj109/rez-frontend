@@ -17,6 +17,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { MallBrand, BrandBadge, BrandTier } from '../../../types/mall.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface BrandFullWidthCardProps {
   brand: MallBrand;
@@ -47,6 +48,8 @@ const BrandFullWidthCard: React.FC<BrandFullWidthCardProps> = ({
   showRank = false,
   rank = 0,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [imageError, setImageError] = useState(false);
 
   // For in-app stores (no externalUrl), show ReZ Coins. For external brands, show cashback.
@@ -191,7 +194,7 @@ const BrandFullWidthCard: React.FC<BrandFullWidthCardProps> = ({
                 {isInAppStore
                   ? `Earn ${rewardPercentage}% ReZ Coins`
                   : brand.cashback.maxAmount
-                    ? `Up to ₹${brand.cashback.maxAmount}`
+                    ? `Up to ${currencySymbol}${brand.cashback.maxAmount}`
                     : `${rewardPercentage}% cashback`
                 }
               </Text>

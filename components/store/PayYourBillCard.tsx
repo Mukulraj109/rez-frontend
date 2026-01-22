@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface PayYourBillCardProps {
   storeId: string;
@@ -28,6 +29,8 @@ const PayYourBillCard: React.FC<PayYourBillCardProps> = ({
   onQuickPay,
   onUploadBill,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const router = useRouter();
   const [loading, setLoading] = useState<'quick' | 'upload' | null>(null);
 
@@ -81,7 +84,7 @@ const PayYourBillCard: React.FC<PayYourBillCardProps> = ({
         {recentBillAmount && (
           <View style={styles.amountBadge}>
             <Text style={styles.amountLabel}>Last bill</Text>
-            <Text style={styles.amountValue}>₹{recentBillAmount}</Text>
+            <Text style={styles.amountValue}>{currencySymbol}{recentBillAmount}</Text>
           </View>
         )}
       </View>

@@ -16,6 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { GroupBuyingProduct, CreateGroupRequest } from '@/types/groupBuying.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface GroupCreationModalProps {
   visible: boolean;
@@ -30,6 +31,8 @@ export default function GroupCreationModal({
   onClose,
   onSubmit,
 }: GroupCreationModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [quantity, setQuantity] = useState('1');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -99,7 +102,7 @@ export default function GroupCreationModal({
                 </Text>
                 <Text style={styles.storeName}>{product.storeName}</Text>
                 <View style={styles.priceRow}>
-                  <Text style={styles.basePrice}>₹{product.basePrice}</Text>
+                  <Text style={styles.basePrice}>{currencySymbol}{product.basePrice}</Text>
                   <LinearGradient
                     colors={['#10B981', '#059669']}
                     style={styles.discountBadge}
@@ -134,7 +137,7 @@ export default function GroupCreationModal({
                     </View>
                   </View>
                   <Text style={styles.tierPrice}>
-                    ₹{tier.pricePerUnit.toFixed(2)} per unit
+                    {currencySymbol}{tier.pricePerUnit.toFixed(2)} per unit
                   </Text>
                 </View>
               ))}

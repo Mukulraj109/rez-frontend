@@ -14,13 +14,34 @@ const DEFAULT_CURRENCY = '₹';
  * Supported currency symbols and their codes
  */
 const CURRENCY_SYMBOLS: Record<string, string> = {
-  INR: '₹',
+  INR: '\u20B9', // ₹
   USD: '$',
-  EUR: '€',
-  GBP: '£',
-  JPY: '¥',
+  EUR: '\u20AC', // €
+  GBP: '\u00A3', // £
+  JPY: '\u00A5', // ¥
   AUD: 'A$',
   CAD: 'C$',
+  AED: '\u062F.\u0625', // د.إ (UAE Dirham)
+  CNY: '\u00A5', // ¥ (Chinese Yuan - same symbol as JPY)
+  SGD: 'S$',
+  SAR: '\u0631.\u0633', // ر.س (Saudi Riyal)
+};
+
+/**
+ * Locale mapping for proper number formatting
+ */
+const CURRENCY_LOCALES: Record<string, string> = {
+  INR: 'en-IN',
+  USD: 'en-US',
+  EUR: 'de-DE',
+  GBP: 'en-GB',
+  JPY: 'ja-JP',
+  AUD: 'en-AU',
+  CAD: 'en-CA',
+  AED: 'en-AE',
+  CNY: 'zh-CN',
+  SGD: 'en-SG',
+  SAR: 'ar-SA',
 };
 
 /**
@@ -89,17 +110,64 @@ export function formatPrice(
     return null;
   }
 
-  // Get currency symbol
+  // Get currency symbol and locale
   const currencySymbol = CURRENCY_SYMBOLS[currency] || currency || DEFAULT_CURRENCY;
+  const locale = CURRENCY_LOCALES[currency] || 'en-IN';
 
   // Format with decimals or without
   const decimals = showDecimals ? 2 : 0;
-  const formattedNumber = validPrice.toLocaleString('en-IN', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
 
-  return `${currencySymbol}${formattedNumber}`;
+  try {
+    // Try using Intl.NumberFormat for better localization
+    const formattedNumber = validPrice.toLocaleString(locale, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+
+    return `${currencySymbol}${formattedNumber}`;
+  } catch {
+    // Fallback to basic formatting
+    const formattedNumber = validPrice.toFixed(decimals);
+    return `${currencySymbol}${formattedNumber}`;
+  }
+}
+
+/**
+ * Formats a price with full Intl.NumberFormat currency support
+ * This uses the native currency formatting for the specified currency
+ *
+ * @param price - Price value to format
+ * @param currency - Currency code (INR, USD, AED, CNY, etc.)
+ * @returns Formatted price string with native currency formatting
+ *
+ * @example
+ * formatPriceIntl(1234.56, 'AED') // 'AED 1,234.56' or 'د.إ 1,234.56' depending on locale
+ * formatPriceIntl(1234.56, 'CNY') // '¥1,234.56'
+ */
+export function formatPriceIntl(
+  price: number | null | undefined,
+  currency: string = 'INR'
+): string | null {
+  const validPrice = validatePrice(price);
+
+  if (validPrice === null) {
+    return null;
+  }
+
+  const locale = CURRENCY_LOCALES[currency] || 'en-IN';
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(validPrice);
+  } catch {
+    // Fallback to basic formatting
+    const currencySymbol = CURRENCY_SYMBOLS[currency] || currency || DEFAULT_CURRENCY;
+    return `${currencySymbol}${validPrice.toFixed(2)}`;
+  }
 }
 
 /**
@@ -327,8 +395,17 @@ export function parsePrice(priceString: string | null | undefined): number | nul
     return null;
   }
 
-  // Remove currency symbols and commas
-  const cleaned = priceString.replace(/[₹$€£¥,\s]/g, '');
+  // Remove all currency symbols (including Arabic), commas, spaces, and currency codes
+  // This regex removes: ₹ $ € £ ¥ د.إ ر.س A$ C$ S$ and common currency codes
+  const cleaned = priceString
+    .replace(/[₹$€£¥,\s]/g, '')
+    .replace(/[د.إ]/g, '')
+    .replace(/[ر.س]/g, '')
+    .replace(/A\$/g, '')
+    .replace(/C\$/g, '')
+    .replace(/S\$/g, '')
+    .replace(/AED|INR|USD|EUR|GBP|CNY|JPY|SAR|SGD/gi, '')
+    .trim();
 
   // Parse as float
   const parsed = parseFloat(cleaned);

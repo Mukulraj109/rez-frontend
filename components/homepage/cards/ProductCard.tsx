@@ -19,6 +19,7 @@ import { useStockStatus } from '@/hooks/useStockStatus';
 import { useStockNotifications } from '@/hooks/useStockNotifications';
 import { useToast } from '@/hooks/useToast';
 import { getProductId } from '@/types/product-unified.types';
+import { formatPrice as formatPriceUtil } from '@/utils/priceFormatter';
 
 function ProductCard({
   product,
@@ -58,14 +59,15 @@ function ProductCard({
     };
   }, [productId, cartState.items]);
 
-  // Memoize formatPrice function
+  // Get currency from product data (supports both price.currency and pricing.currency)
+  const productCurrency = useMemo(() => {
+    return product.price?.currency || product.pricing?.currency || 'INR';
+  }, [product.price?.currency, product.pricing?.currency]);
+
+  // Memoize formatPrice function - uses product's currency
   const formatPrice = useCallback((price: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(price);
-  }, []);
+    return formatPriceUtil(price, productCurrency, false) || `${price}`;
+  }, [productCurrency]);
 
   // Memoize price calculations
   const priceData = useMemo(() => {

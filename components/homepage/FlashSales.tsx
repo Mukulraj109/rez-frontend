@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import flashSaleApi, { FlashSaleItem } from '@/services/flashSaleApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface FlashSaleProduct {
   id: string;
@@ -155,6 +156,8 @@ const FlashSales: React.FC<FlashSalesProps> = ({
   onProductPress,
 }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [products, setProducts] = useState<FlashSaleProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -378,18 +381,18 @@ const FlashSales: React.FC<FlashSalesProps> = ({
                   </Text>
                   <View style={styles.priceRow}>
                     <Text style={styles.currentPrice}>
-                      ₹{product.price.toLocaleString('en-IN')}
+                      {currencySymbol}{product.price.toLocaleString('en-IN')}
                     </Text>
                     {product.originalPrice > product.price && (
                       <Text style={styles.originalPrice}>
-                        ₹{product.originalPrice.toLocaleString('en-IN')}
+                        {currencySymbol}{product.originalPrice.toLocaleString('en-IN')}
                       </Text>
                     )}
                   </View>
                   <View style={styles.footerRow}>
                     {savings > 0 && (
                       <Text style={styles.savingsText}>
-                        Save ₹{savings.toLocaleString('en-IN')}
+                        Save {currencySymbol}{savings.toLocaleString('en-IN')}
                       </Text>
                     )}
                     <View style={styles.coinsContainer}>

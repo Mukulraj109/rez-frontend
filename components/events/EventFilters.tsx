@@ -13,6 +13,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { EventFilters as EventFiltersType } from '@/services/eventsApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -49,13 +50,13 @@ const LOCATIONS = [
   'Online',
 ];
 
-const PRICE_RANGES = [
+const getPriceRanges = (currencySymbol: string) => [
   { label: 'All', min: 0, max: Infinity },
   { label: 'Free', min: 0, max: 0 },
-  { label: 'Under ₹500', min: 0, max: 500 },
-  { label: '₹500 - ₹1000', min: 500, max: 1000 },
-  { label: '₹1000 - ₹2000', min: 1000, max: 2000 },
-  { label: 'Above ₹2000', min: 2000, max: Infinity },
+  { label: `Under ${currencySymbol}500`, min: 0, max: 500 },
+  { label: `${currencySymbol}500 - ${currencySymbol}1000`, min: 500, max: 1000 },
+  { label: `${currencySymbol}1000 - ${currencySymbol}2000`, min: 1000, max: 2000 },
+  { label: `Above ${currencySymbol}2000`, min: 2000, max: Infinity },
 ];
 
 export default function EventFilters({
@@ -65,6 +66,9 @@ export default function EventFilters({
   visible,
   onClose
 }: EventFiltersProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+  const PRICE_RANGES = getPriceRanges(currencySymbol);
   const [localFilters, setLocalFilters] = useState<EventFiltersType>(filters);
 
   const backgroundColor = useThemeColor({}, 'background');

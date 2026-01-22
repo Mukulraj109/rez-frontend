@@ -8,20 +8,25 @@ import {
   BillSummary,
   CoinSystem,
   UseCheckoutReturn,
+  CheckoutDeliveryAddress,
 } from '@/types/checkout.types';
 import { CheckoutData } from '@/data/checkoutData';
 import cartService from '@/services/cartApi';
 import ordersService from '@/services/ordersApi';
 import walletApi from '@/services/walletApi';
 import couponService from '@/services/couponApi';
+import addressApi from '@/services/addressApi';
 import { storePromoCoinApi } from '@/services/storePromoCoinApi';
 import { createRazorpayPayment } from '@/services/razorpayApi';
 import { mapBackendCartToFrontend, mapFrontendCheckoutToBackendOrder } from '@/utils/dataMappers';
 import { showToast } from '@/components/common/ToastManager';
 import { useCart } from '@/contexts/CartContext';
+import { useRegion } from '@/contexts/RegionContext';
 
 export const useCheckout = (): UseCheckoutReturn => {
   const { actions: cartActions } = useCart();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [state, setState] = useState<CheckoutPageState>(CheckoutData.initialState);
 
   // Initialize checkout data
@@ -210,19 +215,60 @@ export const useCheckout = (): UseCheckoutReturn => {
             console.error('💳 [Checkout] Failed to load coupons:', couponError);
           }
 
+          // Build real store data from cart items
+          const firstItem = checkoutItems[0];
+          const realStore = {
+            id: firstItem?.storeId || '',
+            name: firstItem?.storeName || 'Store',
+            distance: '2.5 km', // TODO: Calculate from user location
+            deliveryFee: deliveryFee,
+            minimumOrder: 0, // TODO: Get from store settings
+            estimatedDelivery: '30-45 min', // TODO: Calculate based on distance
+          };
+
           // Use mock data for payment methods only
           const mockData = await CheckoutData.api.initializeCheckout();
+
+          // Fetch user's delivery addresses
+          let userAddresses: CheckoutDeliveryAddress[] = [];
+          let defaultAddress: CheckoutDeliveryAddress | undefined;
+          try {
+            const addressResponse = await addressApi.getUserAddresses();
+            if (addressResponse.success && addressResponse.data) {
+              userAddresses = addressResponse.data.map((addr: any) => ({
+                id: addr.id,
+                name: addr.title || addr.type,
+                phone: '', // Will need to be filled by user or fetched from profile
+                addressLine1: addr.addressLine1,
+                addressLine2: addr.addressLine2,
+                city: addr.city,
+                state: addr.state,
+                pincode: addr.postalCode,
+                country: addr.country || 'India',
+                type: addr.type,
+                isDefault: addr.isDefault,
+                instructions: addr.instructions,
+              }));
+              // Find default address
+              defaultAddress = userAddresses.find(addr => addr.isDefault);
+            }
+          } catch (addressError) {
+            console.error('📍 [Checkout] Failed to load addresses:', addressError);
+          }
 
           setState(prev => ({
             ...prev,
             items: checkoutItems,
-            store: mockData.store, // Use mock store for now
+            store: realStore, // Use real store from cart items
             billSummary,
+            selectedAddress: defaultAddress,
+            availableAddresses: userAddresses,
             appliedPromoCode,
             availablePromoCodes: realAvailableCoupons, // Always use real coupons from database
-            coinSystem: realCoinSystem, // NEW: Use real wallet data
+            coinSystem: realCoinSystem, // Use real wallet data
             availablePaymentMethods: mockData.paymentMethods,
             recentPaymentMethods: mockData.paymentMethods.filter(m => m.isRecent),
+            showAddressSection: false,
             loading: false,
           }));
           return;
@@ -431,7 +477,7 @@ export const useCheckout = (): UseCheckoutReturn => {
           return newState;
         });
 
-        return { success: true, message: `${code.code} applied! You save ₹${response.data.discount}`, discount: response.data.discount };
+        return { success: true, message: `${code.code} applied! You save ${currencySymbol}${response.data.discount}`, discount: response.data.discount };
       } else {
         console.error('💳 [Checkout] Coupon invalid:', response.message);
         const errorMsg = response.message || 'Invalid coupon code';
@@ -752,11 +798,26 @@ export const useCheckout = (): UseCheckoutReturn => {
 
     try {
 
+      // Validate delivery address
+      if (!state.selectedAddress) {
+        setState(prev => ({ ...prev, loading: false, error: 'Please select a delivery address' }));
+        return;
+      }
+
       // Map frontend checkout data to backend order format
       const orderData = mapFrontendCheckoutToBackendOrder({
-        deliveryAddress: { name: 'Customer', phone: '0000000000', addressLine1: state.store.name, city: 'City', state: 'State', pincode: '000000' },
+        deliveryAddress: {
+          name: state.selectedAddress.name,
+          phone: state.selectedAddress.phone,
+          addressLine1: state.selectedAddress.addressLine1,
+          addressLine2: state.selectedAddress.addressLine2,
+          city: state.selectedAddress.city,
+          state: state.selectedAddress.state,
+          pincode: state.selectedAddress.pincode,
+          country: state.selectedAddress.country || 'India',
+        },
         paymentMethod: state.selectedPaymentMethod.id as any,
-        specialInstructions: '',
+        specialInstructions: state.selectedAddress.instructions || '',
         couponCode: state.appliedPromoCode?.code,
       });
 
@@ -872,11 +933,25 @@ export const useCheckout = (): UseCheckoutReturn => {
       }
 
       // Step 2: Create order with wallet payment method
+      // Validate delivery address
+      if (!state.selectedAddress) {
+        setState(prev => ({ ...prev, loading: false, error: 'Please select a delivery address', currentStep: 'checkout' }));
+        return;
+      }
 
       const orderData = mapFrontendCheckoutToBackendOrder({
-        deliveryAddress: { name: 'Customer', phone: '0000000000', addressLine1: state.store.name, city: 'City', state: 'State', pincode: '000000' },
+        deliveryAddress: {
+          name: state.selectedAddress.name,
+          phone: state.selectedAddress.phone,
+          addressLine1: state.selectedAddress.addressLine1,
+          addressLine2: state.selectedAddress.addressLine2,
+          city: state.selectedAddress.city,
+          state: state.selectedAddress.state,
+          pincode: state.selectedAddress.pincode,
+          country: state.selectedAddress.country || 'India',
+        },
         paymentMethod: 'wallet',
-        specialInstructions: '',
+        specialInstructions: state.selectedAddress.instructions || '',
         couponCode: state.appliedPromoCode?.code,
       });
 
@@ -942,12 +1017,26 @@ export const useCheckout = (): UseCheckoutReturn => {
     setState(prev => ({ ...prev, loading: true, currentStep: 'processing' }));
 
     try {
-      // Step 1: Create order with COD payment method
+      // Step 1: Validate delivery address
+      if (!state.selectedAddress) {
+        setState(prev => ({ ...prev, loading: false, error: 'Please select a delivery address', currentStep: 'checkout' }));
+        return;
+      }
 
+      // Step 2: Create order with COD payment method
       const orderData = mapFrontendCheckoutToBackendOrder({
-        deliveryAddress: { name: 'Customer', phone: '0000000000', addressLine1: state.store.name, city: 'City', state: 'State', pincode: '000000' },
+        deliveryAddress: {
+          name: state.selectedAddress.name,
+          phone: state.selectedAddress.phone,
+          addressLine1: state.selectedAddress.addressLine1,
+          addressLine2: state.selectedAddress.addressLine2,
+          city: state.selectedAddress.city,
+          state: state.selectedAddress.state,
+          pincode: state.selectedAddress.pincode,
+          country: state.selectedAddress.country || 'India',
+        },
         paymentMethod: 'cod',
-        specialInstructions: '',
+        specialInstructions: state.selectedAddress.instructions || '',
         couponCode: state.appliedPromoCode?.code,
       });
 
@@ -1010,6 +1099,13 @@ export const useCheckout = (): UseCheckoutReturn => {
    * Opens Razorpay checkout modal and processes payment
    */
   const handleRazorpayPayment = useCallback(async (userInfo?: { name?: string; email?: string; phone?: string }) => {
+
+    // Validate delivery address before initiating payment
+    if (!state.selectedAddress) {
+      showToast({ message: 'Please select a delivery address', type: 'error' });
+      setState(prev => ({ ...prev, showAddressSection: true }));
+      return;
+    }
 
     const totalPayable = state.billSummary.totalPayable;
 
@@ -1089,10 +1185,20 @@ export const useCheckout = (): UseCheckoutReturn => {
             }
 
             // Create order after successful payment
+            // Note: Address was validated before payment initiation
             const orderData = mapFrontendCheckoutToBackendOrder({
-              deliveryAddress: { name: 'Customer', phone: '0000000000', addressLine1: state.store.name, city: 'City', state: 'State', pincode: '000000' },
+              deliveryAddress: {
+                name: state.selectedAddress?.name || '',
+                phone: state.selectedAddress?.phone || '',
+                addressLine1: state.selectedAddress?.addressLine1 || '',
+                addressLine2: state.selectedAddress?.addressLine2,
+                city: state.selectedAddress?.city || '',
+                state: state.selectedAddress?.state || '',
+                pincode: state.selectedAddress?.pincode || '',
+                country: state.selectedAddress?.country || 'India',
+              },
               paymentMethod: 'razorpay',
-              specialInstructions: '',
+              specialInstructions: state.selectedAddress?.instructions || '',
               couponCode: state.appliedPromoCode?.code,
             });
 
@@ -1202,7 +1308,7 @@ export const useCheckout = (): UseCheckoutReturn => {
     if (existingPromo) {
       // Check minimum order value
       if (itemTotal < existingPromo.minOrderValue) {
-        const errorMsg = `Minimum order value ₹${existingPromo.minOrderValue} required for ${code}`;
+        const errorMsg = `Minimum order value ${currencySymbol}${existingPromo.minOrderValue} required for ${code}`;
         setState(prev => ({ ...prev, error: errorMsg }));
         return { success: false, message: errorMsg };
       }
@@ -1325,9 +1431,31 @@ export const useCheckout = (): UseCheckoutReturn => {
     selectPaymentMethod(method);
   }, [selectPaymentMethod]);
 
+  // Select delivery address
+  const selectAddress = useCallback((address: CheckoutDeliveryAddress) => {
+    setState(prev => ({
+      ...prev,
+      selectedAddress: address,
+      showAddressSection: false,
+    }));
+  }, []);
+
+  const handleAddressSelect = useCallback((address: CheckoutDeliveryAddress) => {
+    selectAddress(address);
+  }, [selectAddress]);
+
   const handleProceedToPayment = useCallback(() => {
+    // Validate address before proceeding
+    if (!state.selectedAddress) {
+      showToast({
+        message: 'Please select a delivery address',
+        type: 'error',
+      });
+      setState(prev => ({ ...prev, showAddressSection: true }));
+      return;
+    }
     proceedToPayment();
-  }, [proceedToPayment]);
+  }, [proceedToPayment, state.selectedAddress]);
 
   const handleBackNavigation = useCallback(() => {
     if (state.currentStep === 'payment_methods') {
@@ -1356,6 +1484,7 @@ export const useCheckout = (): UseCheckoutReturn => {
       toggleRezCoin,
       togglePromoCoin,
       selectPaymentMethod,
+      selectAddress,
       updateBillSummary,
       proceedToPayment,
       processPayment,
@@ -1365,6 +1494,7 @@ export const useCheckout = (): UseCheckoutReturn => {
       handleCoinToggle,
       handleCustomCoinAmount,
       handlePaymentMethodSelect,
+      handleAddressSelect,
       handleProceedToPayment,
       handleBackNavigation,
       handleWalletPayment,

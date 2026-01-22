@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ProductReference } from '@/types/ugc-upload.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ProductChipProps {
   product: ProductReference;
@@ -27,6 +28,8 @@ export default function ProductChip({
   onRemove,
   disabled = false,
 }: ProductChipProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const displayPrice = product.salePrice || product.basePrice;
   const imageUrl = product.images && product.images.length > 0 ? product.images[0] : '';
 
@@ -35,7 +38,7 @@ export default function ProductChip({
       style={styles.container}
       accessible={true}
       accessibilityRole="summary"
-      accessibilityLabel={`Product: ${product.name}, Price: ₹${displayPrice.toFixed(2)}${product.store ? `, from ${product.store.name}` : ''}`}
+      accessibilityLabel={`Product: ${product.name}, Price: ${currencySymbol}${displayPrice.toFixed(2)}${product.store ? `, from ${product.store.name}` : ''}`}
     >
       {/* Product Image */}
       {imageUrl ? (
@@ -58,9 +61,9 @@ export default function ProductChip({
           {product.name}
         </Text>
         <View style={styles.priceContainer}>
-          <Text style={styles.price}>₹{displayPrice.toFixed(2)}</Text>
+          <Text style={styles.price}>{currencySymbol}{displayPrice.toFixed(2)}</Text>
           {product.salePrice && product.basePrice > product.salePrice && (
-            <Text style={styles.originalPrice}>₹{product.basePrice.toFixed(2)}</Text>
+            <Text style={styles.originalPrice}>{currencySymbol}{product.basePrice.toFixed(2)}</Text>
           )}
         </View>
         {product.store && (

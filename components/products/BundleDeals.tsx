@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BundleItem } from '@/services/recommendationApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface BundleDealsProps {
   bundles: BundleItem[];
@@ -126,6 +127,9 @@ const getProductCashback = (product: any): number => {
 };
 
 function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const originalPrice = bundle.products.reduce(
     (sum, p) => sum + getProductPrice(p),
     0
@@ -203,20 +207,20 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
           <View style={styles.priceContainer}>
             <View style={styles.priceRow}>
               <Text style={styles.label}>Bundle Price:</Text>
-              <Text style={styles.bundlePrice}>₹{bundle.combinedPrice}</Text>
+              <Text style={styles.bundlePrice}>{currencySymbol}{bundle.combinedPrice}</Text>
             </View>
             {/* Always show Regular Price row for consistent height */}
             <View style={styles.priceRow}>
               <Text style={styles.label}>Regular Price:</Text>
               <Text style={styles.regularPrice}>
-                {originalPrice > bundle.combinedPrice ? `₹${originalPrice}` : `₹${bundle.combinedPrice}`}
+                {originalPrice > bundle.combinedPrice ? `${currencySymbol}${originalPrice}` : `${currencySymbol}${bundle.combinedPrice}`}
               </Text>
             </View>
             {/* Always show savings row for consistent height */}
             <View style={styles.savingsHighlight}>
               <Ionicons name="checkmark-circle" size={16} color="#10B981" />
               <Text style={styles.savingsAmount}>
-                {bundle.savings > 0 ? `You save ₹${bundle.savings}!` : 'Best Price!'}
+                {bundle.savings > 0 ? `You save ${currencySymbol}${bundle.savings}!` : 'Best Price!'}
               </Text>
             </View>
 
@@ -229,7 +233,7 @@ function BundleDealCard({ bundle, onAddToCart, onProductPress }: BundleDealCardP
               <View style={styles.rewardsDivider} />
               <View style={styles.bundleRewardItem}>
                 <Ionicons name="card-outline" size={14} color="#F59E0B" />
-                <Text style={styles.bundleCashbackText}>₹{totalCashback} cashback</Text>
+                <Text style={styles.bundleCashbackText}>{currencySymbol}{totalCashback} cashback</Text>
               </View>
             </View>
           </View>

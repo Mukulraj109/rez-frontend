@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface PriceAndRewardsSectionProps {
   /** Current selling price */
@@ -37,11 +38,13 @@ interface PriceAndRewardsSectionProps {
 export const PriceAndRewardsSection: React.FC<PriceAndRewardsSectionProps> = ({
   price,
   originalPrice,
-  currency = '₹',
+  currency,
   earnableCoins,
   cashbackAmount,
   bonusCoins = 50,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = currency || getCurrencySymbol();
   // Calculate values
   const hasDiscount = originalPrice && originalPrice > price;
   const discountPercentage = hasDiscount
@@ -57,7 +60,7 @@ export const PriceAndRewardsSection: React.FC<PriceAndRewardsSectionProps> = ({
       {hasDiscount && (
         <View style={styles.discountRow}>
           <Text style={styles.originalPrice}>
-            {currency}{originalPrice.toLocaleString('en-IN')}
+            {currencySymbol}{originalPrice.toLocaleString('en-IN')}
           </Text>
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{discountPercentage}% OFF</Text>
@@ -68,7 +71,7 @@ export const PriceAndRewardsSection: React.FC<PriceAndRewardsSectionProps> = ({
       {/* Current Price */}
       <View style={styles.currentPriceRow}>
         <Text style={styles.currentPrice}>
-          {currency}{price.toLocaleString('en-IN')}
+          {currencySymbol}{price.toLocaleString('en-IN')}
         </Text>
         <Text style={styles.rezPriceLabel}>ReZ Price</Text>
       </View>
@@ -78,7 +81,7 @@ export const PriceAndRewardsSection: React.FC<PriceAndRewardsSectionProps> = ({
         <View style={styles.savingsCard}>
           <Ionicons name="checkmark-circle" size={18} color="#00C06A" />
           <Text style={styles.savingsText}>
-            You Save {currency}{savingsAmount.toLocaleString('en-IN')}
+            You Save {currencySymbol}{savingsAmount.toLocaleString('en-IN')}
           </Text>
         </View>
       )}
@@ -110,7 +113,7 @@ export const PriceAndRewardsSection: React.FC<PriceAndRewardsSectionProps> = ({
         </View>
         <View style={styles.cashbackText}>
           <Text style={styles.cashbackTitle}>
-            Cashback {currency}{cashback}
+            Cashback {currencySymbol}{cashback}
           </Text>
           <Text style={styles.cashbackSubtitle}>
             Instant credit to wallet

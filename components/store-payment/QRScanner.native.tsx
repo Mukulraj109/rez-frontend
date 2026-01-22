@@ -24,6 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { QRCodeData } from '@/types/storePayment.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SCANNER_SIZE = SCREEN_WIDTH * 0.75;
@@ -45,6 +46,8 @@ interface QRScannerProps {
 }
 
 export default function QRScanner({ onScan, onClose, onManualEntry }: QRScannerProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -191,7 +194,7 @@ export default function QRScanner({ onScan, onClose, onManualEntry }: QRScannerP
           </View>
           <Text style={styles.promoText}>5% ReZ Coins on every payment</Text>
         </View>
-        <Text style={styles.promoSubtext}>On payments of ₹25 and above</Text>
+        <Text style={styles.promoSubtext}>On payments of {currencySymbol}25 and above</Text>
       </View>
 
       {/* Scanner Frame */}

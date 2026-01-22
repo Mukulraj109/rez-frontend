@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import couponService, { UserCoupon } from '@/services/couponApi';
 import vouchersService from '@/services/realVouchersApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface VoucherOption {
   id: string;
@@ -50,6 +51,8 @@ export default function VoucherSelectionModal({
   onApply,
   onRemove,
 }: VoucherSelectionModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [loading, setLoading] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'coupons' | 'vouchers'>('all');
@@ -107,7 +110,7 @@ export default function VoucherSelectionModal({
               code: userVoucher.voucherCode,
               type: 'voucher' as const,
               title: `${userVoucher.brand?.name || 'Gift Card'} Voucher`,
-              description: `₹${userVoucher.denomination} gift voucher`,
+              description: `${currencySymbol}${userVoucher.denomination} gift voucher`,
               value: userVoucher.denomination,
               discountType: 'FIXED' as const,
               minOrderValue: 0,
@@ -182,7 +185,7 @@ export default function VoucherSelectionModal({
         } else {
           Alert.alert(
             'Minimum Order Not Met',
-            `Add ₹${voucher.minOrderValue - cartTotal} more to use this ${voucher.type}`
+            `Add ${currencySymbol}${voucher.minOrderValue - cartTotal} more to use this ${voucher.type}`
           );
         }
       } else {
@@ -202,7 +205,7 @@ export default function VoucherSelectionModal({
     if (cartTotal < voucher.minOrderValue) {
       Alert.alert(
         'Minimum Order Not Met',
-        `Add ₹${voucher.minOrderValue - cartTotal} more to use this ${voucher.type}`
+        `Add ${currencySymbol}${voucher.minOrderValue - cartTotal} more to use this ${voucher.type}`
       );
       return;
     }
@@ -273,12 +276,12 @@ export default function VoucherSelectionModal({
           <ThemedText style={styles.discountValue}>
             {voucher.discountType === 'PERCENTAGE'
               ? `${voucher.value}% OFF`
-              : `₹${voucher.value} OFF`}
+              : `${currencySymbol}${voucher.value} OFF`}
           </ThemedText>
 
           {voucher.maxDiscount && voucher.discountType === 'PERCENTAGE' && (
             <ThemedText style={styles.maxDiscount}>
-              Up to ₹{voucher.maxDiscount}
+              Up to {currencySymbol}{voucher.maxDiscount}
             </ThemedText>
           )}
 
@@ -298,7 +301,7 @@ export default function VoucherSelectionModal({
                 isEligible && styles.minOrderMet,
               ]}
             >
-              Min order: ₹{voucher.minOrderValue}
+              Min order: {currencySymbol}{voucher.minOrderValue}
               {isEligible && ' ✓'}
             </ThemedText>
           )}
@@ -307,7 +310,7 @@ export default function VoucherSelectionModal({
           {isEligible && (
             <View style={styles.savingsSection}>
               <ThemedText style={styles.savingsText}>
-                You save: ₹{discount.toFixed(0)}
+                You save: {currencySymbol}{discount.toFixed(0)}
               </ThemedText>
             </View>
           )}
@@ -405,7 +408,7 @@ export default function VoucherSelectionModal({
                   Best Offer: {bestOffer.code}
                 </ThemedText>
                 <ThemedText style={styles.bestOfferBannerDesc}>
-                  Save ₹{calculateDiscount(bestOffer).toFixed(0)} on this order
+                  Save {currencySymbol}{calculateDiscount(bestOffer).toFixed(0)} on this order
                 </ThemedText>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#8B5CF6" />
@@ -444,7 +447,7 @@ export default function VoucherSelectionModal({
                     {currentVoucher.code} Applied
                   </ThemedText>
                   <ThemedText style={styles.currentSavings}>
-                    Saving ₹{calculateDiscount(currentVoucher).toFixed(0)}
+                    Saving {currencySymbol}{calculateDiscount(currentVoucher).toFixed(0)}
                   </ThemedText>
                 </View>
               </View>

@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DiscoverImage } from '@/types/discover.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 // ReZ Brand Colors
 const REZ_COLORS = {
@@ -50,6 +51,8 @@ export default function ImagesTab({
   refreshing = false,
 }: ImagesTabProps) {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // Navigate to product page
   const handleImagePress = useCallback((item: DiscoverImage) => {
@@ -170,7 +173,7 @@ export default function ImagesTab({
                 {item.products[0].name}
               </Text>
               <Text style={styles.productPrice}>
-                ₹{item.products[0].price}
+                {currencySymbol}{item.products[0].price}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />

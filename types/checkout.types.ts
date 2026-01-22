@@ -99,32 +99,53 @@ export interface PaymentMethod {
   };
 }
 
+// Delivery Address for checkout
+export interface CheckoutDeliveryAddress {
+  id?: string;
+  name: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country?: string;
+  type?: 'HOME' | 'OFFICE' | 'OTHER';
+  isDefault?: boolean;
+  instructions?: string;
+}
+
 export interface CheckoutPageState {
   // Cart and Items
   items: CheckoutItem[];
   store: CheckoutStore;
-  
+
   // Pricing and Calculations
   billSummary: BillSummary;
-  
+
+  // Delivery Address
+  selectedAddress?: CheckoutDeliveryAddress;
+  availableAddresses: CheckoutDeliveryAddress[];
+
   // Promotions and Coins
   appliedPromoCode?: PromoCode;
   availablePromoCodes: PromoCode[];
   coinSystem: CoinSystem;
-  
+
   // Payment
   selectedPaymentMethod?: PaymentMethod;
   availablePaymentMethods: PaymentMethod[];
   recentPaymentMethods: PaymentMethod[];
-  
+
   // UI State
   showPromoCodeSection: boolean;
   showBillSummary: boolean;
+  showAddressSection: boolean;
   loading: boolean;
   error: string | null;
-  
+
   // Flow State
-  currentStep: 'checkout' | 'payment_methods' | 'payment_details' | 'processing' | 'success';
+  currentStep: 'checkout' | 'address_selection' | 'payment_methods' | 'payment_details' | 'processing' | 'success';
 }
 
 export interface CheckoutAction {
@@ -219,6 +240,7 @@ export interface UseCheckoutReturn {
     toggleRezCoin: (enabled: boolean) => void;
     togglePromoCoin: (enabled: boolean) => void;
     selectPaymentMethod: (method: PaymentMethod) => void;
+    selectAddress: (address: CheckoutDeliveryAddress) => void;
     updateBillSummary: () => void;
     proceedToPayment: () => Promise<void>;
     processPayment: () => Promise<void>;
@@ -228,6 +250,7 @@ export interface UseCheckoutReturn {
     handleCoinToggle: (coinType: 'rez' | 'promo' | 'storePromo', enabled: boolean) => void;
     handleCustomCoinAmount: (coinType: 'rez' | 'promo' | 'storePromo', amount: number) => void;
     handlePaymentMethodSelect: (method: PaymentMethod) => void;
+    handleAddressSelect: (address: CheckoutDeliveryAddress) => void;
     handleProceedToPayment: () => void;
     handleBackNavigation: () => void;
     handleWalletPayment: () => Promise<void>;

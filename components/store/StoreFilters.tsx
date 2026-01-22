@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@/components/common/CrossPlatformSlider';
+import { useRegion } from '@/contexts/RegionContext';
 
 export interface FilterOptions {
   deliveryTime: {
@@ -45,6 +46,8 @@ const StoreFilters: React.FC<StoreFiltersProps> = ({
   onApplyFilters,
   initialFilters,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [filters, setFilters] = useState<FilterOptions>({
     deliveryTime: { min: 15, max: 90 },
     priceRange: { min: 0, max: 2000 },
@@ -241,10 +244,10 @@ const StoreFilters: React.FC<StoreFiltersProps> = ({
           {/* Price Range */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              Price Range: ₹{filters.priceRange.min} - ₹{filters.priceRange.max}
+              Price Range: {currencySymbol}{filters.priceRange.min} - {currencySymbol}{filters.priceRange.max}
             </Text>
             <View style={styles.sliderContainer}>
-              <Text style={styles.sliderLabel}>Min: ₹{filters.priceRange.min}</Text>
+              <Text style={styles.sliderLabel}>Min: {currencySymbol}{filters.priceRange.min}</Text>
               <Slider
                 style={styles.slider}
                 minimumValue={0}
@@ -256,7 +259,7 @@ const StoreFilters: React.FC<StoreFiltersProps> = ({
               />
             </View>
             <View style={styles.sliderContainer}>
-              <Text style={styles.sliderLabel}>Max: ₹{filters.priceRange.max}</Text>
+              <Text style={styles.sliderLabel}>Max: {currencySymbol}{filters.priceRange.max}</Text>
               <Slider
                 style={styles.slider}
                 minimumValue={0}

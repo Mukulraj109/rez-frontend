@@ -23,6 +23,7 @@ import { useCategoryPageData } from '@/hooks/useCategoryPageData';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import EmptyState from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { useRegion } from '@/contexts/RegionContext';
 
 const COLORS = {
   primaryGreen: '#00C06A',
@@ -44,6 +45,8 @@ export default function EntertainmentCategoryPage() {
   const router = useRouter();
   const slug = 'entertainment';
   const categoryConfig = getCategoryConfig(slug);
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const { subcategories, stores, ugcPosts, aiPlaceholders, isLoading, error, refetch } = useCategoryPageData(slug);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -160,7 +163,7 @@ export default function EntertainmentCategoryPage() {
                     <Ionicons name="calendar-outline" size={12} color={COLORS.white} />
                     <Text style={styles.eventMetaText}>Today</Text>
                   </View>
-                  <Text style={styles.eventPrice}>₹{event.price || '499'}</Text>
+                  <Text style={styles.eventPrice}>{currencySymbol}{event.price || '499'}</Text>
                 </View>
               </TouchableOpacity>
             ))}

@@ -40,9 +40,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { uploadProfileImage } from '@/services/imageUploadService';
 import { ShareService } from '@/services/shareService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRegion } from '@/contexts/RegionContext';
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const { goBack } = useSafeNavigation();
   const { user } = useProfile();
   const { state: authState, actions: authActions } = useAuth();
@@ -723,7 +726,7 @@ export default function ProfilePage() {
                 </View>
                 <View style={styles.referralText}>
                   <ThemedText style={styles.referralTitle}>
-                    Refer & Earn ₹100
+                    Refer & Earn {currencySymbol}100
                   </ThemedText>
                   <ThemedText style={styles.referralSubtitle}>
                     Invite friends and get rewards
@@ -876,7 +879,7 @@ export default function ProfilePage() {
                   accessibilityRole="button"
                   accessibilityHint="Double tap to view wallet details"
                 >
-                  <ThemedText style={styles.statNumber}>₹{statistics.wallet?.totalSpent || 0}</ThemedText>
+                  <ThemedText style={styles.statNumber}>{currencySymbol}{statistics.wallet?.totalSpent || 0}</ThemedText>
                   <ThemedText style={styles.statLabel}>Spent</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity

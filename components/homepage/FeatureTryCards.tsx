@@ -9,6 +9,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface FeatureCard {
   id: string;
@@ -46,14 +47,14 @@ interface FeatureTryCardsProps {
   onServiceBookingPress?: () => void;
 }
 
-// Helper function to format currency
-const formatCurrency = (amount: number): string => {
+// Helper function to format currency - returns number string without symbol
+const formatCurrencyValue = (amount: number): string => {
   if (amount >= 100000) {
-    return `₹${(amount / 100000).toFixed(1)}L`;
+    return `${(amount / 100000).toFixed(1)}L`;
   } else if (amount >= 1000) {
-    return `₹${(amount / 1000).toFixed(amount >= 10000 ? 0 : 1)}K`;
+    return `${(amount / 1000).toFixed(amount >= 10000 ? 0 : 1)}K`;
   }
-  return `₹${amount.toLocaleString('en-IN')}`;
+  return amount.toLocaleString('en-IN');
 };
 
 // Helper function to format coins
@@ -72,6 +73,8 @@ const FeatureTryCards: React.FC<FeatureTryCardsProps> = ({
   onServiceBookingPress,
 }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // Build cards array based on available data
   const cards: FeatureCard[] = [];
@@ -85,7 +88,7 @@ const FeatureTryCards: React.FC<FeatureTryCardsProps> = ({
       titleEmojis: '🔥',
       subtitle: 'Lock price, visit store or get delivered',
       itemName: lockProduct?.name || 'Featured Product',
-      saveAmount: lockProduct ? formatCurrency(lockProduct.savings) : '₹5,000',
+      saveAmount: lockProduct ? `${currencySymbol}${formatCurrencyValue(lockProduct.savings)}` : `${currencySymbol}5,000`,
       coinsEarned: lockProduct ? formatCoins(lockProduct.cashbackCoins) : '2,499',
       ctaText: 'Try Now',
       ctaColor: '#A855F7', // Purple
@@ -109,7 +112,7 @@ const FeatureTryCards: React.FC<FeatureTryCardsProps> = ({
       titleEmojis: '✨✨',
       subtitle: 'Choose date, time & professional',
       itemName: trendingService?.name || 'Trending Service',
-      saveAmount: trendingService ? formatCurrency(trendingService.savings) : '₹1,000',
+      saveAmount: trendingService ? `${currencySymbol}${formatCurrencyValue(trendingService.savings)}` : `${currencySymbol}1,000`,
       coinsEarned: trendingService ? formatCoins(trendingService.cashbackCoins) : '250',
       ctaText: 'Book Now',
       ctaColor: '#EC4899', // Pink

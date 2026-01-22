@@ -24,6 +24,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import EmptyState from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { useRegion } from '@/contexts/RegionContext';
 
 const COLORS = {
   primaryGreen: '#00C06A',
@@ -44,6 +45,8 @@ export default function FinancialCategoryPage() {
   const router = useRouter();
   const slug = 'financial-lifestyle';
   const categoryConfig = getCategoryConfig(slug);
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const { subcategories, stores, ugcPosts, aiPlaceholders, isLoading, error, refetch } = useCategoryPageData(slug);
 
@@ -110,15 +113,15 @@ export default function FinancialCategoryPage() {
       <View style={styles.dashboardCard}>
         <LinearGradient colors={['rgba(59, 130, 246, 0.2)', 'rgba(139, 92, 246, 0.2)']} style={styles.dashboardGradient}>
           <Text style={styles.dashboardTitle}>Total Savings This Month</Text>
-          <Text style={styles.dashboardAmount}>₹{savingsThisMonth.toLocaleString()}</Text>
+          <Text style={styles.dashboardAmount}>{currencySymbol}{savingsThisMonth.toLocaleString()}</Text>
           <View style={styles.dashboardStats}>
             <View style={styles.dashboardStat}>
               <Text style={styles.dashboardStatLabel}>Balance</Text>
-              <Text style={styles.dashboardStatValue}>₹{(walletState.data?.availableBalance || 0).toLocaleString()}</Text>
+              <Text style={styles.dashboardStatValue}>{currencySymbol}{(walletState.data?.availableBalance || 0).toLocaleString()}</Text>
             </View>
             <View style={styles.dashboardStat}>
               <Text style={styles.dashboardStatLabel}>Cashback</Text>
-              <Text style={styles.dashboardStatValue}>₹{cashbackBalance.toLocaleString()}</Text>
+              <Text style={styles.dashboardStatValue}>{currencySymbol}{cashbackBalance.toLocaleString()}</Text>
             </View>
             <View style={styles.dashboardStat}>
               <Text style={styles.dashboardStatLabel}>Coins</Text>
@@ -188,9 +191,9 @@ export default function FinancialCategoryPage() {
           <Text style={styles.sectionTitle}>Mobile Recharge</Text>
         </View>
         <View style={styles.rechargeGrid}>
-          {['₹99', '₹199', '₹299', '₹499'].map((amount, index) => (
-            <TouchableOpacity key={index} style={styles.rechargeCard} onPress={() => router.push(`/recharge?amount=${amount.replace('₹', '')}`)}>
-              <Text style={styles.rechargeAmount}>{amount}</Text>
+          {[99, 199, 299, 499].map((amount, index) => (
+            <TouchableOpacity key={index} style={styles.rechargeCard} onPress={() => router.push(`/recharge?amount=${amount}`)}>
+              <Text style={styles.rechargeAmount}>{currencySymbol}{amount}</Text>
               <Text style={styles.rechargeCashback}>10% cashback</Text>
             </TouchableOpacity>
           ))}
@@ -221,7 +224,7 @@ export default function FinancialCategoryPage() {
             <Text style={styles.goldEmoji}>🥇</Text>
             <View style={styles.goldText}>
               <Text style={styles.goldTitle}>Start Saving in Gold</Text>
-              <Text style={styles.goldSubtitle}>Buy as low as ₹1, invest in 24K gold</Text>
+              <Text style={styles.goldSubtitle}>Buy as low as {currencySymbol}1, invest in 24K gold</Text>
             </View>
             <TouchableOpacity style={styles.goldButton} onPress={() => router.push('/gold-savings')}>
               <Text style={styles.goldButtonText}>Start Now</Text>

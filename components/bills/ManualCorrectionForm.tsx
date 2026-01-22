@@ -17,6 +17,7 @@ import {
   ManualCorrectionData,
   MerchantMatch,
 } from '@/types/billVerification.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ManualCorrectionFormProps {
   visible: boolean;
@@ -33,6 +34,9 @@ export default function ManualCorrectionForm({
   merchantMatches = [],
   onSubmit,
 }: ManualCorrectionFormProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [corrections, setCorrections] = useState<ManualCorrectionData>({
     merchantName: ocrData.merchantName || '',
     amount: ocrData.amount || 0,
@@ -52,11 +56,11 @@ export default function ManualCorrectionForm({
     }
 
     if (!corrections.amount || corrections.amount < 50) {
-      newErrors.amount = 'Amount must be at least ₹50';
+      newErrors.amount = `Amount must be at least ${currencySymbol}50`;
     }
 
     if (corrections.amount && corrections.amount > 100000) {
-      newErrors.amount = 'Amount cannot exceed ₹1,00,000';
+      newErrors.amount = `Amount cannot exceed ${currencySymbol}1,00,000`;
     }
 
     if (!corrections.billDate) {
@@ -203,7 +207,7 @@ export default function ManualCorrectionForm({
               accessible={true}
               accessibilityRole="text"
             >
-              Bill Amount (₹) <Text style={styles.required}>*</Text>
+              Bill Amount ({currencySymbol}) <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={[styles.input, errors.amount && styles.inputError]}
@@ -235,7 +239,7 @@ export default function ManualCorrectionForm({
                 accessible={true}
                 accessibilityRole="text"
               >
-                Detected: ₹{ocrData.amount}
+                Detected: {currencySymbol}{ocrData.amount}
               </Text>
             )}
           </View>

@@ -8,6 +8,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface PaymentMethod {
   type: 'cod' | 'card' | 'upi' | 'netbanking' | 'wallet' | 'emi';
@@ -38,6 +39,8 @@ const PaymentMethods: React.FC<PaymentMethodsProps> = ({
   acceptsEMI = false,
   emiPartners = [],
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [showEMICalculator, setShowEMICalculator] = useState(false);
 
   // Group methods by type
@@ -179,19 +182,19 @@ const PaymentMethods: React.FC<PaymentMethodsProps> = ({
             <View style={styles.emiCalculatorContent}>
               <View style={styles.emiRow}>
                 <Text style={styles.emiLabel}>Purchase Amount:</Text>
-                <Text style={styles.emiValue}>₹10,000</Text>
+                <Text style={styles.emiValue}>{currencySymbol}10,000</Text>
               </View>
               <View style={styles.emiRow}>
                 <Text style={styles.emiLabel}>3 Months:</Text>
-                <Text style={styles.emiValue}>₹3,400/month</Text>
+                <Text style={styles.emiValue}>{currencySymbol}3,400/month</Text>
               </View>
               <View style={styles.emiRow}>
                 <Text style={styles.emiLabel}>6 Months:</Text>
-                <Text style={styles.emiValue}>₹1,750/month</Text>
+                <Text style={styles.emiValue}>{currencySymbol}1,750/month</Text>
               </View>
               <View style={styles.emiRow}>
                 <Text style={styles.emiLabel}>12 Months:</Text>
-                <Text style={styles.emiValue}>₹900/month</Text>
+                <Text style={styles.emiValue}>{currencySymbol}900/month</Text>
               </View>
               <Text style={styles.emiNote}>
                 *EMI rates may vary based on bank and card type

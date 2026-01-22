@@ -5,12 +5,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ReferralSectionProps } from '@/types/earnPage.types';
 import { EARN_COLORS } from '@/constants/EarnPageColors';
+import { useRegion } from '@/contexts/RegionContext';
 
-export default function ReferralSection({ 
-  referralData, 
-  onShare, 
-  onLearnMore 
+export default function ReferralSection({
+  referralData,
+  onShare,
+  onLearnMore
 }: ReferralSectionProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -275,8 +278,8 @@ export default function ReferralSection({
           >
             {[
               { value: referralData.totalReferrals, label: 'Total Referrals', icon: 'people', gradient: ['#00C06A', '#00796B'] },
-              { value: `₹${referralData.totalEarningsFromReferrals}`, label: 'Earned', icon: 'wallet', gradient: ['#10B981', '#059669'] },
-              { value: `₹${referralData.referralBonus}`, label: 'Per Referral', icon: 'gift', gradient: ['#FFC857', '#F5A623'] },
+              { value: `${currencySymbol}${referralData.totalEarningsFromReferrals}`, label: 'Earned', icon: 'wallet', gradient: ['#10B981', '#059669'] },
+              { value: `${currencySymbol}${referralData.referralBonus}`, label: 'Per Referral', icon: 'gift', gradient: ['#FFC857', '#F5A623'] },
             ].map((stat, idx) => (
               <View key={idx} style={styles.statItem}>
                 <LinearGradient

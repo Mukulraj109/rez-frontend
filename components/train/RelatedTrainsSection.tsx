@@ -7,6 +7,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIn
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import travelApi from '@/services/travelApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface Route {
   from: string;
@@ -20,6 +21,8 @@ interface RelatedTrainsSectionProps {
 
 const RelatedTrainsSection: React.FC<RelatedTrainsSectionProps> = ({ currentTrainId, route }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [relatedTrains, setRelatedTrains] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -109,7 +112,7 @@ const RelatedTrainsSection: React.FC<RelatedTrainsSectionProps> = ({ currentTrai
                   <Ionicons name="star" size={14} color="#F59E0B" />
                   <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
                 </View>
-                <Text style={styles.priceText}>From ₹{price.toLocaleString('en-IN')}</Text>
+                <Text style={styles.priceText}>From {currencySymbol}{price.toLocaleString('en-IN')}</Text>
               </View>
             </TouchableOpacity>
           );

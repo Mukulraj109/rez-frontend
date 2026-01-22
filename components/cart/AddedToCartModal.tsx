@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatPrice } from '@/utils/priceFormatter';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface AddedToCartModalProps {
   visible: boolean;
@@ -36,6 +37,8 @@ export default function AddedToCartModal({
   cartItemCount = 1,
   cartTotal,
 }: AddedToCartModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const slideAnim = React.useRef(new Animated.Value(300)).current;
 
   React.useEffect(() => {
@@ -129,7 +132,7 @@ export default function AddedToCartModal({
                 {product.name || 'Product'}
               </Text>
               <Text style={styles.productPrice}>
-                {formatPrice(safePrice, 'INR') || '₹0.00'}
+                {formatPrice(safePrice, 'INR') || `${currencySymbol}0.00`}
               </Text>
               {safeQuantity > 1 && (
                 <Text style={styles.productQuantity}>Qty: {safeQuantity}</Text>
@@ -142,7 +145,7 @@ export default function AddedToCartModal({
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal:</Text>
               <Text style={styles.summaryValue}>
-                {formatPrice(displayTotal, 'INR') || '₹0.00'}
+                {formatPrice(displayTotal, 'INR') || `${currencySymbol}0.00`}
               </Text>
             </View>
             <View style={styles.deliveryInfo}>

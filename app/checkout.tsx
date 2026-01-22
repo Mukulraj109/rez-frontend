@@ -24,11 +24,15 @@ import StockWarningBanner from '@/components/cart/StockWarningBanner';
 import CartValidation from '@/components/cart/CartValidation';
 import CardOffersSection from '@/components/cart/CardOffersSection';
 import { showToast } from '@/components/common/ToastManager';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
 export default function CheckoutPage() {
   const router = useRouter();
+  // Get region-aware currency symbol
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   // Destructure checkout hook return values
   const { state, handlers } = useCheckout();
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -348,7 +352,7 @@ export default function CheckoutPage() {
         
         {/* Amount Display */}
         <View style={styles.amountContainer}>
-          <ThemedText style={styles.amountText}>₹{(state.billSummary?.totalPayable || 0).toFixed(0)}</ThemedText>
+          <ThemedText style={styles.amountText}>{currencySymbol}{(state.billSummary?.totalPayable || 0).toFixed(0)}</ThemedText>
           <View style={styles.cashbackBadge}>
             <ThemedText style={styles.cashbackText}>Cash back 10 %</ThemedText>
           </View>
@@ -422,7 +426,7 @@ export default function CheckoutPage() {
                     {item.name}
                   </ThemedText>
                   <ThemedText style={styles.orderItemPrice}>
-                    ₹{(item.price * item.quantity).toLocaleString()}
+                    {currencySymbol}{(item.price * item.quantity).toLocaleString()}
                   </ThemedText>
                 </View>
               ))}
@@ -453,7 +457,7 @@ export default function CheckoutPage() {
                     {state.appliedPromoCode.code} Applied
                   </ThemedText>
                   <ThemedText style={styles.appliedPromoSubtitle}>
-                    You saved ₹{(state.billSummary?.promoDiscount || 0).toFixed(0)}
+                    You saved {currencySymbol}{(state.billSummary?.promoDiscount || 0).toFixed(0)}
                   </ThemedText>
                 </View>
               </View>
@@ -602,9 +606,9 @@ export default function CheckoutPage() {
                 </View>
 
                 <View style={styles.sliderLabels}>
-                  <ThemedText style={styles.sliderLabelTextWhite}>₹0</ThemedText>
+                  <ThemedText style={styles.sliderLabelTextWhite}>{currencySymbol}0</ThemedText>
                   <ThemedText style={styles.sliderLabelTextWhite}>
-                    ₹{Math.min(
+                    {currencySymbol}{Math.min(
                       state.coinSystem.rezCoin.available,
                       Math.floor(state.billSummary?.totalPayable || 0)
                     )}
@@ -616,7 +620,7 @@ export default function CheckoutPage() {
                     <View style={styles.savingBadge}>
                       <Ionicons name="gift" size={16} color="#10B981" />
                       <ThemedText style={styles.coinSavingTextEnhanced}>
-                        You'll save ₹{state.coinSystem.rezCoin.used} on this order!
+                        You'll save {currencySymbol}{state.coinSystem.rezCoin.used} on this order!
                       </ThemedText>
                     </View>
                   </View>
@@ -724,9 +728,9 @@ export default function CheckoutPage() {
                   </View>
 
                   <View style={styles.sliderLabels}>
-                    <ThemedText style={styles.sliderLabelTextWhite}>₹0</ThemedText>
+                    <ThemedText style={styles.sliderLabelTextWhite}>{currencySymbol}0</ThemedText>
                     <ThemedText style={styles.sliderLabelTextWhite}>
-                      ₹{Math.min(
+                      {currencySymbol}{Math.min(
                         state.coinSystem.storePromoCoin.available,
                         Math.floor((state.billSummary?.totalPayable || 0) * 0.3)
                       )}
@@ -738,7 +742,7 @@ export default function CheckoutPage() {
                       <View style={styles.savingBadge}>
                         <Ionicons name="gift" size={16} color="#10B981" />
                         <ThemedText style={styles.coinSavingTextEnhanced}>
-                          Store exclusive: You'll save ₹{state.coinSystem.storePromoCoin.used}!
+                          Store exclusive: You'll save {currencySymbol}{state.coinSystem.storePromoCoin.used}!
                         </ThemedText>
                       </View>
                     </View>
@@ -798,7 +802,7 @@ export default function CheckoutPage() {
                     )}
                   </View>
                   <View style={styles.servicePrice}>
-                    <ThemedText style={styles.servicePriceText}>₹{(item.price || 0).toLocaleString()}</ThemedText>
+                    <ThemedText style={styles.servicePriceText}>{currencySymbol}{(item.price || 0).toLocaleString()}</ThemedText>
                   </View>
                 </View>
               );
@@ -821,14 +825,14 @@ export default function CheckoutPage() {
             <View style={styles.summaryRow}>
               <ThemedText style={styles.summaryLabel}>Item Total</ThemedText>
               <ThemedText style={styles.summaryValue}>
-                ₹{(state.billSummary?.itemTotal || 0).toFixed(0)}
+                {currencySymbol}{(state.billSummary?.itemTotal || 0).toFixed(0)}
               </ThemedText>
             </View>
             
             <View style={styles.summaryRow}>
               <ThemedText style={styles.summaryLabel}>Get & item Total</ThemedText>
               <ThemedText style={styles.summaryValue}>
-                ₹{(state.billSummary?.getAndItemTotal || 0).toFixed(0)}
+                {currencySymbol}{(state.billSummary?.getAndItemTotal || 0).toFixed(0)}
               </ThemedText>
             </View>
 
@@ -836,7 +840,7 @@ export default function CheckoutPage() {
               <View style={styles.summaryRow}>
                 <ThemedText style={styles.summaryLabel}>Platform Fee</ThemedText>
                 <ThemedText style={styles.summaryValue}>
-                  ₹{(state.billSummary?.platformFee || 0).toFixed(0)}
+                  {currencySymbol}{(state.billSummary?.platformFee || 0).toFixed(0)}
                 </ThemedText>
               </View>
             )}
@@ -845,7 +849,7 @@ export default function CheckoutPage() {
               <View style={styles.summaryRow}>
                 <ThemedText style={styles.summaryLabel}>Taxes</ThemedText>
                 <ThemedText style={styles.summaryValue}>
-                  ₹{(state.billSummary?.taxes || 0).toFixed(0)}
+                  {currencySymbol}{(state.billSummary?.taxes || 0).toFixed(0)}
                 </ThemedText>
               </View>
             )}
@@ -856,7 +860,7 @@ export default function CheckoutPage() {
                   Promo Discount
                 </ThemedText>
                 <ThemedText style={[styles.summaryValue, { color: '#22C55E' }]}>
-                  -₹{(state.billSummary?.promoDiscount || 0).toFixed(0)}
+                  -{currencySymbol}{(state.billSummary?.promoDiscount || 0).toFixed(0)}
                 </ThemedText>
               </View>
             )}
@@ -868,7 +872,7 @@ export default function CheckoutPage() {
                   Card Offer Discount
                 </ThemedText>
                 <ThemedText style={[styles.summaryValue, { color: '#00C06A' }]}>
-                  -₹{((state.billSummary as any)?.cardOfferDiscount || 0).toFixed(0)}
+                  -{currencySymbol}{((state.billSummary as any)?.cardOfferDiscount || 0).toFixed(0)}
                 </ThemedText>
               </View>
             )}
@@ -879,7 +883,7 @@ export default function CheckoutPage() {
                   REZ Coin Discount
                 </ThemedText>
                 <ThemedText style={[styles.summaryValue, { color: '#00C06A' }]}>
-                  -₹{(state.billSummary?.coinDiscount || 0).toFixed(0)}
+                  -{currencySymbol}{(state.billSummary?.coinDiscount || 0).toFixed(0)}
                 </ThemedText>
               </View>
             )}
@@ -887,7 +891,7 @@ export default function CheckoutPage() {
             <View style={styles.summaryRow}>
               <ThemedText style={styles.summaryLabel}>Round off</ThemedText>
               <ThemedText style={styles.summaryValue}>
-                ₹{Math.abs(state.billSummary?.roundOff || 0).toFixed(2)}
+                {currencySymbol}{Math.abs(state.billSummary?.roundOff || 0).toFixed(2)}
               </ThemedText>
             </View>
           </View>
@@ -895,14 +899,14 @@ export default function CheckoutPage() {
           <View style={styles.totalPayableCard}>
             <ThemedText style={styles.totalPayableLabel}>Total payable</ThemedText>
             <ThemedText style={styles.totalPayableValue}>
-              ₹{(state.billSummary?.totalPayable || 0).toFixed(0)}
+              {currencySymbol}{(state.billSummary?.totalPayable || 0).toFixed(0)}
             </ThemedText>
           </View>
 
           {(state.billSummary?.savings || 0) > 0 && (
             <View style={styles.savingsCard}>
               <ThemedText style={styles.savingsText}>
-                🎉 You saved ₹{(state.billSummary?.savings || 0).toFixed(0)} on this order!
+                🎉 You saved {currencySymbol}{(state.billSummary?.savings || 0).toFixed(0)} on this order!
               </ThemedText>
             </View>
           )}
@@ -920,7 +924,7 @@ export default function CheckoutPage() {
           activeOpacity={0.9}
         >
           <View style={styles.payNowLeft}>
-            <ThemedText style={styles.payNowAmount}>₹{(state.billSummary?.totalPayable || 0).toFixed(0)}</ThemedText>
+            <ThemedText style={styles.payNowAmount}>{currencySymbol}{(state.billSummary?.totalPayable || 0).toFixed(0)}</ThemedText>
             <ThemedText style={styles.payNowLabel}>Total Amount</ThemedText>
           </View>
           <View style={styles.payNowRight}>
@@ -1092,7 +1096,7 @@ export default function CheckoutPage() {
                     // Calculate discount display
                     const discountDisplay = promo.discountType === 'PERCENTAGE'
                       ? `${promo.discountValue}% OFF`
-                      : `₹${promo.discountValue} OFF`;
+                      : `${currencySymbol}${promo.discountValue} OFF`;
 
                     return (
                       <TouchableOpacity
@@ -1109,13 +1113,13 @@ export default function CheckoutPage() {
                             handleQuickPromoSelect(promo.code);
                           } else if (requiresTier) {
                             showToast({
-                              message: `🔒 ${tierName.toUpperCase()} MEMBERS ONLY - Upgrade your membership to unlock this ${promo.discountValue}${promo.discountType === 'PERCENTAGE' ? '%' : '₹'} discount!`,
+                              message: `🔒 ${tierName.toUpperCase()} MEMBERS ONLY - Upgrade your membership to unlock this ${promo.discountValue}${promo.discountType === 'PERCENTAGE' ? '%' : currencySymbol} discount!`,
                               type: 'warning',
                               duration: 4000,
                             });
                           } else {
                             showToast({
-                              message: `⚠️ Minimum order value of ₹${promo.minOrderValue} required for this coupon`,
+                              message: `⚠️ Minimum order value of ${currencySymbol}${promo.minOrderValue} required for this coupon`,
                               type: 'warning',
                               duration: 3000,
                             });
@@ -1152,7 +1156,7 @@ export default function CheckoutPage() {
                             )}
                             {promo.minOrderValue > 0 && (
                               <ThemedText style={[styles.minOrderText, minOrderEligible && styles.eligibleMinOrder]}>
-                                Min order: ₹{promo.minOrderValue}
+                                Min order: {currencySymbol}{promo.minOrderValue}
                               </ThemedText>
                             )}
                           </View>
@@ -1224,7 +1228,7 @@ export default function CheckoutPage() {
                 <View style={styles.confirmSummaryRow}>
                   <ThemedText style={styles.confirmSummaryLabel}>Subtotal</ThemedText>
                   <ThemedText style={styles.confirmSummaryValue}>
-                    ₹{(state.billSummary?.itemTotal || 0).toFixed(0)}
+                    {currencySymbol}{(state.billSummary?.itemTotal || 0).toFixed(0)}
                   </ThemedText>
                 </View>
                 {(state.billSummary?.promoDiscount || 0) > 0 && (
@@ -1233,7 +1237,7 @@ export default function CheckoutPage() {
                       Promo Discount
                     </ThemedText>
                     <ThemedText style={[styles.confirmSummaryValue, { color: '#22C55E' }]}>
-                      -₹{(state.billSummary?.promoDiscount || 0).toFixed(0)}
+                      -{currencySymbol}{(state.billSummary?.promoDiscount || 0).toFixed(0)}
                     </ThemedText>
                   </View>
                 )}
@@ -1243,14 +1247,14 @@ export default function CheckoutPage() {
                       Coin Discount
                     </ThemedText>
                     <ThemedText style={[styles.confirmSummaryValue, { color: '#00C06A' }]}>
-                      -₹{(state.billSummary?.coinDiscount || 0).toFixed(0)}
+                      -{currencySymbol}{(state.billSummary?.coinDiscount || 0).toFixed(0)}
                     </ThemedText>
                   </View>
                 )}
                 <View style={[styles.confirmSummaryRow, styles.confirmTotalRow]}>
                   <ThemedText style={styles.confirmTotalLabel}>Total Amount</ThemedText>
                   <ThemedText style={styles.confirmTotalValue}>
-                    ₹{(state.billSummary?.totalPayable || 0).toFixed(0)}
+                    {currencySymbol}{(state.billSummary?.totalPayable || 0).toFixed(0)}
                   </ThemedText>
                 </View>
               </View>
@@ -1299,7 +1303,7 @@ export default function CheckoutPage() {
                   style={styles.confirmPayGradient}
                 >
                   <ThemedText style={styles.confirmPayText}>
-                    Confirm & Pay ₹{(state.billSummary?.totalPayable || 0).toFixed(0)}
+                    Confirm & Pay {currencySymbol}{(state.billSummary?.totalPayable || 0).toFixed(0)}
                   </ThemedText>
                 </LinearGradient>
               </TouchableOpacity>

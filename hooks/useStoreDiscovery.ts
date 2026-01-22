@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCurrentLocation } from './useLocation';
 import storesService from '@/services/storesApi';
 import apiClient from '@/services/apiClient';
+import { useCurrentRegion } from '@/contexts/RegionContext';
 
 export interface DiscoveryStore {
   id: string;
@@ -161,6 +162,7 @@ function transformStore(
  */
 export function useStoreDiscovery(limit: number = 10): UseStoreDiscoveryReturn {
   const { currentLocation } = useCurrentLocation();
+  const currentRegion = useCurrentRegion(); // Get current region to refetch on change
 
   const [state, setState] = useState<UseStoreDiscoveryState>({
     topStores: [],
@@ -373,15 +375,15 @@ export function useStoreDiscovery(limit: number = 10): UseStoreDiscoveryReturn {
     await Promise.all([refreshTopStores(), refreshPopularStores()]);
   }, [refreshTopStores, refreshPopularStores]);
 
-  // Initial data fetch
+  // Initial data fetch - also refetch when region changes
   useEffect(() => {
     refreshTopStores();
-  }, [refreshTopStores]);
+  }, [refreshTopStores, currentRegion]);
 
-  // Fetch popular stores when location becomes available
+  // Fetch popular stores when location becomes available or region changes
   useEffect(() => {
     refreshPopularStores();
-  }, [refreshPopularStores]);
+  }, [refreshPopularStores, currentRegion]);
 
   return {
     ...state,

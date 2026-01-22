@@ -1,8 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 export default function SearchTipCard() {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
@@ -10,7 +14,7 @@ export default function SearchTipCard() {
       </View>
       <View style={styles.content}>
         <Text style={styles.tipText}>
-          <Text style={styles.bold}>Tip:</Text> Try searching "Halal biryani under ₹500 near BTM"
+          <Text style={styles.bold}>Tip:</Text> Try searching "Halal biryani under {currencySymbol}500 near BTM"
         </Text>
       </View>
     </View>

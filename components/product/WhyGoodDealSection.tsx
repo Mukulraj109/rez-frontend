@@ -12,6 +12,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface DealInsight {
   icon: string;
@@ -32,16 +33,18 @@ interface WhyGoodDealSectionProps {
 
 export const WhyGoodDealSection: React.FC<WhyGoodDealSectionProps> = ({
   savingsAmount = 300,
-  currency = '₹',
+  currency,
   insights,
   style,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = currency || getCurrencySymbol();
   // Default insights if not provided
   const defaultInsights: DealInsight[] = [
     {
       icon: 'bulb',
       iconColor: '#F59E0B',
-      text: `This product is usually bought on weekends — locking now saves ${currency}${savingsAmount}`,
+      text: `This product is usually bought on weekends — locking now saves ${currencySymbol}${savingsAmount}`,
     },
     {
       icon: 'flame',

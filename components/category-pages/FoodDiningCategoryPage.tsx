@@ -36,6 +36,7 @@ import { foodCategoryData } from '@/data/category';
 import { categoriesApi } from '@/services/categoriesApi';
 import ordersApi, { Order } from '@/services/ordersApi';
 import { storesApi } from '@/services/storesApi'; // Import storesApi specifically
+import { useRegion } from '@/contexts/RegionContext';
 
 // Rez Brand Colors
 const COLORS = {
@@ -57,6 +58,8 @@ const FOOD_TABS = [
 // Restaurant Card Component - Enhanced with all features
 const RestaurantCard = ({ restaurant, variant = 'default', userVisitCount = 0 }: { restaurant: any; variant?: 'default' | 'compact'; userVisitCount?: number }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const isCompact = variant === 'compact';
   const [imageError, setImageError] = useState(false);
 
@@ -190,7 +193,7 @@ const RestaurantCard = ({ restaurant, variant = 'default', userVisitCount = 0 }:
           </View>
           {restaurant.priceForTwo && (
             <Text style={styles.restaurantPriceForTwo}>
-              ₹{restaurant.priceForTwo} for two
+              {currencySymbol}{restaurant.priceForTwo} for two
             </Text>
           )}
         </View>
@@ -200,11 +203,11 @@ const RestaurantCard = ({ restaurant, variant = 'default', userVisitCount = 0 }:
           <View style={styles.restaurantCoins}>
             <Ionicons name="star" size={14} color={COLORS.primaryGold} />
             <Text style={styles.restaurantCoinsText}>
-              Earn ₹{coinsEarned} coins
+              Earn {currencySymbol}{coinsEarned} coins
             </Text>
           </View>
           <Text style={styles.reviewBonusText}>
-            +₹{reviewBonus} for review
+            +{currencySymbol}{reviewBonus} for review
           </Text>
         </View>
 
@@ -227,6 +230,8 @@ const RestaurantCard = ({ restaurant, variant = 'default', userVisitCount = 0 }:
 
 export default function FoodDiningCategoryPage() {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const slug = 'food-dining';
   const categoryConfig = getCategoryConfig(slug);
 
@@ -737,7 +742,7 @@ export default function FoodDiningCategoryPage() {
         <View style={styles.savingsSummary}>
           <View style={styles.savingsContent}>
             <Text style={styles.savingsLabel}>Total saved on food this month</Text>
-            <Text style={styles.savingsAmount}>₹{savingsThisMonth.toLocaleString()}</Text>
+            <Text style={styles.savingsAmount}>{currencySymbol}{savingsThisMonth.toLocaleString()}</Text>
           </View>
           {/* Loyalty Hub CTA */}
           <TouchableOpacity

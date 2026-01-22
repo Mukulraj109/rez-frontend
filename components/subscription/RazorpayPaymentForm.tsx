@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import razorpayService from '@/services/razorpayService';
 import type { RazorpayPaymentData } from '@/types/payment.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface RazorpayPaymentFormProps {
   visible: boolean;
@@ -50,6 +51,8 @@ export default function RazorpayPaymentForm({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // Check if Razorpay is configured
   const isConfigured = razorpayService.isConfigured();
@@ -166,7 +169,7 @@ export default function RazorpayPaymentForm({
               </View>
               <View style={[styles.detailRow, styles.totalRow]}>
                 <ThemedText style={styles.totalLabel}>Total Amount:</ThemedText>
-                <ThemedText style={styles.totalValue}>₹{amount}</ThemedText>
+                <ThemedText style={styles.totalValue}>{currencySymbol}{amount}</ThemedText>
               </View>
             </View>
 

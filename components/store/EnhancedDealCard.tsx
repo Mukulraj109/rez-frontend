@@ -12,6 +12,7 @@ import { DealCardProps, Deal } from '@/types/deals';
 import { calculateDealDiscount } from '@/utils/deal-validation';
 import DealCountdownTimer from './DealCountdownTimer';
 import { useCountdown, useIsExpiringSoon } from '@/hooks/useCountdown';
+import { useRegion } from '@/contexts/RegionContext';
 
 /**
  * Enhanced Deal Card with Countdown Timer and Expiring Soon Badge
@@ -30,6 +31,8 @@ export default function EnhancedDealCard({
   isAdded,
   onMoreDetails
 }: DealCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [billPreview] = useState<number>(deal.minimumBill);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -260,7 +263,7 @@ export default function EnhancedDealCard({
             >
               {deal.discountType === 'percentage'
                 ? `${deal.discountValue}% OFF`
-                : `₹${deal.discountValue} OFF`}
+                : `${currencySymbol}${deal.discountValue} OFF`}
             </ThemedText>
             {deal.maxDiscount && (
               <ThemedText
@@ -269,7 +272,7 @@ export default function EnhancedDealCard({
                   countdown.isExpired && styles.textDisabled,
                 ]}
               >
-                Max: ₹{deal.maxDiscount}
+                Max: {currencySymbol}{deal.maxDiscount}
               </ThemedText>
             )}
           </View>
@@ -281,7 +284,7 @@ export default function EnhancedDealCard({
               countdown.isExpired && styles.textDisabled,
             ]}
           >
-            Min. bill: ₹{deal.minimumBill}
+            Min. bill: {currencySymbol}{deal.minimumBill}
           </ThemedText>
 
           {/* Countdown Timer */}

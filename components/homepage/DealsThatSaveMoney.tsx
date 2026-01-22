@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import realOffersApi, { Offer } from '@/services/realOffersApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
 
 // ReZ Brand Colors
 const COLORS = {
@@ -229,6 +230,8 @@ interface DealsThatSaveMoneyProps {
 const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
   const router = useRouter();
   const { state: authState } = useAuth();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const user = authState?.user;
   const [activeTab, setActiveTab] = useState<TabType>('offers');
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -383,7 +386,7 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
           cards.push({
             id: drop._id || drop.storeName,
             title: drop.storeName || 'Coin Drop',
-            subtitle: `${drop.multiplier}X - ₹${drop.boostedCashback} cashback`,
+            subtitle: `${drop.multiplier}X - ${currencySymbol}${drop.boostedCashback} cashback`,
             icon: mapIconToIonicon(drop.icon || 'flash'),
             gradientColors: ['#FCA5A5', '#F87171', '#EF4444'] as const,
             multiplier: drop.multiplier,

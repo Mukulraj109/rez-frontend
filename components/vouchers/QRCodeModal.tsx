@@ -19,6 +19,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Brightness from 'expo-brightness';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -46,6 +47,8 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({
   onClose,
   onMarkAsUsed,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [qrRef, setQrRef] = useState<any>(null);
   const [originalBrightness, setOriginalBrightness] = useState<number | null>(null);
 
@@ -112,7 +115,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({
     try {
       // Fallback to text sharing for now (QR image sharing requires additional setup)
       await Share.share({
-        message: `${voucher.brandName} Voucher\nCode: ${voucher.code}\nValue: ₹${voucher.value}\nValid till: ${new Date(voucher.expiryDate).toLocaleDateString()}`,
+        message: `${voucher.brandName} Voucher\nCode: ${voucher.code}\nValue: ${currencySymbol}${voucher.value}\nValid till: ${new Date(voucher.expiryDate).toLocaleDateString()}`,
         title: 'Share Voucher',
       });
     } catch (error) {
@@ -226,7 +229,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({
             <View style={styles.detailsGrid}>
               <View style={styles.detailItem}>
                 <Text style={styles.detailLabel}>Value</Text>
-                <Text style={styles.detailValue}>₹{voucher.value}</Text>
+                <Text style={styles.detailValue}>{currencySymbol}{voucher.value}</Text>
               </View>
               <View style={styles.detailItem}>
                 <Text style={styles.detailLabel}>Valid Till</Text>

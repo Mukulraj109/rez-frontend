@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator } from "react-native";
 import { RechargeWalletCardProps } from "@/types/profile";
+import { useRegion } from "@/contexts/RegionContext";
 
 const RechargeWalletCard: React.FC<RechargeWalletCardProps> = ({
   cashbackText = "Upto 10% cashback on wallet recharge",
@@ -8,8 +9,10 @@ const RechargeWalletCard: React.FC<RechargeWalletCardProps> = ({
   onAmountSelect,
   onSubmit,
   isLoading = false,
-  currency = "₹",
+  currency: currencyProp,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currency = currencyProp || getCurrencySymbol();
   const [selectedAmount, setSelectedAmount] = useState<"other" | number>("other");
   const [customAmount, setCustomAmount] = useState("");
 

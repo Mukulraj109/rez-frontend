@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface PaymentSuccessModalProps {
   visible: boolean;
@@ -31,6 +32,8 @@ export default function PaymentSuccessModal({
   onClose,
 }: PaymentSuccessModalProps) {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -138,7 +141,7 @@ export default function PaymentSuccessModal({
                       {tierName} Subscription
                     </ThemedText>
                     <ThemedText style={styles.detailValue}>
-                      ₹{price}/{billingCycle === 'monthly' ? 'month' : 'year'}
+                      {currencySymbol}{price}/{billingCycle === 'monthly' ? 'month' : 'year'}
                     </ThemedText>
                   </View>
                 </View>
@@ -157,7 +160,7 @@ export default function PaymentSuccessModal({
                       />
                       <BenefitItem
                         icon="car"
-                        text="Free delivery on orders above ₹500"
+                        text={`Free delivery on orders above ${currencySymbol}500`}
                         color={tierColor}
                       />
                       <BenefitItem

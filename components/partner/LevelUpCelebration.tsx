@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface LevelBenefit {
   id: string;
@@ -117,6 +118,8 @@ export default function LevelUpCelebration({
   onClose,
   onShopNow,
 }: LevelUpCelebrationProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const badgeRotate = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0.5)).current;
@@ -317,7 +320,7 @@ export default function LevelUpCelebration({
             <View style={styles.bonusContainer}>
               <Ionicons name="gift" size={24} color={COLORS.gold} />
               <Text style={styles.bonusText}>
-                +₹{bonusAmount.toLocaleString('en-IN')} added to wallet!
+                +{currencySymbol}{bonusAmount.toLocaleString('en-IN')} added to wallet!
               </Text>
             </View>
           )}

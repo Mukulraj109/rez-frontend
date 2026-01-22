@@ -15,13 +15,14 @@ import {
   UIManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const FAQS = [
+const getFAQS = (currencySymbol: string) => [
   {
     id: 1,
     question: 'How do I earn cashback?',
@@ -50,12 +51,18 @@ const FAQS = [
   {
     id: 6,
     question: 'Can I withdraw cashback to my bank?',
-    answer: 'Yes! Once your cashback is confirmed and in your ReZ wallet, you can withdraw it directly to your linked bank account. Minimum withdrawal amount is ₹10.',
+    answer: `Yes! Once your cashback is confirmed and in your ReZ wallet, you can withdraw it directly to your linked bank account. Minimum withdrawal amount is ${currencySymbol}10.`,
   },
 ];
 
+interface FAQItemType {
+  id: number;
+  question: string;
+  answer: string;
+}
+
 const FAQItem: React.FC<{
-  faq: typeof FAQS[0];
+  faq: FAQItemType;
   isExpanded: boolean;
   onToggle: () => void;
 }> = ({ faq, isExpanded, onToggle }) => (
@@ -81,6 +88,9 @@ const FAQItem: React.FC<{
 );
 
 const FAQSection: React.FC = () => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+  const FAQS = getFAQS(currencySymbol);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const handleToggle = (id: number) => {

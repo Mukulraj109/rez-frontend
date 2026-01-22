@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { showAlert } from '@/components/common/CrossPlatformAlert';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface LockedItemProps {
   item: {
@@ -48,6 +49,8 @@ export default function LockedItem({
   onUnlock,
   showAnimation = true,
 }: LockedItemProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const { width } = Dimensions.get('window');
   const isSmallScreen = width < 360;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -182,7 +185,7 @@ export default function LockedItem({
   // Handle cancel lock with confirmation
   const handleCancelLock = () => {
     const message = item.isPaidLock
-      ? `Your lock deposit of ₹${item.lockFee} will be refunded to your ${item.paymentMethod === 'wallet' ? 'Wallet' : 'account'}. Continue?`
+      ? `Your lock deposit of ${currencySymbol}${item.lockFee} will be refunded to your ${item.paymentMethod === 'wallet' ? 'Wallet' : 'account'}. Continue?`
       : 'Are you sure you want to cancel this lock?';
 
     showAlert(
@@ -277,18 +280,18 @@ export default function LockedItem({
             {item.isPaidLock && item.lockFee ? (
               <>
                 <ThemedText style={styles.price}>
-                  ₹{((item.price * item.quantity) - item.lockFee).toLocaleString()}
+                  {currencySymbol}{((item.price * item.quantity) - item.lockFee).toLocaleString()}
                 </ThemedText>
                 <ThemedText style={styles.originalPrice}>
-                  ₹{(item.price * item.quantity).toLocaleString()}
+                  {currencySymbol}{(item.price * item.quantity).toLocaleString()}
                 </ThemedText>
               </>
             ) : (
               <>
-                <ThemedText style={styles.price}>₹{(item.price * item.quantity).toLocaleString()}</ThemedText>
+                <ThemedText style={styles.price}>{currencySymbol}{(item.price * item.quantity).toLocaleString()}</ThemedText>
                 {item.originalPrice && item.originalPrice > item.price && (
                   <ThemedText style={styles.originalPrice}>
-                    ₹{(item.originalPrice * item.quantity).toLocaleString()}
+                    {currencySymbol}{(item.originalPrice * item.quantity).toLocaleString()}
                   </ThemedText>
                 )}
               </>
@@ -300,7 +303,7 @@ export default function LockedItem({
             <View style={styles.depositContainer}>
               <Ionicons name="checkmark-circle" size={14} color="#059669" />
               <ThemedText style={styles.depositText}>
-                ₹{item.lockFee} already paid ({item.lockFeePercentage}% deposit)
+                {currencySymbol}{item.lockFee} already paid ({item.lockFeePercentage}% deposit)
               </ThemedText>
             </View>
           )}

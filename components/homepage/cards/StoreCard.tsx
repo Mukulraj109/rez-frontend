@@ -17,6 +17,7 @@ import { StoreCardProps } from '@/types/homepage.types';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import QuickActions from '@/components/store/QuickActions';
 import FastImage from '@/components/common/FastImage';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Custom comparison function for React.memo
 const arePropsEqual = (prevProps: any, nextProps: any) => {
@@ -48,6 +49,8 @@ function StoreCard({
     email?: string;
   };
 }) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const cardBackground = useThemeColor({ light: '#FFFFFF', dark: '#1F2937' }, 'background');
   const textColor = useThemeColor({}, 'text');
   const textSecondary = useThemeColor({ light: '#6B7280', dark: '#9CA3AF' }, 'text');
@@ -454,7 +457,7 @@ function StoreCard({
 
             {store.minimumOrder && (
               <ThemedText style={styles.minOrderText}>
-                Min ₹{store.minimumOrder}
+                Min {currencySymbol}{store.minimumOrder}
               </ThemedText>
             )}
           </View>

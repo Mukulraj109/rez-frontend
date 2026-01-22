@@ -16,6 +16,7 @@ import StockBadge from '@/components/common/StockBadge';
 import QuantitySelector from '@/components/cart/QuantitySelector';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/hooks/useToast';
+import { useRegion } from '@/contexts/RegionContext';
 
 export default function CartItem({
   item,
@@ -34,6 +35,8 @@ export default function CartItem({
   // Cart context and toast
   const { actions: cartActions } = useCart();
   const { showSuccess, showError } = useToast();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // Stock status
   const stock = item.inventory?.stock ?? (item.availabilityStatus === 'out_of_stock' ? 0 : 100);
@@ -229,7 +232,7 @@ export default function CartItem({
                   { fontSize: isSmallScreen ? 16 : 17 },
                 ]}
               >
-                ₹{item.price?.toLocaleString('en-IN') || 0}
+                {currencySymbol}{item.price?.toLocaleString('en-IN') || 0}
               </ThemedText>
             </View>
           </View>

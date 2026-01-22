@@ -212,6 +212,7 @@ import { OfflineQueueProvider } from '@/contexts/OfflineQueueContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { RecommendationProvider } from '@/contexts/RecommendationContext';
 import { HomeTabProvider } from '@/contexts/HomeTabContext';
+import { RegionProvider } from '@/contexts/RegionContext';
 import ToastManager from '@/components/common/ToastManager';
 import { RewardPopupProvider } from '@/contexts/RewardPopupContext';
 import RewardPopupManager from '@/components/gamification/RewardPopupManager';
@@ -475,8 +476,9 @@ export default function RootLayout() {
                 <GamificationProvider>
                   <SocketProvider>
                     <LocationProvider>
-                      <GreetingProvider>
-                        <CartProvider>
+                      <RegionProvider>
+                        <GreetingProvider>
+                          <CartProvider>
                           <OffersProvider>
                             <CategoryProvider>
                               <ProfileProvider>
@@ -689,9 +691,10 @@ export default function RootLayout() {
                             </ProfileProvider>
                           </CategoryProvider>
                         </OffersProvider>
-                      </CartProvider>
-                    </GreetingProvider>
-                  </LocationProvider>
+                          </CartProvider>
+                        </GreetingProvider>
+                      </RegionProvider>
+                    </LocationProvider>
                 </SocketProvider>
               </GamificationProvider>
             </SubscriptionProvider>

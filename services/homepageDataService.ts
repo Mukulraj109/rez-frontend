@@ -6,6 +6,7 @@ import brandApiService from './brandApi';
 import cacheService from './cacheService';
 import locationService from './locationService';
 import recommendationService from './recommendationApi';
+import apiClient from './apiClient';
 import { ProductItem, RecommendationItem, HomepageSection, EventItem, HomepageBatchResponse } from '@/types/homepage.types';
 import { getSectionById } from '@/data/homepageData';
 import {
@@ -44,6 +45,15 @@ class HomepageDataService {
     avgBatchTime: 0,
     avgIndividualTime: 0
   };
+
+  /**
+   * Get region-aware cache key
+   * Cache keys include region to prevent serving wrong region's data
+   */
+  private getCacheKey(section: string): string {
+    const region = apiClient.getRegion();
+    return `homepage_${section}_${region}`;
+  }
 
   /**
    * Check if backend is available (with caching)
@@ -169,7 +179,7 @@ class HomepageDataService {
       };
     }
 
-    const cacheKey = 'homepage_just_for_you';
+    const cacheKey = this.getCacheKey('just_for_you');
 
     // Try to get user location for location-aware recommendations
     let userLocation: { latitude: number; longitude: number } | undefined;
@@ -243,7 +253,7 @@ class HomepageDataService {
       };
     }
 
-    const cacheKey = 'homepage_new_arrivals';
+    const cacheKey = this.getCacheKey('new_arrivals');
 
     try {
       // Try to get from cache first
@@ -423,7 +433,7 @@ class HomepageDataService {
       };
     }
 
-    const cacheKey = 'homepage_trending_stores';
+    const cacheKey = this.getCacheKey('trending_stores');
 
     const { data: trendingStores, fromCache, isOffline } = await this.getWithCacheAndFallback(
       cacheKey,
@@ -471,7 +481,7 @@ class HomepageDataService {
       };
     }
 
-    const cacheKey = 'homepage_events';
+    const cacheKey = this.getCacheKey('events');
 
     const { data: events, fromCache, isOffline } = await this.getWithCacheAndFallback(
       cacheKey,
@@ -703,7 +713,7 @@ class HomepageDataService {
       priority: 7
     };
 
-    const cacheKey = 'homepage_brand_partnerships';
+    const cacheKey = this.getCacheKey('brand_partnerships');
 
     try {
       const isBackendAvailable = await this.checkBackendAvailability();
@@ -811,19 +821,20 @@ class HomepageDataService {
   }
 
   /**
-   * Clear all homepage cache
+   * Clear all homepage cache for current region
    */
   async clearCache(): Promise<void> {
 
     try {
+      // Use region-aware cache keys
       const keys = [
-        'homepage_just_for_you',
-        'homepage_new_arrivals',
-        'homepage_trending_stores',
-        'homepage_events',
-        'homepage_offers',
-        'homepage_flash_sales',
-        'homepage_brand_partnerships'
+        this.getCacheKey('just_for_you'),
+        this.getCacheKey('new_arrivals'),
+        this.getCacheKey('trending_stores'),
+        this.getCacheKey('events'),
+        this.getCacheKey('offers'),
+        this.getCacheKey('flash_sales'),
+        this.getCacheKey('brand_partnerships')
       ];
 
       await Promise.all(keys.map(key => cacheService.remove(key)));

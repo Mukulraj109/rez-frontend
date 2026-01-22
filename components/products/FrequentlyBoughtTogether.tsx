@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BundleItem } from '@/services/recommendationApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -171,6 +172,9 @@ interface BundleCardProps {
 }
 
 function BundleCard({ bundle, bundleWidth, onAddToCart, onProductPress }: BundleCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   // Calculate prices using helper functions
   const calculatedOriginalPrice = bundle.products.reduce(
     (sum, p) => sum + getOriginalPrice(p),
@@ -240,9 +244,9 @@ function BundleCard({ bundle, bundleWidth, onAddToCart, onProductPress }: Bundle
           <Text style={styles.totalLabel}>Bundle Price:</Text>
           <View style={styles.priceGroup}>
             {originalPrice > combinedPrice && (
-              <Text style={styles.originalPrice}>₹{Math.round(originalPrice)}</Text>
+              <Text style={styles.originalPrice}>{currencySymbol}{Math.round(originalPrice)}</Text>
             )}
-            <Text style={styles.price}>₹{Math.round(combinedPrice)}</Text>
+            <Text style={styles.price}>{currencySymbol}{Math.round(combinedPrice)}</Text>
           </View>
         </View>
 
@@ -252,7 +256,7 @@ function BundleCard({ bundle, bundleWidth, onAddToCart, onProductPress }: Bundle
             <View style={styles.savingsBadge}>
               <Ionicons name="pricetag" size={14} color="#10B981" />
               <Text style={styles.savingsText}>
-                Save ₹{Math.round(savings)} ({savingsPercentage}%)
+                Save {currencySymbol}{Math.round(savings)} ({savingsPercentage}%)
               </Text>
             </View>
           </View>
@@ -275,7 +279,7 @@ function BundleCard({ bundle, bundleWidth, onAddToCart, onProductPress }: Bundle
               <Ionicons name="card-outline" size={16} color="#F59E0B" />
             </View>
             <View>
-              <Text style={[styles.rewardValue, { color: '#F59E0B' }]}>₹{totalCashback}</Text>
+              <Text style={[styles.rewardValue, { color: '#F59E0B' }]}>{currencySymbol}{totalCashback}</Text>
               <Text style={styles.rewardLabel}>Cashback</Text>
             </View>
           </View>
@@ -303,6 +307,9 @@ interface BundleProductCardProps {
 }
 
 function BundleProductCard({ product, onPress }: BundleProductCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const price = getProductPrice(product);
   const originalPrice = getOriginalPrice(product);
   const imageUrl = getProductImage(product);
@@ -332,9 +339,9 @@ function BundleProductCard({ product, onPress }: BundleProductCardProps) {
           {product.name || product.title || 'Product'}
         </Text>
         <View style={styles.productPriceRow}>
-          <Text style={styles.productPrice}>₹{Math.round(price)}</Text>
+          <Text style={styles.productPrice}>{currencySymbol}{Math.round(price)}</Text>
           {originalPrice > price && (
-            <Text style={styles.productOriginalPrice}>₹{Math.round(originalPrice)}</Text>
+            <Text style={styles.productOriginalPrice}>{currencySymbol}{Math.round(originalPrice)}</Text>
           )}
         </View>
         {product.ratings && (

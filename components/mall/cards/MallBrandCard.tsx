@@ -17,6 +17,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { MallBrand, BrandBadge } from '../../../types/mall.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface MallBrandCardProps {
   brand: MallBrand;
@@ -52,6 +53,8 @@ const MallBrandCard: React.FC<MallBrandCardProps> = ({
   width = 160,
   showCategory = false,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [imageError, setImageError] = useState(false);
 
   // For in-app stores (no externalUrl), show ReZ Coins. For external brands, show cashback.
@@ -61,7 +64,7 @@ const MallBrandCard: React.FC<MallBrandCardProps> = ({
         ? `Earn ${brand.cashback.percentage}% coins`
         : 'Earn ReZ Coins')
     : (brand.cashback.maxAmount
-        ? `Earn ₹${brand.cashback.maxAmount} cashback`
+        ? `Earn ${currencySymbol}${brand.cashback.maxAmount} cashback`
         : `Earn ${brand.cashback.percentage}% cashback`);
 
   // Get initials for fallback

@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import serviceBookingApi from '@/services/serviceBookingApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface FlightDetails {
   id: string;
@@ -81,6 +82,8 @@ const FlightBookingFlow: React.FC<FlightBookingFlowProps> = ({
   onComplete,
   onClose,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -521,7 +524,7 @@ const FlightBookingFlow: React.FC<FlightBookingFlowProps> = ({
                 {cls.charAt(0).toUpperCase() + cls.slice(1)}
               </Text>
               <Text style={styles.classPrice}>
-                ₹{flight.classOptions[cls].price}
+                {currencySymbol}{flight.classOptions[cls].price}
               </Text>
             </View>
             {flightClass === cls && (
@@ -633,7 +636,7 @@ const FlightBookingFlow: React.FC<FlightBookingFlowProps> = ({
               size={24}
               color={seatSelection ? '#3B82F6' : '#9CA3AF'}
             />
-            <Text style={styles.checkboxLabel}>Seat Selection (₹500)</Text>
+            <Text style={styles.checkboxLabel}>Seat Selection ({currencySymbol}500)</Text>
           </TouchableOpacity>
         </View>
 
@@ -746,27 +749,27 @@ const FlightBookingFlow: React.FC<FlightBookingFlowProps> = ({
         <Text style={styles.priceSummaryTitle}>Price Summary</Text>
         <View style={styles.priceRow}>
           <Text style={styles.priceLabel}>
-            {adults} Adult(s) × ₹{getBasePrice()}
+            {adults} Adult(s) × {currencySymbol}{getBasePrice()}
           </Text>
-          <Text style={styles.priceValue}>₹{getBasePrice() * adults}</Text>
+          <Text style={styles.priceValue}>{currencySymbol}{getBasePrice() * adults}</Text>
         </View>
         {children > 0 && (
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>
-              {children} Child(ren) × ₹{Math.round(getBasePrice() * 0.75)}
+              {children} Child(ren) × {currencySymbol}{Math.round(getBasePrice() * 0.75)}
             </Text>
             <Text style={styles.priceValue}>
-              ₹{Math.round(getBasePrice() * 0.75 * children)}
+              {currencySymbol}{Math.round(getBasePrice() * 0.75 * children)}
             </Text>
           </View>
         )}
         {infants > 0 && (
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>
-              {infants} Infant(s) × ₹{Math.round(getBasePrice() * 0.1)}
+              {infants} Infant(s) × {currencySymbol}{Math.round(getBasePrice() * 0.1)}
             </Text>
             <Text style={styles.priceValue}>
-              ₹{Math.round(getBasePrice() * 0.1 * infants)}
+              {currencySymbol}{Math.round(getBasePrice() * 0.1 * infants)}
             </Text>
           </View>
         )}
@@ -779,13 +782,13 @@ const FlightBookingFlow: React.FC<FlightBookingFlowProps> = ({
         {seatSelection && (
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Seat Selection</Text>
-            <Text style={styles.priceValue}>₹{500 * totalPassengers}</Text>
+            <Text style={styles.priceValue}>{currencySymbol}{500 * totalPassengers}</Text>
           </View>
         )}
         <View style={[styles.priceRow, styles.totalRow]}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>
-            ₹{getTotalPrice() + (seatSelection ? 500 * totalPassengers : 0)}
+            {currencySymbol}{getTotalPrice() + (seatSelection ? 500 * totalPassengers : 0)}
           </Text>
         </View>
       </View>

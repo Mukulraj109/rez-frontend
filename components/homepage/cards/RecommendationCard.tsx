@@ -15,6 +15,7 @@ import StockBadge from '@/components/common/StockBadge';
 import { useStockStatus } from '@/hooks/useStockStatus';
 import { useStockNotifications } from '@/hooks/useStockNotifications';
 import FastImage from '@/components/common/FastImage';
+import { formatPrice } from '@/utils/priceFormatter';
 
 // Custom comparison function for React.memo
 const arePropsEqual = (prevProps: RecommendationCardProps, nextProps: RecommendationCardProps) => {
@@ -74,23 +75,20 @@ function RecommendationCard({
       isInCart: inCart
     };
   }, [recommendation._id, recommendation.id, cartState.items, cartState.items.length]);
-  // Memoize price formatting
+  // Get currency from recommendation data
+  const productCurrency = useMemo(() => {
+    return recommendation.price?.currency || recommendation.pricing?.currency || 'INR';
+  }, [recommendation.price?.currency, recommendation.pricing?.currency]);
+
+  // Memoize price formatting - uses product's currency
   const formattedCurrentPrice = useMemo(() => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(recommendation.price.current);
-  }, [recommendation.price.current]);
+    return formatPrice(recommendation.price.current, productCurrency, false) || `${recommendation.price.current}`;
+  }, [recommendation.price.current, productCurrency]);
 
   const formattedOriginalPrice = useMemo(() => {
     if (!recommendation.price.original) return null;
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(recommendation.price.original);
-  }, [recommendation.price.original]);
+    return formatPrice(recommendation.price.original, productCurrency, false) || `${recommendation.price.original}`;
+  }, [recommendation.price.original, productCurrency]);
 
   // Memoize discount calculation
   const discountPercentage = useMemo(() => {

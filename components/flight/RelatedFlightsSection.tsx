@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import travelApi from '@/services/travelApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface Route {
   from: string;
@@ -33,6 +34,8 @@ const RelatedFlightsSection: React.FC<RelatedFlightsSectionProps> = ({
   route,
 }) => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [relatedFlights, setRelatedFlights] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -116,11 +119,11 @@ const RelatedFlightsSection: React.FC<RelatedFlightsSectionProps> = ({
               </View>
               <View style={styles.priceRow}>
                 <Text style={styles.price}>
-                  ₹{flight.pricing?.selling || flight.price || 0}
+                  {currencySymbol}{flight.pricing?.selling || flight.price || 0}
                 </Text>
                 {flight.pricing?.original && flight.pricing.original > (flight.pricing?.selling || 0) && (
                   <Text style={styles.originalPrice}>
-                    ₹{flight.pricing.original}
+                    {currencySymbol}{flight.pricing.original}
                   </Text>
                 )}
               </View>

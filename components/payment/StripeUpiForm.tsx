@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface StripeUpiFormProps {
   clientSecret: string;
@@ -20,6 +21,8 @@ export default function StripeUpiForm({
   onCancel,
 }: StripeUpiFormProps) {
   const stripe = useStripe();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isProcessing, setIsProcessing] = useState(false);
   const [upiError, setUpiError] = useState<string>('');
   const [upiId, setUpiId] = useState<string>('');
@@ -130,7 +133,7 @@ export default function StripeUpiForm({
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Pay with UPI</Text>
-          <Text style={styles.subtitle}>Amount: ₹{amount}</Text>
+          <Text style={styles.subtitle}>Amount: {currencySymbol}{amount}</Text>
         </View>
         <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
           <Ionicons name="close" size={24} color="#6B7280" />
@@ -226,7 +229,7 @@ export default function StripeUpiForm({
           {isProcessing ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.payButtonText}>Pay ₹{amount}</Text>
+            <Text style={styles.payButtonText}>Pay {currencySymbol}{amount}</Text>
           )}
         </TouchableOpacity>
       </View>

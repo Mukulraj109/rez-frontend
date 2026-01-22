@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ACCOUNT_COLORS } from '@/types/account.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface SendMoneyModalProps {
   visible: boolean;
@@ -34,6 +35,8 @@ export default function SendMoneyModal({
   onSuccess,
   currentBalance,
 }: SendMoneyModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [recipientType, setRecipientType] = useState<RecipientType>('phone');
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
@@ -97,7 +100,7 @@ export default function SendMoneyModal({
     }
 
     if (amountNum < 1) {
-      Alert.alert('Minimum Amount', 'Minimum transfer amount is ₹1');
+      Alert.alert('Minimum Amount', `Minimum transfer amount is ${currencySymbol}1`);
       return false;
     }
 
@@ -107,7 +110,7 @@ export default function SendMoneyModal({
     }
 
     if (amountNum > 50000) {
-      Alert.alert('Maximum Amount', 'Maximum transfer amount is ₹50,000 per transaction');
+      Alert.alert('Maximum Amount', `Maximum transfer amount is ${currencySymbol}50,000 per transaction`);
       return false;
     }
 
@@ -138,7 +141,7 @@ export default function SendMoneyModal({
 
       Alert.alert(
         'Money Sent!',
-        `₹${amountNum.toLocaleString()} has been sent successfully`,
+        `${currencySymbol}${amountNum.toLocaleString()} has been sent successfully`,
         [{ text: 'OK' }]
       );
       onSuccess(amountNum, recipient);
@@ -215,7 +218,7 @@ export default function SendMoneyModal({
               </TouchableOpacity>
             </View>
             <ThemedText style={styles.currentBalanceText}>
-              Available Balance: ₹{currentBalance.toLocaleString()}
+              Available Balance: {currencySymbol}{currentBalance.toLocaleString()}
             </ThemedText>
           </LinearGradient>
 
@@ -334,7 +337,7 @@ export default function SendMoneyModal({
                 <View style={styles.section}>
                   <ThemedText style={styles.sectionTitle}>Amount</ThemedText>
                   <View style={styles.amountContainer}>
-                    <ThemedText style={styles.currencySymbol}>₹</ThemedText>
+                    <ThemedText style={styles.currencySymbol}>{currencySymbol}</ThemedText>
                     <TextInput
                       style={styles.amountInput}
                       value={amount}
@@ -349,7 +352,7 @@ export default function SendMoneyModal({
                     />
                   </View>
                   <ThemedText style={styles.helperText}>
-                    Minimum: ₹1 • Maximum: ₹50,000
+                    Minimum: {currencySymbol}1 • Maximum: {currencySymbol}50,000
                   </ThemedText>
                 </View>
 
@@ -381,7 +384,7 @@ export default function SendMoneyModal({
                       <Ionicons name="send" size={32} color={ACCOUNT_COLORS.primary} />
                     </View>
                     <ThemedText style={styles.confirmationAmount}>
-                      ₹{parseInt(amount, 10).toLocaleString()}
+                      {currencySymbol}{parseInt(amount, 10).toLocaleString()}
                     </ThemedText>
                   </View>
 
@@ -413,7 +416,7 @@ export default function SendMoneyModal({
                       New Balance
                     </ThemedText>
                     <ThemedText style={styles.confirmationNewBalance}>
-                      ₹{(currentBalance - parseInt(amount, 10)).toLocaleString()}
+                      {currencySymbol}{(currentBalance - parseInt(amount, 10)).toLocaleString()}
                     </ThemedText>
                   </View>
                 </View>

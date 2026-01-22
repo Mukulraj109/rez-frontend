@@ -26,6 +26,7 @@ import {
   ValidationError,
   ValidationWarning,
 } from '@/types/voucher-redemption.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -42,6 +43,8 @@ export default function RedemptionFlow({
   vouchers,
   onRedeem,
 }: RedemptionFlowProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedVoucher, setSelectedVoucher] = useState<VoucherRedemption['voucher'] | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<'online' | 'in_store' | null>(null);
@@ -149,7 +152,7 @@ export default function RedemptionFlow({
               </View>
               <View style={styles.voucherDetails}>
                 <ThemedText style={styles.voucherValue}>
-                  ₹{voucher.denomination}
+                  {currencySymbol}{voucher.denomination}
                 </ThemedText>
                 <ThemedText style={styles.voucherCashback}>
                   {voucher.cashbackRate}% Cashback
@@ -284,14 +287,14 @@ export default function RedemptionFlow({
             <Ionicons name="information-circle-outline" size={20} color="#8B5CF6" />
             <ThemedText style={styles.restrictionLabel}>Minimum Purchase</ThemedText>
             <ThemedText style={styles.restrictionValue}>
-              ₹{restrictions.minPurchaseAmount}
+              {currencySymbol}{restrictions.minPurchaseAmount}
             </ThemedText>
           </View>
           <View style={styles.restrictionRow}>
             <Ionicons name="pricetag-outline" size={20} color="#8B5CF6" />
             <ThemedText style={styles.restrictionLabel}>Maximum Discount</ThemedText>
             <ThemedText style={styles.restrictionValue}>
-              ₹{restrictions.maxDiscount}
+              {currencySymbol}{restrictions.maxDiscount}
             </ThemedText>
           </View>
           <View style={styles.restrictionRow}>
@@ -365,7 +368,7 @@ export default function RedemptionFlow({
               {selectedVoucher?.brand}
             </ThemedText>
             <ThemedText style={styles.confirmationValue}>
-              ₹{selectedVoucher?.denomination}
+              {currencySymbol}{selectedVoucher?.denomination}
             </ThemedText>
           </View>
         </View>
@@ -391,7 +394,7 @@ export default function RedemptionFlow({
         <View style={styles.confirmationSection}>
           <ThemedText style={styles.confirmationLabel}>Expected Savings</ThemedText>
           <ThemedText style={styles.confirmationSavings}>
-            Up to ₹{selectedVoucher?.denomination}
+            Up to {currencySymbol}{selectedVoucher?.denomination}
           </ThemedText>
         </View>
       </View>
@@ -460,7 +463,7 @@ export default function RedemptionFlow({
       <View style={styles.savingsCard}>
         <ThemedText style={styles.savingsLabel}>Amount Saved</ThemedText>
         <ThemedText style={styles.savingsValue}>
-          ₹{redemption?.amountSaved || 0}
+          {currencySymbol}{redemption?.amountSaved || 0}
         </ThemedText>
       </View>
 

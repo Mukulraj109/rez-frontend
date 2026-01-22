@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { HomepageProduct } from '@/services/productApi';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface CategoryProductCardProps {
   product: HomepageProduct;
@@ -23,6 +24,8 @@ function CategoryProductCard({
   width = 156,
 }: CategoryProductCardProps) {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
@@ -109,7 +112,7 @@ function CategoryProductCard({
           {/* Cashback Pill */}
           <View style={styles.cashbackPill}>
             <View style={styles.coinIcon}>
-              <ThemedText style={styles.coinText}>₹</ThemedText>
+              <ThemedText style={styles.coinText}>{currencySymbol}</ThemedText>
             </View>
             <ThemedText style={styles.cashbackPillText}>
               {hasCashback ? `Upto ${cashbackPercentage}% back` : 'Cashback'}

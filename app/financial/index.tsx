@@ -25,6 +25,7 @@ import { useComprehensiveAnalytics } from '@/hooks/useComprehensiveAnalytics';
 import { ANALYTICS_EVENTS } from '@/services/analytics/events';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -67,6 +68,8 @@ interface DisplayService {
 
 const FinancialPage: React.FC = () => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const { trackEvent, trackScreen } = useComprehensiveAnalytics();
   const { isOffline } = useNetworkStatus();
   const startTimeRef = useRef<number>(Date.now());
@@ -287,7 +290,7 @@ const FinancialPage: React.FC = () => {
           >
             <Text style={styles.promoEmoji}>🪙</Text>
             <Text style={styles.promoTitle}>Digital Gold</Text>
-            <Text style={styles.promoSubtitle}>Start with just ₹10 • 24K purity guaranteed</Text>
+            <Text style={styles.promoSubtitle}>Start with just {currencySymbol}10 • 24K purity guaranteed</Text>
             <TouchableOpacity
               style={styles.promoButton}
               onPress={() => router.push('/financial/gold' as any)}

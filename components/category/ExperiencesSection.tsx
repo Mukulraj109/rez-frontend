@@ -9,6 +9,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'rea
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ExperiencesSectionProps {
   categorySlug: string;
@@ -28,8 +29,8 @@ const EXPERIENCES = [
     id: '1',
     title: "Chef's Table Experience",
     description: 'Exclusive 7-course meal with the chef',
-    price: '₹2,999',
-    originalPrice: '₹4,999',
+    price: '2,999',
+    originalPrice: '4,999',
     image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400',
     rating: 4.9,
     reviews: 128,
@@ -40,8 +41,8 @@ const EXPERIENCES = [
     id: '2',
     title: 'Food Walk Tour',
     description: 'Explore local street food gems',
-    price: '₹499',
-    originalPrice: '₹799',
+    price: '499',
+    originalPrice: '799',
     image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
     rating: 4.7,
     reviews: 256,
@@ -52,8 +53,8 @@ const EXPERIENCES = [
     id: '3',
     title: 'Cooking Masterclass',
     description: 'Learn from award-winning chefs',
-    price: '₹1,499',
-    originalPrice: '₹2,499',
+    price: '1,499',
+    originalPrice: '2,499',
     image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=400',
     rating: 4.8,
     reviews: 89,
@@ -64,8 +65,8 @@ const EXPERIENCES = [
     id: '4',
     title: 'Wine & Dine Evening',
     description: 'Curated wine pairing dinner',
-    price: '₹3,499',
-    originalPrice: '₹5,999',
+    price: '3,499',
+    originalPrice: '5,999',
     image: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400',
     rating: 4.9,
     reviews: 67,
@@ -84,6 +85,8 @@ const EXPERIENCE_TYPES = [
 
 export default function ExperiencesSection({ categorySlug }: ExperiencesSectionProps) {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const handleExperiencePress = (experience: typeof EXPERIENCES[0]) => {
     router.push(`/experience/${experience.id}`);
@@ -150,8 +153,8 @@ export default function ExperiencesSection({ categorySlug }: ExperiencesSectionP
 
                 <View style={styles.experienceFooter}>
                   <View style={styles.experiencePricing}>
-                    <Text style={styles.experiencePrice}>{experience.price}</Text>
-                    <Text style={styles.experienceOriginalPrice}>{experience.originalPrice}</Text>
+                    <Text style={styles.experiencePrice}>{currencySymbol}{experience.price}</Text>
+                    <Text style={styles.experienceOriginalPrice}>{currencySymbol}{experience.originalPrice}</Text>
                   </View>
                   <View style={styles.experienceRating}>
                     <Ionicons name="star" size={12} color={COLORS.primaryGold} />

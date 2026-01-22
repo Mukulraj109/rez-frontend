@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import gamificationAPI from '@/services/gamificationApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface CouponMetadata {
   source?: string;
@@ -43,6 +44,8 @@ interface SpinHistoryProps {
 }
 
 export default function SpinHistory({ limit = 10 }: SpinHistoryProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [history, setHistory] = useState<SpinHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -94,7 +97,7 @@ export default function SpinHistory({ limit = 10 }: SpinHistoryProps) {
 
   const getRewardText = (item: SpinHistoryItem) => {
     if (item.reward.coins) return `${item.reward.coins} Coins`;
-    if (item.reward.cashback) return `₹${item.reward.cashback} Cashback`;
+    if (item.reward.cashback) return `${currencySymbol}${item.reward.cashback} Cashback`;
     if (item.reward.discount) return `${item.reward.discount}% Off`;
     if (item.reward.voucher) return 'Voucher';
     return 'Try Again';

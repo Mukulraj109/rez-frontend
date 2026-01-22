@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/ThemedText';
 import { RewardItem } from '@/types/loyaltyRedemption.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface RewardCardProps {
   reward: RewardItem;
@@ -27,6 +28,8 @@ export default function RewardCard({
   tierColor = '#8B5CF6',
   compact = false,
 }: RewardCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const getTypeIcon = (type: string): any => {
     switch (type) {
       case 'discountVoucher':
@@ -56,7 +59,7 @@ export default function RewardCard({
       return `${reward.value}% OFF`;
     }
     if (reward.type === 'discountVoucher' || reward.type === 'cashCredit') {
-      return `₹${reward.value}`;
+      return `${currencySymbol}${reward.value}`;
     }
     return reward.value;
   };

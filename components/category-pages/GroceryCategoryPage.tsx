@@ -26,6 +26,7 @@ import { useCategoryPageData } from '@/hooks/useCategoryPageData';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import EmptyState from '@/components/common/EmptyState';
 import { LoadingState } from '@/components/common/LoadingState';
+import { useRegion } from '@/contexts/RegionContext';
 
 // Rez Brand Colors
 const COLORS = {
@@ -139,7 +140,7 @@ const StoreCard = ({ store, variant = 'default' }: { store: any; variant?: 'defa
 };
 
 // Product Card Component
-const ProductCard = ({ product }: { product: any }) => {
+const ProductCard = ({ product, currencySymbol }: { product: any; currencySymbol: string }) => {
   const router = useRouter();
   const originalPrice = product.originalPrice || product.price * 1.2;
   const discount = Math.round(((originalPrice - product.price) / originalPrice) * 100);
@@ -174,9 +175,9 @@ const ProductCard = ({ product }: { product: any }) => {
       <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
       <Text style={styles.productUnit}>{product.unit || '1 unit'}</Text>
       <View style={styles.productPriceRow}>
-        <Text style={styles.productPrice}>₹{product.price?.toLocaleString() || '0'}</Text>
+        <Text style={styles.productPrice}>{currencySymbol}{product.price?.toLocaleString() || '0'}</Text>
         {discount > 0 && (
-          <Text style={styles.productOriginalPrice}>₹{originalPrice.toLocaleString()}</Text>
+          <Text style={styles.productOriginalPrice}>{currencySymbol}{originalPrice.toLocaleString()}</Text>
         )}
         <TouchableOpacity style={styles.productAddButton}>
           <Ionicons name="add" size={20} color={COLORS.white} />
@@ -194,6 +195,8 @@ export default function GroceryCategoryPage() {
   const router = useRouter();
   const slug = 'grocery-essentials';
   const categoryConfig = getCategoryConfig(slug);
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // Use the new hook for real data with fallback
   const {
@@ -362,7 +365,7 @@ export default function GroceryCategoryPage() {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.productsList}>
             {products.slice(0, 8).map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} currencySymbol={currencySymbol} />
             ))}
           </ScrollView>
         </View>

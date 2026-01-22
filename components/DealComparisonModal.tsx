@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { Deal } from '@/types/deals';
 import { calculateDealDiscount } from '@/utils/deal-validation';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface DealComparisonModalProps {
   visible: boolean;
@@ -37,6 +38,8 @@ export default function DealComparisonModal({
   deals,
   onSelectDeal,
 }: DealComparisonModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [billAmount, setBillAmount] = useState(5000);
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>([
@@ -112,7 +115,7 @@ export default function DealComparisonModal({
       label: 'Your Savings',
       getValue: (deal, billAmount) => {
         const result = calculateDealDiscount(deal, billAmount);
-        return result.isValid ? `₹${result.discountAmount.toLocaleString()}` : 'N/A';
+        return result.isValid ? `${currencySymbol}${result.discountAmount.toLocaleString()}` : 'N/A';
       },
       type: 'currency',
       icon: 'wallet-outline',
@@ -120,14 +123,14 @@ export default function DealComparisonModal({
     },
     minimumBill: {
       label: 'Minimum Bill',
-      getValue: (deal) => `₹${deal.minimumBill.toLocaleString()}`,
+      getValue: (deal) => `${currencySymbol}${deal.minimumBill.toLocaleString()}`,
       type: 'currency',
       icon: 'cash-outline',
       priority: 3,
     },
     maxDiscount: {
       label: 'Max Discount',
-      getValue: (deal) => deal.maxDiscount ? `₹${deal.maxDiscount.toLocaleString()}` : 'No limit',
+      getValue: (deal) => deal.maxDiscount ? `${currencySymbol}${deal.maxDiscount.toLocaleString()}` : 'No limit',
       type: 'currency',
       icon: 'trending-up-outline',
       priority: 4,
@@ -190,7 +193,7 @@ export default function DealComparisonModal({
 
   // Format metric value for display
   const formatMetricValue = (metric: ComparisonMetric, value: string | number, deal: Deal) => {
-    if (metric.type === 'currency' && typeof value === 'string' && value.includes('₹')) {
+    if (metric.type === 'currency' && typeof value === 'string' && value.includes(currencySymbol)) {
       return value;
     }
     if (metric.type === 'percentage' && typeof value === 'string' && value.includes('%')) {
@@ -285,7 +288,7 @@ export default function DealComparisonModal({
                         placeholder="Enter bill amount"
                         keyboardType="numeric"
                       />
-                      <ThemedText style={styles.currencySymbol}>₹</ThemedText>
+                      <ThemedText style={styles.currencySymbol}>{currencySymbol}</ThemedText>
                     </View>
                   </View>
 
@@ -299,7 +302,7 @@ export default function DealComparisonModal({
                       <View style={styles.bestDealCard}>
                         <ThemedText style={styles.bestDealName}>{bestDeal.deal.title}</ThemedText>
                         <ThemedText style={styles.bestDealSavings}>
-                          Save ₹{bestDeal.savings.toLocaleString()}
+                          Save {currencySymbol}{bestDeal.savings.toLocaleString()}
                         </ThemedText>
                         {onSelectDeal && (
                           <TouchableOpacity
@@ -449,9 +452,9 @@ export default function DealComparisonModal({
                                 styles.dealSelectionSavings,
                                 !isValid && styles.dealSelectionSavingsDisabled,
                               ]}>
-                                {isValid 
-                                  ? `Save ₹${result.discountAmount.toLocaleString()}`
-                                  : `Minimum bill: ₹${deal.minimumBill.toLocaleString()}`
+                                {isValid
+                                  ? `Save ${currencySymbol}${result.discountAmount.toLocaleString()}`
+                                  : `Minimum bill: ${currencySymbol}${deal.minimumBill.toLocaleString()}`
                                 }
                               </ThemedText>
                             </View>

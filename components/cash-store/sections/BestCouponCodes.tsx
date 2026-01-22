@@ -19,6 +19,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { CashStoreCoupon } from '../../../types/cash-store.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface BestCouponCodesProps {
   coupons: CashStoreCoupon[];
@@ -32,6 +33,9 @@ const CouponCard: React.FC<{
   index: number;
   onCopy: () => void;
 }> = memo(({ coupon, index, onCopy }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const [isCopied, setIsCopied] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -112,7 +116,7 @@ const CouponCard: React.FC<{
   const discountDisplay =
     coupon.discountType === 'PERCENTAGE'
       ? `${coupon.discountValue}% OFF`
-      : `₹${coupon.discountValue} OFF`;
+      : `${currencySymbol}${coupon.discountValue} OFF`;
 
   // Mock success rate (would come from API in production)
   const successRate = coupon.successRate || Math.floor(Math.random() * 20) + 80;
@@ -178,7 +182,7 @@ const CouponCard: React.FC<{
 
         {/* Min Order */}
         {coupon.minOrderValue && (
-          <Text style={styles.minOrder}>Min. order ₹{coupon.minOrderValue}</Text>
+          <Text style={styles.minOrder}>Min. order {currencySymbol}{coupon.minOrderValue}</Text>
         )}
 
         {/* Success Rate Bar */}

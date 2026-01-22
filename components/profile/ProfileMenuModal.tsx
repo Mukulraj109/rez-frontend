@@ -1,7 +1,7 @@
 // ProfileMenuModal Component
 // Premium glassmorphism design with green/gold accents
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Modal,
@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProfileMenuModalProps, ProfileMenuItem } from '@/types/profile.types';
+import { useRegion, RegionId } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MODAL_WIDTH = SCREEN_WIDTH * 0.88;
@@ -62,6 +63,272 @@ const COLORS = {
   error: '#EF4444',
 };
 
+// Region data with flags
+const REGIONS_DATA: { id: RegionId; name: string; flag: string; currency: string }[] = [
+  { id: 'bangalore', name: 'Bangalore', flag: '🇮🇳', currency: 'INR' },
+  { id: 'dubai', name: 'Dubai', flag: '🇦🇪', currency: 'AED' },
+  { id: 'china', name: 'China', flag: '🇨🇳', currency: 'CNY' },
+];
+
+// Custom Confirmation Modal Component
+interface ConfirmModalProps {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  icon?: string;
+  confirmColor?: string;
+}
+
+const ConfirmationModal = ({
+  visible,
+  title,
+  message,
+  confirmText = 'Continue',
+  cancelText = 'Cancel',
+  onConfirm,
+  onCancel,
+  icon = 'globe-outline',
+  confirmColor = COLORS.primary,
+}: ConfirmModalProps) => {
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 8,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 0.8,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={onCancel}
+    >
+      <Animated.View style={[confirmStyles.backdrop, { opacity: opacityAnim }]}>
+        <Animated.View
+          style={[
+            confirmStyles.modalContainer,
+            { transform: [{ scale: scaleAnim }] },
+          ]}
+        >
+          {/* Icon */}
+          <View style={confirmStyles.iconContainer}>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              style={confirmStyles.iconGradient}
+            >
+              <Ionicons name={icon as any} size={32} color="#fff" />
+            </LinearGradient>
+          </View>
+
+          {/* Title */}
+          <ThemedText style={confirmStyles.title}>{title}</ThemedText>
+
+          {/* Message */}
+          <ThemedText style={confirmStyles.message}>{message}</ThemedText>
+
+          {/* Warning Badge */}
+          <View style={confirmStyles.warningBadge}>
+            <Ionicons name="warning" size={16} color="#F59E0B" />
+            <ThemedText style={confirmStyles.warningText}>
+              Your cart will be cleared
+            </ThemedText>
+          </View>
+
+          {/* Buttons */}
+          <View style={confirmStyles.buttonContainer}>
+            <TouchableOpacity
+              style={confirmStyles.cancelButton}
+              onPress={onCancel}
+              activeOpacity={0.8}
+            >
+              <ThemedText style={confirmStyles.cancelButtonText}>
+                {cancelText}
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[confirmStyles.confirmButton, { backgroundColor: confirmColor }]}
+              onPress={onConfirm}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="swap-horizontal" size={18} color="#fff" />
+              <ThemedText style={confirmStyles.confirmButtonText}>
+                {confirmText}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+};
+
+const confirmStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(11, 34, 64, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
+      },
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.25,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 24,
+      },
+    }),
+  },
+  iconContainer: {
+    marginBottom: 20,
+  },
+  iconGradient: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 24px rgba(0, 192, 106, 0.4)',
+      },
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  message: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  warningBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 24,
+    gap: 8,
+  },
+  warningText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 192, 106, 0.3)',
+      },
+      ios: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  confirmButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+});
+
 export default function ProfileMenuModal({
   visible,
   onClose,
@@ -74,6 +341,43 @@ export default function ProfileMenuModal({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { actions } = useAuth();
+  const { state: regionState, setRegion, getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+  const [showRegionPicker, setShowRegionPicker] = useState(false);
+  const [showRegionConfirm, setShowRegionConfirm] = useState(false);
+  const [pendingRegion, setPendingRegion] = useState<RegionId | null>(null);
+
+  const currentRegionData = REGIONS_DATA.find(r => r.id === regionState.currentRegion) || REGIONS_DATA[0];
+  const pendingRegionData = pendingRegion ? REGIONS_DATA.find(r => r.id === pendingRegion) : null;
+
+  const handleRegionChange = async (regionId: RegionId) => {
+    if (regionId === regionState.currentRegion) {
+      setShowRegionPicker(false);
+      return;
+    }
+
+    // Show custom confirmation modal
+    setPendingRegion(regionId);
+    setShowRegionConfirm(true);
+  };
+
+  const confirmRegionChange = async () => {
+    if (!pendingRegion) return;
+
+    try {
+      await setRegion(pendingRegion);
+      setShowRegionPicker(false);
+      setShowRegionConfirm(false);
+      setPendingRegion(null);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to change region. Please try again.');
+    }
+  };
+
+  const cancelRegionChange = () => {
+    setShowRegionConfirm(false);
+    setPendingRegion(null);
+  };
 
   useEffect(() => {
     if (visible) {
@@ -209,7 +513,7 @@ export default function ProfileMenuModal({
             <Ionicons name="wallet" size={16} color={COLORS.gold} />
           </View>
           <ThemedText style={styles.statValue}>
-            ₹{user?.wallet?.balance?.toLocaleString('en-IN') || '0'}
+            {currencySymbol}{user?.wallet?.balance?.toLocaleString('en-IN') || '0'}
           </ThemedText>
           <ThemedText style={styles.statLabel}>Wallet</ThemedText>
         </View>
@@ -219,7 +523,7 @@ export default function ProfileMenuModal({
             <Ionicons name="trending-up" size={16} color={COLORS.gold} />
           </View>
           <ThemedText style={styles.statValue}>
-            ₹{user?.wallet?.totalEarned?.toLocaleString('en-IN') || '0'}
+            {currencySymbol}{user?.wallet?.totalEarned?.toLocaleString('en-IN') || '0'}
           </ThemedText>
           <ThemedText style={styles.statLabel}>Earned</ThemedText>
         </View>
@@ -229,10 +533,71 @@ export default function ProfileMenuModal({
             <Ionicons name="time" size={16} color={COLORS.gold} />
           </View>
           <ThemedText style={styles.statValue}>
-            ₹{user?.wallet?.pendingAmount?.toLocaleString('en-IN') || '0'}
+            {currencySymbol}{user?.wallet?.pendingAmount?.toLocaleString('en-IN') || '0'}
           </ThemedText>
           <ThemedText style={styles.statLabel}>Pending</ThemedText>
         </View>
+      </View>
+
+      {/* Region Selector Card */}
+      <View style={styles.regionSelectorContainer}>
+        <TouchableOpacity
+          style={styles.regionCard}
+          onPress={() => setShowRegionPicker(!showRegionPicker)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.regionCardContent}>
+            <View style={styles.regionIconContainer}>
+              <Ionicons name="globe-outline" size={20} color={COLORS.primary} />
+            </View>
+            <View style={styles.regionTextContainer}>
+              <ThemedText style={styles.regionLabel}>Region</ThemedText>
+              <ThemedText style={styles.regionValue}>
+                {currentRegionData.flag} {currentRegionData.name} ({currentRegionData.currency})
+              </ThemedText>
+            </View>
+            <View style={styles.regionArrowContainer}>
+              <Ionicons
+                name={showRegionPicker ? "chevron-up" : "chevron-down"}
+                size={18}
+                color={COLORS.textMuted}
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Region Picker Dropdown */}
+        {showRegionPicker && (
+          <View style={styles.regionPickerDropdown}>
+            {REGIONS_DATA.map((region) => (
+              <TouchableOpacity
+                key={region.id}
+                style={[
+                  styles.regionOption,
+                  region.id === regionState.currentRegion && styles.regionOptionActive,
+                ]}
+                onPress={() => handleRegionChange(region.id)}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={styles.regionOptionFlag}>{region.flag}</ThemedText>
+                <View style={styles.regionOptionTextContainer}>
+                  <ThemedText style={[
+                    styles.regionOptionName,
+                    region.id === regionState.currentRegion && styles.regionOptionNameActive,
+                  ]}>
+                    {region.name}
+                  </ThemedText>
+                  <ThemedText style={styles.regionOptionCurrency}>
+                    {region.currency}
+                  </ThemedText>
+                </View>
+                {region.id === regionState.currentRegion && (
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Partner Profile Quick Action - Premium Glass Card */}
@@ -374,6 +739,7 @@ export default function ProfileMenuModal({
   );
 
   return (
+    <>
     <Modal
       visible={visible}
       transparent
@@ -436,6 +802,22 @@ export default function ProfileMenuModal({
         </Animated.View>
       </TouchableWithoutFeedback>
     </Modal>
+
+    {/* Region Change Confirmation Modal */}
+    <ConfirmationModal
+      visible={showRegionConfirm}
+      title="Change Region"
+      message={pendingRegionData
+        ? `Switch from ${currentRegionData.name} to ${pendingRegionData.name}? Prices will be shown in ${pendingRegionData.currency}.`
+        : 'Are you sure you want to change region?'
+      }
+      confirmText="Switch Region"
+      cancelText="Cancel"
+      onConfirm={confirmRegionChange}
+      onCancel={cancelRegionChange}
+      icon="globe-outline"
+    />
+    </>
   );
 }
 
@@ -1047,5 +1429,134 @@ const styles = StyleSheet.create({
 
   footerSpace: {
     height: 40,
+  },
+
+  // Region Selector Styles
+  regionSelectorContainer: {
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  regionCard: {
+    backgroundColor: Platform.OS === 'web'
+      ? 'rgba(255, 255, 255, 0.25)'
+      : 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    ...Platform.select({
+      web: {
+        // @ts-ignore - web only
+        backdropFilter: 'blur(30px) saturate(180%)',
+        // @ts-ignore - web only
+        WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
+      },
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  regionCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+  },
+  regionIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 192, 106, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+  },
+  regionTextContainer: {
+    flex: 1,
+  },
+  regionLabel: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  regionValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  regionArrowContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  regionPickerDropdown: {
+    marginTop: 8,
+    backgroundColor: Platform.OS === 'web'
+      ? 'rgba(255, 255, 255, 0.95)'
+      : 'rgba(255, 255, 255, 0.98)',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+    ...Platform.select({
+      web: {
+        // @ts-ignore - web only
+        backdropFilter: 'blur(40px)',
+        // @ts-ignore - web only
+        WebkitBackdropFilter: 'blur(40px)',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+      },
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  regionOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  regionOptionActive: {
+    backgroundColor: 'rgba(0, 192, 106, 0.08)',
+  },
+  regionOptionFlag: {
+    fontSize: 24,
+    marginRight: 14,
+  },
+  regionOptionTextContainer: {
+    flex: 1,
+  },
+  regionOptionName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  regionOptionNameActive: {
+    color: COLORS.primary,
+  },
+  regionOptionCurrency: {
+    fontSize: 12,
+    color: COLORS.textMuted,
   },
 });

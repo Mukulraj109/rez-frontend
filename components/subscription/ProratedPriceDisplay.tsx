@@ -5,6 +5,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ProratedPriceDisplayProps {
   originalPrice: number;
@@ -23,6 +24,8 @@ export default function ProratedPriceDisplay({
   newTier,
   daysRemaining,
 }: ProratedPriceDisplayProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   return (
     <View style={styles.container}>
       <ThemedText style={styles.title}>Pricing Breakdown</ThemedText>
@@ -40,7 +43,7 @@ export default function ProratedPriceDisplay({
           <View style={styles.labelContainer}>
             <ThemedText style={styles.label}>{newTier} Plan (1 month)</ThemedText>
           </View>
-          <ThemedText style={styles.value}>₹{originalPrice}</ThemedText>
+          <ThemedText style={styles.value}>{currencySymbol}{originalPrice}</ThemedText>
         </View>
 
         {/* Credit */}
@@ -51,7 +54,7 @@ export default function ProratedPriceDisplay({
               ({daysRemaining} days remaining)
             </ThemedText>
           </View>
-          <ThemedText style={[styles.value, styles.creditValue]}>-₹{creditFromCurrentPlan}</ThemedText>
+          <ThemedText style={[styles.value, styles.creditValue]}>-{currencySymbol}{creditFromCurrentPlan}</ThemedText>
         </View>
 
         {/* Divider */}
@@ -65,7 +68,7 @@ export default function ProratedPriceDisplay({
               Covers remaining {daysRemaining} days
             </ThemedText>
           </View>
-          <ThemedText style={styles.totalValue}>₹{finalAmount}</ThemedText>
+          <ThemedText style={styles.totalValue}>{currencySymbol}{finalAmount}</ThemedText>
         </View>
       </View>
 

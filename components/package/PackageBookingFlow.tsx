@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import serviceBookingApi from '@/services/serviceBookingApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface PackageDetails {
   id: string;
@@ -76,6 +77,8 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
   onComplete,
   onClose,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -409,7 +412,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
                 Price per person
               </Text>
               <Text style={[styles.accommodationPriceValue, isSelected && styles.accommodationPriceValueSelected]}>
-                ₹{option.price.toLocaleString('en-IN')}
+                {currencySymbol}{option.price.toLocaleString('en-IN')}
               </Text>
             </View>
           </TouchableOpacity>
@@ -447,7 +450,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
                   </Text>
                   {plan.price > 0 && (
                     <Text style={[styles.mealPlanPrice, isSelected && styles.mealPlanPriceSelected]}>
-                      + ₹{plan.price}/night/person
+                      + {currencySymbol}{plan.price}/night/person
                     </Text>
                   )}
                 </View>
@@ -481,7 +484,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
           >
             <View style={styles.addonInfo}>
               <Text style={styles.addonLabel}>Airport Transfers</Text>
-              <Text style={styles.addonPrice}>+ ₹2,000</Text>
+              <Text style={styles.addonPrice}>+ {currencySymbol}2,000</Text>
             </View>
             <View style={[styles.checkbox, transfers && styles.checkboxSelected]}>
               {transfers && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
@@ -494,7 +497,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
           >
             <View style={styles.addonInfo}>
               <Text style={styles.addonLabel}>Travel Insurance</Text>
-              <Text style={styles.addonPrice}>+ ₹1,000/person</Text>
+              <Text style={styles.addonPrice}>+ {currencySymbol}1,000/person</Text>
             </View>
             <View style={[styles.checkbox, travelInsurance && styles.checkboxSelected]}>
               {travelInsurance && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
@@ -507,7 +510,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
           >
             <View style={styles.addonInfo}>
               <Text style={styles.addonLabel}>Professional Guide</Text>
-              <Text style={styles.addonPrice}>+ ₹3,000/day</Text>
+              <Text style={styles.addonPrice}>+ {currencySymbol}3,000/day</Text>
             </View>
             <View style={[styles.checkbox, guide && styles.checkboxSelected]}>
               {guide && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
@@ -522,7 +525,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
               {accommodationType.toUpperCase()} ({totalTravelers} {totalTravelers === 1 ? 'person' : 'people'})
             </Text>
             <Text style={styles.priceValue}>
-              ₹{(pkg.accommodationOptions[accommodationType].price * totalTravelers).toLocaleString('en-IN')}
+              {currencySymbol}{(pkg.accommodationOptions[accommodationType].price * totalTravelers).toLocaleString('en-IN')}
             </Text>
           </View>
           {mealPlan !== 'none' && (
@@ -531,7 +534,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
                 {mealPlans.find(p => p.key === mealPlan)?.label} ({calculateNights()} nights)
               </Text>
               <Text style={styles.priceValue}>
-                + ₹{(() => {
+                + {currencySymbol}{(() => {
                   const plan = mealPlans.find(p => p.key === mealPlan);
                   return plan ? (plan.price * calculateNights() * totalTravelers).toLocaleString('en-IN') : '0';
                 })()}
@@ -541,24 +544,24 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
           {transfers && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Airport Transfers</Text>
-              <Text style={styles.priceValue}>+ ₹2,000</Text>
+              <Text style={styles.priceValue}>+ {currencySymbol}2,000</Text>
             </View>
           )}
           {travelInsurance && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Travel Insurance</Text>
-              <Text style={styles.priceValue}>+ ₹{(1000 * totalTravelers).toLocaleString('en-IN')}</Text>
+              <Text style={styles.priceValue}>+ {currencySymbol}{(1000 * totalTravelers).toLocaleString('en-IN')}</Text>
             </View>
           )}
           {guide && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Professional Guide</Text>
-              <Text style={styles.priceValue}>+ ₹{(3000 * calculateNights()).toLocaleString('en-IN')}</Text>
+              <Text style={styles.priceValue}>+ {currencySymbol}{(3000 * calculateNights()).toLocaleString('en-IN')}</Text>
             </View>
           )}
           <View style={[styles.priceRow, styles.priceTotal]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>₹{calculateTotalPrice().toLocaleString('en-IN')}</Text>
+            <Text style={styles.totalValue}>{currencySymbol}{calculateTotalPrice().toLocaleString('en-IN')}</Text>
           </View>
         </View>
       </View>
@@ -703,7 +706,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
       <View style={styles.footer}>
         <View style={styles.footerPrice}>
           <Text style={styles.footerPriceLabel}>Total</Text>
-          <Text style={styles.footerPriceValue}>₹{calculateTotalPrice().toLocaleString('en-IN')}</Text>
+          <Text style={styles.footerPriceValue}>{currencySymbol}{calculateTotalPrice().toLocaleString('en-IN')}</Text>
         </View>
         <TouchableOpacity
           style={[styles.nextButton, isSubmitting && styles.nextButtonDisabled]}

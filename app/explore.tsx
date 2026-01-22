@@ -37,6 +37,7 @@ import reelApi from '../services/reelApi';
 import exploreApi from '../services/exploreApi';
 import { useWallet } from '@/hooks/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
 
 
 const { width } = Dimensions.get('window');
@@ -262,6 +263,8 @@ const ExplorePage = () => {
   const router = useRouter();
   const { user } = useAuth();
   const { walletState } = useWallet({ userId: user?.id, autoFetch: true });
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedChip, setSelectedChip] = useState('trending');
@@ -602,7 +605,7 @@ const ExplorePage = () => {
                   {/* Saved Badge */}
                   <View style={styles.savedBadge}>
                     <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
-                    <Text style={styles.savedText}>Saved ₹{reel.saved}</Text>
+                    <Text style={styles.savedText}>Saved {currencySymbol}{reel.saved}</Text>
                   </View>
 
                   {/* Stats Row */}

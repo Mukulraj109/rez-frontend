@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface Product {
   id: string;
@@ -18,6 +19,8 @@ interface RecentlyViewedProps {
 
 export default function RecentlyViewed({ products, onProductPress }: RecentlyViewedProps) {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   if (!products || products.length === 0) {
     return null;
@@ -79,9 +82,9 @@ export default function RecentlyViewed({ products, onProductPress }: RecentlyVie
               </Text>
 
               <View style={styles.priceContainer}>
-                <Text style={styles.productPrice}>₹{product.price}</Text>
+                <Text style={styles.productPrice}>{currencySymbol}{product.price}</Text>
                 {product.originalPrice && product.originalPrice > product.price && (
-                  <Text style={styles.originalPrice}>₹{product.originalPrice}</Text>
+                  <Text style={styles.originalPrice}>{currencySymbol}{product.originalPrice}</Text>
                 )}
               </View>
             </View>

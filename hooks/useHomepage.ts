@@ -21,6 +21,7 @@ import {
   toProduct,
   toStore
 } from '@/types/unified';
+import { useCurrentRegion } from '@/contexts/RegionContext';
 
 // Homepage Reducer
 function homepageReducer(state: HomepageState, action: HomepageAction): HomepageState {
@@ -90,6 +91,7 @@ function homepageReducer(state: HomepageState, action: HomepageAction): Homepage
 export function useHomepage(): UseHomepageDataResult {
   const [state, dispatch] = useReducer(homepageReducer, initialHomepageState);
   const isMountedRef = useRef(true);
+  const currentRegion = useCurrentRegion(); // Refetch when region changes
 
   // Track mounted state for cleanup
   useEffect(() => {
@@ -267,12 +269,12 @@ export function useHomepage(): UseHomepageDataResult {
     // TODO: Send analytics event to backend
   }, []);
 
-  // Auto-refresh on mount
+  // Auto-refresh on mount and when region changes
   useEffect(() => {
     // Since we now have fallback data, sections.length will not be 0, so let's trigger refresh anyway
     refreshAllSections();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount, refreshAllSections is stable
+  }, [currentRegion]); // Refetch when region changes
 
   // Debug effect to test service directly - disabled to prevent infinite loop
   // This was causing infinite loops because state.sections.length changes constantly

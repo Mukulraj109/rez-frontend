@@ -14,8 +14,11 @@ import ordersService, { Order } from '@/services/ordersApi';
 import { mapBackendOrderToFrontend } from '@/utils/dataMappers';
 import ReorderButton from '@/components/orders/ReorderButton';
 import ReorderSuggestions from '@/components/orders/ReorderSuggestions';
+import { useRegion } from '@/contexts/RegionContext';
 
 export default function OrdersListScreen() {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -129,7 +132,7 @@ export default function OrdersListScreen() {
               </Text>
               <Text style={styles.itemQuantity}>Qty: {orderItem.quantity}</Text>
             </View>
-            <Text style={styles.itemPrice}>₹{orderItem.totalPrice}</Text>
+            <Text style={styles.itemPrice}>{currencySymbol}{orderItem.totalPrice}</Text>
           </View>
         ))}
         {item.items.length > 3 && (
@@ -142,7 +145,7 @@ export default function OrdersListScreen() {
       <View style={styles.orderFooter}>
         <View style={styles.totalSection}>
           <Text style={styles.totalLabel}>Total Amount</Text>
-          <Text style={styles.totalAmount}>₹{item.totals?.total || item.summary?.total || 0}</Text>
+          <Text style={styles.totalAmount}>{currencySymbol}{item.totals?.total || item.summary?.total || 0}</Text>
         </View>
         <View style={styles.paymentStatus}>
           <Text

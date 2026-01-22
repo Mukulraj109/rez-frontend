@@ -14,6 +14,7 @@ import ActionBtn from '../../shared/ActionBtn';
 import { NavigationAction, BackAction } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface Props {
     onNavigate: NavigationAction;
@@ -21,6 +22,8 @@ interface Props {
 }
 
 const SaveAndEarnScreen: React.FC<Props> = ({ onNavigate, onBack }) => {
+    const { getCurrencySymbol } = useRegion();
+    const currencySymbol = getCurrencySymbol();
     const discountScale = useSharedValue(0);
     const cashbackScale = useSharedValue(0);
     const coinsScale = useSharedValue(0);
@@ -74,7 +77,7 @@ const SaveAndEarnScreen: React.FC<Props> = ({ onNavigate, onBack }) => {
                         </View>
                         <View style={styles.cardContent}>
                             <Text style={styles.cardLabel}>Discount Applied</Text>
-                            <Text style={[styles.cardValue, { color: '#B45309' }]}>- ₹75 OFF</Text>
+                            <Text style={[styles.cardValue, { color: '#B45309' }]}>- {currencySymbol}75 OFF</Text>
                         </View>
                         <Ionicons name="checkmark-circle" size={24} color="#F59E0B" />
                     </LinearGradient>
@@ -93,7 +96,7 @@ const SaveAndEarnScreen: React.FC<Props> = ({ onNavigate, onBack }) => {
                         </View>
                         <View style={styles.cardContent}>
                             <Text style={styles.cardLabel}>Cashback Earned</Text>
-                            <Text style={[styles.cardValue, { color: '#047857' }]}>+ ₹50</Text>
+                            <Text style={[styles.cardValue, { color: '#047857' }]}>+ {currencySymbol}50</Text>
                         </View>
                         <Ionicons name="checkmark-circle" size={24} color="#059669" />
                     </LinearGradient>
@@ -130,7 +133,7 @@ const SaveAndEarnScreen: React.FC<Props> = ({ onNavigate, onBack }) => {
                             <Ionicons name="sparkles" size={20} color="#FCD34D" />
                             <Text style={styles.totalLabel}>TOTAL SAVINGS</Text>
                         </View>
-                        <Text style={styles.totalValue}>₹125</Text>
+                        <Text style={styles.totalValue}>{currencySymbol}125</Text>
                         <Text style={styles.totalSubtext}>+ 35 coins for future use</Text>
                     </LinearGradient>
                 </Animated.View>

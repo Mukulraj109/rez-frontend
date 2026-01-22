@@ -58,23 +58,45 @@ class PaymentService {
   }
 
   /**
+   * Check if running in development mode
+   */
+  private isDevelopment(): boolean {
+    return __DEV__ || process.env.NODE_ENV === 'development';
+  }
+
+  /**
    * Get available payment methods
    */
   async getPaymentMethods(): Promise<ApiResponse<PaymentMethod[]>> {
     try {
       const response = await apiClient.get('/wallet/payment-methods');
-      
-      if (response.success && response.data) {
 
+      if (response.success && response.data) {
         return response as ApiResponse<PaymentMethod[]>;
       }
 
-      // Fallback to mock data if backend fails
-      console.warn('⚠️ [PAYMENT SERVICE] Backend failed, using fallback data');
-      return this.getFallbackPaymentMethods();
+      // Only use fallback in development mode
+      if (this.isDevelopment()) {
+        console.warn('⚠️ [PAYMENT SERVICE] Backend failed, using fallback data (DEV MODE)');
+        return this.getFallbackPaymentMethods();
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Failed to fetch payment methods. Please try again.'
+      };
     } catch (error) {
       console.error('❌ [PAYMENT SERVICE] Failed to fetch payment methods:', error);
-      return this.getFallbackPaymentMethods();
+
+      // Only use fallback in development mode
+      if (this.isDevelopment()) {
+        return this.getFallbackPaymentMethods();
+      }
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Payment service unavailable. Please try again later.'
+      };
     }
   }
 
@@ -132,18 +154,34 @@ class PaymentService {
    */
   async initiatePayment(paymentRequest: PaymentRequest): Promise<ApiResponse<PaymentResponse>> {
     try {
-      // In production, this would call the actual payment gateway
       const response = await apiClient.post('/wallet/initiate-payment', paymentRequest);
-      
+
       if (response.success && response.data) {
         return response as ApiResponse<PaymentResponse>;
       }
 
-      // Fallback to mock response for development
-      return this.createMockPaymentResponse(paymentRequest);
+      // Only use mock in development mode
+      if (this.isDevelopment()) {
+        console.warn('⚠️ [PAYMENT SERVICE] Using mock payment response (DEV MODE)');
+        return this.createMockPaymentResponse(paymentRequest);
+      }
+
+      return {
+        success: false,
+        error: response.error || 'Payment initiation failed. Please try again.'
+      };
     } catch (error) {
       console.error('❌ [PAYMENT SERVICE] Payment initiation failed:', error);
-      return this.createMockPaymentResponse(paymentRequest);
+
+      // Only use mock in development mode
+      if (this.isDevelopment()) {
+        return this.createMockPaymentResponse(paymentRequest);
+      }
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Payment service error. Please try again later.'
+      };
     }
   }
 
@@ -153,26 +191,34 @@ class PaymentService {
   async checkPaymentStatus(paymentId: string): Promise<ApiResponse<PaymentStatusResponse>> {
     try {
       const response = await apiClient.get(`/wallet/payment-status/${paymentId}`);
-      
+
       if (response.success && response.data) {
         return response as ApiResponse<PaymentStatusResponse>;
       }
 
-      // Fallback to mock response
+      // Only use mock in development mode
+      if (this.isDevelopment()) {
+        console.warn('⚠️ [PAYMENT SERVICE] Using mock status response (DEV MODE)');
+        return {
+          success: true,
+          data: {
+            paymentId,
+            status: 'completed',
+            transactionId: `TXN_${Date.now()}`,
+            completedAt: new Date().toISOString()
+          }
+        };
+      }
+
       return {
-        success: true,
-        data: {
-          paymentId,
-          status: 'completed',
-          transactionId: `TXN_${Date.now()}`,
-          completedAt: new Date().toISOString()
-        }
+        success: false,
+        error: response.error || 'Failed to check payment status'
       };
     } catch (error) {
       console.error('❌ [PAYMENT SERVICE] Status check failed:', error);
       return {
         success: false,
-        error: 'Failed to check payment status'
+        error: error instanceof Error ? error.message : 'Failed to check payment status. Please try again.'
       };
     }
   }

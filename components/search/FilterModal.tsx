@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@/components/common/CrossPlatformSlider';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -63,6 +64,8 @@ export default function FilterModal({
   onApplyFilters,
   currentFilters,
 }: FilterModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [filters, setFilters] = useState<FilterState>(currentFilters);
 
   const handleApply = () => {
@@ -112,8 +115,8 @@ export default function FilterModal({
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Price Range</Text>
               <View style={styles.priceDisplay}>
-                <Text style={styles.priceText}>₹{filters.priceRange.min}</Text>
-                <Text style={styles.priceText}>₹{filters.priceRange.max}</Text>
+                <Text style={styles.priceText}>{currencySymbol}{filters.priceRange.min}</Text>
+                <Text style={styles.priceText}>{currencySymbol}{filters.priceRange.max}</Text>
               </View>
               <View style={styles.sliderContainer}>
                 <Slider

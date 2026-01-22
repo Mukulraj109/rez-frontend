@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Store } from '@/services/storeSearchService';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +31,8 @@ const StoreComparison: React.FC<StoreComparisonProps> = ({
   onRemoveStore,
   onClearAll,
 }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
 
   const handleStoreSelect = (store: Store) => {
@@ -133,15 +136,15 @@ const StoreComparison: React.FC<StoreComparisonProps> = ({
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Minimum Order:</Text>
-              <Text style={styles.detailValue}>₹{selectedStore.operationalInfo.minimumOrder || 'Not specified'}</Text>
+              <Text style={styles.detailValue}>{currencySymbol}{selectedStore.operationalInfo.minimumOrder || 'Not specified'}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Delivery Fee:</Text>
-              <Text style={styles.detailValue}>₹{selectedStore.operationalInfo.deliveryFee || 'Free'}</Text>
+              <Text style={styles.detailValue}>{currencySymbol}{selectedStore.operationalInfo.deliveryFee || 'Free'}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Free Delivery Above:</Text>
-              <Text style={styles.detailValue}>₹{selectedStore.operationalInfo.freeDeliveryAbove || 'Not available'}</Text>
+              <Text style={styles.detailValue}>{currencySymbol}{selectedStore.operationalInfo.freeDeliveryAbove || 'Not available'}</Text>
             </View>
           </View>
 
@@ -259,9 +262,9 @@ const StoreComparison: React.FC<StoreComparisonProps> = ({
             {renderComparisonRow('Rating', (store) => `${(store.ratings?.average || 0).toFixed(1)} ⭐`)}
             {renderComparisonRow('Reviews', (store) => store.ratings?.count || 0)}
             {renderComparisonRow('Delivery Time', (store) => store.operationalInfo?.deliveryTime || 'N/A')}
-            {renderComparisonRow('Min Order', (store) => `₹${store.operationalInfo?.minimumOrder || 'N/A'}`)}
-            {renderComparisonRow('Delivery Fee', (store) => `₹${store.operationalInfo?.deliveryFee || 'Free'}`)}
-            {renderComparisonRow('Free Delivery', (store) => store.operationalInfo?.freeDeliveryAbove ? `Above ₹${store.operationalInfo.freeDeliveryAbove}` : 'Not available')}
+            {renderComparisonRow('Min Order', (store) => `${currencySymbol}${store.operationalInfo?.minimumOrder || 'N/A'}`)}
+            {renderComparisonRow('Delivery Fee', (store) => `${currencySymbol}${store.operationalInfo?.deliveryFee || 'Free'}`)}
+            {renderComparisonRow('Free Delivery', (store) => store.operationalInfo?.freeDeliveryAbove ? `Above ${currencySymbol}${store.operationalInfo.freeDeliveryAbove}` : 'Not available')}
             {renderComparisonRow('Wallet Payment', (store) => store.operationalInfo?.acceptsWalletPayment ? 'Yes' : 'No')}
             {renderComparisonRow('Verified', (store) => store.isVerified ? 'Yes' : 'No')}
             {renderComparisonRow('Featured', (store) => store.isFeatured ? 'Yes' : 'No')}

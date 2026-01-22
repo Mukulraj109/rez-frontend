@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { categoriesApi } from '@/services/categoriesApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface Offer {
   _id: string;
@@ -47,6 +48,8 @@ const COLORS = {
 
 export default function OffersSection({ categorySlug, categoryId }: OffersSectionProps) {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [bankOffers, setBankOffers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -132,7 +135,7 @@ export default function OffersSection({ categorySlug, categoryId }: OffersSectio
         <View style={styles.dealsGrid}>
           {[
             { title: 'Flat 50% Off', subtitle: 'On first order', icon: '🎉', color: '#EC4899' },
-            { title: 'Free Delivery', subtitle: 'Orders above ₹199', icon: '🚚', color: '#3B82F6' },
+            { title: 'Free Delivery', subtitle: `Orders above ${currencySymbol}199`, icon: '🚚', color: '#3B82F6' },
             { title: '2X Cashback', subtitle: 'Pay via UPI', icon: '💰', color: '#10B981' },
             { title: 'BOGO', subtitle: 'Buy 1 Get 1 Free', icon: '🍕', color: '#F59E0B' },
           ].map((deal, index) => (
@@ -155,7 +158,7 @@ export default function OffersSection({ categorySlug, categoryId }: OffersSectio
         </View>
         <View style={styles.promoList}>
           {[
-            { code: 'FIRSTBITE50', discount: '50% OFF', description: 'Max ₹100 off on first order', expiry: 'Expires in 2 days' },
+            { code: 'FIRSTBITE50', discount: '50% OFF', description: `Max ${currencySymbol}100 off on first order`, expiry: 'Expires in 2 days' },
             { code: 'WEEKEND25', discount: '25% OFF', description: 'Valid on weekends only', expiry: 'Expires in 5 days' },
             { code: 'HEALTHYFOOD', discount: '20% OFF', description: 'On healthy food options', expiry: 'Expires in 7 days' },
           ].map((promo, index) => (

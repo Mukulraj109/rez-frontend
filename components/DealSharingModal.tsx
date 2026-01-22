@@ -16,6 +16,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { Deal } from '@/types/deals';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface DealSharingModalProps {
   visible: boolean;
@@ -38,6 +39,8 @@ export default function DealSharingModal({
   deal,
   storeName = 'Store',
 }: DealSharingModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const [copyFeedback, setCopyFeedback] = useState(false);
   
@@ -129,7 +132,7 @@ export default function DealSharingModal({
 ${deal.title}
 💰 Save ${deal.discountValue}%
 🏪 At ${storeName}
-💳 Minimum bill: ₹${deal.minimumBill.toLocaleString()}
+💳 Minimum bill: ${currencySymbol}${deal.minimumBill.toLocaleString()}
 ⏰ Valid until: ${expiryDate}
 
 ${deal.description || 'Don\'t miss out on this incredible offer!'}
@@ -294,7 +297,7 @@ ${deal.description || 'Don\'t miss out on this incredible offer!'}
                       <View style={styles.dealDetailRow}>
                         <Ionicons name="wallet-outline" size={16} color="#8B5CF6" />
                         <ThemedText style={styles.dealDetailText}>
-                          Minimum bill: ₹{deal.minimumBill.toLocaleString()}
+                          Minimum bill: {currencySymbol}{deal.minimumBill.toLocaleString()}
                         </ThemedText>
                       </View>
                       

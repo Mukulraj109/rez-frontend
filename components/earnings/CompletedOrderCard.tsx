@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { Order } from '@/services/ordersApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'credited' | null;
 
@@ -25,6 +26,9 @@ export default function CompletedOrderCard({
   alreadyEarned = false,
   submissionStatus = null,
 }: CompletedOrderCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   // Get first product image from order items
   const firstItem = order.items?.[0];
   const productImage = firstItem?.product?.images?.[0]?.url;
@@ -78,7 +82,7 @@ export default function CompletedOrderCard({
 
           <View style={styles.priceRow}>
             <ThemedText style={styles.orderAmount}>
-              ₹{totalAmount.toFixed(2)}
+              {currencySymbol}{totalAmount.toFixed(2)}
             </ThemedText>
             <ThemedText style={styles.orderDate}>
               {orderDate}
@@ -89,7 +93,7 @@ export default function CompletedOrderCard({
           <View style={styles.cashbackInfo}>
             <Ionicons name="gift-outline" size={14} color="#8B5CF6" />
             <ThemedText style={styles.cashbackText}>
-              Earn ₹{cashbackAmount.toFixed(2)} cashback
+              Earn {currencySymbol}{cashbackAmount.toFixed(2)} cashback
             </ThemedText>
           </View>
         </View>

@@ -37,6 +37,7 @@ import { showAlert } from '@/components/common/CrossPlatformAlert';
 import homepageDataService from '@/services/homepageDataService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { useRegion } from '@/contexts/RegionContext';
 import cartApi from '@/services/cartApi';
 import wishlistApi from '@/services/wishlistApi';
 import asyncStorageService from '@/services/asyncStorageService';
@@ -169,6 +170,8 @@ export default function StorePage() {
   const router = useRouter();
   const { state: authState } = useAuth();
   const { state: cartState, refreshCart } = useCart();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [cardData, setCardData] = useState<DynamicCardData | null>(null);
   const [isDynamic, setIsDynamic] = useState(false);
   const [backendData, setBackendData] = useState<DynamicCardData | null>(null);
@@ -757,7 +760,7 @@ export default function StorePage() {
                   icon: 'bulb',
                   iconColor: '#F59E0B',
                   text: savingsAmount > 0
-                    ? `This product is usually bought on weekends — locking now saves ₹${savingsAmount}`
+                    ? `This product is usually bought on weekends — locking now saves ${currencySymbol}${savingsAmount}`
                     : 'Lock the price now to avoid future price increases',
                 },
                 {
@@ -768,7 +771,7 @@ export default function StorePage() {
                 {
                   icon: 'gift',
                   iconColor: '#00C06A',
-                  text: `Earn ${earnableCoins} ReZ coins + ₹${cashbackAmount} cashback on this purchase`,
+                  text: `Earn ${earnableCoins} ReZ coins + ${currencySymbol}${cashbackAmount} cashback on this purchase`,
                 },
               ]}
             />
@@ -784,7 +787,7 @@ export default function StorePage() {
                 { key: 'Store', value: cardData.store?.name || cardData.merchant || 'N/A' },
                 { key: 'Availability', value: cardData.isAvailable ? 'In Stock' : 'Out of Stock' },
                 { key: 'Delivery Time', value: cardData.store?.operationalInfo?.deliveryTime || '30-45 mins' },
-                { key: 'Minimum Order', value: cardData.store?.operationalInfo?.minimumOrder ? `₹${cardData.store.operationalInfo.minimumOrder}` : 'N/A' },
+                { key: 'Minimum Order', value: cardData.store?.operationalInfo?.minimumOrder ? `${currencySymbol}${cardData.store.operationalInfo.minimumOrder}` : 'N/A' },
                 { key: 'Cashback', value: `Up to ${cardData.store?.offers?.cashback || 5}%` },
                 { key: 'ReZ Coins', value: '10% of purchase' },
                 { key: 'Lock Duration', value: 'Up to 48 hours' },
@@ -860,14 +863,14 @@ export default function StorePage() {
                 <View style={styles.writeReviewText}>
                   <ThemedText style={styles.writeReviewTitle}>Write a review</ThemedText>
                   <ThemedText style={styles.writeReviewSubtitle}>
-                    Earn {cashbackAmount > 0 ? `₹${cashbackAmount}` : '5%'} cashback instantly
+                    Earn {cashbackAmount > 0 ? `${currencySymbol}${cashbackAmount}` : '5%'} cashback instantly
                   </ThemedText>
                 </View>
               </View>
               <View style={styles.writeReviewBadge}>
                 <Ionicons name="gift-outline" size={16} color="#10B981" />
                 <ThemedText style={styles.writeReviewBadgeText}>
-                  ₹{cashbackAmount || Math.floor(productPrice * 0.05)}
+                  {currencySymbol}{cashbackAmount || Math.floor(productPrice * 0.05)}
                 </ThemedText>
               </View>
             </TouchableOpacity>

@@ -13,6 +13,7 @@ import { ThemedView } from '@/components/ThemedView';
 import RatingStars from './RatingStars';
 import { Review } from '@/types/review.types';
 import reviewService from '@/services/reviewApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface ReviewItemProps {
   review: Review;
@@ -24,7 +25,7 @@ interface ReviewItemProps {
   isOwnReview?: boolean;
   /** Cashback earned for this review (optional) */
   cashbackEarned?: number;
-  /** Currency symbol */
+  /** Currency symbol - deprecated, use useRegion hook instead */
   currency?: string;
 }
 
@@ -37,8 +38,10 @@ export default function ReviewItem({
   showActions = true,
   isOwnReview = false,
   cashbackEarned,
-  currency = '₹',
+  currency: currencyProp,
 }: ReviewItemProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currency = currencyProp || getCurrencySymbol();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHelpful, setIsHelpful] = useState(false);
   const [helpfulCount, setHelpfulCount] = useState(review.helpful || 0);

@@ -18,6 +18,7 @@ import {
   ManualCorrectionData,
   MerchantMatch,
 } from '@/types/billVerification.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface BillPreviewModalProps {
   visible: boolean;
@@ -38,6 +39,8 @@ export default function BillPreviewModal({
   onConfirm,
   onEdit,
 }: BillPreviewModalProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<ManualCorrectionData>({
     merchantName: ocrData.merchantName,
@@ -146,7 +149,7 @@ export default function BillPreviewModal({
                 />
               ) : (
                 <Text style={styles.dataValue}>
-                  {ocrData.amount ? `₹${ocrData.amount.toFixed(2)}` : 'Not detected'}
+                  {ocrData.amount ? `${currencySymbol}${ocrData.amount.toFixed(2)}` : 'Not detected'}
                 </Text>
               )}
             </View>
@@ -199,7 +202,7 @@ export default function BillPreviewModal({
                   <Text style={styles.itemName}>{item.name}</Text>
                   <View style={styles.itemDetails}>
                     {item.quantity && <Text style={styles.itemQuantity}>x{item.quantity}</Text>}
-                    {item.price && <Text style={styles.itemPrice}>₹{item.price}</Text>}
+                    {item.price && <Text style={styles.itemPrice}>{currencySymbol}{item.price}</Text>}
                   </View>
                 </View>
               ))}

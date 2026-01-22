@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRegion } from '@/contexts/RegionContext';
 
 export interface MenuItem {
   id: string;
@@ -21,6 +22,9 @@ interface MenuItemCardProps {
 }
 
 const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onQuantityChange }) => {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const getSpiceIndicator = () => {
     if (!item.spiceLevel) return null;
 
@@ -91,7 +95,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onQuantityChange }) =
 
         {/* Price and Actions */}
         <View style={styles.footer}>
-          <Text style={styles.price}>₹{item.price}</Text>
+          <Text style={styles.price}>{currencySymbol}{item.price}</Text>
 
           {item.quantity === 0 ? (
             <TouchableOpacity style={styles.addButton} onPress={handleAdd}>

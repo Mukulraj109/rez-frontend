@@ -5,12 +5,16 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CashbackCalculation } from '@/types/billVerification.types';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface CashbackCalculatorProps {
   calculation: CashbackCalculation;
 }
 
 export default function CashbackCalculator({ calculation }: CashbackCalculatorProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -22,7 +26,7 @@ export default function CashbackCalculator({ calculation }: CashbackCalculatorPr
       {/* Total Cashback */}
       <View style={styles.totalCard}>
         <Text style={styles.totalLabel}>You'll Earn</Text>
-        <Text style={styles.totalAmount}>₹{calculation.finalCashback.toFixed(2)}</Text>
+        <Text style={styles.totalAmount}>{currencySymbol}{calculation.finalCashback.toFixed(2)}</Text>
         <Text style={styles.totalRate}>{calculation.finalCashbackRate}% Cashback</Text>
       </View>
 
@@ -33,7 +37,7 @@ export default function CashbackCalculator({ calculation }: CashbackCalculatorPr
         {/* Base Amount */}
         <View style={styles.breakdownRow}>
           <Text style={styles.breakdownLabel}>Bill Amount</Text>
-          <Text style={styles.breakdownValue}>₹{calculation.baseAmount.toFixed(2)}</Text>
+          <Text style={styles.breakdownValue}>{currencySymbol}{calculation.baseAmount.toFixed(2)}</Text>
         </View>
 
         {/* Base Cashback */}
@@ -42,7 +46,7 @@ export default function CashbackCalculator({ calculation }: CashbackCalculatorPr
             <Text style={styles.breakdownLabel}>Base Cashback</Text>
             <Text style={styles.breakdownSubtext}>{calculation.baseCashbackRate}%</Text>
           </View>
-          <Text style={styles.breakdownValue}>₹{calculation.baseCashback.toFixed(2)}</Text>
+          <Text style={styles.breakdownValue}>{currencySymbol}{calculation.baseCashback.toFixed(2)}</Text>
         </View>
 
         {/* Bonuses */}
@@ -56,7 +60,7 @@ export default function CashbackCalculator({ calculation }: CashbackCalculatorPr
               <Text style={styles.breakdownSubtext}>{bonus.description}</Text>
             </View>
             <Text style={[styles.breakdownValue, styles.bonusValue]}>
-              +₹{bonus.amount.toFixed(2)}
+              +{currencySymbol}{bonus.amount.toFixed(2)}
             </Text>
           </View>
         ))}
@@ -65,7 +69,7 @@ export default function CashbackCalculator({ calculation }: CashbackCalculatorPr
         {calculation.totalBonus > 0 && (
           <View style={[styles.breakdownRow, styles.totalBonusRow]}>
             <Text style={styles.totalBonusLabel}>Total Bonus</Text>
-            <Text style={styles.totalBonusValue}>+₹{calculation.totalBonus.toFixed(2)}</Text>
+            <Text style={styles.totalBonusValue}>+{currencySymbol}{calculation.totalBonus.toFixed(2)}</Text>
           </View>
         )}
 
@@ -75,7 +79,7 @@ export default function CashbackCalculator({ calculation }: CashbackCalculatorPr
         {/* Final Cashback */}
         <View style={[styles.breakdownRow, styles.finalRow]}>
           <Text style={styles.finalLabel}>Total Cashback</Text>
-          <Text style={styles.finalValue}>₹{calculation.finalCashback.toFixed(2)}</Text>
+          <Text style={styles.finalValue}>{currencySymbol}{calculation.finalCashback.toFixed(2)}</Text>
         </View>
       </View>
 
@@ -97,13 +101,13 @@ export default function CashbackCalculator({ calculation }: CashbackCalculatorPr
           {calculation.caps.dailyLimit && (
             <View style={styles.capRow}>
               <Text style={styles.capLabel}>Daily Limit</Text>
-              <Text style={styles.capValue}>₹{calculation.caps.dailyLimit}</Text>
+              <Text style={styles.capValue}>{currencySymbol}{calculation.caps.dailyLimit}</Text>
             </View>
           )}
           {calculation.caps.monthlyLimit && (
             <View style={styles.capRow}>
               <Text style={styles.capLabel}>Monthly Limit</Text>
-              <Text style={styles.capValue}>₹{calculation.caps.monthlyLimit}</Text>
+              <Text style={styles.capValue}>{currencySymbol}{calculation.caps.monthlyLimit}</Text>
             </View>
           )}
         </View>

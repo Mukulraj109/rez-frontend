@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SellerOption } from '@/types/search.types';
 import { router } from 'expo-router';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface SellerComparisonCardProps {
   seller: SellerOption;
@@ -28,8 +29,11 @@ export default function SellerComparisonCard({
   onCompare,
   productId,
 }: SellerComparisonCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+
   const formatPrice = (price: number) => {
-    return `₹${price.toLocaleString('en-IN')}`;
+    return `${currencySymbol}${price.toLocaleString('en-IN')}`;
   };
 
   const formatDistance = (distance?: number) => {

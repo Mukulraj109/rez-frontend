@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { campaignsApi, DealCategory, CampaignDeal } from '@/services/campaignsApi';
 import CoinIcon from '@/components/ui/CoinIcon';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -78,23 +79,23 @@ const FALLBACK_DEAL_CATEGORIES: DealCategory[] = [
     badgeBg: COLORS.navy,
     badgeColor: COLORS.white,
     deals: [
-      { store: 'HDFC Exclusive', cashback: '₹5000 off', image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=300' },
-      { store: 'ICICI Bonanza', cashback: '₹3000 off', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=300' },
+      { store: 'HDFC Exclusive', cashback: '5000 off', image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=300' },
+      { store: 'ICICI Bonanza', cashback: '3000 off', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=300' },
       { store: 'SBI Specials', cashback: '20% cashback', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300' },
     ],
   },
   {
     id: 'upload-bill-bonanza',
     title: 'Upload Bill Bonanza',
-    subtitle: 'Extra ₹100 on every bill',
-    badge: '+₹100',
+    subtitle: 'Extra 100 on every bill',
+    badge: '+100',
     gradientColors: ['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.1)'],
     badgeBg: COLORS.white,
     badgeColor: COLORS.purple500,
     deals: [
-      { store: 'Any Restaurant', bonus: '+₹100 coins', image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300' },
-      { store: 'Any Salon', bonus: '+₹150 coins', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300' },
-      { store: 'Any Store', bonus: '+₹100 coins', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300' },
+      { store: 'Any Restaurant', bonus: '+100 coins', image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300' },
+      { store: 'Any Salon', bonus: '+150 coins', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300' },
+      { store: 'Any Store', bonus: '+100 coins', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300' },
     ],
   },
   {
@@ -120,9 +121,9 @@ const FALLBACK_DEAL_CATEGORIES: DealCategory[] = [
     badgeBg: COLORS.cyan500,
     badgeColor: COLORS.white,
     deals: [
-      { store: 'First Order', bonus: '₹500 off', image: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300' },
+      { store: 'First Order', bonus: '500 off', image: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300' },
       { store: 'First Visit', bonus: '1000 coins', image: 'https://images.unsplash.com/photo-1555529902-5261145633bf?w=300' },
-      { store: 'Sign Up Bonus', bonus: '₹300 cashback', image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=300' },
+      { store: 'Sign Up Bonus', bonus: '300 cashback', image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=300' },
     ],
   },
 ];

@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { LockedItem } from '@/services/cartApi';
 import { triggerImpact } from '@/utils/haptics';
+import { useRegion } from '@/contexts/RegionContext';
 import {
   Colors,
   Spacing,
@@ -78,6 +79,8 @@ export default function CartLockedItemCard({
   onCancelLock,
   onPress,
 }: CartLockedItemCardProps) {
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const backgroundColor = useThemeColor({}, 'background');
   const [timeRemaining, setTimeRemaining] = useState(() => getTimeRemaining(item.expiresAt));
 
@@ -173,11 +176,11 @@ export default function CartLockedItemCard({
           {/* Prices */}
           <View style={styles.priceRow}>
             <ThemedText style={styles.lockedPrice}>
-              ₹{item.lockedPrice.toLocaleString()}
+              {currencySymbol}{item.lockedPrice.toLocaleString()}
             </ThemedText>
             {item.originalPrice && item.originalPrice > item.lockedPrice && (
               <ThemedText style={styles.originalPrice}>
-                ₹{item.originalPrice.toLocaleString()}
+                {currencySymbol}{item.originalPrice.toLocaleString()}
               </ThemedText>
             )}
           </View>
@@ -187,7 +190,7 @@ export default function CartLockedItemCard({
             <View style={styles.paidLockInfo}>
               <Ionicons name="checkmark-circle" size={16} color="#10B981" />
               <ThemedText style={styles.paidLockText}>
-                Paid: ₹{lockFee} (Lock Deposit)
+                Paid: {currencySymbol}{lockFee} (Lock Deposit)
               </ThemedText>
             </View>
           )}
@@ -232,7 +235,7 @@ export default function CartLockedItemCard({
         <View style={styles.noteContainer}>
           <Ionicons name="information-circle-outline" size={14} color="#6B7280" />
           <ThemedText style={styles.noteText}>
-            ₹{lockFee} will be deducted from your final payment
+            {currencySymbol}{lockFee} will be deducted from your final payment
           </ThemedText>
         </View>
       )}
