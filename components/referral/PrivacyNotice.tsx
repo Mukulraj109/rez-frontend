@@ -52,7 +52,6 @@ export const PrivacyNotice: React.FC<PrivacyNoticeProps> = ({
       Linking.openURL(privacyPolicyUrl);
     } else {
       // For internal navigation, you would use your router here
-      console.log('Navigate to:', privacyPolicyUrl);
     }
   };
 

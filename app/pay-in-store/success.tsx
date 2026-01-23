@@ -119,7 +119,6 @@ export default function PaymentSuccessScreen() {
         title: 'Share your ReZ payment',
       });
     } catch (error) {
-      console.log('Share error:', error);
     }
   };
 

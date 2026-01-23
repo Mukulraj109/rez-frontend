@@ -128,9 +128,6 @@ export const ProfileProvider = ({ children }: ProfileProviderProps) => {
     try {
       setError(null);
 
-      console.log('🔄 [PROFILE_CONTEXT] Starting profile update...');
-      console.log('📥 [PROFILE_CONTEXT] Input userData:', userData);
-
       // Map profile user data to ProfileUpdate format for API call
       const profileUpdateData: any = {
         email: userData.email || undefined, // Add email at top level
@@ -157,18 +154,12 @@ export const ProfileProvider = ({ children }: ProfileProviderProps) => {
         },
       };
 
-      console.log('📤 [PROFILE_CONTEXT] Sending to API:', profileUpdateData);
-
       // Call the correct authService method directly instead of going through AuthContext
       const response = await authService.updateProfile(profileUpdateData);
 
-      console.log('✅ [PROFILE_CONTEXT] API response:', response);
-
       // Update user state manually since we're bypassing AuthContext
       if (response.data) {
-        console.log('🔄 [PROFILE_CONTEXT] Refreshing auth status...');
         await authActions.checkAuthStatus(); // Refresh the auth state
-        console.log('✅ [PROFILE_CONTEXT] Profile update complete!');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update user profile');

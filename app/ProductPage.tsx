@@ -488,7 +488,6 @@ export default function StorePage() {
           setStoreReviews(formattedReviews);
         }
       } catch (err) {
-        console.log('Failed to fetch reviews:', err);
         // Keep empty array - component will show default reviews
       } finally {
         setReviewsLoading(false);

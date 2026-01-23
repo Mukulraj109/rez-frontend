@@ -262,7 +262,6 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     if (!mountedRef.current) return;
 
     const loadDuration = Date.now() - loadStartTime.current;
-    console.log(`[OptimizedImage] Loaded in ${loadDuration}ms`);
 
     setIsLoading(false);
 

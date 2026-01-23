@@ -42,7 +42,6 @@ export default function ProductQuickViewExample({ products }: ProductQuickViewEx
 
   // Handle add to cart from quick view
   const handleAddToCart = (product: ProductItem, variant?: VariantSelection) => {
-    console.log('Added to cart:', product.name, variant);
     // CartContext handles the actual cart addition via the ProductQuickView component
   };
 

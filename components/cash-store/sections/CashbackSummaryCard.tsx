@@ -33,15 +33,16 @@ const CashbackSummaryCard: React.FC<CashbackSummaryCardProps> = ({
   isLoading = false,
 }) => {
   const router = useRouter();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const handlePress = () => {
     router.push('/account/cashback' as any);
   };
 
   const formatAmount = (amount: number): string => {
-    return `${currencySymbol}${amount.toLocaleString('en-IN')}`;
+    return `${currencySymbol}${amount.toLocaleString(locale)}`;
   };
 
   if (isLoading) {

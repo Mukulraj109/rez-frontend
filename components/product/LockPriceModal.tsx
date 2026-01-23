@@ -92,13 +92,10 @@ export default function LockPriceModal({
   const fetchLockOptions = async () => {
     setIsLoadingOptions(true);
     setError(null);
-    console.log('🔒 [LockModal] Fetching lock options for productId:', productId, 'quantity:', quantity);
 
     try {
       const response = await cartService.getLockFeeOptions(productId, quantity);
-      console.log('🔒 [LockModal] Lock options response:', response);
       if (response.success && response.data) {
-        console.log('🔒 [LockModal] Lock options received:', response.data.lockOptions);
         setLockOptions(response.data.lockOptions);
       } else {
         console.error('🔒 [LockModal] Failed to get lock options:', response.error);
@@ -123,9 +120,6 @@ export default function LockPriceModal({
     setError(null);
     triggerImpact('Medium');
 
-    console.log('🔒 [LockModal] ========== EXECUTING LOCK ==========');
-    console.log('🔒 [LockModal] LOCK_DURATION constant:', LOCK_DURATION);
-
     try {
       const request: LockWithPaymentRequest = {
         productId,
@@ -135,14 +129,9 @@ export default function LockPriceModal({
         paymentMethod: 'wallet',
       };
 
-      console.log('🔒 [LockModal] Lock request being sent:', JSON.stringify(request, null, 2));
-
       const response = await cartService.lockItemWithPayment(request);
 
-      console.log('🔒 [LockModal] Lock response received:', response);
-
       if (response.success && response.data) {
-        console.log('🔒 [LockModal] ✅ Lock successful! Details:', response.data.lockDetails);
         triggerNotification('Success');
         onLockSuccess({
           lockFee: response.data.lockDetails.lockFee,

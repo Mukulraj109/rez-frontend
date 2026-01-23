@@ -36,8 +36,9 @@ const CashbackSummaryHeaderCard: React.FC<CashbackSummaryHeaderCardProps> = ({
   isLoading = false,
 }) => {
   const router = useRouter();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -83,7 +84,7 @@ const CashbackSummaryHeaderCard: React.FC<CashbackSummaryHeaderCardProps> = ({
   };
 
   const formatAmount = (amount: number): string => {
-    return `${currencySymbol}${amount.toLocaleString('en-IN')}`;
+    return `${currencySymbol}${amount.toLocaleString(locale)}`;
   };
 
   if (isLoading) {

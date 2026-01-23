@@ -165,7 +165,6 @@ export const LazyImage: React.FC<LazyImageProps> = ({
 
     // Try fallback if available
     if (fallbackUri && !useFallback) {
-      console.log('[LazyImage] Trying fallback image...');
       setUseFallback(true);
       setImageUri(fallbackUri);
       return;

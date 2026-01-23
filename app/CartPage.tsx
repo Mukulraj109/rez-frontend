@@ -171,12 +171,6 @@ export default function CartPage() {
       : 0;
     const total = cartTotal + lockedTotal;
 
-    console.log('💰 [CART PAGE] Total calculation:', {
-      cartTotal,
-      lockedTotal,
-      total
-    });
-
     return total;
   }, [cartState.totalPrice, lockedProducts]);
 
@@ -189,12 +183,6 @@ export default function CartPage() {
       ? getLockedItemCount(lockedProducts)
       : 0;
 
-    console.log('🔢 [CART PAGE] Item count:', {
-      cartCount,
-      lockedCount,
-      total: cartCount + lockedCount
-    });
-
     return cartCount + lockedCount;
   }, [cartState.totalItems, lockedProducts]);
 
@@ -204,13 +192,6 @@ export default function CartPage() {
       const response = await cartApi.getLockedItems();
       if (response.success && response.data) {
         const formattedLockedItems = response.data.lockedItems.map((item: any) => {
-          console.log('🔒 [CART] Raw locked item from API:', {
-            id: item._id,
-            isPaidLock: item.isPaidLock,
-            lockFee: item.lockFee,
-            lockFeePercentage: item.lockFeePercentage,
-            lockPaymentStatus: item.lockPaymentStatus,
-          });
           const productId = item.product?._id || item.product;
           const lockedAt = new Date(item.lockedAt);
           const expiresAt = new Date(item.expiresAt);
@@ -569,7 +550,6 @@ export default function CartPage() {
           orderValue={overallTotal}
           onOfferApplied={(offer) => {
             // Offer applied - cart context will handle it
-            console.log('Card offer applied:', offer);
           }}
         />
       )}

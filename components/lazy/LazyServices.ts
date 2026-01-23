@@ -305,9 +305,7 @@ export async function lazyLoadService<T>(
 
   for (let i = 0; i < maxRetries; i++) {
     try {
-      console.log(`[LazyServices] Loading ${serviceName} (attempt ${i + 1}/${maxRetries})`);
       const service = await importFn();
-      console.log(`[LazyServices] Successfully loaded ${serviceName}`);
       return service;
     } catch (error) {
       lastError = error as Error;
@@ -329,8 +327,6 @@ export async function lazyLoadService<T>(
 // ============================================================================
 
 export async function preloadCriticalServices(): Promise<void> {
-  console.log('[LazyServices] Preloading critical services...');
-
   const criticalServices = [
     // Add critical services that should be preloaded
     // These are services likely to be used soon after app start
@@ -338,7 +334,6 @@ export async function preloadCriticalServices(): Promise<void> {
 
   try {
     await Promise.all(criticalServices);
-    console.log('[LazyServices] Critical services preloaded');
   } catch (error) {
     console.error('[LazyServices] Failed to preload critical services:', error);
   }
@@ -351,8 +346,6 @@ export async function preloadCriticalServices(): Promise<void> {
 export async function preloadServicesByCategory(
   category: 'payment' | 'video' | 'upload' | 'social' | 'gamification'
 ): Promise<void> {
-  console.log(`[LazyServices] Preloading ${category} services...`);
-
   const serviceMap: Record<string, (() => Promise<any>)[]> = {
     payment: [
       lazyRazorpayService,
@@ -386,7 +379,6 @@ export async function preloadServicesByCategory(
 
   try {
     await Promise.all(services.map(fn => fn()));
-    console.log(`[LazyServices] ${category} services preloaded`);
   } catch (error) {
     console.error(`[LazyServices] Failed to preload ${category} services:`, error);
   }

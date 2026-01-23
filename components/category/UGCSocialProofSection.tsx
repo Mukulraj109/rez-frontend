@@ -135,7 +135,6 @@ const UGCSocialProofSection: React.FC<UGCSocialProofSectionProps> = ({
         }
       } catch (err) {
         // API error - silently use fallback dummy data
-        console.log('Videos API not available, using fallback data');
         setError(null);
       } finally {
         setIsLoading(false);

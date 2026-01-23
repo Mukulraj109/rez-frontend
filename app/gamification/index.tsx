@@ -55,7 +55,6 @@ export default function GamificationDashboard() {
         const rezCoin = walletRes.data.coins.find((c: any) => c.type === 'rez');
         const walletCoins = rezCoin?.amount || 0;
         setCoinBalance(walletCoins);
-        console.log(`✅ [GAMIFICATION] Wallet balance loaded: ${walletCoins}`);
       } else {
         console.warn('⚠️ [GAMIFICATION] Could not load wallet balance');
       }
@@ -80,7 +79,6 @@ export default function GamificationDashboard() {
         const coinsEarned = (response.data as any).data.rewards.coins;
 
         // ✅ UPDATED: Sync claimed coins to wallet
-        console.log(`🏆 [GAMIFICATION] Challenge claimed, syncing ${coinsEarned} coins to wallet...`);
 
         const syncResult = await coinSyncService.handleChallengeReward(
           challengeId,

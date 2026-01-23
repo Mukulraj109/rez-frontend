@@ -48,7 +48,6 @@ const CampaignDetailPage: React.FC = () => {
 
   useEffect(() => {
     if (campaignId) {
-      console.log('📢 [CampaignDetail] Fetching campaign with ID:', campaignId);
       fetchCampaign();
     } else {
       console.warn('⚠️ [CampaignDetail] No campaignId provided');
@@ -61,11 +60,9 @@ const CampaignDetailPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('📡 [CampaignDetail] Calling API for campaign:', campaignId);
       const response = await campaignsApi.getCampaignById(campaignId);
 
       if (response.success && response.data) {
-        console.log('✅ [CampaignDetail] Campaign loaded:', response.data.title);
         // Ensure storeId is converted to string in all deals
         const transformedCampaign = {
           ...response.data,
@@ -96,10 +93,8 @@ const CampaignDetailPage: React.FC = () => {
       : null;
 
     if (storeId) {
-      console.log('📍 [CampaignDetail] Navigating to store:', storeId);
       router.push(`/store/${storeId}` as any);
     } else {
-      console.log('📍 [CampaignDetail] No storeId, navigating to deal-store');
       router.push('/deal-store' as any);
     }
   };

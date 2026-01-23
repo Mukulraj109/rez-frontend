@@ -207,12 +207,14 @@ export function calculatePriceRange(products: Array<{ price?: number | string }>
 }
 
 /**
- * Format price with Indian currency
+ * Format price with currency symbol
  * @param price - Numeric price value
- * @returns Formatted price string with ₹ symbol
+ * @param currencySymbol - Currency symbol (default: ₹)
+ * @param locale - Locale for number formatting (default: en-IN)
+ * @returns Formatted price string with currency symbol
  */
-export function formatPrice(price: number): string {
-  return `₹${price.toLocaleString('en-IN')}`;
+export function formatPrice(price: number, currencySymbol: string = '₹', locale: string = 'en-IN'): string {
+  return `${currencySymbol}${price.toLocaleString(locale)}`;
 }
 
 /**

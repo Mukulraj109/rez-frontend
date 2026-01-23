@@ -143,8 +143,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Set logout callback - called when token expires
     apiClient.setLogoutCallback(async () => {
-      console.log('🔐 [AUTH PROVIDER] Token expired, logging out');
-      
       try {
         // Clear all stored auth data (AsyncStorage + localStorage)
         await authStorage.clearAuthData();
@@ -498,19 +496,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkAuthStatus = async () => {
     try {
-      console.log('🔐 [AUTH CHECK] Starting auth status check...');
       dispatch({ type: 'AUTH_LOADING', payload: true });
 
       // Use authStorage utility (checks localStorage first on web, then AsyncStorage)
       const storedToken = await authStorage.getAuthToken();
       const storedUser = await authStorage.getUser();
-
-      console.log('🔐 [AUTH CHECK] Storage check result:', {
-        hasToken: !!storedToken,
-        hasUser: !!storedUser,
-        tokenPreview: storedToken ? storedToken.substring(0, 20) + '...' : null,
-        userName: storedUser?.profile?.name || storedUser?.phoneNumber || 'N/A'
-      });
 
       if (storedToken && storedUser) {
         // Set auth token in API client FIRST (critical for transaction page)

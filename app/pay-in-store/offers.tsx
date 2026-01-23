@@ -57,7 +57,6 @@ export default function OffersScreen() {
       setError(null);
 
       const response = await apiClient.get<OffersResponse>(`/store-payment/offers/${storeId}`, { amount: numericAmount });
-      console.log('Offers API response:', response);
 
       if (response.success && response.data) {
         setOffers(response.data);

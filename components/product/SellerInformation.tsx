@@ -102,7 +102,6 @@ export const SellerInformation: React.FC<SellerInformationProps> = ({
    * Handle visit store
    */
   const handleVisitStore = () => {
-    console.log('🏪 [SellerInfo] Visiting store:', storeId);
     if (onVisitStore) {
       onVisitStore();
     } else {
@@ -114,7 +113,6 @@ export const SellerInformation: React.FC<SellerInformationProps> = ({
    * Handle view products
    */
   const handleViewProducts = () => {
-    console.log('📦 [SellerInfo] Viewing store products:', storeId);
     if (onViewProducts) {
       onViewProducts();
     } else {
@@ -126,7 +124,6 @@ export const SellerInformation: React.FC<SellerInformationProps> = ({
    * Handle contact seller
    */
   const handleContact = () => {
-    console.log('💬 [SellerInfo] Contacting seller:', storeId);
     if (onContact) {
       onContact();
     } else {
@@ -312,7 +309,6 @@ export const SellerInformation: React.FC<SellerInformationProps> = ({
             style={styles.followButton}
             activeOpacity={0.8}
             onPress={() => {
-              console.log('➕ [SellerInfo] Follow store:', storeId);
               // TODO: Implement follow functionality
             }}
           >

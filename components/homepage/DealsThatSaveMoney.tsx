@@ -230,7 +230,7 @@ interface DealsThatSaveMoneyProps {
 const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
   const router = useRouter();
   const { state: authState } = useAuth();
-  const { getCurrencySymbol } = useRegion();
+  const { currentRegion, getCurrencySymbol } = useRegion();
   const currencySymbol = getCurrencySymbol();
   const user = authState?.user;
   const [activeTab, setActiveTab] = useState<TabType>('offers');
@@ -404,7 +404,7 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
     } finally {
       setCashbackLoading(false);
     }
-  }, []);
+  }, [currencySymbol]);
 
   // Fetch offers from backend
   const fetchOffers = useCallback(async () => {
@@ -563,6 +563,7 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
     }
   }, [activeTab]);
 
+  // Refetch data when tab or region changes
   useEffect(() => {
     if (activeTab === 'offers') {
       fetchOffers();
@@ -571,7 +572,7 @@ const DealsThatSaveMoney: React.FC<DealsThatSaveMoneyProps> = ({ style }) => {
     } else if (activeTab === 'exclusive') {
       fetchExclusiveZones();
     }
-  }, [activeTab, fetchOffers, fetchCashbackData, fetchExclusiveZones]);
+  }, [activeTab, currentRegion, fetchOffers, fetchCashbackData, fetchExclusiveZones]);
 
   const handleViewAll = () => {
     if (activeTab === 'offers') {

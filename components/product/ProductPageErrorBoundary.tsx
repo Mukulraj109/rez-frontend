@@ -57,12 +57,6 @@ class ProductPageErrorBoundary extends Component<Props, State> {
     // Log error to analytics or error tracking service
     // TODO: Integrate with error tracking service (e.g., Sentry)
     if (__DEV__) {
-      console.log('Error details:', {
-        productId: this.props.productId,
-        error: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-      });
     }
   }
 

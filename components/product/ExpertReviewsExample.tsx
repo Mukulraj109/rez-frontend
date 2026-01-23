@@ -123,14 +123,12 @@ export default function ExpertReviewsExample() {
   const averageRating = mockExpertReviews.reduce((sum, review) => sum + review.rating, 0) / mockExpertReviews.length;
 
   const handleMarkHelpful = (reviewId: string) => {
-    console.log('Marked review as helpful:', reviewId);
     // In a real app, you would make an API call here to record the helpful vote
     // Example: await expertReviewsApi.markHelpful(productId, reviewId);
   };
 
   const handleViewAllReviews = () => {
     setShowAllReviews(true);
-    console.log('View all reviews clicked');
     // In a real app, you might navigate to a dedicated reviews page
     // or expand an accordion to show all reviews
   };

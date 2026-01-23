@@ -48,8 +48,6 @@ export default function ArticlesPage() {
       if (!isRefreshing) setLoading(true);
       setError(undefined);
 
-      console.log('📰 [ArticlesPage] Fetching articles...');
-
       const response = await articlesService.getArticles({
         page: 1,
         limit: 50,
@@ -60,7 +58,6 @@ export default function ArticlesPage() {
 
       if (response.success && response.data.articles) {
         setArticles(response.data.articles);
-        console.log(`✅ [ArticlesPage] Loaded ${response.data.articles.length} articles`);
       } else {
         throw new Error(response.message || 'Failed to fetch articles');
       }

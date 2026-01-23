@@ -29,11 +29,12 @@ export default function SellerComparisonCard({
   onCompare,
   productId,
 }: SellerComparisonCardProps) {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const formatPrice = (price: number) => {
-    return `${currencySymbol}${price.toLocaleString('en-IN')}`;
+    return `${currencySymbol}${price.toLocaleString(locale)}`;
   };
 
   const formatDistance = (distance?: number) => {

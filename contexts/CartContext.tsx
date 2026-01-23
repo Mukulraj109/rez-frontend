@@ -525,15 +525,8 @@ export function CartProvider({ children }: CartProviderProps) {
 
   const addItem = async (item: CartItemType) => {
     try {
-      // Debug: Log the item being added
+      // Extract metadata for event handling
       const itemMetadata = (item as any).metadata;
-      console.log('🛒 [CartContext] addItem called with:', {
-        id: item.id,
-        metadata: itemMetadata,
-        hasMetadata: !!itemMetadata,
-        metadataEventId: itemMetadata?.eventId,
-        fullItem: item,
-      });
 
       // Invalidate cache on cart add
       await cacheService.invalidateByEvent({ type: 'cart:add' });
@@ -644,15 +637,6 @@ export function CartProvider({ children }: CartProviderProps) {
           const itemMetadata = (item as any).metadata;
           let productIdForBackend = item.id;
           
-          console.log('🛒 [CartContext] BEFORE extraction:', {
-            itemId: item.id,
-            itemIdType: typeof item.id,
-            hasMetadata: !!itemMetadata,
-            metadata: itemMetadata,
-            metadataEventId: itemMetadata?.eventId,
-            metadataEventIdType: typeof itemMetadata?.eventId,
-          });
-          
           // ALWAYS extract from composite ID if it contains underscore
           // This is the most reliable way since metadata might not be preserved
           if (item.id && String(item.id).includes('_')) {
@@ -660,11 +644,9 @@ export function CartProvider({ children }: CartProviderProps) {
             // Format: "eventId_slotId" -> "eventId"
             const parts = String(item.id).split('_');
             productIdForBackend = parts[0]; // Take first part (eventId)
-            console.log('✅ [CartContext] Extracted from composite ID:', productIdForBackend, 'from', item.id);
           } else if (itemMetadata?.eventId) {
             // Use eventId from metadata if available (fallback)
             productIdForBackend = String(itemMetadata.eventId);
-            console.log('✅ [CartContext] Using metadata.eventId:', productIdForBackend);
           }
           
           // Validate productId is hexadecimal (backend requirement)
@@ -674,7 +656,6 @@ export function CartProvider({ children }: CartProviderProps) {
             if (item.id && String(item.id).includes('_')) {
               const parts = String(item.id).split('_');
               productIdForBackend = parts[0];
-              console.log('✅ [CartContext] Re-extracted from composite ID:', productIdForBackend);
             }
             // If still not valid, log warning
             if (!/^[0-9a-fA-F]+$/.test(String(productIdForBackend))) {
@@ -689,20 +670,12 @@ export function CartProvider({ children }: CartProviderProps) {
             throw new Error(`Invalid productId format: ${finalProductId}. Must be hexadecimal.`);
           }
           
-          console.log('✅ [CartContext] FINAL productId:', {
-            originalItemId: item.id,
-            extractedProductId: finalProductId,
-            isValidHex: /^[0-9a-fA-F]+$/.test(finalProductId),
-          });
-          
           // Backend doesn't accept metadata field, so only send productId and quantity
           // Metadata is preserved in local cart state for UI display
           const requestData = {
             productId: finalProductId,
             quantity: 1,
           };
-          
-          console.log('📤 [CartContext] Sending to backend:', JSON.stringify(requestData, null, 2));
           
           const response = await cartService.addToCart(requestData);
 

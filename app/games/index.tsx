@@ -140,8 +140,6 @@ export default function GamesPage() {
 
       if (authState.user) {
         try {
-          console.log('🔄 [GAMES] Loading wallet balance (source of truth)...');
-
           const walletResponse = await walletApi.getBalance();
 
           if (walletResponse.success && walletResponse.data) {

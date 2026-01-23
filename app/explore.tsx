@@ -297,7 +297,6 @@ const ExplorePage = () => {
 
         // Update reels - reelApi already transforms the data
         if (reelsRes.success && reelsRes.data && reelsRes.data.length > 0) {
-          console.log('[EXPLORE] Reels data from API:', reelsRes.data);
           const transformedReels = reelsRes.data.map((reel: any, index: number) => {
             // reelApi already transforms creator data correctly
             const creatorName = reel.creator?.name || 'Creator';
@@ -325,7 +324,6 @@ const ExplorePage = () => {
               comments: commentsCount,
             };
           });
-          console.log('[EXPLORE] Final reels:', transformedReels);
           setUgcReels(transformedReels);
         }
 

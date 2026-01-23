@@ -86,7 +86,6 @@ export default function ProductCarousel({
    */
   const handleViewAll = useCallback(() => {
     // Could navigate to full product list page
-    console.log('View all products');
   }, []);
 
   /**

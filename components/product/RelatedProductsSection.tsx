@@ -52,8 +52,6 @@ export const RelatedProductsSection: React.FC<RelatedProductsSectionProps> = ({
    * Handle product card press
    */
   const handleProductPress = (product: RelatedProduct) => {
-    console.log('🔗 [RelatedProducts] Product pressed:', product.id);
-
     if (onProductPress) {
       onProductPress(product.id);
     } else {
@@ -77,7 +75,6 @@ export const RelatedProductsSection: React.FC<RelatedProductsSectionProps> = ({
             style={styles.viewAllButton}
             onPress={() => {
               // TODO: Navigate to category/search page with filter
-              console.log('View all pressed');
             }}
             activeOpacity={0.7}
           >

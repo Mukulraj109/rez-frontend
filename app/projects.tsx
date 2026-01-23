@@ -164,8 +164,6 @@ export default function AllProjectsPage() {
         params.search = searchQuery.trim();
       }
 
-      console.log('📋 [PROJECTS] Loading projects with params:', params, 'endpoint:', endpoint);
-
       if (endpoint === '/projects/my-submissions') {
         // Handle my-submissions response format
         const submissionsResponse = await apiClient.get<{

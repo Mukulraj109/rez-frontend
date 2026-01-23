@@ -10,6 +10,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useOffersTheme } from '@/contexts/OffersThemeContext';
+import { useRegion } from '@/contexts/RegionContext';
 import { SectionHeader, HorizontalScrollSection } from '../common';
 import { BankOffer } from '@/types/offers.types';
 import { Spacing, BorderRadius, Shadows, Colors } from '@/constants/DesignSystem';
@@ -25,6 +26,8 @@ export const BankOffersSection: React.FC<BankOffersSectionProps> = ({
 }) => {
   const router = useRouter();
   const { theme, isDark } = useOffersTheme();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   if (offers.length === 0) return null;
 
@@ -225,7 +228,7 @@ export const BankOffersSection: React.FC<BankOffersSectionProps> = ({
               <View style={styles.content}>
                 <Text style={styles.offerTitle}>{offer.offerTitle}</Text>
                 <Text style={styles.maxDiscount}>
-                  Max discount: Rs.{offer.maxDiscount}
+                  Max discount: {currencySymbol}{offer.maxDiscount}
                 </Text>
                 <Text style={styles.terms} numberOfLines={1}>
                   {offer.terms}
@@ -237,7 +240,7 @@ export const BankOffersSection: React.FC<BankOffersSectionProps> = ({
                     color={theme.colors.text.tertiary}
                   />
                   <Text style={styles.minAmountText}>
-                    Min. Rs.{offer.minTransactionAmount}
+                    Min. {currencySymbol}{offer.minTransactionAmount}
                   </Text>
                 </View>
               </View>

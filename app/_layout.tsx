@@ -254,7 +254,6 @@ export default function RootLayout() {
     // Cleanup on unmount
     return () => {
       if (netInfoUnsubscribeRef.current) {
-        console.log('🧹 [APP] Cleaning up network listener');
         netInfoUnsubscribeRef.current();
         netInfoUnsubscribeRef.current = null;
       }
@@ -269,15 +268,11 @@ export default function RootLayout() {
 
       // App came to foreground
       if (previousState.match(/inactive|background/) && nextAppState === 'active') {
-        console.log('📱 [APP] App came to foreground, refreshing stale cache...');
-        cacheWarmingService.refreshStaleCache().catch(error => {
-          console.error('❌ [APP] Failed to refresh stale cache:', error);
-        });
+        cacheWarmingService.refreshStaleCache().catch(() => {});
       }
 
       // App went to background
       if (previousState === 'active' && nextAppState.match(/inactive|background/)) {
-        console.log('📱 [APP] App went to background');
       }
     });
 
@@ -298,36 +293,25 @@ export default function RootLayout() {
    */
   const initializeApp = async () => {
     try {
-      console.log('🚀 [APP] Initializing application services...');
-
       // 1. Configure API Client
       // Use environment-based URL or fallback to baseUrl
       const apiUrl = API_CONFIG.baseUrl || getApiUrl() || 'http://localhost:5001/api';
       apiClient.setBaseURL(apiUrl);
-      console.log('✅ [APP] API Client configured:', apiUrl);
-      console.log('   Environment:', APP_CONFIG.environment);
-      console.log('   Dev URL:', API_CONFIG.devUrl);
-      console.log('   Prod URL:', API_CONFIG.prodUrl);
 
       // Set up system page callbacks for maintenance and version checks
       apiClient.setCurrentAppVersion(APP_CONFIG.version);
       apiClient.setMaintenanceCallback(() => {
-        console.log('🔧 [APP] Navigating to maintenance page...');
         try {
           Router.router.replace('/system/maintenance' as any);
         } catch (e) {
-          console.warn('[APP] Could not navigate to maintenance page:', e);
         }
       });
       apiClient.setAppUpdateCallback((minVersion) => {
-        console.log(`📱 [APP] App update required. Minimum version: ${minVersion}`);
         try {
           Router.router.replace('/system/app-update' as any);
         } catch (e) {
-          console.warn('[APP] Could not navigate to app update page:', e);
         }
       });
-      console.log('✅ [APP] System page callbacks configured');
 
       // 2. Initialize Error Reporter
       errorReporter.setAppVersion(APP_CONFIG.version);
@@ -340,25 +324,12 @@ export default function RootLayout() {
       );
       
       errorReporter.setEnabled(shouldEnableErrorReporting);
-      
-      if (shouldEnableErrorReporting) {
-        console.log('✅ [APP] Error Reporter initialized and enabled');
-        if (EXTERNAL_SERVICES.analytics.sentry) {
-          console.log('   Sentry DSN configured');
-        } else {
-          console.warn('   ⚠️ Sentry DSN not configured - errors will be logged locally only');
-        }
-      } else {
-        console.log('ℹ️ [APP] Error Reporter initialized but disabled (development mode)');
-      }
 
       // 3. Initialize Analytics
       // Note: Analytics flush interval is already configured in billUploadAnalytics constructor (30s)
-      console.log('✅ [APP] Analytics initialized');
 
       // 4. Initialize Cache Warming Service
       await cacheWarmingService.initialize();
-      console.log('✅ [APP] Cache warming service initialized');
 
       // 5. Setup Network Monitoring
       // Clean up existing listener if any
@@ -369,7 +340,6 @@ export default function RootLayout() {
 
       netInfoUnsubscribeRef.current = NetInfo.addEventListener(state => {
         const isConnected = state.isConnected ?? false;
-        console.log(`📡 [APP] Network status changed: ${isConnected ? 'ONLINE' : 'OFFLINE'}`);
 
         // Log network events to analytics
         billUploadAnalytics.trackUserAction('network_status_changed', {
@@ -388,9 +358,6 @@ export default function RootLayout() {
           },
         });
       });
-
-      console.log('✅ [APP] Network monitoring initialized');
-      console.log('🎉 [APP] Application initialization complete!');
     } catch (error) {
       console.error('❌ [APP] Failed to initialize app:', error);
       errorReporter.captureError(
@@ -405,13 +372,9 @@ export default function RootLayout() {
    */
   const startCacheWarming = async () => {
     try {
-      console.log('🔥 [APP] Starting cache warming...');
-
       // Start warming in background (non-blocking)
       cacheWarmingService.startWarming().then(() => {
         setCacheWarmed(true);
-        const stats = cacheWarmingService.getStats();
-        console.log('✅ [APP] Cache warming complete!', stats);
       }).catch(error => {
         console.error('❌ [APP] Cache warming failed:', error);
         setCacheWarmed(true); // Mark as done even if failed
@@ -438,7 +401,6 @@ export default function RootLayout() {
    * Handle offline queue sync completion
    */
   const handleQueueSyncComplete = (result: any) => {
-    console.log('✅ [APP] Offline queue synced:', result);
     billUploadAnalytics.trackSyncCompleted(result.processed || 0);
   };
 

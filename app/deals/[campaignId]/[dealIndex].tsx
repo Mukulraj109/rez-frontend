@@ -82,7 +82,6 @@ const DealDetailPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('📡 [DealDetail] Fetching campaign:', campaignId);
 
       const response = await campaignsApi.getCampaignById(campaignId);
 
@@ -101,7 +100,6 @@ const DealDetailPage: React.FC = () => {
               : undefined,
           };
           setDeal(transformedDeal);
-          console.log('✅ [DealDetail] Deal loaded:', transformedDeal.store);
         } else {
           setError('Deal not found');
         }
@@ -147,7 +145,6 @@ const DealDetailPage: React.FC = () => {
         : null;
 
       if (storeId) {
-        console.log('📍 [DealDetail] Navigating to store:', storeId);
         Alert.alert(
           'Deal Activated!',
           `Visit ${deal.store || 'the store'} to redeem this deal.`,

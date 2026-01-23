@@ -323,7 +323,9 @@ class ApiClient {
     const shouldDeduplicate = options?.deduplicate !== false;
 
     if (shouldDeduplicate) {
-      const requestKey = createRequestKey(`${this.baseURL}${url}`, params);
+      // Include region in request key so region changes trigger new requests
+      const currentRegion = getRegionFn ? getRegionFn() : this.currentRegion;
+      const requestKey = createRequestKey(`${this.baseURL}${url}:region=${currentRegion}`, params);
 
       return globalDeduplicator.dedupe(
         requestKey,

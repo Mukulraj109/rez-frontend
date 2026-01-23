@@ -12,6 +12,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Platform,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -78,6 +79,26 @@ const HomeServicesSection: React.FC = () => {
   const paintingCategory = categories.find(c => c.id === 'painting');
   const carpentryCategory = categories.find(c => c.id === 'carpentry');
 
+  // Helper to render icon based on iconType
+  const renderIcon = (category: HomeServiceCategory | undefined, fallback: string, size: number) => {
+    if (!category) {
+      return <Text style={{ fontSize: size }}>{fallback}</Text>;
+    }
+
+    if (category.iconType === 'url' && category.icon) {
+      return (
+        <Image
+          source={{ uri: category.icon }}
+          style={{ width: size, height: size }}
+          resizeMode="contain"
+        />
+      );
+    }
+
+    // Default to emoji/text rendering
+    return <Text style={{ fontSize: size }}>{category.icon || fallback}</Text>;
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.container, { paddingVertical: 20, alignItems: 'center' }]}>
@@ -117,7 +138,7 @@ const HomeServicesSection: React.FC = () => {
           >
             <View style={styles.repairTop}>
               <View style={styles.repairIconBox}>
-                <Text style={styles.repairIcon}>{repairCategory?.icon || '🔧'}</Text>
+                {renderIcon(repairCategory, '🔧', 28)}
               </View>
               <View style={styles.verifiedBadge}>
                 <Text style={styles.verifiedText}>✓ VERIFIED</Text>
@@ -153,7 +174,7 @@ const HomeServicesSection: React.FC = () => {
             testID="clean-gradient"
           >
             <View style={styles.cleanIconBox}>
-              <Text style={styles.cleanIcon}>{cleaningCategory?.icon || '🧹'}</Text>
+              {renderIcon(cleaningCategory, '🧹', 24)}
             </View>
             <Text style={styles.cleanTitle}>Deep</Text>
             <Text style={styles.cleanTitle}>Clean</Text>
@@ -174,7 +195,7 @@ const HomeServicesSection: React.FC = () => {
           activeOpacity={0.9}
         >
           <View style={[styles.bottomIconBox, { backgroundColor: 'rgba(236, 72, 153, 0.1)' }]}>
-            <Text style={styles.bottomIcon}>{paintingCategory?.icon || '🎨'}</Text>
+            {renderIcon(paintingCategory, '🎨', 20)}
           </View>
           <Text style={styles.bottomTitle}>{paintingCategory?.title || 'Painting'}</Text>
         </TouchableOpacity>
@@ -186,7 +207,7 @@ const HomeServicesSection: React.FC = () => {
           activeOpacity={0.9}
         >
           <View style={[styles.bottomIconBox, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-            <Text style={styles.bottomIcon}>{carpentryCategory?.icon || '🪚'}</Text>
+            {renderIcon(carpentryCategory, '🪚', 20)}
           </View>
           <Text style={styles.bottomTitle}>{carpentryCategory?.title || 'Carpentry'}</Text>
         </TouchableOpacity>

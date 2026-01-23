@@ -70,30 +70,14 @@ export default function BrandDetailPage() {
 
   const fetchBrand = useCallback(async () => {
     if (!id) {
-      console.log('[BrandDetail] No ID provided');
       setError('No brand ID provided');
       setIsLoading(false);
       return;
     }
 
-    console.log('[BrandDetail] Fetching brand with ID:', id);
-
     try {
       setError(null);
       const data = await mallApi.getBrandById(id);
-
-      // Debug logging
-      console.log('[BrandDetail] Brand data received:', {
-        id: data?.id || data?._id,
-        name: data?.name,
-        logo: data?.logo,
-        tier: data?.tier,
-        cashback: data?.cashback,
-        ratings: data?.ratings,
-        externalUrl: data?.externalUrl,
-        badges: data?.badges,
-        category: data?.mallCategory?.name,
-      });
 
       setBrand(data);
     } catch (err: any) {
@@ -124,12 +108,6 @@ export default function BrandDetailPage() {
 
     // Use tracking URL if available, otherwise fallback to direct URL
     const urlToOpen = trackingResult?.trackingUrl || brand.externalUrl;
-
-    console.log('[BrandDetail] Shop Now clicked:', {
-      brandId,
-      clickId: trackingResult?.clickId,
-      trackingUrl: urlToOpen,
-    });
 
     // Open in browser (works on both web and mobile)
     if (Platform.OS === 'web') {

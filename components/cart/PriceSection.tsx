@@ -15,8 +15,9 @@ export default function PriceSection({
   const { width } = Dimensions.get('window');
   const isSmallScreen = width < 360;
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const { getCurrencySymbol, formatPrice } = useRegion();
+  const { getCurrencySymbol, formatPrice, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const handleBuyNowPress = () => {
     Animated.sequence([
@@ -35,7 +36,7 @@ export default function PriceSection({
     onBuyNow();
   };
 
-  const formattedPrice = new Intl.NumberFormat('en-IN').format(totalPrice);
+  const formattedPrice = new Intl.NumberFormat(locale).format(totalPrice);
 
   return (
     <View style={[

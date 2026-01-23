@@ -307,11 +307,8 @@ const NewOnRezSection: React.FC = () => {
     const currentSmallStores = smallStoresRef.current;
 
     if (allStores.length < 5 || !incoming) {
-      console.log('[Waterfall] Cannot rotate - incoming:', incoming, 'allStores:', allStores.length);
       return;
     }
-
-    console.log('[Waterfall] Rotating stores - incoming:', incoming.name);
 
     // Waterfall data flow:
     // - New card (incoming) → Small 1 position
@@ -322,8 +319,6 @@ const NewOnRezSection: React.FC = () => {
     // Get current values from ref (not closure)
     const oldSmall1 = currentSmallStores[0];
     const oldSmall2 = currentSmallStores[1];
-
-    console.log('[Waterfall] Old Small1:', oldSmall1?.name, 'Old Small2:', oldSmall2?.name);
 
     // Waterfall: shift cards down
     setSmallStores([incoming, oldSmall1]); // Incoming → Small1, Old Small1 → Small2
@@ -351,8 +346,6 @@ const NewOnRezSection: React.FC = () => {
     // Store in ref (for rotation) and state (for rendering)
     incomingStoreRef.current = incomingStoreData;
     setIncomingStore(incomingStoreData);
-
-    console.log('[Waterfall] Animation started - incoming:', incomingStoreData?.name);
 
     // Smooth easing curves for natural waterfall motion
     const easeOutCubic = Easing.bezier(0.33, 1, 0.68, 1);
@@ -440,7 +433,6 @@ const NewOnRezSection: React.FC = () => {
     // After animation completes, update data and reset positions smoothly
     const totalAnimationTime = ANIMATION_DURATION + STAGGER_DELAY * 2 + 250;
     setTimeout(() => {
-      console.log('[Waterfall] Animation complete - rotating data');
       rotateStores();
 
       // Reset positions instantly

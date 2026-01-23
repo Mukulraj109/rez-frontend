@@ -27,8 +27,9 @@ interface PlatformStats {
 
 function HeroBanner({ totalSaved = 0, onScanPayPress, onViewWalletPress }: HeroBannerProps) {
   const router = useRouter();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const isNewUser = totalSaved === 0;
 
   const [stats, setStats] = useState<PlatformStats>({
@@ -79,7 +80,7 @@ function HeroBanner({ totalSaved = 0, onScanPayPress, onViewWalletPress }: HeroB
     } else if (amount >= 1000) {
       return `${(amount / 1000).toFixed(1)}K`;
     }
-    return amount.toLocaleString('en-IN');
+    return amount.toLocaleString(locale);
   };
 
   const formatStoreCount = (count: number): string => {

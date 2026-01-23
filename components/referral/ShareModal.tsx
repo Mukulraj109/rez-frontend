@@ -91,7 +91,6 @@ export default function ShareModal({
     setIsCopied(true);
 
     // ✅ Analytics: Track code copy from share modal
-    console.log('[ANALYTICS] Referral code copied from ShareModal', { method: 'qr_modal' });
 
     Alert.alert('Copied!', 'Referral code copied to clipboard');
 
@@ -103,7 +102,6 @@ export default function ShareModal({
     await Clipboard.setString(referralLink);
 
     // ✅ Analytics: Track link copy
-    console.log('[ANALYTICS] Referral link copied', { method: 'share_modal' });
 
     Alert.alert('Copied!', 'Referral link copied to clipboard');
   };
@@ -117,7 +115,6 @@ export default function ShareModal({
         .replace('{LINK}', referralLink);
 
       // ✅ Analytics: Track share attempt by platform
-      console.log('[ANALYTICS] Share initiated', { platform: platform.type, method: 'share_modal' });
 
       // Track share event
       await referralService.shareReferralLink(platform.type as any);

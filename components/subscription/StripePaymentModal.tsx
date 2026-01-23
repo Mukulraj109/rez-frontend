@@ -73,14 +73,12 @@ export default function StripePaymentModal({
   const handlePayNow = async () => {
     try {
       setProcessingPayment(true);
-      console.log('[STRIPE MODAL] Initiating payment...');
 
       // Get token from authStorage (checks localStorage first on web, survives Stripe redirects)
       const token = await authStorage.getAuthToken();
       if (!token) {
         throw new Error('Authentication token not found. Please log in again.');
       }
-      console.log('[STRIPE MODAL] Token retrieved successfully');
 
       // Create checkout session via your API
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/payment/create-checkout-session`, {
@@ -104,8 +102,6 @@ export default function StripePaymentModal({
       if (!session.success || !session.data?.url) {
         throw new Error(session.message || 'Failed to create checkout session');
       }
-
-      console.log('[STRIPE MODAL] Redirecting to Stripe Checkout URL...');
 
       // Redirect to Stripe Checkout URL directly
       // Using the URL from the session instead of redirectToCheckout (deprecated)

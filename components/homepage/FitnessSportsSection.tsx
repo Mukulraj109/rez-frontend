@@ -47,7 +47,6 @@ const FitnessSportsSection: React.FC = () => {
         }
       } catch (error) {
         // Use default values on error
-        console.log('Using default fitness stats');
       }
     };
 

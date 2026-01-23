@@ -79,8 +79,6 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
    */
   const handleNativeShare = async () => {
     try {
-      console.log('📤 [ProductShare] Sharing via native sheet');
-
       const result = await Share.share({
         message: generateShareMessage(),
         url: generateShareUrl(), // iOS only
@@ -89,14 +87,11 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
 
       if (result.action === Share.sharedAction) {
         if (result.activityType) {
-          console.log('✅ [ProductShare] Shared with activity type:', result.activityType);
           handleShareSuccess('native', result.activityType);
         } else {
-          console.log('✅ [ProductShare] Shared');
           handleShareSuccess('native');
         }
       } else if (result.action === Share.dismissedAction) {
-        console.log('❌ [ProductShare] Share dismissed');
       }
     } catch (error) {
       console.error('❌ [ProductShare] Error sharing:', error);
@@ -116,7 +111,6 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
         setIsCopied(false);
       }, 2000);
 
-      console.log('✅ [ProductShare] Link copied to clipboard');
       Alert.alert('Link Copied', 'Product link copied to clipboard!');
       handleShareSuccess('clipboard');
     } catch (error) {
@@ -129,7 +123,6 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
    * Handle WhatsApp share
    */
   const handleWhatsAppShare = () => {
-    console.log('📱 [ProductShare] Sharing to WhatsApp');
     // In production, use deep linking or Linking API
     // Linking.openURL(`whatsapp://send?text=${encodeURIComponent(generateShareMessage())}`);
     handleNativeShare();
@@ -140,7 +133,6 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
    * Handle Facebook share
    */
   const handleFacebookShare = () => {
-    console.log('📘 [ProductShare] Sharing to Facebook');
     // In production, use Facebook SDK or deep linking
     handleNativeShare();
     handleShareSuccess('facebook');
@@ -150,7 +142,6 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
    * Handle Twitter share
    */
   const handleTwitterShare = () => {
-    console.log('🐦 [ProductShare] Sharing to Twitter');
     // In production, use Twitter SDK or deep linking
     handleNativeShare();
     handleShareSuccess('twitter');
@@ -160,7 +151,6 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
    * Handle Instagram share
    */
   const handleInstagramShare = () => {
-    console.log('📷 [ProductShare] Sharing to Instagram');
     // Instagram requires special handling (story sharing, etc.)
     Alert.alert(
       'Share to Instagram',
@@ -174,7 +164,6 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
    * Handle Email share
    */
   const handleEmailShare = () => {
-    console.log('📧 [ProductShare] Sharing via Email');
     // In production, use MailComposer or Linking with mailto:
     handleNativeShare();
     handleShareSuccess('email');
@@ -184,7 +173,6 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
    * Handle SMS share
    */
   const handleSMSShare = () => {
-    console.log('💬 [ProductShare] Sharing via SMS');
     // In production, use SMS or Linking with sms:
     handleNativeShare();
     handleShareSuccess('sms');
@@ -194,8 +182,6 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
    * Handle share success tracking
    */
   const handleShareSuccess = (platform: string, activityType?: string) => {
-    console.log(`✅ [ProductShare] Share tracked for platform: ${platform}`);
-
     if (onShareComplete) {
       onShareComplete(platform);
     }

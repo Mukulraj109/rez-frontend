@@ -18,6 +18,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useOffersTheme } from '@/contexts/OffersThemeContext';
+import { useRegion } from '@/contexts/RegionContext';
 import { CountdownTimer } from '../common/CountdownTimer';
 import { ProgressBar } from '../common/ProgressBar';
 import { Typography, Spacing, BorderRadius, Shadows, Colors } from '@/constants/DesignSystem';
@@ -58,6 +59,8 @@ export const OfferCardLightning: React.FC<OfferCardLightningProps> = ({
   onPress,
 }) => {
   const { theme, isDark } = useOffersTheme();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const claimedPercentage = Math.round((claimedQuantity / totalQuantity) * 100);
   const remaining = totalQuantity - claimedQuantity;
 
@@ -309,9 +312,9 @@ export const OfferCardLightning: React.FC<OfferCardLightningProps> = ({
       {/* Price section */}
       <View style={styles.priceSection}>
         <View style={styles.priceRow}>
-          <Text style={styles.currency}>Rs.</Text>
+          <Text style={styles.currency}>{currencySymbol}</Text>
           <Text style={styles.discountedPrice}>{discountedPrice.toFixed(0)}</Text>
-          <Text style={styles.originalPrice}>Rs.{originalPrice.toFixed(0)}</Text>
+          <Text style={styles.originalPrice}>{currencySymbol}{originalPrice.toFixed(0)}</Text>
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{discountPercentage}%</Text>
           </View>

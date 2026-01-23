@@ -344,10 +344,8 @@ export default function App() {
           const actualWalletCoins = typeof rezCoin?.amount === 'number' && !isNaN(rezCoin.amount)
             ? rezCoin.amount
             : 0;
-          console.log('✅ [STORE] Loaded wallet balance:', actualWalletCoins);
           setUserPoints(actualWalletCoins);
         } else {
-          console.warn('⚠️ [STORE] Could not get wallet balance - invalid response format');
           setUserPoints(0);
         }
       } catch (error) {
@@ -373,16 +371,13 @@ export default function App() {
           // Map backend categories to UI store format
           const mappedCategories = response.data.categories.map(mapCategoryToStore);
           setCategories(mappedCategories);
-          console.log('✅ [STORE CATEGORIES] Fetched', mappedCategories.length, 'categories from backend');
         } else {
           throw new Error('Invalid response format');
         }
       } catch (error) {
-        console.error('❌ [STORE CATEGORIES] Failed to fetch categories:', error);
         setCategoriesError('Failed to load categories');
         // Use fallback categories if API fails
         setCategories(FALLBACK_STORES);
-        console.log('⚠️ [STORE CATEGORIES] Using fallback categories');
       } finally {
         setIsLoadingCategories(false);
       }

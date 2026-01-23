@@ -168,7 +168,6 @@ const CrossStoreProductsSection: React.FC<CrossStoreProductsSectionProps> = ({
   // Handle add to cart (will be handled by ProductCard internally)
   const handleAddToCart = useCallback(async (product: ProductItem) => {
     // ProductCard handles this internally via CartContext
-    console.log('Add to cart:', product.name);
   }, []);
 
   // Render skeleton loader

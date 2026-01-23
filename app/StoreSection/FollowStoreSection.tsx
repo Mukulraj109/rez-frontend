@@ -169,7 +169,6 @@ export default function FollowStoreSection({
           setIsFollowing(true);
         }
       } catch (error) {
-        console.log('Error checking follow status:', error);
       } finally {
         setIsCheckingStatus(false);
       }

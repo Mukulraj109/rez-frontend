@@ -16,6 +16,7 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface EnhancedCoinBadgeProps {
   /** User's coin balance */
@@ -38,11 +39,11 @@ const SIZES = {
 /**
  * Format number with thousands separator
  */
-const formatNumber = (num: number): string => {
+const formatNumber = (num: number, locale: string): string => {
   if (num >= 10000) {
     return `${(num / 1000).toFixed(1)}k`;
   }
-  return num.toLocaleString('en-IN');
+  return num.toLocaleString(locale);
 };
 
 export const EnhancedCoinBadge: React.FC<EnhancedCoinBadgeProps> = ({
@@ -51,6 +52,8 @@ export const EnhancedCoinBadge: React.FC<EnhancedCoinBadgeProps> = ({
   size = 'medium',
   style,
 }) => {
+  const { getLocale } = useRegion();
+  const locale = getLocale();
   const config = SIZES[size];
 
   const content = (
@@ -89,7 +92,7 @@ export const EnhancedCoinBadge: React.FC<EnhancedCoinBadgeProps> = ({
           },
         ]}
       >
-        {formatNumber(coinCount)}
+        {formatNumber(coinCount, locale)}
       </Text>
     </LinearGradient>
   );

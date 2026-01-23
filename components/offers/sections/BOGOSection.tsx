@@ -10,6 +10,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useOffersTheme } from '@/contexts/OffersThemeContext';
+import { useRegion } from '@/contexts/RegionContext';
 import { SectionHeader, HorizontalScrollSection } from '../common';
 import { BOGOOffer } from '@/types/offers.types';
 import { Spacing, BorderRadius, Shadows, Colors } from '@/constants/DesignSystem';
@@ -25,6 +26,8 @@ export const BOGOSection: React.FC<BOGOSectionProps> = ({
 }) => {
   const router = useRouter();
   const { theme, isDark } = useOffersTheme();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   if (offers.length === 0) return null;
 
@@ -216,7 +219,7 @@ export const BOGOSection: React.FC<BOGOSectionProps> = ({
                 {offer.subtitle}
               </Text>
               <View style={styles.footer}>
-                <Text style={styles.priceText}>Rs.{offer.originalPrice.toFixed(0)}</Text>
+                <Text style={styles.priceText}>{currencySymbol}{offer.originalPrice.toFixed(0)}</Text>
                 {offer.cashbackPercentage > 0 && (
                   <View style={styles.cashbackBadge}>
                     <Ionicons name="wallet-outline" size={9} color={Colors.primary[600]} />

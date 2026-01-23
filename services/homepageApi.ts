@@ -397,10 +397,16 @@ export class HomepageApiService {
         };
       }
 
-      const params = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+      // Include region in URL params to prevent browser caching issues
+      // Browser caches by URL, so different regions should have different URLs
+      const currentRegion = apiClient.getRegion();
+      const queryParams = new URLSearchParams();
+      if (userId) queryParams.set('userId', userId);
+      queryParams.set('region', currentRegion); // Add region to URL for cache busting
+      const params = queryParams.toString() ? `?${queryParams.toString()}` : '';
       const url = `${ENDPOINTS.HOMEPAGE}${params}`;
 
-      logApiRequest('GET', url, { batch: true });
+      logApiRequest('GET', url, { batch: true, region: currentRegion });
 
       const response = await withRetry(
         () => HomepageHttpClient.get<HomepageBatchResponse>(url),
@@ -501,10 +507,10 @@ export class HomepageApiService {
     }
   }
 
-  // Deduplicated version
+  // Deduplicated version - include region in dedup key
   static fetchHomepageBatch = withDeduplication(
     HomepageApiService._fetchHomepageBatch,
-    (userId?: string) => createRequestKey(`${ENDPOINTS.HOMEPAGE}_batch`, { userId })
+    (userId?: string) => createRequestKey(`${ENDPOINTS.HOMEPAGE}_batch`, { userId, region: apiClient.getRegion() })
   );
 
   /**

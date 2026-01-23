@@ -72,33 +72,7 @@ export default function ReviewModal({
   // Log props when modal becomes visible
   useEffect(() => {
     if (visible) {
-      console.log('🎯 [ReviewModal] Modal Opened with Props:');
-      console.log('  📌 Store Name:', storeName);
-      console.log('  📌 Store ID:', storeId);
-      console.log('  ⭐ Average Rating:', averageRating);
-      console.log('  📊 Total Reviews:', totalReviews);
-      console.log('  📈 Rating Breakdown:', JSON.stringify(ratingBreakdown, null, 2));
-      console.log('  📝 Reviews Count:', reviews?.length || 0);
-      console.log('  📝 Reviews Data:', JSON.stringify(reviews, null, 2));
-      console.log('  🖼️ UGC Content Count:', ugcContent?.length || 0);
-      console.log('  🖼️ UGC Loading:', ugcLoading);
-
-      // Log each review in detail
-      if (reviews && reviews.length > 0) {
-        reviews.forEach((review, index) => {
-          console.log(`  📄 Review ${index + 1}:`, {
-            id: review.id,
-            userId: review.userId,
-            userName: review.userName,
-            userAvatar: review.userAvatar,
-            moderationStatus: review.moderationStatus,
-            rating: review.rating,
-            reviewText: review.reviewText,
-            date: review.date,
-            images: review.images?.length || 0,
-          });
-        });
-      }
+      // Modal is visible - any side effects can be added here if needed
     }
   }, [visible, storeName, storeId, averageRating, totalReviews, ratingBreakdown, reviews, ugcContent, ugcLoading]);
 

@@ -656,11 +656,9 @@ export default function SearchPage() {
                   }}
                   onFavorite={(seller) => {
                     // TODO: Implement favorite functionality
-                    console.log('Favorite seller:', seller);
                   }}
                   onShare={(seller) => {
                     // TODO: Implement share functionality
-                    console.log('Share seller:', seller);
                   }}
                 />
               ))}

@@ -192,7 +192,6 @@ export function AnalyticsIntegrationExample() {
 
   const trackProductView = (product: ProductItem) => {
     // Your analytics tracking
-    console.log('Related product viewed:', product.id);
     // analytics.track('related_product_viewed', { productId: product.id });
   };
 

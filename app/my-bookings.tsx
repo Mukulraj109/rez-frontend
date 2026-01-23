@@ -112,9 +112,6 @@ const MyBookingsPage = () => {
         setBookings(filteredBookings);
       } else {
         setBookings([]);
-        if (response.error) {
-          console.log('Booking fetch error:', response.error);
-        }
       }
     } catch (error: any) {
       console.error('Error fetching bookings:', error);

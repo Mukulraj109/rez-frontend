@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useOffersTheme } from '@/contexts/OffersThemeContext';
+import { useRegion } from '@/contexts/RegionContext';
 import { Spacing, BorderRadius, Shadows, Colors } from '@/constants/DesignSystem';
 
 interface OfferCardCashbackProps {
@@ -40,6 +41,8 @@ export const OfferCardCashback: React.FC<OfferCardCashbackProps> = ({
   onPress,
 }) => {
   const { theme, isDark } = useOffersTheme();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   // Determine colors based on super status
   const accentColor = isSuper ? '#F59E0B' : Colors.primary[600];
@@ -225,7 +228,7 @@ export const OfferCardCashback: React.FC<OfferCardCashbackProps> = ({
           <Text style={styles.cashbackLabel}>Cashback</Text>
           {maxCashback && (
             <Text style={styles.maxCashback}>
-              Up to Rs.{maxCashback}
+              Up to {currencySymbol}{maxCashback}
             </Text>
           )}
         </View>

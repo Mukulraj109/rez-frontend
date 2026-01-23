@@ -110,12 +110,6 @@ export default function ProfileEditPage() {
 
     const hasChangesDetected = JSON.stringify(originalData) !== JSON.stringify(currentData);
 
-    // Debug logging
-    console.log('🔍 [PROFILE_EDIT] Change Detection:');
-    console.log('  Original:', originalData);
-    console.log('  Current:', currentData);
-    console.log('  Has Changes:', hasChangesDetected);
-
     setHasChanges(hasChangesDetected);
   }, [formData, user]);
 
@@ -206,7 +200,6 @@ export default function ProfileEditPage() {
         const maxRetries = 2;
 
         while (retryCount <= maxRetries) {
-          console.log(`🔄 [UPLOAD] Attempt ${retryCount + 1} of ${maxRetries + 1}`);
           uploadResult = await uploadProfileImage(result.assets[0].uri, token);
 
           if (uploadResult.success) {
@@ -215,7 +208,6 @@ export default function ProfileEditPage() {
 
           retryCount++;
           if (retryCount <= maxRetries) {
-            console.log('⏳ [UPLOAD] Retrying in 2 seconds...');
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
         }
@@ -223,9 +215,6 @@ export default function ProfileEditPage() {
         if (uploadResult?.success) {
           // Refresh user data to show new avatar
           await authActions.checkAuthStatus();
-          
-          // Force re-render by updating a state (triggers ProfileContext refresh)
-          console.log('✅ [PROFILE] Avatar updated, refreshing UI...');
 
           if (Platform.OS === 'web') {
             alert('Profile picture updated successfully! The new image should appear immediately.');
@@ -253,11 +242,7 @@ export default function ProfileEditPage() {
   };
 
   const handleSave = async () => {
-    console.log('💾 [PROFILE_EDIT] Save button clicked!');
-    console.log('📝 [PROFILE_EDIT] Form Data:', formData);
-
     if (!formData.name.trim()) {
-      console.log('❌ [PROFILE_EDIT] Validation failed: Name is required');
       if (Platform.OS === 'web') {
         alert('Name is required');
       } else {
@@ -270,7 +255,6 @@ export default function ProfileEditPage() {
     if (formData.email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
-        console.log('❌ [PROFILE_EDIT] Validation failed: Invalid email format');
         if (Platform.OS === 'web') {
           alert('Please enter a valid email address');
         } else {
@@ -280,12 +264,10 @@ export default function ProfileEditPage() {
       }
     }
 
-    console.log('✅ [PROFILE_EDIT] Validation passed, starting save...');
     setIsSaving(true);
 
     try {
       // Use ProfileContext to update user with real backend API
-      console.log('🔄 [PROFILE_EDIT] Calling updateUser...');
       await updateUser({
         name: formData.name,
         email: formData.email,
@@ -297,7 +279,6 @@ export default function ProfileEditPage() {
         gender: formData.gender,
       });
 
-      console.log('✅ [PROFILE_EDIT] Profile updated successfully!');
       // Automatically navigate back after successful save
       goBack('/profile' as any);
     } catch (error) {

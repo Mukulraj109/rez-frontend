@@ -84,8 +84,8 @@ export default function UGCDetailScreen() {
 
   // Product interaction
   const { addToCart, navigateToProduct } = useProductInteraction({
-    onSuccess: (message) => console.log('Success:', message),
-    onError: (error) => console.error('Error:', error),
+    onSuccess: () => {},
+    onError: () => {},
   });
 
   // Parse params and fetch video
@@ -214,7 +214,6 @@ export default function UGCDetailScreen() {
             // Resume only if user hasn't manually paused
           }
         } catch (err) {
-          console.log('Playback control error:', err);
         }
       }
     };
@@ -229,7 +228,6 @@ export default function UGCDetailScreen() {
           await videoRef.current.playAsync();
           setIsPlaying(true);
         } catch (err) {
-          console.log('Auto-play error:', err);
         }
       }
     };
@@ -799,7 +797,7 @@ export default function UGCDetailScreen() {
       <View style={styles.socialActions}>
         {/* Creator Avatar */}
         <View style={styles.creatorAvatarContainer}>
-          <TouchableOpacity onPress={() => console.log('Go to profile')}>
+          <TouchableOpacity onPress={() => {}}>
             <Image
               source={{ uri: creatorAvatar || 'https://via.placeholder.com/50' }}
               style={styles.creatorAvatar}

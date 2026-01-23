@@ -43,7 +43,8 @@ export const PriceAndRewardsSection: React.FC<PriceAndRewardsSectionProps> = ({
   cashbackAmount,
   bonusCoins = 50,
 }) => {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
+  const locale = getLocale();
   const currencySymbol = currency || getCurrencySymbol();
   // Calculate values
   const hasDiscount = originalPrice && originalPrice > price;
@@ -60,7 +61,7 @@ export const PriceAndRewardsSection: React.FC<PriceAndRewardsSectionProps> = ({
       {hasDiscount && (
         <View style={styles.discountRow}>
           <Text style={styles.originalPrice}>
-            {currencySymbol}{originalPrice.toLocaleString('en-IN')}
+            {currencySymbol}{originalPrice.toLocaleString(locale)}
           </Text>
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{discountPercentage}% OFF</Text>
@@ -71,7 +72,7 @@ export const PriceAndRewardsSection: React.FC<PriceAndRewardsSectionProps> = ({
       {/* Current Price */}
       <View style={styles.currentPriceRow}>
         <Text style={styles.currentPrice}>
-          {currencySymbol}{price.toLocaleString('en-IN')}
+          {currencySymbol}{price.toLocaleString(locale)}
         </Text>
         <Text style={styles.rezPriceLabel}>ReZ Price</Text>
       </View>
@@ -81,7 +82,7 @@ export const PriceAndRewardsSection: React.FC<PriceAndRewardsSectionProps> = ({
         <View style={styles.savingsCard}>
           <Ionicons name="checkmark-circle" size={18} color="#00C06A" />
           <Text style={styles.savingsText}>
-            You Save {currencySymbol}{savingsAmount.toLocaleString('en-IN')}
+            You Save {currencySymbol}{savingsAmount.toLocaleString(locale)}
           </Text>
         </View>
       )}

@@ -32,16 +32,12 @@ const WebVideoPlayer: React.FC<{ uri: string; poster?: string }> = ({ uri, poste
       const playVideo = async () => {
         try {
           await video.play();
-          console.log('✅ Video playing:', uri);
         } catch (err: any) {
-          console.log('⚠️ Autoplay failed, retrying...', err?.message);
           // Retry after a short delay
           setTimeout(async () => {
             try {
               await video.play();
-              console.log('✅ Video playing on retry:', uri);
             } catch (e) {
-              console.log('❌ Video autoplay blocked:', e);
             }
           }, 100);
         }
@@ -114,9 +110,7 @@ const AutoPlayVideo: React.FC<{
         try {
           await videoRef.current.playAsync();
           setShowPoster(false);
-          console.log('✅ Video started playing:', uri);
         } catch (err) {
-          console.log('⚠️ Video autoplay failed:', err);
         }
       }
     };
@@ -142,10 +136,9 @@ const AutoPlayVideo: React.FC<{
         isMuted={true}
         useNativeControls={false}
         onLoad={() => {
-          console.log('📹 Video loaded:', uri);
           setIsLoaded(true);
         }}
-        onError={(error) => console.log('❌ Video error:', error)}
+        onError={() => {}}
       />
     </View>
   );
@@ -175,18 +168,19 @@ const transformStoreData = (backendStore: any): TrendingStore => {
   // Get store name
   const name = backendStore.name || 'Unknown Store';
 
-  // Get image - try banner first, then logo
+  // Get image - try banner first, then logo, then image
+  // Note: Check array length to avoid empty array [] being truthy
   let image = '';
-  if (backendStore.banner) {
-    image = Array.isArray(backendStore.banner)
-      ? backendStore.banner[0] || ''
-      : backendStore.banner;
-  } else if (backendStore.logo) {
+  if (backendStore.banner && Array.isArray(backendStore.banner) && backendStore.banner.length > 0) {
+    image = backendStore.banner[0];
+  } else if (backendStore.banner && typeof backendStore.banner === 'string' && backendStore.banner) {
+    image = backendStore.banner;
+  } else if (backendStore.logo && backendStore.logo.trim()) {
     image = backendStore.logo;
   } else if (backendStore.image) {
-    image = Array.isArray(backendStore.image)
-      ? backendStore.image[0] || ''
-      : backendStore.image;
+    image = Array.isArray(backendStore.image) && backendStore.image.length > 0
+      ? backendStore.image[0]
+      : (typeof backendStore.image === 'string' ? backendStore.image : '');
   }
 
   // Get video if available (for auto-play loop)
@@ -195,9 +189,6 @@ const transformStoreData = (backendStore: any): TrendingStore => {
   if (backendStore.videos && Array.isArray(backendStore.videos) && backendStore.videos.length > 0) {
     video = backendStore.videos[0].url || '';
     videoThumbnail = backendStore.videos[0].thumbnail || '';
-    console.log(`📹 [TrendingNearYou] Store "${name}" has video:`, video);
-  } else {
-    console.log(`🖼️ [TrendingNearYou] Store "${name}" has NO video, videos field:`, backendStore.videos);
   }
 
   // Get category - handle string or object
@@ -388,9 +379,10 @@ const TrendingNearYou: React.FC<TrendingNearYouProps> = ({
             ) : (
               // Fallback to static image
               <Image
-                source={{ uri: store.image || 'https://via.placeholder.com/150x150?text=Store' }}
+                source={{ uri: store.image || `https://picsum.photos/seed/${store.id || 'store'}/200/150` }}
                 style={styles.storeImage}
                 resizeMode="cover"
+                defaultSource={{ uri: 'https://picsum.photos/200/150?grayscale' }}
               />
             )}
             {/* Trending Badge */}

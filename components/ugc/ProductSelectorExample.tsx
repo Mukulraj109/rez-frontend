@@ -24,7 +24,6 @@ export function BasicVideoUploadExample() {
 
   const handleProductsChange = (products: ProductSelectorProduct[]) => {
     setSelectedProducts(products);
-    console.log('Products tagged:', products.length);
   };
 
   return (
@@ -252,11 +251,6 @@ export function UGCContentCreationExample() {
   const [videoTitle, setVideoTitle] = useState('');
 
   const handlePublish = () => {
-    console.log('Publishing UGC content:', {
-      title: videoTitle,
-      products: taggedProducts.map((p) => p._id),
-      productsCount: taggedProducts.length,
-    });
   };
 
   return (

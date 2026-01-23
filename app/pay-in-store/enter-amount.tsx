@@ -74,7 +74,6 @@ export default function EnterAmountScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        console.log('Location permission denied');
         return;
       }
 
@@ -120,7 +119,6 @@ export default function EnterAmountScreen() {
     try {
       setIsLoading(true);
       const response = await apiClient.get<{ store: StorePaymentInfo }>(`/stores/${storeId}`);
-      console.log('Store API response:', response);
       if (response.success && response.data?.store) {
         setStore(response.data.store);
       }
@@ -202,21 +200,13 @@ export default function EnterAmountScreen() {
 
   // Build store address from location data
   const getStoreAddress = () => {
-    console.log('=== DEBUG: getStoreAddress ===');
-    console.log('store:', store);
-    console.log('store?.location:', store?.location);
-    console.log('store keys:', store ? Object.keys(store) : 'no store');
-
     if (!store) {
-      console.log('No store data');
       return '';
     }
 
     // Try location object first
     if (store.location) {
-      console.log('Found store.location:', store.location);
       const { address, city, state, pincode } = store.location;
-      console.log('address:', address, 'city:', city, 'state:', state, 'pincode:', pincode);
       const parts = [address, city, state, pincode].filter(Boolean);
       if (parts.length > 0) return parts.join(', ');
     }
@@ -224,13 +214,11 @@ export default function EnterAmountScreen() {
     // Fallback to address object if exists
     if ((store as any).address) {
       const addr = (store as any).address;
-      console.log('Found store.address:', addr);
       if (typeof addr === 'string') return addr;
       const parts = [addr.street, addr.city, addr.state, addr.formattedAddress].filter(Boolean);
       if (parts.length > 0) return parts[parts.length - 1]; // Use formattedAddress if available
     }
 
-    console.log('No address found in store data');
     return '';
   };
 

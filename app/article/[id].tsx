@@ -39,13 +39,11 @@ export default function ArticleDetailPage() {
     try {
       setLoading(true);
       setError(null);
-      console.log('📰 [ArticleDetail] Fetching article:', id);
 
       const response = await articlesService.getArticleById(id as string);
 
       if (response.success && response.data.article) {
         setArticle(response.data.article as any);
-        console.log('✅ [ArticleDetail] Article loaded:', response.data.article);
       } else {
         setError('Article not found');
         console.error('❌ [ArticleDetail] Article not found');

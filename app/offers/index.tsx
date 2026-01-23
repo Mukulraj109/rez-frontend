@@ -71,7 +71,6 @@ export default function OffersScreen() {
       });
 
       if (result.action === Share.sharedAction) {
-        console.log('Shared successfully');
       }
     } catch (error) {
       console.error('Error sharing:', error);

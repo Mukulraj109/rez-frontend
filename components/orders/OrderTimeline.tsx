@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface TimelineStep {
   status: string;
@@ -27,6 +28,8 @@ export default function OrderTimeline({
   timeline,
   estimatedDeliveryTime,
 }: OrderTimelineProps) {
+  const { getLocale } = useRegion();
+  const locale = getLocale();
   // Define the standard order flow
   const standardSteps: TimelineStep[] = [
     {
@@ -105,7 +108,7 @@ export default function OrderTimeline({
     if (!timelineItem) return null;
 
     const date = new Date(timelineItem.timestamp);
-    return date.toLocaleString('en-IN', {
+    return date.toLocaleString(locale, {
       day: 'numeric',
       month: 'short',
       hour: '2-digit',
@@ -121,7 +124,7 @@ export default function OrderTimeline({
         <View style={styles.estimatedTimeContainer}>
           <Text style={styles.estimatedTimeLabel}>Estimated Delivery</Text>
           <Text style={styles.estimatedTime}>
-            {new Date(estimatedDeliveryTime).toLocaleString('en-IN', {
+            {new Date(estimatedDeliveryTime).toLocaleString(locale, {
               day: 'numeric',
               month: 'short',
               hour: '2-digit',
@@ -193,7 +196,7 @@ export default function OrderTimeline({
               <View style={styles.detailedTimelineContent}>
                 <Text style={styles.detailedTimelineMessage}>{item.message}</Text>
                 <Text style={styles.detailedTimelineTimestamp}>
-                  {new Date(item.timestamp).toLocaleString('en-IN', {
+                  {new Date(item.timestamp).toLocaleString(locale, {
                     day: 'numeric',
                     month: 'short',
                     hour: '2-digit',

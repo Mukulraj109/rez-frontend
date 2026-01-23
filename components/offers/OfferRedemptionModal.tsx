@@ -23,6 +23,7 @@ import * as Clipboard from 'expo-clipboard';
 import { ThemedText } from '@/components/ThemedText';
 import { LightningDeal } from '@/types/offers.types';
 import realOffersApi from '@/services/realOffersApi';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 
@@ -65,6 +66,8 @@ export const OfferRedemptionModal: React.FC<OfferRedemptionModalProps> = ({
   const [copySuccess, setCopySuccess] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
   const [redemptionCode, setRedemptionCode] = useState<string | null>(null);
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -146,7 +149,7 @@ export const OfferRedemptionModal: React.FC<OfferRedemptionModalProps> = ({
 
         Alert.alert(
           'Offer Redeemed!',
-          `Your promo code is: ${voucher.voucherCode || offer.promoCode}\n\nCashback: Rs.${voucher.cashbackAmount || offer.discountedPrice}`,
+          `Your promo code is: ${voucher.voucherCode || offer.promoCode}\n\nCashback: ${currencySymbol}${voucher.cashbackAmount || offer.discountedPrice}`,
           [{ text: 'OK' }]
         );
 
@@ -276,10 +279,10 @@ export const OfferRedemptionModal: React.FC<OfferRedemptionModalProps> = ({
               {/* Price */}
               <View style={styles.priceRow}>
                 <ThemedText style={styles.discountedPrice}>
-                  Rs.{offer.discountedPrice}
+                  {currencySymbol}{offer.discountedPrice}
                 </ThemedText>
                 <ThemedText style={styles.originalPrice}>
-                  Rs.{offer.originalPrice}
+                  {currencySymbol}{offer.originalPrice}
                 </ThemedText>
                 <View style={styles.discountBadge}>
                   <ThemedText style={styles.discountText}>

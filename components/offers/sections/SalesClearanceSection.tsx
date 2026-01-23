@@ -10,6 +10,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useOffersTheme } from '@/contexts/OffersThemeContext';
+import { useRegion } from '@/contexts/RegionContext';
 import { SectionHeader, HorizontalScrollSection } from '../common';
 import { SaleOffer } from '@/types/offers.types';
 import { Spacing, BorderRadius, Shadows, Colors } from '@/constants/DesignSystem';
@@ -25,6 +26,8 @@ export const SalesClearanceSection: React.FC<SalesClearanceSectionProps> = ({
 }) => {
   const router = useRouter();
   const { theme, isDark } = useOffersTheme();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   if (offers.length === 0) return null;
 
@@ -235,8 +238,8 @@ export const SalesClearanceSection: React.FC<SalesClearanceSectionProps> = ({
                   {offer.title}
                 </Text>
                 <View style={styles.priceRow}>
-                  <Text style={styles.salePrice}>Rs.{offer.salePrice.toFixed(0)}</Text>
-                  <Text style={styles.originalPrice}>Rs.{offer.originalPrice.toFixed(0)}</Text>
+                  <Text style={styles.salePrice}>{currencySymbol}{offer.salePrice.toFixed(0)}</Text>
+                  <Text style={styles.originalPrice}>{currencySymbol}{offer.originalPrice.toFixed(0)}</Text>
                 </View>
                 {offer.cashbackPercentage > 0 && (
                   <View style={styles.cashbackBadge}>

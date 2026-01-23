@@ -113,8 +113,9 @@ export default function TrainDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const [train, setTrain] = useState<TrainDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -263,7 +264,6 @@ export default function TrainDetailsPage() {
           // Handle different image formats from backend
           // Ensure train images, not bus images
           if (!productData.images || !Array.isArray(productData.images)) {
-            console.log('⚠️ [TRAIN] No images array found, using train fallback');
             return ['https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&h=600&fit=crop'];
           }
           
@@ -281,20 +281,16 @@ export default function TrainDetailsPage() {
               return Boolean(url && typeof url === 'string' && url.length > 0);
             });
           
-          console.log('📸 [TRAIN] Processed images:', processedImages.length, processedImages);
-          
           // Validate images are train-related (basic check)
           // If image URL contains 'bus', replace with train image
           const validatedImages = processedImages.map(url => {
             if (url.toLowerCase().includes('bus') && !url.toLowerCase().includes('train')) {
-              console.log('⚠️ [TRAIN] Replacing bus image with train image:', url);
               return 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&h=600&fit=crop';
             }
             return url;
           });
           
           if (validatedImages.length === 0) {
-            console.log('⚠️ [TRAIN] No valid images found, using train fallback');
             return ['https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&h=600&fit=crop'];
           }
           
@@ -466,11 +462,9 @@ export default function TrainDetailsPage() {
                     setImageError(true);
                   }}
                   onLoadStart={() => {
-                    console.log('🔄 [TRAIN] Loading image:', imageUrl);
                     setImageError(false);
                   }}
                   onLoad={() => {
-                    console.log('✅ [TRAIN] Image loaded successfully:', imageUrl);
                   }}
                 />
               );
@@ -598,9 +592,9 @@ export default function TrainDetailsPage() {
               <Text style={styles.priceLabel}>Starting from</Text>
               <View style={styles.priceContainer}>
                 {train.originalPrice && train.originalPrice > train.price && (
-                  <Text style={styles.originalPrice}>{currencySymbol}{train.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.originalPrice}>{currencySymbol}{train.originalPrice.toLocaleString(locale)}</Text>
                 )}
-                <Text style={styles.price}>{currencySymbol}{train.price.toLocaleString('en-IN')}</Text>
+                <Text style={styles.price}>{currencySymbol}{train.price.toLocaleString(locale)}</Text>
               </View>
               {train.discount && train.discount > 0 && (
                 <View style={styles.discountTag}>
@@ -617,7 +611,7 @@ export default function TrainDetailsPage() {
                   {train.cashback.percentage}% Cashback
                 </Text>
                 <Text style={styles.cashbackAmount}>
-                  Earn {currencySymbol}{train.cashback.amount.toLocaleString('en-IN')}
+                  Earn {currencySymbol}{train.cashback.amount.toLocaleString(locale)}
                 </Text>
               </View>
             </View>

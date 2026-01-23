@@ -37,10 +37,12 @@ const RecentlyViewedCard = memo(({
   item,
   onPress,
   currencySymbol,
+  locale,
 }: {
   item: RecentlyViewedItem;
   onPress: () => void;
   currencySymbol: string;
+  locale: string;
 }) => {
   const formattedRating = item.rating.value > 0 ? item.rating.value.toFixed(1) : '0.0';
   const hasCashback = item.cashbackPercentage && item.cashbackPercentage > 0;
@@ -113,11 +115,11 @@ const RecentlyViewedCard = memo(({
         {item.type === 'product' && item.price && item.price.current > 0 ? (
           <View style={styles.priceRow}>
             <Text style={styles.currentPrice}>
-              {currencySymbol}{item.price.current.toLocaleString('en-IN')}
+              {currencySymbol}{item.price.current.toLocaleString(locale)}
             </Text>
             {item.price.original && item.price.original > item.price.current && (
               <Text style={styles.originalPrice}>
-                {currencySymbol}{item.price.original.toLocaleString('en-IN')}
+                {currencySymbol}{item.price.original.toLocaleString(locale)}
               </Text>
             )}
           </View>
@@ -147,8 +149,9 @@ const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
   maxItems = 10,
 }) => {
   const router = useRouter();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   // Handle item press - navigate to appropriate detail page
   const handleItemPress = useCallback((item: RecentlyViewedItem) => {
@@ -211,6 +214,7 @@ const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
               item={item}
               onPress={() => handleItemPress(item)}
               currencySymbol={currencySymbol}
+              locale={locale}
             />
           ))}
         </ScrollView>

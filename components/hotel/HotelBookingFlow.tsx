@@ -73,8 +73,9 @@ const HotelBookingFlow: React.FC<HotelBookingFlowProps> = ({
   onComplete,
   onClose,
 }) => {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -252,7 +253,7 @@ const HotelBookingFlow: React.FC<HotelBookingFlowProps> = ({
         >
           <Ionicons name="calendar" size={20} color="#EC4899" />
           <Text style={styles.dateText}>
-            {checkInDate.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+            {checkInDate.toLocaleDateString(locale, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
           </Text>
         </TouchableOpacity>
         {showCheckInPicker && (
@@ -278,7 +279,7 @@ const HotelBookingFlow: React.FC<HotelBookingFlowProps> = ({
         >
           <Ionicons name="calendar-outline" size={20} color="#EC4899" />
           <Text style={styles.dateText}>
-            {checkOutDate.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+            {checkOutDate.toLocaleDateString(locale, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
           </Text>
         </TouchableOpacity>
         {showCheckOutPicker && (
@@ -393,10 +394,10 @@ const HotelBookingFlow: React.FC<HotelBookingFlowProps> = ({
               <Text style={styles.roomDescription}>{room.description}</Text>
             )}
             <Text style={styles.roomPrice}>
-              {currencySymbol}{room.price.toLocaleString('en-IN')}/night × {nights} nights × {rooms} {rooms === 1 ? 'room' : 'rooms'}
+              {currencySymbol}{room.price.toLocaleString(locale)}/night × {nights} nights × {rooms} {rooms === 1 ? 'room' : 'rooms'}
             </Text>
             <Text style={styles.roomTotalPrice}>
-              Total: {currencySymbol}{totalPrice.toLocaleString('en-IN')}
+              Total: {currencySymbol}{totalPrice.toLocaleString(locale)}
             </Text>
           </TouchableOpacity>
         );
@@ -425,7 +426,7 @@ const HotelBookingFlow: React.FC<HotelBookingFlowProps> = ({
           >
             <View style={styles.extraInfo}>
               <Text style={styles.extraLabel}>{extra.label}</Text>
-              <Text style={styles.extraPrice}>+ {currencySymbol}{extra.price.toLocaleString('en-IN')}</Text>
+              <Text style={styles.extraPrice}>+ {currencySymbol}{extra.price.toLocaleString(locale)}</Text>
             </View>
             <View style={[styles.checkbox, extra.selected && styles.checkboxSelected]}>
               {extra.selected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
@@ -438,18 +439,18 @@ const HotelBookingFlow: React.FC<HotelBookingFlowProps> = ({
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Room ({calculateNights()} nights)</Text>
             <Text style={styles.priceValue}>
-              {currencySymbol}{(hotel.roomTypes[roomType].price * calculateNights() * rooms).toLocaleString('en-IN')}
+              {currencySymbol}{(hotel.roomTypes[roomType].price * calculateNights() * rooms).toLocaleString(locale)}
             </Text>
           </View>
           {extras.filter(e => e.selected).map((extra) => (
             <View key={extra.key} style={styles.priceRow}>
               <Text style={styles.priceLabel}>{extra.label}</Text>
-              <Text style={styles.priceValue}>+ {currencySymbol}{extra.price.toLocaleString('en-IN')}</Text>
+              <Text style={styles.priceValue}>+ {currencySymbol}{extra.price.toLocaleString(locale)}</Text>
             </View>
           ))}
           <View style={[styles.priceRow, styles.priceTotal]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{currencySymbol}{calculateTotalPrice().toLocaleString('en-IN')}</Text>
+            <Text style={styles.totalValue}>{currencySymbol}{calculateTotalPrice().toLocaleString(locale)}</Text>
           </View>
         </View>
       </View>
@@ -559,7 +560,7 @@ const HotelBookingFlow: React.FC<HotelBookingFlowProps> = ({
       <View style={styles.footer}>
         <View style={styles.footerPrice}>
           <Text style={styles.footerPriceLabel}>Total</Text>
-          <Text style={styles.footerPriceValue}>{currencySymbol}{calculateTotalPrice().toLocaleString('en-IN')}</Text>
+          <Text style={styles.footerPriceValue}>{currencySymbol}{calculateTotalPrice().toLocaleString(locale)}</Text>
         </View>
         <TouchableOpacity
           style={[styles.nextButton, isSubmitting && styles.nextButtonDisabled]}

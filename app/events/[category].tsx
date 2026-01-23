@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import eventsApiService from '@/services/eventsApi';
 import { EventItem } from '@/types/homepage.types';
 import { EVENT_COLORS } from '@/constants/EventColors';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -89,6 +90,8 @@ const getDateRange = (filter: DateFilter): { startDate?: string; endDate?: strin
 const EventsCategoryPage: React.FC = () => {
   const router = useRouter();
   const { category } = useLocalSearchParams<{ category: string }>();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [selectedFilter, setSelectedFilter] = useState<DateFilter>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -115,13 +118,17 @@ const EventsCategoryPage: React.FC = () => {
       ? event.location
       : (event.location as any)?.name || 'Venue';
 
+    // For online events, use regional currency; for venue events, use event's currency
+    const isOnline = (event as any).isOnline || (event.location as any)?.isOnline;
+    const displayCurrency = isOnline ? currencySymbol : (event.price?.currency || currencySymbol);
+
     return {
       id: event.id,
       title: event.title,
       venue: locationName,
       time: event.time || 'TBD',
       date: event.date ? new Date(event.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'TBD',
-      price: event.price?.isFree ? 'Free' : `${event.price?.currency || '₹'}${event.price?.amount || 0}`,
+      price: event.price?.isFree ? 'Free' : `${displayCurrency}${event.price?.amount || 0}`,
       rating: (event as any).rating || 0,
       reviewCount: (event as any).reviewCount || 0,
       image: event.image || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',

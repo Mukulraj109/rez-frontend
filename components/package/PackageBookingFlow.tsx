@@ -77,8 +77,9 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
   onComplete,
   onClose,
 }) => {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -276,7 +277,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
         >
           <Ionicons name="calendar" size={20} color="#8B5CF6" />
           <Text style={styles.dateText}>
-            {travelDate.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+            {travelDate.toLocaleDateString(locale, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
           </Text>
         </TouchableOpacity>
         {showTravelDatePicker && (
@@ -302,7 +303,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
         >
           <Ionicons name="calendar" size={20} color="#8B5CF6" />
           <Text style={styles.dateText}>
-            {returnDate.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+            {returnDate.toLocaleDateString(locale, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
           </Text>
         </TouchableOpacity>
         {showReturnDatePicker && (
@@ -412,7 +413,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
                 Price per person
               </Text>
               <Text style={[styles.accommodationPriceValue, isSelected && styles.accommodationPriceValueSelected]}>
-                {currencySymbol}{option.price.toLocaleString('en-IN')}
+                {currencySymbol}{option.price.toLocaleString(locale)}
               </Text>
             </View>
           </TouchableOpacity>
@@ -525,7 +526,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
               {accommodationType.toUpperCase()} ({totalTravelers} {totalTravelers === 1 ? 'person' : 'people'})
             </Text>
             <Text style={styles.priceValue}>
-              {currencySymbol}{(pkg.accommodationOptions[accommodationType].price * totalTravelers).toLocaleString('en-IN')}
+              {currencySymbol}{(pkg.accommodationOptions[accommodationType].price * totalTravelers).toLocaleString(locale)}
             </Text>
           </View>
           {mealPlan !== 'none' && (
@@ -536,7 +537,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
               <Text style={styles.priceValue}>
                 + {currencySymbol}{(() => {
                   const plan = mealPlans.find(p => p.key === mealPlan);
-                  return plan ? (plan.price * calculateNights() * totalTravelers).toLocaleString('en-IN') : '0';
+                  return plan ? (plan.price * calculateNights() * totalTravelers).toLocaleString(locale) : '0';
                 })()}
               </Text>
             </View>
@@ -550,18 +551,18 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
           {travelInsurance && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Travel Insurance</Text>
-              <Text style={styles.priceValue}>+ {currencySymbol}{(1000 * totalTravelers).toLocaleString('en-IN')}</Text>
+              <Text style={styles.priceValue}>+ {currencySymbol}{(1000 * totalTravelers).toLocaleString(locale)}</Text>
             </View>
           )}
           {guide && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Professional Guide</Text>
-              <Text style={styles.priceValue}>+ {currencySymbol}{(3000 * calculateNights()).toLocaleString('en-IN')}</Text>
+              <Text style={styles.priceValue}>+ {currencySymbol}{(3000 * calculateNights()).toLocaleString(locale)}</Text>
             </View>
           )}
           <View style={[styles.priceRow, styles.priceTotal]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{currencySymbol}{calculateTotalPrice().toLocaleString('en-IN')}</Text>
+            <Text style={styles.totalValue}>{currencySymbol}{calculateTotalPrice().toLocaleString(locale)}</Text>
           </View>
         </View>
       </View>
@@ -706,7 +707,7 @@ const PackageBookingFlow: React.FC<PackageBookingFlowProps> = ({
       <View style={styles.footer}>
         <View style={styles.footerPrice}>
           <Text style={styles.footerPriceLabel}>Total</Text>
-          <Text style={styles.footerPriceValue}>{currencySymbol}{calculateTotalPrice().toLocaleString('en-IN')}</Text>
+          <Text style={styles.footerPriceValue}>{currencySymbol}{calculateTotalPrice().toLocaleString(locale)}</Text>
         </View>
         <TouchableOpacity
           style={[styles.nextButton, isSubmitting && styles.nextButtonDisabled]}

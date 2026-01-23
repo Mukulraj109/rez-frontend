@@ -72,7 +72,6 @@ const DealStorePage: React.FC = () => {
           return index === firstIndex;
         });
         
-        console.log('✅ [DealStore] Loaded', uniqueCategories.length, 'unique campaigns');
         setDealCategories(uniqueCategories);
       }
     } catch (error) {
@@ -91,7 +90,6 @@ const DealStorePage: React.FC = () => {
     }
 
     // Navigate to deal detail page
-    console.log('📍 [DealStore] Navigating to deal detail:', categoryId, dealIndex);
     router.push(`/deals/${categoryId}/${dealIndex}` as any);
   };
 
@@ -279,7 +277,6 @@ const DealStorePage: React.FC = () => {
                           style={styles.dealCard}
                           onPress={() => {
                             // Navigate to deal detail page using the current index
-                            console.log('📍 [DealStore] Navigating to deal detail:', category.id, idx);
                             router.push(`/deals/${category.id}/${idx}` as any);
                           }}
                           activeOpacity={0.8}

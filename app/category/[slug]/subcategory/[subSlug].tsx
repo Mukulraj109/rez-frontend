@@ -86,7 +86,6 @@ export default function SubcategoryPage() {
 
     try {
       setIsLoadingStores(true);
-      console.log(`[SUBCATEGORY] Fetching stores for: ${subSlug}`);
 
       let storesData: any[] = [];
       let source = 'subcategory';
@@ -98,7 +97,6 @@ export default function SubcategoryPage() {
         storesData = response.data;
       } else {
         // 2. Fallback: Try searching for the text (handles cuisines/tags)
-        console.log(`[SUBCATEGORY] No stores found by category slug. Falling back to search for: ${subSlug}`);
         source = 'search';
 
         // Use searchStores with the subSlug as query
@@ -126,10 +124,8 @@ export default function SubcategoryPage() {
           isVerified: store.verification?.isVerified || false,
         }));
         setStores(formattedStores);
-        console.log(`[SUBCATEGORY] Got ${formattedStores.length} stores via ${source}`);
       } else {
         setStores([]);
-        console.log(`[SUBCATEGORY] No stores found via any method for: ${subSlug}`);
       }
     } catch (err: any) {
       console.error(`[SUBCATEGORY] Error fetching stores:`, err);
@@ -148,7 +144,6 @@ export default function SubcategoryPage() {
 
     try {
       setIsLoadingProducts(true);
-      console.log(`[SUBCATEGORY] Fetching products for: ${subSlug}`);
 
       let productsData: any[] = [];
       let source = 'subcategory';
@@ -166,7 +161,6 @@ export default function SubcategoryPage() {
 
       // 2. Fallback: Search if no products found
       if (productsData.length === 0) {
-        console.log(`[SUBCATEGORY] No products found by category. Falling back to search for: ${subSlug}`);
         source = 'search';
 
         const searchResponse = await productsApi.searchProducts({ q: subSlug, limit: 20 });
@@ -194,10 +188,8 @@ export default function SubcategoryPage() {
           storeName: product.store?.name,
         }));
         setProducts(formattedProducts);
-        console.log(`[SUBCATEGORY] Got ${formattedProducts.length} products via ${source}`);
       } else {
         setProducts([]);
-        console.log(`[SUBCATEGORY] No products found via any method for: ${subSlug}`);
       }
     } catch (err: any) {
       console.error(`[SUBCATEGORY] Error fetching products:`, err);

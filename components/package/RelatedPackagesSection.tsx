@@ -15,8 +15,9 @@ interface RelatedPackagesSectionProps {
 
 const RelatedPackagesSection: React.FC<RelatedPackagesSectionProps> = ({ currentPackageId }) => {
   const router = useRouter();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const [relatedPackages, setRelatedPackages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -101,7 +102,7 @@ const RelatedPackagesSection: React.FC<RelatedPackagesSectionProps> = ({ current
                   <Ionicons name="star" size={14} color="#F59E0B" />
                   <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
                 </View>
-                <Text style={styles.priceText}>From {currencySymbol}{price.toLocaleString('en-IN')}</Text>
+                <Text style={styles.priceText}>From {currencySymbol}{price.toLocaleString(locale)}</Text>
               </View>
             </TouchableOpacity>
           );

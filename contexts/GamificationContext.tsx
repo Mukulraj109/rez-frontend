@@ -306,13 +306,10 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
   // NEW: Sync coins from wallet (SINGLE SOURCE OF TRUTH)
   const syncCoinsFromWallet = useCallback(async () => {
     try {
-      console.log('🔄 [GAMIFICATION] Syncing coins from wallet (source of truth)...');
-
       // First, sync the wallet balance from CoinTransaction to fix any discrepancies
       try {
         const syncResponse = await walletApi.syncBalance();
         if (syncResponse.success && syncResponse.data) {
-          console.log(`✅ [GAMIFICATION] Wallet synced: ${syncResponse.data.previousBalance} → ${syncResponse.data.newBalance}`);
         }
       } catch (syncError) {
         // Don't fail the whole sync if the balance sync fails - just log it
@@ -338,7 +335,6 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
         };
 
         dispatch({ type: 'COINS_LOADED', payload: coinBalance });
-        console.log(`✅ [GAMIFICATION] Coins synced from wallet: ${walletCoins}`);
       }
     } catch (error) {
       console.error('❌ [GAMIFICATION] Error syncing coins from wallet:', error);
@@ -493,8 +489,6 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
 
     return queueCoinOperation(async () => {
       try {
-        console.log(`💰 [GAMIFICATION] Awarding ${amount} coins: ${reason}`);
-
         // Use coin sync service to award coins (syncs to wallet automatically)
         const syncResult = await coinSyncService.syncGamificationReward(
           amount,
@@ -511,8 +505,6 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
 
           // Also check for coin-related achievements
           await triggerAchievementCheck('COINS_EARNED', { amount, reason });
-
-          console.log(`✅ [GAMIFICATION] Coins awarded and synced to wallet: ${syncResult.newWalletBalance}`);
         } else {
           throw new Error(syncResult.error || 'Failed to sync coins to wallet');
         }
@@ -529,8 +521,6 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
 
     return queueCoinOperation(async () => {
       try {
-        console.log(`💸 [GAMIFICATION] Spending ${amount} coins: ${reason}`);
-
         if (state.coinBalance.total < amount) {
           throw new Error('Insufficient coin balance');
         }
@@ -546,8 +536,6 @@ export function GamificationProvider({ children }: GamificationProviderProps) {
 
           // Refresh from wallet (single source of truth)
           await syncCoinsFromWallet();
-
-          console.log(`✅ [GAMIFICATION] Coins spent and synced to wallet: ${syncResult.newWalletBalance}`);
         } else {
           throw new Error(syncResult.error || 'Failed to sync coin spending to wallet');
         }

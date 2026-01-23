@@ -157,10 +157,8 @@ export default function StudentZonePage() {
       }
 
       // Get offers - API returns { zone, offers }
-      console.log('[STUDENT] offersResponse:', offersResponse);
       if (offersResponse.success && offersResponse.data) {
         const offersData = offersResponse.data.offers || offersResponse.data;
-        console.log('[STUDENT] offersData:', offersData);
         const offersArray = Array.isArray(offersData) ? offersData : [];
         setOffers(offersArray);
 

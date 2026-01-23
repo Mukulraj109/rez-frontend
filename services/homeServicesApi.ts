@@ -9,6 +9,7 @@ export interface HomeServiceCategory {
   id: string;
   title: string;
   icon: string;
+  iconType: 'emoji' | 'url' | 'icon-name';
   color: string;
   count: string;
   cashback: number;

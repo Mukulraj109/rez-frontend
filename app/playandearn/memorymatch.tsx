@@ -357,15 +357,12 @@ const MemoryMatch = () => {
     if (sessionId) {
       try {
         const response = await gameApi.completeMemoryMatch(sessionId, finalScore, 60 - timeLeft, moves);
-        console.log('[MEMORY MATCH] Complete response:', JSON.stringify(response));
         if (response.data) {
-          console.log('[MEMORY MATCH] coins:', response.data.coins, 'newBalance:', response.data.newBalance);
           if (response.data.coins !== undefined) {
             setScore(response.data.coins);
           }
           if (response.data.newBalance !== undefined) {
             setWalletBalance(response.data.newBalance);
-            console.log('[MEMORY MATCH] Updated local walletBalance to:', response.data.newBalance);
           }
         }
         // Refresh daily limits to get accurate plays count
@@ -374,16 +371,13 @@ const MemoryMatch = () => {
           setTodayPlays(limitsResponse.data.memory_match.used);
         }
         // IMPORTANT: Sync global GamificationContext to update coin balance across the app
-        console.log('[MEMORY MATCH] Syncing global context...');
         await gamificationActions.syncCoinsFromWallet();
-        console.log('[MEMORY MATCH] Global context synced');
       } catch (error) {
         console.error('Error completing game:', error);
         // Fallback: increment locally if API fails
         setTodayPlays(todayPlays + 1);
       }
     } else {
-      console.log('[MEMORY MATCH] No sessionId - game not tracked');
       // No session - increment locally
       setTodayPlays(todayPlays + 1);
     }

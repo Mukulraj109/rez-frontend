@@ -119,8 +119,6 @@ export default function EarningsHistoryPage() {
         params.endDate = endDate.toISOString();
       }
 
-      console.log('💰 [EARNINGS HISTORY] Loading transactions with params:', params);
-
       // For now, we'll use a mock endpoint structure
       // In the future, this should be /api/earnings/history
       const response = await apiClient.get<EarningsHistoryResponse>('/earnings/history', params);

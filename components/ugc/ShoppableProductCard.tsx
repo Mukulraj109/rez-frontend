@@ -77,15 +77,6 @@ export default function ShoppableProductCard({
   };
 
   // Debug logging for troubleshooting
-  console.log(`📦 [ProductCard] ${productData.name}:`, {
-    price: normalizedPrice.current,
-    originalPrice: normalizedPrice.original,
-    discount: normalizedPrice.discount,
-    image: extractedImage ? '✅ Has image' : '❌ No image',
-    hasImages: !!product.images,
-    hasPricing: !!product.pricing,
-    hasPrice: !!product.price
-  });
 
   const isInStock = productData.availabilityStatus === 'in_stock';
   const hasDiscount = productData.discount !== null && productData.discount > 0;

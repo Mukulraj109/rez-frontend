@@ -75,8 +75,9 @@ const BusBookingFlow: React.FC<BusBookingFlowProps> = ({
   onComplete,
   onClose,
 }) => {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -292,7 +293,7 @@ const BusBookingFlow: React.FC<BusBookingFlowProps> = ({
         >
           <Ionicons name="calendar" size={20} color="#F97316" />
           <Text style={styles.dateText}>
-            {travelDate.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+            {travelDate.toLocaleDateString(locale, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
           </Text>
         </TouchableOpacity>
         {showTravelDatePicker && (
@@ -319,7 +320,7 @@ const BusBookingFlow: React.FC<BusBookingFlowProps> = ({
           >
             <Ionicons name="calendar" size={20} color="#F97316" />
             <Text style={styles.dateText}>
-              {returnDate.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+              {returnDate.toLocaleDateString(locale, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
             </Text>
           </TouchableOpacity>
           {showReturnDatePicker && (
@@ -424,7 +425,7 @@ const BusBookingFlow: React.FC<BusBookingFlowProps> = ({
                 Price
               </Text>
               <Text style={[styles.classPriceValue, isSelected && styles.classPriceValueSelected]}>
-                {currencySymbol}{busClassOption.price.toLocaleString('en-IN')}
+                {currencySymbol}{busClassOption.price.toLocaleString(locale)}
               </Text>
             </View>
           </TouchableOpacity>
@@ -452,7 +453,7 @@ const BusBookingFlow: React.FC<BusBookingFlowProps> = ({
           >
             <View style={styles.extraInfo}>
               <Text style={styles.extraLabel}>{extra.label}</Text>
-              <Text style={styles.extraPrice}>+ {currencySymbol}{extra.price.toLocaleString('en-IN')}</Text>
+              <Text style={styles.extraPrice}>+ {currencySymbol}{extra.price.toLocaleString(locale)}</Text>
             </View>
             <View style={[styles.checkbox, extra.selected && styles.checkboxSelected]}>
               {extra.selected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
@@ -467,26 +468,26 @@ const BusBookingFlow: React.FC<BusBookingFlowProps> = ({
               {busClass.toUpperCase()} ({totalPassengers} {totalPassengers === 1 ? 'passenger' : 'passengers'})
             </Text>
             <Text style={styles.priceValue}>
-              {currencySymbol}{(bus.classOptions[busClass].price * adults + bus.classOptions[busClass].price * 0.5 * children).toLocaleString('en-IN')}
+              {currencySymbol}{(bus.classOptions[busClass].price * adults + bus.classOptions[busClass].price * 0.5 * children).toLocaleString(locale)}
             </Text>
           </View>
           {tripType === 'round-trip' && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Return Trip</Text>
               <Text style={styles.priceValue}>
-                {currencySymbol}{(bus.classOptions[busClass].price * adults + bus.classOptions[busClass].price * 0.5 * children).toLocaleString('en-IN')}
+                {currencySymbol}{(bus.classOptions[busClass].price * adults + bus.classOptions[busClass].price * 0.5 * children).toLocaleString(locale)}
               </Text>
             </View>
           )}
           {extras.filter(e => e.selected).map((extra) => (
             <View key={extra.key} style={styles.priceRow}>
               <Text style={styles.priceLabel}>{extra.label}</Text>
-              <Text style={styles.priceValue}>+ {currencySymbol}{(extra.price * totalPassengers).toLocaleString('en-IN')}</Text>
+              <Text style={styles.priceValue}>+ {currencySymbol}{(extra.price * totalPassengers).toLocaleString(locale)}</Text>
             </View>
           ))}
           <View style={[styles.priceRow, styles.priceTotal]}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{currencySymbol}{calculateTotalPrice().toLocaleString('en-IN')}</Text>
+            <Text style={styles.totalValue}>{currencySymbol}{calculateTotalPrice().toLocaleString(locale)}</Text>
           </View>
         </View>
       </View>
@@ -631,7 +632,7 @@ const BusBookingFlow: React.FC<BusBookingFlowProps> = ({
       <View style={styles.footer}>
         <View style={styles.footerPrice}>
           <Text style={styles.footerPriceLabel}>Total</Text>
-          <Text style={styles.footerPriceValue}>{currencySymbol}{calculateTotalPrice().toLocaleString('en-IN')}</Text>
+          <Text style={styles.footerPriceValue}>{currencySymbol}{calculateTotalPrice().toLocaleString(locale)}</Text>
         </View>
         <TouchableOpacity
           style={[styles.nextButton, isSubmitting && styles.nextButtonDisabled]}

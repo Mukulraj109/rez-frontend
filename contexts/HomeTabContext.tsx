@@ -160,7 +160,6 @@ export const HomeTabProvider: React.FC<HomeTabProviderProps> = ({ children }) =>
   // Refresh Privé eligibility (placeholder - integrate with backend)
   const refreshPriveEligibility = useCallback(async () => {
     // TODO: Fetch from backend API /api/prive/eligibility
-    console.log('[HomeTabContext] Refreshing Privé eligibility...');
   }, []);
 
   // Mark Privé glow as seen

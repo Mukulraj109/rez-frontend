@@ -484,27 +484,14 @@ export default function UGCSection({
       }
       setError(null);
 
-      console.log('🎬 [UGC SECTION] Fetching UGC content for store:', storeId);
-      console.log('📹 [UGC SECTION] Store videos count:', propImages?.length || 0);
-
       const response = await ugcApi.getStoreContent(storeId!, {
         limit: 20,
         offset: 0,
       });
 
-      console.log('📡 [UGC SECTION] API Response:', {
-        success: response.success,
-        hasData: !!response.data,
-        hasContent: !!response.data?.content,
-        contentLength: response.data?.content?.length || 0
-      });
-
       if (response.success && response.data?.content) {
         const transformedContent = response.data.content.map(transformUGCMedia);
         setUgcContent(transformedContent);
-        console.log('✅ [UGC SECTION] Loaded', transformedContent.length, 'user-generated items');
-        console.log('📊 [UGC SECTION] Total content:', (propImages?.length || 0) + transformedContent.length,
-          '(', propImages?.length || 0, 'store videos +', transformedContent.length, 'user content)');
       } else {
         console.warn('⚠️ [UGC SECTION] No content in response, using empty array');
         setUgcContent([]); // Set empty array instead of error
@@ -542,8 +529,6 @@ export default function UGCSection({
   // Handle like press
   const handleLikePress = useCallback(async (item: UGCImage) => {
     try {
-      console.log('💖 [UGC SECTION] Toggling like for:', item.id);
-
       // Optimistic update
       setUgcContent(prev =>
         prev.map(ugc =>
@@ -595,8 +580,6 @@ export default function UGCSection({
   // Handle bookmark press
   const handleBookmarkPress = useCallback(async (item: UGCImage) => {
     try {
-      console.log('🔖 [UGC SECTION] Toggling bookmark for:', item.id);
-
       // Optimistic update
       setUgcContent(prev =>
         prev.map(ugc =>
@@ -631,7 +614,6 @@ export default function UGCSection({
             )
           );
         }
-        console.log('✅ [UGC SECTION] Bookmark toggled:', newBookmarkState);
       }
     } catch (err) {
       console.error('❌ [UGC SECTION] Error toggling bookmark:', err);

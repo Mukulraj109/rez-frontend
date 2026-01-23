@@ -35,7 +35,6 @@ export function MainStorePageHeaderExample() {
           variant="default"
           showCount={true}
           onFollowChange={(isFollowing) => {
-            console.log('Follow state changed:', isFollowing);
             // Optional: Update analytics, local state, etc.
           }}
         />
@@ -218,7 +217,6 @@ export function AnalyticsTrackingExample({ store }: any) {
       },
     };
 
-    console.log('Analytics Event:', analyticsEvent);
     // Send to analytics service: analytics.track(analyticsEvent);
   };
 
@@ -297,7 +295,6 @@ export function DynamicMainStorePageIntegration({ storeData }: any) {
           showCount={true}
           onFollowChange={(isFollowing) => {
             // Update parent state if needed
-            console.log('Store follow state:', isFollowing);
           }}
         />
       </View>

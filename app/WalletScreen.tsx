@@ -85,9 +85,6 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
 
   useEffect(() => {
     if (walletState.data) {
-      console.log('💰 [WalletScreen] Loaded wallet data for user:', currentUserId);
-      console.log('💰 [WalletScreen] Balance:', walletState.data.totalBalance);
-      console.log('💰 [WalletScreen] Coins:', JSON.stringify(walletState.data.coins, null, 2));
     }
   }, [walletState.data, currentUserId]);
 

@@ -122,10 +122,8 @@ export default function CorporateZonePage() {
       }
 
       // Get offers - API returns { zone, offers }
-      console.log('[CORPORATE] offersResponse:', offersResponse);
       if (offersResponse.success && offersResponse.data) {
         const offersData = offersResponse.data.offers || offersResponse.data;
-        console.log('[CORPORATE] offersData:', offersData);
         setOffers(Array.isArray(offersData) ? offersData : []);
       }
     } catch (err) {

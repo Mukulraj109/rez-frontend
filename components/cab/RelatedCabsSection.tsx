@@ -15,8 +15,9 @@ interface RelatedCabsSectionProps {
 
 const RelatedCabsSection: React.FC<RelatedCabsSectionProps> = ({ currentCabId }) => {
   const router = useRouter();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const [relatedCabs, setRelatedCabs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -110,7 +111,7 @@ const RelatedCabsSection: React.FC<RelatedCabsSectionProps> = ({ currentCabId })
                 </View>
                 <View style={styles.priceRow}>
                   <Text style={styles.price}>
-                    {cab.price && cab.price < 100 ? `${currencySymbol}${price}/km` : `${currencySymbol}${price.toLocaleString('en-IN')}`}
+                    {cab.price && cab.price < 100 ? `${currencySymbol}${price}/km` : `${currencySymbol}${price.toLocaleString(locale)}`}
                   </Text>
                   {cashback > 0 && (
                     <View style={styles.cashbackBadge}>

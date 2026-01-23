@@ -51,7 +51,6 @@ export default function MainStorePage() {
               image: productData.images[0]?.uri || ''
             }}
             onAddToCart={(productIds) => {
-              console.log('Adding to cart:', productIds);
               Alert.alert('Added to Cart', `${productIds.length} items added`);
             }}
           />

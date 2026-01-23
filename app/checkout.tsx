@@ -385,7 +385,6 @@ export default function CheckoutPage() {
             compact={true}
             onOfferApplied={(offer) => {
               // Offer applied - will be handled at payment
-              console.log('Card offer applied at checkout:', offer);
             }}
           />
         )}

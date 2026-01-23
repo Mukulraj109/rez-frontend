@@ -189,7 +189,6 @@ export default function BrandDetailPage() {
   };
 
   const handlePurchaseSuccess = () => {
-    console.log('Purchase successful!');
   };
 
   const renderHeader = () => (

@@ -22,12 +22,13 @@ export default function ProductResultCard({
   onPress,
   onAddToCart,
 }: ProductResultCardProps) {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const formatPrice = (price?: number) => {
     if (!price) return 'N/A';
-    return `${currencySymbol}${price.toLocaleString('en-IN')}`;
+    return `${currencySymbol}${price.toLocaleString(locale)}`;
   };
 
   const calculateDiscount = () => {

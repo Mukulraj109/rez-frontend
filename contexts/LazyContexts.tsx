@@ -32,7 +32,6 @@ export function createLazyContext<T>(
 
     useEffect(() => {
       setIsLoaded(true);
-      console.log(`[LazyContext] ${contextName} loaded`);
     }, []);
 
     return (
@@ -139,7 +138,6 @@ export function createConditionalContext<T>(
     const shouldLoad = condition();
 
     if (!shouldLoad) {
-      console.log(`[LazyContext] ${contextName} skipped (condition not met)`);
       return <>{children}</>;
     }
 
@@ -167,15 +165,12 @@ class ContextPreloadManager {
     preloadFn: () => Promise<any>
   ): Promise<void> {
     if (this.preloadedContexts.has(contextName)) {
-      console.log(`[ContextPreload] ${contextName} already preloaded`);
       return;
     }
 
     try {
-      console.log(`[ContextPreload] Preloading ${contextName}...`);
       await preloadFn();
       this.preloadedContexts.add(contextName);
-      console.log(`[ContextPreload] ${contextName} preloaded`);
     } catch (error) {
       console.error(`[ContextPreload] Failed to preload ${contextName}:`, error);
     }
@@ -187,8 +182,6 @@ class ContextPreloadManager {
   async preloadMultiple(
     contexts: Array<{ name: string; preloadFn: () => Promise<any> }>
   ): Promise<void> {
-    console.log(`[ContextPreload] Preloading ${contexts.length} contexts...`);
-
     const unpreloaded = contexts.filter(
       ctx => !this.preloadedContexts.has(ctx.name)
     );
@@ -197,7 +190,6 @@ class ContextPreloadManager {
       await Promise.all(
         unpreloaded.map(ctx => this.preload(ctx.name, ctx.preloadFn))
       );
-      console.log('[ContextPreload] All contexts preloaded');
     } catch (error) {
       console.error('[ContextPreload] Failed to preload contexts:', error);
     }
@@ -215,7 +207,6 @@ class ContextPreloadManager {
    */
   reset(): void {
     this.preloadedContexts.clear();
-    console.log('[ContextPreload] Manager reset');
   }
 }
 
@@ -229,8 +220,6 @@ export const contextPreloadManager = new ContextPreloadManager();
  * Preload contexts based on user authentication
  */
 export async function preloadAuthenticatedContexts(): Promise<void> {
-  console.log('[ContextPreload] Preloading authenticated contexts...');
-
   await contextPreloadManager.preloadMultiple([
     {
       name: 'Socket',
@@ -251,8 +240,6 @@ export async function preloadAuthenticatedContexts(): Promise<void> {
  * Preload contexts for gaming features
  */
 export async function preloadGamingContexts(): Promise<void> {
-  console.log('[ContextPreload] Preloading gaming contexts...');
-
   await contextPreloadManager.preloadMultiple([
     {
       name: 'Gamification',
@@ -283,8 +270,6 @@ export async function preloadSocialContexts(): Promise<void> {
  * Preload contexts for subscription features
  */
 export async function preloadSubscriptionContexts(): Promise<void> {
-  console.log('[ContextPreload] Preloading subscription contexts...');
-
   await contextPreloadManager.preloadMultiple([
     {
       name: 'Subscription',

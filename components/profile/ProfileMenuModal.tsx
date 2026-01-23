@@ -341,8 +341,9 @@ export default function ProfileMenuModal({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { actions } = useAuth();
-  const { state: regionState, setRegion, getCurrencySymbol } = useRegion();
+  const { state: regionState, setRegion, getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const [showRegionPicker, setShowRegionPicker] = useState(false);
   const [showRegionConfirm, setShowRegionConfirm] = useState(false);
   const [pendingRegion, setPendingRegion] = useState<RegionId | null>(null);
@@ -513,7 +514,7 @@ export default function ProfileMenuModal({
             <Ionicons name="wallet" size={16} color={COLORS.gold} />
           </View>
           <ThemedText style={styles.statValue}>
-            {currencySymbol}{user?.wallet?.balance?.toLocaleString('en-IN') || '0'}
+            {currencySymbol}{user?.wallet?.balance?.toLocaleString(locale) || '0'}
           </ThemedText>
           <ThemedText style={styles.statLabel}>Wallet</ThemedText>
         </View>
@@ -523,7 +524,7 @@ export default function ProfileMenuModal({
             <Ionicons name="trending-up" size={16} color={COLORS.gold} />
           </View>
           <ThemedText style={styles.statValue}>
-            {currencySymbol}{user?.wallet?.totalEarned?.toLocaleString('en-IN') || '0'}
+            {currencySymbol}{user?.wallet?.totalEarned?.toLocaleString(locale) || '0'}
           </ThemedText>
           <ThemedText style={styles.statLabel}>Earned</ThemedText>
         </View>
@@ -533,7 +534,7 @@ export default function ProfileMenuModal({
             <Ionicons name="time" size={16} color={COLORS.gold} />
           </View>
           <ThemedText style={styles.statValue}>
-            {currencySymbol}{user?.wallet?.pendingAmount?.toLocaleString('en-IN') || '0'}
+            {currencySymbol}{user?.wallet?.pendingAmount?.toLocaleString(locale) || '0'}
           </ThemedText>
           <ThemedText style={styles.statLabel}>Pending</ThemedText>
         </View>

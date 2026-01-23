@@ -113,8 +113,9 @@ export default function HotelDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const [hotel, setHotel] = useState<HotelDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -221,7 +222,6 @@ export default function HotelDetailsPage() {
         images: (() => {
           // Handle different image formats from backend
           if (!productData.images || !Array.isArray(productData.images)) {
-            console.log('⚠️ [HOTEL] No images array found, using fallback');
             return ['https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop'];
           }
           
@@ -239,10 +239,7 @@ export default function HotelDetailsPage() {
               return Boolean(url && typeof url === 'string' && url.length > 0);
             });
           
-          console.log('📸 [HOTEL] Processed images:', processedImages.length, processedImages);
-          
           if (processedImages.length === 0) {
-            console.log('⚠️ [HOTEL] No valid images found, using fallback');
             return ['https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop'];
           }
           
@@ -406,11 +403,9 @@ export default function HotelDetailsPage() {
                     setImageError(true);
                   }}
                   onLoadStart={() => {
-                    console.log('🔄 [HOTEL] Loading image:', imageUrl);
                     setImageError(false);
                   }}
                   onLoad={() => {
-                    console.log('✅ [HOTEL] Image loaded successfully:', imageUrl);
                   }}
                 />
               );
@@ -538,9 +533,9 @@ export default function HotelDetailsPage() {
               <Text style={styles.priceLabel}>Starting from</Text>
               <View style={styles.priceContainer}>
                 {hotel.originalPrice && hotel.originalPrice > hotel.price && (
-                  <Text style={styles.originalPrice}>{currencySymbol}{hotel.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.originalPrice}>{currencySymbol}{hotel.originalPrice.toLocaleString(locale)}</Text>
                 )}
-                <Text style={styles.price}>{currencySymbol}{hotel.price.toLocaleString('en-IN')}</Text>
+                <Text style={styles.price}>{currencySymbol}{hotel.price.toLocaleString(locale)}</Text>
               </View>
               <Text style={styles.pricePerNight}>per night</Text>
               {hotel.discount && hotel.discount > 0 && (
@@ -558,7 +553,7 @@ export default function HotelDetailsPage() {
                   {hotel.cashback.percentage}% Cashback
                 </Text>
                 <Text style={styles.cashbackAmount}>
-                  Earn {currencySymbol}{hotel.cashback.amount.toLocaleString('en-IN')}
+                  Earn {currencySymbol}{hotel.cashback.amount.toLocaleString(locale)}
                 </Text>
               </View>
             </View>

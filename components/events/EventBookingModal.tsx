@@ -18,6 +18,7 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { EventItem } from '@/types/homepage.types';
 import { useEventBooking, BookingFormData } from '@/hooks/useEventBooking';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRegion } from '@/contexts/RegionContext';
 import eventsApiService from '@/services/eventsApi';
 import stripeApi from '@/services/stripeApi';
 import eventAnalytics from '@/services/eventAnalytics';
@@ -311,6 +312,9 @@ export default function EventBookingModal({
   const router = useRouter();
 
   const { isBooking, bookEvent, clearBookingState } = useEventBooking();
+  const { getCurrencySymbol, getCurrency } = useRegion();
+  const currencySymbol = getCurrencySymbol();
+  const currencyCode = getCurrency().toLowerCase(); // For Stripe (e.g., 'inr', 'aed')
 
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -433,14 +437,9 @@ export default function EventBookingModal({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const handleBookingSubmit = async () => {
-    console.log('📝 [BOOKING MODAL] handleBookingSubmit called');
     if (!event) {
-      console.log('❌ [BOOKING MODAL] No event provided');
       return;
     }
-
-    console.log('📝 [BOOKING MODAL] Event:', event.id, event.title);
-    console.log('📝 [BOOKING MODAL] Form data:', JSON.stringify(formData));
 
     // Mark all fields as touched
     setTouched({
@@ -488,20 +487,15 @@ export default function EventBookingModal({
 
     // If event is free, book directly
     if (event.price.isFree) {
-      console.log('🎫 [BOOKING MODAL] Calling bookEvent for FREE event:', event.id);
       const bookingId = await bookEvent(event, finalFormData);
-      console.log('🎫 [BOOKING MODAL] bookEvent result:', bookingId);
       if (bookingId) {
-        console.log('✅ [BOOKING MODAL] Booking successful, closing modal');
         // Track booking completion
         eventAnalytics.trackBookingComplete(event.id, bookingId, selectedSlot || undefined, 'booking_modal');
         onBookingSuccess?.(bookingId);
         onClose();
       } else {
-        console.log('❌ [BOOKING MODAL] Booking failed (bookingId is null)');
         // Alert should have been shown by useEventBooking, but add backup
         if (typeof window !== 'undefined') {
-          console.error('Booking failed - check console for details');
         }
       }
       return;
@@ -577,7 +571,7 @@ export default function EventBookingModal({
             id: paymentData.paymentIntentId || '',
             clientSecret: paymentData.clientSecret,
             amount: event.price.amount * 100, // Convert to cents
-            currency: 'inr',
+            currency: event.price.currency?.toLowerCase() || currencyCode,
             status: 'requires_payment_method',
             paymentMethodTypes: ['card'],
           },
@@ -599,9 +593,7 @@ export default function EventBookingModal({
         // Immediately confirm booking after payment succeeds
         try {
           await eventsApiService.confirmBooking(bookingId, paymentIntentId);
-          console.log('✅ [EVENT BOOKING] Booking confirmed after payment');
         } catch (confirmError) {
-          console.warn('⚠️ [EVENT BOOKING] Failed to confirm booking immediately, webhook will handle it:', confirmError);
           // Continue anyway - webhook will handle it as backup
         }
 
@@ -901,9 +893,7 @@ export default function EventBookingModal({
                     // Immediately confirm booking after payment succeeds
                     try {
                       await eventsApiService.confirmBooking(bookingId, paymentIntentId);
-                      console.log('✅ [EVENT BOOKING] Booking confirmed after payment');
                     } catch (confirmError) {
-                      console.warn('⚠️ [EVENT BOOKING] Failed to confirm booking immediately, webhook will handle it:', confirmError);
                       // Continue anyway - webhook will handle it as backup
                     }
                     

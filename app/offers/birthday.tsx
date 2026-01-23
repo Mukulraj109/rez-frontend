@@ -96,7 +96,6 @@ export default function BirthdayRewardsPage() {
 
   const handleClaimGift = (deal: BirthdayDeal) => {
     // TODO: Implement claim functionality
-    console.log('Claim gift:', deal.id);
   };
 
   const renderGiftCard = (deal: BirthdayDeal) => (

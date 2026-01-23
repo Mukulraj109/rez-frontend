@@ -112,8 +112,9 @@ export default function CabDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const [cab, setCab] = useState<CabDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -531,10 +532,10 @@ export default function CabDetailsPage() {
                 <Text style={styles.priceLabel}>Price</Text>
                 <View style={styles.priceValueContainer}>
                   <Text style={styles.priceValue}>
-                    {cab.pricePerKm ? `${currencySymbol}${cab.pricePerKm}/km` : `${currencySymbol}${cab.price.toLocaleString('en-IN')}`}
+                    {cab.pricePerKm ? `${currencySymbol}${cab.pricePerKm}/km` : `${currencySymbol}${cab.price.toLocaleString(locale)}`}
                   </Text>
                   {cab.originalPrice && cab.originalPrice > cab.price && (
-                    <Text style={styles.originalPrice}>{currencySymbol}{cab.originalPrice.toLocaleString('en-IN')}</Text>
+                    <Text style={styles.originalPrice}>{currencySymbol}{cab.originalPrice.toLocaleString(locale)}</Text>
                   )}
                 </View>
               </View>
@@ -646,10 +647,10 @@ export default function CabDetailsPage() {
               <Text style={styles.priceInfoLabel}>Total Price</Text>
               <View style={styles.priceInfoValueContainer}>
                 <Text style={styles.priceInfoValue}>
-                  {cab.pricePerKm ? `${currencySymbol}${cab.pricePerKm}/km` : `${currencySymbol}${cab.price.toLocaleString('en-IN')}`}
+                  {cab.pricePerKm ? `${currencySymbol}${cab.pricePerKm}/km` : `${currencySymbol}${cab.price.toLocaleString(locale)}`}
                 </Text>
                 {cab.originalPrice && cab.originalPrice > cab.price && (
-                  <Text style={styles.priceInfoOriginal}>{currencySymbol}{cab.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.priceInfoOriginal}>{currencySymbol}{cab.originalPrice.toLocaleString(locale)}</Text>
                 )}
               </View>
             </View>

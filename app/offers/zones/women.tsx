@@ -116,10 +116,8 @@ export default function WomenZonePage() {
       }
 
       // Get offers - API returns { zone, offers }
-      console.log('[WOMEN] offersResponse:', offersResponse);
       if (offersResponse.success && offersResponse.data) {
         const offersData = offersResponse.data.offers || offersResponse.data;
-        console.log('[WOMEN] offersData:', offersData);
         setOffers(Array.isArray(offersData) ? offersData : []);
       }
     } catch (err) {

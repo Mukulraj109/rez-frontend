@@ -88,7 +88,6 @@ export const FrequentlyBoughtTogether: React.FC<FrequentlyBoughtTogetherProps> =
    */
   const handleAddToCart = () => {
     const selectedIds = Array.from(selectedProducts);
-    console.log('🛒 [FrequentlyBoughtTogether] Adding to cart:', selectedIds);
 
     if (onAddToCart) {
       onAddToCart(selectedIds);

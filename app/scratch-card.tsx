@@ -105,7 +105,6 @@ export default function ScratchCardPage() {
         refreshProfile();
         checkEligibility();
       } else {
-        console.log('[SCRATCH-CARD] User not authenticated, redirecting...');
         router.replace({
           pathname: '/sign-in',
           params: { returnTo: '/scratch-card' },

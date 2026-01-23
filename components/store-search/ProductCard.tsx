@@ -28,8 +28,9 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
   showStore = false,
   size = 'medium',
 }) => {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const [imageError, setImageError] = useState(false);
   const screenWidth = Dimensions.get('window').width;
 
@@ -135,11 +136,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
           <View style={styles.priceContainer}>
             <View style={styles.priceRow}>
               <ThemedText style={styles.currentPrice}>
-                {currencySymbol}{product.price.toLocaleString('en-IN')}
+                {currencySymbol}{product.price.toLocaleString(locale)}
               </ThemedText>
               {product.originalPrice && product.originalPrice > product.price && (
                 <ThemedText style={styles.originalPrice}>
-                  {currencySymbol}{product.originalPrice.toLocaleString('en-IN')}
+                  {currencySymbol}{product.originalPrice.toLocaleString(locale)}
                 </ThemedText>
               )}
             </View>

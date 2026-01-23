@@ -76,7 +76,8 @@ export const LockProductSection: React.FC<LockProductSectionProps> = ({
   onLockSuccess,
   style,
 }) => {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
+  const locale = getLocale();
   const currencySymbol = currency || getCurrencySymbol();
   const { state: authState } = useAuth();
   const { walletState, refreshWallet } = useWallet({
@@ -223,7 +224,7 @@ export const LockProductSection: React.FC<LockProductSectionProps> = ({
                 <>
                   <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
                   <Text style={styles.lockButtonText}>
-                    Lock Product for {currencySymbol}{lockFee.toLocaleString('en-IN')}
+                    Lock Product for {currencySymbol}{lockFee.toLocaleString(locale)}
                   </Text>
                 </>
               )}

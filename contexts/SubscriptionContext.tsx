@@ -147,7 +147,6 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
   // Load subscription data
   const loadSubscription = async (forceRefresh = false) => {
     if (!authState.isAuthenticated || !state.featureFlags.ENABLE_SUBSCRIPTIONS) {
-      console.log('[SUBSCRIPTION] Skipping load: not authenticated or subscriptions disabled');
       return;
     }
 
@@ -171,7 +170,6 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
         console.error('[SUBSCRIPTION] Still no auth token after waiting, skipping load');
         return;
       }
-      console.log('[SUBSCRIPTION] Token is now available, proceeding');
     }
 
     const STORAGE_KEYS = getStorageKeys(userId);

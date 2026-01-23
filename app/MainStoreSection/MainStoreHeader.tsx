@@ -74,7 +74,6 @@ export default function MainStoreHeader({
         title: storeName,
       });
     } catch (error) {
-      console.log('Error sharing:', error);
     }
   };
 

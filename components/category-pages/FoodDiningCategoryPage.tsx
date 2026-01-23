@@ -265,7 +265,6 @@ export default function FoodDiningCategoryPage() {
             counts[storeId] = (counts[storeId] || 0) + 1;
           });
           setVisitCounts(counts);
-          console.log('✅ [FOOD DINING] Loaded visit counts:', counts);
         }
       } catch (error) {
         console.error('❌ [FOOD DINING] Error fetching user visits:', error);
@@ -315,7 +314,6 @@ export default function FoodDiningCategoryPage() {
           setRecentOrders(ordersRes.data.orders);
         }
       } catch (err) {
-        console.log('Loyalty data fetch error:', err);
       }
     };
     fetchLoyaltyData();
@@ -330,7 +328,6 @@ export default function FoodDiningCategoryPage() {
           setMyOrders(res.data.orders);
         }
       } catch (err) {
-        console.log('Error fetching my orders:', err);
       }
     };
     fetchMyOrders();

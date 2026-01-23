@@ -99,7 +99,6 @@ class GlobalErrorBoundary extends Component<Props, State> {
 
   handleReportIssue = () => {
     // TODO: Implement issue reporting
-    console.log('Report issue:', this.state.error);
   };
 
   render() {

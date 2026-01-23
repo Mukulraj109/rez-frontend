@@ -47,13 +47,15 @@ const EventGridCard: React.FC<EventGridCardProps> = ({ event, onPress }) => {
     }
   }, [event.date]);
 
-  // Format price
+  // Format price - for online events, use regional currency
   const priceDisplay = useMemo(() => {
     if (event.price?.isFree) {
       return 'Free';
     }
-    return `${event.price?.currency || currencySymbol}${event.price?.amount || 0}`;
-  }, [event.price]);
+    const isOnline = (event as any).isOnline || (event.location as any)?.isOnline;
+    const displayCurrency = isOnline ? currencySymbol : (event.price?.currency || currencySymbol);
+    return `${displayCurrency}${event.price?.amount || 0}`;
+  }, [event.price, event.location, currencySymbol]);
 
   const isFree = event.price?.isFree;
 

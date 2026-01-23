@@ -10,6 +10,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useOffersTheme } from '@/contexts/OffersThemeContext';
+import { useRegion } from '@/contexts/RegionContext';
 import { SectionHeader, HorizontalScrollSection } from '../common';
 import { FriendRedeemedOffer } from '@/types/offers.types';
 import { Spacing, BorderRadius, Shadows, Colors } from '@/constants/DesignSystem';
@@ -25,6 +26,8 @@ export const FriendsRedeemedSection: React.FC<FriendsRedeemedSectionProps> = ({
 }) => {
   const router = useRouter();
   const { theme, isDark } = useOffersTheme();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   if (offers.length === 0) return null;
 
@@ -200,7 +203,7 @@ export const FriendsRedeemedSection: React.FC<FriendsRedeemedSectionProps> = ({
                 <View style={styles.savingsBadge}>
                   <Ionicons name="checkmark-circle" size={12} color="#059669" />
                   <Text style={styles.savingsText}>
-                    Rs.{item.offer.savings.toFixed(0)} saved
+                    {currencySymbol}{item.offer.savings.toFixed(0)} saved
                   </Text>
                 </View>
                 {item.offer.cashbackPercentage > 0 && (

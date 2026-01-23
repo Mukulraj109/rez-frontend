@@ -22,8 +22,10 @@ import {
 
 /**
  * Transform raw product data from API to ProductItem
+ * @param raw - Raw product data from API
+ * @param currencySymbol - Currency symbol to use (default: ₹)
  */
-export function transformProduct(raw: RawProductData): ProductItem {
+export function transformProduct(raw: RawProductData, currencySymbol: string = '₹'): ProductItem {
   return {
     id: raw._id,
     type: 'product',
@@ -35,7 +37,7 @@ export function transformProduct(raw: RawProductData): ProductItem {
     price: {
       current: raw.price,
       original: raw.originalPrice || raw.price,
-      currency: '₹',
+      currency: currencySymbol,
       discount: raw.discount || calculateDiscount(raw.price, raw.originalPrice),
     },
     category: raw.category,

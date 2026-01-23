@@ -107,7 +107,6 @@ export default function LazyGameLoader({
  */
 export const preloadGame = (gamePath: GameType) => {
   if (!componentCache.has(gamePath)) {
-    console.log(`🚀 [LAZY] Preloading game: ${gamePath}`);
     const lazyComponent = lazy(GAME_PATHS[gamePath]);
     componentCache.set(gamePath, lazyComponent);
 
@@ -123,7 +122,6 @@ export const preloadGame = (gamePath: GameType) => {
  * Call this on app startup or when user is likely to play games
  */
 export const preloadAllGames = () => {
-  console.log('🚀 [LAZY] Preloading all games...');
   Object.keys(GAME_PATHS).forEach(game => {
     preloadGame(game as GameType);
   });
@@ -135,7 +133,6 @@ export const preloadAllGames = () => {
  */
 export const clearGameCache = () => {
   componentCache.clear();
-  console.log('🧹 [LAZY] Game cache cleared');
 };
 
 /**

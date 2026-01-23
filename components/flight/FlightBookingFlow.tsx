@@ -82,8 +82,9 @@ const FlightBookingFlow: React.FC<FlightBookingFlowProps> = ({
   onComplete,
   onClose,
 }) => {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -380,7 +381,7 @@ const FlightBookingFlow: React.FC<FlightBookingFlowProps> = ({
         >
           <Ionicons name="calendar-outline" size={20} color="#6B7280" />
           <Text style={styles.dateText}>
-            {departureDate.toLocaleDateString('en-IN', {
+            {departureDate.toLocaleDateString(locale, {
               weekday: 'short',
               day: 'numeric',
               month: 'short',
@@ -413,7 +414,7 @@ const FlightBookingFlow: React.FC<FlightBookingFlowProps> = ({
           >
             <Ionicons name="calendar-outline" size={20} color="#6B7280" />
             <Text style={styles.dateText}>
-              {returnDate.toLocaleDateString('en-IN', {
+              {returnDate.toLocaleDateString(locale, {
                 weekday: 'short',
                 day: 'numeric',
                 month: 'short',

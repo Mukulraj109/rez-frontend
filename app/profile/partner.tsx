@@ -202,7 +202,7 @@ export default function PartnerProfilePage() {
 
   const handleCompleteTask = (taskId: string) => {
     Alert.alert('Task Started!', 'Keep completing this task to earn your reward.', [
-      { text: 'OK', onPress: () => console.log('Task started:', taskId) }
+      { text: 'OK', onPress: () => {} }
     ]);
   };
 

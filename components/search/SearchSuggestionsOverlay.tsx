@@ -50,8 +50,9 @@ export default function SearchSuggestionsOverlay({
   onClose,
   topOffset = 0,
 }: SearchSuggestionsOverlayProps) {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteResult | null>(null);
   const [recentSearches, setRecentSearches] = useState<Array<{ id: string; query: string }>>([]);
   const [trendingSearches, setTrendingSearches] = useState<TrendingSearch[]>([]);
@@ -256,7 +257,7 @@ export default function SearchSuggestionsOverlay({
                           <Text style={styles.productStore}>{product.store.name}</Text>
                         </View>
                         <Text style={styles.productPrice}>
-                          {currencySymbol}{product.price.toLocaleString('en-IN')}
+                          {currencySymbol}{product.price.toLocaleString(locale)}
                         </Text>
                       </TouchableOpacity>
                     ))}

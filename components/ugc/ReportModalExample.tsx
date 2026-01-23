@@ -20,7 +20,6 @@ export default function ReportModalExample() {
   const videoTitle = 'Amazing Product Review';
 
   const handleReportSuccess = () => {
-    console.log('Report submitted successfully');
     // You can show a toast notification here
     // Example: Toast.show('Report submitted. Thank you for keeping our community safe.');
   };

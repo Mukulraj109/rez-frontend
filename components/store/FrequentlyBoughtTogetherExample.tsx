@@ -34,7 +34,6 @@ export function ProductDetailPageExample() {
   };
 
   const handleBundleAdded = () => {
-    console.log('Bundle products added to cart!');
     // Optional: Navigate to cart, show confirmation, etc.
   };
 
@@ -85,7 +84,6 @@ export function MainStorePageExample() {
         currentProduct={storeProduct}
         onBundleAdded={() => {
           // Track analytics
-          console.log('Bundle added from store page');
         }}
       />
 
@@ -152,7 +150,6 @@ export function DynamicProductExample() {
           currentProduct={currentProduct}
           onBundleAdded={() => {
             // Optional callback
-            console.log('Bundle added!');
           }}
         />
       )}
@@ -195,7 +192,6 @@ export function CartRecommendationsExample() {
           <FrequentlyBoughtTogether
             currentProduct={cartItems[0]}
             onBundleAdded={() => {
-              console.log('Added bundle from cart page');
             }}
           />
         </View>
@@ -258,7 +254,6 @@ export function MultipleBundlesExample() {
           <FrequentlyBoughtTogether
             currentProduct={product}
             onBundleAdded={() => {
-              console.log(`Bundle added for ${product.name}`);
             }}
           />
         </View>

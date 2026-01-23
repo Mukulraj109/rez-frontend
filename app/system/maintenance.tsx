@@ -72,7 +72,6 @@ export default function MaintenancePage() {
         router.replace('/');
       }
     } catch (error) {
-      console.log('Still under maintenance');
     } finally {
       setIsRetrying(false);
     }

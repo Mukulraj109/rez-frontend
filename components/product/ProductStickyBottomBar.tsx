@@ -48,7 +48,8 @@ export const ProductStickyBottomBar: React.FC<ProductStickyBottomBarProps> = ({
   onAddToCart,
   visible = true,
 }) => {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
+  const locale = getLocale();
   const currencySymbol = currency || getCurrencySymbol();
   const insets = useSafeAreaInsets();
 
@@ -66,16 +67,16 @@ export const ProductStickyBottomBar: React.FC<ProductStickyBottomBarProps> = ({
       <View style={styles.priceSection}>
         <View style={styles.priceRow}>
           <Text style={styles.currentPrice}>
-            {currencySymbol}{price.toLocaleString('en-IN')}
+            {currencySymbol}{price.toLocaleString(locale)}
           </Text>
           {originalPrice && originalPrice > price && (
             <Text style={styles.originalPrice}>
-              {currencySymbol}{originalPrice.toLocaleString('en-IN')}
+              {currencySymbol}{originalPrice.toLocaleString(locale)}
             </Text>
           )}
         </View>
         <Text style={styles.lockFeeText}>
-          Lock for just {currencySymbol}{lockFee.toLocaleString('en-IN')}
+          Lock for just {currencySymbol}{lockFee.toLocaleString(locale)}
         </Text>
       </View>
 

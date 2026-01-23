@@ -78,8 +78,6 @@ export default function EarnFromSocialMediaPage() {
   // Fetch completed orders and existing social media submissions
   const fetchCompletedOrders = useCallback(async () => {
     try {
-      console.log('📦 [EARN SOCIAL] Fetching completed orders and submissions...');
-
       // Fetch both orders and existing social media posts in parallel
       const [ordersResponse, postsResponse] = await Promise.all([
         ordersService.getOrders({ status: 'delivered' }),
@@ -92,7 +90,6 @@ export default function EarnFromSocialMediaPage() {
           (order) => order.status === 'delivered'
         );
         setOrders(deliveredOrders);
-        console.log(`✅ [EARN SOCIAL] Fetched ${deliveredOrders.length} delivered orders`);
       } else {
         console.warn('⚠️ [EARN SOCIAL] No orders found');
         setOrders([]);
@@ -109,7 +106,6 @@ export default function EarnFromSocialMediaPage() {
             };
           }
         });
-        console.log(`✅ [EARN SOCIAL] Found ${Object.keys(submissionsMap).length} existing submissions`);
       }
       setOrderSubmissions(submissionsMap);
 
@@ -158,40 +154,27 @@ export default function EarnFromSocialMediaPage() {
 
   // Handle URL submission
   const handleSubmitUrl = async () => {
-    console.log('========================================');
-    console.log('📤 [EARN SOCIAL] SUBMIT URL START');
-    console.log('========================================');
-    console.log('📤 [EARN SOCIAL] URL:', urlInput);
-    console.log('📤 [EARN SOCIAL] Selected Order:', selectedOrder?.orderId);
-
     if (!urlInput.trim()) {
-      console.log('❌ [EARN SOCIAL] Empty URL');
       showAlert('Error', 'Please enter an Instagram post URL', undefined, 'error');
       return;
     }
 
     if (!selectedOrder?.orderId) {
-      console.log('❌ [EARN SOCIAL] No order selected');
       showAlert('Error', 'Please select an order first', undefined, 'error');
       return;
     }
 
     try {
-      console.log('📤 [EARN SOCIAL] Importing validators...');
       const { validators } = await import('@/services/socialMediaApi');
-      console.log('📤 [EARN SOCIAL] Validators imported:', !!validators);
 
       // Validate URL format
       const validation = validators.validatePostUrl('instagram', urlInput.trim());
-      console.log('📤 [EARN SOCIAL] Validation result:', validation);
 
       if (!validation.isValid) {
-        console.log('❌ [EARN SOCIAL] Invalid URL:', validation.error);
         showAlert('Invalid URL', validation.error || 'Please enter a valid Instagram post URL', undefined, 'error');
         return;
       }
 
-      console.log('✅ [EARN SOCIAL] URL valid, proceeding to upload...');
       setSubmitting(true);
       setCurrentStep('uploading');
       setUploadProgress(0);
@@ -208,7 +191,6 @@ export default function EarnFromSocialMediaPage() {
       }, 300);
 
       // IMPORTANT: Submit directly with the correct orderId
-      console.log('📤 [EARN SOCIAL] Calling socialMediaApi.submitPost with orderId:', selectedOrder.orderId);
       const response = await socialMediaApi.submitPost({
         platform: 'instagram',
         postUrl: urlInput.trim(),
@@ -218,11 +200,8 @@ export default function EarnFromSocialMediaPage() {
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      console.log('✅ [EARN SOCIAL] Post submitted successfully:', JSON.stringify(response, null, 2));
-
       // Update local state to reflect the new submission (with defensive checks)
       const postId = response?.post?.id || response?.id || 'unknown';
-      console.log('📤 [EARN SOCIAL] Extracted postId:', postId);
 
       setOrderSubmissions(prev => ({
         ...prev,

@@ -40,98 +40,194 @@ const COLORS = {
   cyan500: '#06B6D4',
 };
 
-// Fallback dummy data
-const FALLBACK_DEAL_CATEGORIES: DealCategory[] = [
-  {
-    id: 'super-cashback',
-    title: 'Super Cashback Weekend',
-    subtitle: 'Up to 50% cashback',
-    badge: '50%',
-    gradientColors: ['rgba(16, 185, 129, 0.2)', 'rgba(20, 184, 166, 0.1)'],
-    badgeBg: COLORS.white,
-    badgeColor: COLORS.navy,
-    deals: [
-      { store: 'Electronics Hub', cashback: '40%', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=300' },
-      { store: 'Fashion Central', cashback: '50%', image: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=300' },
-      { store: 'Home Decor', cashback: '35%', image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=300' },
-    ],
-  },
-  {
-    id: 'triple-coin-day',
-    title: 'Triple Coin Day',
-    subtitle: '3X coins on all spends',
-    badge: '3X',
-    gradientColors: ['rgba(245, 158, 11, 0.2)', 'rgba(249, 115, 22, 0.1)'],
-    badgeBg: COLORS.white,
-    badgeColor: COLORS.navy,
-    deals: [
-      { store: 'Grocery Mart', coins: '3000', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300' },
-      { store: 'Beauty Palace', coins: '2500', image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300' },
-      { store: 'Fitness Zone', coins: '1800', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300' },
-    ],
-  },
-  {
-    id: 'mega-bank-offers',
-    title: 'Mega Bank Offers',
-    subtitle: 'HDFC, ICICI, SBI, Axis',
-    badge: 'BANKS',
-    gradientColors: ['rgba(59, 130, 246, 0.2)', 'rgba(99, 102, 241, 0.1)'],
-    badgeBg: COLORS.navy,
-    badgeColor: COLORS.white,
-    deals: [
-      { store: 'HDFC Exclusive', cashback: '5000 off', image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=300' },
-      { store: 'ICICI Bonanza', cashback: '3000 off', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=300' },
-      { store: 'SBI Specials', cashback: '20% cashback', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300' },
-    ],
-  },
-  {
-    id: 'upload-bill-bonanza',
-    title: 'Upload Bill Bonanza',
-    subtitle: 'Extra 100 on every bill',
-    badge: '+100',
-    gradientColors: ['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.1)'],
-    badgeBg: COLORS.white,
-    badgeColor: COLORS.purple500,
-    deals: [
-      { store: 'Any Restaurant', bonus: '+100 coins', image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300' },
-      { store: 'Any Salon', bonus: '+150 coins', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300' },
-      { store: 'Any Store', bonus: '+100 coins', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300' },
-    ],
-  },
-  {
-    id: 'flash-coin-drops',
-    title: 'Flash Coin Drops',
-    subtitle: 'Limited time only',
-    badge: 'LIVE',
-    gradientColors: ['rgba(239, 68, 68, 0.2)', 'rgba(249, 115, 22, 0.1)'],
-    badgeBg: COLORS.white,
-    badgeColor: COLORS.pink500,
-    deals: [
-      { store: 'Nike Store', drop: '500 coins', endsIn: '2h', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300' },
-      { store: 'Starbucks', drop: '300 coins', endsIn: '4h', image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=300' },
-      { store: 'Zara', drop: '400 coins', endsIn: '6h', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=300' },
-    ],
-  },
-  {
-    id: 'new-user-bonanza',
-    title: 'New User Bonanza',
-    subtitle: 'First purchase rewards',
-    badge: 'NEW',
-    gradientColors: ['rgba(34, 197, 94, 0.2)', 'rgba(16, 185, 129, 0.1)'],
-    badgeBg: COLORS.cyan500,
-    badgeColor: COLORS.white,
-    deals: [
-      { store: 'First Order', bonus: '500 off', image: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300' },
-      { store: 'First Visit', bonus: '1000 coins', image: 'https://images.unsplash.com/photo-1555529902-5261145633bf?w=300' },
-      { store: 'Sign Up Bonus', bonus: '300 cashback', image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=300' },
-    ],
-  },
-];
+// Region-specific fallback data
+const FALLBACK_DEAL_CATEGORIES_BY_REGION: Record<string, DealCategory[]> = {
+  bangalore: [
+    {
+      id: 'super-cashback',
+      title: 'Super Cashback Weekend',
+      subtitle: 'Up to 50% cashback',
+      badge: '50%',
+      gradientColors: ['rgba(16, 185, 129, 0.2)', 'rgba(20, 184, 166, 0.1)'],
+      badgeBg: COLORS.white,
+      badgeColor: COLORS.navy,
+      deals: [
+        { store: 'Electronics Hub', cashback: '40%', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=300' },
+        { store: 'Fashion Central', cashback: '50%', image: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=300' },
+        { store: 'Home Decor', cashback: '35%', image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=300' },
+      ],
+    },
+    {
+      id: 'triple-coin-day',
+      title: 'Triple Coin Day',
+      subtitle: '3X coins on all spends',
+      badge: '3X',
+      gradientColors: ['rgba(245, 158, 11, 0.2)', 'rgba(249, 115, 22, 0.1)'],
+      badgeBg: COLORS.white,
+      badgeColor: COLORS.navy,
+      deals: [
+        { store: 'Grocery Mart', coins: '3000', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300' },
+        { store: 'Beauty Palace', coins: '2500', image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300' },
+        { store: 'Fitness Zone', coins: '1800', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300' },
+      ],
+    },
+    {
+      id: 'mega-bank-offers',
+      title: 'Mega Bank Offers',
+      subtitle: 'HDFC, ICICI, SBI, Axis',
+      badge: 'BANKS',
+      gradientColors: ['rgba(59, 130, 246, 0.2)', 'rgba(99, 102, 241, 0.1)'],
+      badgeBg: COLORS.navy,
+      badgeColor: COLORS.white,
+      deals: [
+        { store: 'HDFC Exclusive', cashback: '₹5000 off', image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=300' },
+        { store: 'ICICI Bonanza', cashback: '₹3000 off', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=300' },
+        { store: 'SBI Specials', cashback: '20% cashback', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300' },
+      ],
+    },
+    {
+      id: 'upload-bill-bonanza',
+      title: 'Upload Bill Bonanza',
+      subtitle: 'Extra 100 on every bill',
+      badge: '+100',
+      gradientColors: ['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.1)'],
+      badgeBg: COLORS.white,
+      badgeColor: COLORS.purple500,
+      deals: [
+        { store: 'Any Restaurant', bonus: '+100 coins', image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300' },
+        { store: 'Any Salon', bonus: '+150 coins', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300' },
+        { store: 'Any Store', bonus: '+100 coins', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300' },
+      ],
+    },
+    {
+      id: 'flash-coin-drops',
+      title: 'Flash Coin Drops',
+      subtitle: 'Limited time only',
+      badge: 'LIVE',
+      gradientColors: ['rgba(239, 68, 68, 0.2)', 'rgba(249, 115, 22, 0.1)'],
+      badgeBg: COLORS.white,
+      badgeColor: COLORS.pink500,
+      deals: [
+        { store: 'Nike Store', drop: '500 coins', endsIn: '2h', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300' },
+        { store: 'Starbucks', drop: '300 coins', endsIn: '4h', image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=300' },
+        { store: 'Zara', drop: '400 coins', endsIn: '6h', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=300' },
+      ],
+    },
+    {
+      id: 'new-user-bonanza',
+      title: 'New User Bonanza',
+      subtitle: 'First purchase rewards',
+      badge: 'NEW',
+      gradientColors: ['rgba(34, 197, 94, 0.2)', 'rgba(16, 185, 129, 0.1)'],
+      badgeBg: COLORS.cyan500,
+      badgeColor: COLORS.white,
+      deals: [
+        { store: 'First Order', bonus: '₹500 off', image: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300' },
+        { store: 'First Visit', bonus: '1000 coins', image: 'https://images.unsplash.com/photo-1555529902-5261145633bf?w=300' },
+        { store: 'Sign Up Bonus', bonus: '₹300 cashback', image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=300' },
+      ],
+    },
+  ],
+  dubai: [
+    {
+      id: 'super-cashback',
+      title: 'Super Cashback Weekend',
+      subtitle: 'Up to 50% cashback',
+      badge: '50%',
+      gradientColors: ['rgba(16, 185, 129, 0.2)', 'rgba(20, 184, 166, 0.1)'],
+      badgeBg: COLORS.white,
+      badgeColor: COLORS.navy,
+      deals: [
+        { store: 'Sharaf DG', cashback: '40%', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=300' },
+        { store: 'Dubai Mall Fashion', cashback: '50%', image: 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=300' },
+        { store: 'Home Centre', cashback: '35%', image: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=300' },
+      ],
+    },
+    {
+      id: 'triple-coin-day',
+      title: 'Triple Coin Day',
+      subtitle: '3X coins on all spends',
+      badge: '3X',
+      gradientColors: ['rgba(245, 158, 11, 0.2)', 'rgba(249, 115, 22, 0.1)'],
+      badgeBg: COLORS.white,
+      badgeColor: COLORS.navy,
+      deals: [
+        { store: 'Carrefour', coins: '3000', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300' },
+        { store: 'Sephora', coins: '2500', image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300' },
+        { store: 'Fitness First', coins: '1800', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300' },
+      ],
+    },
+    {
+      id: 'mega-bank-offers',
+      title: 'Mega Bank Offers',
+      subtitle: 'Emirates NBD, FAB, Mashreq',
+      badge: 'BANKS',
+      gradientColors: ['rgba(59, 130, 246, 0.2)', 'rgba(99, 102, 241, 0.1)'],
+      badgeBg: COLORS.navy,
+      badgeColor: COLORS.white,
+      deals: [
+        { store: 'Emirates NBD', cashback: 'AED 500 off', image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=300' },
+        { store: 'FAB Rewards', cashback: 'AED 300 off', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=300' },
+        { store: 'Mashreq Specials', cashback: '20% cashback', image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300' },
+      ],
+    },
+    {
+      id: 'upload-bill-bonanza',
+      title: 'Upload Bill Bonanza',
+      subtitle: 'Extra 100 on every bill',
+      badge: '+100',
+      gradientColors: ['rgba(139, 92, 246, 0.2)', 'rgba(236, 72, 153, 0.1)'],
+      badgeBg: COLORS.white,
+      badgeColor: COLORS.purple500,
+      deals: [
+        { store: 'Any Restaurant', bonus: '+100 coins', image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300' },
+        { store: 'Any Salon', bonus: '+150 coins', image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=300' },
+        { store: 'Any Store', bonus: '+100 coins', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=300' },
+      ],
+    },
+    {
+      id: 'flash-coin-drops',
+      title: 'Flash Coin Drops',
+      subtitle: 'Limited time only',
+      badge: 'LIVE',
+      gradientColors: ['rgba(239, 68, 68, 0.2)', 'rgba(249, 115, 22, 0.1)'],
+      badgeBg: COLORS.white,
+      badgeColor: COLORS.pink500,
+      deals: [
+        { store: 'Nike Dubai', drop: '500 coins', endsIn: '2h', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300' },
+        { store: 'Starbucks', drop: '300 coins', endsIn: '4h', image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=300' },
+        { store: 'Zara', drop: '400 coins', endsIn: '6h', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=300' },
+      ],
+    },
+    {
+      id: 'new-user-bonanza',
+      title: 'New User Bonanza',
+      subtitle: 'First purchase rewards',
+      badge: 'NEW',
+      gradientColors: ['rgba(34, 197, 94, 0.2)', 'rgba(16, 185, 129, 0.1)'],
+      badgeBg: COLORS.cyan500,
+      badgeColor: COLORS.white,
+      deals: [
+        { store: 'First Order', bonus: 'AED 50 off', image: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=300' },
+        { store: 'First Visit', bonus: '1000 coins', image: 'https://images.unsplash.com/photo-1555529902-5261145633bf?w=300' },
+        { store: 'Sign Up Bonus', bonus: 'AED 30 cashback', image: 'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=300' },
+      ],
+    },
+  ],
+};
+
+// Default fallback for unknown regions
+const DEFAULT_FALLBACK_CATEGORIES = FALLBACK_DEAL_CATEGORIES_BY_REGION.bangalore;
 
 const ExcitingDealsSection: React.FC = () => {
   const router = useRouter();
+  const { currentRegion, getCurrencySymbol } = useRegion();
   const [isLoading, setIsLoading] = useState(true);
-  const [dealCategories, setDealCategories] = useState<DealCategory[]>(FALLBACK_DEAL_CATEGORIES);
+  const currencySymbol = getCurrencySymbol();
+
+  // Get region-specific fallback data
+  const regionFallback = FALLBACK_DEAL_CATEGORIES_BY_REGION[currentRegion] || DEFAULT_FALLBACK_CATEGORIES;
+  const [dealCategories, setDealCategories] = useState<DealCategory[]>(regionFallback);
 
   useEffect(() => {
     const fetchDeals = async () => {
@@ -142,29 +238,29 @@ const ExcitingDealsSection: React.FC = () => {
         if (response.success && response.data && response.data.dealCategories.length > 0) {
           // Use API data as source of truth
           const apiCategories = response.data.dealCategories;
-          
+
           // Remove duplicates by ID first (in case API returns duplicates)
           const uniqueApiCategories = apiCategories.filter((cat, index, self) =>
             index === self.findIndex((c) => c.id === cat.id)
           );
-          
+
           // Merge with fallback styling only for missing properties
           const mergedCategories = uniqueApiCategories.map((cat) => {
             // Find matching fallback by ID or title (handle variations like 'super-cashback' vs 'super-cashback-weekend')
-            const fallbackMatch = FALLBACK_DEAL_CATEGORIES.find(
+            const fallbackMatch = regionFallback.find(
               (fb) => {
                 const catIdLower = cat.id?.toLowerCase() || '';
                 const fbIdLower = fb.id?.toLowerCase() || '';
                 const catTitleLower = cat.title?.toLowerCase() || '';
                 const fbTitleLower = fb.title?.toLowerCase() || '';
-                
-                return fb.id === cat.id || 
+
+                return fb.id === cat.id ||
                        catIdLower.includes(fbIdLower) ||
                        fbIdLower.includes(catIdLower) ||
                        catTitleLower === fbTitleLower;
               }
             );
-            
+
             // Use API data as base, fill in missing styling from fallback
             // Also ensure storeId is converted to string in all deals
             return {
@@ -174,13 +270,13 @@ const ExcitingDealsSection: React.FC = () => {
               badgeColor: cat.badgeColor || fallbackMatch?.badgeColor || COLORS.navy,
               deals: cat.deals?.map((deal: CampaignDeal) => ({
                 ...deal,
-                storeId: deal.storeId 
+                storeId: deal.storeId
                   ? (typeof deal.storeId === 'string' ? deal.storeId : String(deal.storeId))
                   : undefined,
               })) || [],
             };
           });
-          
+
           // Final duplicate removal by ID and title to catch any remaining duplicates
           const finalCategories = mergedCategories.filter((cat, index, self) => {
             const firstIndex = self.findIndex((c) => {
@@ -195,21 +291,23 @@ const ExcitingDealsSection: React.FC = () => {
             // Only keep the first occurrence
             return index === firstIndex;
           });
-          
-          console.log('✅ [ExcitingDealsSection] Loaded', finalCategories.length, 'unique campaigns');
-          console.log('📋 Campaign IDs:', finalCategories.map(c => `${c.id} - ${c.title}`));
+
           setDealCategories(finalCategories);
+        } else {
+          // No API data, use region-specific fallback
+          setDealCategories(regionFallback);
         }
       } catch (error) {
         console.error('❌ [ExcitingDealsSection] Error fetching deals:', error);
-        // Keep using fallback data
+        // Use region-specific fallback data on error
+        setDealCategories(regionFallback);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchDeals();
-  }, []);
+  }, [currentRegion, regionFallback]);
 
   const handleViewAll = () => {
     router.push('/deal-store' as any);
@@ -217,7 +315,6 @@ const ExcitingDealsSection: React.FC = () => {
 
   const handleDealPress = (deal: CampaignDeal, categoryId: string, dealIndex: number) => {
     // Navigate to deal detail page
-    console.log('📍 [ExcitingDeals] Navigating to deal detail:', categoryId, dealIndex);
     router.push(`/deals/${categoryId}/${dealIndex}` as any);
   };
 
@@ -226,9 +323,39 @@ const ExcitingDealsSection: React.FC = () => {
     router.push(`/deal-store?campaign=${categoryId}` as any);
   };
 
+  // Helper to format monetary values with region currency
+  const formatCurrencyValue = (value: string): string => {
+    if (!value) return value;
+
+    // If value already has a currency symbol, return as is
+    if (value.includes('₹') || value.includes('AED') || value.includes('¥') || value.includes('د.إ')) {
+      return value;
+    }
+
+    // Check if value starts with a number (e.g., "5000 off", "3000")
+    const match = value.match(/^(\d+[\d,]*\.?\d*)\s*(.*)/);
+    if (match) {
+      const number = match[1];
+      const suffix = match[2] || '';
+      return `${currencySymbol}${number}${suffix ? ' ' + suffix : ''}`;
+    }
+
+    // Check if value contains "off" or "cashback" with a number
+    const offMatch = value.match(/(\d+[\d,]*\.?\d*)\s*(off|cashback)/i);
+    if (offMatch) {
+      return value.replace(offMatch[1], `${currencySymbol}${offMatch[1]}`);
+    }
+
+    return value;
+  };
+
   const renderDealValue = (deal: CampaignDeal) => {
     if (deal.cashback) {
-      return <Text style={styles.dealCashback}>{deal.cashback}</Text>;
+      // Format cashback with currency if it's a monetary value
+      const formattedCashback = deal.cashback.includes('%')
+        ? deal.cashback
+        : formatCurrencyValue(deal.cashback);
+      return <Text style={styles.dealCashback}>{formattedCashback}</Text>;
     }
     if (deal.coins) {
       return (
@@ -239,10 +366,22 @@ const ExcitingDealsSection: React.FC = () => {
       );
     }
     if (deal.bonus) {
-      return <Text style={styles.dealBonus}>{deal.bonus}</Text>;
+      // Format bonus - could be coins or money
+      const formattedBonus = deal.bonus.toLowerCase().includes('coin')
+        ? deal.bonus
+        : formatCurrencyValue(deal.bonus);
+      return <Text style={styles.dealBonus}>{formattedBonus}</Text>;
     }
     if (deal.drop) {
+      // Drop is usually coins
       return <Text style={styles.dealDrop}>🎁 {deal.drop}</Text>;
+    }
+    if (deal.discount) {
+      // Discount could be percentage or amount
+      const formattedDiscount = deal.discount.includes('%')
+        ? deal.discount
+        : formatCurrencyValue(deal.discount);
+      return <Text style={styles.dealCashback}>{formattedDiscount}</Text>;
     }
     return null;
   };

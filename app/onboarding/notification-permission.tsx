@@ -79,7 +79,6 @@ export default function NotificationPermissionPage() {
         });
 
         // In production, send token to backend
-        console.log('Push token:', token.data);
 
         // Navigate to next screen
         router.replace('/(tabs)');

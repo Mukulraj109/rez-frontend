@@ -11,6 +11,7 @@ import { useCurrentLocation, useLocationPermission } from '@/hooks/useLocation';
 import { UserLocation } from '@/types/location.types';
 import { webLocationService } from '@/services/webLocationService';
 import { showAlert } from '@/components/common/CrossPlatformAlert';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface LocationDisplayProps {
   showCoordinates?: boolean;
@@ -49,6 +50,7 @@ export default function LocationDisplay({
 }: LocationDisplayProps) {
   const { currentLocation, isLoading, error, refreshLocation } = useCurrentLocation();
   const { permissionStatus, requestPermission } = useLocationPermission();
+  const { state: regionState } = useRegion();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Web-specific location state
@@ -308,9 +310,16 @@ export default function LocationDisplay({
   };
 
   const getLocationText = (location: UserLocation) => {
+    // In compact mode, always use the region name as the user's explicit selection
+    // This ensures that when user changes region from Bangalore to Dubai,
+    // the homepage header shows "Dubai" instead of GPS-detected location
+    if (compact && regionState.regionConfig?.name) {
+      return regionState.regionConfig.name;
+    }
+
     if (typeof location.address === 'string') {
       if (compact) {
-        // Extract only city name for compact mode
+        // Extract only city name for compact mode (fallback if no region)
         // Example: "675/A, 6th A Cross Road, Koramangala, Bengaluru - 560034, Karnataka, India"
         // We want: "Bengaluru"
         const addressParts = location.address.split(',');
@@ -417,7 +426,11 @@ export default function LocationDisplay({
     );
   }
 
+  // Get region name for fallback display
+  const regionDisplayName = regionState.regionConfig?.name || 'Select Location';
+
   // Show default location if no location is available and not loading
+  // Fallback to region name from RegionContext
   if (!effectiveLocation && !isLocationLoading && !effectiveError) {
     return (
       <TouchableOpacity
@@ -425,7 +438,7 @@ export default function LocationDisplay({
         onPress={onPress || handleRefresh}
         activeOpacity={0.7}
       >
-        <Text style={[styles.locationText, textStyle]}>Select Location</Text>
+        <Text style={[styles.locationText, textStyle]}>{regionDisplayName}</Text>
         {showRefreshButton && Platform.OS === 'web' && (
           <TouchableOpacity
             style={[styles.refreshButton, buttonStyle]}
@@ -439,19 +452,20 @@ export default function LocationDisplay({
   }
 
   if (effectiveError) {
+    // Show region name as fallback when there's an error getting GPS location
     return (
       <TouchableOpacity
         style={[styles.container, compact && styles.compactContainer, style]}
         onPress={onPress || handleRefresh}
         activeOpacity={0.7}
       >
-        <Text style={[styles.errorText, textStyle]}>Location unavailable</Text>
+        <Text style={[styles.locationText, textStyle]}>{regionDisplayName}</Text>
         {showRefreshButton && (
           <TouchableOpacity
             style={[styles.refreshButton, buttonStyle]}
             onPress={handleRefresh}
           >
-            <Text style={styles.refreshButtonText}>Retry</Text>
+            <Text style={styles.refreshButtonText}>🔄</Text>
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -459,18 +473,23 @@ export default function LocationDisplay({
   }
 
   if (!effectiveLocation) {
+    // Show region name as fallback when no location is set
     return (
-      <View style={[styles.container, compact && styles.compactContainer, style]}>
-        <Text style={[styles.noLocationText, textStyle]}>No location set</Text>
+      <TouchableOpacity
+        style={[styles.container, compact && styles.compactContainer, style]}
+        onPress={onPress || handleRefresh}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.locationText, textStyle]}>{regionDisplayName}</Text>
         {showRefreshButton && (
           <TouchableOpacity
             style={[styles.refreshButton, buttonStyle]}
             onPress={handleRefresh}
           >
-            <Text style={styles.refreshButtonText}>Get Location</Text>
+            <Text style={styles.refreshButtonText}>🔄</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </TouchableOpacity>
     );
   }
 

@@ -170,7 +170,6 @@ class GameErrorBoundary extends Component<Props, State> {
     // Example: Sentry.captureException(error, { tags: { game: gameName } });
 
     if (__DEV__) {
-      console.log('[GameErrorBoundary] Error logged:', errorLog);
     }
   };
 

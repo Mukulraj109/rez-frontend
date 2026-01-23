@@ -316,9 +316,6 @@ function StoreVisitPageInner() {
       if (response.success && response.data) {
         setCrowdLevel(response.data.crowdStatus);
         setLastUpdated(new Date());
-        console.log('✅ [STORE AVAILABILITY] Crowd level fetched:', response.data.crowdStatus);
-        console.log('   Current visitors:', response.data.currentVisitors);
-        console.log('   Recommended action:', response.data.recommendedAction);
       } else {
         console.warn('⚠️ [STORE AVAILABILITY] Failed to fetch crowd data, using default');
         // Keep default 'Medium' if API fails
@@ -337,7 +334,6 @@ function StoreVisitPageInner() {
         storeId,
         timestamp: new Date().toISOString(),
       });
-      console.log('📊 [ANALYTICS] Store Visit page view tracked - Store ID:', storeId);
     }
 
     fetchStoreDetails();
@@ -350,7 +346,6 @@ function StoreVisitPageInner() {
 
     // Start auto-refresh
     const intervalId = setInterval(() => {
-      console.log('🔄 [AUTO-REFRESH] Refreshing crowd data...');
       fetchStoreAvailability();
     }, 30000); // Refresh every 30 seconds
 
@@ -359,7 +354,6 @@ function StoreVisitPageInner() {
     // Cleanup on unmount
     return () => {
       if (refreshIntervalRef.current) {
-        console.log('🛑 [AUTO-REFRESH] Stopping auto-refresh');
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
       }
@@ -423,7 +417,6 @@ function StoreVisitPageInner() {
         crowdLevel,
         timestamp: new Date().toISOString(),
       });
-      console.log('📊 [ANALYTICS] Queue number requested - Store:', store?.name, 'Crowd Level:', crowdLevel);
 
       const response = await storeVisitApi.getQueueNumber({
         storeId: storeId as string,
@@ -445,7 +438,6 @@ function StoreVisitPageInner() {
           timestamp: new Date().toISOString(),
           status: 'success',
         });
-        console.log('📊 [ANALYTICS] Queue number generated successfully - Queue #:', response.data.queueNumber);
 
         showAlert(
           'Queue Number Assigned!',
@@ -463,7 +455,6 @@ function StoreVisitPageInner() {
           timestamp: new Date().toISOString(),
           status: 'failed',
         });
-        console.log('📊 [ANALYTICS] Queue number request failed:', response.message);
 
         showAlert('Failed', response.message || 'Unable to get queue number. Please try again.', undefined, 'error');
       }
@@ -564,8 +555,6 @@ function StoreVisitPageInner() {
         crowdLevel,
         timestamp: new Date().toISOString(),
       });
-      console.log('📊 [ANALYTICS] Visit scheduling initiated - Date:', selectedDate?.toLocaleDateString(), 'Time:', selectedTime);
-
       const response = await storeVisitApi.scheduleStoreVisit({
         storeId: storeId as string,
         visitDate: selectedDate.toISOString(),
@@ -593,7 +582,6 @@ function StoreVisitPageInner() {
           timestamp: new Date().toISOString(),
           status: 'success',
         });
-        console.log('📊 [ANALYTICS] Visit scheduled successfully - Visit #:', response.data.visitNumber);
 
         showAlert(
           'Visit Scheduled!',
@@ -622,7 +610,6 @@ function StoreVisitPageInner() {
           timestamp: new Date().toISOString(),
           status: 'failed',
         });
-        console.log('📊 [ANALYTICS] Visit scheduling failed:', response.message);
 
         showAlert('Failed', response.message || 'Unable to schedule visit. Please try again.', undefined, 'error');
       }
@@ -660,7 +647,6 @@ function StoreVisitPageInner() {
       crowdLevel,
       timestamp: new Date().toISOString(),
     });
-    console.log('📊 [ANALYTICS] Directions button clicked for store:', store?.name);
 
     const address = `${store.address.street}, ${store.address.city}, ${store.address.state || ''} ${store.address.zipCode || ''}`.trim();
     const url = Platform.select({
@@ -963,7 +949,6 @@ function StoreVisitPageInner() {
                       crowdLevel,
                       timestamp: new Date().toISOString(),
                     });
-                    console.log('📊 [ANALYTICS] Date selected:', date.toLocaleDateString());
                   }}
                   activeOpacity={0.7}
                 >
@@ -1013,7 +998,6 @@ function StoreVisitPageInner() {
                       crowdLevel,
                       timestamp: new Date().toISOString(),
                     });
-                    console.log('📊 [ANALYTICS] Time selected:', time);
                   }}
                   activeOpacity={0.7}
                 >
@@ -1616,7 +1600,6 @@ export default function StoreVisitPage() {
         console.error('Error Info:', errorInfo);
       }}
       onReset={() => {
-        console.log('🔄 [STORE VISIT] Error boundary reset');
       }}
     >
       <StoreVisitPageInner />

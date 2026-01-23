@@ -137,7 +137,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
 
       // Define all event handlers in an object for easy cleanup
       const handleConnect = () => {
-        console.log('🔌 [SocketContext] Connected to socket server');
         setSocketState(prev => ({
           ...prev,
           connected: true,
@@ -150,7 +149,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       };
 
       const handleDisconnect = (reason: string) => {
-        console.log('🔌 [SocketContext] Disconnected:', reason);
         setSocketState(prev => ({
           ...prev,
           connected: false,
@@ -168,7 +166,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       };
 
       const handleReconnectAttempt = (attemptNumber: number) => {
-        console.log(`🔌 [SocketContext] Reconnection attempt ${attemptNumber}`);
         setSocketState(prev => ({
           ...prev,
           reconnecting: true,
@@ -177,7 +174,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
       };
 
       const handleReconnect = (attemptNumber: number) => {
-        console.log(`🔌 [SocketContext] Reconnected after ${attemptNumber} attempts`);
         setSocketState(prev => ({
           ...prev,
           connected: true,
@@ -224,8 +220,6 @@ export function SocketProvider({ children, config }: SocketProviderProps) {
 
     // CRITICAL: Cleanup function to prevent memory leaks
     return () => {
-      console.log('🔌 [SocketContext] Cleaning up socket connection');
-
       if (socketRef.current) {
         // Remove ALL listeners to prevent memory leaks
         // Use removeAllListeners() to clear all event listeners at once

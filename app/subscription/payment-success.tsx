@@ -36,12 +36,9 @@ export default function PaymentSuccessPage() {
     // Reload subscription data to get updated status
     const loadSubscription = async () => {
       try {
-        console.log('[PAYMENT SUCCESS] Loading subscription data...');
-
         // CRITICAL: After Stripe redirect, ensure token is restored first
         const authStorage = require('@/utils/authStorage');
         const token = await authStorage.getAuthToken();
-        console.log('[PAYMENT SUCCESS] Token check:', { hasToken: !!token });
 
         if (!token) {
           console.error('[PAYMENT SUCCESS] No token available! Waiting...');
@@ -52,7 +49,6 @@ export default function PaymentSuccessPage() {
           if (!tokenNow) {
             throw new Error('Token not available after waiting');
           }
-          console.log('[PAYMENT SUCCESS] Token now available after waiting');
         }
 
         // Retry mechanism: Try up to 3 times with delays
@@ -60,18 +56,10 @@ export default function PaymentSuccessPage() {
         let retries = 3;
 
         for (let i = 0; i < retries; i++) {
-          console.log(`[PAYMENT SUCCESS] Attempt ${i + 1}/${retries} to fetch subscription...`);
-
           freshSubscription = await subscriptionAPI.getCurrentSubscription();
-          console.log('[PAYMENT SUCCESS] API response:', freshSubscription);
 
           // Check if we got real data (not free-default fallback)
           if (freshSubscription && freshSubscription._id !== 'free-default') {
-            console.log('[PAYMENT SUCCESS] Got real subscription:', {
-              id: freshSubscription._id,
-              tier: freshSubscription.tier,
-              price: freshSubscription.price,
-            });
             break;
           }
 
@@ -120,16 +108,6 @@ export default function PaymentSuccessPage() {
   const tier = subscription?.tier || 'premium';
   const tierName = tier === 'vip' ? 'VIP' : tier === 'premium' ? 'Premium' : 'Free';
   const amount = subscription?.price || 0;
-
-  // Debug logging
-  console.log('[PAYMENT SUCCESS] Displaying subscription:', {
-    tier,
-    tierName,
-    amount,
-    status: subscription?.status,
-    billingCycle: subscription?.billingCycle,
-    fullSubscription: subscription,
-  });
 
   return (
     <ThemedView style={styles.container}>

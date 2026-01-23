@@ -253,7 +253,6 @@ export default function LoyaltyRewardsPage() {
 
   const handleMilestonePress = (milestone: LoyaltyMilestone) => {
     // TODO: Navigate to milestone detail or show modal
-    console.log('Milestone pressed:', milestone._id);
   };
 
   const renderMilestoneCard = (milestone: LoyaltyMilestone) => {

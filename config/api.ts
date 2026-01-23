@@ -29,13 +29,6 @@ apiClient.interceptors.request.use(
 
       // Add debug logging in development
       if (ENV.isDevelopment() && ENV.DEV.debugMode) {
-        console.log('🚀 API Request:', {
-          method: config.method?.toUpperCase(),
-          url: config.url,
-          baseURL: config.baseURL,
-          headers: config.headers,
-          data: config.data,
-        });
       }
 
       return config;
@@ -53,16 +46,6 @@ apiClient.interceptors.request.use(
 // Response interceptor for handling common responses
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Add debug logging in development
-    if (ENV.isDevelopment() && ENV.DEV.debugMode) {
-      console.log('✅ API Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        url: response.config.url,
-        data: response.data,
-      });
-    }
-
     return response;
   },
   async (error: AxiosError) => {

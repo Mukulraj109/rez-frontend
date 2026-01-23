@@ -10,6 +10,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useOffersTheme } from '@/contexts/OffersThemeContext';
+import { useRegion } from '@/contexts/RegionContext';
 import { SectionHeader } from '../common';
 import { UploadBillStore } from '@/types/offers.types';
 import { Spacing, BorderRadius, Shadows, Colors } from '@/constants/DesignSystem';
@@ -25,6 +26,8 @@ export const UploadBillSection: React.FC<UploadBillSectionProps> = ({
 }) => {
   const router = useRouter();
   const { theme, isDark } = useOffersTheme();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   if (stores.length === 0) return null;
 
@@ -213,7 +216,7 @@ export const UploadBillSection: React.FC<UploadBillSectionProps> = ({
 
               <View style={styles.coinsInfo}>
                 <Text style={styles.coinsRate}>{store.coinsPerRupee}x</Text>
-                <Text style={styles.coinsLabel}>coins/Rs.</Text>
+                <Text style={styles.coinsLabel}>{`coins/${currencySymbol}1`}</Text>
               </View>
 
               <TouchableOpacity

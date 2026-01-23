@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useOffersTheme } from '@/contexts/OffersThemeContext';
+import { useRegion } from '@/contexts/RegionContext';
 import { DiscountBadge } from '../common/DiscountBadge';
 import { Typography, Spacing, BorderRadius, Shadows, Colors } from '@/constants/DesignSystem';
 
@@ -54,6 +55,8 @@ export const OfferCardDefault: React.FC<OfferCardDefaultProps> = ({
   onPress,
 }) => {
   const { theme, isDark } = useOffersTheme();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const styles = StyleSheet.create({
     container: {
@@ -297,7 +300,7 @@ export const OfferCardDefault: React.FC<OfferCardDefaultProps> = ({
               </View>
             ) : deliveryFee !== undefined ? (
               <Text style={styles.deliveryText}>
-                Rs.{deliveryFee.toFixed(0)}
+                {currencySymbol}{deliveryFee.toFixed(0)}
               </Text>
             ) : null}
             {deliveryTime && (

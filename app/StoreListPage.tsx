@@ -141,7 +141,6 @@ const StoreListPage: React.FC = () => {
       };
 
       setAvailableFilters(derivedFilters);
-      console.log('✅ [STORE LIST] Derived filters from', stores.length, 'stores');
     }
   }, [stores]);
 
@@ -339,11 +338,6 @@ const StoreListPage: React.FC = () => {
 
   // Handle product selection
   const handleProductSelect = useCallback((product: ProductItem, store: StoreResult) => {
-    console.log('🔧 [STORE LIST] Navigating to ProductPage:', {
-      productId: product.productId,
-      storeId: store.storeId
-    });
-
     // Navigate to ProductPage (comprehensive product page)
     // ✅ FIX: Use 'id' parameter instead of 'cardId' for consistency
     router.push({

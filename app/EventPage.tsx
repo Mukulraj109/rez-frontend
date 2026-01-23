@@ -30,6 +30,7 @@ import StarRating from "@/components/events/StarRating";
 import { useEventBooking } from "@/hooks/useEventBooking";
 import eventsApiService from "@/services/eventsApi";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRegion } from "@/contexts/RegionContext";
 import { BUSINESS_CONFIG } from "@/config/env";
 import stripeApi from "@/services/stripeApi";
 import eventAnalytics from "@/services/eventAnalytics";
@@ -82,6 +83,8 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
   const router = useRouter();
   const params = useLocalSearchParams();
   const auth = useAuth();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const user = auth.state.user;
   const isAuthenticated = auth.state.isAuthenticated;
   const [screenData, setScreenData] = useState(Dimensions.get("window"));
@@ -826,9 +829,10 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
             <Text style={styles.priceLabel}>Entry Fee</Text>
             <Text style={styles.priceValue}>
               {/* ✅ FIX: Add null checks for price access */}
+              {/* For online events, use regional currency; for venue events, use event's currency */}
               {eventDetails.price?.isFree
                 ? "Free Entry"
-                : `${eventDetails.price?.currency || '₹'}${eventDetails.price?.amount ?? 0}`}
+                : `${eventDetails.isOnline ? currencySymbol : (eventDetails.price?.currency || currencySymbol)}${eventDetails.price?.amount ?? 0}`}
             </Text>
           </View>
           <View style={styles.priceCardRight}>
@@ -1016,7 +1020,7 @@ export default function EventPage({ eventId, initialEvent }: EventPageProps = {}
           isOnline={eventDetails.isOnline}
           price={{
             amount: eventDetails.price?.amount ?? 0,
-            currency: eventDetails.price?.currency || '₹',
+            currency: eventDetails.isOnline ? currencySymbol : (eventDetails.price?.currency || currencySymbol),
             isFree: eventDetails.price?.isFree ?? false
           }}
           hasSelectedSlot={eventDetails.isOnline ? true : (availableSlots.length === 0 || !!selectedSlot)}

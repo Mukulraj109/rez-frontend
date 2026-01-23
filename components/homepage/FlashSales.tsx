@@ -156,8 +156,9 @@ const FlashSales: React.FC<FlashSalesProps> = ({
   onProductPress,
 }) => {
   const router = useRouter();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
   const [products, setProducts] = useState<FlashSaleProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -381,18 +382,18 @@ const FlashSales: React.FC<FlashSalesProps> = ({
                   </Text>
                   <View style={styles.priceRow}>
                     <Text style={styles.currentPrice}>
-                      {currencySymbol}{product.price.toLocaleString('en-IN')}
+                      {currencySymbol}{product.price.toLocaleString(locale)}
                     </Text>
                     {product.originalPrice > product.price && (
                       <Text style={styles.originalPrice}>
-                        {currencySymbol}{product.originalPrice.toLocaleString('en-IN')}
+                        {currencySymbol}{product.originalPrice.toLocaleString(locale)}
                       </Text>
                     )}
                   </View>
                   <View style={styles.footerRow}>
                     {savings > 0 && (
                       <Text style={styles.savingsText}>
-                        Save {currencySymbol}{savings.toLocaleString('en-IN')}
+                        Save {currencySymbol}{savings.toLocaleString(locale)}
                       </Text>
                     )}
                     <View style={styles.coinsContainer}>

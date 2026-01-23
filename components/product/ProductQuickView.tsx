@@ -55,7 +55,8 @@ export default function ProductQuickView({
   onViewFullDetails,
   onAddToCart,
 }: ProductQuickViewProps) {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
+  const locale = getLocale();
   const currencySymbol = getCurrencySymbol();
   const [product, setProduct] = useState<ProductDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -216,7 +217,7 @@ export default function ProductQuickView({
     if (!product) return;
 
     try {
-      const message = `Check out ${product.name} from ${product.brand}!\nPrice: ${currencySymbol}${product.price.current.toLocaleString('en-IN')}`;
+      const message = `Check out ${product.name} from ${product.brand}!\nPrice: ${currencySymbol}${product.price.current.toLocaleString(locale)}`;
 
       await Share.share({
         message,
@@ -468,12 +469,12 @@ export default function ProductQuickView({
             {/* Price */}
             <View style={styles.priceSection}>
               <Text style={styles.currentPrice}>
-                {currencySymbol}{product.price.current.toLocaleString('en-IN')}
+                {currencySymbol}{product.price.current.toLocaleString(locale)}
               </Text>
               {product.price.original && product.price.original > product.price.current && (
                 <>
                   <Text style={styles.originalPrice}>
-                    {currencySymbol}{product.price.original.toLocaleString('en-IN')}
+                    {currencySymbol}{product.price.original.toLocaleString(locale)}
                   </Text>
                   <View style={styles.discountBadge}>
                     <Text style={styles.discountText}>

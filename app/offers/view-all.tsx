@@ -69,7 +69,6 @@ export default function ViewAllOffersScreen() {
                        response.data.userPoints || 
                        authState.user?.wallet?.balance || 0;
         setUserPoints(points);
-        console.log('💰 [VIEW ALL] User points from API:', points);
       }
     } catch (error) {
       console.error('Error fetching user points:', error);
@@ -88,8 +87,6 @@ export default function ViewAllOffersScreen() {
 
       // Handle discount filter
       if (discount) {
-        console.log('🔍 [VIEW ALL] Fetching offers with discount filter:', discount);
-
         // Fetch all offers and filter by discount
         let currentPage = 1;
         const pageLimit = 50;
@@ -139,8 +136,6 @@ export default function ViewAllOffersScreen() {
         }
       } else if (category) {
         // Fetch offers by specific category
-        console.log('🔍 [VIEW ALL] Fetching offers for category:', category);
-
         let currentPage = 1;
         const pageLimit = 50;
         let hasMore = true;
@@ -271,7 +266,6 @@ export default function ViewAllOffersScreen() {
             style={styles.productImage}
             resizeMode="cover"
             onError={() => {
-              console.log('❌ [OFFER CARD] Failed to load image:', offer.image);
               setImageError(true);
             }}
             onLoad={() => {

@@ -93,7 +93,6 @@ export function ComparisonProvider({ children }: { children: React.ReactNode }) 
     setProducts((prev) => {
       // Check if product already exists
       if (prev.find((p) => p.id === product.id)) {
-        console.log(`${product.name} is already in comparison`);
         return prev;
       }
 
@@ -104,7 +103,6 @@ export function ComparisonProvider({ children }: { children: React.ReactNode }) 
       }
 
       // Add product
-      console.log(`${product.name} added to comparison`);
 
       return [...prev, product];
     });
@@ -132,7 +130,6 @@ export function ComparisonProvider({ children }: { children: React.ReactNode }) 
     }
 
     setProducts([]);
-    console.log('Comparison cleared');
   }, [products.length]);
 
   /**

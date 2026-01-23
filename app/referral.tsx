@@ -93,7 +93,6 @@ const ReferralPageContent = () => {
     }
 
     // ✅ Analytics: Track referral page view
-    console.log('[ANALYTICS] Referral page viewed');
 
     fetchReferralData();
 
@@ -233,7 +232,6 @@ const ReferralPageContent = () => {
       }, 2000);
 
       // ✅ Analytics: Track copy action
-      console.log('[ANALYTICS] Referral code copied', { method: 'clipboard' });
 
       Alert.alert('Copied!', 'Referral code copied to clipboard');
     } catch (error) {
@@ -250,7 +248,6 @@ const ReferralPageContent = () => {
     }
 
     // ✅ Analytics: Track share modal open
-    console.log('[ANALYTICS] Share modal opened', { referralCode });
 
     setShareModalVisible(true);
   }, [referralCode]);

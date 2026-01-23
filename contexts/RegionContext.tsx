@@ -157,6 +157,7 @@ interface RegionContextType {
   formatPrice: (amount: number) => string;
   getCurrency: () => string;
   getCurrencySymbol: () => string;
+  getLocale: () => string;
 }
 
 // Create context
@@ -332,16 +333,21 @@ export function RegionProvider({ children }: RegionProviderProps) {
       if (state.currentRegion !== regionId) {
         try {
           await homepageDataService.clearCache();
-          console.log('[RegionContext] Homepage cache cleared for region switch');
         } catch (error) {
           console.warn('[RegionContext] Homepage cache clear failed:', error);
+        }
+
+        // Cancel all in-flight requests to prevent stale data
+        try {
+          apiClient.cancelAllRequests();
+        } catch (error) {
+          console.warn('[RegionContext] Cancel requests failed:', error);
         }
       }
 
       // Update apiClient FIRST before state change
       // This ensures the new region is used when homepage refetches
       apiClient.setRegion(regionId);
-      console.log('[RegionContext] Updated apiClient region to:', regionId);
 
       // Update state and storage
       dispatch({
@@ -390,6 +396,10 @@ export function RegionProvider({ children }: RegionProviderProps) {
     return state.regionConfig?.currencySymbol || DEFAULT_CONFIGS[DEFAULT_REGION].currencySymbol;
   }, [state.regionConfig]);
 
+  const getLocale = useCallback((): string => {
+    return state.regionConfig?.locale || DEFAULT_CONFIGS[DEFAULT_REGION].locale;
+  }, [state.regionConfig]);
+
   // Fetch available regions on mount
   useEffect(() => {
     fetchAvailableRegions();
@@ -403,7 +413,8 @@ export function RegionProvider({ children }: RegionProviderProps) {
     clearError,
     formatPrice,
     getCurrency,
-    getCurrencySymbol
+    getCurrencySymbol,
+    getLocale
   };
 
   return (

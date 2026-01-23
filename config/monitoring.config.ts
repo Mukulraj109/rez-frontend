@@ -90,9 +90,6 @@ export const SentryConfig = {
 export const initializeSentry = () => {
   if (!__DEV__ && Sentry) {
     Sentry.init(SentryConfig);
-    console.log('✅ Sentry initialized');
-  } else if (!Sentry) {
-    console.log('ℹ️ Sentry not available (package not installed)');
   }
 };
 
@@ -244,29 +241,22 @@ export const MonitoringURLs = {
  * Initialize all monitoring services
  */
 export const initializeMonitoring = () => {
-  console.log('🚀 Initializing monitoring services...');
-
   // Initialize Sentry
   initializeSentry();
 
   // Initialize Google Analytics
   if (GoogleAnalyticsConfig.enabled) {
     // TODO: Initialize GA
-    console.log('✅ Google Analytics initialized');
   }
 
   // Initialize Mixpanel
   if (MixpanelConfig.enabled) {
     // TODO: Initialize Mixpanel
-    console.log('✅ Mixpanel initialized');
   }
 
   // Initialize Performance Monitoring
   if (PerformanceConfig.enabled) {
-    console.log('✅ Performance monitoring initialized');
   }
-
-  console.log('✅ All monitoring services initialized');
 };
 
 /**
@@ -284,8 +274,6 @@ export const MonitoringHelpers = {
 
     // Mixpanel
     // mixpanel.track('Page View', { screen: screenName, ...params });
-
-    console.log(`📊 Page View: ${screenName}`, params);
   },
 
   /**
@@ -302,8 +290,6 @@ export const MonitoringHelpers = {
 
     // Mixpanel
     // mixpanel.track(event, properties);
-
-    console.log(`📊 Event: ${event}`, properties);
   },
 
   /**
@@ -351,8 +337,6 @@ export const MonitoringHelpers = {
         });
       }
     }
-
-    console.log(`⚡ Performance: ${metric} = ${value}ms`, context);
   },
 
   /**
@@ -372,8 +356,6 @@ export const MonitoringHelpers = {
     // Mixpanel
     // mixpanel.identify(userId);
     // mixpanel.people.set(traits);
-
-    console.log(`👤 User set: ${userId}`, traits);
   },
 
   /**
@@ -390,8 +372,6 @@ export const MonitoringHelpers = {
 
     // Mixpanel
     // mixpanel.reset();
-
-    console.log('👤 User cleared');
   },
 
   /**

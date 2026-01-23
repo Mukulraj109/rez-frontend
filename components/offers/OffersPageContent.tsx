@@ -90,7 +90,6 @@ export const OffersPageContent: React.FC<OffersPageContentProps> = ({
       }
     } catch (error) {
       // If route doesn't exist, just log it
-      console.log(`Navigation to ${path} not available yet`);
     }
   }, [router]);
 

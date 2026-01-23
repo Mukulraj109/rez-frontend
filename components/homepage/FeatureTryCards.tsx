@@ -48,21 +48,21 @@ interface FeatureTryCardsProps {
 }
 
 // Helper function to format currency - returns number string without symbol
-const formatCurrencyValue = (amount: number): string => {
+const formatCurrencyValue = (amount: number, locale: string): string => {
   if (amount >= 100000) {
     return `${(amount / 100000).toFixed(1)}L`;
   } else if (amount >= 1000) {
     return `${(amount / 1000).toFixed(amount >= 10000 ? 0 : 1)}K`;
   }
-  return amount.toLocaleString('en-IN');
+  return amount.toLocaleString(locale);
 };
 
 // Helper function to format coins
-const formatCoins = (coins: number): string => {
+const formatCoins = (coins: number, locale: string): string => {
   if (coins >= 1000) {
     return `${(coins / 1000).toFixed(1)}K`;
   }
-  return coins.toLocaleString('en-IN');
+  return coins.toLocaleString(locale);
 };
 
 const FeatureTryCards: React.FC<FeatureTryCardsProps> = ({
@@ -73,8 +73,9 @@ const FeatureTryCards: React.FC<FeatureTryCardsProps> = ({
   onServiceBookingPress,
 }) => {
   const router = useRouter();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   // Build cards array based on available data
   const cards: FeatureCard[] = [];
@@ -88,8 +89,8 @@ const FeatureTryCards: React.FC<FeatureTryCardsProps> = ({
       titleEmojis: '🔥',
       subtitle: 'Lock price, visit store or get delivered',
       itemName: lockProduct?.name || 'Featured Product',
-      saveAmount: lockProduct ? `${currencySymbol}${formatCurrencyValue(lockProduct.savings)}` : `${currencySymbol}5,000`,
-      coinsEarned: lockProduct ? formatCoins(lockProduct.cashbackCoins) : '2,499',
+      saveAmount: lockProduct ? `${currencySymbol}${formatCurrencyValue(lockProduct.savings, locale)}` : `${currencySymbol}5,000`,
+      coinsEarned: lockProduct ? formatCoins(lockProduct.cashbackCoins, locale) : '2,499',
       ctaText: 'Try Now',
       ctaColor: '#A855F7', // Purple
       gradientColors: ['#E9D5FF', '#FFE4E6'], // Light purple to light pink/orange
@@ -112,8 +113,8 @@ const FeatureTryCards: React.FC<FeatureTryCardsProps> = ({
       titleEmojis: '✨✨',
       subtitle: 'Choose date, time & professional',
       itemName: trendingService?.name || 'Trending Service',
-      saveAmount: trendingService ? `${currencySymbol}${formatCurrencyValue(trendingService.savings)}` : `${currencySymbol}1,000`,
-      coinsEarned: trendingService ? formatCoins(trendingService.cashbackCoins) : '250',
+      saveAmount: trendingService ? `${currencySymbol}${formatCurrencyValue(trendingService.savings, locale)}` : `${currencySymbol}1,000`,
+      coinsEarned: trendingService ? formatCoins(trendingService.cashbackCoins, locale) : '250',
       ctaText: 'Book Now',
       ctaColor: '#EC4899', // Pink
       gradientColors: ['#FCE7F3', '#FFE4E6'], // Light pink to light orange

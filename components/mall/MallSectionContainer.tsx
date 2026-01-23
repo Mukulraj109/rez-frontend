@@ -116,7 +116,6 @@ const MallSectionContainer: React.FC<MallSectionContainerProps> = ({
       // Navigate based on banner CTA URL
       if (banner.ctaUrl) {
         // Handle deep link or internal navigation
-        console.log('Banner CTA pressed:', banner.ctaUrl);
       }
     },
     []
@@ -161,14 +160,6 @@ const MallSectionContainer: React.FC<MallSectionContainerProps> = ({
   }, [router]);
 
   // Debug logging
-  console.log('[MallSectionContainer] State:', {
-    isLoading,
-    isRefreshing,
-    error,
-    bannersCount: heroBanners.length,
-    featuredCount: featuredBrands.length,
-    categoriesCount: categories.length
-  });
 
   // Error state
   if (error && !isLoading && !heroBanners.length) {

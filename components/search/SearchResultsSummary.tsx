@@ -13,11 +13,12 @@ interface SearchResultsSummaryProps {
 }
 
 export default function SearchResultsSummary({ query, summary }: SearchResultsSummaryProps) {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const formatPrice = (price: number) => {
-    return `${currencySymbol}${price.toLocaleString('en-IN')}`;
+    return `${currencySymbol}${price.toLocaleString(locale)}`;
   };
 
   return (

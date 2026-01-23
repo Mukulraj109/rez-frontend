@@ -308,7 +308,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
               ? transformedData.cashback
               : undefined,
           },
-        }).catch(err => console.log('[MainStorePage] Error tracking store view:', err));
+        }).catch(() => {});
 
         // Track store visit for "Shop at your favorite" section
         asyncStorageService.trackStoreVisit({
@@ -345,7 +345,7 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
           operationalInfo: {
             deliveryTime: fetchedStoreData.operationalInfo?.deliveryTime || '',
           },
-        }).catch(err => console.log('[MainStorePage] Error tracking favorite store visit:', err));
+        }).catch(() => {});
 
       } catch (error) {
         console.error('❌ [MainStorePage] Failed to transform store data:', error);
@@ -525,14 +525,6 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
   // Log review data when modal opens
   useEffect(() => {
     if (showReviewModal) {
-      console.log('🚀 [MainStorePage] Review Modal Opened');
-      console.log('📋 [MainStorePage] Review Store ID:', reviewStoreId);
-      console.log('📊 [MainStorePage] Review Stats:', JSON.stringify(reviewStats, null, 2));
-      console.log('⭐ [MainStorePage] Rating Breakdown:', JSON.stringify(reviewRatingBreakdown, null, 2));
-      console.log('📝 [MainStorePage] Store Reviews Count:', storeReviews?.length || 0);
-      console.log('📝 [MainStorePage] Store Reviews:', JSON.stringify(storeReviews, null, 2));
-      console.log('⏳ [MainStorePage] Reviews Loading:', reviewsLoading);
-      console.log('❌ [MainStorePage] Reviews Error:', reviewsError);
     }
   }, [showReviewModal, reviewStoreId, reviewStats, reviewRatingBreakdown, storeReviews, reviewsLoading, reviewsError]);
 
@@ -578,7 +570,6 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
           setIsFavorited(false);
         }
       } catch (error) {
-        console.log('[MainStorePage] Error checking follow status:', error);
       }
     };
 
@@ -864,7 +855,6 @@ export default function MainStorePage({ productId, initialProduct }: MainStorePa
           });
         }
       } catch (error) {
-        console.log('Could not fetch user visits:', error);
         // Keep default null state - user may not be logged in
       }
     };

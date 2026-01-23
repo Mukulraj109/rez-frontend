@@ -343,7 +343,6 @@ export default function ProductDetailPage() {
 
       // Show warning if exists (e.g., low stock)
       if (validation.warning) {
-        console.log('Cart Warning:', validation.warning);
       }
 
       // Build cart item

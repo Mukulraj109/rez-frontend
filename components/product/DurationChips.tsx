@@ -59,7 +59,8 @@ export const DurationChips: React.FC<DurationChipsProps> = ({
   currency,
   style,
 }) => {
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
+  const locale = getLocale();
   const currencySymbol = currency || getCurrencySymbol();
   const handleSelect = (duration: LockDuration) => {
     triggerImpact('Light');
@@ -126,7 +127,7 @@ export const DurationChips: React.FC<DurationChipsProps> = ({
           Lock Price ({LOCK_FEE_PERCENTAGES[selectedDuration]}%)
         </Text>
         <Text style={styles.feeAmount}>
-          {currencySymbol}{calculateLockFee(productPrice, selectedDuration).toLocaleString('en-IN')}
+          {currencySymbol}{calculateLockFee(productPrice, selectedDuration).toLocaleString(locale)}
         </Text>
       </View>
     </View>

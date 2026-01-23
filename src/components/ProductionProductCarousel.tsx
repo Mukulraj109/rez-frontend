@@ -22,6 +22,7 @@ import Animated, {
   Extrapolate,
 } from 'react-native-reanimated';
 import { FashionProduct } from '@/hooks/useFashionData';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.75;
@@ -31,9 +32,10 @@ interface ProductCardProps {
   index: number;
   scrollX: Animated.SharedValue<number>;
   onPress: (product: FashionProduct) => void;
+  currencySymbol: string;
 }
 
-const ProductCard = ({ product, index, scrollX, onPress }: ProductCardProps) => {
+const ProductCard = ({ product, index, scrollX, onPress, currencySymbol }: ProductCardProps) => {
   const inputRange = [
     (index - 1) * CARD_WIDTH,
     index * CARD_WIDTH,
@@ -198,9 +200,9 @@ const ProductCard = ({ product, index, scrollX, onPress }: ProductCardProps) => 
             {/* Price Button */}
             <TouchableOpacity style={styles.bottomButton} activeOpacity={0.7}>
               <View style={styles.priceContainer}>
-                <Text style={styles.currentPrice}>₹{currentPrice}</Text>
+                <Text style={styles.currentPrice}>{currencySymbol}{currentPrice}</Text>
                 {discount > 0 && originalPrice > currentPrice && (
-                  <Text style={styles.originalPrice}>₹{originalPrice}</Text>
+                  <Text style={styles.originalPrice}>{currencySymbol}{originalPrice}</Text>
                 )}
               </View>
               <View style={styles.arrowContainer}>
@@ -224,6 +226,8 @@ const ProductionProductCarousel = ({ products, isLoading, error }: ProductionPro
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollX = useSharedValue(0);
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
@@ -317,6 +321,7 @@ const ProductionProductCarousel = ({ products, isLoading, error }: ProductionPro
             index={index}
             scrollX={scrollX}
             onPress={handleProductPress}
+            currencySymbol={currencySymbol}
           />
         ))}
       </ScrollView>

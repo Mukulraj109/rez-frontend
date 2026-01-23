@@ -159,11 +159,6 @@ export const BillImageUploader: React.FC<BillImageUploaderProps> = ({
         const result = await checkQuality(asset.uri);
         setQualityResult(result);
 
-        console.log('🔍 [BILL UPLOADER] Quality check:', {
-          score: result.score,
-          isValid: result.isValid,
-        });
-
         if (result.isValid) {
           // Quality is good, proceed
           setImageUri(asset.uri);

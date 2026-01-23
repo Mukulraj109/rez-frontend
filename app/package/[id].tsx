@@ -107,8 +107,9 @@ export default function PackageDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const [packageData, setPackageData] = useState<PackageDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -478,9 +479,9 @@ export default function PackageDetailsPage() {
               <View>
                 <Text style={styles.priceLabel}>Price</Text>
                 <View style={styles.priceValueContainer}>
-                  <Text style={styles.priceValue}>{currencySymbol}{packageData.price.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.priceValue}>{currencySymbol}{packageData.price.toLocaleString(locale)}</Text>
                   {packageData.originalPrice && packageData.originalPrice > packageData.price && (
-                    <Text style={styles.originalPrice}>{currencySymbol}{packageData.originalPrice.toLocaleString('en-IN')}</Text>
+                    <Text style={styles.originalPrice}>{currencySymbol}{packageData.originalPrice.toLocaleString(locale)}</Text>
                   )}
                 </View>
               </View>
@@ -589,10 +590,10 @@ export default function PackageDetailsPage() {
               <Text style={styles.priceInfoLabel}>Total Price</Text>
               <View style={styles.priceInfoValueContainer}>
                 <Text style={styles.priceInfoValue}>
-                  {currencySymbol}{packageData.price.toLocaleString('en-IN')}
+                  {currencySymbol}{packageData.price.toLocaleString(locale)}
                 </Text>
                 {packageData.originalPrice && packageData.originalPrice > packageData.price && (
-                  <Text style={styles.priceInfoOriginal}>{currencySymbol}{packageData.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.priceInfoOriginal}>{currencySymbol}{packageData.originalPrice.toLocaleString(locale)}</Text>
                 )}
               </View>
             </View>

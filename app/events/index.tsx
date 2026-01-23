@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import eventsApiService from '@/services/eventsApi';
 import { EventItem } from '@/types/homepage.types';
 import { EVENT_COLORS } from '@/constants/EventColors';
+import { useRegion } from '@/contexts/RegionContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -51,6 +52,8 @@ interface DisplayEvent {
 
 const EventsPage: React.FC = () => {
   const router = useRouter();
+  const { getCurrencySymbol } = useRegion();
+  const currencySymbol = getCurrencySymbol();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,13 +65,17 @@ const EventsPage: React.FC = () => {
     const cashbackValue = (event as any).cashback;
     const cashbackText = cashbackValue && cashbackValue > 0 ? `${cashbackValue}%` : undefined;
 
+    // For online events, use regional currency; for venue events, use event's currency
+    const isOnline = (event as any).isOnline || (event.location as any)?.isOnline;
+    const displayCurrency = isOnline ? currencySymbol : (event.price?.currency || currencySymbol);
+
     return {
       id: event.id,
       title: event.title,
       type: event.category || 'Event',
       date: event.date ? new Date(event.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : 'TBD',
       location: typeof event.location === 'string' ? event.location : (event.location as any)?.name || 'Venue',
-      price: event.price?.isFree ? 'Free' : `${event.price?.currency || '₹'}${event.price?.amount || 0}`,
+      price: event.price?.isFree ? 'Free' : `${displayCurrency}${event.price?.amount || 0}`,
       image: event.image || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',
       cashback: cashbackText,
       rating: (event as any).rating,

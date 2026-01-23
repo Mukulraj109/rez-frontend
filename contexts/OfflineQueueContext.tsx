@@ -109,8 +109,6 @@ export const OfflineQueueProvider: React.FC<OfflineQueueProviderProps> = ({
 
     const initialize = async () => {
       try {
-        console.log('[OfflineQueueContext] Initializing...');
-
         // Initialize service
         await billUploadQueueService.initialize({ autoSync });
 
@@ -126,7 +124,6 @@ export const OfflineQueueProvider: React.FC<OfflineQueueProviderProps> = ({
         setupNetworkMonitoring();
 
         isInitialized.current = true;
-        console.log('[OfflineQueueContext] Initialized successfully');
       } catch (err: any) {
         console.error('[OfflineQueueContext] Initialization error:', err);
         if (mounted) {
@@ -395,13 +392,11 @@ export const OfflineQueueProvider: React.FC<OfflineQueueProviderProps> = ({
   const setupEventListeners = () => {
     // Queue change event
     billUploadQueueService.on('queue:change', (event: QueueEvent) => {
-      console.log('[OfflineQueueContext] Queue changed:', event.type);
       refreshQueue();
     });
 
     // Sync complete event
     billUploadQueueService.on('queue:synced', (event: QueueEvent) => {
-      console.log('[OfflineQueueContext] Queue synced');
       refreshQueue();
     });
 
@@ -424,11 +419,8 @@ export const OfflineQueueProvider: React.FC<OfflineQueueProviderProps> = ({
 
       // Network reconnected
       if (!wasOnline && nowOnline) {
-        console.log('[OfflineQueueContext] Network reconnected');
-
         // Auto-sync if enabled and has pending items
         if (autoSync && (status?.pending || 0) > 0) {
-          console.log('[OfflineQueueContext] Auto-syncing on reconnection...');
           syncQueue().catch(err => {
             console.error('[OfflineQueueContext] Auto-sync error:', err);
           });
@@ -441,8 +433,6 @@ export const OfflineQueueProvider: React.FC<OfflineQueueProviderProps> = ({
    * Cleanup listeners
    */
   const cleanup = () => {
-    console.log('[OfflineQueueContext] Cleaning up...');
-
     // Remove network listener
     if (networkUnsubscribe.current) {
       networkUnsubscribe.current();

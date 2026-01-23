@@ -121,8 +121,9 @@ export default function FlightDetailsPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  const { getCurrencySymbol } = useRegion();
+  const { getCurrencySymbol, getLocale } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  const locale = getLocale();
 
   const [flight, setFlight] = useState<FlightDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -253,7 +254,6 @@ export default function FlightDetailsPage() {
         images: (() => {
           // Handle different image formats from backend
           if (!productData.images || !Array.isArray(productData.images)) {
-            console.log('⚠️ [FLIGHT] No images array found, using fallback');
             return ['https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=600&fit=crop'];
           }
           
@@ -274,11 +274,8 @@ export default function FlightDetailsPage() {
               return Boolean(url && typeof url === 'string' && url.length > 0);
             });
           
-          console.log('📸 [FLIGHT] Processed images:', processedImages.length, processedImages);
-          
           // Always ensure at least one image (fallback)
           if (processedImages.length === 0) {
-            console.log('⚠️ [FLIGHT] No valid images found, using fallback');
             return ['https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=600&fit=crop'];
           }
           
@@ -455,11 +452,9 @@ export default function FlightDetailsPage() {
                     setImageError(true);
                   }}
                   onLoadStart={() => {
-                    console.log('🔄 [FLIGHT] Loading image:', imageUrl);
                     setImageError(false);
                   }}
                   onLoad={() => {
-                    console.log('✅ [FLIGHT] Image loaded successfully:', imageUrl);
                   }}
                 />
               );
@@ -587,9 +582,9 @@ export default function FlightDetailsPage() {
               <Text style={styles.priceLabel}>Starting from</Text>
               <View style={styles.priceContainer}>
                 {flight.originalPrice && flight.originalPrice > flight.price && (
-                  <Text style={styles.originalPrice}>{currencySymbol}{flight.originalPrice.toLocaleString('en-IN')}</Text>
+                  <Text style={styles.originalPrice}>{currencySymbol}{flight.originalPrice.toLocaleString(locale)}</Text>
                 )}
-                <Text style={styles.price}>{currencySymbol}{flight.price.toLocaleString('en-IN')}</Text>
+                <Text style={styles.price}>{currencySymbol}{flight.price.toLocaleString(locale)}</Text>
               </View>
               {flight.discount && flight.discount > 0 && (
                 <View style={styles.discountTag}>
@@ -606,7 +601,7 @@ export default function FlightDetailsPage() {
                   {flight.cashback.percentage}% Cashback
                 </Text>
                 <Text style={styles.cashbackAmount}>
-                  Earn {currencySymbol}{flight.cashback.amount.toLocaleString('en-IN')}
+                  Earn {currencySymbol}{flight.cashback.amount.toLocaleString(locale)}
                 </Text>
               </View>
             </View>
