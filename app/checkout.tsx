@@ -13,6 +13,7 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +26,9 @@ import CartValidation from '@/components/cart/CartValidation';
 import CardOffersSection from '@/components/cart/CardOffersSection';
 import { showToast } from '@/components/common/ToastManager';
 import { useRegion } from '@/contexts/RegionContext';
+import { useAuth } from '@/contexts/AuthContext';
+import AddressSelectionModal from '@/components/checkout/AddressSelectionModal';
+import { PROMO_COIN_MAX_USAGE_PERCENTAGE } from '@/config/checkout.config';
 
 const { width } = Dimensions.get('window');
 
@@ -33,6 +37,9 @@ export default function CheckoutPage() {
   // Get region-aware currency symbol
   const { getCurrencySymbol } = useRegion();
   const currencySymbol = getCurrencySymbol();
+  // Get user's loyalty tier for coupon eligibility
+  const { state: authState } = useAuth();
+  const userLoyaltyTier = authState.user?.loyaltyTier || null;
   // Destructure checkout hook return values
   const { state, handlers } = useCheckout();
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -55,6 +62,12 @@ export default function CheckoutPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cod' | 'wallet' | 'razorpay' | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
+
+  // Address selection modal state
+  const [showAddressModal, setShowAddressModal] = useState(false);
+
+  // Platform fee tooltip state
+  const [showPlatformFeeInfo, setShowPlatformFeeInfo] = useState(false);
 
   // Use cart validation hook with real-time validation
   const {
@@ -220,6 +233,30 @@ export default function CheckoutPage() {
 
   // Payment confirmation handlers
   const handlePaymentSelect = (method: 'cod' | 'wallet' | 'razorpay') => {
+    // Validate address first
+    if (!state.selectedAddress) {
+      Alert.alert(
+        'Address Required',
+        'Please select a delivery address before proceeding with your order.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Select Address', onPress: () => setShowAddressModal(true) }
+        ]
+      );
+      return;
+    }
+
+    // Validate minimum order value
+    const minimumOrder = state.store?.minimumOrder || 0;
+    const itemTotal = state.billSummary?.itemTotal || 0;
+    if (minimumOrder > 0 && itemTotal < minimumOrder) {
+      Alert.alert(
+        'Minimum Order Required',
+        `This store requires a minimum order of ${currencySymbol}${minimumOrder}. Your current order is ${currencySymbol}${itemTotal}. Please add more items to proceed.`
+      );
+      return;
+    }
+
     // Validate before showing modal
     if (method === 'cod' && hasServiceItems) {
       Alert.alert('COD Not Available', 'Cash on Delivery is not available for service bookings.');
@@ -236,7 +273,12 @@ export default function CheckoutPage() {
   };
 
   const handleConfirmOrder = async () => {
-    if (!selectedPaymentMethod) return;
+    console.log('🛒 [Checkout] handleConfirmOrder called, selectedPaymentMethod:', selectedPaymentMethod);
+
+    if (!selectedPaymentMethod) {
+      console.error('❌ [Checkout] No payment method selected!');
+      return;
+    }
 
     setShowConfirmModal(false);
     setProcessingPayment(true);
@@ -250,19 +292,31 @@ export default function CheckoutPage() {
     setProcessingMessage(messages[selectedPaymentMethod] || 'Processing...');
 
     try {
+      console.log('🛒 [Checkout] Processing payment method:', selectedPaymentMethod);
       switch (selectedPaymentMethod) {
         case 'cod':
+          console.log('💵 [Checkout] Calling handleCODPayment...');
+          console.log('💵 [Checkout] STATE AT CALL TIME - coinSystem:', JSON.stringify(state.coinSystem, null, 2));
+          console.log('💵 [Checkout] STATE AT CALL TIME - rezCoin.used:', state.coinSystem.rezCoin.used);
           await handlers.handleCODPayment();
+          console.log('💵 [Checkout] handleCODPayment completed');
           break;
         case 'wallet':
+          console.log('👛 [Checkout] Calling handleWalletPayment...');
           await handlers.handleWalletPayment();
           break;
         case 'razorpay':
+          console.log('💳 [Checkout] Calling handleRazorpayPayment...');
           await handlers.handleRazorpayPayment();
           break;
       }
     } catch (error) {
-      console.error('Payment error:', error);
+      console.error('❌ [Checkout] Payment error:', error);
+      showToast({
+        message: error instanceof Error ? error.message : 'Payment failed',
+        type: 'error',
+        duration: 4000,
+      });
     } finally {
       setProcessingPayment(false);
       setProcessingMessage('');
@@ -345,7 +399,11 @@ export default function CheckoutPage() {
           <ThemedText style={styles.headerTitle}>Checkout</ThemedText>
           
           <View style={styles.coinsDisplay}>
-            <Ionicons name="diamond" size={16} color="#FFD700" />
+            <Image
+              source={require('@/assets/images/rez-coin.png')}
+              style={styles.coinIconSmall}
+              resizeMode="contain"
+            />
             <ThemedText style={styles.coinsText}>{totalWalletBalance}</ThemedText>
           </View>
         </View>
@@ -353,9 +411,13 @@ export default function CheckoutPage() {
         {/* Amount Display */}
         <View style={styles.amountContainer}>
           <ThemedText style={styles.amountText}>{currencySymbol}{(state.billSummary?.totalPayable || 0).toFixed(0)}</ThemedText>
-          <View style={styles.cashbackBadge}>
-            <ThemedText style={styles.cashbackText}>Cash back 10 %</ThemedText>
-          </View>
+          {(state.billSummary?.cashbackEarned || 0) > 0 && (
+            <View style={styles.cashbackBadge}>
+              <ThemedText style={styles.cashbackText}>
+                Earn {currencySymbol}{state.billSummary?.cashbackEarned || 0} cashback
+              </ThemedText>
+            </View>
+          )}
         </View>
       </LinearGradient>
 
@@ -370,21 +432,24 @@ export default function CheckoutPage() {
           />
         )}
 
-        {/* Store Confirmation */}
-        <View style={styles.storeConfirmation}>
-          <ThemedText style={styles.storeWarning}>
-            The selected store is 3 km away from your current location. Please confirm.
-          </ThemedText>
-        </View>
+        {/* Store Confirmation - Show only if store distance is available */}
+        {state.store?.distance && (
+          <View style={styles.storeConfirmation}>
+            <ThemedText style={styles.storeWarning}>
+              The selected store is {state.store.distance} away from your delivery address. Please confirm.
+            </ThemedText>
+          </View>
+        )}
 
         {/* Card Offers Section */}
         {state.billSummary?.totalPayable && state.billSummary.totalPayable > 0 && (
           <CardOffersSection
-            storeId={state.selectedStore?.id || state.selectedStore?._id}
+            storeId={state.store?.id}
             orderValue={state.billSummary.totalPayable}
             compact={true}
             onOfferApplied={(offer) => {
-              // Offer applied - will be handled at payment
+              // Apply card offer to update bill summary
+              handlers.applyCardOffer(offer);
             }}
           />
         )}
@@ -442,6 +507,64 @@ export default function CheckoutPage() {
             </ScrollView>
           </View>
         )}
+
+        {/* Delivery Address Section */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Delivery Address</ThemedText>
+
+          {state.selectedAddress ? (
+            <TouchableOpacity
+              style={styles.addressCard}
+              onPress={() => setShowAddressModal(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.addressCardContent}>
+                <View style={styles.addressIconContainer}>
+                  <Ionicons name="location" size={24} color="#00C06A" />
+                </View>
+                <View style={styles.addressDetails}>
+                  <ThemedText style={styles.addressName}>
+                    {state.selectedAddress.name || state.selectedAddress.type || 'Delivery Address'}
+                  </ThemedText>
+                  <ThemedText style={styles.addressText} numberOfLines={2}>
+                    {state.selectedAddress.addressLine1}
+                    {state.selectedAddress.addressLine2 ? `, ${state.selectedAddress.addressLine2}` : ''}
+                  </ThemedText>
+                  <ThemedText style={styles.addressCityText}>
+                    {state.selectedAddress.city}, {state.selectedAddress.state} - {state.selectedAddress.pincode}
+                  </ThemedText>
+                  {state.selectedAddress.phone && (
+                    <ThemedText style={styles.addressPhoneText}>
+                      Phone: {state.selectedAddress.phone}
+                    </ThemedText>
+                  )}
+                </View>
+                <View style={styles.changeAddressButton}>
+                  <ThemedText style={styles.changeAddressText}>Change</ThemedText>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.addAddressCard}
+              onPress={() => setShowAddressModal(true)}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="#00C06A" />
+              <ThemedText style={styles.addAddressText}>Add Delivery Address</ThemedText>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+
+          {/* Show warning if no address */}
+          {!state.selectedAddress && (
+            <View style={styles.addressWarning}>
+              <Ionicons name="warning" size={16} color="#F59E0B" />
+              <ThemedText style={styles.addressWarningText}>
+                Please add a delivery address to proceed with your order
+              </ThemedText>
+            </View>
+          )}
+        </View>
 
         {/* Apply Promocode Section */}
         <View style={styles.section}>
@@ -515,7 +638,11 @@ export default function CheckoutPage() {
               activeOpacity={0.7}
             >
               <View style={styles.coinSectionHeaderLeft}>
-                <Ionicons name="diamond" size={20} color="#00C06A" />
+                <Image
+                  source={require('@/assets/images/rez-coin.png')}
+                  style={styles.coinIconMedium}
+                  resizeMode="contain"
+                />
                 <View style={styles.coinSectionHeaderText}>
                   <ThemedText style={styles.coinSectionTitle}>Use Your Coins</ThemedText>
                   <ThemedText style={styles.coinSectionSubtitle}>
@@ -544,7 +671,11 @@ export default function CheckoutPage() {
                 <View style={styles.coinSliderHeader}>
                   <View style={styles.coinHeaderLeft}>
                     <View style={styles.coinTitleRow}>
-                      <Ionicons name="diamond" size={20} color="#FFD700" />
+                      <Image
+                        source={require('@/assets/images/rez-coin.png')}
+                        style={styles.coinIconMedium}
+                        resizeMode="contain"
+                      />
                       <ThemedText style={styles.coinTitleWhite}>REZ Coins</ThemedText>
                     </View>
                     <View style={styles.coinAvailableRow}>
@@ -568,11 +699,12 @@ export default function CheckoutPage() {
                     min="0"
                     max={Math.max(1, Math.min(
                       state.coinSystem.rezCoin.available,
-                      Math.floor(state.billSummary?.totalPayable || 0)
+                      Math.floor(state.billSummary?.totalBeforeCoinDiscount || state.billSummary?.totalPayable || 0)
                     ))}
                     value={state.coinSystem.rezCoin.used}
                     onChange={(e) => {
                       const amount = parseInt(e.target.value);
+                      console.log('🎚️ [COIN SLIDER] onChange - Amount:', amount, 'Available:', state.coinSystem.rezCoin.available);
                       if (amount === 0) {
                         handlers.handleCoinToggle('rez', false);
                       } else {
@@ -581,6 +713,7 @@ export default function CheckoutPage() {
                     }}
                     onInput={(e: any) => {
                       const amount = parseInt(e.target.value);
+                      console.log('🎚️ [COIN SLIDER] onInput - Amount:', amount);
                       if (amount === 0) {
                         handlers.handleCoinToggle('rez', false);
                       } else {
@@ -598,7 +731,7 @@ export default function CheckoutPage() {
                       cursor: 'pointer',
                       touchAction: 'none',
                       pointerEvents: 'auto',
-                      background: `linear-gradient(to right, #FFFFFF 0%, #FFFFFF ${(state.coinSystem.rezCoin.used / Math.max(1, Math.min(state.coinSystem.rezCoin.available, Math.floor(state.billSummary?.totalPayable || 0)))) * 100}%, rgba(255,255,255,0.3) ${(state.coinSystem.rezCoin.used / Math.max(1, Math.min(state.coinSystem.rezCoin.available, Math.floor(state.billSummary?.totalPayable || 0)))) * 100}%, rgba(255,255,255,0.3) 100%)`,
+                      background: `linear-gradient(to right, #FFFFFF 0%, #FFFFFF ${(state.coinSystem.rezCoin.used / Math.max(1, Math.min(state.coinSystem.rezCoin.available, Math.floor(state.billSummary?.totalBeforeCoinDiscount || state.billSummary?.totalPayable || 0)))) * 100}%, rgba(255,255,255,0.3) ${(state.coinSystem.rezCoin.used / Math.max(1, Math.min(state.coinSystem.rezCoin.available, Math.floor(state.billSummary?.totalBeforeCoinDiscount || state.billSummary?.totalPayable || 0)))) * 100}%, rgba(255,255,255,0.3) 100%)`,
                       boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                     }}
                   />
@@ -609,7 +742,7 @@ export default function CheckoutPage() {
                   <ThemedText style={styles.sliderLabelTextWhite}>
                     {currencySymbol}{Math.min(
                       state.coinSystem.rezCoin.available,
-                      Math.floor(state.billSummary?.totalPayable || 0)
+                      Math.floor(state.billSummary?.totalBeforeCoinDiscount || state.billSummary?.totalPayable || 0)
                     )}
                   </ThemedText>
                 </View>
@@ -633,7 +766,7 @@ export default function CheckoutPage() {
                 <View>
                   <ThemedText style={styles.coinToggleTitle}>Promo coin</ThemedText>
                   <ThemedText style={styles.coinToggleSubtitle}>
-                    The promo code can be applied for up to 20% off
+                    Promo coins can be applied for up to {PROMO_COIN_MAX_USAGE_PERCENTAGE}% off
                   </ThemedText>
                 </View>
                 <View style={styles.coinToggleRight}>
@@ -654,11 +787,13 @@ export default function CheckoutPage() {
               </View>
             </View>
 
-            {/* Store Promo Coin with Slider - Only show if user has coins from this store */}
+            {/* Store Branded Coins with Slider - Only show if user has coins from this store */}
             {state.coinSystem.storePromoCoin.available > 0 && (
               <View style={styles.coinSliderCard}>
                 <LinearGradient
-                  colors={['#10B981', '#059669']}
+                  colors={state.coinSystem.storePromoCoin.storeColor
+                    ? [state.coinSystem.storePromoCoin.storeColor, state.coinSystem.storePromoCoin.storeColor + 'CC']
+                    : ['#10B981', '#059669']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.coinSliderGradient}
@@ -667,7 +802,11 @@ export default function CheckoutPage() {
                     <View style={styles.coinHeaderLeft}>
                       <View style={styles.coinTitleRow}>
                         <Ionicons name="storefront" size={20} color="#FFD700" />
-                        <ThemedText style={styles.coinTitleWhite}>Store Promo Coins</ThemedText>
+                        <ThemedText style={styles.coinTitleWhite}>
+                          {state.coinSystem.storePromoCoin.storeName
+                            ? `${state.coinSystem.storePromoCoin.storeName} Coins`
+                            : 'Store Coins'}
+                        </ThemedText>
                       </View>
                       <View style={styles.coinAvailableRow}>
                         <ThemedText style={styles.coinAvailableTextWhite}>
@@ -741,7 +880,7 @@ export default function CheckoutPage() {
                       <View style={styles.savingBadge}>
                         <Ionicons name="gift" size={16} color="#10B981" />
                         <ThemedText style={styles.coinSavingTextEnhanced}>
-                          Store exclusive: You'll save {currencySymbol}{state.coinSystem.storePromoCoin.used}!
+                          {state.coinSystem.storePromoCoin.storeName || 'Store'} exclusive: You'll save {currencySymbol}{state.coinSystem.storePromoCoin.used}!
                         </ThemedText>
                       </View>
                     </View>
@@ -828,19 +967,44 @@ export default function CheckoutPage() {
               </ThemedText>
             </View>
             
-            <View style={styles.summaryRow}>
-              <ThemedText style={styles.summaryLabel}>Get & item Total</ThemedText>
-              <ThemedText style={styles.summaryValue}>
-                {currencySymbol}{(state.billSummary?.getAndItemTotal || 0).toFixed(0)}
-              </ThemedText>
-            </View>
+            {(state.billSummary?.getAndItemTotal || 0) > 0 && (
+              <View style={styles.summaryRow}>
+                <ThemedText style={styles.summaryLabel}>Get & item Total</ThemedText>
+                <ThemedText style={styles.summaryValue}>
+                  {currencySymbol}{(state.billSummary?.getAndItemTotal || 0).toFixed(0)}
+                </ThemedText>
+              </View>
+            )}
+
+            {(state.billSummary?.deliveryFee || 0) > 0 && (
+              <View style={styles.summaryRow}>
+                <ThemedText style={styles.summaryLabel}>Delivery Fee</ThemedText>
+                <ThemedText style={styles.summaryValue}>
+                  {currencySymbol}{(state.billSummary?.deliveryFee || 0).toFixed(0)}
+                </ThemedText>
+              </View>
+            )}
 
             {(state.billSummary?.platformFee || 0) > 0 && (
-              <View style={styles.summaryRow}>
-                <ThemedText style={styles.summaryLabel}>Platform Fee</ThemedText>
-                <ThemedText style={styles.summaryValue}>
-                  {currencySymbol}{(state.billSummary?.platformFee || 0).toFixed(0)}
-                </ThemedText>
+              <View>
+                <View style={styles.summaryRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <ThemedText style={styles.summaryLabel}>Platform Fee</ThemedText>
+                    <TouchableOpacity onPress={() => setShowPlatformFeeInfo(!showPlatformFeeInfo)}>
+                      <Ionicons name="information-circle-outline" size={16} color="#888" />
+                    </TouchableOpacity>
+                  </View>
+                  <ThemedText style={styles.summaryValue}>
+                    {currencySymbol}{(state.billSummary?.platformFee || 0).toFixed(0)}
+                  </ThemedText>
+                </View>
+                {showPlatformFeeInfo && (
+                  <View style={{ backgroundColor: '#f5f5f5', padding: 8, borderRadius: 6, marginTop: 4, marginBottom: 4 }}>
+                    <ThemedText style={{ fontSize: 12, color: '#666', lineHeight: 16 }}>
+                      Platform fee covers operational costs for order processing, customer support, and maintaining secure payment systems.
+                    </ThemedText>
+                  </View>
+                )}
               </View>
             )}
 
@@ -864,14 +1028,14 @@ export default function CheckoutPage() {
               </View>
             )}
 
-            {/* Card Offer Discount */}
-            {((state as any).appliedCardOffer || (state.billSummary as any)?.cardOfferDiscount) && (
+            {/* Card Offer Discount - only show if there's an actual discount */}
+            {((state.billSummary?.cardOfferDiscount || 0) > 0) && (
               <View style={styles.summaryRow}>
                 <ThemedText style={[styles.summaryLabel, { color: '#00C06A' }]}>
                   Card Offer Discount
                 </ThemedText>
                 <ThemedText style={[styles.summaryValue, { color: '#00C06A' }]}>
-                  -{currencySymbol}{((state.billSummary as any)?.cardOfferDiscount || 0).toFixed(0)}
+                  -{currencySymbol}{(state.billSummary?.cardOfferDiscount || 0).toFixed(0)}
                 </ThemedText>
               </View>
             )}
@@ -964,7 +1128,11 @@ export default function CheckoutPage() {
                 disabled={state.loading || totalWalletBalance < (state.billSummary?.totalPayable || 0) || !canCheckout}
               >
                 <View style={[styles.quickPayIcon, { backgroundColor: '#8B5CF6' }]}>
-                  <Ionicons name="diamond" size={20} color="white" />
+                  <Image
+                    source={require('@/assets/images/rez-coin.png')}
+                    style={styles.coinIconMedium}
+                    resizeMode="contain"
+                  />
                 </View>
                 <ThemedText style={styles.quickPayLabel}>Wallet</ThemedText>
                 <ThemedText style={styles.quickPayBalance}>{totalWalletBalance} RC</ThemedText>
@@ -1083,14 +1251,28 @@ export default function CheckoutPage() {
                     const isCurrentlyApplied = state.appliedPromoCode?.code === promo.code;
                     const itemTotal = state.items.reduce((total, item) => total + (item.price * item.quantity), 0);
                     const minOrderEligible = itemTotal >= promo.minOrderValue;
-                    
-                    // Check tier restrictions
-                    const requiresTier = promo.title?.toLowerCase().includes('gold') || 
-                                        promo.title?.toLowerCase().includes('silver') ||
-                                        promo.title?.toLowerCase().includes('platinum');
-                    const tierName = promo.title?.match(/(gold|silver|platinum)/i)?.[0] || 'premium';
-                    
-                    const isEligible = minOrderEligible && !requiresTier; // For now, tier-restricted coupons are not eligible
+
+                    // Check tier restrictions - use tierRequirement field if available, otherwise fall back to title check
+                    const requiresTier = promo.tierRequirement ||
+                                        (promo.title?.toLowerCase().includes('gold') ? 'gold' :
+                                         promo.title?.toLowerCase().includes('silver') ? 'silver' :
+                                         promo.title?.toLowerCase().includes('platinum') ? 'platinum' : null);
+                    const tierName = requiresTier || 'premium';
+
+                    // Tier hierarchy: bronze < silver < gold < platinum
+                    const tierHierarchy: Record<string, number> = {
+                      'bronze': 1,
+                      'silver': 2,
+                      'gold': 3,
+                      'platinum': 4,
+                    };
+
+                    // Check if user's tier meets the requirement
+                    const userTierLevel = userLoyaltyTier ? tierHierarchy[userLoyaltyTier] || 0 : 0;
+                    const requiredTierLevel = requiresTier ? tierHierarchy[requiresTier] || 0 : 0;
+                    const meetsTierRequirement = !requiresTier || userTierLevel >= requiredTierLevel;
+
+                    const isEligible = minOrderEligible && meetsTierRequirement;
 
                     // Calculate discount display
                     const discountDisplay = promo.discountType === 'PERCENTAGE'
@@ -1110,9 +1292,12 @@ export default function CheckoutPage() {
                           if (applyingPromo) return; // Prevent multiple clicks
                           if (isEligible) {
                             handleQuickPromoSelect(promo.code);
-                          } else if (requiresTier) {
+                          } else if (requiresTier && !meetsTierRequirement) {
+                            const upgradeMessage = userLoyaltyTier
+                              ? `🔒 ${tierName.toUpperCase()} MEMBERS ONLY - Upgrade from ${userLoyaltyTier.toUpperCase()} to ${tierName.toUpperCase()} to unlock this ${promo.discountValue}${promo.discountType === 'PERCENTAGE' ? '%' : currencySymbol} discount!`
+                              : `🔒 ${tierName.toUpperCase()} MEMBERS ONLY - Become a member to unlock this ${promo.discountValue}${promo.discountType === 'PERCENTAGE' ? '%' : currencySymbol} discount!`;
                             showToast({
-                              message: `🔒 ${tierName.toUpperCase()} MEMBERS ONLY - Upgrade your membership to unlock this ${promo.discountValue}${promo.discountType === 'PERCENTAGE' ? '%' : currencySymbol} discount!`,
+                              message: upgradeMessage,
                               type: 'warning',
                               duration: 4000,
                             });
@@ -1262,14 +1447,19 @@ export default function CheckoutPage() {
               <View style={styles.confirmPaymentMethod}>
                 <ThemedText style={styles.confirmPaymentLabel}>Payment Method</ThemedText>
                 <View style={styles.confirmPaymentBadge}>
-                  <Ionicons
-                    name={
-                      selectedPaymentMethod === 'cod' ? 'cash' :
-                      selectedPaymentMethod === 'wallet' ? 'diamond' : 'card'
-                    }
-                    size={18}
-                    color="#00C06A"
-                  />
+                  {selectedPaymentMethod === 'wallet' ? (
+                    <Image
+                      source={require('@/assets/images/rez-coin.png')}
+                      style={{ width: 18, height: 18 }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Ionicons
+                      name={selectedPaymentMethod === 'cod' ? 'cash' : 'card'}
+                      size={18}
+                      color="#00C06A"
+                    />
+                  )}
                   <ThemedText style={styles.confirmPaymentValue}>
                     {getPaymentMethodLabel(selectedPaymentMethod)}
                   </ThemedText>
@@ -1310,6 +1500,23 @@ export default function CheckoutPage() {
           </View>
         </View>
       </Modal>
+
+      {/* Address Selection Modal */}
+      <AddressSelectionModal
+        visible={showAddressModal}
+        addresses={state.availableAddresses || []}
+        selectedAddressId={state.selectedAddress?.id}
+        onSelect={(address) => {
+          handlers.handleAddressSelect(address);
+          setShowAddressModal(false);
+        }}
+        onClose={() => setShowAddressModal(false)}
+        onAddNew={() => {
+          setShowAddressModal(false);
+          router.push('/account/addresses');
+        }}
+        loading={state.loading}
+      />
 
       {/* Payment Processing Overlay */}
       {processingPayment && (
@@ -1382,7 +1589,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 4,
   },
-  
+  coinIconSmall: {
+    width: 16,
+    height: 16,
+  },
+  coinIconMedium: {
+    width: 24,
+    height: 24,
+  },
+
   // Amount Display
   amountContainer: {
     alignItems: 'center',
@@ -2566,5 +2781,96 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
+  },
+
+  // Address Section Styles
+  addressCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  addressCardContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+  },
+  addressIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  addressDetails: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  addressName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+    marginBottom: 2,
+  },
+  addressCityText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  addressPhoneText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  changeAddressButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+  },
+  changeAddressText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#00C06A',
+  },
+  addAddressCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    padding: 16,
+    gap: 12,
+  },
+  addAddressText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#00C06A',
+  },
+  addressWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+    gap: 8,
+  },
+  addressWarningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400E',
   },
 });

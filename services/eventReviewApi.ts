@@ -5,7 +5,14 @@
 
 import { getAuthToken } from '@/utils/authStorage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5001/api';
+
+// Region getter - will be set by RegionContext
+let getRegionFn: (() => string) | null = null;
+
+export function setEventReviewApiRegionGetter(fn: (() => string) | null) {
+  getRegionFn = fn;
+}
 
 export interface ReviewUser {
   id?: string;
@@ -66,9 +73,14 @@ type SortOption = 'newest' | 'oldest' | 'highest' | 'lowest' | 'helpful';
 
 class EventReviewApiService {
   private async getHeaders(requireAuth: boolean = false): Promise<HeadersInit> {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
+
+    // Add region header if available
+    if (getRegionFn) {
+      headers['X-Rez-Region'] = getRegionFn();
+    }
 
     if (requireAuth) {
       const token = await getAuthToken();
@@ -90,7 +102,7 @@ class EventReviewApiService {
     sortBy: SortOption = 'newest'
   ): Promise<ReviewsResponse['data']> {
     try {
-      const url = `${API_BASE_URL}/api/events/${eventId}/reviews?page=${page}&limit=${limit}&sortBy=${sortBy}`;
+      const url = `${API_BASE_URL}/events/${eventId}/reviews?page=${page}&limit=${limit}&sortBy=${sortBy}`;
       const headers = await this.getHeaders(false);
 
       const response = await fetch(url, {
@@ -116,7 +128,7 @@ class EventReviewApiService {
    */
   async getUserReview(eventId: string): Promise<UserReviewResponse['data']> {
     try {
-      const url = `${API_BASE_URL}/api/events/${eventId}/my-review`;
+      const url = `${API_BASE_URL}/events/${eventId}/my-review`;
       const headers = await this.getHeaders(true);
 
       const response = await fetch(url, {
@@ -142,7 +154,7 @@ class EventReviewApiService {
    */
   async submitReview(eventId: string, reviewData: SubmitReviewData): Promise<EventReviewData> {
     try {
-      const url = `${API_BASE_URL}/api/events/${eventId}/reviews`;
+      const url = `${API_BASE_URL}/events/${eventId}/reviews`;
       const headers = await this.getHeaders(true);
 
       const response = await fetch(url, {
@@ -169,7 +181,7 @@ class EventReviewApiService {
    */
   async updateReview(reviewId: string, reviewData: Partial<SubmitReviewData>): Promise<EventReviewData> {
     try {
-      const url = `${API_BASE_URL}/api/events/reviews/${reviewId}`;
+      const url = `${API_BASE_URL}/events/reviews/${reviewId}`;
       const headers = await this.getHeaders(true);
 
       const response = await fetch(url, {
@@ -196,7 +208,7 @@ class EventReviewApiService {
    */
   async deleteReview(reviewId: string): Promise<void> {
     try {
-      const url = `${API_BASE_URL}/api/events/reviews/${reviewId}`;
+      const url = `${API_BASE_URL}/events/reviews/${reviewId}`;
       const headers = await this.getHeaders(true);
 
       const response = await fetch(url, {
@@ -220,7 +232,7 @@ class EventReviewApiService {
    */
   async markReviewHelpful(reviewId: string): Promise<{ helpfulCount: number }> {
     try {
-      const url = `${API_BASE_URL}/api/events/reviews/${reviewId}/helpful`;
+      const url = `${API_BASE_URL}/events/reviews/${reviewId}/helpful`;
       const headers = await this.getHeaders(false);
 
       const response = await fetch(url, {

@@ -1,6 +1,8 @@
 // Checkout Components Export
 // This file provides centralized exports for all checkout-related components
 
+export { default as AddressSelectionModal } from './AddressSelectionModal';
+
 // Main checkout page components would be exported here when created
 // For example:
 // export { CheckoutHeader } from './CheckoutHeader';

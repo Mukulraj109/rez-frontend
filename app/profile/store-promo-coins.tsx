@@ -1,5 +1,7 @@
-// Store Promo Coins Page
-// Shows all store-specific promo coins earned by the user
+// Store Coins Page (Branded Coins)
+// Shows all store-specific branded coins earned by the user
+// Branded coins are merchant-specific and stored in wallet.brandedCoins
+// Different from Promo Coins which are admin-provided campaign coins
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -16,10 +18,27 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { storePromoCoinApi, StorePromoCoinDetails } from '@/services/storePromoCoinApi';
+import walletApi, { BackendBrandedCoin } from '@/services/walletApi';
 import { showToast } from '@/components/common/ToastManager';
 
-interface StorePromoCoinSummary {
+// Store coin display item (mapped from BackendBrandedCoin)
+interface StoreCoinItem {
+  _id: string;
+  store: {
+    name: string;
+    logo?: string;
+    color?: string;
+  };
+  amount: number;
+  earned: number;
+  used: number;
+  lastEarnedAt?: string;
+  lastUsedAt?: string;
+  expiryDate?: string;
+  transactions: any[];
+}
+
+interface StoreCoinSummary {
   totalAvailable: number;
   totalEarned: number;
   totalUsed: number;
@@ -29,33 +48,55 @@ interface StorePromoCoinSummary {
 export default function StorePromoCoinsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [storeCoins, setStoreCoins] = useState<StorePromoCoinDetails[]>([]);
-  const [summary, setSummary] = useState<StorePromoCoinSummary>({
+  const [storeCoins, setStoreCoins] = useState<StoreCoinItem[]>([]);
+  const [summary, setSummary] = useState<StoreCoinSummary>({
     totalAvailable: 0,
     totalEarned: 0,
     totalUsed: 0,
     storeCount: 0,
   });
 
-  // Fetch store promo coins
+  // Fetch branded coins from wallet
   const fetchStoreCoins = async () => {
     try {
       setLoading(true);
-      const response = await storePromoCoinApi.getUserStorePromoCoins();
-      
+      const response = await walletApi.getBalance();
+
       if (response.success && response.data) {
-        setStoreCoins(response.data.storeCoins || []);
-        setSummary(response.data.summary || {
-          totalAvailable: 0,
-          totalEarned: 0,
-          totalUsed: 0,
-          storeCount: 0,
+        const brandedCoins = response.data.brandedCoins || [];
+
+        // Map branded coins to display format
+        const mappedCoins: StoreCoinItem[] = brandedCoins.map((bc: BackendBrandedCoin) => ({
+          _id: bc.merchantId,
+          store: {
+            name: bc.merchantName,
+            logo: bc.merchantLogo,
+            color: bc.merchantColor,
+          },
+          amount: bc.amount,
+          earned: bc.amount, // Total earned (backend doesn't track separately)
+          used: 0, // Would need transaction history to calculate
+          lastEarnedAt: bc.earnedDate,
+          lastUsedAt: bc.lastUsed,
+          expiryDate: undefined, // Branded coins typically don't expire
+          transactions: [],
+        }));
+
+        setStoreCoins(mappedCoins);
+
+        // Calculate summary
+        const totalAvailable = brandedCoins.reduce((sum: number, bc: BackendBrandedCoin) => sum + bc.amount, 0);
+        setSummary({
+          totalAvailable,
+          totalEarned: totalAvailable, // Approximation
+          totalUsed: 0, // Would need transaction history
+          storeCount: brandedCoins.length,
         });
       }
     } catch (error: any) {
       console.error('❌ [STORE PROMO COINS PAGE] Error fetching data:', error);
       showToast({
-        message: error.message || 'Failed to load store promo coins',
+        message: error.message || 'Failed to load store coins',
         type: 'error',
         duration: 3000,
       });
@@ -74,18 +115,16 @@ export default function StorePromoCoinsPage() {
     fetchStoreCoins();
   };
 
-  const getStoreLogo = (store: any): string | undefined => {
-    if (typeof store === 'object' && store.logo) {
-      return store.logo;
-    }
-    return undefined;
+  const getStoreLogo = (store: StoreCoinItem['store']): string | undefined => {
+    return store?.logo;
   };
 
-  const getStoreName = (store: any): string => {
-    if (typeof store === 'object' && store.name) {
-      return store.name;
-    }
-    return 'Store';
+  const getStoreName = (store: StoreCoinItem['store']): string => {
+    return store?.name || 'Store';
+  };
+
+  const getStoreColor = (store: StoreCoinItem['store']): string => {
+    return store?.color || '#00C06A';
   };
 
   return (
@@ -184,7 +223,7 @@ export default function StorePromoCoinsPage() {
         <View style={styles.infoBanner}>
           <Ionicons name="information-circle" size={20} color="#00C06A" />
           <ThemedText style={styles.infoBannerText}>
-            Promo coins are store-specific and can only be used at the store where they were earned.
+            Store coins are store-specific and can only be used at the store where they were earned.
           </ThemedText>
         </View>
 
@@ -198,10 +237,10 @@ export default function StorePromoCoinsPage() {
             </View>
           ) : storeCoins.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="diamond-outline" size={64} color="#9CA3AF" />
-              <ThemedText style={styles.emptyTitle}>No Promo Coins Yet</ThemedText>
+              <Ionicons name="storefront-outline" size={64} color="#9CA3AF" />
+              <ThemedText style={styles.emptyTitle}>No Store Coins Yet</ThemedText>
               <ThemedText style={styles.emptySubtitle}>
-                Complete orders to earn store-specific promo coins!
+                Complete orders to earn store-specific coins!
               </ThemedText>
             </View>
           ) : (

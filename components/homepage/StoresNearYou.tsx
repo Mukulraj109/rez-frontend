@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useNearbyStores, NearbyStore } from '@/hooks/useNearbyStores';
+import { useRegion } from '@/contexts/RegionContext';
 
 interface StoresNearYouProps {
   onMapViewPress?: () => void;
@@ -20,7 +21,12 @@ interface StoresNearYouProps {
 const StoresNearYou: React.FC<StoresNearYouProps> = ({ onMapViewPress }) => {
   const router = useRouter();
 
+  // Get current region for display
+  const { state: regionState } = useRegion();
+  const regionName = regionState.regionConfig?.name || 'your area';
+
   // Use the nearby stores hook to fetch real data
+  // Now with region fallback for coordinates when GPS unavailable
   const {
     stores,
     isLoading,
@@ -28,18 +34,18 @@ const StoresNearYou: React.FC<StoresNearYouProps> = ({ onMapViewPress }) => {
     hasLocationPermission,
     refetch,
     requestLocationPermission,
-  } = useNearbyStores({ radius: 2, limit: 5 });
+  } = useNearbyStores({ radius: 2, limit: 5, useRegionFallback: true });
 
   const handleMapView = () => {
     if (onMapViewPress) {
       onMapViewPress();
     } else {
-      router.push('/map');
+      router.push('/explore/map');
     }
   };
 
   const handleStorePress = (storeId: string) => {
-    router.push(`/store/${storeId}`);
+    router.push(`/MainStorePage?storeId=${storeId}` as any);
   };
 
   // Loading state
@@ -53,20 +59,22 @@ const StoresNearYou: React.FC<StoresNearYouProps> = ({ onMapViewPress }) => {
             </View>
             <View style={styles.headerTextContainer}>
               <Text style={styles.title}>Stores Near You</Text>
-              <Text style={styles.subtitle}>Within 2km • Live availability.</Text>
+              <Text style={styles.subtitle}>Within 2km • {regionName}</Text>
             </View>
           </View>
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#00C06A" />
-          <Text style={styles.loadingText}>Finding stores nearby...</Text>
+          <Text style={styles.loadingText}>Finding stores in {regionName}...</Text>
         </View>
       </View>
     );
   }
 
-  // Location permission not granted
-  if (!hasLocationPermission) {
+  // Location permission not granted AND no stores loaded yet
+  // With region fallback, we can still show stores without GPS permission
+  // Only show this if we have no stores and no error (meaning we're waiting for location)
+  if (!hasLocationPermission && stores.length === 0 && !error && !isLoading) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -76,7 +84,7 @@ const StoresNearYou: React.FC<StoresNearYouProps> = ({ onMapViewPress }) => {
             </View>
             <View style={styles.headerTextContainer}>
               <Text style={styles.title}>Stores Near You</Text>
-              <Text style={styles.subtitle}>Within 2km • Live availability.</Text>
+              <Text style={styles.subtitle}>Within 2km • {regionName}</Text>
             </View>
           </View>
         </View>
@@ -86,7 +94,7 @@ const StoresNearYou: React.FC<StoresNearYouProps> = ({ onMapViewPress }) => {
           </View>
           <Text style={styles.permissionTitle}>Enable Location</Text>
           <Text style={styles.permissionText}>
-            Allow location access to discover stores near you
+            Allow location access for more accurate store recommendations in {regionName}
           </Text>
           <TouchableOpacity
             style={styles.enableButton}
@@ -112,7 +120,7 @@ const StoresNearYou: React.FC<StoresNearYouProps> = ({ onMapViewPress }) => {
             </View>
             <View style={styles.headerTextContainer}>
               <Text style={styles.title}>Stores Near You</Text>
-              <Text style={styles.subtitle}>Within 2km • Live availability.</Text>
+              <Text style={styles.subtitle}>Within 2km • {regionName}</Text>
             </View>
           </View>
         </View>
@@ -144,16 +152,24 @@ const StoresNearYou: React.FC<StoresNearYouProps> = ({ onMapViewPress }) => {
             </View>
             <View style={styles.headerTextContainer}>
               <Text style={styles.title}>Stores Near You</Text>
-              <Text style={styles.subtitle}>Within 2km • Live availability.</Text>
+              <Text style={styles.subtitle}>Within 2km • {regionName}</Text>
             </View>
           </View>
         </View>
         <View style={styles.emptyContainer}>
           <Ionicons name="storefront-outline" size={48} color="#9CA3AF" />
-          <Text style={styles.emptyTitle}>No Stores Nearby</Text>
+          <Text style={styles.emptyTitle}>No Stores in {regionName}</Text>
           <Text style={styles.emptyText}>
-            No stores found within 2km of your location
+            We're expanding to {regionName} soon! Check back later for partner stores.
           </Text>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={refetch}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="refresh" size={16} color="#00C06A" style={{ marginRight: 6 }} />
+            <Text style={styles.refreshButtonText}>Refresh</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -170,7 +186,7 @@ const StoresNearYou: React.FC<StoresNearYouProps> = ({ onMapViewPress }) => {
           </View>
           <View style={styles.headerTextContainer}>
             <Text style={styles.title}>Stores Near You</Text>
-            <Text style={styles.subtitle}>Within 2km • Live availability.</Text>
+            <Text style={styles.subtitle}>Within 2km • {regionName}</Text>
           </View>
         </View>
         <TouchableOpacity
@@ -534,6 +550,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
     textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 192, 106, 0.2)',
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#00C06A',
   },
 });
 

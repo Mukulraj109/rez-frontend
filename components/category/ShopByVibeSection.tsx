@@ -101,7 +101,7 @@ const ShopByVibeSection: React.FC<ShopByVibeSectionProps> = ({
       onVibePress(vibe);
     } else {
       router.push({
-        pathname: '/products',
+        pathname: '/shop',
         params: { vibe: vibe.id, category: categorySlug },
       } as any);
     }

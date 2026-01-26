@@ -39,7 +39,13 @@ export function useDiscoverContent(): UseDiscoverContentReturn {
   const [state, setState] = useState<DiscoverContentState>(initialState);
 
   // Transform video response to DiscoverReel format
-  const transformToReel = (video: any): DiscoverReel => ({
+  const transformToReel = (video: any): DiscoverReel => {
+    // Extract creator name with better fallbacks
+    const creatorName = video.creator?.profile
+      ? `${video.creator.profile.firstName || ''} ${video.creator.profile.lastName || ''}`.trim()
+      : video.creator?.name || video.creator?.username || video.store?.name || '';
+
+    return {
     _id: video._id || video.id,
     id: video._id || video.id,
     title: video.title || '',
@@ -51,9 +57,7 @@ export function useDiscoverContent(): UseDiscoverContentReturn {
     creator: {
       _id: video.creator?._id || video.creator?.id || '',
       id: video.creator?._id || video.creator?.id || '',
-      name: video.creator?.profile
-        ? `${video.creator.profile.firstName || ''} ${video.creator.profile.lastName || ''}`.trim()
-        : video.creator?.name || 'Creator',
+      name: creatorName,
       username: video.creator?.username,
       avatar: video.creator?.profile?.avatar || video.creator?.avatar,
       profile: video.creator?.profile,
@@ -94,10 +98,16 @@ export function useDiscoverContent(): UseDiscoverContentReturn {
     },
     store: video.store || video.stores?.[0],
     createdAt: video.createdAt,
-  });
+  };
+  };
 
   // Transform video/ugc to DiscoverPost format
-  const transformToPost = (item: any): DiscoverPost => ({
+  const transformToPost = (item: any): DiscoverPost => {
+    const postCreatorName = item.creator?.profile
+      ? `${item.creator.profile.firstName || ''} ${item.creator.profile.lastName || ''}`.trim()
+      : item.creator?.name || item.creator?.username || '';
+
+    return {
     _id: item._id || item.id,
     id: item._id || item.id,
     type: item.videoUrl ? 'video' : 'photo',
@@ -108,9 +118,7 @@ export function useDiscoverContent(): UseDiscoverContentReturn {
     creator: {
       _id: item.creator?._id || item.creator?.id || '',
       id: item.creator?._id || item.creator?.id || '',
-      name: item.creator?.profile
-        ? `${item.creator.profile.firstName || ''} ${item.creator.profile.lastName || ''}`.trim()
-        : item.creator?.name || 'Creator',
+      name: postCreatorName,
       avatar: item.creator?.profile?.avatar || item.creator?.avatar,
       profile: item.creator?.profile,
     },
@@ -130,10 +138,16 @@ export function useDiscoverContent(): UseDiscoverContentReturn {
     },
     isBrandPost: item.contentType === 'merchant',
     createdAt: item.createdAt,
-  });
+  };
+  };
 
   // Transform article response to DiscoverArticle format
-  const transformToArticle = (article: any): DiscoverArticle => ({
+  const transformToArticle = (article: any): DiscoverArticle => {
+    const authorName = article.author?.profile
+      ? `${article.author.profile.firstName || ''} ${article.author.profile.lastName || ''}`.trim()
+      : article.author?.name || article.author?.username || '';
+
+    return {
     _id: article._id || article.id,
     id: article._id || article.id,
     title: article.title || '',
@@ -143,9 +157,7 @@ export function useDiscoverContent(): UseDiscoverContentReturn {
     category: article.category || 'general',
     author: {
       _id: article.author?._id || article.author?.id || '',
-      name: article.author?.profile
-        ? `${article.author.profile.firstName || ''} ${article.author.profile.lastName || ''}`.trim()
-        : article.author?.name || 'Author',
+      name: authorName,
       avatar: article.author?.profile?.avatar || article.author?.avatar,
     },
     products: (article.products || []).map((p: any) => ({
@@ -165,19 +177,23 @@ export function useDiscoverContent(): UseDiscoverContentReturn {
     },
     publishedAt: article.publishedAt,
     createdAt: article.createdAt,
-  });
+  };
+  };
 
   // Transform to DiscoverImage format
-  const transformToImage = (item: any): DiscoverImage => ({
+  const transformToImage = (item: any): DiscoverImage => {
+    const imageCreatorName = item.creator?.profile
+      ? `${item.creator.profile.firstName || ''} ${item.creator.profile.lastName || ''}`.trim()
+      : item.creator?.name || item.creator?.username || '';
+
+    return {
     _id: item._id || item.id,
     id: item._id || item.id,
     imageUrl: item.imageUrl || item.thumbnail || item.mediaUrl || '',
     caption: item.caption || item.description || '',
     creator: {
       _id: item.creator?._id || item.creator?.id || '',
-      name: item.creator?.profile
-        ? `${item.creator.profile.firstName || ''} ${item.creator.profile.lastName || ''}`.trim()
-        : item.creator?.name || 'Creator',
+      name: imageCreatorName,
       avatar: item.creator?.profile?.avatar || item.creator?.avatar,
     },
     products: (item.products || []).map((p: any) => ({
@@ -195,7 +211,8 @@ export function useDiscoverContent(): UseDiscoverContentReturn {
       comments: item.engagement?.comments || 0,
     },
     createdAt: item.createdAt,
-  });
+  };
+  };
 
   // Fetch content for a specific tab
   const fetchTabContent = useCallback(async (tab: DiscoverTabType, refresh = false) => {

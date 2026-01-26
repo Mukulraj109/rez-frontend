@@ -113,22 +113,18 @@ export default function PriceSection({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: 'rgba(0, 192, 106, 0.15)',
     shadowColor: '#00C06A',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 12,
-    paddingBottom: Platform.OS === 'ios' ? 90 : 80,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
   },
   iosContainer: {
-    paddingBottom: 90,
+    paddingBottom: 34,
   },
   content: {
     flexDirection: 'row',

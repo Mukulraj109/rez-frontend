@@ -28,12 +28,13 @@ interface EditAddressModalProps {
 export default function EditAddressModal({ visible, address, onClose, onUpdate }: EditAddressModalProps) {
   const [type, setType] = useState<AddressType>(AddressType.HOME);
   const [title, setTitle] = useState('');
+  const [phone, setPhone] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [postalCode, setPostalCode] = useState('');
-  const [country, setCountry] = useState('USA');
+  const [country, setCountry] = useState('India');
   const [instructions, setInstructions] = useState('');
   const [isDefault, setIsDefault] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,12 +44,13 @@ export default function EditAddressModal({ visible, address, onClose, onUpdate }
     if (address) {
       setType(address.type as AddressType);
       setTitle(address.title);
+      setPhone(address.phone || '');
       setAddressLine1(address.addressLine1);
       setAddressLine2(address.addressLine2 || '');
       setCity(address.city);
       setState(address.state);
       setPostalCode(address.postalCode);
-      setCountry(address.country || 'USA');
+      setCountry(address.country || 'India');
       setInstructions(address.instructions || '');
       setIsDefault(address.isDefault);
     }
@@ -57,12 +59,13 @@ export default function EditAddressModal({ visible, address, onClose, onUpdate }
   const resetForm = () => {
     setType(AddressType.HOME);
     setTitle('');
+    setPhone('');
     setAddressLine1('');
     setAddressLine2('');
     setCity('');
     setState('');
     setPostalCode('');
-    setCountry('USA');
+    setCountry('India');
     setInstructions('');
     setIsDefault(false);
   };
@@ -105,12 +108,13 @@ export default function EditAddressModal({ visible, address, onClose, onUpdate }
       const updateData: AddressUpdate = {
         type,
         title: title.trim(),
+        phone: phone.trim() || undefined,
         addressLine1: addressLine1.trim(),
         addressLine2: addressLine2.trim() || undefined,
         city: city.trim(),
         state: state.trim(),
         postalCode: postalCode.trim(),
-        country: country.trim() || 'USA',
+        country: country.trim() || 'India',
         instructions: instructions.trim() || undefined,
         isDefault,
       };
@@ -205,6 +209,20 @@ export default function EditAddressModal({ visible, address, onClose, onUpdate }
                   onChangeText={setTitle}
                   placeholder="e.g., Home, Office"
                   placeholderTextColor={ACCOUNT_COLORS.textSecondary}
+                />
+              </View>
+
+              {/* Phone Number */}
+              <View style={styles.formGroup}>
+                <ThemedText style={styles.label}>Phone Number</ThemedText>
+                <TextInput
+                  style={styles.input}
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="e.g., +91 9876543210"
+                  placeholderTextColor={ACCOUNT_COLORS.textSecondary}
+                  keyboardType="phone-pad"
+                  maxLength={20}
                 />
               </View>
 

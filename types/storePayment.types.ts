@@ -279,6 +279,7 @@ export interface CoinBalance {
 export interface CoinRedemption {
   rezCoins: number;
   promoCoins: number;
+  brandedCoins: number;  // Merchant-specific coins
   totalAmount: number;
 }
 
@@ -420,7 +421,10 @@ export interface PaymentHistoryResponse {
     page: number;
     limit: number;
     total: number;
-    hasMore: boolean;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+    hasMore?: boolean;  // Legacy field for backwards compatibility
   };
 }
 

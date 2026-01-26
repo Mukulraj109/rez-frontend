@@ -1,5 +1,12 @@
 import { EventItem } from '@/types/homepage.types';
 
+// Region getter - will be set by RegionContext
+let getRegionFn: (() => string) | null = null;
+
+export function setEventsApiRegionGetter(fn: (() => string) | null) {
+  getRegionFn = fn;
+}
+
 // Category mapping: Frontend display categories -> Backend API categories
 // Using direct category names as stored in database
 const CATEGORY_MAP: Record<string, string> = {
@@ -102,6 +109,23 @@ class EventsApiService {
   }
 
   /**
+   * Get headers with region included
+   */
+  private getHeaders(additionalHeaders: Record<string, string> = {}): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...additionalHeaders,
+    };
+
+    // Add region header if available
+    if (getRegionFn) {
+      headers['X-Rez-Region'] = getRegionFn();
+    }
+
+    return headers;
+  }
+
+  /**
    * Check if backend is available
    * Only cache successful checks, not failures
    */
@@ -125,9 +149,7 @@ class EventsApiService {
       
       const response = await fetch(`${this.baseUrl}/events?limit=1`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(),
         signal: controller.signal,
       });
       
@@ -180,9 +202,7 @@ class EventsApiService {
 
       const response = await fetch(`${this.baseUrl}/events?${queryParams}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -217,9 +237,7 @@ class EventsApiService {
     try {
       const response = await fetch(`${this.baseUrl}/events/${id}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -266,9 +284,7 @@ class EventsApiService {
 
       const response = await fetch(`${this.baseUrl}/events/category/${encodeURIComponent(backendCategory)}?${queryParams}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -315,9 +331,7 @@ class EventsApiService {
 
       const response = await fetch(`${this.baseUrl}/events/search?${queryParams}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -352,9 +366,7 @@ class EventsApiService {
 
       const response = await fetch(`${this.baseUrl}/events/featured?limit=${limit}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -395,10 +407,7 @@ class EventsApiService {
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: this.getHeaders({ 'Authorization': `Bearer ${token}` }),
         body: JSON.stringify(bookingData),
       });
 
@@ -436,9 +445,7 @@ class EventsApiService {
 
       const response = await fetch(`${this.baseUrl}/events/${eventId}/related?limit=${limit}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -502,10 +509,7 @@ class EventsApiService {
 
       const response = await fetch(`${this.baseUrl}/events/my-bookings?${queryParams}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: this.getHeaders({ 'Authorization': `Bearer ${token}` }),
       });
 
       if (!response.ok) {
@@ -541,10 +545,7 @@ class EventsApiService {
 
       const response = await fetch(`${this.baseUrl}/events/bookings/${bookingId}/confirm`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: this.getHeaders({ 'Authorization': `Bearer ${token}` }),
         body: JSON.stringify({ paymentIntentId }),
       });
 
@@ -581,10 +582,7 @@ class EventsApiService {
 
       const response = await fetch(`${this.baseUrl}/events/bookings/${bookingId}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: this.getHeaders({ 'Authorization': `Bearer ${token}` }),
       });
 
       if (!response.ok) {
@@ -620,10 +618,7 @@ class EventsApiService {
 
       const response = await fetch(`${this.baseUrl}/events/${eventId}/favorite`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: this.getHeaders({ 'Authorization': `Bearer ${token}` }),
       });
 
       if (!response.ok) {
@@ -654,9 +649,7 @@ class EventsApiService {
 
       const response = await fetch(`${this.baseUrl}/events/${eventId}/share`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {

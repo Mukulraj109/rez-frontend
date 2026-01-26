@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '@/constants/DesignTokens';
 import { AppliedCoins } from '@/types/storePayment.types';
@@ -62,8 +62,12 @@ export const ApplyCoinsSection: React.FC<ApplyCoinsSectionProps> = ({
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name="diamond" size={20} color={COLORS.primary[500]} />
-          <Text style={styles.sectionTitle}>Apply Coins & Rewards</Text>
+          <Image
+            source={require('@/assets/images/rez-coin.png')}
+            style={styles.headerCoinIcon}
+            resizeMode="contain"
+          />
+          <Text style={styles.sectionTitle}>Use Your Coins</Text>
         </View>
         
         <TouchableOpacity 
@@ -175,6 +179,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
+  },
+  headerCoinIcon: {
+    width: 24,
+    height: 24,
   },
   sectionTitle: {
     ...TYPOGRAPHY.h4,

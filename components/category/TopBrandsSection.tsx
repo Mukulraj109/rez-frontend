@@ -83,9 +83,10 @@ const TopBrandsSection: React.FC<TopBrandsSectionProps> = ({
     if (onBrandPress) {
       onBrandPress(brand);
     } else {
+      // Navigate to brand page - using brand name as the route param
       router.push({
-        pathname: '/brand/[slug]',
-        params: { slug: brand.id },
+        pathname: '/brand/[name]',
+        params: { name: brand.id },
       } as any);
     }
   }, [router, onBrandPress]);

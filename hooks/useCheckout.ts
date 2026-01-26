@@ -13,18 +13,25 @@ import {
 import { CheckoutData } from '@/data/checkoutData';
 import cartService from '@/services/cartApi';
 import ordersService from '@/services/ordersApi';
-import walletApi from '@/services/walletApi';
+import walletApi, { BackendBrandedCoin } from '@/services/walletApi';
 import couponService from '@/services/couponApi';
 import addressApi from '@/services/addressApi';
-import { storePromoCoinApi } from '@/services/storePromoCoinApi';
 import { createRazorpayPayment } from '@/services/razorpayApi';
 import { mapBackendCartToFrontend, mapFrontendCheckoutToBackendOrder } from '@/utils/dataMappers';
 import { showToast } from '@/components/common/ToastManager';
 import { useCart } from '@/contexts/CartContext';
 import { useRegion } from '@/contexts/RegionContext';
+import {
+  TAX_RATE,
+  PLATFORM_FEE,
+  REZ_COIN_MAX_USAGE_PERCENTAGE,
+  PROMO_COIN_MAX_USAGE_PERCENTAGE,
+  STORE_PROMO_COIN_MAX_USAGE_PERCENTAGE,
+  COIN_CONVERSION_RATE,
+} from '@/config/checkout.config';
 
 export const useCheckout = (): UseCheckoutReturn => {
-  const { actions: cartActions } = useCart();
+  const { actions: cartActions, state: cartState } = useCart();
   const { getCurrencySymbol } = useRegion();
   const currencySymbol = getCurrencySymbol();
   const [state, setState] = useState<CheckoutPageState>(CheckoutData.initialState);
@@ -33,6 +40,41 @@ export const useCheckout = (): UseCheckoutReturn => {
   useEffect(() => {
     initializeCheckout();
   }, []);
+
+  // Apply card offer from cart context if one was pre-selected
+  useEffect(() => {
+    if (!state.loading && cartState.appliedCardOffer && !state.appliedCardOffer) {
+      // Apply the card offer from cart
+      const offer = cartState.appliedCardOffer;
+      setState(prev => {
+        const orderTotal = prev.billSummary?.totalPayable || 0;
+        let discountAmount = 0;
+
+        if (offer.type === 'percentage') {
+          discountAmount = Math.round((orderTotal * offer.value) / 100);
+          if (offer.maxDiscountAmount && discountAmount > offer.maxDiscountAmount) {
+            discountAmount = offer.maxDiscountAmount;
+          }
+        } else {
+          discountAmount = offer.value || 0;
+        }
+
+        const newBillSummary = {
+          ...prev.billSummary,
+          cardOfferDiscount: discountAmount,
+          totalPayable: Math.max(0, prev.billSummary.totalPayable - discountAmount),
+        };
+
+        console.log('💳 [Checkout] Applied card offer from cart:', { offer, discountAmount });
+
+        return {
+          ...prev,
+          appliedCardOffer: offer,
+          billSummary: newBillSummary,
+        };
+      });
+    }
+  }, [state.loading, cartState.appliedCardOffer, state.appliedCardOffer]);
 
   const initializeCheckout = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true }));
@@ -63,17 +105,31 @@ export const useCheckout = (): UseCheckoutReturn => {
           // Get bill summary from cart totals - Map to correct BillSummary structure
           // Calculate itemTotal from actual cart items to ensure consistency with Order Items Preview
           const itemTotal = checkoutItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-          const getAndItemTotal = Math.round(itemTotal * 0.05); // 5% get & item charge
+          const getAndItemTotal = 0; // Removed - was duplicating taxes
           const deliveryFee = mappedCart.totals.delivery || mappedCart.totals.shipping || 0;
-          const platformFee = 2; // Fixed platform fee
-          // Calculate taxes based on correct itemTotal (5% of item total)
-          const taxes = mappedCart.totals.tax || Math.round(itemTotal * 0.05);
+          const platformFee = PLATFORM_FEE; // Fixed platform fee
+          // Always calculate taxes locally (5% of item total) - don't rely on backend
+          const taxes = Math.round(itemTotal * TAX_RATE);
           const promoDiscount = mappedCart.totals.discount || 0;
           const coinDiscount = 0; // Will be calculated when coins are toggled
-          
+
+          // Debug: Log the values
+          console.log('💰 [Checkout] Bill calculation:', {
+            itemTotal,
+            deliveryFee,
+            platformFee,
+            taxes,
+            promoDiscount,
+            backendTax: mappedCart.totals.tax,
+            backendTotal: mappedCart.totals.total,
+          });
+
+          // Calculate total before coin discount (for slider max calculation)
+          const totalBeforeCoinDiscount = Math.max(0, itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes - promoDiscount);
+
           // Always calculate total payable from our values to ensure consistency
-          let totalPayable = itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes - promoDiscount - coinDiscount;
-          
+          let totalPayable = totalBeforeCoinDiscount - coinDiscount;
+
           // Calculate round off to nearest rupee
           const roundOff = Math.round(totalPayable) - totalPayable;
           totalPayable = Math.max(0, Math.round(totalPayable));
@@ -93,7 +149,9 @@ export const useCheckout = (): UseCheckoutReturn => {
             taxes,
             promoDiscount,
             coinDiscount,
+            cardOfferDiscount: 0, // Will be calculated when card offer is applied
             roundOff,
+            totalBeforeCoinDiscount,
             totalPayable,
             cashbackEarned: Math.round((mappedCart.totals.cashback || 0)),
             savings: calculatedSavings || promoDiscount,
@@ -116,77 +174,82 @@ export const useCheckout = (): UseCheckoutReturn => {
 
           // NEW: Fetch real wallet data
           let realCoinSystem: CoinSystem = {
-            rezCoin: { 
-              available: 0, 
-              used: 0, 
-              conversionRate: 1, 
-              maxUsagePercentage: 100 
+            rezCoin: {
+              available: 0,
+              used: 0,
+              conversionRate: COIN_CONVERSION_RATE,
+              maxUsagePercentage: REZ_COIN_MAX_USAGE_PERCENTAGE
             },
-            promoCoin: { 
-              available: 0, 
-              used: 0, 
-              conversionRate: 1, 
-              maxUsagePercentage: 20 
+            promoCoin: {
+              available: 0,
+              used: 0,
+              conversionRate: COIN_CONVERSION_RATE,
+              maxUsagePercentage: PROMO_COIN_MAX_USAGE_PERCENTAGE
             },
             storePromoCoin: {
               available: 0,
               used: 0,
-              conversionRate: 1,
-              maxUsagePercentage: 30 // Store promo coins limited to 30% of order value
+              conversionRate: COIN_CONVERSION_RATE,
+              maxUsagePercentage: STORE_PROMO_COIN_MAX_USAGE_PERCENTAGE // Store promo coins limited to 30% of order value
             }
           };
 
           try {
-
             const walletResponse = await walletApi.getBalance();
+            const storeId = checkoutItems[0]?.storeId;
 
             if (walletResponse.success && walletResponse.data) {
               const rezCoin = walletResponse.data.coins.find((c: any) => c.type === 'rez');
-              const promoCoin = walletResponse.data.coins.find((c: any) => c.type === 'promotion');
+              const promoCoin = walletResponse.data.coins.find((c: any) => c.type === 'promo' || c.type === 'promotion');
+
+              // Find branded coins for this specific store (store-specific coins)
+              const brandedCoins = walletResponse.data.brandedCoins || [];
+              const storeBrandedCoin = storeId
+                ? brandedCoins.find((bc: BackendBrandedCoin) => bc.merchantId === storeId)
+                : null;
 
               realCoinSystem = {
                 ...realCoinSystem,
                 rezCoin: {
                   available: rezCoin?.amount || 0,
                   used: 0,
-                  conversionRate: 1,
-                  maxUsagePercentage: 100 // REZ coins can be used up to 100% of order value
+                  conversionRate: COIN_CONVERSION_RATE,
+                  maxUsagePercentage: REZ_COIN_MAX_USAGE_PERCENTAGE // REZ coins can be used up to 100% of order value
                 },
                 promoCoin: {
                   available: promoCoin?.amount || 0,
                   used: 0,
-                  conversionRate: 1,
-                  maxUsagePercentage: 20 // Promo coins limited to 20% of order value
+                  conversionRate: COIN_CONVERSION_RATE,
+                  maxUsagePercentage: PROMO_COIN_MAX_USAGE_PERCENTAGE // Promo coins limited to 20% of order value
+                },
+                // Store-specific branded coins from wallet
+                storePromoCoin: {
+                  available: storeBrandedCoin?.amount || 0,
+                  used: 0,
+                  conversionRate: COIN_CONVERSION_RATE,
+                  maxUsagePercentage: STORE_PROMO_COIN_MAX_USAGE_PERCENTAGE, // Store promo coins limited to 30% of order value
+                  storeId: storeId,
+                  storeName: storeBrandedCoin?.merchantName,
+                  storeColor: storeBrandedCoin?.merchantColor,
                 }
               };
 
+              console.log('💰 [Checkout] Wallet coins loaded:', {
+                rezCoins: realCoinSystem.rezCoin.available,
+                promoCoins: realCoinSystem.promoCoin.available,
+                brandedCoinsAvailable: realCoinSystem.storePromoCoin?.available || 0,
+                storeName: storeBrandedCoin?.merchantName,
+                currentStoreId: storeId,
+                allBrandedCoins: brandedCoins.map((bc: BackendBrandedCoin) => ({
+                  merchantId: bc.merchantId,
+                  merchantName: bc.merchantName,
+                  amount: bc.amount
+                })),
+                matchFound: !!storeBrandedCoin
+              });
             }
           } catch (walletError) {
             console.error('💳 [Checkout] Failed to load wallet, using 0 balance:', walletError);
-          }
-          
-          // Fetch store promo coins for this store
-          try {
-            const storeId = checkoutItems[0]?.storeId;
-            if (storeId) {
-
-              const storeCoinsResponse = await storePromoCoinApi.getStorePromoCoins(storeId);
-              
-              if (storeCoinsResponse.success && storeCoinsResponse.data) {
-                realCoinSystem.storePromoCoin = {
-                  available: storeCoinsResponse.data.availableCoins || 0,
-                  used: 0,
-                  conversionRate: 1,
-                  maxUsagePercentage: 30,
-                  storeId: storeId
-                };
-
-              }
-            } else {
-              console.warn('⚠️ [Checkout] No store ID found, cannot fetch store promo coins');
-            }
-          } catch (storeCoinsError) {
-            console.error('💎 [Checkout] Failed to load store promo coins:', storeCoinsError);
           }
 
           // Fetch real coupons from API - GET ALL AVAILABLE COUPONS, not just user's claimed ones
@@ -217,14 +280,34 @@ export const useCheckout = (): UseCheckoutReturn => {
 
           // Build real store data from cart items
           const firstItem = checkoutItems[0];
-          const realStore = {
+          let realStore = {
             id: firstItem?.storeId || '',
             name: firstItem?.storeName || 'Store',
-            distance: '2.5 km', // TODO: Calculate from user location
+            distance: '', // Will be fetched from store API
             deliveryFee: deliveryFee,
-            minimumOrder: 0, // TODO: Get from store settings
-            estimatedDelivery: '30-45 min', // TODO: Calculate based on distance
+            minimumOrder: 0,
+            estimatedDelivery: '30-45 min',
           };
+
+          // Fetch actual store details if storeId is available
+          if (firstItem?.storeId) {
+            try {
+              const storesApi = (await import('@/services/storesApi')).default;
+              const storeResponse = await storesApi.getStoreById(firstItem.storeId);
+              if (storeResponse.success && storeResponse.data) {
+                const storeData = storeResponse.data;
+                realStore = {
+                  ...realStore,
+                  name: storeData.name || realStore.name,
+                  minimumOrder: (storeData as any).minimumOrder || (storeData as any).settings?.minimumOrder || 0,
+                  estimatedDelivery: (storeData as any).estimatedDelivery || (storeData as any).deliveryTime || '30-45 min',
+                  distance: (storeData as any).distance || '',
+                };
+              }
+            } catch (storeError) {
+              console.warn('Failed to fetch store details, using defaults:', storeError);
+            }
+          }
 
           // Use mock data for payment methods only
           const mockData = await CheckoutData.api.initializeCheckout();
@@ -233,24 +316,31 @@ export const useCheckout = (): UseCheckoutReturn => {
           let userAddresses: CheckoutDeliveryAddress[] = [];
           let defaultAddress: CheckoutDeliveryAddress | undefined;
           try {
+            console.log('📍 [Checkout] Fetching user addresses...');
             const addressResponse = await addressApi.getUserAddresses();
+            console.log('📍 [Checkout] Address response:', addressResponse);
+
             if (addressResponse.success && addressResponse.data) {
               userAddresses = addressResponse.data.map((addr: any) => ({
-                id: addr.id,
-                name: addr.title || addr.type,
-                phone: '', // Will need to be filled by user or fetched from profile
+                id: addr.id || addr._id,
+                name: addr.title || addr.type || 'Address',
+                phone: addr.phone || '', // Will need to be filled by user or fetched from profile
                 addressLine1: addr.addressLine1,
                 addressLine2: addr.addressLine2,
                 city: addr.city,
                 state: addr.state,
-                pincode: addr.postalCode,
+                pincode: addr.postalCode || addr.pincode,
                 country: addr.country || 'India',
                 type: addr.type,
                 isDefault: addr.isDefault,
                 instructions: addr.instructions,
               }));
-              // Find default address
-              defaultAddress = userAddresses.find(addr => addr.isDefault);
+              // Find default address, or use first address if no default
+              defaultAddress = userAddresses.find(addr => addr.isDefault) || userAddresses[0];
+              console.log('📍 [Checkout] Addresses loaded:', {
+                total: userAddresses.length,
+                defaultAddress: defaultAddress?.addressLine1 || 'none'
+              });
             }
           } catch (addressError) {
             console.error('📍 [Checkout] Failed to load addresses:', addressError);
@@ -274,28 +364,28 @@ export const useCheckout = (): UseCheckoutReturn => {
           return;
         }
       } catch (apiError) {
-
+        console.warn('⚠️ [Checkout] Failed to load checkout data from API, using fallback:', apiError);
       }
 
       // Fallback to mock data + real wallet
       let realCoinSystem: CoinSystem = {
-        rezCoin: { 
-          available: 0, 
-          used: 0, 
-          conversionRate: 1, 
-          maxUsagePercentage: 100 
+        rezCoin: {
+          available: 0,
+          used: 0,
+          conversionRate: COIN_CONVERSION_RATE,
+          maxUsagePercentage: REZ_COIN_MAX_USAGE_PERCENTAGE
         },
-        promoCoin: { 
-          available: 0, 
-          used: 0, 
-          conversionRate: 1, 
-          maxUsagePercentage: 20 
+        promoCoin: {
+          available: 0,
+          used: 0,
+          conversionRate: COIN_CONVERSION_RATE,
+          maxUsagePercentage: PROMO_COIN_MAX_USAGE_PERCENTAGE
         },
         storePromoCoin: {
           available: 0,
           used: 0,
-          conversionRate: 1,
-          maxUsagePercentage: 30
+          conversionRate: COIN_CONVERSION_RATE,
+          maxUsagePercentage: STORE_PROMO_COIN_MAX_USAGE_PERCENTAGE
         }
       };
 
@@ -312,14 +402,14 @@ export const useCheckout = (): UseCheckoutReturn => {
             rezCoin: {
               available: rezCoin?.amount || 0,
               used: 0,
-              conversionRate: 1,
-              maxUsagePercentage: 100
+              conversionRate: COIN_CONVERSION_RATE,
+              maxUsagePercentage: REZ_COIN_MAX_USAGE_PERCENTAGE
             },
             promoCoin: {
               available: promoCoin?.amount || 0,
               used: 0,
-              conversionRate: 1,
-              maxUsagePercentage: 20
+              conversionRate: COIN_CONVERSION_RATE,
+              maxUsagePercentage: PROMO_COIN_MAX_USAGE_PERCENTAGE
             }
           };
 
@@ -538,10 +628,10 @@ export const useCheckout = (): UseCheckoutReturn => {
         const quantity = Number(item.quantity) || 0;
         return total + (price * quantity);
       }, 0);
-      
-      const getAndItemTotal = Math.round(itemTotal * 0.05) || 0;
-      const platformFee = 2;
-      const taxes = Math.round(itemTotal * 0.05) || 0;
+
+      const getAndItemTotal = Math.round(itemTotal * TAX_RATE) || 0;
+      const platformFee = PLATFORM_FEE;
+      const taxes = Math.round(itemTotal * TAX_RATE) || 0;
       const deliveryFee = Number(prev.store.deliveryFee) || 0;
       const promoDiscount = prev.appliedPromoCode ? (
         prev.appliedPromoCode.discountType === 'FIXED'
@@ -593,9 +683,9 @@ export const useCheckout = (): UseCheckoutReturn => {
 
       // Calculate subtotal before coin discounts
       const itemTotal = prev.items.reduce((total, item) => total + (item.price * item.quantity), 0);
-      const getAndItemTotal = Math.round(itemTotal * 0.05);
-      const platformFee = 2;
-      const taxes = Math.round(itemTotal * 0.05);
+      const getAndItemTotal = Math.round(itemTotal * TAX_RATE);
+      const platformFee = PLATFORM_FEE;
+      const taxes = Math.round(itemTotal * TAX_RATE);
       const promoDiscount = prev.appliedPromoCode ? (
         prev.appliedPromoCode.discountType === 'FIXED'
           ? prev.appliedPromoCode.discountValue
@@ -604,7 +694,7 @@ export const useCheckout = (): UseCheckoutReturn => {
 
       const subtotalAfterREZCoins = itemTotal + getAndItemTotal + prev.store.deliveryFee + platformFee + taxes - promoDiscount - prev.coinSystem.rezCoin.used;
 
-      // Promo coins have 1:1 conversion and can be used up to 20% of remaining amount or available coins
+      // Promo coins have 1:1 conversion and can be used up to configured max percentage of remaining amount or available coins
       const maxPromoUsage = Math.floor(subtotalAfterREZCoins * prev.coinSystem.promoCoin.maxUsagePercentage / 100);
       const coinsToUse = enabled ? Math.min(prev.coinSystem.promoCoin.available, maxPromoUsage, subtotalAfterREZCoins) : 0;
 
@@ -646,9 +736,9 @@ export const useCheckout = (): UseCheckoutReturn => {
 
       // Calculate subtotal before coin discounts
       const itemTotal = prev.items.reduce((total, item) => total + (item.price * item.quantity), 0);
-      const getAndItemTotal = Math.round(itemTotal * 0.05);
-      const platformFee = 2;
-      const taxes = Math.round(itemTotal * 0.05);
+      const getAndItemTotal = Math.round(itemTotal * TAX_RATE);
+      const platformFee = PLATFORM_FEE;
+      const taxes = Math.round(itemTotal * TAX_RATE);
       const promoDiscount = prev.appliedPromoCode ? (
         prev.appliedPromoCode.discountType === 'FIXED'
           ? prev.appliedPromoCode.discountValue
@@ -658,7 +748,7 @@ export const useCheckout = (): UseCheckoutReturn => {
       // Calculate remaining after other coins (REZ and regular promo)
       const subtotalAfterOtherCoins = itemTotal + getAndItemTotal + prev.store.deliveryFee + platformFee + taxes - promoDiscount - prev.coinSystem.rezCoin.used - prev.coinSystem.promoCoin.used;
 
-      // Store promo coins can be used up to 30% of remaining amount or available coins
+      // Store promo coins can be used up to configured max percentage of remaining amount or available coins
       const maxStorePromoUsage = Math.floor(subtotalAfterOtherCoins * prev.coinSystem.storePromoCoin.maxUsagePercentage / 100);
       const coinsToUse = enabled ? Math.min(prev.coinSystem.storePromoCoin.available, maxStorePromoUsage, subtotalAfterOtherCoins) : 0;
 
@@ -692,16 +782,19 @@ export const useCheckout = (): UseCheckoutReturn => {
   }, []);
 
   const handleCustomCoinAmount = useCallback((coinType: 'rez' | 'promo' | 'storePromo', amount: number) => {
+    console.log('🎚️ [handleCustomCoinAmount] Called with:', { coinType, amount });
     setState(prev => {
 
       const coinSystem = prev.coinSystem;
       const isRez = coinType === 'rez';
       const isStorePromo = coinType === 'storePromo';
       const coin = isRez ? coinSystem.rezCoin : (isStorePromo ? coinSystem.storePromoCoin : coinSystem.promoCoin);
-      
+
+      console.log('🎚️ [handleCustomCoinAmount] Coin state:', { available: coin.available, currentUsed: coin.used });
+
       // Validate amount
       if (amount <= 0 || amount > coin.available) {
-        console.log('💳 [Checkout] Invalid coin amount');
+        console.log('💳 [Checkout] Invalid coin amount - returning early. amount:', amount, 'available:', coin.available);
         return prev;
       }
       
@@ -711,10 +804,10 @@ export const useCheckout = (): UseCheckoutReturn => {
         const quantity = Number(item.quantity) || 0;
         return total + (price * quantity);
       }, 0);
-      
-      const getAndItemTotal = Math.round(itemTotal * 0.05) || 0;
-      const platformFee = 2;
-      const taxes = Math.round(itemTotal * 0.05) || 0;
+
+      const getAndItemTotal = Math.round(itemTotal * TAX_RATE) || 0;
+      const platformFee = PLATFORM_FEE;
+      const taxes = Math.round(itemTotal * TAX_RATE) || 0;
       const deliveryFee = Number(prev.store.deliveryFee) || 0;
       const promoDiscount = prev.appliedPromoCode ? (
         prev.appliedPromoCode.discountType === 'FIXED'
@@ -740,6 +833,13 @@ export const useCheckout = (): UseCheckoutReturn => {
       // Ensure amount doesn't exceed order total
       const finalAmount = Math.min(amount, maxAllowed, coin.available);
 
+      console.log('🎚️ [handleCustomCoinAmount] Final calculation:', {
+        requestedAmount: amount,
+        maxAllowed,
+        available: coin.available,
+        finalAmount
+      });
+
       const newCoinSystem = {
         ...coinSystem,
         [isRez ? 'rezCoin' : (isStorePromo ? 'storePromoCoin' : 'promoCoin')]: {
@@ -747,6 +847,8 @@ export const useCheckout = (): UseCheckoutReturn => {
           used: finalAmount,
         },
       };
+
+      console.log('🎚️ [handleCustomCoinAmount] ✅ STATE UPDATED - newCoinSystem.rezCoin.used:', newCoinSystem.rezCoin.used);
       
       const coinUsage = {
         rez: isRez ? finalAmount : coinSystem.rezCoin.used,
@@ -786,6 +888,85 @@ export const useCheckout = (): UseCheckoutReturn => {
   const navigateToOtherPaymentMethods = useCallback(() => {
     setState(prev => ({ ...prev, currentStep: 'payment_methods' }));
     router.push('/payment-methods');
+  }, []);
+
+  // Apply card offer to the checkout
+  const applyCardOffer = useCallback((offer: {
+    _id: string;
+    name: string;
+    type: 'percentage' | 'fixed';
+    value: number;
+    maxDiscountAmount?: number;
+    minOrderValue: number;
+    cardType?: 'credit' | 'debit' | 'all';
+    bankNames?: string[];
+    cardBins?: string[];
+  }) => {
+    setState(prev => {
+      // Calculate the discount amount
+      const orderTotal = prev.billSummary?.totalPayable || 0;
+      let discountAmount = 0;
+
+      if (offer.type === 'percentage') {
+        discountAmount = Math.round((orderTotal * offer.value) / 100);
+        // Apply max discount cap if present
+        if (offer.maxDiscountAmount && discountAmount > offer.maxDiscountAmount) {
+          discountAmount = offer.maxDiscountAmount;
+        }
+      } else {
+        discountAmount = offer.value;
+      }
+
+      // Map the offer to CardOffer type
+      const cardOffer = {
+        _id: offer._id,
+        name: offer.name,
+        type: offer.type,
+        value: offer.value,
+        maxDiscountAmount: offer.maxDiscountAmount,
+        minOrderValue: offer.minOrderValue,
+        cardType: offer.cardType,
+        bankNames: offer.bankNames,
+        cardBins: offer.cardBins,
+      };
+
+      // Update bill summary with card offer discount
+      const newBillSummary = {
+        ...prev.billSummary,
+        cardOfferDiscount: discountAmount,
+        totalPayable: Math.max(0, prev.billSummary.totalPayable - discountAmount + prev.billSummary.cardOfferDiscount),
+      };
+
+      console.log('💳 [Checkout] Card offer applied:', { offer: cardOffer, discountAmount, newTotal: newBillSummary.totalPayable });
+
+      return {
+        ...prev,
+        appliedCardOffer: cardOffer,
+        billSummary: newBillSummary,
+      };
+    });
+  }, []);
+
+  // Remove card offer from checkout
+  const removeCardOffer = useCallback(() => {
+    setState(prev => {
+      if (!prev.appliedCardOffer) return prev;
+
+      // Add back the discount that was removed
+      const newBillSummary = {
+        ...prev.billSummary,
+        totalPayable: prev.billSummary.totalPayable + prev.billSummary.cardOfferDiscount,
+        cardOfferDiscount: 0,
+      };
+
+      console.log('💳 [Checkout] Card offer removed, new total:', newBillSummary.totalPayable);
+
+      return {
+        ...prev,
+        appliedCardOffer: undefined,
+        billSummary: newBillSummary,
+      };
+    });
   }, []);
 
   const processPayment = useCallback(async () => {
@@ -970,13 +1151,42 @@ export const useCheckout = (): UseCheckoutReturn => {
 
       if (!orderResponse.success || !orderResponse.data) {
         console.error('💳 [Checkout] Order creation failed after payment:', orderResponse.error);
-        // Payment succeeded but order failed - this is a critical issue
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Payment processed but order creation failed. Please contact support.',
-          currentStep: 'checkout'
-        }));
+
+        // CRITICAL: Payment succeeded but order failed - attempt refund
+        try {
+          console.log('💳 [Checkout] Attempting to refund wallet payment...');
+          const refundResponse = await walletApi.refundPayment({
+            transactionId: walletResponse.data.transaction.transactionId,
+            amount: totalPayable,
+            reason: 'order_creation_failed',
+          });
+
+          if (refundResponse.success) {
+            console.log('✅ [Checkout] Wallet payment refunded successfully');
+            setState(prev => ({
+              ...prev,
+              loading: false,
+              error: 'Order creation failed. Your payment has been refunded.',
+              currentStep: 'checkout'
+            }));
+          } else {
+            console.error('❌ [Checkout] Refund failed:', refundResponse.error);
+            setState(prev => ({
+              ...prev,
+              loading: false,
+              error: 'Order creation failed and refund could not be processed. Please contact support with transaction ID: ' + walletResponse.data.transaction.transactionId,
+              currentStep: 'checkout'
+            }));
+          }
+        } catch (refundError) {
+          console.error('❌ [Checkout] Refund error:', refundError);
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: 'Order creation failed and refund could not be processed. Please contact support with transaction ID: ' + walletResponse.data.transaction.transactionId,
+            currentStep: 'checkout'
+          }));
+        }
         return;
       }
 
@@ -1013,15 +1223,23 @@ export const useCheckout = (): UseCheckoutReturn => {
    * Simplest payment method - create order directly with COD payment method
    */
   const handleCODPayment = useCallback(async () => {
+    console.log('💵 [COD] handleCODPayment started');
+    console.log('💵 [COD] Current state:', {
+      selectedAddress: state.selectedAddress,
+      items: state.items?.length,
+      billSummary: state.billSummary
+    });
 
     setState(prev => ({ ...prev, loading: true, currentStep: 'processing' }));
 
     try {
       // Step 1: Validate delivery address
       if (!state.selectedAddress) {
+        console.error('💵 [COD] No delivery address selected!');
         setState(prev => ({ ...prev, loading: false, error: 'Please select a delivery address', currentStep: 'checkout' }));
         return;
       }
+      console.log('💵 [COD] Address validated:', state.selectedAddress.addressLine1);
 
       // Step 2: Create order with COD payment method
       const orderData = mapFrontendCheckoutToBackendOrder({
@@ -1041,22 +1259,31 @@ export const useCheckout = (): UseCheckoutReturn => {
       });
 
       // Add coins used information if any
+      console.log('💵 [COD] === COIN STATE AT ORDER CREATION ===');
+      console.log('💵 [COD] Full coinSystem:', JSON.stringify(state.coinSystem, null, 2));
+      console.log('💵 [COD] rezCoin.used:', state.coinSystem.rezCoin.used);
+      console.log('💵 [COD] rezCoin.available:', state.coinSystem.rezCoin.available);
+
       const coinsUsed = {
         rezCoins: state.coinSystem.rezCoin.used || 0,
         promoCoins: state.coinSystem.promoCoin.used || 0,
         storePromoCoins: state.coinSystem.storePromoCoin.used || 0,
-        totalCoinsValue: (state.coinSystem.rezCoin.used || 0) + 
-                         (state.coinSystem.promoCoin.used || 0) + 
+        totalCoinsValue: (state.coinSystem.rezCoin.used || 0) +
+                         (state.coinSystem.promoCoin.used || 0) +
                          (state.coinSystem.storePromoCoin.used || 0),
       };
+
+      console.log('💵 [COD] coinsUsed object:', JSON.stringify(coinsUsed));
 
       // Attach coins used to order data
       (orderData as any).coinsUsed = coinsUsed;
 
+      console.log('💵 [COD] Creating order with data:', JSON.stringify(orderData, null, 2));
       const orderResponse = await ordersService.createOrder(orderData);
+      console.log('💵 [COD] Order response:', orderResponse);
 
       if (!orderResponse.success || !orderResponse.data) {
-        console.error('💵 [Checkout] COD order creation failed:', orderResponse.error);
+        console.error('💵 [COD] Order creation failed:', orderResponse.error);
         setState(prev => ({
           ...prev,
           loading: false,
@@ -1076,11 +1303,13 @@ export const useCheckout = (): UseCheckoutReturn => {
       }
 
       // Step 3: Navigate to success page
+      console.log('💵 [COD] Order created successfully, navigating to success page');
       setState(prev => ({ ...prev, currentStep: 'success', loading: false }));
 
       const orderId = orderResponse.data.id || orderResponse.data._id;
       const transactionId = `COD_${Date.now()}`;
 
+      console.log('💵 [COD] Navigating to:', `/payment-success?orderId=${orderId}&transactionId=${transactionId}&paymentMethod=cod`);
       router.replace(`/payment-success?orderId=${orderId}&transactionId=${transactionId}&paymentMethod=cod`);
 
     } catch (error) {
@@ -1211,8 +1440,9 @@ export const useCheckout = (): UseCheckoutReturn => {
             // Attach card offer if applied
             if (appliedCardOffer) {
               (orderData as any).cardOfferId = appliedCardOffer._id;
+              const orderTotal = state.billSummary?.totalPayable || 0;
               const discountAmount = appliedCardOffer.type === 'percentage'
-                ? Math.round((orderValue * appliedCardOffer.value) / 100)
+                ? Math.round((orderTotal * appliedCardOffer.value) / 100)
                 : appliedCardOffer.value;
               (orderData as any).cardOfferDiscount = Math.min(
                 discountAmount,
@@ -1502,6 +1732,8 @@ export const useCheckout = (): UseCheckoutReturn => {
       handleRazorpayPayment,
       removePromoCode,
       navigateToOtherPaymentMethods,
+      applyCardOffer,
+      removeCardOffer,
     },
   };
 };

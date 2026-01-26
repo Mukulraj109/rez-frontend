@@ -11,7 +11,10 @@ import {
   PlayAndEarnResponse,
 } from '@/types/streaksGamification.types';
 
-// Default streak data (used as fallback)
+// Timeout for API calls to prevent infinite loading
+const API_TIMEOUT = 10000; // 10 seconds
+
+// Default streak data (used as initial state before API data loads)
 const DEFAULT_STREAK: StreakData = {
   current: 0,
   target: 7,
@@ -71,7 +74,7 @@ export function useStreaksGamification(): UseStreaksGamificationResult {
 
   const isMountedRef = useRef(true);
 
-  // Fetch data from API
+  // Fetch data from API with timeout protection
   const fetchData = useCallback(async () => {
     if (!isMountedRef.current) return;
 
@@ -79,7 +82,16 @@ export function useStreaksGamification(): UseStreaksGamificationResult {
       setLoading(true);
       setError(null);
 
-      const response = await gamificationAPI.getPlayAndEarnData();
+      // Create timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out')), API_TIMEOUT);
+      });
+
+      // Race between API call and timeout
+      const response = await Promise.race([
+        gamificationAPI.getPlayAndEarnData(),
+        timeoutPromise,
+      ]);
 
       if (!isMountedRef.current) return;
 
@@ -112,8 +124,6 @@ export function useStreaksGamification(): UseStreaksGamificationResult {
       if (!isMountedRef.current) return;
       console.error('[useStreaksGamification] Error:', err);
       setError(err.message || 'Failed to load data');
-
-      // Keep default/cached data on error
     } finally {
       if (isMountedRef.current) {
         setLoading(false);

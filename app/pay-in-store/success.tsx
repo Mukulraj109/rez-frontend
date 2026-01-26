@@ -118,7 +118,11 @@ export default function PaymentSuccessScreen() {
         message,
         title: 'Share your ReZ payment',
       });
-    } catch (error) {
+    } catch (error: any) {
+      // Share was cancelled or failed - don't show error for user-cancelled
+      if (error?.message !== 'Share was cancelled') {
+        console.error('Share failed:', error);
+      }
     }
   };
 

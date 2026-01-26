@@ -36,6 +36,7 @@ export interface PromoCode {
   validUntil: string;
   isActive: boolean;
   termsAndConditions: string[];
+  tierRequirement?: 'bronze' | 'silver' | 'gold' | 'platinum' | null; // Required loyalty tier to use this coupon
 }
 
 export interface CoinSystem {
@@ -58,6 +59,8 @@ export interface CoinSystem {
     conversionRate: number; // 1 coin = 1 rupee
     maxUsagePercentage: number; // Can use up to 30% of order value
     storeId?: string; // The store these coins are from
+    storeName?: string; // Name of the store (from branded coins)
+    storeColor?: string; // Brand color of the store
   };
 }
 
@@ -69,10 +72,24 @@ export interface BillSummary {
   taxes: number;
   promoDiscount: number;
   coinDiscount: number;
+  cardOfferDiscount: number;
   roundOff: number;
+  totalBeforeCoinDiscount: number; // Total before coin discount - used for slider max
   totalPayable: number;
   cashbackEarned: number;
   savings: number;
+}
+
+export interface CardOffer {
+  _id: string;
+  name: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  maxDiscountAmount?: number;
+  minOrderValue: number;
+  cardType?: 'credit' | 'debit' | 'all';
+  bankNames?: string[];
+  cardBins?: string[];
 }
 
 export interface PaymentMethod {
@@ -131,6 +148,7 @@ export interface CheckoutPageState {
   appliedPromoCode?: PromoCode;
   availablePromoCodes: PromoCode[];
   coinSystem: CoinSystem;
+  appliedCardOffer?: CardOffer;
 
   // Payment
   selectedPaymentMethod?: PaymentMethod;
@@ -258,6 +276,18 @@ export interface UseCheckoutReturn {
     handleRazorpayPayment: (userInfo?: { name?: string; email?: string; phone?: string }) => Promise<void>;
     removePromoCode: () => void;
     navigateToOtherPaymentMethods: () => void;
+    applyCardOffer: (offer: {
+      _id: string;
+      name: string;
+      type: 'percentage' | 'fixed';
+      value: number;
+      maxDiscountAmount?: number;
+      minOrderValue: number;
+      cardType?: 'credit' | 'debit' | 'all';
+      bankNames?: string[];
+      cardBins?: string[];
+    }) => void;
+    removeCardOffer: () => void;
   };
 }
 

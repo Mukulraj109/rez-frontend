@@ -531,10 +531,21 @@ export default function CartPage() {
             contentContainerStyle={[
               styles.listContent,
               currentItems.length === 0 && styles.emptyListContent,
-              overallItemCount > 0 && { paddingBottom: Platform.OS === 'ios' ? 180 : 160 },
             ]}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={renderEmptyState}
+            ListFooterComponent={
+              overallItemCount > 0 && overallTotal > 0 && activeTab === 'products' ? (
+                <CardOffersSection
+                  storeId={(productItems[0] as any)?.store?.id || (productItems[0] as any)?.storeId}
+                  orderValue={overallTotal}
+                  onOfferApplied={(offer) => {
+                    // Apply card offer via cart context - will be passed to checkout
+                    cartActions.setCardOffer(offer);
+                  }}
+                />
+              ) : null
+            }
             removeClippedSubviews
             maxToRenderPerBatch={10}
             windowSize={10}
@@ -542,17 +553,6 @@ export default function CartPage() {
           />
         )}
       </View>
-
-      {/* Card Offers Section */}
-      {overallItemCount > 0 && overallTotal > 0 && (
-        <CardOffersSection
-          storeId={(productItems[0] as any)?.store?.id || (productItems[0] as any)?.storeId}
-          orderValue={overallTotal}
-          onOfferApplied={(offer) => {
-            // Offer applied - cart context will handle it
-          }}
-        />
-      )}
 
       {overallItemCount > 0 && (
         <PriceSection

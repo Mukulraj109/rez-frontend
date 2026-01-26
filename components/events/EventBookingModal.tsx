@@ -929,20 +929,18 @@ export default function EventBookingModal({
               onPress={handleBookingSubmit}
               disabled={!isFormValid() || isBooking}
             >
-            <ThemedText style={styles.bookButtonText}>
-              {isProcessingPayment ? (
+            {isProcessingPayment ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <ActivityIndicator size="small" color="#FFFFFF" />
-                  <ThemedText style={{ color: '#FFFFFF', fontWeight: '600' }}>
+                  <ThemedText style={styles.bookButtonText}>
                     Processing Payment...
                   </ThemedText>
                 </View>
-              ) : isBooking ? (
-                'Booking...'
               ) : (
-                `Book Event - ${formatPrice()}`
+                <ThemedText style={styles.bookButtonText}>
+                  {isBooking ? 'Booking...' : `Book Event - ${formatPrice()}`}
+                </ThemedText>
               )}
-            </ThemedText>
           </TouchableOpacity>
         </View>
         )}

@@ -16,6 +16,7 @@ export interface ExploreStore {
   reviews: number;
   distance?: string;
   cashback: string;
+  cashbackRate?: number;
   offer?: string;
   isOpen: boolean;
   activity?: string;
@@ -145,6 +146,7 @@ class ExploreApiService {
           reviews: store.rating?.count || store.ratings?.count || null,
           distance: store.distance ? `${store.distance.toFixed(1)} km` : null,
           cashback: store.cashbackRate ? `${store.cashbackRate}%` : (store.offers?.[0]?.discount ? `${store.offers[0].discount}%` : null),
+          cashbackRate: store.cashbackRate || store.offers?.cashback || null,
           offer: store.offers?.[0]?.title || (store.cashbackRate ? `${store.cashbackRate}% Cashback` : null),
           isOpen: store.isOpen ?? store.operationalInfo?.isOpen ?? null,
           activity: store.activity || (store.visitCount ? `${store.visitCount} people visited` : null),
@@ -190,7 +192,9 @@ class ExploreApiService {
           rating: store.rating?.average || store.ratings?.average || null,
           reviews: store.rating?.count || store.ratings?.count || null,
           cashback: store.cashbackRate ? `${store.cashbackRate}%` : null,
+          cashbackRate: store.cashbackRate || store.offers?.cashback || null,
           isOpen: store.isOpen ?? store.operationalInfo?.isOpen ?? null,
+          distance: store.distance ? `${store.distance.toFixed(1)} km` : null,
         }));
 
         return {
@@ -432,12 +436,12 @@ class ExploreApiService {
         const stores = (response.data.stores || response.data || []).map((store: any) => ({
           id: store._id || store.id,
           name: store.name,
-          distance: store.distance ? `${store.distance.toFixed(1)} km` : null,
-          isLive: store.isOpen ?? store.operationalInfo?.isOpen ?? null,
-          status: store.isOpen ? 'Open' : (store.isOpen === false ? 'Closed' : null),
-          waitTime: store.waitTime || store.operationalInfo?.waitTime || null,
-          cashback: store.cashbackRate ? `${store.cashbackRate}%` : null,
-          closingSoon: store.closingSoon || null,
+          distance: store.distance ? `${typeof store.distance === 'number' ? store.distance.toFixed(1) : store.distance} km` : null,
+          isLive: store.isOpen ?? store.operationalInfo?.isOpen ?? true, // Default to open
+          status: store.isOpen === true ? 'Open' : (store.isOpen === false ? 'Closed' : 'Open'),
+          waitTime: store.waitTime || store.operationalInfo?.waitTime || 'No wait',
+          cashback: store.cashbackRate ? `${store.cashbackRate}%` : (store.offers?.cashback ? `${store.offers.cashback}%` : '5%'),
+          closingSoon: store.closingSoon || false,
           location: {
             coordinates: store.location?.coordinates || null,
           },

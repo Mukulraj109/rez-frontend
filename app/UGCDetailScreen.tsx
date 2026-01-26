@@ -599,8 +599,11 @@ export default function UGCDetailScreen() {
   // Creator info
   const creatorName = video?.creator?.profile
     ? `${video.creator.profile.firstName || ''} ${video.creator.profile.lastName || ''}`.trim()
-    : video?.creator?.name || 'Creator';
-  const creatorAvatar = video?.creator?.profile?.avatar || video?.creator?.avatar;
+    : video?.creator?.name || video?.creator?.username || video?.store?.name || 'User';
+
+  // Generate default avatar URL using name initials
+  const defaultAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(creatorName)}&background=8B5CF6&color=fff&size=100`;
+  const creatorAvatar = video?.creator?.profile?.avatar || video?.creator?.avatar || defaultAvatarUrl;
 
   // Loading state
   if (loading) {
@@ -799,7 +802,7 @@ export default function UGCDetailScreen() {
         <View style={styles.creatorAvatarContainer}>
           <TouchableOpacity onPress={() => {}}>
             <Image
-              source={{ uri: creatorAvatar || 'https://via.placeholder.com/50' }}
+              source={{ uri: creatorAvatar }}
               style={styles.creatorAvatar}
             />
           </TouchableOpacity>
@@ -862,7 +865,9 @@ export default function UGCDetailScreen() {
         {video.hashtags && video.hashtags.length > 0 && (
           <View style={styles.tagsContainer}>
             {video.hashtags.slice(0, 3).map((tag: string, index: number) => (
-              <Text key={index} style={styles.tag}>#{tag}</Text>
+              <Text key={index} style={styles.tag}>
+                {tag.startsWith('#') ? tag : `#${tag}`}
+              </Text>
             ))}
           </View>
         )}

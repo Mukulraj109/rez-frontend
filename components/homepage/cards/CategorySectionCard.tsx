@@ -64,8 +64,20 @@ function CategorySectionCard({
     }
   }, [onPress, category]);
 
-  // Fallback image
-  const imageSource = category.image || category.bannerImage || category.icon;
+  // Check if a string is a valid image URL (not an emoji)
+  const isValidImageUrl = (str: string | undefined): boolean => {
+    if (!str) return false;
+    // Check if it's a URL (starts with http/https or is a relative path)
+    return str.startsWith('http://') || str.startsWith('https://') || str.startsWith('/');
+  };
+
+  // Get image source - only use valid URLs, not emojis
+  const imageSource = isValidImageUrl(category.image) ? category.image
+    : isValidImageUrl(category.bannerImage) ? category.bannerImage
+    : null;
+
+  // Get emoji icon for fallback display
+  const emojiIcon = category.icon || category.name.charAt(0).toUpperCase();
 
   return (
     <TouchableOpacity
@@ -87,9 +99,9 @@ function CategorySectionCard({
               showLoader={true}
             />
           ) : (
-            <View style={styles.placeholderImage}>
-              <ThemedText style={styles.placeholderText}>
-                {category.name.charAt(0).toUpperCase()}
+            <View style={styles.emojiContainer}>
+              <ThemedText style={styles.emojiText}>
+                {emojiIcon}
               </ThemedText>
             </View>
           )}
@@ -159,6 +171,16 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     color: '#9CA3AF',
+  },
+  emojiContainer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emojiText: {
+    fontSize: 48,
   },
   content: {
     padding: 12,

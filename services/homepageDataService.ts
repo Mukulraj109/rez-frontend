@@ -15,6 +15,18 @@ import {
 } from '@/data/offlineFallbackData';
 import HomepageApiService from './homepageApi';
 
+// Region currency getter - will be set by RegionContext
+let getCurrencySymbolFn: (() => string) | null = null;
+
+export function setHomepageCurrencyGetter(fn: (() => string) | null) {
+  getCurrencySymbolFn = fn;
+}
+
+// Helper to get current currency symbol
+function getCurrentCurrencySymbol(): string {
+  return getCurrencySymbolFn ? getCurrencySymbolFn() : '₹'; // Default to INR if not set
+}
+
 /**
  * Homepage Data Service
  * Handles fetching real data from backend with intelligent caching and offline support
@@ -554,7 +566,7 @@ class HomepageDataService {
               price: {
                 current: offer.discountedPrice || 0,
                 original: offer.originalPrice || 0,
-                currency: '₹',
+                currency: getCurrentCurrencySymbol(),
                 discount: offer.cashbackPercentage || 0
               },
               store: offer.store,
@@ -653,7 +665,7 @@ class HomepageDataService {
               price: {
                 current: offer.metadata?.flashSale?.salePrice || offer.discountedPrice || 0,
                 original: offer.metadata?.flashSale?.originalPrice || offer.originalPrice || 0,
-                currency: '₹',
+                currency: getCurrentCurrencySymbol(),
                 discount: Math.round(((offer.metadata?.flashSale?.originalPrice || offer.originalPrice || 0) -
                   (offer.metadata?.flashSale?.salePrice || offer.discountedPrice || 0)) /
                   (offer.metadata?.flashSale?.originalPrice || offer.originalPrice || 1) * 100)

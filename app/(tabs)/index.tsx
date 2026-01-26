@@ -426,7 +426,13 @@ export default function HomeScreen() {
       const now = Date.now();
       const timeSinceLastRefresh = now - lastFocusRefreshRef.current;
 
-      // Throttle: only refresh if more than 5 seconds since last refresh
+      // ALWAYS refresh wallet/coin balance on focus - critical after payments/purchases
+      // This ensures coins show correctly after checkout/payment
+      if (authState.user && authState.isAuthenticated) {
+        loadUserStatistics();
+      }
+
+      // Throttle other refreshes: only refresh if more than 5 seconds since last refresh
       if (timeSinceLastRefresh < 5000) {
         return;
       }
@@ -440,9 +446,6 @@ export default function HomeScreen() {
       if (authState.user && authState.isAuthenticated) {
         // Refresh cart data to update cart badge
         refreshCart();
-
-        // Refresh wallet/coin balance
-        loadUserStatistics();
 
         // Refresh voucher and offers count
         loadQuickActionsData();

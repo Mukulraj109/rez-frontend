@@ -232,7 +232,9 @@ export function usePaymentFlow(params: UsePaymentFlowParams): UsePaymentFlowRetu
 
   const toggleCoin = useCallback((coinType: 'rez' | 'promo' | 'branded', enabled: boolean) => {
     setAppliedCoins(prev => {
-      const maxAllowed = Math.floor((billAmount * maxCoinRedemptionPercent) / 100);
+      // Use effective bill amount after discount
+      const effectiveBillAmount = billAmount - discountAmount;
+      const maxAllowed = Math.floor((effectiveBillAmount * maxCoinRedemptionPercent) / 100);
       
       const newCoins = { ...prev };
       
@@ -265,7 +267,7 @@ export function usePaymentFlow(params: UsePaymentFlowParams): UsePaymentFlowRetu
       return newCoins;
     });
     setIsAutoOptimized(false);
-  }, [billAmount, maxCoinRedemptionPercent]);
+  }, [billAmount, discountAmount, maxCoinRedemptionPercent]);
 
   const setCoinAmount = useCallback((coinType: 'rez' | 'promo' | 'branded', amount: number) => {
     setAppliedCoins(prev => {
@@ -311,6 +313,7 @@ export function usePaymentFlow(params: UsePaymentFlowParams): UsePaymentFlowRetu
         coinsToRedeem: {
           rezCoins: appliedCoins.rezCoins.using,
           promoCoins: appliedCoins.promoCoins.using,
+          brandedCoins: appliedCoins.brandedCoins?.using || 0,  // Include branded coins
           totalAmount: appliedCoins.totalApplied,
         },
         offersApplied: selectedOfferIdsRef.current,

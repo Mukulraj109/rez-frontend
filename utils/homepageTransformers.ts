@@ -150,8 +150,10 @@ export function transformStores(rawStores: RawStoreData[]): StoreItem[] {
 
 /**
  * Transform raw event data from API to EventItem
+ * @param raw - Raw event data from API
+ * @param currencySymbol - Currency symbol to use (default: ₹)
  */
-export function transformEvent(raw: RawEventData): EventItem {
+export function transformEvent(raw: RawEventData, currencySymbol: string = '₹'): EventItem {
   return {
     id: raw._id,
     type: 'event',
@@ -161,7 +163,7 @@ export function transformEvent(raw: RawEventData): EventItem {
     description: raw.description,
     price: {
       amount: raw.price || 0,
-      currency: '₹',
+      currency: currencySymbol,
       isFree: !raw.price || raw.price === 0,
     },
     location: raw.location,
@@ -187,8 +189,10 @@ export function transformEvents(rawEvents: RawEventData[]): EventItem[] {
 
 /**
  * Transform raw offer data to ProductItem (for offers/flash sales)
+ * @param raw - Raw offer data from API
+ * @param currencySymbol - Currency symbol to use (default: ₹)
  */
-export function transformOffer(raw: RawOfferData): ProductItem {
+export function transformOffer(raw: RawOfferData, currencySymbol: string = '₹'): ProductItem {
   const currentPrice = raw.discountedPrice || raw.originalPrice || 0;
   const originalPrice = raw.originalPrice || currentPrice;
 
@@ -203,7 +207,7 @@ export function transformOffer(raw: RawOfferData): ProductItem {
     price: {
       current: currentPrice,
       original: originalPrice,
-      currency: '₹',
+      currency: currencySymbol,
       discount: calculateDiscount(currentPrice, originalPrice),
     },
     category: raw.category || 'Offers',
@@ -221,8 +225,10 @@ export function transformOffer(raw: RawOfferData): ProductItem {
 
 /**
  * Transform flash sale offer
+ * @param raw - Raw offer data from API
+ * @param currencySymbol - Currency symbol to use (default: ₹)
  */
-export function transformFlashSale(raw: RawOfferData): ProductItem {
+export function transformFlashSale(raw: RawOfferData, currencySymbol: string = '₹'): ProductItem {
   const salePrice = raw.metadata?.flashSale?.salePrice || raw.discountedPrice || 0;
   const originalPrice = raw.metadata?.flashSale?.originalPrice || raw.originalPrice || salePrice;
 
@@ -237,7 +243,7 @@ export function transformFlashSale(raw: RawOfferData): ProductItem {
     price: {
       current: salePrice,
       original: originalPrice,
-      currency: '₹',
+      currency: currencySymbol,
       discount: calculateDiscount(salePrice, originalPrice),
     },
     category: raw.category || 'Flash Sales',

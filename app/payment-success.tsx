@@ -28,10 +28,17 @@ interface OrderDetails {
     subtotal: number;
     discount: number;
     total: number;
+    paidAmount: number;
   };
   payment: {
     method: string;
     status: string;
+    coinsUsed?: {
+      rezCoins?: number;
+      promoCoins?: number;
+      storePromoCoins?: number;
+      totalCoinsValue?: number;
+    };
   };
   createdAt: string;
 }
@@ -60,6 +67,7 @@ export default function PaymentSuccessPage() {
         const response = await ordersApi.getOrderById(orderId);
         if (response.success && response.data) {
           const orderData = response.data;
+          console.log('📦 [PAYMENT SUCCESS] Order data received:', JSON.stringify(orderData, null, 2));
           setOrder({
             id: orderData.id || orderData._id,
             orderNumber: orderData.orderNumber || `REZ${Date.now().toString().slice(-8)}`,
@@ -69,10 +77,17 @@ export default function PaymentSuccessPage() {
               subtotal: orderData.totals?.subtotal || orderData.summary?.subtotal || 0,
               discount: orderData.totals?.discount || orderData.summary?.discount || 0,
               total: orderData.totals?.total || orderData.summary?.total || 0,
+              paidAmount: orderData.totals?.paidAmount || 0,
             },
             payment: {
               method: orderData.payment?.method || paymentMethod || 'unknown',
               status: orderData.payment?.status || 'completed',
+              coinsUsed: orderData.payment?.coinsUsed || {
+                rezCoins: 0,
+                promoCoins: 0,
+                storePromoCoins: 0,
+                totalCoinsValue: 0,
+              },
             },
             createdAt: orderData.createdAt || new Date().toISOString(),
           });
@@ -250,10 +265,37 @@ export default function PaymentSuccessPage() {
                   </View>
                 </View>
 
-                {/* Amount Paid */}
+                {/* REZ Coins Used - Show if coins were used */}
+                {order?.payment?.coinsUsed && (order.payment.coinsUsed.totalCoinsValue || 0) > 0 && (
+                  <View style={styles.orderRow}>
+                    <ThemedText style={styles.rowLabel}>REZ Coins Used</ThemedText>
+                    <ThemedText style={[styles.amountValue, { color: '#22C55E' }]}>
+                      -₹{(order.payment.coinsUsed.totalCoinsValue || 0).toLocaleString()}
+                    </ThemedText>
+                  </View>
+                )}
+
+                {/* Amount - Different display for COD vs other methods */}
+                {(paymentMethod === 'cod' || order?.payment?.method === 'cod') ? (
+                  <View style={styles.orderRow}>
+                    <ThemedText style={styles.rowLabel}>Pay on Delivery</ThemedText>
+                    <ThemedText style={styles.amountValue}>
+                      ₹{((order?.totals?.total || 0) - (order?.payment?.coinsUsed?.totalCoinsValue || 0)).toLocaleString()}
+                    </ThemedText>
+                  </View>
+                ) : (
+                  <View style={styles.orderRow}>
+                    <ThemedText style={styles.rowLabel}>Amount Paid</ThemedText>
+                    <ThemedText style={styles.amountValue}>
+                      ₹{(order?.totals?.paidAmount || order?.totals?.total || 0).toLocaleString()}
+                    </ThemedText>
+                  </View>
+                )}
+
+                {/* Order Total */}
                 <View style={styles.orderRow}>
-                  <ThemedText style={styles.rowLabel}>Amount Paid</ThemedText>
-                  <ThemedText style={styles.amountValue}>
+                  <ThemedText style={styles.rowLabel}>Order Total</ThemedText>
+                  <ThemedText style={[styles.rowValue, { fontWeight: '600' }]}>
                     ₹{(order?.totals?.total || 0).toLocaleString()}
                   </ThemedText>
                 </View>
@@ -286,33 +328,33 @@ export default function PaymentSuccessPage() {
                 Confirmation details sent to your registered email
               </ThemedText>
             </View>
-
-            {/* Action Buttons */}
-            <View style={styles.successActions}>
-              <TouchableOpacity
-                style={styles.trackOrderButton}
-                onPress={handleTrackOrder}
-                accessibilityLabel="Track your order"
-                accessibilityRole="button"
-                accessibilityHint="Double tap to view order tracking details"
-              >
-                <Ionicons name="location-outline" size={20} color="#22C55E" />
-                <ThemedText style={styles.trackOrderText}>Track Order</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.continueShoppingButton}
-                onPress={handleGoHome}
-                accessibilityLabel="Continue shopping"
-                accessibilityRole="button"
-                accessibilityHint="Double tap to return to home page"
-              >
-                <Ionicons name="home-outline" size={20} color="white" />
-                <ThemedText style={styles.continueShoppingText}>Back to Home</ThemedText>
-              </TouchableOpacity>
-            </View>
           </View>
         </ScrollView>
+
+        {/* Action Buttons - Fixed at bottom */}
+        <View style={styles.successActions}>
+          <TouchableOpacity
+            style={styles.trackOrderButton}
+            onPress={handleTrackOrder}
+            accessibilityLabel="Track your order"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to view order tracking details"
+          >
+            <Ionicons name="location-outline" size={20} color="#22C55E" />
+            <ThemedText style={styles.trackOrderText}>Track Order</ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.continueShoppingButton}
+            onPress={handleGoHome}
+            accessibilityLabel="Continue shopping"
+            accessibilityRole="button"
+            accessibilityHint="Double tap to return to home page"
+          >
+            <Ionicons name="home-outline" size={20} color="white" />
+            <ThemedText style={styles.continueShoppingText}>Back to Home</ThemedText>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
     </View>
   );
@@ -327,8 +369,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingVertical: 40,
+    paddingTop: Platform.OS === 'android' ? 40 : 50,
+    paddingBottom: 20,
   },
   successContent: {
     alignItems: 'center',
@@ -477,6 +519,10 @@ const styles = StyleSheet.create({
   successActions: {
     width: '100%',
     gap: 12,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+    backgroundColor: 'transparent',
   },
   trackOrderButton: {
     backgroundColor: 'white',

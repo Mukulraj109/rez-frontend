@@ -841,3 +841,37 @@ export const getNearbyStoresForCategory = (categorySlug: string): NearbyStore[] 
     store.categories.includes(categorySlug) || store.categories.length === 0
   );
 };
+
+// Get all brands from all categories
+export const getAllBrands = (): Brand[] => {
+  const allBrands: Brand[] = [];
+  const seenIds = new Set<string>();
+
+  Object.values(brandsData).forEach(brands => {
+    brands.forEach(brand => {
+      if (!seenIds.has(brand.id)) {
+        seenIds.add(brand.id);
+        allBrands.push(brand);
+      }
+    });
+  });
+
+  return allBrands.sort((a, b) => b.rating - a.rating);
+};
+
+// Get all occasions from all categories
+export const getAllOccasions = (): Occasion[] => {
+  const allOccasions: Occasion[] = [];
+  const seenIds = new Set<string>();
+
+  Object.values(occasionsData).forEach(occasions => {
+    occasions.forEach(occasion => {
+      if (!seenIds.has(occasion.id)) {
+        seenIds.add(occasion.id);
+        allOccasions.push(occasion);
+      }
+    });
+  });
+
+  return allOccasions.sort((a, b) => b.discount - a.discount);
+};

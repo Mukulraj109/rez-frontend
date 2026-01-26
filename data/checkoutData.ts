@@ -13,6 +13,7 @@ import {
   PromoCodeValidationResponse,
   PaymentProcessResponse,
 } from '@/types/checkout.types';
+import { TAX_RATE, PLATFORM_FEE } from '@/config/checkout.config';
 
 // Sample Checkout Items
 export const checkoutItems: CheckoutItem[] = [
@@ -138,10 +139,10 @@ export const calculateBillSummary = (
   coinUsage?: { rez: number; promo: number; storePromo?: number }
 ): BillSummary => {
   const itemTotal = items.reduce((total, item) => total + (item.price * item.quantity), 0);
-  const getAndItemTotal = Math.round(itemTotal * 0.05); // 5% get & item charge
   const deliveryFee = store.deliveryFee;
-  const platformFee = 2; // Reduced platform fee for small orders
-  const taxes = Math.round(itemTotal * 0.05); // 5% tax for food items
+  const platformFee = PLATFORM_FEE;
+  const taxes = Math.round(itemTotal * TAX_RATE); // 5% tax
+  const getAndItemTotal = 0; // Note: Previously this was duplicating taxes - now set to 0
   
   let promoDiscount = 0;
   if (appliedPromoCode) {
@@ -157,13 +158,16 @@ export const calculateBillSummary = (
   }
   
   const coinDiscount = (coinUsage?.rez || 0) + (coinUsage?.promo || 0) + (coinUsage?.storePromo || 0);
-  
+
   // Calculate subtotal before discounts
   const subtotalBeforeDiscounts = itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes;
-  
+
+  // Total before coin discount (used for slider max calculation)
+  const totalBeforeCoinDiscount = Math.max(0, subtotalBeforeDiscounts - promoDiscount);
+
   // Apply all discounts
   const totalAfterDiscounts = subtotalBeforeDiscounts - promoDiscount - coinDiscount;
-  
+
   // Calculate round off to nearest rupee
   const roundOff = Math.round(totalAfterDiscounts) - totalAfterDiscounts;
   const totalPayable = Math.max(0, totalAfterDiscounts + roundOff);
@@ -182,7 +186,9 @@ export const calculateBillSummary = (
     taxes,
     promoDiscount,
     coinDiscount,
+    cardOfferDiscount: 0, // Will be updated when card offer is applied
     roundOff,
+    totalBeforeCoinDiscount,
     totalPayable,
     cashbackEarned,
     savings,

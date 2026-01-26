@@ -454,6 +454,30 @@ class WalletService {
     console.log('🔄 [WALLET API] Syncing wallet balance from CoinTransaction...');
     return apiClient.post('/wallet/sync-balance', {});
   }
+
+  /**
+   * Refund a wallet payment (used when order creation fails after payment)
+   * @param data Refund details including transaction ID and reason
+   */
+  async refundPayment(data: {
+    transactionId: string;
+    amount: number;
+    reason: string;
+  }): Promise<ApiResponse<{
+    refundId: string;
+    refundedAmount: number;
+    wallet: {
+      balance: {
+        total: number;
+        available: number;
+        pending: number;
+      };
+    };
+    status: 'success' | 'failed' | 'pending';
+  }>> {
+    console.log('💸 [WALLET API] Processing refund:', data);
+    return apiClient.post('/wallet/refund', data);
+  }
 }
 
 // Export singleton instance

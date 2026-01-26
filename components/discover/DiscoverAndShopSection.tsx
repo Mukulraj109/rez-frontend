@@ -167,20 +167,26 @@ export default function DiscoverAndShopSection({
       if (product.price && product.salePrice) {
         const discountPercent = Math.floor(((product.price - product.salePrice) / product.price) * 100);
         if (discountPercent >= 20) {
-          return `Best deal!`;
+          return `${discountPercent}% off!`;
         }
       }
+      // Show product count if available
+      return `${reel.products.length} ${reel.products.length === 1 ? 'product' : 'products'}`;
     }
     // Fallback based on engagement - higher views = better deal
     if (reel.engagement?.views) {
       const views = typeof reel.engagement.views === 'number' ? reel.engagement.views : 0;
       if (views > 50000) {
-        return 'Best deal!';
+        return 'Trending';
       } else if (views > 20000) {
-        return 'Great savings!';
+        return 'Popular';
       }
     }
-    return 'Great deal!';
+    // Use title snippet if available
+    if (reel.title && reel.title.length > 0) {
+      return reel.title.length > 20 ? reel.title.substring(0, 20) + '...' : reel.title;
+    }
+    return 'Shop now';
   };
 
   // Format count for likes/views
@@ -346,11 +352,13 @@ export default function DiscoverAndShopSection({
         {reels.map((reel) => {
           const savingsText = getSavingsText(reel);
           const views = formatViews(reel.engagement?.views || reel.metrics?.views || 0);
-          const storeName = reel.store?.name || 'Store';
-          const userName = reel.creator?.name || reel.creator?.username || 'User';
-          const userAvatar = reel.creator?.avatar || '👤';
+          const storeName = reel.store?.name || reel.products?.[0]?.store?.name || '';
+          const userName = reel.creator?.name || reel.creator?.username || reel.store?.name || '';
+          const userAvatar = reel.creator?.avatar;
           const thumbnailUrl = reel.thumbnail || reel.products?.[0]?.image;
           const hasValidThumbnail = thumbnailUrl && isValidImageUrl(thumbnailUrl);
+          // Generate default avatar URL if no avatar provided
+          const defaultAvatarUrl = userName ? `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=10B981&color=fff&size=56` : null;
 
         return (
             <TouchableOpacity
@@ -409,15 +417,19 @@ export default function DiscoverAndShopSection({
                     pointerEvents="none"
                   />
 
-                {/* User Info Top Left */}
-                <View style={styles.userInfo}>
-                  {userAvatar && isValidImageUrl(userAvatar) ? (
-                    <Image source={{ uri: userAvatar }} style={styles.userAvatarImage} />
-                  ) : (
-                    <Text style={styles.userAvatar}>{userAvatar}</Text>
-                  )}
-                  <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
-                </View>
+                {/* User Info Top Left - Only show if we have user data */}
+                {(userName || userAvatar) ? (
+                  <View style={styles.userInfo}>
+                    {userAvatar && isValidImageUrl(userAvatar) ? (
+                      <Image source={{ uri: userAvatar }} style={styles.userAvatarImage} />
+                    ) : defaultAvatarUrl ? (
+                      <Image source={{ uri: defaultAvatarUrl }} style={styles.userAvatarImage} />
+                    ) : null}
+                    {userName ? (
+                      <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
 
                 {/* Action Icons Right Side */}
                 <View style={styles.actionIcons}>
@@ -460,7 +472,7 @@ export default function DiscoverAndShopSection({
                   <View style={styles.playButtonGlowRing} />
                   {/* Play button */}
                   <View style={styles.playButton}>
-                    <Ionicons name="play" size={26} color="#FFFFFF" />
+                    <Ionicons name="play" size={24} color="#FFFFFF" />
                   </View>
                 </View>
 
@@ -468,9 +480,13 @@ export default function DiscoverAndShopSection({
                 <View style={styles.bottomInfo}>
                   <Text style={styles.savingsText}>{savingsText}</Text>
                   <View style={styles.storeInfo}>
-                    <Text style={styles.storePrefix}>@</Text>
-                    <Text style={styles.storeName} numberOfLines={1}>{storeName}</Text>
-                    <Text style={styles.separator}> • </Text>
+                    {storeName ? (
+                      <>
+                        <Text style={styles.storePrefix}>@</Text>
+                        <Text style={styles.storeName} numberOfLines={1}>{storeName}</Text>
+                        <Text style={styles.separator}> • </Text>
+                      </>
+                    ) : null}
                     <Text style={styles.viewsText}>{views} views</Text>
                   </View>
                 </View>
@@ -514,39 +530,40 @@ export default function DiscoverAndShopSection({
         {posts.map((post) => {
           const thumbnailUrl = post.thumbnail || post.mediaUrl;
           const isValidThumbnail = isValidImageUrl(thumbnailUrl);
-          const likes = typeof post.engagement?.likes === 'number' 
-            ? post.engagement.likes 
+          const likes = typeof post.engagement?.likes === 'number'
+            ? post.engagement.likes
             : (Array.isArray(post.engagement?.likes) ? post.engagement.likes.length : 0);
           const views = post.engagement?.views || 0;
-          const userName = post.creator?.name || post.creator?.username || 'User';
+          const userName = post.creator?.name || post.creator?.username || '';
           const userAvatar = post.creator?.avatar;
           const productCount = post.products?.length || 0;
+          // Generate default avatar URL using ui-avatars.com
+          const defaultAvatarUrl = userName ? `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=8B5CF6&color=fff&size=56` : null;
+          // Check if this is a merchant/brand post
+          const isMerchantPost = post.contentType === 'merchant';
 
         return (
             <TouchableOpacity
               key={post._id}
               style={styles.reelCard}
               onPress={() => {
-                if (post.type === 'video') {
-                  router.push({
-                    pathname: '/UGCDetailScreen',
-                    params: { item: JSON.stringify(post) },
-                  });
-                } else if (post.products && post.products.length > 0) {
-                  router.push(`/ProductPage?cardId=${post.products[0]._id}&cardType=product&source=discover`);
-                }
+                // Navigate to PostDetailScreen
+                router.push({
+                  pathname: '/PostDetailScreen',
+                  params: { item: JSON.stringify(post) },
+                });
               }}
               activeOpacity={0.9}
             >
               <View style={styles.cardBackground}>
                 {/* Background Gradient - Always show as fallback */}
                 <LinearGradient
-                  colors={['rgba(16, 185, 129, 0.25)', 'rgba(5, 150, 105, 0.2)', 'rgba(245, 158, 11, 0.25)']}
+                  colors={['rgba(139, 92, 246, 0.25)', 'rgba(124, 58, 237, 0.2)', 'rgba(245, 158, 11, 0.25)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
                 />
-                
+
                 {/* Thumbnail Image - Only show if valid */}
                 {isValidThumbnail && thumbnailUrl && (
                   <View style={styles.thumbnailContainer}>
@@ -560,51 +577,58 @@ export default function DiscoverAndShopSection({
                     />
                   </View>
                 )}
-                
+
                 <LinearGradient
-                  colors={isValidThumbnail 
-                    ? ['rgba(16, 185, 129, 0.12)', 'rgba(5, 150, 105, 0.1)', 'rgba(245, 158, 11, 0.12)']
-                    : ['rgba(16, 185, 129, 0.08)', 'rgba(5, 150, 105, 0.06)', 'rgba(245, 158, 11, 0.08)']}
+                  colors={isValidThumbnail
+                    ? ['rgba(139, 92, 246, 0.12)', 'rgba(124, 58, 237, 0.1)', 'rgba(245, 158, 11, 0.12)']
+                    : ['rgba(139, 92, 246, 0.08)', 'rgba(124, 58, 237, 0.06)', 'rgba(245, 158, 11, 0.08)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.cardGradient}
                 >
                   <View style={styles.cardBorder} />
                   <View style={styles.patternOverlay}>
-                    <View style={[styles.glowCircle, { top: -40, right: -40, backgroundColor: REZ_COLORS.primaryGreen }]} />
+                    <View style={[styles.glowCircle, { top: -40, right: -40, backgroundColor: '#8B5CF6' }]} />
                     <View style={[styles.glowCircle, { bottom: -30, left: -30, backgroundColor: REZ_COLORS.primaryGold }]} />
                   </View>
-                  
+
                   <LinearGradient
-                    colors={['rgba(16, 185, 129, 0.08)', 'transparent', 'rgba(245, 158, 11, 0.08)']}
+                    colors={['rgba(139, 92, 246, 0.08)', 'transparent', 'rgba(245, 158, 11, 0.08)']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={StyleSheet.absoluteFill}
                     pointerEvents="none"
                   />
 
-                  <View style={styles.userInfo}>
-                    {userAvatar && isValidImageUrl(userAvatar) ? (
-                      <Image source={{ uri: userAvatar }} style={styles.userAvatarImage} />
-                    ) : (
-                      <Text style={styles.userAvatar}>👤</Text>
-                    )}
-                    <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
-                  </View>
-
-                  {post.type === 'video' && (
-                    <View style={styles.playButtonContainer}>
-                      <View style={styles.playButtonGlowRing} />
-                      <View style={styles.playButton}>
-                        <Ionicons name="play" size={26} color="#FFFFFF" />
-                      </View>
+                  {/* User info - only show if we have data */}
+                  {(userName || userAvatar) ? (
+                    <View style={styles.userInfo}>
+                      {userAvatar && isValidImageUrl(userAvatar) ? (
+                        <Image source={{ uri: userAvatar }} style={styles.userAvatarImage} />
+                      ) : defaultAvatarUrl ? (
+                        <Image source={{ uri: defaultAvatarUrl }} style={styles.userAvatarImage} />
+                      ) : null}
+                      {userName ? (
+                        <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
+                      ) : null}
                     </View>
-                  )}
+                  ) : null}
 
-                  {post.isBrandPost && (
+                  {/* No play button for posts - they are image-based content */}
+
+                  {/* Brand badge - only show for actual merchant content */}
+                  {isMerchantPost && (
                     <View style={styles.brandBadge}>
                       <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
                       <Text style={styles.brandBadgeText}>Brand</Text>
+                    </View>
+                  )}
+
+                  {/* Shop badge for posts with products */}
+                  {productCount > 0 && !isMerchantPost && (
+                    <View style={styles.shopBadgeTop}>
+                      <Ionicons name="bag-handle" size={12} color="#FFFFFF" />
+                      <Text style={styles.shopBadgeText}>Shop</Text>
                     </View>
                   )}
 
@@ -659,30 +683,34 @@ export default function DiscoverAndShopSection({
         {articles.map((article) => {
           const isValidImage = isValidImageUrl(article.featuredImage);
           const views = article.engagement?.views || 0;
-          const authorName = article.author?.name || article.author?.username || 'Author';
+          const authorName = article.author?.name || article.author?.username || '';
           const authorAvatar = article.author?.avatar;
           const productCount = article.products?.length || 0;
+          // Generate default avatar URL using ui-avatars.com (blue theme for articles)
+          const defaultAvatarUrl = authorName ? `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=3B82F6&color=fff&size=32` : null;
 
         return (
             <TouchableOpacity
               key={article._id}
               style={styles.reelCard}
               onPress={() => {
-                if (article.products && article.products.length > 0) {
-                  router.push(`/ProductPage?cardId=${article.products[0]._id}&cardType=product&source=discover`);
-                }
+                // Navigate to ArticleDetailScreen
+                router.push({
+                  pathname: '/ArticleDetailScreen',
+                  params: { item: JSON.stringify(article) },
+                });
               }}
               activeOpacity={0.9}
             >
               <View style={styles.cardBackground}>
-                {/* Background Gradient - Always show as fallback */}
+                {/* Background Gradient - Blue theme for articles */}
                 <LinearGradient
-                  colors={['rgba(16, 185, 129, 0.25)', 'rgba(5, 150, 105, 0.2)', 'rgba(245, 158, 11, 0.25)']}
+                  colors={['rgba(59, 130, 246, 0.25)', 'rgba(37, 99, 235, 0.2)', 'rgba(16, 185, 129, 0.25)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
                 />
-                
+
                 {/* Thumbnail Image - Only show if valid */}
                 {isValidImage && article.featuredImage && (
                   <View style={styles.thumbnailContainer}>
@@ -696,23 +724,23 @@ export default function DiscoverAndShopSection({
                     />
                   </View>
                 )}
-                
+
                 <LinearGradient
-                  colors={isValidImage 
-                    ? ['rgba(16, 185, 129, 0.12)', 'rgba(5, 150, 105, 0.1)', 'rgba(245, 158, 11, 0.12)']
-                    : ['rgba(16, 185, 129, 0.08)', 'rgba(5, 150, 105, 0.06)', 'rgba(245, 158, 11, 0.08)']}
+                  colors={isValidImage
+                    ? ['rgba(59, 130, 246, 0.12)', 'rgba(37, 99, 235, 0.1)', 'rgba(16, 185, 129, 0.12)']
+                    : ['rgba(59, 130, 246, 0.08)', 'rgba(37, 99, 235, 0.06)', 'rgba(16, 185, 129, 0.08)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.cardGradient}
                 >
                   <View style={styles.cardBorder} />
                   <View style={styles.patternOverlay}>
-                    <View style={[styles.glowCircle, { top: -40, right: -40, backgroundColor: REZ_COLORS.primaryGreen }]} />
-                    <View style={[styles.glowCircle, { bottom: -30, left: -30, backgroundColor: REZ_COLORS.primaryGold }]} />
+                    <View style={[styles.glowCircle, { top: -40, right: -40, backgroundColor: '#3B82F6' }]} />
+                    <View style={[styles.glowCircle, { bottom: -30, left: -30, backgroundColor: REZ_COLORS.primaryGreen }]} />
                   </View>
-                  
+
                   <LinearGradient
-                    colors={['rgba(16, 185, 129, 0.08)', 'transparent', 'rgba(245, 158, 11, 0.08)']}
+                    colors={['rgba(59, 130, 246, 0.08)', 'transparent', 'rgba(16, 185, 129, 0.08)']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={StyleSheet.absoluteFill}
@@ -728,8 +756,12 @@ export default function DiscoverAndShopSection({
                     <View style={styles.storeInfo}>
                       {authorAvatar && isValidImageUrl(authorAvatar) ? (
                         <Image source={{ uri: authorAvatar }} style={styles.authorAvatarSmall} />
+                      ) : defaultAvatarUrl ? (
+                        <Image source={{ uri: defaultAvatarUrl }} style={styles.authorAvatarSmall} />
                       ) : null}
-                      <Text style={styles.storeName} numberOfLines={1}>{authorName}</Text>
+                      {authorName ? (
+                        <Text style={styles.storeName} numberOfLines={1}>{authorName}</Text>
+                      ) : null}
                       {productCount > 0 && (
                         <>
                           <Text style={styles.separator}> • </Text>
@@ -780,33 +812,37 @@ export default function DiscoverAndShopSection({
       >
         {images.map((image) => {
           const isValidImage = isValidImageUrl(image.imageUrl);
-          const likes = typeof image.engagement?.likes === 'number' 
-            ? image.engagement.likes 
+          const likes = typeof image.engagement?.likes === 'number'
+            ? image.engagement.likes
             : (Array.isArray(image.engagement?.likes) ? image.engagement.likes.length : 0);
-          const userName = image.creator?.name || image.creator?.username || 'User';
+          const userName = image.creator?.name || image.creator?.username || '';
           const userAvatar = image.creator?.avatar;
           const productCount = image.products?.length || 0;
+          // Generate default avatar URL using ui-avatars.com
+          const defaultAvatarUrl = userName ? `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=F59E0B&color=fff&size=56` : null;
 
           return (
             <TouchableOpacity
               key={image._id}
               style={styles.reelCard}
               onPress={() => {
-                if (image.products && image.products.length > 0) {
-                  router.push(`/ProductPage?cardId=${image.products[0]._id}&cardType=product&source=discover`);
-                }
+                // Navigate to ImageDetailScreen
+                router.push({
+                  pathname: '/ImageDetailScreen',
+                  params: { item: JSON.stringify(image) },
+                });
               }}
               activeOpacity={0.9}
             >
               <View style={styles.cardBackground}>
                 {/* Background Gradient - Always show as fallback */}
                 <LinearGradient
-                  colors={['rgba(16, 185, 129, 0.25)', 'rgba(5, 150, 105, 0.2)', 'rgba(245, 158, 11, 0.25)']}
+                  colors={['rgba(245, 158, 11, 0.25)', 'rgba(234, 88, 12, 0.2)', 'rgba(16, 185, 129, 0.25)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
                 />
-                
+
                 {/* Thumbnail Image - Only show if valid */}
                 {isValidImage && image.imageUrl && (
                   <View style={styles.thumbnailContainer}>
@@ -820,23 +856,23 @@ export default function DiscoverAndShopSection({
                     />
                   </View>
                 )}
-                
+
                 <LinearGradient
-                  colors={isValidImage 
-                    ? ['rgba(16, 185, 129, 0.12)', 'rgba(5, 150, 105, 0.1)', 'rgba(245, 158, 11, 0.12)']
-                    : ['rgba(16, 185, 129, 0.08)', 'rgba(5, 150, 105, 0.06)', 'rgba(245, 158, 11, 0.08)']}
+                  colors={isValidImage
+                    ? ['rgba(245, 158, 11, 0.12)', 'rgba(234, 88, 12, 0.1)', 'rgba(16, 185, 129, 0.12)']
+                    : ['rgba(245, 158, 11, 0.08)', 'rgba(234, 88, 12, 0.06)', 'rgba(16, 185, 129, 0.08)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.cardGradient}
                 >
                   <View style={styles.cardBorder} />
                   <View style={styles.patternOverlay}>
-                    <View style={[styles.glowCircle, { top: -40, right: -40, backgroundColor: REZ_COLORS.primaryGreen }]} />
-                    <View style={[styles.glowCircle, { bottom: -30, left: -30, backgroundColor: REZ_COLORS.primaryGold }]} />
+                    <View style={[styles.glowCircle, { top: -40, right: -40, backgroundColor: REZ_COLORS.primaryGold }]} />
+                    <View style={[styles.glowCircle, { bottom: -30, left: -30, backgroundColor: REZ_COLORS.primaryGreen }]} />
                   </View>
-                  
+
                   <LinearGradient
-                    colors={['rgba(16, 185, 129, 0.08)', 'transparent', 'rgba(245, 158, 11, 0.08)']}
+                    colors={['rgba(245, 158, 11, 0.08)', 'transparent', 'rgba(16, 185, 129, 0.08)']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={StyleSheet.absoluteFill}
@@ -850,14 +886,19 @@ export default function DiscoverAndShopSection({
                     </View>
                   )}
 
-                  <View style={styles.userInfo}>
-                    {userAvatar && isValidImageUrl(userAvatar) ? (
-                      <Image source={{ uri: userAvatar }} style={styles.userAvatarImage} />
-                    ) : (
-                      <Text style={styles.userAvatar}>👤</Text>
-                    )}
-                    <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
-                  </View>
+                  {/* User info - only show if we have data */}
+                  {(userName || userAvatar) ? (
+                    <View style={styles.userInfo}>
+                      {userAvatar && isValidImageUrl(userAvatar) ? (
+                        <Image source={{ uri: userAvatar }} style={styles.userAvatarImage} />
+                      ) : defaultAvatarUrl ? (
+                        <Image source={{ uri: defaultAvatarUrl }} style={styles.userAvatarImage} />
+                      ) : null}
+                      {userName ? (
+                        <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
+                      ) : null}
+                    </View>
+                  ) : null}
 
                   <View style={styles.bottomInfo}>
                     <Text style={styles.savingsText}>
@@ -1128,48 +1169,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     left: '50%',
-    transform: [{ translateX: -30 }, { translateY: -30 }],
+    transform: [{ translateX: -26 }, { translateY: -26 }],
     zIndex: 10,
   },
   playButtonGlowRing: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(16, 185, 129, 0.25)',
-    ...Platform.select({
-      ios: {
-        shadowColor: REZ_COLORS.primaryGreen,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.35,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
+    display: 'none',
   },
   playButton: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: REZ_COLORS.primaryGreen,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingLeft: 3,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    ...Platform.select({
-      ios: {
-        shadowColor: REZ_COLORS.primaryGreen,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    overflow: 'hidden',
   },
   bottomInfo: {
     position: 'absolute',

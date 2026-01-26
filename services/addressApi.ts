@@ -13,6 +13,7 @@ export interface Address {
   id: string;
   type: AddressType;
   title: string;
+  phone?: string;
   addressLine1: string;
   addressLine2?: string;
   city: string;
@@ -32,6 +33,7 @@ export interface Address {
 export interface AddressCreate {
   type: AddressType;
   title: string;
+  phone?: string;
   addressLine1: string;
   addressLine2?: string;
   city: string;
@@ -49,6 +51,7 @@ export interface AddressCreate {
 export interface AddressUpdate {
   type?: AddressType;
   title?: string;
+  phone?: string;
   addressLine1?: string;
   addressLine2?: string;
   city?: string;

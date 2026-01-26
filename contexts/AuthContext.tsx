@@ -133,8 +133,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Set refresh token callback
     apiClient.setRefreshTokenCallback(async () => {
       try {
-        await tryRefreshToken();
-        return true;
+        const success = await tryRefreshToken();
+        return success;  // Return actual result, not always true
       } catch (error) {
         console.error('❌ [AUTH PROVIDER] Refresh callback failed:', error);
         return false;
@@ -268,6 +268,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         response.data.tokens.refreshToken,
         response.data.user
       );
+
+      // If user is already onboarded, set the flag for future reference
+      if (response.data.user.isOnboarded) {
+        await AsyncStorage.setItem('onboarding_completed', 'true');
+      }
 
       // Verify storage (debug)
       const storedToken = await authStorage.getAuthToken();
@@ -468,6 +473,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Update AsyncStorage with new user data
       if (response.data) {
         await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data));
+        // Also set the onboarding_completed flag for fallback checks
+        await AsyncStorage.setItem('onboarding_completed', 'true');
       } else {
         throw new Error('No user data received from server');
       }
@@ -510,6 +517,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const apiClient = require('@/services/apiClient').default;
         apiClient.setAuthToken(storedToken);
 
+        // If user is already onboarded, ensure the flag is set
+        if (storedUser.isOnboarded) {
+          await AsyncStorage.setItem('onboarding_completed', 'true');
+        }
+
         // For better UX, restore auth state immediately and validate in background
 
         dispatch({
@@ -546,6 +558,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
               if (JSON.stringify(response.data) !== JSON.stringify(storedUser)) {
                 await authStorage.saveUser(response.data);
                 dispatch({ type: 'UPDATE_USER', payload: response.data });
+              }
+              // Sync onboarding_completed flag with backend data
+              if (response.data.isOnboarded) {
+                await AsyncStorage.setItem('onboarding_completed', 'true');
               }
             } else {
               console.warn('⚠️ [AUTH CHECK] Token validation returned no data, trying refresh...');

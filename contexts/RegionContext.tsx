@@ -13,7 +13,10 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient, { setRegionGetter } from '@/services/apiClient';
-import homepageDataService from '@/services/homepageDataService';
+import { setEventsApiRegionGetter } from '@/services/eventsApi';
+import { setEventReviewApiRegionGetter } from '@/services/eventReviewApi';
+import { setCategoryCurrencyGetter } from '@/contexts/CategoryContext';
+import homepageDataService, { setHomepageCurrencyGetter } from '@/services/homepageDataService';
 
 // Region types
 export type RegionId = 'bangalore' | 'dubai' | 'china';
@@ -198,13 +201,25 @@ export function RegionProvider({ children }: RegionProviderProps) {
     apiClient.setRegion(state.currentRegion);
   }, [state.currentRegion]);
 
-  // Set up region getter for API client on mount
+  // Set up region getter for API client and events API on mount
   useEffect(() => {
-    setRegionGetter(() => state.currentRegion);
+    const regionGetter = () => state.currentRegion;
+    const currencySymbolGetter = () => state.regionConfig?.currencySymbol || DEFAULT_CONFIGS[DEFAULT_REGION].currencySymbol;
+
+    setRegionGetter(regionGetter);
+    setEventsApiRegionGetter(regionGetter);
+    setEventReviewApiRegionGetter(regionGetter);
+    setCategoryCurrencyGetter(currencySymbolGetter);
+    setHomepageCurrencyGetter(currencySymbolGetter);
+
     return () => {
       setRegionGetter(null);
+      setEventsApiRegionGetter(null);
+      setEventReviewApiRegionGetter(null);
+      setCategoryCurrencyGetter(null);
+      setHomepageCurrencyGetter(null);
     };
-  }, [state.currentRegion]);
+  }, [state.currentRegion, state.regionConfig]);
 
   const initializeRegion = async () => {
     try {

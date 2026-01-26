@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useStreaksGamification } from '@/hooks/useStreaksGamification';
+import { useAuth } from '@/contexts/AuthContext';
 import { Mission } from '@/types/streaksGamification.types';
 
 interface StreaksGamificationProps {
@@ -21,8 +22,9 @@ const StreaksGamification: React.FC<StreaksGamificationProps> = ({
   onViewAllPress,
 }) => {
   const router = useRouter();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
-  // Fetch real data from gamification API
+  // Fetch real data from gamification API (only if authenticated)
   const { streak, missions, loading, error } = useStreaksGamification();
 
   const streakPercentage = streak.target > 0 ? (streak.current / streak.target) * 100 : 0;
@@ -35,6 +37,59 @@ const StreaksGamification: React.FC<StreaksGamificationProps> = ({
       router.push('/missions');
     }
   };
+
+  // Auth loading state
+  if (isAuthLoading) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['rgba(249, 115, 22, 0.2)', 'rgba(239, 68, 68, 0.1)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardGradient}
+        >
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#F97316" />
+            <Text style={styles.loadingText}>Loading...</Text>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  // Not authenticated - show login prompt
+  if (!isAuthenticated) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['rgba(249, 115, 22, 0.2)', 'rgba(239, 68, 68, 0.1)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardGradient}
+        >
+          <View style={styles.loginPromptContainer}>
+            <View style={styles.loginIconContainer}>
+              <Ionicons name="flame" size={32} color="#F97316" />
+            </View>
+            <View style={styles.loginPromptContent}>
+              <Text style={styles.loginPromptTitle}>Track Your Saving Streaks</Text>
+              <Text style={styles.loginPromptSubtitle}>
+                Login to earn bonus coins and complete weekly missions
+              </Text>
+              <TouchableOpacity
+                style={styles.loginButton}
+                onPress={() => router.push('/login')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.loginButtonText}>Login to Start</Text>
+                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
 
   // Loading state - show skeleton
   if (loading) {
@@ -389,6 +444,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  loginPromptContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  loginIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(249, 115, 22, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginPromptContent: {
+    flex: 1,
+  },
+  loginPromptTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0B2240',
+    marginBottom: 4,
+  },
+  loginPromptSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  loginButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F97316',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    gap: 8,
+  },
+  loginButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
 

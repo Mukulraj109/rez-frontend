@@ -138,7 +138,7 @@ const ShopByOccasionSection: React.FC<ShopByOccasionSectionProps> = ({
       onOccasionPress(occasion);
     } else {
       router.push({
-        pathname: '/products',
+        pathname: '/shop',
         params: { occasion: occasion.id, category: categorySlug },
       } as any);
     }

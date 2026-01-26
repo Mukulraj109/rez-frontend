@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import exploreApi, { NearbyStore } from '@/services/exploreApi';
+import { useRegion } from '@/contexts/RegionContext';
+import { useCurrentLocation } from '@/hooks/useLocation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,16 +29,47 @@ const categories = [
   { id: 'grocery', label: 'Grocery', icon: 'cart' },
 ];
 
-// Default location (Hyderabad, India - can be replaced with actual location)
-const DEFAULT_LOCATION = {
-  latitude: 17.385044,
-  longitude: 78.486671,
-};
+// Store marker colors based on index
+const markerColors = [
+  { bg: '#00C06A', shadow: 'rgba(0, 192, 106, 0.4)' },
+  { bg: '#3B82F6', shadow: 'rgba(59, 130, 246, 0.4)' },
+  { bg: '#F59E0B', shadow: 'rgba(245, 158, 11, 0.4)' },
+  { bg: '#EC4899', shadow: 'rgba(236, 72, 153, 0.4)' },
+  { bg: '#8B5CF6', shadow: 'rgba(139, 92, 246, 0.4)' },
+  { bg: '#EF4444', shadow: 'rgba(239, 68, 68, 0.4)' },
+];
 
 const ExploreMapPage = () => {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
+
+  // Region context for coordinates and region name
+  const { state: regionState } = useRegion();
+  const regionName = regionState.regionConfig?.name || 'your area';
+  const currentRegion = regionState.currentRegion;
+
+  // Location context for GPS coordinates (optional)
+  const { currentLocation } = useCurrentLocation();
+
+  // Get effective coordinates: GPS first, then region fallback
+  const effectiveCoordinates = useMemo(() => {
+    if (currentLocation?.coordinates?.latitude && currentLocation?.coordinates?.longitude) {
+      return {
+        latitude: currentLocation.coordinates.latitude,
+        longitude: currentLocation.coordinates.longitude,
+        source: 'gps' as const,
+      };
+    }
+    if (regionState.regionConfig?.defaultCoordinates) {
+      return {
+        latitude: regionState.regionConfig.defaultCoordinates.latitude,
+        longitude: regionState.regionConfig.defaultCoordinates.longitude,
+        source: 'region' as const,
+      };
+    }
+    return { latitude: 12.9716, longitude: 77.5946, source: 'default' as const };
+  }, [currentLocation?.coordinates, regionState.regionConfig?.defaultCoordinates]);
 
   // API state
   const [loading, setLoading] = useState(true);
@@ -44,7 +77,7 @@ const ExploreMapPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [stores, setStores] = useState<NearbyStore[]>([]);
 
-  // Fetch nearby stores from API
+  // Fetch nearby stores from API using region-aware coordinates
   const fetchNearbyStores = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -55,8 +88,8 @@ const ExploreMapPage = () => {
       setError(null);
 
       const response = await exploreApi.getNearbyStores({
-        latitude: DEFAULT_LOCATION.latitude,
-        longitude: DEFAULT_LOCATION.longitude,
+        latitude: effectiveCoordinates.latitude,
+        longitude: effectiveCoordinates.longitude,
         radius: 5,
         limit: 20,
       });
@@ -73,12 +106,17 @@ const ExploreMapPage = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [effectiveCoordinates.latitude, effectiveCoordinates.longitude]);
 
-  // Initial fetch
   useEffect(() => {
     fetchNearbyStores();
   }, [fetchNearbyStores]);
+
+  useEffect(() => {
+    if (currentRegion) {
+      fetchNearbyStores();
+    }
+  }, [currentRegion]);
 
   const onRefresh = useCallback(() => {
     fetchNearbyStores(true);
@@ -88,19 +126,26 @@ const ExploreMapPage = () => {
     router.push(path as any);
   };
 
+  // Better marker positions that don't overlap
+  const markerPositions = [
+    { left: 15, top: 20 },
+    { left: 70, top: 15 },
+    { left: 45, top: 45 },
+    { left: 20, top: 65 },
+    { left: 75, top: 55 },
+    { left: 55, top: 25 },
+  ];
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#0B2240" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Stores Near You</Text>
+        <Text style={styles.headerTitle}>Stores in {regionName}</Text>
         <TouchableOpacity style={styles.searchButton}>
           <Ionicons name="search" size={24} color="#0B2240" />
         </TouchableOpacity>
@@ -139,51 +184,139 @@ const ExploreMapPage = () => {
         ))}
       </ScrollView>
 
-      {/* Map Placeholder */}
+      {/* Interactive Map Preview */}
       <View style={styles.mapContainer}>
-        <LinearGradient
-          colors={['#E0F2FE', '#DBEAFE', '#E0E7FF']}
-          style={styles.mapPlaceholder}
-        >
-          <View style={styles.mapContent}>
-            <Ionicons name="map" size={48} color="#3B82F6" />
-            <Text style={styles.mapText}>Interactive Map</Text>
-            <Text style={styles.mapSubtext}>
-              {stores.length} stores within 5 km
-            </Text>
+        {/* Map Background with realistic styling */}
+        <View style={styles.mapBackground}>
+          {/* Base gradient */}
+          <LinearGradient
+            colors={['#E8F4F8', '#D1E7DD', '#E2E8F0']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
 
-            {/* Store Markers */}
-            <View style={styles.markerContainer}>
-              {stores.slice(0, 3).map((store, index) => (
-                <TouchableOpacity
-                  key={store.id}
-                  style={[
-                    styles.marker,
-                    { left: 50 + index * 80, top: 30 + index * 40 },
-                  ]}
-                  onPress={() => setSelectedStore(store.id)}
-                >
-                  <View style={styles.markerPin}>
-                    <Ionicons name="location" size={24} color="#00C06A" />
-                  </View>
-                  <Text style={styles.markerLabel}>{store.cashback}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {/* Decorative map elements - roads */}
+          <View style={styles.roadHorizontal1} />
+          <View style={styles.roadHorizontal2} />
+          <View style={styles.roadVertical1} />
+          <View style={styles.roadVertical2} />
+          <View style={styles.roadDiagonal} />
 
-            {/* Current Location */}
-            <View style={styles.currentLocation}>
-              <View style={styles.currentLocationDot} />
-              <Text style={styles.currentLocationText}>You are here</Text>
-            </View>
+          {/* Decorative areas (parks, water) */}
+          <View style={styles.parkArea1} />
+          <View style={styles.parkArea2} />
+          <View style={styles.waterArea} />
+
+          {/* Buildings/Blocks */}
+          <View style={styles.block1} />
+          <View style={styles.block2} />
+          <View style={styles.block3} />
+          <View style={styles.block4} />
+
+          {/* Store Markers */}
+          {stores.slice(0, 6).map((store, index) => {
+            const pos = markerPositions[index];
+            const color = markerColors[index % markerColors.length];
+            const isSelected = selectedStore === store.id;
+
+            return (
+              <TouchableOpacity
+                key={store.id}
+                style={[
+                  styles.storeMarker,
+                  { left: `${pos.left}%`, top: `${pos.top}%` },
+                  isSelected && styles.storeMarkerSelected,
+                ]}
+                onPress={() => {
+                  setSelectedStore(store.id);
+                  navigateTo(`/MainStorePage?storeId=${store.id}`);
+                }}
+                activeOpacity={0.8}
+              >
+                {/* Pulse effect */}
+                <View style={[styles.markerPulse, { backgroundColor: color.shadow }]} />
+
+                {/* Pin shape */}
+                <View style={[styles.markerPin, { backgroundColor: color.bg }]}>
+                  <Text style={styles.markerInitial}>
+                    {store.name?.charAt(0)?.toUpperCase() || 'S'}
+                  </Text>
+                </View>
+                <View style={[styles.markerTail, { borderTopColor: color.bg }]} />
+
+                {/* Label */}
+                <View style={styles.markerLabelContainer}>
+                  <Text style={styles.markerLabel} numberOfLines={1}>
+                    {store.name?.split(' ')[0]}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Current Location Marker */}
+          <View style={styles.currentLocation}>
+            <View style={styles.currentLocationOuter} />
+            <View style={styles.currentLocationMiddle} />
+            <View style={styles.currentLocationInner} />
           </View>
-        </LinearGradient>
+
+          {/* Floating Info Card */}
+          <View style={styles.infoCardContainer}>
+            <LinearGradient
+              colors={['#FFFFFF', '#F8FAFC']}
+              style={styles.infoCard}
+            >
+              <View style={styles.infoCardLeft}>
+                <View style={styles.locationIconContainer}>
+                  <Ionicons name="navigate" size={16} color="#FFFFFF" />
+                </View>
+                <View>
+                  <Text style={styles.infoCardTitle}>{regionName}</Text>
+                  <Text style={styles.infoCardSubtitle}>Your location</Text>
+                </View>
+              </View>
+              <View style={styles.infoCardRight}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{stores.length}</Text>
+                  <Text style={styles.statLabel}>Stores</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>5km</Text>
+                  <Text style={styles.statLabel}>Radius</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* Zoom Controls */}
+          <View style={styles.zoomControls}>
+            <TouchableOpacity style={styles.zoomBtn}>
+              <Ionicons name="add" size={20} color="#374151" />
+            </TouchableOpacity>
+            <View style={styles.zoomDivider} />
+            <TouchableOpacity style={styles.zoomBtn}>
+              <Ionicons name="remove" size={20} color="#374151" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Compass */}
+          <View style={styles.compass}>
+            <Text style={styles.compassText}>N</Text>
+            <Ionicons name="navigate" size={14} color="#EF4444" style={{ transform: [{ rotate: '-45deg' }] }} />
+          </View>
+        </View>
       </View>
 
       {/* Store List */}
       <View style={styles.storeListHeader}>
         <Text style={styles.storeListTitle}>Nearby Stores</Text>
-        <Text style={styles.storeCount}>{stores.length} stores</Text>
+        <TouchableOpacity style={styles.viewAllBtn} onPress={() => navigateTo('/explore/stores')}>
+          <Text style={styles.viewAllText}>View All</Text>
+          <Ionicons name="chevron-forward" size={16} color="#00C06A" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -198,7 +331,7 @@ const ExploreMapPage = () => {
         {loading && !refreshing && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#00C06A" />
-            <Text style={styles.loadingText}>Finding nearby stores...</Text>
+            <Text style={styles.loadingText}>Finding stores in {regionName}...</Text>
           </View>
         )}
 
@@ -217,63 +350,79 @@ const ExploreMapPage = () => {
         {!loading && !error && stores.length === 0 && (
           <View style={styles.emptyContainer}>
             <Ionicons name="storefront-outline" size={48} color="#9CA3AF" />
-            <Text style={styles.emptyText}>No stores nearby</Text>
-            <Text style={styles.emptySubtext}>Try expanding your search radius</Text>
+            <Text style={styles.emptyText}>No stores in {regionName}</Text>
+            <Text style={styles.emptySubtext}>We're expanding to {regionName} soon!</Text>
           </View>
         )}
 
-        {/* Stores */}
-        {!loading && stores.map((store) => (
-          <TouchableOpacity
-            key={store.id}
-            style={[
-              styles.storeCard,
-              selectedStore === store.id && styles.storeCardSelected,
-            ]}
-            onPress={() => navigateTo(`/MainStorePage?id=${store.id}`)}
-          >
-            <View style={styles.storeImagePlaceholder}>
-              <Ionicons name="storefront" size={28} color="#6B7280" />
-            </View>
-            <View style={styles.storeInfo}>
-              <View style={styles.storeHeader}>
-                <Text style={styles.storeName} numberOfLines={1}>{store.name}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: store.isLive ? '#F0FDF4' : '#FEF2F2' }]}>
-                  <View style={[styles.statusDot, { backgroundColor: store.isLive ? '#10B981' : '#EF4444' }]} />
-                  <Text style={[styles.statusText, { color: store.isLive ? '#10B981' : '#EF4444' }]}>
-                    {store.status}
-                  </Text>
+        {/* Store Cards */}
+        {!loading && stores.map((store, index) => {
+          const color = markerColors[index % markerColors.length];
+          const isOpen = store.isLive === true || store.status === 'Open';
+
+          return (
+            <TouchableOpacity
+              key={store.id}
+              style={[
+                styles.storeCard,
+                selectedStore === store.id && styles.storeCardSelected,
+              ]}
+              onPress={() => navigateTo(`/MainStorePage?storeId=${store.id}`)}
+              activeOpacity={0.7}
+            >
+              {/* Store Icon */}
+              <View style={[styles.storeIcon, { backgroundColor: color.bg }]}>
+                <Text style={styles.storeIconText}>{store.name?.charAt(0)?.toUpperCase()}</Text>
+              </View>
+
+              {/* Store Info */}
+              <View style={styles.storeInfo}>
+                <View style={styles.storeNameRow}>
+                  <Text style={styles.storeName} numberOfLines={1}>{store.name}</Text>
+                  <View style={[styles.statusDot, { backgroundColor: isOpen ? '#10B981' : '#EF4444' }]} />
+                </View>
+                <View style={styles.storeMetaRow}>
+                  {store.distance && (
+                    <View style={styles.metaItem}>
+                      <Ionicons name="location-outline" size={12} color="#6B7280" />
+                      <Text style={styles.metaText}>{store.distance}</Text>
+                    </View>
+                  )}
+                  {store.waitTime && (
+                    <View style={styles.metaItem}>
+                      <Ionicons name="time-outline" size={12} color="#6B7280" />
+                      <Text style={styles.metaText}>{store.waitTime}</Text>
+                    </View>
+                  )}
                 </View>
               </View>
-              <View style={styles.storeFooter}>
-                <View style={styles.distanceBadge}>
-                  <Ionicons name="location" size={12} color="#6B7280" />
-                  <Text style={styles.distanceText}>{store.distance}</Text>
-                </View>
-                {store.waitTime && (
-                  <View style={styles.distanceBadge}>
-                    <Ionicons name="time" size={12} color="#6B7280" />
-                    <Text style={styles.distanceText}>{store.waitTime}</Text>
-                  </View>
-                )}
+
+              {/* Cashback Badge */}
+              {store.cashback && (
                 <View style={styles.cashbackBadge}>
-                  <Text style={styles.cashbackText}>{store.cashback} Cashback</Text>
+                  <Text style={styles.cashbackText}>{store.cashback}</Text>
                 </View>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.navigateButton}>
-              <Ionicons name="navigate" size={20} color="#00C06A" />
+              )}
             </TouchableOpacity>
-          </TouchableOpacity>
-        ))}
+          );
+        })}
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Floating Action */}
-      <TouchableOpacity style={styles.listViewButton}>
-        <Ionicons name="list" size={20} color="#FFFFFF" />
-        <Text style={styles.listViewText}>List View</Text>
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.listViewButton}
+        onPress={() => navigateTo('/explore/stores')}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={['#0B2240', '#1E3A5F']}
+          style={styles.listViewGradient}
+        >
+          <Ionicons name="list" size={18} color="#FFFFFF" />
+          <Text style={styles.listViewText}>List View</Text>
+        </LinearGradient>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -296,7 +445,7 @@ const styles = StyleSheet.create({
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
@@ -309,7 +458,7 @@ const styles = StyleSheet.create({
   searchButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
@@ -343,84 +492,369 @@ const styles = StyleSheet.create({
   categoryLabelActive: {
     color: '#FFFFFF',
   },
+
+  // Map Container
   mapContainer: {
-    height: height * 0.3,
+    height: height * 0.32,
     marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 16,
+    marginVertical: 12,
+    borderRadius: 24,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  mapPlaceholder: {
+  mapBackground: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapContent: {
-    alignItems: 'center',
     position: 'relative',
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
+    backgroundColor: '#E8F4F8',
   },
-  mapText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#3B82F6',
-    marginTop: 8,
-  },
-  mapSubtext: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  markerContainer: {
+
+  // Roads
+  roadHorizontal1: {
     position: 'absolute',
-    width: '100%',
-    height: '100%',
+    left: 0,
+    right: 0,
+    top: '35%',
+    height: 8,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.8,
   },
-  marker: {
+  roadHorizontal2: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '70%',
+    height: 6,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.6,
+  },
+  roadVertical1: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '30%',
+    width: 6,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.7,
+  },
+  roadVertical2: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '65%',
+    width: 8,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.8,
+  },
+  roadDiagonal: {
+    position: 'absolute',
+    top: '20%',
+    left: '50%',
+    width: 100,
+    height: 5,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.5,
+    transform: [{ rotate: '45deg' }],
+  },
+
+  // Decorative areas
+  parkArea1: {
+    position: 'absolute',
+    top: '10%',
+    left: '5%',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#86EFAC',
+    opacity: 0.5,
+  },
+  parkArea2: {
+    position: 'absolute',
+    bottom: '25%',
+    right: '10%',
+    width: 50,
+    height: 35,
+    borderRadius: 12,
+    backgroundColor: '#86EFAC',
+    opacity: 0.4,
+  },
+  waterArea: {
+    position: 'absolute',
+    top: '50%',
+    right: '5%',
+    width: 30,
+    height: 60,
+    borderRadius: 15,
+    backgroundColor: '#7DD3FC',
+    opacity: 0.4,
+  },
+
+  // Building blocks
+  block1: {
+    position: 'absolute',
+    top: '15%',
+    left: '40%',
+    width: 25,
+    height: 20,
+    backgroundColor: '#CBD5E1',
+    borderRadius: 4,
+    opacity: 0.6,
+  },
+  block2: {
+    position: 'absolute',
+    top: '45%',
+    left: '10%',
+    width: 30,
+    height: 25,
+    backgroundColor: '#CBD5E1',
+    borderRadius: 4,
+    opacity: 0.5,
+  },
+  block3: {
+    position: 'absolute',
+    bottom: '35%',
+    left: '50%',
+    width: 20,
+    height: 30,
+    backgroundColor: '#CBD5E1',
+    borderRadius: 4,
+    opacity: 0.6,
+  },
+  block4: {
+    position: 'absolute',
+    top: '25%',
+    right: '15%',
+    width: 25,
+    height: 18,
+    backgroundColor: '#CBD5E1',
+    borderRadius: 4,
+    opacity: 0.5,
+  },
+
+  // Store Markers
+  storeMarker: {
     position: 'absolute',
     alignItems: 'center',
+    zIndex: 10,
+  },
+  storeMarkerSelected: {
+    zIndex: 20,
+    transform: [{ scale: 1.1 }],
+  },
+  markerPulse: {
+    position: 'absolute',
+    top: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   markerPin: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  markerInitial: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  markerTail: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginTop: -2,
+  },
+  markerLabelContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
   markerLabel: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#00C06A',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginTop: 2,
+    fontWeight: '700',
+    color: '#374151',
+    maxWidth: 60,
+    textAlign: 'center',
   },
+
+  // Current Location
   currentLocation: {
     position: 'absolute',
-    bottom: 20,
+    left: '48%',
+    top: '42%',
     alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 15,
   },
-  currentLocationDot: {
+  currentLocationOuter: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+  },
+  currentLocationMiddle: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  currentLocationInner: {
     width: 16,
     height: 16,
     borderRadius: 8,
     backgroundColor: '#3B82F6',
     borderWidth: 3,
     borderColor: '#FFFFFF',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  currentLocationText: {
+
+  // Info Card
+  infoCardContainer: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    right: 12,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  infoCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  locationIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#00C06A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0B2240',
+  },
+  infoCardSubtitle: {
     fontSize: 11,
-    color: '#3B82F6',
-    fontWeight: '500',
-    marginTop: 4,
+    color: '#6B7280',
+    marginTop: 1,
   },
+  infoCardRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#00C06A',
+  },
+  statLabel: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#E5E7EB',
+  },
+
+  // Zoom Controls
+  zoomControls: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  zoomBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  zoomDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+
+  // Compass
+  compass: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  compassText: {
+    position: 'absolute',
+    top: 4,
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+
+  // Store List
   storeListHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -429,13 +863,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   storeListTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: '#0B2240',
   },
-  storeCount: {
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllText: {
     fontSize: 13,
-    color: '#6B7280',
+    fontWeight: '600',
+    color: '#00C06A',
   },
   storeList: {
     flex: 1,
@@ -466,7 +906,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#EF4444',
     textAlign: 'center',
-    paddingHorizontal: 20,
   },
   retryButton: {
     marginTop: 16,
@@ -497,134 +936,109 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
   },
+
+  // Store Card
   storeCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   storeCardSelected: {
     borderColor: '#00C06A',
     backgroundColor: '#F0FDF4',
   },
-  storeImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    backgroundColor: '#F3F4F6',
-  },
-  storeImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    backgroundColor: '#F3F4F6',
+  storeIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    gap: 4,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '500',
+  storeIconText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   storeInfo: {
     flex: 1,
     marginLeft: 12,
   },
-  storeHeader: {
+  storeNameRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 6,
   },
   storeName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#0B2240',
+    flex: 1,
   },
-  ratingBadge: {
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  storeMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    marginTop: 4,
+    gap: 12,
   },
-  ratingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#F59E0B',
-  },
-  storeCategory: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  storeFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 8,
-  },
-  distanceBadge: {
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  distanceText: {
-    fontSize: 11,
+  metaText: {
+    fontSize: 12,
     color: '#6B7280',
   },
   cashbackBadge: {
-    backgroundColor: '#F0FDF4',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    backgroundColor: '#00C06A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 8,
   },
   cashbackText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#00C06A',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  navigateButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F0FDF4',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+
+  // Floating Button
   listViewButton: {
     position: 'absolute',
     bottom: 90,
     alignSelf: 'center',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#0B2240',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  listViewGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0B2240',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
   },
   listViewText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });

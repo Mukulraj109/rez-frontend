@@ -218,7 +218,7 @@ export const FreeDeliverySection: React.FC<FreeDeliverySectionProps> = ({
               <View style={styles.footer}>
                 <View style={styles.ratingBadge}>
                   <Ionicons name="star" size={10} color="#D97706" />
-                  <Text style={styles.ratingText}>{offer.rating.toFixed(1)}</Text>
+                  <Text style={styles.ratingText}>{(offer.rating ?? 0).toFixed(1)}</Text>
                 </View>
                 {offer.cashbackPercentage > 0 && (
                   <View style={styles.cashbackBadge}>

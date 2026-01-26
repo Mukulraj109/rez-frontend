@@ -1,11 +1,23 @@
 import React, { createContext, useContext, useReducer, ReactNode, useCallback } from 'react';
-import { 
-  CategoryState, 
-  CategoryContextType, 
-  Category, 
-  CategoryItem, 
-  SortOption 
+import {
+  CategoryState,
+  CategoryContextType,
+  Category,
+  CategoryItem,
+  SortOption
 } from '@/types/category.types';
+
+// Region currency getter - will be set by RegionContext
+let getCurrencySymbolFn: (() => string) | null = null;
+
+export function setCategoryCurrencyGetter(fn: (() => string) | null) {
+  getCurrencySymbolFn = fn;
+}
+
+// Helper to get current currency symbol
+function getCurrentCurrencySymbol(): string {
+  return getCurrencySymbolFn ? getCurrencySymbolFn() : '₹'; // Default to INR if not set
+}
 
 // Initial State
 const initialState: CategoryState = {
@@ -186,7 +198,7 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
                 price: {
                   current: product.pricing?.selling || product.price?.current || 0,
                   original: product.pricing?.compare || product.price?.original || 0,
-                  currency: '₹',
+                  currency: getCurrentCurrencySymbol(),
                   discount: product.pricing?.discount || product.price?.discount || 0
                 },
                 cashback: {
@@ -483,7 +495,7 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
               isFeatured: false,
               isNew: false
             },
-            price: { current: 29.99, original: 35.99, currency: '₹', discount: 0 },
+            price: { current: 29.99, original: 35.99, currency: getCurrentCurrencySymbol(), discount: 0 },
             cashback: { percentage: 5, maxAmount: undefined },
             image: '',
             rating: { value: 4.5, count: 12, maxValue: 5 },
@@ -505,7 +517,7 @@ export function CategoryProvider({ children }: CategoryProviderProps) {
               isFeatured: false,
               isNew: false
             },
-            price: { current: 39.99, original: 45.99, currency: '₹', discount: 0 },
+            price: { current: 39.99, original: 45.99, currency: getCurrentCurrencySymbol(), discount: 0 },
             cashback: { percentage: 5, maxAmount: undefined },
             image: '',
             rating: { value: 4.2, count: 8, maxValue: 5 },

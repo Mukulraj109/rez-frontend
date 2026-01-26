@@ -22,13 +22,23 @@ export default function AppEntry() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    // IMPORTANT: Only run redirect logic if we're actually on the root "/" path
+    // On web, page refreshes on other routes should stay on those routes
+    // This prevents redirect loops when refreshing on /(tabs)/ or other pages
+    const isRootPath = pathname === '/' || pathname === '';
+
+    if (!isRootPath) {
+      // User is on a specific page, don't redirect - let them stay there
+      setIsChecking(false);
+      return;
+    }
 
     // Wait for auth context to initialize and react to auth changes
     if (!authState.isLoading) {
       // Check app state immediately to prevent navigation race conditions
       checkAppState();
     }
-  }, [authState.isLoading, authState.isAuthenticated, authState.user]); // Listen for all auth changes
+  }, [authState.isLoading, authState.isAuthenticated, authState.user, pathname]); // Listen for all auth changes
 
   const checkAppState = async () => {
     try {
@@ -39,7 +49,11 @@ export default function AppEntry() {
       if (authState.isAuthenticated && authState.user) {
 
         // User is authenticated, check onboarding status
-        if (authState.user.isOnboarded) {
+        // Check both user.isOnboarded and the localStorage flag as fallback
+        const onboardingCompletedFlag = await AsyncStorage.getItem('onboarding_completed');
+        const isOnboarded = authState.user.isOnboarded || onboardingCompletedFlag === 'true';
+
+        if (isOnboarded) {
 
           // User is fully onboarded, go to main app
           router.replace('/(tabs)/' as any);
@@ -93,7 +107,10 @@ export default function AppEntry() {
     }
   };
 
-  if (isChecking) {
+  // Only show loading screen on root path - other pages handle their own loading
+  const isRootPath = pathname === '/' || pathname === '';
+
+  if (isChecking && isRootPath) {
     return (
       <View style={styles.container}>
         <LoadingScreen duration={1000} />
@@ -101,6 +118,7 @@ export default function AppEntry() {
     );
   }
 
+  // Not on root path or done checking - render nothing (let the actual page render)
   return null;
 }
 

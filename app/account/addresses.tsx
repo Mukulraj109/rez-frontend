@@ -24,13 +24,14 @@ import addressApi, { Address as ApiAddress, AddressCreate, AddressUpdate } from 
 import AddAddressModal from '@/components/account/AddAddressModal';
 import EditAddressModal from '@/components/account/EditAddressModal';
 
-// Map API address type to frontend type
-type AddressType = 'home' | 'work' | 'other';
+// Use same AddressType as API (uppercase)
+type AddressType = 'HOME' | 'OFFICE' | 'OTHER';
 
 interface Address {
   id: string;
   type: AddressType;
   title: string;
+  phone?: string;
   addressLine1: string;
   addressLine2?: string;
   city: string;
@@ -65,8 +66,9 @@ export default function SavedAddressesPage() {
         // Transform API addresses to frontend format
         const transformedAddresses: Address[] = response.data.map((addr: ApiAddress) => ({
           id: addr.id,
-          type: addr.type.toLowerCase() as AddressType,
+          type: addr.type as AddressType,
           title: addr.title,
+          phone: addr.phone,
           addressLine1: addr.addressLine1,
           addressLine2: addr.addressLine2,
           city: addr.city,
@@ -122,8 +124,9 @@ export default function SavedAddressesPage() {
         // Transform and add to list
         const newAddress: Address = {
           id: response.data.id,
-          type: response.data.type.toLowerCase() as AddressType,
+          type: response.data.type as AddressType,
           title: response.data.title,
+          phone: response.data.phone,
           addressLine1: response.data.addressLine1,
           addressLine2: response.data.addressLine2,
           city: response.data.city,
@@ -159,8 +162,9 @@ export default function SavedAddressesPage() {
             addr.id === id
               ? {
                   ...addr,
-                  type: response.data!.type.toLowerCase() as AddressType,
+                  type: response.data!.type as AddressType,
                   title: response.data!.title,
+                  phone: response.data!.phone,
                   addressLine1: response.data!.addressLine1,
                   addressLine2: response.data!.addressLine2,
                   city: response.data!.city,
@@ -237,9 +241,9 @@ export default function SavedAddressesPage() {
 
   const getAddressTypeIcon = (type: string) => {
     switch (type) {
-      case 'home':
+      case 'HOME':
         return 'home-outline';
-      case 'work':
+      case 'OFFICE':
         return 'business-outline';
       default:
         return 'location-outline';
@@ -248,9 +252,9 @@ export default function SavedAddressesPage() {
 
   const getAddressTypeColor = (type: string) => {
     switch (type) {
-      case 'home':
+      case 'HOME':
         return '#10B981';
-      case 'work':
+      case 'OFFICE':
         return '#3B82F6';
       default:
         return '#6B7280';
@@ -304,6 +308,12 @@ export default function SavedAddressesPage() {
       </View>
 
       <View style={styles.addressDetails}>
+        {address.phone && (
+          <View style={styles.phoneContainer}>
+            <Ionicons name="call-outline" size={14} color="#6B7280" />
+            <ThemedText style={styles.phoneText}>{address.phone}</ThemedText>
+          </View>
+        )}
         <ThemedText style={styles.addressLine}>{address.addressLine1}</ThemedText>
         {address.addressLine2 && (
           <ThemedText style={styles.addressLine}>{address.addressLine2}</ThemedText>
@@ -312,7 +322,7 @@ export default function SavedAddressesPage() {
           {address.city}, {address.state} {address.postalCode}
         </ThemedText>
         <ThemedText style={styles.addressLine}>{address.country}</ThemedText>
-        
+
         {address.instructions && (
           <View style={styles.instructionsContainer}>
             <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
@@ -462,7 +472,7 @@ export default function SavedAddressesPage() {
         visible={showEditModal}
         address={selectedAddress ? {
           ...selectedAddress,
-          type: selectedAddress.type.toUpperCase() as any,
+          type: selectedAddress.type as any,
         } : null}
         onClose={() => {
           setShowEditModal(false);
@@ -595,6 +605,17 @@ const styles = StyleSheet.create({
   },
   addressDetails: {
     marginBottom: 12,
+  },
+  phoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  phoneText: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginLeft: 6,
+    fontWeight: '500',
   },
   addressLine: {
     fontSize: 14,

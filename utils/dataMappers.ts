@@ -154,8 +154,8 @@ export function mapFrontendCheckoutToBackendOrder(checkoutData: {
 /**
  * Map payment method names
  */
-function mapPaymentMethod(method: string): 'cod' | 'card' | 'upi' | 'wallet' | 'netbanking' {
-  const methodMap: { [key: string]: 'cod' | 'card' | 'upi' | 'wallet' | 'netbanking' } = {
+function mapPaymentMethod(method: string): 'cod' | 'card' | 'upi' | 'wallet' | 'netbanking' | 'razorpay' {
+  const methodMap: { [key: string]: 'cod' | 'card' | 'upi' | 'wallet' | 'netbanking' | 'razorpay' } = {
     'cash': 'cod',
     'cash_on_delivery': 'cod',
     'cod': 'cod',
@@ -166,10 +166,13 @@ function mapPaymentMethod(method: string): 'cod' | 'card' | 'upi' | 'wallet' | '
     'wallet': 'wallet',
     'net_banking': 'netbanking',
     'netbanking': 'netbanking',
+    'razorpay': 'razorpay',
+    'online': 'razorpay',
+    'online_payment': 'razorpay',
   };
 
   const normalized = method.toLowerCase().replace(/\s+/g, '_');
-  return methodMap[normalized] || 'cod';
+  return methodMap[normalized] || 'razorpay';
 }
 
 /**

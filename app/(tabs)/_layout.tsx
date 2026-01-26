@@ -1,7 +1,14 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function TabLayout() {
+  // Safety net: If user reaches main app, mark onboarding as complete
+  // This prevents redirect loops if user data is inconsistent
+  useEffect(() => {
+    AsyncStorage.setItem('onboarding_completed', 'true').catch(() => {});
+  }, []);
+
   return (
     <Tabs
       screenOptions={{

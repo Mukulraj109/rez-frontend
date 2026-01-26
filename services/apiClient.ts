@@ -42,7 +42,7 @@ class ApiClient {
   private defaultHeaders: Record<string, string>;
   private authToken: string | null = null;
   private refreshTokenCallback: (() => Promise<boolean>) | null = null;
-  private logoutCallback: (() => void) | null = null;
+  private logoutCallback: (() => void | Promise<void>) | null = null;
   private isRefreshing: boolean = false;
   private refreshPromise: Promise<boolean> | null = null;
   // System page callbacks
@@ -92,8 +92,8 @@ class ApiClient {
     this.refreshTokenCallback = callback;
   }
 
-  // Set logout callback
-  setLogoutCallback(callback: (() => void) | null) {
+  // Set logout callback (supports async callbacks)
+  setLogoutCallback(callback: (() => void | Promise<void>) | null) {
     this.logoutCallback = callback;
   }
 
@@ -240,16 +240,29 @@ class ApiClient {
           const isTokenExpired = errorMessage.includes('expired') || errorMessage.includes('invalid') || errorMessage.includes('jwt') || errorMessage.includes('token');
 
           // Only try to refresh if we have a refresh callback and token appears expired
-          if (isTokenExpired && this.refreshTokenCallback) {
-            const refreshSuccess = await this.handleTokenRefresh();
-            if (refreshSuccess) {
-              // Retry the original request with new token
-              return this.makeRequest<T>(endpoint, options);
-            } else {
-              // Only logout if refresh explicitly failed
-              if (this.logoutCallback) {
-                this.logoutCallback();
+          if (isTokenExpired) {
+            if (this.refreshTokenCallback) {
+              const refreshSuccess = await this.handleTokenRefresh();
+              if (refreshSuccess) {
+                // Retry the original request with new token
+                return this.makeRequest<T>(endpoint, options);
               }
+            }
+
+            // Token refresh failed or no refresh callback - trigger logout
+            console.log('🔐 [API] Token expired and refresh failed, triggering logout...');
+            if (this.logoutCallback) {
+              try {
+                await this.logoutCallback();
+              } catch (logoutError) {
+                console.error('❌ [API] Logout callback failed:', logoutError);
+                // Still clear local token as fallback
+                this.setAuthToken(null);
+              }
+            } else {
+              // No logout callback set - at minimum clear the token
+              console.warn('⚠️ [API] No logout callback set, clearing token locally');
+              this.setAuthToken(null);
             }
           }
         }

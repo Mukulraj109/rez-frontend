@@ -34,6 +34,7 @@ import apiClient from '@/services/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGamification } from '@/contexts/GamificationContext';
 import usePaymentFlow from '@/hooks/usePaymentFlow';
+import { showToast } from '@/components/common/ToastManager';
 
 // Import new components
 import {
@@ -124,7 +125,13 @@ export default function PaymentScreen() {
       setUpiId('');
       setShowUpiModal(true);
     } else {
-      // Other payment methods
+      // Other payment methods (net banking, pay later, etc.)
+      // These require external redirects or additional integration
+      showToast({
+        message: 'This payment method is not yet available. Please select UPI or Card.',
+        type: 'warning',
+        duration: 4000,
+      });
       paymentFlow.clearError();
     }
   };
@@ -194,9 +201,14 @@ export default function PaymentScreen() {
 
   const handleStripePaymentError = (errorMessage: string) => {
     setShowStripeModal(false);
-    // Set error in payment flow to show user feedback
+    // Show error to user via toast
     if (errorMessage) {
       console.error('Stripe payment error:', errorMessage);
+      showToast({
+        message: errorMessage || 'Payment failed. Please try again.',
+        type: 'error',
+        duration: 4000,
+      });
     }
   };
 
@@ -209,8 +221,14 @@ export default function PaymentScreen() {
           paymentId: currentPaymentData.paymentId,
           reason: 'user_cancelled',
         });
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to cancel payment:', err);
+        // Inform user if cancellation failed (payment may still be pending)
+        showToast({
+          message: 'Payment cancellation may not have completed. Please check your payment status.',
+          type: 'warning',
+          duration: 5000,
+        });
       }
     }
 
@@ -224,6 +242,12 @@ export default function PaymentScreen() {
         await gamificationActions.syncCoinsFromWallet();
       } catch (err) {
         console.error('[Payment] Failed to sync wallet balance:', err);
+        // Show non-blocking notification - payment succeeded, but balance may be stale
+        showToast({
+          message: 'Payment successful! Wallet balance will update shortly.',
+          type: 'info',
+          duration: 3000,
+        });
       }
     }
 
@@ -283,7 +307,7 @@ export default function PaymentScreen() {
         <ApplyCoinsSection
           appliedCoins={paymentFlow.appliedCoins}
           maxCoinRedemptionPercent={paymentFlow.maxCoinRedemptionPercent}
-          billAmount={billAmount}
+          billAmount={billAmount - paymentFlow.discountAmount}
           isAutoOptimized={paymentFlow.isAutoOptimized}
           onCoinToggle={paymentFlow.toggleCoin}
           onCoinAmountChange={paymentFlow.setCoinAmount}

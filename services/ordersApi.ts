@@ -158,9 +158,14 @@ export interface CreateOrderRequest {
     landmark?: string;
     addressType?: 'home' | 'work' | 'other';
   };
-  paymentMethod: 'wallet' | 'card' | 'upi' | 'cod' | 'netbanking';
+  paymentMethod: 'wallet' | 'card' | 'upi' | 'cod' | 'netbanking' | 'razorpay';
   specialInstructions?: string;
   couponCode?: string;
+  coinsUsed?: {
+    rezCoins: number;
+    promoCoins: number;
+    storePromoCoins: number;
+  };
 }
 
 export interface OrdersQuery {
