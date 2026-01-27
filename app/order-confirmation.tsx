@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   Share,
   Animated,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +21,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import ordersService, { Order } from '@/services/ordersApi';
+import shareApi from '@/services/shareApi';
 
 export default function OrderConfirmationPage() {
   const router = useRouter();
@@ -28,6 +31,18 @@ export default function OrderConfirmationPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [canShare, setCanShare] = useState(true);
+  const [coinsEarned, setCoinsEarned] = useState<number | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+
+  // Cross-platform modal state (replaces Alert.alert for web compatibility)
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalContent, setModalContent] = useState<{
+    title: string;
+    message: string;
+    icon: 'checkmark-circle' | 'alert-circle';
+    iconColor: string;
+  }>({ title: '', message: '', icon: 'checkmark-circle', iconColor: '#22C55E' });
 
   // Animation values
   const [successAnim] = useState(new Animated.Value(0));
@@ -84,6 +99,21 @@ export default function OrderConfirmationPage() {
     }
   };
 
+  // Cross-platform alert function (works on both mobile and web)
+  const showAlert = (
+    title: string,
+    message: string,
+    isSuccess: boolean = true
+  ) => {
+    setModalContent({
+      title,
+      message,
+      icon: isSuccess ? 'checkmark-circle' : 'alert-circle',
+      iconColor: isSuccess ? '#22C55E' : '#F59E0B',
+    });
+    setModalVisible(true);
+  };
+
   const handleTrackOrder = () => {
     if (order) {
       router.push(`/tracking?orderId=${order._id || order.id}`);
@@ -95,19 +125,62 @@ export default function OrderConfirmationPage() {
   };
 
   const handleShareOrder = async () => {
-    if (!order) return;
+    if (!order || !canShare || isSharing) return;
 
     try {
-      const message = `I just placed an order on REZ!\n\nOrder #${order.orderNumber}\nTotal: ₹${order.totals.total}\nStatus: ${order.status}\n\nTrack your orders on REZ app!`;
+      setIsSharing(true);
 
-      await Share.share({
+      // First, share via native share dialog
+      const message = `I just placed an order on REZ!\n\nOrder #${order.orderNumber}\nTotal: ₹${order.totals.total}\n\nShop and earn rewards on REZ app!`;
+
+      const shareResult = await Share.share({
         message,
         title: 'My REZ Order',
       });
+
+      // If user actually shared (not dismissed), call backend to award coins
+      if (shareResult.action === Share.sharedAction) {
+        const response = await shareApi.sharePurchase(
+          order._id || (order as any).id,
+          'other' // Default platform since we can't detect which app was used
+        );
+
+        if (response.success && response.data) {
+          setCoinsEarned(response.data.coinsEarned);
+          setCanShare(false);
+          showAlert(
+            'Share Submitted!',
+            `You'll receive ${response.data.coinsEarned} Rez Coins once approved! Coins will be credited to your wallet after admin review.`,
+            true
+          );
+        } else if (response.error?.includes('already shared')) {
+          setCanShare(false);
+          showAlert(
+            'Already Shared',
+            'You have already submitted this order for share rewards.',
+            false
+          );
+        }
+      }
     } catch (error) {
       console.error('📦 [ORDER CONFIRMATION] Share error:', error);
+    } finally {
+      setIsSharing(false);
     }
   };
+
+  // Check if order can be shared on load
+  useEffect(() => {
+    const checkShareEligibility = async () => {
+      if (order) {
+        const response = await shareApi.canShareOrder(order._id || (order as any).id);
+        if (response.success && response.data) {
+          setCanShare(response.data.canShare);
+        }
+      }
+    };
+    checkShareEligibility();
+  }, [order]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -225,8 +298,26 @@ export default function OrderConfirmationPage() {
         <Animated.View style={[styles.card, { opacity: contentAnim }]}>
           <View style={styles.cardHeader}>
             <ThemedText style={styles.cardTitle}>Order Details</ThemedText>
-            <TouchableOpacity onPress={handleShareOrder} style={styles.shareButton}>
-              <Ionicons name="share-outline" size={20} color="#8B5CF6" />
+            <TouchableOpacity
+              onPress={handleShareOrder}
+              style={[styles.shareButton, !canShare && styles.shareButtonDisabled]}
+              disabled={!canShare || isSharing}
+            >
+              {isSharing ? (
+                <ActivityIndicator size="small" color="#8B5CF6" />
+              ) : coinsEarned ? (
+                <View style={styles.coinsEarnedBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+                  <ThemedText style={styles.coinsEarnedText}>+{coinsEarned}</ThemedText>
+                </View>
+              ) : canShare ? (
+                <View style={styles.shareWithCoins}>
+                  <Ionicons name="share-outline" size={18} color="#8B5CF6" />
+                  <ThemedText style={styles.shareCoinsText}>+5%</ThemedText>
+                </View>
+              ) : (
+                <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -399,6 +490,38 @@ export default function OrderConfirmationPage() {
           <ThemedText style={styles.primaryButtonText}>Track Order</ThemedText>
         </TouchableOpacity>
       </View>
+
+      {/* Cross-Platform Modal (replaces Alert.alert for web compatibility) */}
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setModalVisible(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalIconContainer}>
+              <Ionicons
+                name={modalContent.icon}
+                size={48}
+                color={modalContent.iconColor}
+              />
+            </View>
+            <ThemedText style={styles.modalTitle}>{modalContent.title}</ThemedText>
+            <ThemedText style={styles.modalMessage}>{modalContent.message}</ThemedText>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setModalVisible(false)}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.modalButtonText}>Got it!</ThemedText>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -496,6 +619,40 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     padding: 8,
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareButtonDisabled: {
+    opacity: 0.6,
+  },
+  shareWithCoins: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  shareCoinsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8B5CF6',
+  },
+  coinsEarnedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  coinsEarnedText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#22C55E',
   },
   orderInfo: {
     gap: 12,
@@ -685,6 +842,64 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  // Cross-platform modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    maxWidth: 340,
+    width: '100%',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 25 },
+        shadowOpacity: 0.25,
+        shadowRadius: 50,
+        elevation: 25,
+      },
+    }),
+  },
+  modalIconContainer: {
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  modalButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  modalButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: 'white',

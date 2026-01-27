@@ -60,7 +60,7 @@ export default function SearchPage() {
   const initialQuery = (params.q as string) || '';
 
   // Use the new search page hook
-  const { state: searchState, groupedProducts, searchSummary, actions } = useSearchPage();
+  const { state: searchState, groupedProducts, matchingStores, searchSummary, actions } = useSearchPage();
 
   // Get user location for distance calculation
   const { currentLocation } = useCurrentLocation();
@@ -599,9 +599,60 @@ export default function SearchPage() {
     </View>
   );
 
+  const renderStoreCard = (store: any) => (
+    <TouchableOpacity
+      key={store.storeId}
+      style={styles.storeResultCard}
+      onPress={() => router.push(`/store/${store.storeId}`)}
+      activeOpacity={0.9}
+    >
+      <View style={styles.storeResultContent}>
+        {store.logo ? (
+          <Image source={{ uri: store.logo }} style={styles.storeResultLogo} />
+        ) : (
+          <View style={[styles.storeResultLogo, styles.storeResultLogoPlaceholder]}>
+            <Ionicons name="storefront" size={24} color={COLORS.muted} />
+          </View>
+        )}
+        <View style={styles.storeResultInfo}>
+          <View style={styles.storeResultNameRow}>
+            <Text style={styles.storeResultName} numberOfLines={1}>{store.name}</Text>
+            {store.isVerified && (
+              <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} style={{ marginLeft: 4 }} />
+            )}
+          </View>
+          {store.description ? (
+            <Text style={styles.storeResultDescription} numberOfLines={2}>{store.description}</Text>
+          ) : null}
+          <View style={styles.storeResultMeta}>
+            {store.rating > 0 && (
+              <View style={styles.storeResultRating}>
+                <Ionicons name="star" size={12} color={COLORS.gold} />
+                <Text style={styles.storeResultRatingText}>{store.rating.toFixed(1)}</Text>
+                {store.reviewCount > 0 && (
+                  <Text style={styles.storeResultReviewCount}>({store.reviewCount})</Text>
+                )}
+              </View>
+            )}
+            {store.location ? (
+              <View style={styles.storeResultLocation}>
+                <Ionicons name="location-outline" size={12} color={COLORS.muted} />
+                <Text style={styles.storeResultLocationText}>{store.location}</Text>
+              </View>
+            ) : null}
+            {store.distance !== undefined && (
+              <Text style={styles.storeResultDistance}>{store.distance} km</Text>
+            )}
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={COLORS.muted} />
+      </View>
+    </TouchableOpacity>
+  );
+
   const renderResults = () => {
     // Use grouped products if available, otherwise fall back to regular results
-    if (groupedProducts.length > 0) {
+    if (groupedProducts.length > 0 || matchingStores.length > 0) {
       return (
         <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* Search Results Summary */}
@@ -610,28 +661,44 @@ export default function SearchPage() {
           )}
 
           {/* Filter Bar */}
-          <FilterBar
-            onFilterPress={handleFilterPress}
-            onSortChange={handleSortChange}
-            currentSort={currentSort}
-            activeFilters={activeFilters}
-          />
+          {groupedProducts.length > 0 && (
+            <FilterBar
+              onFilterPress={handleFilterPress}
+              onSortChange={handleSortChange}
+              currentSort={currentSort}
+              activeFilters={activeFilters}
+            />
+          )}
+
+          {/* Matching Stores Section */}
+          {matchingStores.length > 0 && (
+            <View style={styles.matchingStoresSection}>
+              <View style={styles.matchingStoresHeader}>
+                <Ionicons name="storefront-outline" size={18} color={COLORS.primary} />
+                <Text style={styles.matchingStoresTitle}>Matching Stores</Text>
+                <Text style={styles.matchingStoresCount}>{matchingStores.length}</Text>
+              </View>
+              {matchingStores.map(renderStoreCard)}
+            </View>
+          )}
 
           {/* Promotional Banner - ReZ Brand Colors */}
-          <LinearGradient
-            colors={['rgba(0, 192, 106, 0.1)', 'rgba(255, 200, 87, 0.08)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.promoBanner}
-          >
-            <View style={styles.promoIconContainer}>
-              <Ionicons name="cash-outline" size={18} color={COLORS.primary} />
-            </View>
-            <Text style={styles.promoText}>
-              Cashback & rezcoins auto-applied at checkout for maximum savings
-            </Text>
-            <Ionicons name="sparkles" size={16} color={COLORS.gold} />
-          </LinearGradient>
+          {groupedProducts.length > 0 && (
+            <LinearGradient
+              colors={['rgba(0, 192, 106, 0.1)', 'rgba(255, 200, 87, 0.08)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.promoBanner}
+            >
+              <View style={styles.promoIconContainer}>
+                <Ionicons name="cash-outline" size={18} color={COLORS.primary} />
+              </View>
+              <Text style={styles.promoText}>
+                Cashback & rezcoins auto-applied at checkout for maximum savings
+              </Text>
+              <Ionicons name="sparkles" size={16} color={COLORS.gold} />
+            </LinearGradient>
+          )}
 
           {/* Grouped Products */}
           {sortedGroupedProducts.map((productGroup) => (
@@ -849,7 +916,7 @@ export default function SearchPage() {
         if (searchState.query.trim().length < 2) {
           return renderSearchHint();
         }
-        if ((groupedProducts.length === 0 && searchState.results.length === 0) && !searchState.loading) {
+        if ((groupedProducts.length === 0 && matchingStores.length === 0 && searchState.results.length === 0) && !searchState.loading) {
           return renderEmptyState();
         }
         return renderResults();
@@ -1834,5 +1901,114 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: COLORS.gold,
     marginLeft: 12,
+  },
+  // Matching Stores Section
+  matchingStoresSection: {
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  matchingStoresHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    marginBottom: 12,
+    gap: 8,
+  },
+  matchingStoresTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: COLORS.navy,
+    flex: 1,
+  },
+  matchingStoresCount: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: COLORS.primary,
+    backgroundColor: 'rgba(0, 192, 106, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden' as const,
+  },
+  // Store Result Card
+  storeResultCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  storeResultContent: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    padding: 14,
+    gap: 12,
+  },
+  storeResultLogo: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  storeResultLogoPlaceholder: {
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  storeResultInfo: {
+    flex: 1,
+  },
+  storeResultNameRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    marginBottom: 3,
+  },
+  storeResultName: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: COLORS.navy,
+  },
+  storeResultDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  storeResultMeta: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    flexWrap: 'wrap' as const,
+  },
+  storeResultRating: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 3,
+  },
+  storeResultRatingText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: COLORS.navy,
+  },
+  storeResultReviewCount: {
+    fontSize: 11,
+    color: COLORS.muted,
+  },
+  storeResultLocation: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 2,
+  },
+  storeResultLocationText: {
+    fontSize: 12,
+    color: COLORS.muted,
+  },
+  storeResultDistance: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    color: COLORS.primary,
   },
 });

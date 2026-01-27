@@ -36,6 +36,7 @@ export const useSearchPage = () => {
   // New state for grouped products
   const [groupedProducts, setGroupedProducts] = useState<GroupedProductResult[]>([]);
   const [searchSummary, setSearchSummary] = useState<SearchResultsSummary | null>(null);
+  const [matchingStores, setMatchingStores] = useState<any[]>([]);
 
   // Helper function to map backend categories to UI format
   const mapToSearchCategory = useCallback((cat: any): SearchCategory => {
@@ -218,16 +219,18 @@ export const useSearchPage = () => {
       });
 
       if (response.success && response.data) {
-        const { groupedProducts: products, summary } = response.data;
+        const { groupedProducts: products, summary, matchingStores: stores } = response.data;
 
-        setGroupedProducts(products);
+        setGroupedProducts(products || []);
         setSearchSummary(summary);
+        setMatchingStores(stores || []);
 
         // Track analytics
-        await searchAnalyticsService.trackSearch(query, summary.sellerCount);
+        const totalResults = (products?.length || 0) + (stores?.length || 0);
+        await searchAnalyticsService.trackSearch(query, totalResults || summary.sellerCount);
 
         // Save to search history
-        await searchHistoryService.addSearch(query, summary.sellerCount);
+        await searchHistoryService.addSearch(query, totalResults || summary.sellerCount);
 
         setState(prev => ({
           ...prev,
@@ -251,6 +254,7 @@ export const useSearchPage = () => {
         error: error instanceof Error ? error.message : 'Search failed. Please try again.',
       }));
       setGroupedProducts([]);
+      setMatchingStores([]);
       setSearchSummary(null);
     }
   }, []);
@@ -377,6 +381,9 @@ export const useSearchPage = () => {
       results: [],
       showSuggestions: false,
     }));
+    setGroupedProducts([]);
+    setMatchingStores([]);
+    setSearchSummary(null);
   }, []);
 
   // Clear error
@@ -428,6 +435,7 @@ export const useSearchPage = () => {
   return {
     state,
     groupedProducts,
+    matchingStores,
     searchSummary,
     actions: {
       handleSearchChange,

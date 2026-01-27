@@ -1,105 +1,104 @@
 // Share API Service
-// Handles all share-related API calls
+// Handles sharing purchases and awarding 5% coins
 
-import apiClient from './apiClient';
+import { apiClient } from './apiClient';
 
-export interface ShareableContent {
-  products: Array<{
-    id: string;
-    name: string;
-    image: string;
-    reward: { baseCoins: number; clickBonus: number; conversionBonus: number };
-  }>;
-  offers: Array<{
-    id: string;
-    title: string;
-    image: string;
-    reward: { baseCoins: number; clickBonus: number; conversionBonus: number };
-  }>;
-  stores: Array<{
-    id: string;
-    name: string;
-    image: string;
-    reward: { baseCoins: number; clickBonus: number; conversionBonus: number };
-  }>;
-  referral: {
-    code: string;
-    reward: { baseCoins: number; clickBonus: number; conversionBonus: number };
-    message: string;
+export interface SharePurchaseRequest {
+  orderId: string;
+  platform: 'whatsapp' | 'facebook' | 'twitter' | 'instagram' | 'other';
+}
+
+export interface SharePurchaseResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    shareId: string;
+    coinsEarned: number;
+    orderTotal: number;
+    shareUrl: string;
   };
+  error?: string;
 }
 
-export interface Share {
-  _id: string;
-  contentType: 'product' | 'store' | 'offer' | 'referral' | 'video' | 'article';
-  contentId: string;
-  platform: string;
-  shareUrl: string;
-  trackingCode: string;
-  clicks: number;
-  conversions: number;
-  coinsEarned: number;
-  status: 'pending' | 'verified' | 'rewarded' | 'expired';
-  createdAt: string;
-  expiresAt: string;
-}
-
-export interface ShareStats {
-  totalShares: number;
-  totalClicks: number;
-  totalConversions: number;
-  totalCoinsEarned: number;
-  byType: {
-    [key: string]: {
-      shares: number;
-      clicks: number;
-      conversions: number;
-      coins: number;
-    };
+export interface CanShareOrderResponse {
+  success: boolean;
+  data?: {
+    canShare: boolean;
+    reason?: string;
+    orderTotal?: number;
+    potentialCoins?: number;
   };
+  error?: string;
 }
 
-export interface DailyShareLimits {
-  [contentType: string]: {
-    used: number;
-    limit: number;
-    remaining: number;
-  };
+class ShareApiService {
+  /**
+   * Share a purchase and earn 5% coins
+   * @param orderId - The order ID to share
+   * @param platform - The platform being shared to
+   */
+  async sharePurchase(orderId: string, platform: SharePurchaseRequest['platform']): Promise<SharePurchaseResponse> {
+    try {
+      console.log('[SHARE API] Sharing purchase:', orderId, 'on', platform);
+
+      const response = await apiClient.post<SharePurchaseResponse['data']>(
+        '/shares/purchase',
+        { orderId, platform }
+      );
+
+      if (response.success && response.data) {
+        console.log('[SHARE API] Share successful, coins earned:', response.data.coinsEarned);
+        return {
+          success: true,
+          data: response.data,
+        };
+      }
+
+      return {
+        success: false,
+        error: response.message || 'Failed to share purchase',
+      };
+    } catch (error: any) {
+      console.error('[SHARE API] Share purchase error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to share purchase',
+      };
+    }
+  }
+
+  /**
+   * Check if an order can be shared (not already shared)
+   * @param orderId - The order ID to check
+   */
+  async canShareOrder(orderId: string): Promise<CanShareOrderResponse> {
+    try {
+      console.log('[SHARE API] Checking if order can be shared:', orderId);
+
+      const response = await apiClient.get<CanShareOrderResponse['data']>(
+        `/shares/can-share/${orderId}`
+      );
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: response.data,
+        };
+      }
+
+      return {
+        success: false,
+        error: response.message || 'Failed to check share eligibility',
+      };
+    } catch (error: any) {
+      console.error('[SHARE API] Can share order error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to check share eligibility',
+      };
+    }
+  }
 }
 
-class ShareApi {
-  // Get shareable content
-  async getShareableContent() {
-    return apiClient.get<ShareableContent>('/share/content');
-  }
-
-  // Create share tracking
-  async createShare(
-    contentType: 'product' | 'store' | 'offer' | 'referral' | 'video' | 'article',
-    contentId: string,
-    platform: 'whatsapp' | 'facebook' | 'twitter' | 'instagram' | 'copy_link' | 'other'
-  ) {
-    return apiClient.post<{
-      shareUrl: string;
-      trackingCode: string;
-      expiresAt: string;
-    }>('/share/track', { contentType, contentId, platform });
-  }
-
-  // Get share history
-  async getShareHistory(contentType?: string, limit: number = 20, offset: number = 0) {
-    return apiClient.get<Share[]>('/share/history', { contentType, limit, offset });
-  }
-
-  // Get share statistics
-  async getShareStats() {
-    return apiClient.get<ShareStats>('/share/stats');
-  }
-
-  // Get daily share limits
-  async getDailyLimits() {
-    return apiClient.get<DailyShareLimits>('/share/daily-limits');
-  }
-}
-
-export default new ShareApi();
+export const shareApi = new ShareApiService();
+export default shareApi;

@@ -11,7 +11,7 @@
     "clear-cache": "node ./scripts/clear-cache.js",
     "android": "cross-env NODE_OPTIONS=--max-old-space-size=16384 expo start --android",
     "ios": "cross-env NODE_OPTIONS=--max-old-space-size=16384 expo start --ios",
-    "web": "cross-env NODE_OPTIONS=--max-old-space-size=16384 expo start --web",
+    "web": "cross-env NODE_OPTIONS=--max-old-space-size=16384 expo start --web --port 8081",
     "lint": "expo lint",
     "test": "jest",
     "test:watch": "jest --watch",

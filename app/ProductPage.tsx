@@ -1078,7 +1078,7 @@ export default function StorePage() {
           price={productPrice}
           originalPrice={originalPrice}
           isLocked={isLocked}
-          onLockPress={handleStickyLockPress}
+          onLockPress={handleLockPress}
           onAddToCart={handleBuyPress}
         />
       )}

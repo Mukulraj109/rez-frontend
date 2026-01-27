@@ -275,6 +275,7 @@ class SearchService {
     }
   ): Promise<ApiResponse<{
     groupedProducts: any[];
+    matchingStores?: any[];
     summary: {
       sellerCount: number;
       minPrice: number;
