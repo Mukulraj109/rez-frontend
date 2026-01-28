@@ -227,14 +227,44 @@ export default function CartItem({
                 </View>
               )}
 
-              <ThemedText
-                style={[
-                  styles.productPrice,
-                  { fontSize: isSmallScreen ? 16 : 17 },
-                ]}
-              >
-                {currencySymbol}{item.price?.toLocaleString(locale) || 0}
-              </ThemedText>
+              {/* Price Display - Show lock fee breakdown if applicable */}
+              {(item.discount && item.discount > 0) ? (
+                <View style={styles.lockPriceContainer}>
+                  <View style={styles.lockPriceRow}>
+                    <ThemedText
+                      style={[
+                        styles.originalPriceStrike,
+                        { fontSize: isSmallScreen ? 13 : 14 },
+                      ]}
+                    >
+                      {currencySymbol}{item.price?.toLocaleString(locale) || 0}
+                    </ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.productPrice,
+                        { fontSize: isSmallScreen ? 16 : 17, marginTop: 0 },
+                      ]}
+                    >
+                      {currencySymbol}{(item.price - item.discount)?.toLocaleString(locale) || 0}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.lockFeeBadge}>
+                    <Ionicons name="lock-closed" size={10} color="#059669" />
+                    <ThemedText style={styles.lockFeeText}>
+                      {currencySymbol}{item.discount?.toLocaleString(locale)} paid at lock
+                    </ThemedText>
+                  </View>
+                </View>
+              ) : (
+                <ThemedText
+                  style={[
+                    styles.productPrice,
+                    { fontSize: isSmallScreen ? 16 : 17 },
+                  ]}
+                >
+                  {currencySymbol}{item.price?.toLocaleString(locale) || 0}
+                </ThemedText>
+              )}
             </View>
           </View>
 
@@ -374,6 +404,30 @@ const styles = StyleSheet.create({
     color: '#00C06A',
     marginTop: 4,
     fontSize: 17,
+  },
+  lockPriceContainer: {
+    marginTop: 4,
+  },
+  lockPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  originalPriceStrike: {
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
+  },
+  lockFeeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 3,
+  },
+  lockFeeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
   },
   bottomRow: {
     flexDirection: 'row',

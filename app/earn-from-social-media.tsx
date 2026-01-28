@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Text,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { showAlert } from '@/components/common/CrossPlatformAlert';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +24,7 @@ import ordersService, { Order } from '@/services/ordersApi';
 import socialMediaApi, { SocialPost } from '@/services/socialMediaApi';
 import CashbackInfoModal from '@/components/earnings/CashbackInfoModal';
 import CompletedOrderCard from '@/components/earnings/CompletedOrderCard';
+import * as ImagePicker from 'expo-image-picker';
 
 // Type for tracking submission status per order
 interface OrderSubmissionMap {
@@ -34,7 +36,9 @@ interface OrderSubmissionMap {
 
 const { width } = Dimensions.get('window');
 
-type PageStep = 'orders_list' | 'url_input' | 'uploading' | 'success' | 'error';
+type PlatformType = 'instagram' | 'facebook' | 'twitter' | 'tiktok';
+type SubmissionMode = 'url' | 'media';
+type PageStep = 'orders_list' | 'platform_select' | 'url_input' | 'media_upload' | 'uploading' | 'success' | 'error';
 
 interface SelectedOrderInfo {
   orderId: string;
@@ -46,11 +50,38 @@ interface SelectedOrderInfo {
   cashbackAmount: number;
 }
 
+const PLATFORM_CONFIG: Record<PlatformType, { label: string; icon: string; color: string; placeholder: string }> = {
+  instagram: {
+    label: 'Instagram',
+    icon: 'logo-instagram',
+    color: '#E1306C',
+    placeholder: 'Paste Instagram post URL here...\ne.g. https://instagram.com/p/ABC123',
+  },
+  facebook: {
+    label: 'Facebook',
+    icon: 'logo-facebook',
+    color: '#1877F2',
+    placeholder: 'Paste Facebook post URL here...\ne.g. https://facebook.com/user/posts/123',
+  },
+  twitter: {
+    label: 'X (Twitter)',
+    icon: 'logo-twitter',
+    color: '#1DA1F2',
+    placeholder: 'Paste X/Twitter post URL here...\ne.g. https://x.com/user/status/123',
+  },
+  tiktok: {
+    label: 'TikTok',
+    icon: 'logo-tiktok',
+    color: '#000000',
+    placeholder: 'Paste TikTok video URL here...\ne.g. https://tiktok.com/@user/video/123',
+  },
+};
+
 export default function EarnFromSocialMediaPage() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // State for new flow
+  // State
   const [currentStep, setCurrentStep] = useState<PageStep>('orders_list');
   const [orders, setOrders] = useState<Order[]>([]);
   const [orderSubmissions, setOrderSubmissions] = useState<OrderSubmissionMap>({});
@@ -62,6 +93,11 @@ export default function EarnFromSocialMediaPage() {
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  // New state for multi-platform + media
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>('instagram');
+  const [submissionMode, setSubmissionMode] = useState<SubmissionMode>('url');
+  const [selectedMedia, setSelectedMedia] = useState<ImagePicker.ImagePickerAsset[]>([]);
 
   // Extract product context from params (for direct product links)
   const productContext = {
@@ -78,24 +114,20 @@ export default function EarnFromSocialMediaPage() {
   // Fetch completed orders and existing social media submissions
   const fetchCompletedOrders = useCallback(async () => {
     try {
-      // Fetch both orders and existing social media posts in parallel
       const [ordersResponse, postsResponse] = await Promise.all([
         ordersService.getOrders({ status: 'delivered' }),
-        socialMediaApi.getUserPosts({ limit: 100 }) // Get all user's submissions
+        socialMediaApi.getUserPosts({ limit: 100 })
       ]);
 
-      // Process orders
       if (ordersResponse.success && ordersResponse.data?.orders) {
         const deliveredOrders = ordersResponse.data.orders.filter(
           (order) => order.status === 'delivered'
         );
         setOrders(deliveredOrders);
       } else {
-        console.warn('⚠️ [EARN SOCIAL] No orders found');
         setOrders([]);
       }
 
-      // Build submission map from existing posts
       const submissionsMap: OrderSubmissionMap = {};
       if (postsResponse.posts && postsResponse.posts.length > 0) {
         postsResponse.posts.forEach((post: SocialPost) => {
@@ -108,9 +140,8 @@ export default function EarnFromSocialMediaPage() {
         });
       }
       setOrderSubmissions(submissionsMap);
-
     } catch (err) {
-      console.error('❌ [EARN SOCIAL] Error fetching orders:', err);
+      console.error('[EARN SOCIAL] Error fetching orders:', err);
       setOrders([]);
       setOrderSubmissions({});
     } finally {
@@ -123,7 +154,6 @@ export default function EarnFromSocialMediaPage() {
     fetchCompletedOrders();
   }, [fetchCompletedOrders]);
 
-  // Handle refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchCompletedOrders();
@@ -146,16 +176,56 @@ export default function EarnFromSocialMediaPage() {
     setModalVisible(true);
   };
 
-  // Handle "Upload" button press in modal
+  // Handle "Upload" button press in modal -> go to platform select
   const handleUploadPress = () => {
     setModalVisible(false);
-    setCurrentStep('url_input');
+    setCurrentStep('platform_select');
+  };
+
+  // Handle platform selection continue
+  const handlePlatformContinue = () => {
+    if (submissionMode === 'url') {
+      setCurrentStep('url_input');
+    } else {
+      setCurrentStep('media_upload');
+    }
+  };
+
+  // Handle media picker
+  const handlePickMedia = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert('Permission Required', 'Please grant access to your photo library to upload media.', undefined, 'error');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsMultipleSelection: true,
+        selectionLimit: 5 - selectedMedia.length,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets) {
+        const total = [...selectedMedia, ...result.assets].slice(0, 5);
+        setSelectedMedia(total);
+      }
+    } catch (err) {
+      console.error('[EARN SOCIAL] Image picker error:', err);
+      showAlert('Error', 'Failed to open gallery. Please try again.', undefined, 'error');
+    }
+  };
+
+  // Remove a selected media item
+  const handleRemoveMedia = (index: number) => {
+    setSelectedMedia(prev => prev.filter((_, i) => i !== index));
   };
 
   // Handle URL submission
   const handleSubmitUrl = async () => {
     if (!urlInput.trim()) {
-      showAlert('Error', 'Please enter an Instagram post URL', undefined, 'error');
+      showAlert('Error', `Please enter a ${PLATFORM_CONFIG[selectedPlatform].label} post URL`, undefined, 'error');
       return;
     }
 
@@ -167,11 +237,9 @@ export default function EarnFromSocialMediaPage() {
     try {
       const { validators } = await import('@/services/socialMediaApi');
 
-      // Validate URL format
-      const validation = validators.validatePostUrl('instagram', urlInput.trim());
-
+      const validation = validators.validatePostUrl(selectedPlatform, urlInput.trim());
       if (!validation.isValid) {
-        showAlert('Invalid URL', validation.error || 'Please enter a valid Instagram post URL', undefined, 'error');
+        showAlert('Invalid URL', validation.error || `Please enter a valid ${PLATFORM_CONFIG[selectedPlatform].label} post URL`, undefined, 'error');
         return;
       }
 
@@ -179,7 +247,6 @@ export default function EarnFromSocialMediaPage() {
       setCurrentStep('uploading');
       setUploadProgress(0);
 
-      // Simulate progress
       const progressInterval = setInterval(() => {
         setUploadProgress((prev) => {
           if (prev >= 90) {
@@ -190,31 +257,83 @@ export default function EarnFromSocialMediaPage() {
         });
       }, 300);
 
-      // IMPORTANT: Submit directly with the correct orderId
       const response = await socialMediaApi.submitPost({
-        platform: 'instagram',
+        platform: selectedPlatform,
         postUrl: urlInput.trim(),
-        orderId: selectedOrder.orderId, // Pass the correct order ID!
+        orderId: selectedOrder.orderId,
       });
 
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      // Update local state to reflect the new submission (with defensive checks)
-      const postId = response?.post?.id || response?.id || 'unknown';
-
+      const postId = response?.post?.id || (response as any)?.id || 'unknown';
       setOrderSubmissions(prev => ({
         ...prev,
-        [selectedOrder.orderId]: {
-          status: 'pending',
-          postId: postId
-        }
+        [selectedOrder.orderId]: { status: 'pending', postId }
       }));
 
       setCurrentStep('success');
     } catch (err: any) {
-      console.error('❌ [EARN SOCIAL] Submission error:', err);
+      console.error('[EARN SOCIAL] Submission error:', err);
       setError(err.message || 'Failed to submit post. Please try again.');
+      setCurrentStep('error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Handle media submission
+  const handleSubmitMedia = async () => {
+    if (selectedMedia.length === 0) {
+      showAlert('Error', 'Please select at least one photo or video', undefined, 'error');
+      return;
+    }
+
+    if (!selectedOrder?.orderId) {
+      showAlert('Error', 'Please select an order first', undefined, 'error');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setCurrentStep('uploading');
+      setUploadProgress(0);
+
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 85) {
+            clearInterval(progressInterval);
+            return 85;
+          }
+          return prev + 5;
+        });
+      }, 500);
+
+      const files = selectedMedia.map((asset, index) => ({
+        uri: asset.uri,
+        type: asset.type === 'video' ? 'video/mp4' : 'image/jpeg',
+        name: `proof_${index}.${asset.type === 'video' ? 'mp4' : 'jpg'}`,
+      }));
+
+      const response = await socialMediaApi.submitPostWithMedia({
+        platform: selectedPlatform,
+        orderId: selectedOrder.orderId,
+        files,
+      });
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      const postId = response?.post?.id || (response as any)?.id || 'unknown';
+      setOrderSubmissions(prev => ({
+        ...prev,
+        [selectedOrder.orderId]: { status: 'pending', postId }
+      }));
+
+      setCurrentStep('success');
+    } catch (err: any) {
+      console.error('[EARN SOCIAL] Media submission error:', err);
+      setError(err.message || 'Failed to upload media. Please try again.');
       setCurrentStep('error');
     } finally {
       setSubmitting(false);
@@ -225,39 +344,27 @@ export default function EarnFromSocialMediaPage() {
   const handleRetry = () => {
     setError(null);
     setUrlInput('');
-    setCurrentStep('url_input');
+    setSelectedMedia([]);
+    setCurrentStep('platform_select');
   };
 
   // Handle go back
   const handleGoBack = () => {
     if (currentStep === 'orders_list') {
       router.back();
+    } else if (currentStep === 'url_input' || currentStep === 'media_upload') {
+      setCurrentStep('platform_select');
+    } else if (currentStep === 'platform_select') {
+      setCurrentStep('orders_list');
+      setSelectedOrder(null);
     } else {
       setCurrentStep('orders_list');
       setSelectedOrder(null);
       setUrlInput('');
+      setSelectedMedia([]);
       setError(null);
     }
   };
-
-  // Render step indicator
-  const renderStepIndicator = (stepNumber: number, isActive: boolean, isCompleted: boolean) => (
-    <View
-      style={[
-        styles.stepIndicator,
-        isActive && styles.stepIndicatorActive,
-        isCompleted && styles.stepIndicatorCompleted,
-      ]}
-    >
-      {isCompleted ? (
-        <Ionicons name="checkmark" size={16} color="white" />
-      ) : (
-        <ThemedText style={[styles.stepNumber, isActive && styles.stepNumberActive]}>
-          {stepNumber}
-        </ThemedText>
-      )}
-    </View>
-  );
 
   // Render orders list
   const renderOrdersList = () => (
@@ -268,7 +375,6 @@ export default function EarnFromSocialMediaPage() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#8B5CF6']} />
       }
     >
-      {/* Header Info */}
       <View style={styles.infoCard}>
         <View style={styles.infoIconContainer}>
           <Ionicons name="gift-outline" size={24} color="#8B5CF6" />
@@ -276,12 +382,11 @@ export default function EarnFromSocialMediaPage() {
         <View style={styles.infoContent}>
           <ThemedText style={styles.infoTitle}>Earn Cashback</ThemedText>
           <ThemedText style={styles.infoDescription}>
-            Share your delivered orders on Instagram and earn 5% cashback in coins!
+            Share your delivered orders on social media and earn 5% cashback in coins!
           </ThemedText>
         </View>
       </View>
 
-      {/* Orders List */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#8B5CF6" />
@@ -292,7 +397,7 @@ export default function EarnFromSocialMediaPage() {
           <Ionicons name="bag-outline" size={64} color="#D1D5DB" />
           <ThemedText style={styles.emptyTitle}>No Delivered Orders</ThemedText>
           <ThemedText style={styles.emptyDescription}>
-            Complete orders to earn cashback by sharing on Instagram!
+            Complete orders to earn cashback by sharing on social media!
           </ThemedText>
           <TouchableOpacity
             style={styles.shopNowButton}
@@ -326,8 +431,8 @@ export default function EarnFromSocialMediaPage() {
     </ScrollView>
   );
 
-  // Render URL input step
-  const renderUrlInputStep = () => (
+  // Render platform select step
+  const renderPlatformSelect = () => (
     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
       {/* Selected Order Context */}
       {selectedOrder && (
@@ -340,98 +445,280 @@ export default function EarnFromSocialMediaPage() {
           <ThemedText style={styles.selectedStoreName}>
             Order #{selectedOrder.orderNumber} • {selectedOrder.storeName}
           </ThemedText>
-          <ThemedText style={styles.selectedCashback}>
-            ₹{selectedOrder.totalAmount.toFixed(2)} • 5% cashback = ₹
-            {selectedOrder.cashbackAmount.toFixed(2)}
-          </ThemedText>
         </View>
       )}
 
-      {/* Steps Container */}
-      <View style={styles.stepsContainer}>
-        {/* Step 1 */}
-        <View style={styles.stepCard}>
-          <View style={styles.stepHeader}>
-            {renderStepIndicator(1, false, true)}
-            <ThemedText style={styles.stepTitle}>Step 1: Share a post on Instagram</ThemedText>
-          </View>
-          <View style={styles.stepIllustration}>
-            <View style={styles.phoneIllustration}>
-              <View style={styles.phoneScreen}>
-                <View style={styles.instagramPost}>
-                  <Text style={styles.instagramIcon}>💜</Text>
-                  <View style={styles.postContent}>
-                    <Text style={styles.postImage}>📱</Text>
-                    <ThemedText style={styles.percentageText}>%</ThemedText>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Step 2 */}
-        <View style={styles.stepCard}>
-          <View style={styles.stepHeader}>
-            {renderStepIndicator(2, true, false)}
-            <ThemedText style={styles.stepTitle}>Step 2: Submit your post</ThemedText>
-          </View>
-          <ThemedText style={styles.stepSubtitle}>Instagram Post URL</ThemedText>
-
-          {/* URL Input */}
-          <View style={styles.urlInputContainer}>
-            <TextInput
-              style={styles.urlInput}
-              placeholder="Paste Instagram post URL here..."
-              value={urlInput}
-              onChangeText={setUrlInput}
-              multiline
-              textAlignVertical="top"
-              autoCapitalize="none"
-              keyboardType="url"
-            />
-          </View>
+      {/* Platform Selection */}
+      <View style={styles.sectionContainer}>
+        <ThemedText style={styles.sectionTitle}>Choose Platform</ThemedText>
+        <View style={styles.platformGrid}>
+          {(Object.keys(PLATFORM_CONFIG) as PlatformType[]).map((platform) => {
+            const config = PLATFORM_CONFIG[platform];
+            const isSelected = selectedPlatform === platform;
+            return (
+              <TouchableOpacity
+                key={platform}
+                style={[styles.platformButton, isSelected && styles.platformButtonSelected]}
+                onPress={() => setSelectedPlatform(platform)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={config.icon as any}
+                  size={28}
+                  color={isSelected ? config.color : '#9CA3AF'}
+                />
+                <ThemedText style={[styles.platformLabel, isSelected && { color: config.color }]}>
+                  {config.label}
+                </ThemedText>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
-      {/* Upload Button */}
+      {/* Submission Mode */}
+      <View style={styles.sectionContainer}>
+        <ThemedText style={styles.sectionTitle}>How do you want to submit?</ThemedText>
+        <View style={styles.modeOptions}>
+          <TouchableOpacity
+            style={[styles.modeCard, submissionMode === 'url' && styles.modeCardSelected]}
+            onPress={() => setSubmissionMode('url')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="link-outline"
+              size={28}
+              color={submissionMode === 'url' ? '#8B5CF6' : '#9CA3AF'}
+            />
+            <ThemedText style={[styles.modeTitle, submissionMode === 'url' && styles.modeTitleSelected]}>
+              Paste Post URL
+            </ThemedText>
+            <ThemedText style={styles.modeDescription}>
+              Share the link to your social media post
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.modeCard, submissionMode === 'media' && styles.modeCardSelected]}
+            onPress={() => setSubmissionMode('media')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="images-outline"
+              size={28}
+              color={submissionMode === 'media' ? '#8B5CF6' : '#9CA3AF'}
+            />
+            <ThemedText style={[styles.modeTitle, submissionMode === 'media' && styles.modeTitleSelected]}>
+              Upload Photo/Video
+            </ThemedText>
+            <ThemedText style={styles.modeDescription}>
+              Upload screenshot or screen recording as proof
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Continue Button */}
       <TouchableOpacity
-        style={styles.uploadButton}
-        onPress={handleSubmitUrl}
+        style={styles.continueButton}
+        onPress={handlePlatformContinue}
         activeOpacity={0.8}
-        disabled={submitting}
-        accessibilityLabel={submitting ? 'Uploading post' : 'Upload post'}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: submitting, busy: submitting }}
       >
         <LinearGradient
           colors={EarnSocialData.ui.gradients.primary as any}
-          style={[styles.uploadButtonGradient, { pointerEvents: 'none' } as any]}
+          style={styles.continueButtonGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
-          {submitting ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <ThemedText style={[styles.uploadButtonText, { pointerEvents: 'none' } as any]}>Upload</ThemedText>
-          )}
+          <ThemedText style={styles.continueButtonText}>Continue</ThemedText>
+          <Ionicons name="arrow-forward" size={20} color="white" />
         </LinearGradient>
       </TouchableOpacity>
-
-      <View style={styles.bottomText}>
-        <ThemedText style={styles.getCashbackText}>Get Cashback</ThemedText>
-      </View>
 
       <View style={styles.bottomSpace} />
     </ScrollView>
   );
 
+  // Render URL input step
+  const renderUrlInputStep = () => {
+    const platformConfig = PLATFORM_CONFIG[selectedPlatform];
+    return (
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Platform Header */}
+        <View style={styles.platformHeader}>
+          <Ionicons name={platformConfig.icon as any} size={24} color={platformConfig.color} />
+          <ThemedText style={styles.platformHeaderText}>{platformConfig.label} Post</ThemedText>
+        </View>
+
+        {/* Selected Order Context */}
+        {selectedOrder && (
+          <View style={styles.selectedOrderCard}>
+            <View style={styles.selectedOrderHeader}>
+              <Ionicons name="receipt-outline" size={20} color="#8B5CF6" />
+              <ThemedText style={styles.selectedOrderTitle}>Earning for:</ThemedText>
+            </View>
+            <ThemedText style={styles.selectedOrderName}>{selectedOrder.productName}</ThemedText>
+            <ThemedText style={styles.selectedStoreName}>
+              Order #{selectedOrder.orderNumber} • {selectedOrder.storeName}
+            </ThemedText>
+            <ThemedText style={styles.selectedCashback}>
+              5% cashback = {selectedOrder.cashbackAmount.toFixed(0)} coins
+            </ThemedText>
+          </View>
+        )}
+
+        {/* URL Input */}
+        <View style={styles.stepsContainer}>
+          <View style={styles.stepCard}>
+            <ThemedText style={styles.stepSubtitle}>{platformConfig.label} Post URL</ThemedText>
+            <View style={styles.urlInputContainer}>
+              <TextInput
+                style={styles.urlInput}
+                placeholder={platformConfig.placeholder}
+                value={urlInput}
+                onChangeText={setUrlInput}
+                multiline
+                textAlignVertical="top"
+                autoCapitalize="none"
+                keyboardType="url"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Submit Button */}
+        <TouchableOpacity
+          style={styles.uploadButton}
+          onPress={handleSubmitUrl}
+          activeOpacity={0.8}
+          disabled={submitting}
+        >
+          <LinearGradient
+            colors={EarnSocialData.ui.gradients.primary as any}
+            style={[styles.uploadButtonGradient, { pointerEvents: 'none' } as any]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            {submitting ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <ThemedText style={[styles.uploadButtonText, { pointerEvents: 'none' } as any]}>Submit</ThemedText>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <View style={styles.bottomSpace} />
+      </ScrollView>
+    );
+  };
+
+  // Render media upload step
+  const renderMediaUpload = () => {
+    const platformConfig = PLATFORM_CONFIG[selectedPlatform];
+    return (
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Platform Header */}
+        <View style={styles.platformHeader}>
+          <Ionicons name={platformConfig.icon as any} size={24} color={platformConfig.color} />
+          <ThemedText style={styles.platformHeaderText}>{platformConfig.label} Proof</ThemedText>
+        </View>
+
+        {/* Selected Order Context */}
+        {selectedOrder && (
+          <View style={styles.selectedOrderCard}>
+            <View style={styles.selectedOrderHeader}>
+              <Ionicons name="receipt-outline" size={20} color="#8B5CF6" />
+              <ThemedText style={styles.selectedOrderTitle}>Earning for:</ThemedText>
+            </View>
+            <ThemedText style={styles.selectedOrderName}>{selectedOrder.productName}</ThemedText>
+            <ThemedText style={styles.selectedStoreName}>
+              Order #{selectedOrder.orderNumber} • {selectedOrder.storeName}
+            </ThemedText>
+            <ThemedText style={styles.selectedCashback}>
+              5% cashback = {selectedOrder.cashbackAmount.toFixed(0)} coins
+            </ThemedText>
+          </View>
+        )}
+
+        {/* Media Upload Area */}
+        <View style={styles.sectionContainer}>
+          <ThemedText style={styles.sectionTitle}>
+            Upload Proof ({selectedMedia.length}/5)
+          </ThemedText>
+          <ThemedText style={styles.sectionSubtext}>
+            Upload a screenshot or screen recording of your {platformConfig.label} post
+          </ThemedText>
+
+          {/* Pick Button */}
+          {selectedMedia.length < 5 && (
+            <TouchableOpacity
+              style={styles.pickMediaButton}
+              onPress={handlePickMedia}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle-outline" size={32} color="#8B5CF6" />
+              <ThemedText style={styles.pickMediaText}>Pick from Gallery</ThemedText>
+            </TouchableOpacity>
+          )}
+
+          {/* Media Grid */}
+          {selectedMedia.length > 0 && (
+            <View style={styles.mediaGrid}>
+              {selectedMedia.map((asset, index) => (
+                <View key={index} style={styles.mediaItem}>
+                  <Image source={{ uri: asset.uri }} style={styles.mediaThumbnail} />
+                  {asset.type === 'video' && (
+                    <View style={styles.videoOverlay}>
+                      <Ionicons name="play-circle" size={24} color="white" />
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={styles.removeMediaButton}
+                    onPress={() => handleRemoveMedia(index)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close-circle" size={22} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Submit Button */}
+        <TouchableOpacity
+          style={[styles.uploadButton, selectedMedia.length === 0 && styles.buttonDisabled]}
+          onPress={handleSubmitMedia}
+          activeOpacity={0.8}
+          disabled={submitting || selectedMedia.length === 0}
+        >
+          <LinearGradient
+            colors={selectedMedia.length > 0 ? EarnSocialData.ui.gradients.primary as any : ['#D1D5DB', '#9CA3AF']}
+            style={[styles.uploadButtonGradient, { pointerEvents: 'none' } as any]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            {submitting ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <ThemedText style={[styles.uploadButtonText, { pointerEvents: 'none' } as any]}>Submit</ThemedText>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <View style={styles.bottomSpace} />
+      </ScrollView>
+    );
+  };
+
   // Render uploading step
   const renderUploadingStep = () => (
     <View style={styles.uploadingContainer}>
-      <View style={styles.uploadProgress}>
+      <View style={styles.uploadProgressContainer}>
         <ActivityIndicator size="large" color={EarnSocialData.ui.colors.primary} />
-        <ThemedText style={styles.uploadingText}>Uploading your post...</ThemedText>
+        <ThemedText style={styles.uploadingText}>
+          {submissionMode === 'media' ? 'Uploading your media...' : 'Submitting your post...'}
+        </ThemedText>
         <ThemedText style={styles.progressText}>{uploadProgress}%</ThemedText>
       </View>
     </View>
@@ -454,10 +741,9 @@ export default function EarnFromSocialMediaPage() {
           setCurrentStep('orders_list');
           setSelectedOrder(null);
           setUrlInput('');
+          setSelectedMedia([]);
         }}
         activeOpacity={0.8}
-        accessibilityLabel="Done"
-        accessibilityRole="button"
       >
         <ThemedText style={styles.doneButtonText}>Done</ThemedText>
       </TouchableOpacity>
@@ -477,8 +763,6 @@ export default function EarnFromSocialMediaPage() {
           style={styles.retryButton}
           onPress={handleRetry}
           activeOpacity={0.8}
-          accessibilityLabel="Try again"
-          accessibilityRole="button"
         >
           <Ionicons name="refresh-outline" size={20} color="#fff" />
           <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
@@ -487,8 +771,6 @@ export default function EarnFromSocialMediaPage() {
           style={styles.cancelButton}
           onPress={handleGoBack}
           activeOpacity={0.8}
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
         >
           <ThemedText style={styles.cancelButtonText}>Go Back</ThemedText>
         </TouchableOpacity>
@@ -499,8 +781,12 @@ export default function EarnFromSocialMediaPage() {
   // Render content based on current step
   const renderContent = () => {
     switch (currentStep) {
+      case 'platform_select':
+        return renderPlatformSelect();
       case 'url_input':
         return renderUrlInputStep();
+      case 'media_upload':
+        return renderMediaUpload();
       case 'uploading':
         return renderUploadingStep();
       case 'success':
@@ -529,8 +815,6 @@ export default function EarnFromSocialMediaPage() {
             onPress={handleGoBack}
             activeOpacity={0.8}
             hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
           >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
@@ -700,6 +984,121 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
+  // Platform Header
+  platformHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 4,
+  },
+  platformHeaderText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+
+  // Section Container
+  sectionContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  sectionSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+
+  // Platform Grid
+  platformGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  platformButton: {
+    width: (width - 64) / 2,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  platformButtonSelected: {
+    borderColor: '#8B5CF6',
+    backgroundColor: '#F9F5FF',
+  },
+  platformLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+
+  // Mode Options
+  modeOptions: {
+    gap: 12,
+  },
+  modeCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  modeCardSelected: {
+    borderColor: '#8B5CF6',
+    backgroundColor: '#F9F5FF',
+  },
+  modeTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
+    flex: 1,
+  },
+  modeTitleSelected: {
+    color: '#8B5CF6',
+  },
+  modeDescription: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    position: 'absolute',
+    bottom: 8,
+    left: 64,
+    right: 16,
+  },
+
+  // Continue Button
+  continueButton: {
+    marginHorizontal: 20,
+    marginTop: 30,
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  continueButtonGradient: {
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  continueButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+
   // Selected Order Card
   selectedOrderCard: {
     backgroundColor: '#F3F4F6',
@@ -753,88 +1152,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
   },
-  stepHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  stepIndicator: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E5E7EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  stepIndicatorActive: {
-    backgroundColor: '#8B5CF6',
-  },
-  stepIndicatorCompleted: {
-    backgroundColor: '#10B981',
-  },
-  stepNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  stepNumberActive: {
-    color: 'white',
-  },
-  stepTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    flex: 1,
-  },
   stepSubtitle: {
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 12,
-  },
-
-  // Step Illustration
-  stepIllustration: {
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  phoneIllustration: {
-    width: 120,
-    height: 200,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  phoneScreen: {
-    width: 100,
-    height: 160,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  instagramPost: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  instagramIcon: {
-    fontSize: 24,
-  },
-  postContent: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  postImage: {
-    fontSize: 40,
-  },
-  percentageText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#F59E0B',
   },
 
   // URL Input
@@ -852,6 +1173,60 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     textAlignVertical: 'top',
+  },
+
+  // Pick Media Button
+  pickMediaButton: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    marginBottom: 16,
+  },
+  pickMediaText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8B5CF6',
+  },
+
+  // Media Grid
+  mediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  mediaItem: {
+    width: (width - 64) / 3,
+    height: (width - 64) / 3,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  mediaThumbnail: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeMediaButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'white',
+    borderRadius: 11,
   },
 
   // Upload Button
@@ -872,6 +1247,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'white',
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
 
   // Uploading State
   uploadingContainer: {
@@ -880,7 +1258,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 100,
   },
-  uploadProgress: {
+  uploadProgressContainer: {
     alignItems: 'center',
     gap: 16,
   },
@@ -989,18 +1367,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
 
-  // Bottom Text
-  bottomText: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  getCashbackText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-
-  // Bottom Space - account for bottom tab navigation
+  // Bottom Space
   bottomSpace: {
     height: 100,
   },

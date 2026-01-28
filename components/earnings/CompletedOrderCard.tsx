@@ -138,7 +138,7 @@ export default function CompletedOrderCard({
           activeOpacity={0.8}
           accessibilityLabel={`Earn cashback for order ${order.orderNumber}`}
           accessibilityRole="button"
-          accessibilityHint="Opens cashback info modal to submit Instagram post"
+          accessibilityHint="Opens cashback info modal to submit social media post"
         >
           <LinearGradient
             colors={['#8B5CF6', '#7C3AED']}
@@ -146,7 +146,7 @@ export default function CompletedOrderCard({
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Ionicons name="logo-instagram" size={18} color="white" />
+            <Ionicons name="share-social-outline" size={18} color="white" />
             <ThemedText style={styles.earnButtonText}>Earn</ThemedText>
           </LinearGradient>
         </TouchableOpacity>

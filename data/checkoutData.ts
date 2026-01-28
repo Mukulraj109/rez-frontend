@@ -139,11 +139,14 @@ export const calculateBillSummary = (
   coinUsage?: { rez: number; promo: number; storePromo?: number }
 ): BillSummary => {
   const itemTotal = items.reduce((total, item) => total + (item.price * item.quantity), 0);
+  // Lock fee already paid (stored as discount on items moved from locked)
+  const lockFeeDiscount = items.reduce((total, item) => total + (item.discount || 0), 0);
   const deliveryFee = store.deliveryFee;
   const platformFee = PLATFORM_FEE;
-  const taxes = Math.round(itemTotal * TAX_RATE); // 5% tax
+  // Tax on item total after lock fee deduction
+  const taxes = Math.round((itemTotal - lockFeeDiscount) * TAX_RATE);
   const getAndItemTotal = 0; // Note: Previously this was duplicating taxes - now set to 0
-  
+
   let promoDiscount = 0;
   if (appliedPromoCode) {
     const discountType = appliedPromoCode.discountType.toUpperCase();
@@ -156,28 +159,28 @@ export const calculateBillSummary = (
       );
     }
   }
-  
+
   const coinDiscount = (coinUsage?.rez || 0) + (coinUsage?.promo || 0) + (coinUsage?.storePromo || 0);
 
   // Calculate subtotal before discounts
   const subtotalBeforeDiscounts = itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes;
 
-  // Total before coin discount (used for slider max calculation)
-  const totalBeforeCoinDiscount = Math.max(0, subtotalBeforeDiscounts - promoDiscount);
+  // Total before coin discount (used for slider max calculation) - lock fee and promo already deducted
+  const totalBeforeCoinDiscount = Math.max(0, subtotalBeforeDiscounts - lockFeeDiscount - promoDiscount);
 
-  // Apply all discounts
-  const totalAfterDiscounts = subtotalBeforeDiscounts - promoDiscount - coinDiscount;
+  // Apply all discounts including lock fee
+  const totalAfterDiscounts = subtotalBeforeDiscounts - lockFeeDiscount - promoDiscount - coinDiscount;
 
   // Calculate round off to nearest rupee
   const roundOff = Math.round(totalAfterDiscounts) - totalAfterDiscounts;
   const totalPayable = Math.max(0, totalAfterDiscounts + roundOff);
-  
-  const cashbackEarned = Math.round(items.reduce((total, item) => 
+
+  const cashbackEarned = Math.round(items.reduce((total, item) =>
     total + ((item.price * item.quantity * (item.cashbackPercentage || 0)) / 100), 0
   ));
-  
-  const savings = Math.round(promoDiscount + coinDiscount);
-  
+
+  const savings = Math.round(promoDiscount + coinDiscount + lockFeeDiscount);
+
   return {
     itemTotal,
     getAndItemTotal,
@@ -185,6 +188,7 @@ export const calculateBillSummary = (
     platformFee,
     taxes,
     promoDiscount,
+    lockFeeDiscount,
     coinDiscount,
     cardOfferDiscount: 0, // Will be updated when card offer is applied
     roundOff,

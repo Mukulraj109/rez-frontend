@@ -71,6 +71,7 @@ export interface BillSummary {
   platformFee: number;
   taxes: number;
   promoDiscount: number;
+  lockFeeDiscount: number; // Lock fee already paid at time of locking
   coinDiscount: number;
   cardOfferDiscount: number;
   roundOff: number;

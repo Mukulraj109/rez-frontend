@@ -1017,6 +1017,17 @@ export default function CheckoutPage() {
               </View>
             )}
 
+            {(state.billSummary?.lockFeeDiscount || 0) > 0 && (
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: '#059669' }]}>
+                  Lock Fee Already Paid
+                </ThemedText>
+                <ThemedText style={[styles.summaryValue, { color: '#059669' }]}>
+                  -{currencySymbol}{(state.billSummary?.lockFeeDiscount || 0).toFixed(0)}
+                </ThemedText>
+              </View>
+            )}
+
             {(state.billSummary?.promoDiscount || 0) > 0 && (
               <View style={styles.summaryRow}>
                 <ThemedText style={[styles.summaryLabel, { color: '#22C55E' }]}>
@@ -1415,6 +1426,16 @@ export default function CheckoutPage() {
                     {currencySymbol}{(state.billSummary?.itemTotal || 0).toFixed(0)}
                   </ThemedText>
                 </View>
+                {(state.billSummary?.lockFeeDiscount || 0) > 0 && (
+                  <View style={styles.confirmSummaryRow}>
+                    <ThemedText style={[styles.confirmSummaryLabel, { color: '#059669' }]}>
+                      Lock Fee Already Paid
+                    </ThemedText>
+                    <ThemedText style={[styles.confirmSummaryValue, { color: '#059669' }]}>
+                      -{currencySymbol}{(state.billSummary?.lockFeeDiscount || 0).toFixed(0)}
+                    </ThemedText>
+                  </View>
+                )}
                 {(state.billSummary?.promoDiscount || 0) > 0 && (
                   <View style={styles.confirmSummaryRow}>
                     <ThemedText style={[styles.confirmSummaryLabel, { color: '#22C55E' }]}>
@@ -2017,7 +2038,7 @@ const styles = StyleSheet.create({
   
   // Bottom Buttons
   bottomSpace: {
-    height: 100, // Reduced since payment is now collapsible
+    height: 220,
   },
 
   // Collapsible Payment Bottom Sheet

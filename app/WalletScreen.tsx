@@ -23,7 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { WalletBalanceCard } from '../components/WalletBalanceCard';
-import { CoinBalance, WalletScreenProps } from '@/types/wallet';
+import { CoinBalance, WalletScreenProps, COIN_TYPES } from '@/types/wallet';
 import { useWallet } from '@/hooks/useWallet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeNavigation } from '@/hooks/useSafeNavigation';
@@ -310,6 +310,35 @@ const WalletScreen: React.FC<WalletScreenProps> = ({
           {walletData.coins.map((coin) => (
             <WalletBalanceCard key={coin.id} coin={coin} onPress={handleCoinPress} showChevron />
           ))}
+
+          {/* Branded Coins Summary Card */}
+          {walletData.brandedCoins && walletData.brandedCoins.length > 0 && (
+            <TouchableOpacity
+              style={styles.brandedSummaryCard}
+              onPress={() => router.push('/BrandedCoinsScreen')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.brandedSummaryRow}>
+                <View style={styles.brandedSummaryIcon}>
+                  <Ionicons name="storefront" size={24} color={COIN_TYPES.branded.color} />
+                </View>
+                <View style={styles.brandedSummaryContent}>
+                  <View style={styles.brandedSummaryHeader}>
+                    <Text style={styles.brandedSummaryTitle}>Branded Coins</Text>
+                    <View style={styles.brandedActiveBadge}>
+                      <Ionicons name="checkmark-circle" size={12} color="#1dac52" />
+                      <Text style={styles.brandedActiveBadgeText}>Active</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.brandedSummaryAmount}>RC {walletData.brandedCoinsTotal}</Text>
+                  <Text style={styles.brandedSummaryDesc}>
+                    From {walletData.brandedCoins.length} {walletData.brandedCoins.length === 1 ? 'store' : 'stores'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </View>
+            </TouchableOpacity>
+          )}
 
           {/* View Transactions Button */}
           <View style={styles.transactionButtonContainer}>
@@ -738,6 +767,75 @@ const createStyles = (screenData: { width: number; height: number }) => {
       color: '#9CA3AF',
       textAlign: 'center',
       lineHeight: 16,
+    },
+
+    // Branded Coins Summary Card
+    brandedSummaryCard: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 18,
+      padding: isTablet ? 22 : isSmallScreen ? 14 : 18,
+      marginBottom: isTablet ? 18 : 14,
+      shadowColor: '#7C3AED',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.08,
+      shadowRadius: 14,
+      elevation: 6,
+      borderWidth: 1,
+      borderColor: 'rgba(124, 58, 237, 0.08)',
+    },
+    brandedSummaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    brandedSummaryIcon: {
+      width: isTablet ? 50 : isSmallScreen ? 42 : 46,
+      height: isTablet ? 50 : isSmallScreen ? 42 : 46,
+      borderRadius: isTablet ? 18 : 16,
+      backgroundColor: '#EEF2FF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: isTablet ? 18 : 14,
+    },
+    brandedSummaryContent: {
+      flex: 1,
+    },
+    brandedSummaryHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+    },
+    brandedSummaryTitle: {
+      color: '#111827',
+      fontWeight: '700',
+      fontSize: isTablet ? 18 : isSmallScreen ? 15 : 16,
+      letterSpacing: 0.3,
+    },
+    brandedActiveBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#E8FDEB',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 10,
+    },
+    brandedActiveBadgeText: {
+      color: '#16A34A',
+      fontSize: 10,
+      fontWeight: '600',
+      marginLeft: 3,
+    },
+    brandedSummaryAmount: {
+      color: '#6366F1',
+      fontWeight: '800',
+      fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
+      marginBottom: 6,
+      letterSpacing: 0.4,
+    },
+    brandedSummaryDesc: {
+      color: '#6B7280',
+      fontSize: isTablet ? 15 : isSmallScreen ? 13 : 14,
+      fontWeight: '500',
     },
   });
 };

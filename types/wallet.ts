@@ -98,6 +98,7 @@ export interface WalletData {
   formattedTotalBalance: string;
   coins: CoinBalance[]; // ReZ and Promo coins
   brandedCoins: BrandedCoin[]; // Merchant-specific coins
+  brandedCoinsTotal: number; // Sum of all branded coin amounts
   savingsInsights: SavingsInsights; // Savings tracking
   smartAlerts?: SmartAlert[]; // Smart wallet alerts
   recentTransactions: WalletTransaction[];

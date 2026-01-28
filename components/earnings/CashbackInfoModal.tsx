@@ -97,7 +97,7 @@ export default function CashbackInfoModal({
                 <Text style={styles.coin}>🪙</Text>
               </View>
               <ThemedText style={styles.cardDescription}>
-                Buy anything and share it on Instagram. We'll give you {cashbackPercent}% cash back in the form of coins.
+                Buy anything and share it on social media. We'll give you {cashbackPercent}% cash back in the form of coins.
               </ThemedText>
             </View>
 
@@ -134,9 +134,9 @@ export default function CashbackInfoModal({
             style={styles.uploadButton}
             onPress={onUpload}
             activeOpacity={0.8}
-            accessibilityLabel="Upload Instagram post"
+            accessibilityLabel="Upload social media post"
             accessibilityRole="button"
-            accessibilityHint="Opens the Instagram URL input to submit your post"
+            accessibilityHint="Opens platform selection to submit your post"
           >
             <LinearGradient
               colors={EarnSocialData.ui.gradients.primary as any}

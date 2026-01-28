@@ -160,6 +160,12 @@ export default function OrderConfirmationPage() {
             'You have already submitted this order for share rewards.',
             false
           );
+        } else {
+          showAlert(
+            'Share Failed',
+            response.error || 'Could not share order. Please try again.',
+            false
+          );
         }
       }
     } catch (error) {
@@ -169,14 +175,16 @@ export default function OrderConfirmationPage() {
     }
   };
 
-  // Check if order can be shared on load
+  // Check if order can be shared on load (only for delivered orders)
   useEffect(() => {
     const checkShareEligibility = async () => {
-      if (order) {
+      if (order && order.status === 'delivered') {
         const response = await shareApi.canShareOrder(order._id || (order as any).id);
         if (response.success && response.data) {
           setCanShare(response.data.canShare);
         }
+      } else if (order) {
+        setCanShare(false);
       }
     };
     checkShareEligibility();
@@ -298,27 +306,34 @@ export default function OrderConfirmationPage() {
         <Animated.View style={[styles.card, { opacity: contentAnim }]}>
           <View style={styles.cardHeader}>
             <ThemedText style={styles.cardTitle}>Order Details</ThemedText>
-            <TouchableOpacity
-              onPress={handleShareOrder}
-              style={[styles.shareButton, !canShare && styles.shareButtonDisabled]}
-              disabled={!canShare || isSharing}
-            >
-              {isSharing ? (
-                <ActivityIndicator size="small" color="#8B5CF6" />
-              ) : coinsEarned ? (
-                <View style={styles.coinsEarnedBadge}>
-                  <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-                  <ThemedText style={styles.coinsEarnedText}>+{coinsEarned}</ThemedText>
-                </View>
-              ) : canShare ? (
-                <View style={styles.shareWithCoins}>
-                  <Ionicons name="share-outline" size={18} color="#8B5CF6" />
-                  <ThemedText style={styles.shareCoinsText}>+5%</ThemedText>
-                </View>
-              ) : (
-                <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
-              )}
-            </TouchableOpacity>
+            {order.status === 'delivered' ? (
+              <TouchableOpacity
+                onPress={handleShareOrder}
+                style={[styles.shareButton, !canShare && styles.shareButtonDisabled]}
+                disabled={!canShare || isSharing}
+              >
+                {isSharing ? (
+                  <ActivityIndicator size="small" color="#8B5CF6" />
+                ) : coinsEarned ? (
+                  <View style={styles.coinsEarnedBadge}>
+                    <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+                    <ThemedText style={styles.coinsEarnedText}>+{coinsEarned}</ThemedText>
+                  </View>
+                ) : canShare ? (
+                  <View style={styles.shareWithCoins}>
+                    <Ionicons name="share-outline" size={18} color="#8B5CF6" />
+                    <ThemedText style={styles.shareCoinsText}>+5%</ThemedText>
+                  </View>
+                ) : (
+                  <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
+                )}
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.shareAfterDelivery}>
+                <Ionicons name="gift-outline" size={14} color="#8B5CF6" />
+                <ThemedText style={styles.shareAfterDeliveryText}>Share after delivery to earn 5% ReZ coins!</ThemedText>
+              </View>
+            )}
           </View>
 
           <View style={styles.orderInfo}>
@@ -639,6 +654,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#8B5CF6',
+  },
+  shareAfterDelivery: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: 160,
+  },
+  shareAfterDeliveryText: {
+    fontSize: 11,
+    color: '#8B5CF6',
+    flexShrink: 1,
   },
   coinsEarnedBadge: {
     flexDirection: 'row',

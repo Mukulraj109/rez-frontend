@@ -97,25 +97,31 @@ export const useCheckout = (): UseCheckoutReturn => {
             price: item.price,
             originalPrice: item.originalPrice,
             quantity: item.quantity,
+            discount: item.discount || 0, // Lock fee already paid
             category: item.category || '',
             storeId: item.store?.id || '',
             storeName: item.store?.name || '',
           }));
 
           // Get bill summary from cart totals - Map to correct BillSummary structure
-          // Calculate itemTotal from actual cart items to ensure consistency with Order Items Preview
-          const itemTotal = checkoutItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+          // Calculate itemTotal from actual cart items (full price before lock fee)
+          const itemTotalBeforeLockFee = checkoutItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+          // Calculate total lock fee already paid across all items
+          const lockFeeDiscount = checkoutItems.reduce((total, item) => total + (item.discount || 0), 0);
+          // Item total shown in bill = full price (lock fee shown as separate deduction)
+          const itemTotal = itemTotalBeforeLockFee;
           const getAndItemTotal = 0; // Removed - was duplicating taxes
           const deliveryFee = mappedCart.totals.delivery || mappedCart.totals.shipping || 0;
           const platformFee = PLATFORM_FEE; // Fixed platform fee
-          // Always calculate taxes locally (5% of item total) - don't rely on backend
-          const taxes = Math.round(itemTotal * TAX_RATE);
+          // Always calculate taxes locally (5% of item total after lock fee) - don't rely on backend
+          const taxes = Math.round((itemTotal - lockFeeDiscount) * TAX_RATE);
           const promoDiscount = mappedCart.totals.discount || 0;
           const coinDiscount = 0; // Will be calculated when coins are toggled
 
           // Debug: Log the values
           console.log('💰 [Checkout] Bill calculation:', {
             itemTotal,
+            lockFeeDiscount,
             deliveryFee,
             platformFee,
             taxes,
@@ -125,7 +131,7 @@ export const useCheckout = (): UseCheckoutReturn => {
           });
 
           // Calculate total before coin discount (for slider max calculation)
-          const totalBeforeCoinDiscount = Math.max(0, itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes - promoDiscount);
+          const totalBeforeCoinDiscount = Math.max(0, itemTotal + getAndItemTotal + deliveryFee + platformFee + taxes - lockFeeDiscount - promoDiscount);
 
           // Always calculate total payable from our values to ensure consistency
           let totalPayable = totalBeforeCoinDiscount - coinDiscount;
@@ -133,7 +139,7 @@ export const useCheckout = (): UseCheckoutReturn => {
           // Calculate round off to nearest rupee
           const roundOff = Math.round(totalPayable) - totalPayable;
           totalPayable = Math.max(0, Math.round(totalPayable));
-          
+
           // Calculate savings from actual cart items (originalPrice - price) * quantity
           const calculatedSavings = checkoutItems.reduce((total, item) => {
             const originalPrice = item.originalPrice || item.price;
@@ -148,13 +154,14 @@ export const useCheckout = (): UseCheckoutReturn => {
             platformFee,
             taxes,
             promoDiscount,
+            lockFeeDiscount,
             coinDiscount,
             cardOfferDiscount: 0, // Will be calculated when card offer is applied
             roundOff,
             totalBeforeCoinDiscount,
             totalPayable,
             cashbackEarned: Math.round((mappedCart.totals.cashback || 0)),
-            savings: calculatedSavings || promoDiscount,
+            savings: (calculatedSavings || promoDiscount) + lockFeeDiscount,
           };
 
           // Get promo code from cart
@@ -543,10 +550,10 @@ export const useCheckout = (): UseCheckoutReturn => {
         newBillSummary.promoDiscount = response.data.discount;
         newBillSummary.savings = (newBillSummary.savings || 0) + response.data.discount;
 
-        // Recalculate totalPayable with promo discount
+        // Recalculate totalPayable with promo discount and lock fee
         const subtotal = newBillSummary.itemTotal + newBillSummary.getAndItemTotal;
         const totalBeforeDiscount = subtotal + newBillSummary.platformFee + newBillSummary.deliveryFee + newBillSummary.taxes;
-        const totalAfterDiscount = totalBeforeDiscount - response.data.discount - coinUsage.rez - coinUsage.promo;
+        const totalAfterDiscount = totalBeforeDiscount - (newBillSummary.lockFeeDiscount || 0) - response.data.discount - coinUsage.rez - coinUsage.promo;
         newBillSummary.totalPayable = Math.max(0, Math.round(totalAfterDiscount));
 
         console.log('🎟️ [Checkout] New bill summary after coupon:', newBillSummary);
@@ -1610,10 +1617,10 @@ export const useCheckout = (): UseCheckoutReturn => {
           newBillSummary.promoDiscount = response.data.discount;
           newBillSummary.savings = (newBillSummary.savings || 0) + response.data.discount;
 
-          // Recalculate totalPayable with promo discount
+          // Recalculate totalPayable with promo discount and lock fee
           const subtotal = newBillSummary.itemTotal + newBillSummary.getAndItemTotal;
           const totalBeforeDiscount = subtotal + newBillSummary.platformFee + newBillSummary.deliveryFee + newBillSummary.taxes;
-          const totalAfterDiscount = totalBeforeDiscount - response.data.discount - coinUsage.rez - coinUsage.promo;
+          const totalAfterDiscount = totalBeforeDiscount - (newBillSummary.lockFeeDiscount || 0) - response.data.discount - coinUsage.rez - coinUsage.promo;
           newBillSummary.totalPayable = Math.max(0, Math.round(totalAfterDiscount));
 
           setState(prev => ({

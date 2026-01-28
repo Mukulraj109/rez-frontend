@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 70,
   },
   iosContainer: {
     paddingBottom: 34,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 10,
     paddingBottom: 8,
     minHeight: 80,
   },

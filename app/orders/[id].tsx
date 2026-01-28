@@ -261,10 +261,40 @@ export default function OrderDetailsScreen() {
               </Text>
             </View>
           )}
+          {/* Lock Fee Paid */}
+          {(() => {
+            const lockFee = order.items?.reduce((sum: number, i: any) => sum + (i.discount || 0), 0) || 0;
+            if (lockFee <= 0) return null;
+            return (
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: '#059669' }]}>Lock Fee Paid</Text>
+                <Text style={[styles.summaryValue, { color: '#059669' }]}>
+                  -₹{lockFee.toFixed(2)}
+                </Text>
+              </View>
+            );
+          })()}
+          {/* Coins Used at Checkout */}
+          {(() => {
+            const coinsUsed = order.payment?.coinsUsed;
+            const totalCoins = coinsUsed?.totalCoinsValue || (coinsUsed?.rezCoins || 0) + (coinsUsed?.promoCoins || 0) + (coinsUsed?.storePromoCoins || 0);
+            if (totalCoins <= 0) return null;
+            return (
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: '#7C3AED' }]}>Coins Used</Text>
+                <Text style={[styles.summaryValue, { color: '#7C3AED' }]}>
+                  -₹{totalCoins.toFixed(2)}
+                </Text>
+              </View>
+            );
+          })()}
+          {/* Cashback - show "after delivery" if not yet delivered */}
           {(order.totals?.cashback || 0) > 0 && (
             <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, styles.discountLabel]}>Cashback</Text>
-              <Text style={[styles.summaryValue, styles.discountValue]}>
+              <Text style={[styles.summaryLabel, { color: '#D97706' }]}>
+                {order.status === 'delivered' ? 'Cashback Earned' : 'Cashback (after delivery)'}
+              </Text>
+              <Text style={[styles.summaryValue, { color: '#D97706' }]}>
                 +₹{(order.totals.cashback).toFixed(2)}
               </Text>
             </View>

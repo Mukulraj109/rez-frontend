@@ -74,6 +74,12 @@ export interface SubmitPostResponse {
   };
 }
 
+export interface SubmitPostWithMediaRequest {
+  platform: 'instagram' | 'facebook' | 'twitter' | 'tiktok';
+  orderId?: string;
+  files: { uri: string; type: string; name: string }[];
+}
+
 export interface GetPostsParams {
   page?: number;
   limit?: number;
@@ -555,12 +561,91 @@ export const getPlatformStats = async (): Promise<{ stats: PlatformStats[] }> =>
   }
 };
 
+/**
+ * Submit a social media post with media files (photo/video proof)
+ * Builds FormData and uploads to backend
+ */
+export const submitPostWithMedia = async (data: SubmitPostWithMediaRequest): Promise<SubmitPostResponse> => {
+  console.log('🚀 [SOCIAL MEDIA API] Submitting post with media...');
+
+  try {
+    const validPlatforms = ['instagram', 'facebook', 'twitter', 'tiktok'];
+    if (!validPlatforms.includes(data.platform)) {
+      throw new Error('Invalid platform selected');
+    }
+
+    if (!data.files || data.files.length === 0) {
+      throw new Error('At least one photo or video is required');
+    }
+
+    if (data.files.length > 5) {
+      throw new Error('Maximum 5 files allowed');
+    }
+
+    // Build FormData
+    const formData = new FormData();
+    formData.append('platform', data.platform);
+    if (data.orderId) {
+      formData.append('orderId', data.orderId);
+    }
+
+    // Append files
+    data.files.forEach((file, index) => {
+      formData.append('files', {
+        uri: file.uri,
+        type: file.type || 'image/jpeg',
+        name: file.name || `proof_${index}.jpg`,
+      } as any);
+    });
+
+    // Run security check (non-blocking)
+    try {
+      const securityCheckResult = await securityService.performSecurityCheck();
+      if (securityCheckResult.isBlacklisted) {
+        throw new Error('Your device has been blocked. Please contact support.');
+      }
+      formData.append('fraudMetadata', JSON.stringify({
+        deviceId: securityCheckResult?.deviceFingerprint?.id || 'unknown',
+        trustScore: securityCheckResult?.trustScore || 70,
+        riskLevel: 'low',
+      }));
+    } catch (securityError: any) {
+      if (securityError.message.includes('blocked')) throw securityError;
+      console.warn('⚠️ [SOCIAL MEDIA API] Security check failed (continuing):', securityError.message);
+    }
+
+    console.log('📤 [SOCIAL MEDIA API] Uploading media files...');
+
+    const response = await retryWithBackoff(
+      async () => await apiClient.uploadFile('/social-media/submit-media', formData),
+      2,
+      2000
+    );
+
+    console.log('✅ [SOCIAL MEDIA API] Post with media submitted successfully');
+
+    if (!response || !response.success) {
+      throw new Error(response?.message || response?.error || 'Submission failed');
+    }
+
+    const responseData = response.data || response;
+    return responseData as SubmitPostResponse;
+  } catch (error: any) {
+    const errorMsg = formatErrorMessage(error);
+    console.error('❌ [SOCIAL MEDIA API] MEDIA SUBMISSION FAILED:', errorMsg);
+    const formattedError = new Error(errorMsg);
+    (formattedError as any).response = error.response;
+    throw formattedError;
+  }
+};
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
 
 export default {
   submitPost,
+  submitPostWithMedia,
   getUserEarnings,
   getUserPosts,
   getPostById,

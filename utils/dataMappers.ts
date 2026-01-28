@@ -212,6 +212,7 @@ export function mapBackendOrderToFrontend(backendOrder: BackendOrder): any {
     payment: {
       method: (backendOrder as any).payment?.method || 'cod',
       status: backendOrder.paymentStatus || (backendOrder as any).payment?.status || 'pending',
+      coinsUsed: (backendOrder as any).payment?.coinsUsed || null,
     },
     delivery: {
       status: (backendOrder as any).delivery?.status || 'pending',

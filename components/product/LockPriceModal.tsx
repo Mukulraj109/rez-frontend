@@ -1,30 +1,23 @@
-// LockPriceModal.tsx - 3-hour lock at 5% with wallet payment
+// LockPriceModal.tsx - Lock product with selectable duration & wallet payment
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
+  Text,
   Modal,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from '@/components/ThemedText';
-import { useThemeColor } from '@/hooks/useThemeColor';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWallet } from '@/hooks/useWallet';
-import cartService, { LockFeeOption, LockWithPaymentRequest } from '@/services/cartApi';
+import cartService, { LockWithPaymentRequest } from '@/services/cartApi';
 import { triggerImpact, triggerNotification } from '@/utils/haptics';
-import {
-  Spacing,
-  Shadows,
-  BorderRadius,
-} from '@/constants/DesignSystem';
 import { useRegion } from '@/contexts/RegionContext';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { DurationChips, LockDuration, LOCK_FEE_PERCENTAGES, calculateLockFee } from './DurationChips';
 
 interface LockPriceModalProps {
   visible: boolean;
@@ -42,9 +35,14 @@ interface LockPriceModalProps {
   }) => void;
 }
 
-// Fixed 3-hour lock duration
-const LOCK_DURATION = 3;
-const LOCK_PERCENTAGE = 5;
+const DEFAULT_DURATION: LockDuration = 4;
+
+const STEPS = [
+  'Product is reserved under your name',
+  'Price is locked — no changes',
+  'Store is notified instantly',
+  'You choose how to complete purchase',
+];
 
 export default function LockPriceModal({
   visible,
@@ -58,56 +56,32 @@ export default function LockPriceModal({
 }: LockPriceModalProps) {
   const { getCurrencySymbol } = useRegion();
   const currencySymbol = getCurrencySymbol();
-  const backgroundColor = useThemeColor({}, 'background');
   const { state: authState } = useAuth();
   const { walletState, refreshWallet } = useWallet({
     userId: authState?.user?.id || '',
-    autoFetch: true
+    autoFetch: true,
   });
   const walletData = walletState?.data;
 
-  const [lockOptions, setLockOptions] = useState<LockFeeOption[]>([]);
+  const [selectedDuration, setSelectedDuration] = useState<LockDuration>(DEFAULT_DURATION);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const totalPrice = productPrice * quantity;
+  const lockFee = calculateLockFee(totalPrice, selectedDuration);
+  const lockPercentage = LOCK_FEE_PERCENTAGES[selectedDuration];
 
-  // Get the 3-hour lock option or calculate fee manually
-  const lockOption = lockOptions.find(opt => opt.duration === LOCK_DURATION);
-  const lockFee = lockOption?.fee || Math.ceil((totalPrice * LOCK_PERCENTAGE) / 100);
-
-  // Get wallet balance
   const walletBalance = walletData?.availableBalance || 0;
   const hasEnoughBalance = walletBalance >= lockFee;
 
-  // Fetch lock fee options when modal opens
+  // Reset state when modal opens
   useEffect(() => {
-    if (visible && productId) {
-      fetchLockOptions();
+    if (visible) {
+      setSelectedDuration(DEFAULT_DURATION);
+      setError(null);
       refreshWallet(true);
     }
-  }, [visible, productId, quantity]);
-
-  const fetchLockOptions = async () => {
-    setIsLoadingOptions(true);
-    setError(null);
-
-    try {
-      const response = await cartService.getLockFeeOptions(productId, quantity);
-      if (response.success && response.data) {
-        setLockOptions(response.data.lockOptions);
-      } else {
-        console.error('🔒 [LockModal] Failed to get lock options:', response.error);
-        setError(response.error || 'Failed to load lock options');
-      }
-    } catch (err) {
-      console.error('🔒 [LockModal] Error fetching lock options:', err);
-      setError('Failed to load lock options. Please try again.');
-    } finally {
-      setIsLoadingOptions(false);
-    }
-  };
+  }, [visible]);
 
   // Execute the lock operation
   const executeLock = useCallback(async () => {
@@ -125,7 +99,7 @@ export default function LockPriceModal({
         productId,
         quantity,
         variant,
-        duration: LOCK_DURATION,
+        duration: selectedDuration,
         paymentMethod: 'wallet',
       };
 
@@ -141,18 +115,18 @@ export default function LockPriceModal({
         });
         onClose();
       } else {
-        console.error('🔒 [LockModal] ❌ Lock failed:', response.error);
+        console.error('[LockModal] Lock failed:', response.error);
         setError(response.error || 'Failed to lock item');
         triggerNotification('Error');
       }
     } catch (err: any) {
-      console.error('🔒 [LockModal] ❌ Lock exception:', err);
+      console.error('[LockModal] Lock exception:', err);
       setError(err.message || 'Failed to lock item. Please try again.');
       triggerNotification('Error');
     } finally {
       setIsLoading(false);
     }
-  }, [productId, quantity, variant, hasEnoughBalance, lockFee, walletBalance, onLockSuccess, onClose]);
+  }, [productId, quantity, variant, selectedDuration, hasEnoughBalance, lockFee, walletBalance, onLockSuccess, onClose, currencySymbol]);
 
   return (
     <Modal
@@ -162,151 +136,116 @@ export default function LockPriceModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={[styles.modalContainer, { backgroundColor }]}>
+        <View style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerIcon}>
-              <Ionicons name="lock-closed" size={24} color="#7C3AED" />
+              <Ionicons name="lock-closed" size={22} color="#FFFFFF" />
             </View>
-            <ThemedText style={styles.headerTitle}>Lock This Price</ThemedText>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Lock this product now</Text>
+              <Text style={styles.headerSubtitle}>Unique Feature</Text>
+            </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#6B7280" />
+              <Ionicons name="chevron-down" size={24} color="#6B7280" />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Product Info */}
-            <View style={styles.productInfo}>
-              <ThemedText style={styles.productName} numberOfLines={2}>
-                {productName}
-              </ThemedText>
-              <View style={styles.productPriceRow}>
-                <ThemedText style={styles.productPriceLabel}>Current Price:</ThemedText>
-                <ThemedText style={styles.productPrice}>{currencySymbol}{totalPrice.toLocaleString()}</ThemedText>
+            {/* Description */}
+            <Text style={styles.description}>
+              Pay just <Text style={styles.descriptionBold}>{lockPercentage}%</Text> to reserve this product for a few hours. Visit the store or choose delivery later — <Text style={styles.descriptionBoldGreen}>price stays locked.</Text>
+            </Text>
+
+            {/* Duration Chips */}
+            <DurationChips
+              selectedDuration={selectedDuration}
+              onSelectDuration={setSelectedDuration}
+              productPrice={totalPrice}
+              style={styles.durationChips}
+            />
+
+            {/* Lock Action Button */}
+            <TouchableOpacity
+              style={[
+                styles.lockButton,
+                (isLoading || !hasEnoughBalance) && styles.lockButtonDisabled,
+              ]}
+              onPress={executeLock}
+              disabled={isLoading || !hasEnoughBalance}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={hasEnoughBalance && !isLoading ? ['#00C06A', '#059669'] : ['#9CA3AF', '#6B7280']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.lockButtonGradient}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
+                    <Text style={styles.lockButtonText}>
+                      {hasEnoughBalance
+                        ? `Lock Product for ${currencySymbol}${lockFee}`
+                        : 'Insufficient Balance'}
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Error Message */}
+            {error && (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={18} color="#EF4444" />
+                <Text style={styles.errorText}>{error}</Text>
               </View>
-              {quantity > 1 && (
-                <ThemedText style={styles.quantityNote}>
-                  Qty: {quantity} × {currencySymbol}{productPrice.toLocaleString()}
-                </ThemedText>
+            )}
+
+            {/* Insufficient Balance Warning */}
+            {!hasEnoughBalance && !error && (
+              <View style={styles.warningContainer}>
+                <Ionicons name="wallet-outline" size={18} color="#F59E0B" />
+                <Text style={styles.warningText}>
+                  Add {currencySymbol}{(lockFee - walletBalance).toFixed(0)} to your wallet to lock this price
+                </Text>
+              </View>
+            )}
+
+            {/* What happens after locking */}
+            <View style={styles.stepsSection}>
+              <Text style={styles.stepsTitle}>What happens after locking:</Text>
+              {STEPS.map((step, index) => (
+                <View key={index} style={styles.stepRow}>
+                  <View style={styles.stepNumber}>
+                    <Text style={styles.stepNumberText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.stepText}>{step}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Wallet Info */}
+            <View style={styles.walletCard}>
+              <Ionicons name="wallet-outline" size={20} color="#00C06A" />
+              <View style={styles.walletInfo}>
+                <Text style={styles.walletLabel}>Wallet Balance</Text>
+                <Text style={[
+                  styles.walletBalance,
+                  hasEnoughBalance ? styles.balanceSufficient : styles.balanceInsufficient,
+                ]}>
+                  {currencySymbol}{walletBalance.toFixed(0)}
+                </Text>
+              </View>
+              {hasEnoughBalance ? (
+                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              ) : (
+                <Ionicons name="alert-circle" size={20} color="#F59E0B" />
               )}
             </View>
-
-            {/* Loading State */}
-            {isLoadingOptions ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#7C3AED" />
-                <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-              </View>
-            ) : (
-              <>
-                {/* Lock Duration Info - Fixed 3 hours */}
-                <View style={styles.lockDurationCard}>
-                  <View style={styles.lockDurationHeader}>
-                    <Ionicons name="time-outline" size={20} color="#7C3AED" />
-                    <ThemedText style={styles.lockDurationTitle}>Lock Duration</ThemedText>
-                  </View>
-                  <View style={styles.lockDurationContent}>
-                    <View style={styles.lockDurationBadge}>
-                      <ThemedText style={styles.lockDurationValue}>3 Hours</ThemedText>
-                    </View>
-                    <ThemedText style={styles.lockDurationFeeText}>
-                      {LOCK_PERCENTAGE}% lock fee = <ThemedText style={styles.lockDurationFeeAmount}>{currencySymbol}{lockFee}</ThemedText>
-                    </ThemedText>
-                  </View>
-                  <ThemedText style={styles.lockDurationNote}>
-                    Price will be locked for 3 hours at the current rate
-                  </ThemedText>
-                </View>
-
-                {/* Wallet Balance */}
-                <View style={styles.section}>
-                  <ThemedText style={styles.sectionTitle}>Payment from Wallet</ThemedText>
-                  <View style={styles.walletCard}>
-                    <Ionicons name="wallet-outline" size={24} color="#7C3AED" />
-                    <View style={styles.walletInfo}>
-                      <ThemedText style={styles.walletLabel}>Available Balance</ThemedText>
-                      <ThemedText style={[
-                        styles.walletBalance,
-                        hasEnoughBalance ? styles.balanceSufficient : styles.balanceInsufficient,
-                      ]}>
-                        {currencySymbol}{walletBalance.toFixed(0)}
-                      </ThemedText>
-                    </View>
-                    {hasEnoughBalance ? (
-                      <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                    ) : (
-                      <Ionicons name="alert-circle" size={24} color="#F59E0B" />
-                    )}
-                  </View>
-                </View>
-
-                {/* Fee Summary */}
-                <View style={styles.summarySection}>
-                  <View style={styles.summaryRow}>
-                    <ThemedText style={styles.summaryLabel}>Lock Fee ({LOCK_PERCENTAGE}%)</ThemedText>
-                    <ThemedText style={styles.summaryValue}>{currencySymbol}{lockFee}</ThemedText>
-                  </View>
-                  <View style={styles.summaryNote}>
-                    <Ionicons name="information-circle-outline" size={16} color="#6B7280" />
-                    <ThemedText style={styles.summaryNoteText}>
-                      This amount will be deducted from your final payment at checkout
-                    </ThemedText>
-                  </View>
-                </View>
-
-                {/* Error Message */}
-                {error && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle" size={20} color="#EF4444" />
-                    <ThemedText style={styles.errorText}>{error}</ThemedText>
-                  </View>
-                )}
-
-                {/* Insufficient Balance Warning */}
-                {!hasEnoughBalance && (
-                  <View style={styles.warningContainer}>
-                    <Ionicons name="wallet-outline" size={20} color="#F59E0B" />
-                    <ThemedText style={styles.warningText}>
-                      Add {currencySymbol}{(lockFee - walletBalance).toFixed(0)} to your wallet to lock this price
-                    </ThemedText>
-                  </View>
-                )}
-              </>
-            )}
           </ScrollView>
-
-          {/* Footer */}
-          {!isLoadingOptions && (
-            <View style={styles.footer}>
-              <TouchableOpacity
-                style={[
-                  styles.lockButton,
-                  (isLoading || !hasEnoughBalance) && styles.lockButtonDisabled,
-                ]}
-                onPress={executeLock}
-                disabled={isLoading || !hasEnoughBalance}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={hasEnoughBalance && !isLoading ? ['#7C3AED', '#6D28D9'] : ['#9CA3AF', '#6B7280']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.lockButtonGradient}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
-                      <ThemedText style={styles.lockButtonText}>
-                        {hasEnoughBalance ? `Lock for ${currencySymbol}${lockFee}` : 'Insufficient Balance'}
-                      </ThemedText>
-                    </>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
       </View>
     </Modal>
@@ -320,195 +259,115 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '90%',
-    ...Shadows.large,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: { elevation: 16 },
+      web: { boxShadow: '0 -4px 12px rgba(0,0,0,0.15)' },
+    }),
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.lg,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F3F4F6',
   },
   headerIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3E8FF',
+    borderRadius: 12,
+    backgroundColor: '#00C06A',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.sm,
+    marginRight: 12,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   headerTitle: {
-    flex: 1,
     fontSize: 18,
     fontWeight: '700',
     color: '#111827',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#00C06A',
+    marginTop: 1,
   },
   closeButton: {
-    padding: Spacing.xs,
+    padding: 4,
   },
   content: {
-    padding: Spacing.lg,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
-  productInfo: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
-    marginBottom: Spacing.lg,
-  },
-  productName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: Spacing.xs,
-  },
-  productPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  productPriceLabel: {
+  description: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#4B5563',
+    lineHeight: 21,
+    marginBottom: 20,
   },
-  productPrice: {
-    fontSize: 18,
+  descriptionBold: {
     fontWeight: '700',
-    color: '#7C3AED',
+    color: '#111827',
   },
-  quantityNote: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: Spacing.xs,
+  descriptionBoldGreen: {
+    fontWeight: '700',
+    color: '#00C06A',
   },
-  lockDurationCard: {
-    backgroundColor: '#FAF5FF',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
-    marginBottom: Spacing.lg,
-    borderWidth: 1,
-    borderColor: '#E9D5FF',
+  durationChips: {
+    marginBottom: 20,
   },
-  lockDurationHeader: {
+  lockButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#059669',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 4px 8px rgba(5,150,105,0.3)' },
+    }),
+  },
+  lockButtonDisabled: {
+    opacity: 0.7,
+  },
+  lockButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
-    marginBottom: Spacing.sm,
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 8,
   },
-  lockDurationTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#7C3AED',
-  },
-  lockDurationContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.xs,
-  },
-  lockDurationBadge: {
-    backgroundColor: '#7C3AED',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.md,
-  },
-  lockDurationValue: {
+  lockButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  lockDurationFeeText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  lockDurationFeeAmount: {
-    fontWeight: '700',
-    color: '#7C3AED',
-  },
-  lockDurationNote: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontStyle: 'italic',
-  },
-  section: {
-    marginBottom: Spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: Spacing.sm,
-  },
-  walletCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.base,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 2,
-    borderColor: '#7C3AED',
-    backgroundColor: '#FAF5FF',
-  },
-  walletInfo: {
-    flex: 1,
-    marginLeft: Spacing.sm,
-  },
-  walletLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  walletBalance: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  balanceSufficient: {
-    color: '#10B981',
-  },
-  balanceInsufficient: {
-    color: '#F59E0B',
-  },
-  summarySection: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
-    marginBottom: Spacing.lg,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  summaryNote: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.xs,
-  },
-  summaryNoteText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#6B7280',
-    lineHeight: 16,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FEF2F2',
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.xs,
-    marginBottom: Spacing.lg,
+    padding: 12,
+    borderRadius: 10,
+    gap: 8,
+    marginBottom: 12,
   },
   errorText: {
     flex: 1,
@@ -519,49 +378,79 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFBEB',
-    padding: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    gap: Spacing.xs,
-    marginBottom: Spacing.lg,
+    padding: 12,
+    borderRadius: 10,
+    gap: 8,
+    marginBottom: 12,
   },
   warningText: {
     flex: 1,
     fontSize: 13,
     color: '#D97706',
   },
-  loadingContainer: {
-    alignItems: 'center',
-    padding: Spacing['2xl'],
+  stepsSection: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
   },
-  loadingText: {
-    marginTop: Spacing.sm,
+  stepsTitle: {
     fontSize: 14,
-    color: '#6B7280',
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 14,
   },
-  footer: {
-    padding: Spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  lockButton: {
-    borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-    ...Shadows.medium,
-  },
-  lockButtonDisabled: {
-    opacity: 0.7,
-  },
-  lockButtonGradient: {
+  stepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.base,
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.sm,
+    marginBottom: 12,
   },
-  lockButtonText: {
+  stepNumber: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  stepNumberText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  stepText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+  },
+  walletCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 16,
+  },
+  walletInfo: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  walletLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  walletBalance: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+  },
+  balanceSufficient: {
+    color: '#10B981',
+  },
+  balanceInsufficient: {
+    color: '#F59E0B',
   },
 });

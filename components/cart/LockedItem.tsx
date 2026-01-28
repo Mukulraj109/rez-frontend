@@ -213,7 +213,7 @@ export default function LockedItem({
     >
       {/* Price Locked Header Banner */}
       <LinearGradient
-        colors={isExpired ? ['#EF4444', '#DC2626'] : ['#8B5CF6', '#7C3AED']}
+        colors={isExpired ? ['#EF4444', '#DC2626'] : ['#00C06A', '#059669']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.headerBanner}
@@ -356,7 +356,7 @@ export default function LockedItem({
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['#8B5CF6', '#7C3AED']}
+                colors={['#00C06A', '#059669']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.purchaseButton}

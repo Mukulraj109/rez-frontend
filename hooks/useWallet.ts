@@ -134,9 +134,14 @@ export const useWallet = ({
         }
       ];
 
-      // Calculate total balance from coins (ReZ + Promo + Cashback)
+      // Calculate total balance: ReZ + Promo + Cashback + Branded
       const cashbackBalance = backendData.balance?.cashback || 0;
-      const calculatedTotalBalance = coins.reduce((sum, coin) => sum + coin.amount, 0) + cashbackBalance;
+      const coinBalance = coins.reduce((sum, coin) => sum + coin.amount, 0) + cashbackBalance;
+
+      const brandedCoinsData = backendData.brandedCoins || [];
+      const brandedCoinsTotal = brandedCoinsData.reduce((sum: number, bc: any) => sum + (bc.amount || 0), 0);
+
+      const calculatedTotalBalance = coinBalance + brandedCoinsTotal;
 
       const walletData: WalletData = {
         userId: userId || 'unknown',
@@ -147,7 +152,8 @@ export const useWallet = ({
         currency: backendData.currency,
         formattedTotalBalance: `${backendData.currency} ${calculatedTotalBalance}`,
         coins: coins,
-        brandedCoins: backendData.brandedCoins || [],
+        brandedCoins: brandedCoinsData,
+        brandedCoinsTotal,
         savingsInsights: backendData.savingsInsights || { totalSaved: 0, thisMonth: 0, avgPerVisit: 0 },
         recentTransactions: [],
         lastUpdated: new Date(backendData.lastUpdated),
@@ -275,9 +281,14 @@ export const useWallet = ({
         }
       ];
 
-      // Calculate total balance from coins (ReZ + Promo + Cashback)
+      // Calculate total balance: ReZ + Promo + Cashback + Branded
       const cashbackBalance = backendData.balance?.cashback || 0;
-      const calculatedTotalBalance = coins.reduce((sum, coin) => sum + coin.amount, 0) + cashbackBalance;
+      const coinBalance = coins.reduce((sum, coin) => sum + coin.amount, 0) + cashbackBalance;
+
+      const brandedCoinsData = backendData.brandedCoins || [];
+      const brandedCoinsTotal = brandedCoinsData.reduce((sum: number, bc: any) => sum + (bc.amount || 0), 0);
+
+      const calculatedTotalBalance = coinBalance + brandedCoinsTotal;
 
       const walletData: WalletData = {
         userId: userId || 'unknown',
@@ -288,7 +299,8 @@ export const useWallet = ({
         currency: backendData.currency,
         formattedTotalBalance: `${backendData.currency} ${calculatedTotalBalance}`,
         coins: coins,
-        brandedCoins: backendData.brandedCoins || [],
+        brandedCoins: brandedCoinsData,
+        brandedCoinsTotal,
         savingsInsights: backendData.savingsInsights || { totalSaved: 0, thisMonth: 0, avgPerVisit: 0 },
         recentTransactions: [],
         lastUpdated: new Date(backendData.lastUpdated),
