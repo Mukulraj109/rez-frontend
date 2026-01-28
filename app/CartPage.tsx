@@ -299,13 +299,11 @@ export default function CartPage() {
         setLockedProducts(prev => prev.filter(item => item.id !== itemId));
         // Reload cart to show the moved item
         await cartActions.loadCart();
+        // Switch to Products tab so user can see the moved item
+        setActiveTab('products');
         Alert.alert(
           'Moved to Cart!',
-          'Item has been moved to your cart at the locked price.',
-          [
-            { text: 'OK', style: 'cancel' },
-            { text: 'View Cart', onPress: () => setActiveTab('products') }
-          ]
+          'Item has been moved to your cart at the locked price.'
         );
       } else {
         Alert.alert('Error', response.message || 'Failed to move item to cart');

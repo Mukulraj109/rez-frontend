@@ -8,12 +8,15 @@ import {
   BackHandler,
   ActivityIndicator,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import ordersApi from '@/services/ordersApi';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface OrderDetails {
   id: string;
@@ -107,7 +110,7 @@ export default function PaymentSuccessPage() {
   useEffect(() => {
     const backAction = () => {
       router.replace('/(tabs)/' as any);
-      return true; // Prevent default back behavior
+      return true;
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
@@ -128,45 +131,24 @@ export default function PaymentSuccessPage() {
 
   const getPaymentMethodIcon = (method: string) => {
     switch (method) {
-      case 'cod':
-        return 'cash';
-      case 'wallet':
-        return 'diamond';
+      case 'cod': return 'cash';
+      case 'wallet': return 'diamond';
       case 'razorpay':
       case 'card':
-      case 'upi':
-        return 'card';
-      default:
-        return 'checkmark-circle';
+      case 'upi': return 'card';
+      default: return 'checkmark-circle';
     }
   };
 
   const getPaymentMethodLabel = (method: string) => {
     switch (method) {
-      case 'cod':
-        return 'Cash on Delivery';
-      case 'wallet':
-        return 'ReZ Wallet';
-      case 'razorpay':
-        return 'Online Payment';
-      case 'card':
-        return 'Credit/Debit Card';
-      case 'upi':
-        return 'UPI';
-      default:
-        return 'Payment';
+      case 'cod': return 'Cash on Delivery';
+      case 'wallet': return 'ReZ Wallet';
+      case 'razorpay': return 'Online Payment';
+      case 'card': return 'Credit/Debit Card';
+      case 'upi': return 'UPI';
+      default: return 'Payment';
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
 
   // Calculate estimated delivery (30-45 mins from order)
@@ -174,75 +156,69 @@ export default function PaymentSuccessPage() {
     const orderDate = order?.createdAt ? new Date(order.createdAt) : new Date();
     const minDelivery = new Date(orderDate.getTime() + 30 * 60000);
     const maxDelivery = new Date(orderDate.getTime() + 45 * 60000);
-
     const formatTime = (date: Date) =>
       date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-
     return `${formatTime(minDelivery)} - ${formatTime(maxDelivery)}`;
   };
 
+  const method = paymentMethod || order?.payment?.method || '';
+  const isCod = method === 'cod';
+  const coinsUsedValue = order?.payment?.coinsUsed?.totalCoinsValue || 0;
+  const orderTotal = order?.totals?.total || 0;
+  const payableAmount = isCod ? orderTotal - coinsUsedValue : (order?.totals?.paidAmount || orderTotal);
+  const itemCount = order?.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0;
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#22C55E" />
+      <StatusBar barStyle="light-content" backgroundColor="#16A34A" />
 
+      {/* Fixed Header */}
       <LinearGradient
         colors={['#22C55E', '#16A34A']}
-        style={styles.successContainer}
+        style={styles.headerGradient}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.successContent}>
-            {/* Success Icon */}
-            <View
-              style={styles.successIcon}
-              accessible={true}
-              accessibilityLabel="Payment successful"
-              accessibilityRole="image"
-            >
-              <View style={styles.iconCircle}>
-                <Ionicons name="checkmark" size={50} color="#22C55E" />
-              </View>
+        {/* Success Icon */}
+        <View style={styles.iconCircle}>
+          <Ionicons name="checkmark" size={32} color="#22C55E" />
+        </View>
+
+        <ThemedText style={styles.successTitle}>Payment Successful!</ThemedText>
+        <ThemedText style={styles.successMessage}>
+          {isCod
+            ? 'Your order has been placed. Pay when you receive your order.'
+            : 'Your payment has been processed successfully.'}
+        </ThemedText>
+      </LinearGradient>
+
+      {/* Scrollable Content */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.contentArea}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#22C55E" />
+              <ThemedText style={styles.loadingText}>Loading order details...</ThemedText>
             </View>
-
-            {/* Success Title */}
-            <ThemedText
-              style={styles.successTitle}
-              accessibilityRole="header"
-            >
-              Payment Successful!
-            </ThemedText>
-            <ThemedText style={styles.successMessage}>
-              {paymentMethod === 'cod'
-                ? 'Your order has been placed. Pay when you receive your order.'
-                : 'Your payment has been processed successfully.'}
-            </ThemedText>
-
-            {/* Order Info Card */}
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="white" />
-                <ThemedText style={styles.loadingText}>Loading order details...</ThemedText>
+          ) : (
+            <>
+              {/* Order Number Card */}
+              <View style={styles.orderNumberCard}>
+                <ThemedText style={styles.orderNumberLabel}>Order Number</ThemedText>
+                <ThemedText style={styles.orderNumber} numberOfLines={1} adjustsFontSizeToFit>
+                  #{order?.orderNumber || `REZ${orderId?.slice(-8) || '000000'}`}
+                </ThemedText>
               </View>
-            ) : (
-              <View style={styles.orderCard}>
-                {/* Order Number */}
-                <View style={styles.orderHeader}>
-                  <ThemedText style={styles.orderLabel}>Order Number</ThemedText>
-                  <ThemedText style={styles.orderNumber}>
-                    #{order?.orderNumber || `REZ${orderId?.slice(-8) || '000000'}`}
-                  </ThemedText>
-                </View>
 
-                {/* Divider */}
-                <View style={styles.divider} />
-
+              {/* Details Card */}
+              <View style={styles.detailsCard}>
                 {/* Transaction ID */}
                 {transactionId && (
-                  <View style={styles.orderRow}>
-                    <ThemedText style={styles.rowLabel}>Transaction ID</ThemedText>
-                    <ThemedText style={styles.rowValue}>
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Transaction ID</ThemedText>
+                    <ThemedText style={styles.detailValue}>
                       {transactionId.length > 16
                         ? `${transactionId.slice(0, 8)}...${transactionId.slice(-8)}`
                         : transactionId}
@@ -251,111 +227,107 @@ export default function PaymentSuccessPage() {
                 )}
 
                 {/* Payment Method */}
-                <View style={styles.orderRow}>
-                  <ThemedText style={styles.rowLabel}>Payment Method</ThemedText>
-                  <View style={styles.paymentMethodBadge}>
-                    <Ionicons
-                      name={getPaymentMethodIcon(paymentMethod || order?.payment?.method || '')}
-                      size={14}
-                      color="#22C55E"
-                    />
-                    <ThemedText style={styles.paymentMethodText}>
-                      {getPaymentMethodLabel(paymentMethod || order?.payment?.method || '')}
+                <View style={styles.detailRow}>
+                  <ThemedText style={styles.detailLabel}>Payment Method</ThemedText>
+                  <View style={styles.methodBadge}>
+                    <Ionicons name={getPaymentMethodIcon(method)} size={13} color="#16A34A" />
+                    <ThemedText style={styles.methodText}>
+                      {getPaymentMethodLabel(method)}
                     </ThemedText>
                   </View>
                 </View>
 
-                {/* REZ Coins Used - Show if coins were used */}
-                {order?.payment?.coinsUsed && (order.payment.coinsUsed.totalCoinsValue || 0) > 0 && (
-                  <View style={styles.orderRow}>
-                    <ThemedText style={styles.rowLabel}>REZ Coins Used</ThemedText>
-                    <ThemedText style={[styles.amountValue, { color: '#22C55E' }]}>
-                      -₹{(order.payment.coinsUsed.totalCoinsValue || 0).toLocaleString()}
+                {/* Coins Used */}
+                {coinsUsedValue > 0 && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>ReZ Coins Used</ThemedText>
+                    <ThemedText style={styles.coinsValue}>
+                      -₹{coinsUsedValue.toLocaleString()}
                     </ThemedText>
                   </View>
                 )}
 
-                {/* Amount - Different display for COD vs other methods */}
-                {(paymentMethod === 'cod' || order?.payment?.method === 'cod') ? (
-                  <View style={styles.orderRow}>
-                    <ThemedText style={styles.rowLabel}>Pay on Delivery</ThemedText>
-                    <ThemedText style={styles.amountValue}>
-                      ₹{((order?.totals?.total || 0) - (order?.payment?.coinsUsed?.totalCoinsValue || 0)).toLocaleString()}
-                    </ThemedText>
-                  </View>
-                ) : (
-                  <View style={styles.orderRow}>
-                    <ThemedText style={styles.rowLabel}>Amount Paid</ThemedText>
-                    <ThemedText style={styles.amountValue}>
-                      ₹{(order?.totals?.paidAmount || order?.totals?.total || 0).toLocaleString()}
-                    </ThemedText>
-                  </View>
-                )}
+                {/* Separator */}
+                <View style={styles.separator} />
 
-                {/* Order Total */}
-                <View style={styles.orderRow}>
-                  <ThemedText style={styles.rowLabel}>Order Total</ThemedText>
-                  <ThemedText style={[styles.rowValue, { fontWeight: '600' }]}>
-                    ₹{(order?.totals?.total || 0).toLocaleString()}
+                {/* Amount */}
+                <View style={styles.detailRow}>
+                  <ThemedText style={styles.detailLabel}>
+                    {isCod ? 'Pay on Delivery' : 'Amount Paid'}
+                  </ThemedText>
+                  <ThemedText style={styles.amountValue}>
+                    ₹{payableAmount.toLocaleString()}
                   </ThemedText>
                 </View>
 
-                {/* Items Count */}
-                {order?.items && order.items.length > 0 && (
-                  <View style={styles.orderRow}>
-                    <ThemedText style={styles.rowLabel}>Items</ThemedText>
-                    <ThemedText style={styles.rowValue}>
-                      {order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)} item(s)
+                {/* Order Total (if different from payable) */}
+                {coinsUsedValue > 0 && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Order Total</ThemedText>
+                    <ThemedText style={styles.detailValueBold}>
+                      ₹{orderTotal.toLocaleString()}
                     </ThemedText>
                   </View>
                 )}
 
-                {/* Estimated Delivery */}
-                <View style={styles.deliverySection}>
-                  <Ionicons name="time-outline" size={18} color="#22C55E" />
-                  <View style={styles.deliveryInfo}>
-                    <ThemedText style={styles.deliveryLabel}>Estimated Delivery</ThemedText>
-                    <ThemedText style={styles.deliveryTime}>{getEstimatedDelivery()}</ThemedText>
+                {/* Items */}
+                {itemCount > 0 && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Items</ThemedText>
+                    <ThemedText style={styles.detailValue}>
+                      {itemCount} item{itemCount !== 1 ? 's' : ''}
+                    </ThemedText>
                   </View>
+                )}
+              </View>
+
+              {/* Estimated Delivery */}
+              <View style={styles.deliveryCard}>
+                <View style={styles.deliveryIconWrap}>
+                  <Ionicons name="bicycle-outline" size={18} color="#16A34A" />
+                </View>
+                <View style={styles.deliveryInfo}>
+                  <ThemedText style={styles.deliveryLabel}>Estimated Delivery</ThemedText>
+                  <ThemedText style={styles.deliveryTime}>{getEstimatedDelivery()}</ThemedText>
                 </View>
               </View>
-            )}
 
-            {/* Email Notification */}
-            <View style={styles.emailNotice}>
-              <Ionicons name="mail-outline" size={18} color="rgba(255,255,255,0.8)" />
-              <ThemedText style={styles.emailText}>
-                Confirmation details sent to your registered email
-              </ThemedText>
-            </View>
+              {/* Email Notice */}
+              <View style={styles.emailNotice}>
+                <Ionicons name="mail-outline" size={14} color="#9CA3AF" />
+                <ThemedText style={styles.emailText}>
+                  Confirmation sent to your registered email
+                </ThemedText>
+              </View>
+            </>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={styles.trackButton}
+              onPress={handleTrackOrder}
+              activeOpacity={0.8}
+              accessibilityLabel="Track your order"
+              accessibilityRole="button"
+            >
+              <Ionicons name="location-outline" size={18} color="#FFFFFF" />
+              <ThemedText style={styles.trackButtonText}>Track Order</ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.homeButton}
+              onPress={handleGoHome}
+              activeOpacity={0.8}
+              accessibilityLabel="Back to home"
+              accessibilityRole="button"
+            >
+              <Ionicons name="home-outline" size={18} color="#22C55E" />
+              <ThemedText style={styles.homeButtonText}>Back to Home</ThemedText>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
-
-        {/* Action Buttons - Fixed at bottom */}
-        <View style={styles.successActions}>
-          <TouchableOpacity
-            style={styles.trackOrderButton}
-            onPress={handleTrackOrder}
-            accessibilityLabel="Track your order"
-            accessibilityRole="button"
-            accessibilityHint="Double tap to view order tracking details"
-          >
-            <Ionicons name="location-outline" size={20} color="#22C55E" />
-            <ThemedText style={styles.trackOrderText}>Track Order</ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.continueShoppingButton}
-            onPress={handleGoHome}
-            accessibilityLabel="Continue shopping"
-            accessibilityRole="button"
-            accessibilityHint="Double tap to return to home page"
-          >
-            <Ionicons name="home-outline" size={20} color="white" />
-            <ThemedText style={styles.continueShoppingText}>Back to Home</ThemedText>
-          </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </ScrollView>
     </View>
   );
 }
@@ -363,200 +335,244 @@ export default function PaymentSuccessPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F9FAFB',
   },
-  successContainer: {
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingTop: Platform.OS === 'android' ? 40 : 50,
-    paddingBottom: 100,
+    paddingBottom: Platform.select({ ios: 100, android: 90, default: 100 }),
   },
-  successContent: {
-    alignItems: 'center',
+
+  // --- Header ---
+  headerGradient: {
+    paddingTop: Platform.OS === 'ios' ? 56 : 44,
+    paddingBottom: 28,
     paddingHorizontal: 24,
-  },
-  successIcon: {
-    marginBottom: 24,
+    alignItems: 'center',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    zIndex: 1,
   },
   iconCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'white',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    marginBottom: 14,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 6 },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 3px 12px rgba(0,0,0,0.15)' },
+    }),
   },
   successTitle: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
-    color: 'white',
+    color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
   successMessage: {
-    fontSize: 15,
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
+    lineHeight: 19,
+    paddingHorizontal: 16,
+  },
+
+  // --- Content ---
+  contentArea: {
     paddingHorizontal: 20,
+    paddingTop: 20,
   },
   loadingContainer: {
     alignItems: 'center',
-    padding: 20,
+    paddingVertical: 40,
   },
   loadingText: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 12,
-  },
-  orderCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
-    width: '100%',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  orderHeader: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  orderLabel: {
     fontSize: 13,
-    color: '#6B7280',
+    color: '#9CA3AF',
+    marginTop: 10,
+  },
+
+  // --- Order Number ---
+  orderNumberCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
+    }),
+  },
+  orderNumberLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
     marginBottom: 4,
   },
   orderNumber: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '800',
     color: '#111827',
-    letterSpacing: 1,
+    letterSpacing: 0.3,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    marginVertical: 12,
+
+  // --- Details Card ---
+  detailsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
+    }),
   },
-  orderRow: {
+  detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
   },
-  rowLabel: {
-    fontSize: 14,
+  detailLabel: {
+    fontSize: 13,
     color: '#6B7280',
   },
-  rowValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  amountValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#22C55E',
-  },
-  paymentMethodBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  paymentMethodText: {
+  detailValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#22C55E',
+    color: '#374151',
   },
-  deliverySection: {
+  detailValueBold: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  methodBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F0FDF4',
-    padding: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
-    marginTop: 12,
-    gap: 12,
+    gap: 5,
+  },
+  methodText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#16A34A',
+  },
+  coinsValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#16A34A',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 2,
+  },
+  amountValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#16A34A',
+  },
+
+  // --- Delivery Card ---
+  deliveryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    gap: 10,
+  },
+  deliveryIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#DCFCE7',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   deliveryInfo: {
     flex: 1,
   },
   deliveryLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6B7280',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   deliveryTime: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#22C55E',
+    color: '#16A34A',
   },
+
+  // --- Email Notice ---
   emailNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 28,
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 24,
+    paddingTop: 4,
   },
   emailText: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.85)',
-    flex: 1,
+    fontSize: 12,
+    color: '#9CA3AF',
   },
-  successActions: {
-    width: '100%',
-    gap: 12,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
-    backgroundColor: 'transparent',
+
+  // --- Action Buttons ---
+  actions: {
+    gap: 10,
   },
-  trackOrderButton: {
-    backgroundColor: 'white',
+  trackButton: {
+    backgroundColor: '#22C55E',
     borderRadius: 14,
-    paddingVertical: 16,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    gap: 8,
+    ...Platform.select({
+      ios: { shadowColor: '#22C55E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 4px 14px rgba(34,197,94,0.3)' },
+    }),
   },
-  trackOrderText: {
-    color: '#22C55E',
-    fontSize: 16,
+  trackButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '700',
   },
-  continueShoppingButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+  homeButton: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    paddingVertical: 16,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
   },
-  continueShoppingText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+  homeButtonText: {
+    color: '#22C55E',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

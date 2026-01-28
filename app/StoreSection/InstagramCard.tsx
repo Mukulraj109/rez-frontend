@@ -99,8 +99,8 @@ export default function InstagramCard({ productData, disabled = false, onError }
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       disabled={disabled || isNavigating}
       accessibilityRole="button"
-      accessibilityLabel={isNavigating ? 'Loading Instagram earn page' : 'Earn from Instagram'}
-      accessibilityHint="Double tap to learn how to earn money from Instagram posts"
+      accessibilityLabel={isNavigating ? 'Loading social media earn page' : 'Earn from Social Media'}
+      accessibilityHint="Double tap to learn how to earn money from social media posts"
       accessibilityState={{ disabled: disabled || isNavigating, busy: isNavigating }}
     >
       <LinearGradient
@@ -119,7 +119,7 @@ export default function InstagramCard({ productData, disabled = false, onError }
             )}
           </View>
           <Text style={styles.title}>
-            {isNavigating ? 'Loading...' : 'Earn from Instagram'}
+            {isNavigating ? 'Loading...' : 'Earn from Social Media'}
           </Text>
         </View>
       </LinearGradient>

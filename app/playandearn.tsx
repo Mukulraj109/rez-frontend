@@ -485,6 +485,39 @@ const PlayAndEarn = () => {
           </View>
         </View>
 
+        {/* Earn from Social Media */}
+        <TouchableOpacity
+          style={styles.socialMediaBanner}
+          onPress={() => navigateTo('/earn-from-social-media')}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={['#EC4899', '#8B5CF6', '#7C3AED']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.socialMediaGradient}
+          >
+            <View style={styles.socialMediaLeft}>
+              <View style={styles.socialMediaIconRow}>
+                <View style={styles.socialMediaIcon}>
+                  <Ionicons name="logo-instagram" size={18} color="#FFFFFF" />
+                </View>
+                <View style={[styles.socialMediaIcon, { marginLeft: -6 }]}>
+                  <Ionicons name="logo-facebook" size={18} color="#FFFFFF" />
+                </View>
+                <View style={[styles.socialMediaIcon, { marginLeft: -6 }]}>
+                  <Ionicons name="logo-youtube" size={18} color="#FFFFFF" />
+                </View>
+              </View>
+              <Text style={styles.socialMediaTitle}>Earn from Social Media</Text>
+              <Text style={styles.socialMediaSubtitle}>Share purchases & get 5% cashback</Text>
+            </View>
+            <View style={styles.socialMediaArrow}>
+              <Ionicons name="arrow-forward" size={20} color="rgba(255,255,255,0.9)" />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* Creator Earnings Section */}
         <LinearGradient
           colors={['#FAF5FF', '#FDF2F8']}
@@ -1383,6 +1416,52 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#00A85D',
     fontWeight: '500',
+  },
+  socialMediaBanner: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  socialMediaGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+  },
+  socialMediaLeft: {
+    flex: 1,
+  },
+  socialMediaIconRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  socialMediaIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  socialMediaTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  socialMediaSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '500',
+  },
+  socialMediaArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   creatorSection: {
     marginHorizontal: 16,
